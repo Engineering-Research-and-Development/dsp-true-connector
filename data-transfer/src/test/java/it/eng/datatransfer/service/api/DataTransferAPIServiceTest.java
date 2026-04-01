@@ -3,7 +3,10 @@ package it.eng.datatransfer.service.api;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
-import it.eng.datatransfer.model.*;
+import it.eng.datatransfer.model.DataTransferFormat;
+import it.eng.datatransfer.model.DataTransferRequest;
+import it.eng.datatransfer.model.TransferProcess;
+import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
@@ -272,8 +275,6 @@ class DataTransferAPIServiceTest {
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
-        when(artifactTransferService.findArtifact(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER))
-                .thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
 
         apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId());
 
@@ -300,8 +301,6 @@ class DataTransferAPIServiceTest {
 
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(input));
-        when(artifactTransferService.findArtifact(input))
-                .thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
 
         assertThrows(TransferProcessInvalidStateException.class, //DataTransferAPIException.class,
                 () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
@@ -321,8 +320,6 @@ class DataTransferAPIServiceTest {
         when(apiResponse.getMessage()).thenReturn("error");
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
-        when(artifactTransferService.findArtifact(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER))
-                .thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
 
         assertThrows(DataTransferAPIException.class, () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()));
 
@@ -608,11 +605,43 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.findById(input.getId()))
                 .thenReturn(Optional.of(input));
 
-        CompletableFuture<Void> future = apiService.downloadData(input.getId());
+        // Validation throws synchronously so the exception propagates directly to the caller.
+        assertThrows(DataTransferAPIException.class, () -> apiService.downloadData(input.getId()));
+    }
 
-        assertTrue(future.isCompletedExceptionally());
-        ExecutionException ex = assertThrows(ExecutionException.class, future::get);
-        assertInstanceOf(DataTransferAPIException.class, ex.getCause());
+    @Test
+    @DisplayName("Download data - fail - already downloaded")
+    public void downloadData_fail_alreadyDownloaded() {
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED));
+
+        // Validation throws synchronously so the exception propagates directly to the caller.
+        DataTransferAPIException ex = assertThrows(DataTransferAPIException.class,
+                () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()));
+        assertTrue(ex.getMessage().contains("has already been downloaded"));
+    }
+
+    @Test
+    @DisplayName("Download data - fail - concurrent download already in progress")
+    public void downloadData_fail_concurrentDownload() throws Exception {
+        CompletableFuture<Void> neverCompletes = new CompletableFuture<>();
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        when(usageControlProperties.usageControlEnabled()).thenReturn(false);
+        when(transferStrategyFactory.getStrategy(any(String.class))).thenReturn(httpPullTransferStrategy);
+        when(httpPullTransferStrategy.transfer(isA(TransferProcess.class))).thenReturn(neverCompletes);
+
+        // First call — succeeds and is now in-flight
+        CompletableFuture<Void> firstCall = apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+        assertFalse(firstCall.isDone());
+
+        // Second call for the same ID — throws synchronously since the guard check happens before the async work.
+        DataTransferAPIException ex = assertThrows(DataTransferAPIException.class,
+                () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+        assertTrue(ex.getMessage().contains("already in progress"));
+
+        // Clean up the in-flight future
+        neverCompletes.cancel(true);
     }
 
     @Test
@@ -706,11 +735,11 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("View data - fail - not downloaded")
     public void viewData_fail_notDownloaded() {
-        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
-                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED));
 
         assertThrows(DataTransferAPIException.class,
-                () -> apiService.viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+                () -> apiService.viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED.getId()));
 
         verify(s3ClientService, times(0)).fileExists(anyString(), anyString());
         verify(s3ClientService, times(0)).generateGetPresignedUrl(anyString(), anyString(), any(Duration.class));

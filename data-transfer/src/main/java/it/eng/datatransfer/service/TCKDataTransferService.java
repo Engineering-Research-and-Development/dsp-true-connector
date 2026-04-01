@@ -15,7 +15,9 @@ import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.FieldEncryptionService;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
@@ -38,23 +40,26 @@ public class TCKDataTransferService extends AbstractDataTransferService {
     private final DataTransferAPIService dataTransferAPIService;
     private final AuditEventPublisher auditEventPublisher;
     private final OkHttpRestClient okHttpRestClient;
-    private final DataTransferProperties dataTransferProperties;
     private final CredentialUtils credentialUtils;
 
     private final ObjectMapper mapper = new ObjectMapper();
+    private final DataTransferProperties dataTransferProperties;
 
     public TCKDataTransferService(DataTransferAPIService dataTransferAPIService,
                                   TransferProcessRepository transferProcessRepository,
                                   TransferRequestMessageRepository transferRequestMessageRepository,
                                   AuditEventPublisher auditEventPublisher,
                                   OkHttpRestClient okHttpRestClient,
-                                  DataTransferProperties dataTransferProperties, CredentialUtils credentialUtils) {
-        super(transferProcessRepository, auditEventPublisher, okHttpRestClient, transferRequestMessageRepository);
+                                  CredentialUtils credentialUtils,
+                                  DataTransferProperties dataTransferProperties,
+                                  TemporaryBucketUserService temporaryBucketUserService,
+                                  FieldEncryptionService fieldEncryptionService) {
+        super(transferProcessRepository, auditEventPublisher, okHttpRestClient, transferRequestMessageRepository, dataTransferProperties, temporaryBucketUserService, fieldEncryptionService);
         this.dataTransferAPIService = dataTransferAPIService;
         this.auditEventPublisher = auditEventPublisher;
         this.okHttpRestClient = okHttpRestClient;
-        this.dataTransferProperties = dataTransferProperties;
         this.credentialUtils = credentialUtils;
+        this.dataTransferProperties = dataTransferProperties;
     }
 
     @Override

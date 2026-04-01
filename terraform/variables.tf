@@ -93,3 +93,69 @@ variable "mongo_password" {
   type        = string
   default     = "admin"
 }
+
+# Connector A Application Configuration
+variable "connector_a_config" {
+  description = "Connector A application configuration properties"
+  type = object({
+    automatic_transfer      = bool
+    automatic_negotiation   = bool
+    mongodb_host            = string
+    mongodb_port            = number
+    mongodb_database        = string
+    ssl_enabled             = bool
+    s3_endpoint             = string
+    s3_access_key           = string
+    s3_secret_key           = string
+    s3_region               = string
+    s3_bucket_name          = string
+    s3_external_endpoint    = string
+  })
+  default = {
+    automatic_transfer      = false
+    automatic_negotiation   = false
+    mongodb_host            = "mongodb"
+    mongodb_port            = 27017
+    mongodb_database        = "true_connector_a"
+    ssl_enabled             = false
+    s3_endpoint             = "http://minio:9000"
+    s3_access_key           = "minioadmin"
+    s3_secret_key           = "minioadmin"
+    s3_region               = "us-east-1"
+    s3_bucket_name          = "dsp-true-connector-a"
+    s3_external_endpoint    = "http://localhost:9000"
+  }
+}
+
+# Connector B Application Configuration
+variable "connector_b_config" {
+  description = "Connector B application configuration properties"
+  type = object({
+    automatic_transfer      = bool
+    automatic_negotiation   = bool
+    mongodb_host            = string
+    mongodb_port            = number
+    mongodb_database        = string
+    ssl_enabled             = bool
+    s3_endpoint             = string
+    s3_access_key           = string
+    s3_secret_key           = string
+    s3_region               = string
+    s3_bucket_name          = string
+    s3_external_endpoint    = string
+  })
+  default = {
+    automatic_transfer      = false
+    automatic_negotiation   = false
+    mongodb_host            = "mongodb"
+    mongodb_port            = 27017
+    mongodb_database        = "true_connector_b"
+    ssl_enabled             = false
+    s3_endpoint             = "http://minio:9000"
+    s3_access_key           = "minioadmin"
+    s3_secret_key           = "minioadmin"
+    s3_region               = "us-east-1"
+    s3_bucket_name          = "dsp-true-connector-b"
+    s3_external_endpoint    = "http://172.17.0.1:9000"
+  }
+}

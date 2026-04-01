@@ -2,6 +2,118 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.9-SNAPSHOT] - 27.03.2026.
+
+### Added
+- Integration and unit tests for `TemporaryBucketUserService` covering bucket creation, user credential lifecycle, and policy attachment.
+- Unit tests (`InitialDataLoaderTest`) and integration tests (`InitialDataLoaderIT`) for `InitialDataLoader`, covering seed data loading, duplicate skipping, missing-file graceful skip, MongoDB/S3 failure resilience, and `seedDataLoaded` flag tracking.
+- `DataTransferConfiguration` — new Spring `@Configuration` class providing bounded `ThreadPoolTaskExecutor` beans for concurrent HTTP-PUSH (`httpPushTransferExecutor`) and HTTP-PULL (`httpPullTransferExecutor`) transfers; core/max pool size of 8, queue capacity of 50, graceful shutdown on Spring context close.
+- `NegotiationConfiguration` — new Spring `@Configuration` class in the negotiation module providing the `negotiationTaskScheduler` bean (`ThreadPoolTaskScheduler`, pool size 5, thread prefix `negotiation-retry-`) for non-blocking retry scheduling in `AutomaticNegotiationService`; pool size tunable via `application.negotiation.scheduler.pool-size`.
+- `DataTransferConfigurationTest` and `NegotiationConfigurationTest` — unit tests covering the new scheduler beans.
+
+### Fixed
+- `downloadData()` endpoint now correctly returns HTTP 400 when the transfer process is not in `STARTED` state, was already downloaded, or a download is already in progress. Previously, the async refactor caused all validation failures to be silently swallowed and always return HTTP 202.
+- Resolved 11 bugs identified in a deep-scan audit of `DataTransferAPIService` and related classes:
+  - Temporary IAM user leak on `requestTransfer()` failure — `deleteTemporaryUser()` is now always called in a `finally` block.
+  - Blocking `.join()` removed from `DataTransferAPIController.downloadData()`; replaced with fire-and-forget `+` `.exceptionally()` logging; controller now always returns HTTP 202 Accepted for the async download path.
+  - `terminateTransfer()` — temporary IAM user was not cleaned up on the success path; `deleteTemporaryUser()` now called.
+  - Audit event calls used `Map.of()` which throws `NullPointerException` on null `consumerPid`/`providerPid`; replaced with a private `auditMap()` helper that silently skips null entries.
+  - `DataTransferAPIController.getTransferProcesses()` — array index out of bounds on `sort[1]` when only one sort field is provided; added length guard.
+  - `policyCheck()` — replaced bare `assert` on response with an explicit null check and meaningful `DataTransferAPIException`.
+  - State-transition methods (`startTransfer`, `completeTransfer`, `terminateTransfer`, `suspendTransfer`) — added null guard on callback address before sending protocol messages.
+  - `startTransfer()` — `findArtifact()` was called unconditionally at method start; moved inside the `ROLE_PROVIDER + HTTP_PULL` block where it is actually needed.
+  - `HttpPullTransferStrategy` and `HttpPushTransferStrategy` — blocking `.join()` and `HttpURLConnection` leak fixed using `AtomicReference` + `thenCompose` pattern; connection is now disconnected via `whenComplete` on all paths.
+  - `S3AsyncUploadStrategy.uploadParts()` — blocking `.join()` on executor thread replaced with `runAsync` + `thenCompose(allOf(...).thenApply(...))`.
+- Applied 7 additional code-quality fixes from the same deep-scan:
+  - Corrected `suspendTransfer` Javadoc (incorrectly stated `COMPLETED` instead of `SUSPENDED`).
+  - `suspendTransfer` and `terminateTransfer` audit events now publish the post-transition object instead of the stale pre-transition reference.
+  - `viewData()` — added `isDownloaded` pre-check; presigned URL is only generated when the process is both `COMPLETED` and downloaded.
+  - `viewData()` exception message: added missing separator and null guard on `getLocalizedMessage()`.
+  - `DataTransferAPIService` — `ObjectMapper` is now injected as a Spring-managed bean via constructor instead of being instantiated as a field.
+  - `S3UploadStrategyFactory.getStrategy()` — added null-check on `uploadMode` property.
+  - `S3TransferStrategy` — marked `@Deprecated` with explanatory Javadoc; removed unused `s3ClientService` field.
+- `InitialDataLoader` no longer aborts application startup when the seed data JSON file is missing from the classpath; the loader now logs an info message and returns cleanly. Any I/O or parse error during loading is also caught and logged without re-throwing.
+- `TemporaryBucketUserService.createTemporaryUser()` — added compensating `deleteUser()` call in a `catch` block to prevent orphaned IAM users when policy attachment or MongoDB persistence fails after the IAM user has already been created.
+- `TemporaryBucketUserService.deleteTemporaryUser()` — policy is now revoked before the IAM user is deleted so the user loses access immediately, not after.
+
+### Changed
+- Using temporary user for S3 upload in HTTP-PUSH transfer strategy, with policy scoped to single object key and cleanup after transfer completion.
+- S3 multipart upload default chunk size reduced from 50 MB to 10 MB (10,485,760 bytes); updated in `S3Properties`, all `application*.properties` files (ci, connector, terraform), and upload strategy unit tests.
+- Default `s3.upload-mode` changed from `ASYNC` to `SYNC` in `application-consumer.properties` and `application-provider.properties`.
+- `InitialDataLoader.loadMockData()` now skips S3 upload entirely when no new MongoDB seed documents were inserted (missing file, all duplicates, or Mongo failure); `seedDataLoaded` flag tracks this across the `CommandLineRunner` → `ApplicationReadyEvent` lifecycle.
+- `AbstractDataTransferService` constructor extended with `DataTransferProperties`; cascaded to `DataTransferService` and `TCKDataTransferService`. Automatic transfer triggers wired in: Provider fires `AutoTransferStartEvent` after storing `REQUESTED`; Consumer fires `AutoTransferDownloadEvent` after storing `STARTED` (HTTP_PULL only). `retryCount` is now preserved across the `REQUESTED → STARTED` state transition.
+- `AbstractDataTransferService` — encrypts the `secretKey` in `DataAddress` endpoint properties before persisting the `REQUESTED` transfer process to MongoDB for HTTP_PUSH transfers; `FieldEncryptionService` injected via constructor.
+- `HttpPushTransferStrategy` — decrypts the `secretKey` from `DataAddress` endpoint properties when building the destination S3 config map; `FieldEncryptionService` injected via constructor.
+- `HttpPullTransferStrategy` — replaced static `Executors.newFixedThreadPool(8)` and two-constructor workaround with a single `@Autowired` constructor injecting the Spring-managed `httpPullTransferExecutor` bean via `@Qualifier`; ensures graceful shutdown and named threads (`http-pull-transfer-N`) consistent with `HttpPushTransferStrategy`.
+- `AsynchronousSpringEventsConfig` — removed `taskScheduler()` bean, `schedulerPoolSize` field, and `@EnableScheduling`; class is now purely event-dispatch infrastructure (`taskExecutor` + `applicationEventMulticaster`).
+- `AutomaticNegotiationService` — constructor parameter `TaskScheduler` qualified with `@Qualifier("negotiationTaskScheduler")`; now resolved from `NegotiationConfiguration` instead of `AsynchronousSpringEventsConfig`.
+- `AutomaticDataTransferService` — constructor parameter `TaskScheduler` qualified with `@Qualifier("transferTaskScheduler")`; resolved from `DataTransferConfiguration` with thread prefix `transfer-retry-`; pool size tunable via `application.transfer.scheduler.pool-size`.
+
+## [0.6.8-SNAPSHOT] - 23.03.2026.
+
+### Added
+- Automatic data transfer across the full happy-path state machine for both Provider and Consumer roles, covering HTTP_PULL and HTTP_PUSH formats.
+- New `AutomaticDataTransferService` — encapsulates retry scheduling and `TERMINATED` fallback for all automatic transfer transitions; the retry loop uses `Thread.sleep` on the already-async listener thread so no HTTP thread is blocked during inter-retry delays.
+  - `processStart(id)` — retries `apiService.startTransfer(id)` (sends `TransferStartMessage`); for HTTP_PUSH on the Provider side, automatically chains `processDownload(id)` after a successful start so that the artifact is pushed to the Consumer's S3 endpoint without any additional trigger.
+  - `processDownload(id)` — retries `apiService.downloadData(id).join()`; `downloadData` already chains `completeTransfer` on success, so no separate COMPLETED trigger is needed.
+- New `AutomaticDataTransferListener` — dedicated async `@EventListener` component that delegates each auto-transfer event to `AutomaticDataTransferService`.
+- New domain events (Java Records) in `it.eng.datatransfer.event`:
+  - `AutoTransferStartEvent` — fired by the Provider after storing `REQUESTED` state; triggers `TransferStartMessage`.
+  - `AutoTransferDownloadEvent` — fired by the Consumer after storing `STARTED` state (HTTP_PULL only); triggers data download and auto-completion.
+- `retryCount` field added to `TransferProcess` model — persisted to MongoDB (`@JsonIgnore`, internal bookkeeping); preserved across state transitions and application restarts.
+- `withRetryCount(int)` helper method on `TransferProcess` — creates a new instance with only the retry counter updated, mirroring the same helper on `ContractNegotiation`.
+- New configuration properties for automatic transfer retry behaviour:
+  - `application.automatic.transfer=false` — master switch; mirrors `application.automatic.negotiation`.
+  - `application.automatic.transfer.retry.max=3` — maximum retry attempts before transitioning to `TERMINATED`.
+  - `application.automatic.transfer.retry.delay.ms=2000` — delay in milliseconds between retry attempts.
+- Force-terminate fallback: if the graceful `TransferTerminationMessage` also fails, the `TransferProcess` is force-set to `TERMINATED` locally and a `PROTOCOL_TRANSFER_TERMINATED` audit event is published.
+- Integration test `AutomaticDataTransferIT` — standalone two-instance Spring Boot test using Testcontainers (shared MongoDB, per-instance MinIO) and WireMock, mirroring the structure of `AutomaticNegotiationIT`:
+  - `automaticDataTransfer_httpPull_reachesCompletedOnBothSides` — full HTTP_PULL happy-path; both Consumer and Provider reach `COMPLETED`; artifact verified in Consumer MinIO.
+  - `automaticDataTransfer_httpPush_reachesCompletedOnBothSides` — full HTTP_PUSH happy-path; Provider auto-pushes artifact to Consumer MinIO after `TransferStartMessage` is acknowledged; both sides reach `COMPLETED`.
+  - `automaticDataTransfer_providerCannotSendStartMessage_bothReachTerminated` — WireMock intercepts `TransferStartMessage` with 500 on all attempts; retry budget exhausted; both Consumer and Provider reach `TERMINATED`.
+- Unit tests: `AutomaticDataTransferServiceTest` and `AutomaticDataTransferListenerTest`.
+
+### Changed
+- `AbstractDataTransferService` — added `DataTransferProperties` constructor parameter (cascades to `DataTransferService` and `TCKDataTransferService`); added auto-trigger after `initiateDataTransfer` stores `REQUESTED` (Provider — fires `AutoTransferStartEvent`); added auto-trigger after `startDataTransfer` stores `STARTED` (Consumer + HTTP_PULL only — fires `AutoTransferDownloadEvent`; format guard ensures SFTP and HTTP_PUSH are excluded).
+- `AutomaticDataTransferService.processStart` — after `startTransfer` succeeds, detects HTTP_PUSH + Provider role and chains `processDownload` automatically (no new events or listener changes required; the push phase shares the same retry budget as the start phase).
+- `DataTransferProperties` — added `automaticTransfer`, `maxRetryAttempts`, and `retryDelayMs` fields bound via `@Value`.
+- All `application*.properties` files — added `application.automatic.transfer`, `application.automatic.transfer.retry.max`, and `application.automatic.transfer.retry.delay.ms` keys across provider, consumer, TCK, test, CI Docker, and Terraform configurations.
+
+## [0.6.7-SNAPSHOT] - 18.03.2026.
+
+### Added
+- Automatic contract negotiation across the full happy-path state machine for both Provider and Consumer roles.
+- New `AutomaticNegotiationService` — encapsulates retry scheduling and `TERMINATED` fallback for all automatic transitions; retries are dispatched via `TaskScheduler` so no thread is blocked during the inter-retry delay.
+- New `AutomaticNegotiationListener` — dedicated async `@EventListener` component that delegates each auto-negotiation event to `AutomaticNegotiationService`.
+- New domain events (Java Records) in `it.eng.negotiation.event`:
+  - `AutoNegotiationAgreedEvent` — fired by Provider after storing `REQUESTED` or `ACCEPTED`; triggers `ContractAgreementMessage`.
+  - `AutoNegotiationFinalizeEvent` — fired by Provider after storing `VERIFIED`; triggers `ContractNegotiationEventMessage:finalized`.
+  - `AutoNegotiationAcceptedEvent` — fired by Consumer after storing `OFFERED` (initial offer only); triggers `ContractNegotiationEventMessage:accepted`.
+  - `AutoNegotiationVerifyEvent` — fired by Consumer after storing `AGREED`; triggers `ContractAgreementVerificationMessage`.
+- `retryCount` field added to `ContractNegotiation` model — persisted to MongoDB, preserved across state transitions and app restarts.
+- `withRetryCount(int)` helper method on `ContractNegotiation` — creates a new instance with only the retry counter updated.
+- New configuration properties for automatic negotiation retry behaviour:
+  - `application.automatic.negotiation.retry.max=3` — maximum retry attempts before transitioning to `TERMINATED`.
+  - `application.automatic.negotiation.retry.delay.ms=2000` — delay in milliseconds between retry attempts.
+- Force-terminate fallback: if the graceful `ContractNegotiationTerminationMessage` also fails, the CN is force-set to `TERMINATED` locally and a `PROTOCOL_NEGOTIATION_TERMINATED` audit event is published.
+- Integration test `AutomaticNegotiationIT` — two-instance Spring Boot test using Testcontainers (MongoDB, MinIO) and WireMock:
+  - `automaticNegotiation_consumerInitiated_reachesFinalizedOnBothSides` — full happy-path, both sides reach `FINALIZED`.
+  - `automaticNegotiation_providerUnreachable_consumerReachesTerminated` — WireMock intercepts `ContractAgreementMessage` with 500, proxies termination; both sides reach `TERMINATED`.
+  - `automaticNegotiation_consumerUnreachable_providerReachesTerminated` — WireMock intercepts `ContractAgreementVerificationMessage` with 500, proxies termination; both sides reach `TERMINATED`.
+- Unit tests: `AutomaticNegotiationServiceTest` and `AutomaticNegotiationListenerTest`.
+
+### Changed
+- `AsynchronousSpringEventsConfig` — replaced `SimpleAsyncTaskExecutor` (unbounded, one thread per task) with a bounded `ThreadPoolTaskExecutor` for the event multicaster; added a `ThreadPoolTaskScheduler` bean (`taskScheduler`) for non-blocking retry scheduling in `AutomaticNegotiationService`. Pool sizes are tunable via `application.events.executor.*` and `application.events.scheduler.pool-size` properties.
+- `ContractNegotiationProviderService.handleContractRequestMessage` — replaced deprecated `ContractNegotationOfferRequestEvent` with `AutoNegotiationAgreedEvent`; added auto-trigger after `ACCEPTED` and `VERIFIED` states.
+- `ContractNegotiationConsumerService.handleContractAgreementMessage` — replaced commented-out TODO block with `AutoNegotiationVerifyEvent`; added auto-trigger after `OFFERED` state.
+- `ContractNegotiationProperties` — added `maxRetryAttempts` and `retryDelayMs` fields bound via `@Value`.
+
+### Removed
+- Deprecated `ContractNegotationOfferRequestEvent` publish call from `ContractNegotiationProviderService.handleContractRequestMessage`.
+- Deprecated `handleContractNegotiationOfferResponse` event listener from `ContractNegotiationListener`.
+- Deprecated `handleContractNegotiationOfferResponse` method from `ContractNegotiationEventHandlerService`.
+- Deprecated `validateOffer(ContractNegotationOfferRequestEvent)` method from `CatalogService`.
+
 ## [0.6.5-SNAPSHOT] - 04.03.2026.
 
 ### Security
