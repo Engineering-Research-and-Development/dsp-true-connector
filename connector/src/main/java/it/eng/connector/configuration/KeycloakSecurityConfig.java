@@ -20,7 +20,6 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -70,13 +69,10 @@ public class KeycloakSecurityConfig {
                 .sessionManagement(sm -> sm.disable())
                 .anonymous(anonymus -> anonymus.disable())
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(new AntPathRequestMatcher("/env"), new AntPathRequestMatcher("/actuator/**")).hasRole("ADMIN")
-                        .requestMatchers(new AntPathRequestMatcher("/connector/**"),
-                                new AntPathRequestMatcher("/negotiations/**"),
-                                new AntPathRequestMatcher("/catalog/**"),
-                                new AntPathRequestMatcher("/transfers/**"))
+                        .requestMatchers("/env", "/actuator/**").hasRole("ADMIN")
+                        .requestMatchers("/connector/**", "/negotiations/**", "/catalog/**","/transfers/**")
                         .hasRole("CONNECTOR")
-                        .requestMatchers(new AntPathRequestMatcher("/api/**")).hasRole("ADMIN")
+                        .requestMatchers("/api/**").hasRole("ADMIN")
                         .anyRequest().permitAll()
                 )
                 .exceptionHandling((exHandler) -> exHandler.authenticationEntryPoint(authEntryPoint))

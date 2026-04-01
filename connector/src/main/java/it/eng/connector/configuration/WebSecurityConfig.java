@@ -30,7 +30,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -158,14 +157,11 @@ public class WebSecurityConfig {
         http.anonymous(anonymus -> anonymus.disable())
                 .authorizeHttpRequests((authorize) -> {
                     authorize
-                            .requestMatchers(new AntPathRequestMatcher("/env"), new AntPathRequestMatcher("/actuator/**")).hasRole("ADMIN")
+                            .requestMatchers("/env", "/actuator/**").hasRole("ADMIN")
                             // TODO consider wrapping up all protocol endpoints under single context (/protocol/ or /dsp/ or anything else)
-                            .requestMatchers(new AntPathRequestMatcher("/connector/**"),
-                                    new AntPathRequestMatcher("/negotiations/**"),
-                                    new AntPathRequestMatcher("/catalog/**"),
-                                    new AntPathRequestMatcher("/transfers/**"))
+                            .requestMatchers("/connector/**", "/negotiations/**", "/catalog/**", "/transfers/**")
                             .hasRole("CONNECTOR")
-                            .requestMatchers(new AntPathRequestMatcher("/api/**")).hasRole("ADMIN")
+                            .requestMatchers("/api/**").hasRole("ADMIN")
                             .anyRequest().permitAll();
                 })
                 .exceptionHandling((exHandler) -> exHandler.authenticationEntryPoint(authEntryPoint));
