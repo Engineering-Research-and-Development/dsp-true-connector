@@ -57,9 +57,6 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
     @Autowired
     private S3Properties s3Properties;
 
-    private Catalog catalog;
-    private Dataset dataset;
-
     @AfterEach
     void cleanupCatalogData() {
         cleanupState();
@@ -183,10 +180,6 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
     }
 
     private void uploadFile() throws Exception {
-//        if (dataset == null) {
-//            throw new IllegalStateException("Catalog dataset fixture was not initialized before S3 upload.");
-//        }
-
         Dataset dataset = datasetRepository.findAll().stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("Catalog dataset was not persisted before S3 upload."));
 

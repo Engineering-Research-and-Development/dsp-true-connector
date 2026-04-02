@@ -28,6 +28,7 @@ import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.FieldEncryptionService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -101,6 +102,11 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
 
     @BeforeEach
     public void setup() {
+        mockDataset = getMockDataset();
+    }
+
+    @AfterEach
+    public void cleanup() {
         transferProcessRepository.deleteAll();
         agreementRepository.deleteAll();
         contractNegotiationRepository.deleteAll();
@@ -115,7 +121,6 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 }
             }
         }
-        mockDataset = getMockDataset();
     }
 
     @Test
