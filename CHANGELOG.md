@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.10-SNAPSHOT] - 02.04.2026.
+
+### Added
+- `ConnectorSecurityConfig` — unified Spring Security configuration with three ordered `SecurityFilterChain` beans (admin / protocol / default), replacing the previous dual-config approach (`WebSecurityConfig` + `KeycloakSecurityConfig`).
+- `BASIC` authentication mode — HTTP Basic Auth backed by MongoDB `UserService`; active when `application.auth.provider=BASIC`.
+- `BasicAuthenticationModeCondition`, `BasicOrDisabledAuthenticationModeCondition`, `DcpEnabledCondition` — new condition classes for conditional bean loading.
+- `DcpAuthenticationFilter` — pass-through stub for future Decentralized Claims Protocol (DCP) integration; activated via `application.auth.dcp.enabled=true`.
+
+### Changed
+- `AuthenticationMode` enum now contains `KEYCLOAK | BASIC | DISABLED`; LEGACY mode removed.
+- `AuthenticationModeResolver` — added BASIC mode resolution, `isDcpEnabled()`, startup validation that rejects `DISABLED + dcp.enabled=true`; defaults to `KEYCLOAK` when no property is set.
+- `AuthenticationCache` — removed DAPS dependencies, fixed thread-safety (volatile fields, return inside synchronized block).
+- `UserService` and `UserApiController` — switched condition from `NonKeycloakAuthenticationModeCondition` to `BasicOrDisabledAuthenticationModeCondition`; active in BASIC and DISABLED modes only.
+- Protocol endpoint authentication failures now return DSP-compliant JSON error responses in all auth modes (via `DataspaceProtocolEndpointsAuthenticationEntryPoint` hooked into `httpBasic`).
+- `doc/security.md`, `KEYCLOAK_CHANGES_SUMMARY.md`, `KEYCLOAK_INTEGRATION_COMPLETE_SUMMARY.md` updated to reflect current architecture.
+
+### Removed
+- `WebSecurityConfig` and `KeycloakSecurityConfig` — replaced by `ConnectorSecurityConfig`.
+- All DAPS authentication classes: `DapsAuthenticationService`, `DapsAuthenticationProperties`, `DapsCertificateProvider`.
+- LEGACY authentication mode and associated filter classes: `JwtAuthenticationFilter`, `JwtAuthenticationProvider`, `JwtAuthenticationToken`, `DataspaceProtocolEndpointsAuthenticationFilter`.
+- `LegacyAuthenticationModeCondition`, `NonKeycloakAuthenticationModeCondition`.
+- DAPS SSL bundle configuration (`spring.ssl.bundle.jks.daps.*`) from all property files (consumer, provider, CI, TCK, Terraform).
+
 ## [0.6.9-SNAPSHOT] - 27.03.2026.
 
 ### Added

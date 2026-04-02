@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.connector.model.UserDTO;
 import it.eng.connector.service.UserService;
-import it.eng.tools.auth.condition.NonKeycloakAuthenticationModeCondition;
+import it.eng.tools.auth.condition.BasicOrDisabledAuthenticationModeCondition;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
 path = ApiEndpoints.USERS_V1)
 @Slf4j
-@Conditional(NonKeycloakAuthenticationModeCondition.class)
+@Conditional(BasicOrDisabledAuthenticationModeCondition.class)
 public class UserApiController {
 	
 	private final UserService userService;

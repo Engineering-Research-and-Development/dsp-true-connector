@@ -5,7 +5,12 @@ package it.eng.tools.auth;
  */
 public enum AuthenticationMode {
 
+    /** OAuth2/OIDC authentication via Keycloak. */
     KEYCLOAK,
-    DISABLED,
-    LEGACY
+
+    /** Username and password authentication using locally stored credentials. */
+    BASIC,
+
+    /** All endpoints are unprotected. For development and testing only. */
+    DISABLED
 }

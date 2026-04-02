@@ -16,7 +16,7 @@ import it.eng.connector.model.PasswordValidationResult;
 import it.eng.connector.model.User;
 import it.eng.connector.model.UserDTO;
 import it.eng.connector.repository.UserRepository;
-import it.eng.tools.auth.condition.NonKeycloakAuthenticationModeCondition;
+import it.eng.tools.auth.condition.BasicOrDisabledAuthenticationModeCondition;
 import it.eng.tools.exception.BadRequestException;
 import it.eng.tools.exception.ResourceNotFoundException;
 import it.eng.tools.serializer.ToolsSerializer;
@@ -29,7 +29,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Service
 @Slf4j
-@Conditional(NonKeycloakAuthenticationModeCondition.class)
+@Conditional(BasicOrDisabledAuthenticationModeCondition.class)
 public class UserService {
 
 	private final UserRepository userRepository;

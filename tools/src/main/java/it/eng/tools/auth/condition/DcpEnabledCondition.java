@@ -4,23 +4,22 @@ import org.springframework.context.annotation.Condition;
 import org.springframework.context.annotation.ConditionContext;
 import org.springframework.core.type.AnnotatedTypeMetadata;
 
-import it.eng.tools.auth.AuthenticationMode;
 import it.eng.tools.auth.AuthenticationModeResolver;
 
 /**
- * Matches when the application is running outside Keycloak mode.
+ * Matches when DCP (Decentralized Claims Protocol) authentication is enabled for protocol endpoints.
  */
-public class NonKeycloakAuthenticationModeCondition implements Condition {
+public class DcpEnabledCondition implements Condition {
 
     /**
-     * Evaluates whether the current environment resolves to a non-Keycloak mode.
+     * Evaluates whether DCP authentication is enabled via {@code application.auth.dcp.enabled=true}.
      *
      * @param context the condition context
      * @param metadata the annotated type metadata
-     * @return {@code true} when Keycloak mode is not active
+     * @return {@code true} when DCP is enabled
      */
     @Override
     public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
-        return AuthenticationModeResolver.resolve(context.getEnvironment()) != AuthenticationMode.KEYCLOAK;
+        return AuthenticationModeResolver.isDcpEnabled(context.getEnvironment());
     }
 }

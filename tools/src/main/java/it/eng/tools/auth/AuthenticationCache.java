@@ -10,15 +10,13 @@ import org.springframework.stereotype.Component;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 
-import it.eng.tools.auth.daps.DapsAuthenticationProperties;
-import it.eng.tools.auth.daps.DapsAuthenticationService;
 import it.eng.tools.auth.keycloak.KeycloakAuthenticationProperties;
 import it.eng.tools.auth.keycloak.KeycloakAuthenticationService;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Cache for authentication tokens with automatic expiration handling.
- * Supports multiple authentication providers (Keycloak, DAPS/Omejdn).
+ * Cache for outbound authentication tokens with automatic expiration handling.
+ * Supports the Keycloak OAuth2 client credentials flow.
  */
 @Slf4j
 @Component
@@ -27,18 +25,15 @@ public class AuthenticationCache {
 	public static final String DUMMY_TOKEN_VALUE = "DummyTokenValue";
 
 	private final List<AuthProvider> authenticationProviders;
-	private final DapsAuthenticationProperties dapsProperties;
 	private final KeycloakAuthenticationProperties keycloakProperties;
 
-	private String cachedToken;
-	private LocalDateTime expirationTime;
+	private volatile String cachedToken;
+	private volatile LocalDateTime expirationTime;
 
 	@Autowired(required = false)
 	public AuthenticationCache(List<AuthProvider> authenticationProviders,
-	                           @Autowired(required = false) DapsAuthenticationProperties dapsProperties,
 	                           @Autowired(required = false) KeycloakAuthenticationProperties keycloakProperties) {
 		this.authenticationProviders = authenticationProviders;
-		this.dapsProperties = dapsProperties;
 		this.keycloakProperties = keycloakProperties;
 	}
 
@@ -48,13 +43,10 @@ public class AuthenticationCache {
 	 * @return the authentication token, or a dummy token if no provider is configured
 	 */
 	public String getToken() {
-		log.info("Requesting token");
-		log.info("Available authentication providers: {}", authenticationProviders == null ? "null" : authenticationProviders.size());
-		log.info("DAPS properties configured: {}", dapsProperties != null);
-		log.info("Keycloak properties configured: {}", keycloakProperties != null);
+		log.info("Requesting outbound authentication token");
 
 		AuthProvider authProvider = selectAuthenticationProvider();
-		log.info("Selected authentication provider: {}", authProvider == null ? "null" : authProvider.getClass().getSimpleName());
+		log.info("Selected authentication provider: {}", authProvider == null ? "none" : authProvider.getClass().getSimpleName());
 
 		boolean tokenCachingEnabled = isTokenCachingEnabled();
 		log.info("Token caching enabled: {}", tokenCachingEnabled);
@@ -65,7 +57,6 @@ public class AuthenticationCache {
 		}
 
 		if (tokenCachingEnabled) {
-			//Checking if cached token is still valid
 			synchronized (this) {
 				if (cachedToken == null || LocalDateTime.now().isAfter(expirationTime)) {
 					log.info("Fetching new token");
@@ -75,19 +66,19 @@ public class AuthenticationCache {
 							expirationTime = JWT.decode(cachedToken).getExpiresAt()
 									.toInstant()
 									.atZone(ZoneId.systemDefault())
-								    .toLocalDateTime();
+									.toLocalDateTime();
 						} catch (JWTDecodeException e) {
 							log.error("Could not get token expiration time {}", e.getMessage());
-							//Setting to default values since the JWT token was not correct
+							// Setting to default values since the JWT token was not correct
 							cachedToken = null;
 							expirationTime = null;
 						}
 					}
 				}
+				return cachedToken;
 			}
-			return cachedToken;
 		} else {
-			//Always new token
+			// Always fetch a fresh token
 			return authProvider.fetchToken();
 		}
 	}
@@ -108,37 +99,25 @@ public class AuthenticationCache {
 	}
 
 	/**
-	 * Selects the appropriate AuthProvider based on configuration.
-	 * Priority: Keycloak > DAPS/Omejdn
+	 * Selects the active {@link AuthProvider}.
 	 *
-	 * @return the selected AuthProvider, or null if none is configured
+	 * @return the Keycloak provider when configured, or {@code null} if none is available
 	 */
 	private AuthProvider selectAuthenticationProvider() {
 		if (authenticationProviders == null || authenticationProviders.isEmpty()) {
 			return null;
 		}
-
-		// Prefer Keycloak if configured
 		if (keycloakProperties != null) {
 			return authenticationProviders.stream()
-					.filter(s -> s instanceof KeycloakAuthenticationService)
+					.filter(KeycloakAuthenticationService.class::isInstance)
 					.findFirst()
 					.orElse(null);
 		}
-
-		// Fall back to DAPS/Omejdn
-		if (dapsProperties != null && dapsProperties.isEnabledDapsInteraction()) {
-			return authenticationProviders.stream()
-					.filter(s -> s instanceof DapsAuthenticationService)
-					.findFirst()
-					.orElse(null);
-		}
-
 		return null;
 	}
 
 	/**
-	 * Checks if token caching is enabled based on the active service.
+	 * Checks if token caching is enabled based on the active provider configuration.
 	 *
 	 * @return true if caching is enabled, false otherwise
 	 */
@@ -146,13 +125,6 @@ public class AuthenticationCache {
 		if (keycloakProperties != null) {
 			return keycloakProperties.isTokenCaching();
 		}
-		if (dapsProperties != null) {
-			return dapsProperties.isTokenCaching();
-		}
 		return false;
 	}
 }
-
-
-
-
