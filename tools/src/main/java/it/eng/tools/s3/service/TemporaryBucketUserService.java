@@ -121,9 +121,11 @@ public class TemporaryBucketUserService {
 
     /**
      * Deletes the temporary Minio user, its associated policy, and the MongoDB document.
-     * The policy is removed first (so the user loses access immediately), then the IAM user,
-     * and finally the MongoDB record. Errors during Minio-side deletion are logged but do not
-     * propagate — the MongoDB record is always removed so stale entries do not accumulate.
+     * The IAM user is removed first so that the policy is no longer attached to any entity;
+     * Minio rejects policy deletion with {@code XMinioIAMPolicyInUse} when the policy is still
+     * assigned to a user. After the user is gone the policy is deleted, and finally the MongoDB
+     * record is removed. Errors during Minio-side deletion are logged but do not propagate —
+     * the MongoDB record is always removed so stale entries do not accumulate.
      *
      * @param transferProcessId the transfer process ID
      */
@@ -131,16 +133,18 @@ public class TemporaryBucketUserService {
         temporaryBucketUserRepository.findById(transferProcessId).ifPresent(entity -> {
             log.info("Cleaning up temporary bucket user {} for transfer process {}", entity.getAccessKey(), transferProcessId);
             String policyName = TEMP_POLICY_PREFIX + transferProcessId;
-            // Delete policy first to immediately revoke access before removing the user
-            try {
-                iamUserManagementService.deletePolicy(policyName);
-            } catch (Exception e) {
-                log.warn("Could not delete temporary Minio policy {}: {}", policyName, e.getMessage());
-            }
+            // Delete the user first so the policy is no longer attached, then delete the policy.
+            // Minio rejects policy deletion with XMinioIAMPolicyInUse if the policy is still
+            // assigned to a user; removing the user first releases that attachment.
             try {
                 iamUserManagementService.deleteUser(entity.getAccessKey());
             } catch (Exception e) {
                 log.warn("Could not delete temporary Minio user {}: {}", entity.getAccessKey(), e.getMessage());
+            }
+            try {
+                iamUserManagementService.deletePolicy(policyName);
+            } catch (Exception e) {
+                log.warn("Could not delete temporary Minio policy {}: {}", policyName, e.getMessage());
             }
             temporaryBucketUserRepository.deleteById(transferProcessId);
             log.info("Temporary bucket user {} cleaned up for transfer process {}", entity.getAccessKey(), transferProcessId);

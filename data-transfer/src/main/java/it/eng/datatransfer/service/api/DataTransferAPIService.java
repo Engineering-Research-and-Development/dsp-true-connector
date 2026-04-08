@@ -29,18 +29,19 @@ import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.codec.binary.Base64;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @Slf4j
@@ -58,9 +59,6 @@ public class DataTransferAPIService {
     private final DataTransferStrategyFactory dataTransferStrategyFactory;
     private final ArtifactTransferService artifactTransferService;
     private final TemporaryBucketUserService temporaryBucketUserService;
-
-    /** In-process guard against concurrent downloads for the same transfer process. */
-    private final ConcurrentHashMap<String, CompletableFuture<Void>> activeTransfers = new ConcurrentHashMap<>();
 
     public DataTransferAPIService(TransferProcessRepository transferProcessRepository,
                                   OkHttpRestClient okHttpRestClient,
@@ -85,6 +83,23 @@ public class DataTransferAPIService {
         this.dataTransferStrategyFactory = dataTransferStrategyFactory;
         this.artifactTransferService = artifactTransferService;
         this.temporaryBucketUserService = temporaryBucketUserService;
+    }
+
+    /**
+     * Resets any {@code isDownloading=true} flags left over from a previous crash or unclean shutdown.
+     * Called automatically once the Spring context has finished initializing.
+     */
+    @PostConstruct
+    void resetStaleDownloadingFlags() {
+        List<TransferProcess> stale = transferProcessRepository.findAllByIsDownloadingTrue();
+        if (!stale.isEmpty()) {
+            log.warn("Found {} transfer process(es) with stale isDownloading=true flag. Resetting on startup.", stale.size());
+            stale.forEach(tp -> {
+                TransferProcess reset = tp.withIsDownloading(false);
+                transferProcessRepository.save(reset);
+                log.info("Reset isDownloading flag for transfer process {}", tp.getId());
+            });
+        }
     }
 
     /**
@@ -601,17 +616,27 @@ public class DataTransferAPIService {
             throw new DataTransferAPIException("Download aborted, data for Transfer Process " + transferProcessId + " has already been downloaded");
         }
 
-        CompletableFuture<Void> inFlight = new CompletableFuture<>();
-        if (activeTransfers.putIfAbsent(transferProcessId, inFlight) != null) {
+        if (transferProcess.isDownloading()) {
             log.error("Download aborted, Transfer Process {} is already in progress", transferProcessId);
             // Throw synchronously so the exception propagates to the HTTP layer and returns 400.
             throw new DataTransferAPIException("Download aborted, Transfer Process " + transferProcessId + " is already in progress");
         }
 
+        // Mark download as in progress and persist so the frontend spinner can react.
+        // The @Version field provides optimistic locking: a concurrent request that also
+        // passed the isDownloading check above will fail here with OptimisticLockingFailureException.
+        TransferProcess transferProcessDownloading;
         try {
-            policyCheck(transferProcess);
+            transferProcessDownloading = transferProcessRepository.save(transferProcess.withIsDownloading(true));
+        } catch (OptimisticLockingFailureException e) {
+            log.error("Download aborted, Transfer Process {} is already in progress (concurrent request)", transferProcessId);
+            throw new DataTransferAPIException("Download aborted, Transfer Process " + transferProcessId + " is already in progress");
+        }
+
+        try {
+            policyCheck(transferProcessDownloading);
         } catch (DataTransferAPIException e) {
-            activeTransfers.remove(transferProcessId);
+            transferProcessRepository.save(transferProcessDownloading.withIsDownloading(false));
             return CompletableFuture.failedFuture(
                     new DataTransferAPIException(e.getLocalizedMessage()));
         }
@@ -620,15 +645,23 @@ public class DataTransferAPIService {
         // Get appropriate strategy and execute transfer
         DataTransferStrategy strategy;
         try {
-            strategy = dataTransferStrategyFactory.getStrategy(transferProcess.getFormat());
+            strategy = dataTransferStrategyFactory.getStrategy(transferProcessDownloading.getFormat());
         } catch (Exception e) {
-            activeTransfers.remove(transferProcessId);
+            transferProcessRepository.save(transferProcessDownloading.withIsDownloading(false));
             throw e;
         }
 
-        return strategy.transfer(transferProcess)
+        // Wrap strategy.transfer() so a synchronous exception also resets the flag.
+        CompletableFuture<Void> transferFuture;
+        try {
+            transferFuture = strategy.transfer(transferProcessDownloading);
+        } catch (Exception e) {
+            transferProcessRepository.save(transferProcessDownloading.withIsDownloading(false));
+            throw e;
+        }
+
+        return transferFuture
                 .whenComplete((transfer, throwable) -> {
-                    activeTransfers.remove(transferProcessId);
                     if (throwable == null) {
                         log.info("Download completed successfully for process {}", transferProcessId);
 
@@ -638,34 +671,37 @@ public class DataTransferAPIService {
                                 Map.of("transferProcessId", transferProcessId));
 
                         TransferProcess transferProcessWithData = TransferProcess.Builder.newInstance()
-                                .id(transferProcess.getId())
-                                .agreementId(transferProcess.getAgreementId())
-                                .consumerPid(transferProcess.getConsumerPid())
-                                .providerPid(transferProcess.getProviderPid())
-                                .callbackAddress(transferProcess.getCallbackAddress())
-                                .dataAddress(transferProcess.getDataAddress())
+                                .id(transferProcessDownloading.getId())
+                                .agreementId(transferProcessDownloading.getAgreementId())
+                                .consumerPid(transferProcessDownloading.getConsumerPid())
+                                .providerPid(transferProcessDownloading.getProviderPid())
+                                .callbackAddress(transferProcessDownloading.getCallbackAddress())
+                                .dataAddress(transferProcessDownloading.getDataAddress())
                                 .isDownloaded(true)
-                                .dataId(transferProcess.getId())
-                                .format(transferProcess.getFormat())
-                                .state(transferProcess.getState())
-                                .role(transferProcess.getRole())
-                                .datasetId(transferProcess.getDatasetId())
-                                .created(transferProcess.getCreated())
-                                .createdBy(transferProcess.getCreatedBy())
-                                .modified(transferProcess.getModified())
-                                .lastModifiedBy(transferProcess.getLastModifiedBy())
-                                .version(transferProcess.getVersion())
+                                .isDownloading(false)
+                                .dataId(transferProcessDownloading.getId())
+                                .format(transferProcessDownloading.getFormat())
+                                .state(transferProcessDownloading.getState())
+                                .role(transferProcessDownloading.getRole())
+                                .datasetId(transferProcessDownloading.getDatasetId())
+                                .created(transferProcessDownloading.getCreated())
+                                .createdBy(transferProcessDownloading.getCreatedBy())
+                                .modified(transferProcessDownloading.getModified())
+                                .lastModifiedBy(transferProcessDownloading.getLastModifiedBy())
+                                .version(transferProcessDownloading.getVersion())
                                 .build();
 
                         transferProcessRepository.save(transferProcessWithData);
                     } else {
                         log.error("Transfer process id - {} data transmission interrupted : {}", transferProcessId, throwable.getMessage());
+                        // Reset the in-progress flag so future downloads can be attempted.
+                        transferProcessRepository.save(transferProcessDownloading.withIsDownloading(false));
                         publisher.publishEvent(AuditEventType.TRANSFER_FAILED,
-                                "Data transfer failed for process " + transferProcess.getId(),
+                                "Data transfer failed for process " + transferProcessDownloading.getId(),
                                 auditMap("role", IConstants.ROLE_PROTOCOL,
-                                        "transferProcess", transferProcess,
-                                        "consumerPid", transferProcess.getConsumerPid(),
-                                        "providerPid", transferProcess.getProviderPid(),
+                                        "transferProcess", transferProcessDownloading,
+                                        "consumerPid", transferProcessDownloading.getConsumerPid(),
+                                        "providerPid", transferProcessDownloading.getProviderPid(),
                                         "errorMessage", throwable.getMessage()));
                     }
                 }).thenAccept(transfer -> {

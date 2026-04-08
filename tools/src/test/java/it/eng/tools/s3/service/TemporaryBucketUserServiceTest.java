@@ -19,8 +19,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
+
+import org.mockito.InOrder;
 
 @ExtendWith(MockitoExtension.class)
 public class TemporaryBucketUserServiceTest {
@@ -152,7 +153,7 @@ public class TemporaryBucketUserServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("deleteTemporaryUser - found: deletes IAM user, policy, and MongoDB document")
+    @DisplayName("deleteTemporaryUser - found: deletes IAM user before policy, then removes MongoDB document")
     void deleteTemporaryUser_found() {
         TemporaryBucketUser stored = TemporaryBucketUser.Builder.newInstance()
                 .transferProcessId(TRANSFER_PROCESS_ID)
@@ -166,8 +167,12 @@ public class TemporaryBucketUserServiceTest {
 
         service.deleteTemporaryUser(TRANSFER_PROCESS_ID);
 
-        verify(iamUserManagementService).deleteUser("TempUser-abc12345");
-        verify(iamUserManagementService).deletePolicy(contains(TRANSFER_PROCESS_ID));
+        // User must be deleted before the policy — Minio rejects policy deletion while it is
+        // still attached to a user (XMinioIAMPolicyInUse). Deleting the user first releases
+        // the attachment so the subsequent policy deletion succeeds.
+        InOrder order = inOrder(iamUserManagementService);
+        order.verify(iamUserManagementService).deleteUser("TempUser-abc12345");
+        order.verify(iamUserManagementService).deletePolicy(contains(TRANSFER_PROCESS_ID));
         verify(temporaryBucketUserRepository).deleteById(TRANSFER_PROCESS_ID);
     }
 
@@ -184,7 +189,7 @@ public class TemporaryBucketUserServiceTest {
     }
 
     @Test
-    @DisplayName("deleteTemporaryUser - IAM deleteUser fails: still deletes policy and MongoDB document")
+    @DisplayName("deleteTemporaryUser - user deletion fails: still attempts policy deletion and removes MongoDB document")
     void deleteTemporaryUser_iamDeleteUserFails_continuesCleanup() {
         TemporaryBucketUser stored = TemporaryBucketUser.Builder.newInstance()
                 .transferProcessId(TRANSFER_PROCESS_ID)
@@ -204,7 +209,7 @@ public class TemporaryBucketUserServiceTest {
     }
 
     @Test
-    @DisplayName("deleteTemporaryUser - IAM deletePolicy fails: MongoDB document is still removed")
+    @DisplayName("deleteTemporaryUser - policy deletion fails after user is deleted: MongoDB document is still removed")
     void deleteTemporaryUser_iamDeletePolicyFails_stillDeletesMongoDocument() {
         TemporaryBucketUser stored = TemporaryBucketUser.Builder.newInstance()
                 .transferProcessId(TRANSFER_PROCESS_ID)
@@ -219,7 +224,38 @@ public class TemporaryBucketUserServiceTest {
 
         assertDoesNotThrow(() -> service.deleteTemporaryUser(TRANSFER_PROCESS_ID));
 
+        verify(iamUserManagementService).deleteUser("TempUser-abc12345");
         verify(temporaryBucketUserRepository).deleteById(TRANSFER_PROCESS_ID);
+    }
+
+    @Test
+    @DisplayName("deleteTemporaryUser - XMinioIAMPolicyInUse never occurs because user is deleted before policy")
+    void deleteTemporaryUser_userDeletedFirst_policyInUseErrorAvoided() {
+        // Regression test: before the fix the policy was deleted first, causing Minio to
+        // return XMinioIAMPolicyInUse because the policy was still attached to the user.
+        TemporaryBucketUser stored = TemporaryBucketUser.Builder.newInstance()
+                .transferProcessId(TRANSFER_PROCESS_ID)
+                .accessKey("TempUser-abc12345")
+                .secretKey(ENCRYPTED_SECRET_KEY)
+                .bucketName(BUCKET_NAME)
+                .objectKey(OBJECT_KEY)
+                .build();
+
+        when(temporaryBucketUserRepository.findById(TRANSFER_PROCESS_ID)).thenReturn(Optional.of(stored));
+        // Simulate the old broken ordering: policy deletion would throw XMinioIAMPolicyInUse
+        // when called BEFORE the user is removed. With the fix the user is removed first so
+        // this stub is never reached and deletePolicy succeeds without error.
+        doAnswer(invocation -> {
+            // Verify the user was already deleted before this call
+            verify(iamUserManagementService).deleteUser("TempUser-abc12345");
+            return null;
+        }).when(iamUserManagementService).deletePolicy(anyString());
+
+        service.deleteTemporaryUser(TRANSFER_PROCESS_ID);
+
+        InOrder order = inOrder(iamUserManagementService);
+        order.verify(iamUserManagementService).deleteUser("TempUser-abc12345");
+        order.verify(iamUserManagementService).deletePolicy(contains(TRANSFER_PROCESS_ID));
     }
 
     @Test

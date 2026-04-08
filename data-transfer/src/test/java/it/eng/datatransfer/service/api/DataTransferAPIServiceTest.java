@@ -527,7 +527,10 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
+        // First save (isDownloading=true): return the saved object as-is (realistic DB save behaviour).
+        // Second save (completion): return the fully downloaded process.
         when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0))
                 .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED);
         when(transferStrategyFactory.getStrategy(any(String.class))).thenReturn(httpPullTransferStrategy);
         when(httpPullTransferStrategy.transfer(isA(TransferProcess.class)))
@@ -537,11 +540,14 @@ class DataTransferAPIServiceTest {
 
         verify(transferStrategyFactory, times(1)).getStrategy(any(String.class));
         verify(httpPullTransferStrategy).transfer(argCaptorTransferProcess.capture());
-        verify(transferProcessRepository, times(1)).save(any(TransferProcess.class));
+        // Two saves: once to mark isDownloading=true, once to mark isDownloaded=true on completion
+        verify(transferProcessRepository, times(2)).save(argCaptorTransferProcess.capture());
 
-        TransferProcess capturedProcess = argCaptorTransferProcess.getValue();
-        assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), capturedProcess.getId());
-        assertEquals(DataTransferFormat.HTTP_PULL.name(), capturedProcess.getFormat());
+        // The process passed to the strategy should have isDownloading=true
+        TransferProcess processPassedToStrategy = argCaptorTransferProcess.getAllValues().get(0);
+        assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), processPassedToStrategy.getId());
+        assertTrue(processPassedToStrategy.isDownloading());
+        assertEquals(DataTransferFormat.HTTP_PULL.name(), processPassedToStrategy.getFormat());
     }
 
     @Test
@@ -555,11 +561,17 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
         when(transferStrategyFactory.getStrategy(any(String.class))).thenReturn(httpPullTransferStrategy);
+        // save returns the input as-is (realistic DB save); used for both isDownloading=true and the reset
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         doThrow(DataTransferAPIException.class).when(httpPullTransferStrategy).transfer(isA(TransferProcess.class));
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+
+        // Two saves: isDownloading=true at start, then isDownloading=false on failure reset
+        verify(transferProcessRepository, times(2)).save(any(TransferProcess.class));
     }
 
     @Test
@@ -572,12 +584,17 @@ class DataTransferAPIServiceTest {
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         when(transferStrategyFactory.getStrategy(any(String.class)))
                 .thenThrow(DataTransferAPIException.class);
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+
+        // Two saves: isDownloading=true at start, then isDownloading=false on strategy error
+        verify(transferProcessRepository, times(2)).save(any(TransferProcess.class));
     }
 
     @Test
@@ -590,12 +607,18 @@ class DataTransferAPIServiceTest {
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
+        // save is called once for isDownloading=true, then once to reset on policy failure
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         CompletableFuture<Void> future = apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 
         assertTrue(future.isCompletedExceptionally());
         ExecutionException ex = assertThrows(ExecutionException.class, future::get);
         assertInstanceOf(DataTransferAPIException.class, ex.getCause());
+
+        // Two saves: isDownloading=true at start, then isDownloading=false on policy failure reset
+        verify(transferProcessRepository, times(2)).save(any(TransferProcess.class));
     }
 
     @ParameterizedTest
@@ -622,26 +645,48 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
-    @DisplayName("Download data - fail - concurrent download already in progress")
-    public void downloadData_fail_concurrentDownload() throws Exception {
-        CompletableFuture<Void> neverCompletes = new CompletableFuture<>();
-        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
-                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
-        when(usageControlProperties.usageControlEnabled()).thenReturn(false);
-        when(transferStrategyFactory.getStrategy(any(String.class))).thenReturn(httpPullTransferStrategy);
-        when(httpPullTransferStrategy.transfer(isA(TransferProcess.class))).thenReturn(neverCompletes);
+    @DisplayName("Download data - fail - download already in progress (isDownloading=true)")
+    public void downloadData_fail_concurrentDownload() {
+        // Simulate a transfer process that already has isDownloading=true in the DB
+        // (set by a previous request that is still running or by the startup recovery scenario).
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING));
 
-        // First call — succeeds and is now in-flight
-        CompletableFuture<Void> firstCall = apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
-        assertFalse(firstCall.isDone());
-
-        // Second call for the same ID — throws synchronously since the guard check happens before the async work.
+        // Should throw synchronously since the guard check happens before the async work.
         DataTransferAPIException ex = assertThrows(DataTransferAPIException.class,
-                () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+                () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING.getId()));
         assertTrue(ex.getMessage().contains("already in progress"));
 
-        // Clean up the in-flight future
-        neverCompletes.cancel(true);
+        // No save should be called — the guard aborted before any DB write.
+        verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
+    }
+
+    @Test
+    @DisplayName("Reset stale isDownloading flags on startup")
+    public void resetStaleDownloadingFlags_resetsStaleRecords() {
+        List<TransferProcess> staleProcesses = List.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING);
+        when(transferProcessRepository.findAllByIsDownloadingTrue()).thenReturn(staleProcesses);
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // PostConstruct is not called by @InjectMocks, so invoke it directly.
+        apiService.resetStaleDownloadingFlags();
+
+        verify(transferProcessRepository).findAllByIsDownloadingTrue();
+        verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
+        TransferProcess savedProcess = argCaptorTransferProcess.getValue();
+        assertFalse(savedProcess.isDownloading());
+    }
+
+    @Test
+    @DisplayName("Reset stale isDownloading flags on startup - no stale records")
+    public void resetStaleDownloadingFlags_noStaleRecords() {
+        when(transferProcessRepository.findAllByIsDownloadingTrue()).thenReturn(List.of());
+
+        apiService.resetStaleDownloadingFlags();
+
+        verify(transferProcessRepository).findAllByIsDownloadingTrue();
+        verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
     }
 
     @Test

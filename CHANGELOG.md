@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.10-SNAPSHOT] - 08.04.2026.
+
+### Added
+- `TransferProcess.isDownloading` — new boolean field persisted to MongoDB and exposed in plain API responses, enabling the frontend to drive a download spinner. Includes crash recovery via `@PostConstruct resetStaleDownloadingFlags()` in `DataTransferAPIService` that resets stale `isDownloading=true` records left behind by a previous crash or restart.
+
+### Fixed
+- `DataTransferAPIService.downloadData()` — replaced the in-memory `ConcurrentHashMap<String, CompletableFuture<Void>> activeTransfers` concurrent-download guard with the new DB-backed `isDownloading` flag. The flag is now visible to the frontend and survives server restarts; concurrent requests are rejected via Spring Data MongoDB `@Version` optimistic locking (`OptimisticLockingFailureException`).
+- `TemporaryBucketUserService.deleteTemporaryUser()` — IAM user is now deleted before the policy; Minio rejects policy deletion with `XMinioIAMPolicyInUse` when the policy is still attached to a user, so removing the user first releases the attachment and allows the subsequent policy deletion to succeed.
+
 ## [0.6.9-SNAPSHOT] - 27.03.2026.
 
 ### Added

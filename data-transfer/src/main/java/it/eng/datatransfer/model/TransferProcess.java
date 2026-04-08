@@ -68,6 +68,15 @@ public class TransferProcess extends AbstractTransferMessage {
     private boolean isDownloaded;
 
     /**
+     * Flag to indicate that a download is currently in progress on consumer side.
+     * Set to {@code true} when download starts and reset to {@code false} when the
+     * download finishes (success or failure). Visible in plain API responses so the
+     * frontend can drive a download spinner.
+     */
+    @JsonIgnore
+    private boolean isDownloading;
+
+    /**
      * Id of the downloaded and stored data on consumer side.
      */
     @JsonIgnore
@@ -146,6 +155,11 @@ public class TransferProcess extends AbstractTransferMessage {
 
         public Builder isDownloaded(boolean isDownloaded) {
             message.isDownloaded = isDownloaded;
+            return this;
+        }
+
+        public Builder isDownloading(boolean isDownloading) {
+            message.isDownloading = isDownloading;
             return this;
         }
 
@@ -256,6 +270,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .callbackAddress(this.callbackAddress)
                 .dataAddress(this.dataAddress)
                 .isDownloaded(this.isDownloaded)
+                .isDownloading(this.isDownloading)
                 .dataId(this.dataId)
                 .format(this.format)
                 .state(newTransferState)
@@ -287,12 +302,45 @@ public class TransferProcess extends AbstractTransferMessage {
                 .callbackAddress(this.callbackAddress)
                 .dataAddress(this.dataAddress)
                 .isDownloaded(this.isDownloaded)
+                .isDownloading(this.isDownloading)
                 .dataId(this.dataId)
                 .format(this.format)
                 .state(this.state)
                 .role(this.role)
                 .datasetId(this.datasetId)
                 .retryCount(retryCount)
+                // auditable fields
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified isDownloading flag.
+     * All other fields remain unchanged.
+     *
+     * @param isDownloading {@code true} if a download is currently in progress, {@code false} otherwise
+     * @return new TransferProcess instance with updated isDownloading flag
+     */
+    public TransferProcess withIsDownloading(boolean isDownloading) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .isDownloading(isDownloading)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
