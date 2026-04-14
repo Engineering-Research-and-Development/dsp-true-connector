@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSP TRUE Connector — Trusted Data Sharing by Engineering</title>
+
+    <style>
+        :root {
+            --primary: #090909;
+            --primary-light: #1f1f1f;
+            --accent: #C51B88;
+            --accent-dark: #9A156A;
+            --accent-light: #D549A0;
+            --bg-dark: #090909;
+            --bg-soft: #f5f5f5;
+            --bg-card: #FCFCFC;
+            --text-dark: #090909;
+            --text-muted: #595959;
+            --white: #FCFCFC;
+            --border: #e5e5e5;
+            --shadow-sm: rgba(197, 27, 136, 0.08);
+            --shadow-md: rgba(197, 27, 136, 0.15);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'CocoEng', sans-serif; color: var(--text-dark); background: var(--white); line-height: 1.7; }
+
+        /* --- NAVIGATION --- */
+        .top-nav {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 8%; border-bottom: 1px solid var(--border); background: var(--white);
+            position: sticky; top: 0; z-index: 1000; backdrop-filter: blur(10px); background: rgba(252, 252, 252, 0.95);
+        }
+        .logo-box img { height: 48px; display: block; }
+        .nav-links a {
+            text-decoration: none; color: var(--text-dark); font-size: 13px; font-weight: 600;
+            margin: 0 16px; text-transform: uppercase; letter-spacing: 0.8px;
+            transition: color 0.3s ease, border-bottom 0.3s ease;
+            padding-bottom: 2px; border-bottom: 2px solid transparent;
+        }
+        .nav-links a:hover { color: var(--accent); border-bottom: 2px solid var(--accent); }
+        .nav-utils { display: flex; align-items: center; gap: 20px; }
+
+        /* --- SEARCH BAR --- */
+        .search-container { position: relative; }
+        .search-input {
+            padding: 8px 36px 8px 14px; border: 1px solid var(--border); border-radius: 6px;
+            font-size: 14px; font-family: inherit; outline: none; width: 200px;
+            transition: all 0.3s ease; background: var(--bg-soft);
+        }
+        .search-input:focus {
+            border-color: var(--accent); background: var(--white); width: 250px;
+            box-shadow: 0 2px 8px var(--shadow-sm);
+        }
+        .search-icon {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            pointer-events: none; opacity: 0.5;
+        }
+        .highlight {
+            background-color: var(--accent-light); padding: 2px 4px; border-radius: 3px;
+            font-weight: 500; color: var(--white);
+        }
+
+        /* --- HERO --- */
+        .hero-dark {
+            position: relative; min-height: 520px; display: flex; align-items: center;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--primary-light) 100%);
+            color: var(--white); padding: 80px 6%; overflow: hidden;
+        }
+        .hero-dark::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: url('data:image/svg+xml,<svg width="60" height="60" xmlns="http://www.w3.org/2000/svg"><circle cx="30" cy="30" r="1" fill="rgba(197,27,136,0.15)"/></svg>');
+            opacity: 0.3;
+        }
+        .hero-inner { max-width: 1300px; margin: 0 auto; width: 100%; position: relative; z-index: 1; display: flex; align-items: center; gap: 60px; }
+        .hero-content { flex: 1; min-width: 0; }
+        .hero-diagram { flex: 0 0 400px; display: flex; justify-content: center; align-items: center; }
+        .hero-diagram svg { width: 100%; height: auto; }
+        .hero-logo-row { display: flex; align-items: center; gap: 20px; margin-bottom: 36px; }
+        .hero-logo-img { height: 64px; display: block; filter: brightness(0) invert(1); opacity: 0.92; }
+        .hero-title { font-size: 50px; font-weight: 700; color: var(--accent) !important; text-shadow: 0 2px 10px rgba(0,0,0,0.3); margin: 0; }
+        .hero-subtitle { font-size: 17px; font-weight: 400; color: var(--white); opacity: 0.9; margin: 8px 0 0 0; }
+        .hero-dark h1.title-light { font-size: 36px; font-weight: 700; margin-bottom: 20px; margin-top: 10px; color: var(--white); }
+        .hero-dark p { font-size: 16px; font-weight: 400; line-height: 1.85; margin-bottom: 1rem; }
+
+        /* --- SECTOR TAGS --- */
+        .sector-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 20px; }
+        .sector-tag {
+            font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+            padding: 4px 12px; border-radius: 4px; color: var(--white);
+            border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.07);
+        }
+
+        /* --- PROJECTS SECTION --- */
+        .projects-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 20px; margin-top: 44px;
+        }
+        .project-card {
+            background: var(--white); border: 1px solid var(--border); border-radius: 10px;
+            padding: 24px 16px; display: flex; flex-direction: column; align-items: center;
+            gap: 14px; text-decoration: none; transition: all 0.3s ease;
+            box-shadow: 0 2px 8px var(--shadow-sm);
+        }
+        .project-card:hover {
+            transform: translateY(-5px); box-shadow: 0 14px 32px var(--shadow-md);
+            border-color: var(--accent-light);
+        }
+        .project-logo-wrap { width: 100%; height: 56px; display: flex; align-items: center; justify-content: center; }
+        .project-logo-wrap img { max-height: 52px; max-width: 140px; object-fit: contain; display: block; }
+        .project-logo-fallback {
+            display: none; width: 52px; height: 52px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+            color: var(--white); font-size: 13px; font-weight: 800; letter-spacing: 1px;
+            align-items: center; justify-content: center; text-align: center;
+        }
+        .project-name {
+            font-size: 13px; font-weight: 700; color: var(--text-dark); letter-spacing: 0.4px;
+            text-align: center; text-transform: uppercase;
+        }
+
+        /* --- COUNTER --- */
+        .counter-row { display: flex; align-items: center; gap: 20px; margin-bottom: 32px; flex-wrap: wrap; }
+        .counter-badge {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+            color: var(--white); padding: 10px 24px; border-radius: 50px;
+            font-size: 28px; font-weight: 800; box-shadow: 0 4px 16px var(--shadow-md);
+        }
+        .counter-badge span { font-size: 13px; font-weight: 600; opacity: 0.9; }
+
+        /* --- BADGE ROW --- */
+        .badge-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 36px; }
+        .badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(197,27,136,0.18); border: 1px solid rgba(197,27,136,0.45);
+            color: var(--white); font-size: 12px; font-weight: 700;
+            padding: 7px 16px; border-radius: 20px; letter-spacing: 0.6px; text-transform: uppercase;
+        }
+        .badge span { font-size: 15px; }
+
+        /* --- LAYOUT --- */
+        .container { max-width: 1200px; margin: 0 auto; padding: 80px 5%; }
+        .bg-soft { background-color: var(--bg-soft); }
+        .bg-dark-section {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--primary-light) 100%);
+            position: relative; overflow: hidden;
+        }
+        .bg-dark-section::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: url('data:image/svg+xml,<svg width="60" height="60" xmlns="http://www.w3.org/2000/svg"><circle cx="30" cy="30" r="1" fill="rgba(197,27,136,0.15)"/></svg>');
+            opacity: 0.3;
+        }
+        .section-label-light { color: var(--accent-light); border-bottom-color: var(--accent-light); }
+        .title-light { color: var(--white); text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+        .text-light { color: rgba(252,252,252,0.9); line-height: 1.9; }
+        .text-light strong { color: var(--accent-light); font-weight: 600; }
+        .section-label {
+            color: var(--accent); text-transform: uppercase; font-weight: 700;
+            font-size: 12px; letter-spacing: 1.8px; margin-bottom: 16px; display: inline-block;
+            padding-bottom: 8px; border-bottom: 2px solid var(--accent);
+        }
+        h2 { font-size: 36px; color: var(--primary); margin-bottom: 32px; font-weight: 700; line-height: 1.3; }
+        h3 { font-size: 24px; color: var(--primary); margin: 28px 0 16px 0; font-weight: 600; }
+        h4 { font-size: 19px; color: var(--primary); margin-bottom: 12px; font-weight: 600; }
+        p { margin-bottom: 1.5rem; color: var(--text-muted); line-height: 1.8; }
+        strong { color: var(--text-dark); font-weight: 600; }
+
+        /* --- CARDS --- */
+        .showcase-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px; margin-top: 40px; }
+        .card {
+            background: var(--bg-card); border: 1px solid var(--border); padding: 38px;
+            transition: all 0.4s cubic-bezier(0.4,0,0.2,1); border-radius: 8px;
+            box-shadow: 0 2px 8px var(--shadow-sm);
+        }
+        .card:hover {
+            transform: translateY(-6px); box-shadow: 0 20px 40px var(--shadow-md);
+            border-color: var(--accent-light);
+        }
+        .card-tag {
+            font-size: 11px; font-weight: 700; color: var(--accent);
+            text-transform: uppercase; margin-bottom: 14px; display: block; letter-spacing: 1.2px;
+        }
+
+        /* --- FEATURES GRID --- */
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; margin-top: 40px; }
+        .feature-box {
+            background: var(--white); border-radius: 12px; padding: 38px;
+            display: flex; flex-direction: column; justify-content: space-between; min-height: 280px;
+            border: 1px solid var(--border); transition: all 0.3s ease;
+            box-shadow: 0 2px 8px var(--shadow-sm);
+        }
+        .feature-box:hover {
+            transform: translateY(-4px); box-shadow: 0 12px 32px var(--shadow-md);
+            border-color: var(--accent-light);
+        }
+        .feature-icon {
+            font-size: 28px; margin-bottom: 20px;
+            background: linear-gradient(135deg,#fce6f3 0%,#fad4eb 100%);
+            width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;
+            border-radius: 12px; border: 1px solid var(--accent-light);
+        }
+
+        /* --- LEVELS / TIMELINE --- */
+        .levels-wrap {
+            border-left: 4px solid var(--accent); padding-left: 36px; margin-top: 40px;
+            position: relative;
+        }
+        .levels-wrap::before {
+            content: ''; position: absolute; left: -2px; top: 0; bottom: 0; width: 4px;
+            background: linear-gradient(180deg, var(--accent) 0%, var(--accent-light) 100%);
+        }
+        .level-item { margin-bottom: 44px; }
+        .level-item strong { color: var(--primary); font-size: 20px; display: block; margin-bottom: 10px; font-weight: 600; }
+
+        /* --- CERT BLOCK --- */
+        .cert-block {
+            background: linear-gradient(135deg, rgba(197,27,136,0.06) 0%, rgba(197,27,136,0.12) 100%);
+            border: 2px solid var(--accent); border-radius: 12px; padding: 44px 48px;
+            margin-top: 40px; position: relative; overflow: hidden;
+        }
+        .cert-block::after {
+            content: '✓'; position: absolute; right: 40px; top: 50%; transform: translateY(-50%);
+            font-size: 120px; font-weight: 900; color: rgba(197,27,136,0.06); line-height: 1;
+        }
+        .cert-block h3 { margin-top: 0; color: var(--accent-dark); }
+        .cert-block p { color: var(--text-muted); }
+        .cert-link {
+            display: inline-flex; align-items: center; gap: 8px;
+            color: var(--accent); font-weight: 700; text-decoration: none;
+            font-size: 15px; margin-top: 8px;
+            border-bottom: 2px solid transparent; transition: border-color 0.3s;
+        }
+        .cert-link:hover { border-bottom-color: var(--accent); }
+
+        /* --- TABLE --- */
+        .table-container { overflow-x: auto; margin-top: 36px; border: 1px solid var(--border); border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; background: var(--white); }
+        th {
+            text-align: left; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: var(--white); padding: 18px 24px; font-size: 14px; text-transform: uppercase;
+            font-weight: 600; letter-spacing: 0.8px;
+        }
+        td { padding: 20px 24px; border-bottom: 1px solid var(--border); font-size: 15px; color: var(--text-muted); }
+        td strong { color: var(--accent-dark); font-weight: 600; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: var(--bg-soft); }
+
+        /* --- CONTACT --- */
+        .contact-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 28px; margin-top: 40px;
+        }
+        .contact-card {
+            background: var(--bg-card); border: 1px solid var(--border);
+            padding: 40px; border-radius: 12px; text-align: center;
+            transition: all 0.3s ease; box-shadow: 0 2px 8px var(--shadow-sm);
+        }
+        .contact-card:hover {
+            transform: translateY(-4px); box-shadow: 0 12px 32px var(--shadow-md);
+            border-color: var(--accent-light);
+        }
+        .contact-icon {
+            font-size: 36px; margin-bottom: 20px;
+            background: linear-gradient(135deg,#fce6f3 0%,#fad4eb 100%);
+            width: 70px; height: 70px; display: flex; align-items: center;
+            justify-content: center; border-radius: 50%; margin: 0 auto 20px;
+            border: 2px solid var(--accent-light);
+        }
+        .contact-card h4 { font-size: 20px; margin-bottom: 12px; color: var(--primary); }
+        .contact-card p { margin-bottom: 10px; font-size: 15px; }
+        .contact-detail { color: var(--text-muted); font-size: 14px; font-style: italic; }
+        .contact-link {
+            display: inline-block; margin-top: 8px; color: var(--accent);
+            text-decoration: none; font-weight: 600; font-size: 16px; transition: color 0.3s;
+        }
+        .contact-link:hover { color: var(--accent-dark); text-decoration: underline; }
+        .repo-button {
+            display: inline-flex; align-items: center; gap: 10px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+            color: var(--white); padding: 12px 28px; border-radius: 8px;
+            text-decoration: none; font-weight: 600; margin-top: 12px;
+            transition: all 0.3s ease; box-shadow: 0 4px 12px var(--shadow-md);
+        }
+        .repo-button:hover {
+            transform: translateY(-2px); box-shadow: 0 6px 20px var(--shadow-md);
+            background: linear-gradient(135deg, var(--accent-dark) 0%, var(--accent) 100%);
+        }
+
+        /* --- AI BANNER --- */
+        .ai-banner {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a0a12 100%);
+            border-top: 3px solid var(--accent); border-bottom: 3px solid var(--accent);
+            padding: 70px 10%; position: relative; overflow: hidden;
+        }
+        .ai-banner::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: url('data:image/svg+xml,<svg width="60" height="60" xmlns="http://www.w3.org/2000/svg"><circle cx="30" cy="30" r="1" fill="rgba(197,27,136,0.2)"/></svg>');
+        }
+        .ai-banner-inner { max-width: 900px; margin: 0 auto; position: relative; z-index: 1; }
+
+        /* --- FOOTER --- */
+        footer {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--primary-light) 100%);
+            color: var(--white); padding: 70px 8% 35px; text-align: center;
+            border-top: 3px solid var(--accent);
+        }
+        .footer-logo { height: 45px; margin-bottom: 28px; }
+        .copyright { font-size: 13px; color: #ffffff; opacity: 0.65; margin-top: 16px; letter-spacing: 0.3px; }
+
+        /* --- DIAGRAM SECTION --- */
+        .diagram-section {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, var(--primary-light) 100%);
+            padding: 80px 5%; position: relative; overflow: hidden;
+        }
+        .diagram-section::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: url('data:image/svg+xml,<svg width="60" height="60" xmlns="http://www.w3.org/2000/svg"><circle cx="30" cy="30" r="1" fill="rgba(197,27,136,0.15)"/></svg>');
+            opacity: 0.3;
+        }
+        .diagram-inner {
+            max-width: 1100px; margin: 0 auto; position: relative; z-index: 1;
+            display: flex; align-items: center; gap: 64px;
+        }
+        .diagram-text { flex: 1; min-width: 260px; }
+        .diagram-visual { flex: 0 0 440px; display: flex; justify-content: center; }
+        .diagram-visual svg { width: 100%; max-width: 440px; height: auto; }
+        @keyframes rotateSlow  { from { transform: rotate(0deg); }   to { transform: rotate(360deg); } }
+        @keyframes rotateSlowR { from { transform: rotate(0deg); }   to { transform: rotate(-360deg); } }
+        @keyframes pulse { 0%,100% { opacity: .16; } 50% { opacity: .42; } }
+
+        @media (max-width: 900px) {
+            .diagram-inner { flex-direction: column; gap: 40px; }
+            .diagram-visual { flex: 0 0 auto; width: 100%; max-width: 380px; }
+            .hero-inner { flex-direction: column; }
+            .hero-diagram { flex: 0 0 auto; width: 100%; max-width: 340px; }
+            .hero-title { font-size: 38px; }
+            .projects-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+        }
+        @media (max-width: 768px) {
+            .hero-title { font-size: 34px; }
+            .hero-logo-row { flex-direction: column; align-items: flex-start; }
+            .ai-banner { padding: 50px 6%; }
+            .counter-badge { font-size: 22px; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="top-nav">
+        <div class="logo-box">
+            <img src="https://raw.githubusercontent.com/Engineering-Research-and-Development/true-connector/main/doc/TRUE_Connector_Logo.png" alt="TRUE Connector" onerror="this.style.display='none'">
+        </div>
+		<div class="logo-box">
+            <img src="data:image/png;base64,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" alt="ENG" onerror="this.style.display='none'">
+        </div>
+		
+		
+        <div class="nav-links">
+            <a href="#overview">Overview</a>
+            <a href="#features">Features</a>
+            <a href="#identity">Identity &amp; Security</a>
+            <a href="#ai">AI-Ready</a>
+            <a href="#projects">Adopted In</a>
+            <a href="#compliance">Compliance</a>
+            <a href="#contact">Contact</a>
+        </div>
+        <div class="nav-utils">
+            <div class="search-container">
+                <input type="text" id="searchInput" placeholder="Search..." class="search-input">
+                <span class="search-icon">🔍</span>
+            </div>
+        </div>
+    </nav>
+
+    <header id="overview" class="hero-dark">
+        <div class="hero-inner">
+            <div class="hero-content">
+                <div class="hero-logo-row">
+                    <div>
+                        <h1 class="hero-title">DSP TRUE Connector</h1>
+                        <p class="hero-subtitle">The open-source data space connector by ENG secure, sovereign, and ready for AI-driven data sharing.</p>
+                <span class="section-label section-label-light">System Overview</span>
+                
+                <p class="text-light">The DSP TRUE ("TRU"sted "E"ngineering) Connector is an open-source solution developed by <strong>ENG</strong> that makes data sharing simple, secure, and trustworthy. Fully certified in 2024 by the International Data Spaces Association (IDSA) it is now refactored to be compliant with <strong>Dataspace Protocol 2025-1</strong>, giving organizations a reliable way to exchange data with full control and in compliance with regulations such as <strong>GDPR</strong>.</p>
+                <p class="text-light">Originally built for the <strong>manufacturing </strong> sector, the DSP TRUE Connector has since proven its strength across a wide range of domains. From <strong>energy</strong> management and smart grids to <strong>healthcare</strong> data exchange, <strong>agriculture</strong>, and <strong>critical infrastructure,</strong> wherever data sovereignty and secure interoperability are non-negotiable requirements, the connector delivers.</p>
+                <p class="text-light">Its <strong>user-friendly interface</strong> makes all capabilities accessible to both technical users and business operators, no deep expertise required. The DSP TRUE Connector sits at the center of every data sharing interaction, orchestrating the full lifecycle between <strong>Data Providers</strong> and <strong>Data Consumers,</strong> whether operated by a human, an external service, or an <strong>AI Agent</strong>.</p>
+                <div class="sector-tags">
+                    <span class="sector-tag">⚙️ Industry</span>
+                    <span class="sector-tag">⚡ Energy</span>
+                    <span class="sector-tag">🏥 Healthcare</span>
+                    <span class="sector-tag">🌾 Agriculture</span>                    
+                    <span class="sector-tag">🔒 Critical Infrastructure</span>
+                    <span class="sector-tag">♻️ Circular Economy</span>
+                </div>
+                <div class="badge-row">
+                    <span class="badge"><span>✅</span> DSP 2025-1 Compliant</span>
+                    <span class="badge"><span>🏅</span> IDS Certified 2024</span>
+                    <span class="badge"><span>🔬</span> 100% TCK Passed</span>                   
+                    <span class="badge"><span>🔓</span> Open Source</span>
+                </div>
+            </div>
+            <div class="hero-diagram">
+                <svg viewBox="0 0 440 440" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="220" cy="220" r="198" stroke="#e0d0e0" stroke-width="1" stroke-dasharray="4 7"/>
+                    <circle cx="220" cy="220" r="138" stroke="#8B1F8B" stroke-width="1"
+                        stroke-dasharray="2 9" opacity=".35"
+                        style="transform-origin:220px 220px;animation:rotateSlow 22s linear infinite;"/>
+                    <circle cx="220" cy="220" r="108" stroke="#F5C000" stroke-width=".8"
+                        stroke-dasharray="3 14" opacity=".22"
+                        style="transform-origin:220px 220px;animation:rotateSlowR 30s linear infinite;"/>
+                    <circle cx="220" cy="220" r="58" fill="#0d0d0d" stroke="#8B1F8B" stroke-width="2.5"/>
+                    <circle cx="220" cy="220" r="68" fill="none" stroke="#8B1F8B" stroke-width=".7" opacity=".38"
+                        style="animation:pulse 2.5s ease-in-out infinite;"/>
+                    <circle cx="220" cy="220" r="80" fill="none" stroke="#8B1F8B" stroke-width=".35" opacity=".16"
+                        style="animation:pulse 2.5s ease-in-out infinite .7s;"/>
+                    <text x="220" y="214" text-anchor="middle" font-family="Syne,sans-serif" font-weight="800" font-size="13" fill="#f8f7f5" letter-spacing="1.5">TRUE</text>
+                    <text x="220" y="232" text-anchor="middle" font-family="DM Mono,monospace" font-size="13" fill="#8B1F8B" letter-spacing="2.5">CONNECTOR</text>
+                    <circle cx="220" cy="58" r="30" fill="white" stroke="#ddc8dd" stroke-width="1.5"/>
+                    <text x="220" y="53" text-anchor="middle" font-family="Syne,sans-serif" font-weight="700" font-size="9" fill="#0d0d0d">CATALOG</text>
+                    <text x="220" y="65" text-anchor="middle" font-family="Syne,sans-serif" font-weight="700" font-size="9" fill="#8B1F8B">BROWSER</text>
+                    <line x1="220" y1="88" x2="220" y2="162" stroke="#cca8cc" stroke-width="1" stroke-dasharray="3 5"/>
+                    <circle cx="368" cy="118" r="30" fill="white" stroke="#ddc8dd" stroke-width="1.5"/>
+                    <text x="368" y="113" text-anchor="middle" font-family="Syne,sans-serif" font-weight="700" font-size="9" fill="#0d0d0d">AUTO</text>
+                    <text x="368" y="125" text-anchor="middle" font-family="Syne,sans-serif" font-weight="700" font-size="9" fill="#8B1F8B">NEGOTIATION</text>
+                    <line x1="343" y1="135" x2="272" y2="184" stroke="#cca8cc" stroke-width="1" stroke-dasharray="3 5"/>
+                    <circle cx="368" cy="322" r="30" fill="white" stroke="#ddc8dd" stroke-width="1.5"/>
+                    <text x="368" y="317" text-anchor="middle" font-family="Syne,sans-serif" font-weight="700" font-size="9" fill="#0d0d0d">AUDIT</text>
+                    <text x="368" y="329" text-anchor="middle" font-family="Syne,sans-serif" font-weight="700" font-size="9" fill="#8B1F8B">TRAIL</text>
+                    <line x1="343" y1="307" x2="272" y2="258" stroke="#cca8cc" stroke-width="1" stroke-dasharray="3 5"/>
+                    <circle cx="220" cy="382" r="30" fill="white" stroke="#ddc8dd" stroke-width="1.5"/>
+                    <text x="220" y="377" text-anchor="middle" font-family="Syne,sans-serif" font-weight="700" font-size="9" fill="#0d0d0d">CONTRACT</text>
+                    <text x="220" y="389" text-anchor="middle" font-family="Syne,sans-serif" font-weight="700" font-size="9" fill="#8B1F8B">MGMT</text>
+                    <line x1="220" y1="352" x2="220" y2="278" stroke="#cca8cc" stroke-width="1" stroke-dasharray="3 5"/>
+                    <circle cx="72" cy="118" r="30" fill="white" stroke="#F5C000" stroke-width="2"/>
+                    <text x="72" y="113" text-anchor="middle" font-family="Syne,sans-serif" font-weight="700" font-size="9" fill="#0d0d0d">DATA</text>
+                    <text x="72" y="125" text-anchor="middle" font-family="Syne,sans-serif" font-weight="700" font-size="9" fill="#c9a000">PROVIDER</text>
+                    <line x1="97" y1="135" x2="168" y2="184" stroke="#F5C000" stroke-width="1.3" stroke-dasharray="3 5" opacity=".65"/>
+                    <circle cx="72" cy="322" r="30" fill="white" stroke="#7B9FD4" stroke-width="2"/>
+                    <text x="72" y="317" text-anchor="middle" font-family="Syne,sans-serif" font-weight="700" font-size="9" fill="#0d0d0d">DATA</text>
+                    <text x="72" y="329" text-anchor="middle" font-family="Syne,sans-serif" font-weight="700" font-size="9" fill="#5580b8">CONSUMER</text>
+                    <line x1="97" y1="307" x2="168" y2="258" stroke="#7B9FD4" stroke-width="1.3" stroke-dasharray="3 5" opacity=".65"/>
+                </svg>
+            </div>
+        </div>
+    </header>
+
+    <!-- COMPLIANCE -->
+    <section id="compliance" class="bg-soft">
+        <div class="container">
+            <span class="section-label">Compliance & Certification</span>
+            <h2>Recognized by the Global Data Space Community</h2>
+            <p>Interoperability in a data space is only valuable if it can be objectively verified. The DSP TRUE Connector does not just claim protocol compliance.</p>
+
+            <div class="cert-block">
+                <h3>Listed in the IDSA Data Space Connector Report</h3>
+                <p>The DSP TRUE Connector is one of only <strong>six connectors worldwide</strong> listed in the official IDSA Data Space Connector Report as fully compliant with <strong>Dataspace Protocol 2025-1</strong>. This report is the definitive reference for organizations evaluating data space connectors, published and maintained by the International Data Spaces Association.</p>
+                <p>Being listed here is not a marketing claim. It is a certification backed by the results of the <strong>DSP TCK (Technology Compatibility Kit)</strong>, the official test suite that verifies 100% compliance with the protocol. Any organization adopting the DSP TRUE Connector is guaranteed out-of-the-box interoperability with every other DSP-compliant connector on the market.</p>
+                <a href="https://internationaldataspaces.org/idsa-data-space-connector-report/" target="_blank" class="cert-link">Read the full IDSA Connector Report →</a>
+            </div>
+
+            <div class="levels-wrap" style="margin-top: 56px;">
+                <div class="level-item">
+                    <strong>IDS Certified — Level 2 (Concept Review), April 2024</strong>
+                    <p>The TRUE Connector received IDS Certification from the International Data Spaces Association in April 2024, confirming adherence to the highest security and interoperability standards defined by the IDSA community.</p>
+                </div>
+                <div class="level-item">
+                    <strong>100% DSP TCK Compliance — Version 1.0.0-RC5</strong>
+                    <p>The connector passes the full Dataspace Protocol Technology Compatibility Kit at version 1.0.0-RC5, with results publicly available in the repository. This is the benchmark against which all DSP-compliant connectors are measured.</p>
+                </div>
+                <div class="level-item">
+                    <strong>DCP TCK Compliance</strong>
+                    <p>The Decentralized Claims Protocol integration is also backed by its own TCK compliance results, ensuring that identity-layer interoperability meets the same objective standard as the protocol layer.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI-READY BANNER -->
+    <section id="ai" class="ai-banner">
+        <div class="ai-banner-inner">
+            <span class="section-label section-label-light">AI-Ready Architecture</span>
+            <h2 class="title-light">The Connector That Talks to Machines and Agents</h2>
+            <p class="text-light">Traditional data space connectors were designed around a human operator: browse, negotiate, approve, download. The DSP TRUE Connector takes a significant step beyond this model. With <strong>automated contract negotiation</strong> and <strong>multitenancy</strong> support, the connector becomes a first-class participant in programmatic and AI-driven workflows.</p>
+            <p class="text-light">An <strong>AI Agent</strong> can now take the place of the human operator, browsing catalogs, negotiating contracts, and initiating transfers entirely on its own, governed by pre-configured policies. This opens the connector to a new class of integrations: autonomous data pipelines, AI services that pull fresh data on demand, and multi-agent architectures where different services negotiate and exchange data without human intervention at each step.</p>
+            <p class="text-light">This shifts the data space from a tool for human operators to an <strong>infrastructure for intelligent services</strong> and significantly expands the business scenarios where the DSP TRUE Connector adds value.</p>
+        </div>
+    </section>
+
+    <!-- PROJECTS -->
+    <section id="projects" class="bg-soft">
+        <div class="container">
+            <span class="section-label">Adopted In</span>
+            <h2>Trusted Across European Research</h2>
+            <p>The DSP TRUE Connector has been selected and deployed in a growing portfolio of European research and innovation projects funded under H2020 and Horizon Europe, spanning industry, energy, agriculture, healthcare, and critical infrastructure.</p>
+            <div class="counter-row">
+                <div class="counter-badge">10+ <span>projects</span></div>
+                <p style="margin:0; color:var(--text-muted); font-size:15px;">and counting — across 6+ sectors and 20+ countries.</p>
+            </div>
+            <div class="projects-grid">
+
+                <a href="https://platoon-project.eu" target="_blank" class="project-card">
+                    <div class="project-logo-wrap"> 
+                        <img src="data:image/jpeg;base64,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" alt="PLATOON"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="project-logo-fallback">PL</div>
+                    </div>
+                    <span class="project-name">PLATOON</span>
+                </a>
+
+                <a href="https://onenet-project.eu" target="_blank" class="project-card">
+                    <div class="project-logo-wrap">
+                        <img src="https://onenet-project.eu/wp-content/uploads/2021/01/OneNet.svg" alt="OneNet"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="project-logo-fallback">ONE</div>
+                    </div>
+                    <span class="project-name">OneNet</span>
+                </a>
+
+                <a href="https://eur3ka.eu" target="_blank" class="project-card">
+                    <div class="project-logo-wrap">
+                        <img src="https://www.eur3ka.eu/wp-content/uploads/2026/01/logo.png" alt="EUR3KA"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="project-logo-fallback">E3K</div>
+                    </div>
+                    <span class="project-name">EUR3KA</span>
+                </a>
+
+                <a href="https://airegio-project.eu" target="_blank" class="project-card">
+                    <div class="project-logo-wrap">
+                        <img src="data:image/png;base64,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" alt="AI REGIO"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="project-logo-fallback">AIR</div>
+                    </div>
+                    <span class="project-name">AI REGIO</span>
+                </a>
+
+                <a href="https://clarus-project.eu" target="_blank" class="project-card">
+                    <div class="project-logo-wrap">
+                        <img src="https://clarus-project.eu/wp-content/uploads/elementor/thumbs/CLARUS_pq-pwje8ycw58wfmdigyf8z4n988kag6gmpihzq5mdbmc.png" alt="CLARUS"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="project-logo-fallback">CLA</div>
+                    </div>
+                    <span class="project-name">CLARUS</span>
+                </a>
+
+                <a href="https://circular-twain-project.eu" target="_blank" class="project-card">
+                    <div class="project-logo-wrap">
+                        <img src="data:image/png;base64,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" alt="Circular TwAIn"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="project-logo-fallback">CTw</div>
+                    </div>
+                    <span class="project-name">Circular TwAIn</span>
+                </a>
+
+                <a href="https://divine-project.eu" target="_blank" class="project-card">
+                    <div class="project-logo-wrap">
+                        <img src="https://divine-project.eu/img/divine-logo-2.png" alt="DIVINE"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="project-logo-fallback">DIV</div>
+                    </div>
+                    <span class="project-name">DIVINE</span>
+                </a>
+
+                <a href="https://dacapo-project.eu" target="_blank" class="project-card">
+                    <div class="project-logo-wrap">
+                        <img src="https://images.squarespace-cdn.com/content/v1/6418c1a93db6245f11a935c0/3585e4ed-f24b-452e-a85b-f35ca9bc2eb6/dacapo.png?format=1500w" alt="Da Capo"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="project-logo-fallback">DC</div>
+                    </div>
+                    <span class="project-name">Da Capo</span>
+                </a>
+
+                <a href="https://endurance-horizon.eu" target="_blank" class="project-card">
+                    <div class="project-logo-wrap">
+                        <img src="data:image/jpeg;base64,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" alt="ENDURANCE"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="project-logo-fallback">END</div>
+                    </div>
+                    <span class="project-name">ENDURANCE</span>
+                </a>
+
+                <a href="https://flex4res.eu" target="_blank" class="project-card">
+                    <div class="project-logo-wrap">
+                        <img src="https://flex4res.eu/wp-content/uploads/2023/02/cropped-Flex4Res-logo.png" alt="Flex4Res"
+                             onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                        <div class="project-logo-fallback">F4R</div>
+                    </div>
+                    <span class="project-name">Flex4Res</span>
+                </a>
+
+            </div>
+        </div>
+    </section>
+
+    <main>
+
+        <!-- FEATURES GRID -->
+        <section id="features" class="container">
+            <span class="section-label">Core Capabilities</span>
+            <h2>Everything a Data Space Needs, in One Place</h2>
+            <p>The DSP TRUE Connector covers the complete lifecycle of data sharing within the IDS ecosystem from catalog publishing to contract enforcement and data transfer all exposed through a clean, intuitive interface.</p>
+
+            <div class="features-grid">
+                <div class="feature-box">
+                    <div class="feature-icon">📂</div>
+                    <h4>Catalog Management</h4>
+                    <p>Create and maintain a DCAT-AP compliant catalog of data assets. Export as JSON, enrich with metadata, and make data discoverable across the ecosystem.</p>
+                </div>
+                <div class="feature-box">
+                    <div class="feature-icon">🗄️</div>
+                    <h4>Dataset & Distribution Management</h4>
+                    <p>Associate datasets with artifacts (file upload or external URL), define access policies, and configure multiple distributions with flexible authentication modes.</p>
+                </div>
+                <div class="feature-box">
+                    <div class="feature-icon">🔭</div>
+                    <h4>Catalog Browser</h4>
+                    <p>Discover and explore catalogs published by external providers. Browse available datasets and kick off contract negotiations directly from the UI in a few clicks.</p>
+                </div>
+                <div class="feature-box">
+                    <div class="feature-icon">📝</div>
+                    <h4>Contract Negotiation</h4>
+                    <p>Full DSP negotiation lifecycle, offer, request, agree, finalize, terminate, managed from both provider and consumer perspectives with rich filtering and state tracking.</p>
+                </div>
+                <div class="feature-box">
+                    <div class="feature-icon">⚡</div>
+                    <h4>Automated Negotiation</h4>
+                    <p>Machine-to-machine contract negotiation without human intervention. External services and AI Agents can drive the full negotiation lifecycle programmatically.</p>
+                </div>
+                <div class="feature-box">
+                    <div class="feature-icon">🔄</div>
+                    <h4>Data Transfer</h4>
+                    <p>Request, start, suspend, resume, complete, or terminate transfers. Consumers select format, monitor progress in real time, and download artifacts on completion.</p>
+                </div>
+                <div class="feature-box">
+                    <div class="feature-icon">🏢</div>
+                    <h4>Multitenancy</h4>
+                    <p>Multiple independent organizations or logical tenants can operate on the same connector instance with full data and configuration isolation. Ideal for platform providers and cloud operators.</p>
+                </div>
+                <div class="feature-box">
+                    <div class="feature-icon">🔍</div>
+                    <h4>Audit Trail</h4>
+                    <p>Full system event logging, authentications, negotiations, transfers, configuration changes. Searchable with advanced filters for compliance, security monitoring, and audit.</p>
+                </div>
+                <div class="feature-box">
+                    <div class="feature-icon">⚙️</div>
+                    <h4>UI-Based Configuration</h4>
+                    <p>All connector properties managed directly from the interface, organized by functional group with tooltips. No file-level configuration needed for day-to-day operations.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- IDENTITY & SECURITY -->
+        <section id="identity" class="bg-soft">
+            <div class="container">
+                <span class="section-label">Identity & Security</span>
+                <h2>Enterprise-Grade Trust, End to End</h2>
+                <p>Security in a data space is not just about encrypting the wire. It means verifying who is on the other side of every interaction, enforcing access policies at the protocol level, and maintaining a full audit record of every event. The DSP TRUE Connector handles all of this and does so using internationally recognized standards.</p>
+
+                <div class="levels-wrap">
+                    <div class="level-item">
+                        <strong>Keycloak Integration</strong>
+                        <p>The connector integrates with Keycloak for identity and access management, enabling enterprise-grade authentication and role-based access control. Organizations can plug in their existing identity infrastructure without having to redesign how users and services are managed.</p>
+                    </div>
+                    <div class="level-item">
+                        <strong>Decentralized Claims Protocol (DCP)</strong>
+                        <p>The DSP TRUE Connector implements DCP, the decentralized identity standard developed within the IDSA community, allowing participants to assert and verify claims without relying on a central authority. The DCP integration is backed by its own TCK compliance suite, providing the same level of interoperability assurance at the identity layer that the DSP TCK provides at the protocol layer.</p>
+                    </div>
+                    <div class="level-item">
+                        <strong>TLS and DAPS</strong>
+                        <p>All communications are secured with configurable TLS, and the connector supports DAPS (Dynamic Attribute Provisioning Service) for participant authentication within IDS ecosystems. Certificate management is handled via standard P12 keystore files, independently configurable per instance.</p>
+                    </div>
+                    <div class="level-item">
+                        <strong>GDPR-Ready by Design</strong>
+                        <p>The contract negotiation mechanism is precisely the tool that makes GDPR-compliant data sharing achievable in practice. No data is transferred without an explicit, digitally enforced agreement. The audit trail captures every step, providing the evidentiary record that compliance requires.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- HOW IT WORKS -->
+        <section id="howit" class="container">
+            <span class="section-label">How It Works</span>
+            <h2>The Data Sharing Lifecycle</h2>
+            <p>Every data exchange in the DSP TRUE Connector follows a well-defined, protocol-enforced sequence. This is not just a convention, it is a guarantee of interoperability with any other DSP-compliant connector on the market.</p>
+
+            <div class="showcase-grid">
+                <div class="card">
+                    <span class="card-tag">Step 1 — Discover</span>
+                    <h3>Browse the Catalog</h3>
+                    <p>The consumer points the Catalog Browser to a provider's endpoint. The connector fetches the DCAT-AP catalog, displays available datasets with their metadata, associated policies, and available distribution formats. No prior knowledge of the provider's infrastructure is needed.</p>
+                </div>
+                <div class="card">
+                    <span class="card-tag">Step 2 — Negotiate</span>
+                    <h3>Agree on Terms</h3>
+                    <p>The consumer selects a dataset and initiates a contract negotiation. The DSP protocol manages the full lifecycle — offer, request, agreement, finalization. Both sides can track the negotiation state in real time. Automated negotiation allows this step to happen without human intervention when policies permit.</p>
+                </div>
+                <div class="card">
+                    <span class="card-tag">Step 3 — Transfer</span>
+                    <h3>Exchange the Data</h3>
+                    <p>Once an agreement is in place, the consumer requests a transfer. The connector validates the authorization against the agreement, manages the delivery, and notifies the consumer when the artifact is ready for download. Push and pull transfer modes are both supported.</p>
+                </div>
+                <div class="card">
+                    <span class="card-tag">Step 4 — Audit</span>
+                    <h3>Full Traceability</h3>
+                    <p>Every step, from the first catalog browse to the final artifact download, is logged in the Audit Trail. Events are timestamped, attributed, and searchable. This complete record supports compliance reporting, security investigations, and operational monitoring without any additional tooling.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- FLEXIBILITY & INTEGRATION -->
+        <section id="integration" class="container">
+            <span class="section-label">Flexibility & Integration</span>
+            <h2>Built to Fit Your Infrastructure</h2>
+            <p>The DSP TRUE Connector is designed to integrate with existing IT landscapes without requiring significant architectural changes. Its configuration model is highly granular, and its deployment is fully containerized, making adoption straightforward at every scale.</p>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Capability</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>Storage Backends</strong></td><td>MinIO (self-hosted, S3-compatible) and AWS S3 configurable per deployment</td></tr>
+                        <tr><td><strong>Identity Providers</strong></td><td>Keycloak integration, DAPS support, DCP for decentralized identity</td></tr>
+                        <tr><td><strong>Artifact Authentication</strong></td><td>No auth, Basic Auth, or Bearer Token configurable per dataset</td></tr>
+                        <tr><td><strong>Deployment</strong></td><td>Docker and Docker Compose up and running in minutes</td></tr>
+                        <tr><td><strong>API</strong></td><td>Full REST API with Postman collection for programmatic integration</td></tr>
+                        <tr><td><strong>Protocols</strong></td><td>HTTPS, SFTP, DCAT-AP, DSP 2025-1, DCP</td></tr>
+                        <tr><td><strong>Database</strong></td><td>MongoDB for persistent catalog and negotiation state</td></tr>
+                        <tr><td><strong>Multitenancy</strong></td><td>Multiple independent tenants on a single instance with full isolation</td></tr>
+                        <tr><td><strong>UI Customization</strong></td><td>Custom logo and branding per connector instance</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- CONTACT -->
+    <section id="contact" class="container">
+        <span class="section-label">Get in Touch</span>
+        <h2>Contact &amp; Resources</h2>
+        <div class="contact-grid">
+            <div class="contact-card">
+                <div class="contact-icon">📧</div>
+                <h4>Email</h4>
+                <p>For inquiries and technical support</p>
+                 <a href="mailto:angelo.marguglio@eng.it" class="contact-link">angelo.marguglio@eng.it</a>
+				 <a href="mailto:trueconnector-team@eng.it" class="contact-link">trueconnector-team@eng.it</a>
+            </div>
+            <div class="contact-card">
+                <div class="contact-icon">🏢</div>
+                <h4>Organization</h4>
+                <p>Engineering Ingegneria Informatica S.p.A.</p>
+                <p class="contact-detail">Research &amp; Innovation</p>
+                <a href="https://www.eng.it/en" target="_blank" class="contact-link">www.eng.it</a>
+            </div>
+            <div class="contact-card">
+                <div class="contact-icon">💻</div>
+                <h4>Source Code</h4>
+                <p>Explore the codebase and documentation</p>
+                <a href="https://github.com/Engineering-Research-and-Development/dsp-true-connector" target="_blank" class="repo-button">
+                    View on GitHub
+                </a>
+            </div>
+            <div class="contact-card">
+                <div class="contact-icon">📋</div>
+                <h4>IDSA Connector Report</h4>
+                <p>See the official compliance listing</p>
+                <a href="https://internationaldataspaces.org/idsa-data-space-connector-report/" target="_blank" class="repo-button">
+                    View Report
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <img src="https://raw.githubusercontent.com/Engineering-Research-and-Development/true-connector/main/doc/TRUE_Connector_Logo.png" alt="DSP TRUE Connector" class="footer-logo" onerror="this.style.display='none'">
+        <p class="copyright"><strong style="color:#fff;">DSP TRUE Connector</strong> · Trusted Data Sharing by Engineering</p>
+        <p class="copyright">© 2026 Engineering Research &amp; Innovation. All rights reserved.</p>
+    </footer>
+
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+        const searchInput = document.getElementById('searchInput');
+        let originalContent = {};
+
+        searchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase().trim();
+            if (Object.keys(originalContent).length > 0) {
+                Object.keys(originalContent).forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerHTML = originalContent[id];
+                });
+                originalContent = {};
+            }
+            if (!searchTerm) return;
+            const els = document.querySelectorAll('p, h1, h2, h3, h4, li, td, .card-tag, .badge');
+            let firstMatch = null;
+            els.forEach((el, i) => {
+                if (el.textContent.toLowerCase().includes(searchTerm)) {
+                    const id = 'srch-' + i;
+                    el.id = id;
+                    if (!originalContent[id]) originalContent[id] = el.innerHTML;
+                    const regex = new RegExp(`(${searchTerm})`, 'gi');
+                    el.innerHTML = el.innerHTML.replace(regex, '<span class="highlight">$1</span>');
+                    if (!firstMatch) firstMatch = el;
+                }
+            });
+            if (firstMatch) firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+
+        document.querySelectorAll('a[href^="#"]').forEach(a => {
+            a.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        });
+
+        // Project logo fallback: if img fails, show styled initials div
+        document.querySelectorAll('.project-logo-wrap img').forEach(img => {
+            img.addEventListener('error', function() {
+                this.style.display = 'none';
+                const fb = this.nextElementSibling;
+                if (fb) fb.style.display = 'flex';
+            });
+        });
+    </script>
+</body>
+</html>
