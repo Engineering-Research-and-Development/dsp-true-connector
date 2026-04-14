@@ -668,10 +668,6 @@
                         <p>The DSP TRUE Connector implements DCP, the decentralized identity standard developed within the IDSA community, allowing participants to assert and verify claims without relying on a central authority. The DCP integration is backed by its own TCK compliance suite, providing the same level of interoperability assurance at the identity layer that the DSP TCK provides at the protocol layer.</p>
                     </div>
                     <div class="level-item">
-                        <strong>TLS and DAPS</strong>
-                        <p>All communications are secured with configurable TLS, and the connector supports DAPS (Dynamic Attribute Provisioning Service) for participant authentication within IDS ecosystems. Certificate management is handled via standard P12 keystore files, independently configurable per instance.</p>
-                    </div>
-                    <div class="level-item">
                         <strong>GDPR-Ready by Design</strong>
                         <p>The contract negotiation mechanism is precisely the tool that makes GDPR-compliant data sharing achievable in practice. No data is transferred without an explicit, digitally enforced agreement. The audit trail captures every step, providing the evidentiary record that compliance requires.</p>
                     </div>
@@ -725,11 +721,11 @@
                     </thead>
                     <tbody>
                         <tr><td><strong>Storage Backends</strong></td><td>MinIO (self-hosted, S3-compatible) and AWS S3 configurable per deployment</td></tr>
-                        <tr><td><strong>Identity Providers</strong></td><td>Keycloak integration, DAPS support, DCP for decentralized identity</td></tr>
+                        <tr><td><strong>Identity Providers</strong></td><td>Keycloak integration, DCP for decentralized identity</td></tr>
                         <tr><td><strong>Artifact Authentication</strong></td><td>No auth, Basic Auth, or Bearer Token configurable per dataset</td></tr>
-                        <tr><td><strong>Deployment</strong></td><td>Docker and Docker Compose up and running in minutes</td></tr>
+                        <tr><td><strong>Deployment</strong></td><td>Docker or Kubernetes (using Terraform) up and running in minutes</td></tr>
                         <tr><td><strong>API</strong></td><td>Full REST API with Postman collection for programmatic integration</td></tr>
-                        <tr><td><strong>Protocols</strong></td><td>HTTPS, SFTP, DCAT-AP, DSP 2025-1, DCP</td></tr>
+                        <tr><td><strong>Protocols</strong></td><td>HTTPS, DCAT-AP, DSP 2025-1, DCP</td></tr>
                         <tr><td><strong>Database</strong></td><td>MongoDB for persistent catalog and negotiation state</td></tr>
                         <tr><td><strong>Multitenancy</strong></td><td>Multiple independent tenants on a single instance with full isolation</td></tr>
                         <tr><td><strong>UI Customization</strong></td><td>Custom logo and branding per connector instance</td></tr>
