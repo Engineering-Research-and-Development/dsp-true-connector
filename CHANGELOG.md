@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
 - `AuthenticationCache` — removed DAPS dependencies, fixed thread-safety (volatile fields, return inside synchronized block).
 - `UserService` and `UserApiController` — switched condition from `NonKeycloakAuthenticationModeCondition` to `BasicOrDisabledAuthenticationModeCondition`; active in BASIC and DISABLED modes only.
 - Protocol endpoint authentication failures now return DSP-compliant JSON error responses in all auth modes (via `DataspaceProtocolEndpointsAuthenticationEntryPoint` hooked into `httpBasic`).
-- `doc/security.md`, `KEYCLOAK_CHANGES_SUMMARY.md`, `KEYCLOAK_INTEGRATION_COMPLETE_SUMMARY.md` updated to reflect current architecture.
+- `doc/security.md` and `KEYCLOAK_INTEGRATION_COMPLETE_SUMMARY.md` updated to reflect current architecture.
 
 ### Removed
 - `WebSecurityConfig` and `KeycloakSecurityConfig` — replaced by `ConnectorSecurityConfig`.
@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 - LEGACY authentication mode and associated filter classes: `JwtAuthenticationFilter`, `JwtAuthenticationProvider`, `JwtAuthenticationToken`, `DataspaceProtocolEndpointsAuthenticationFilter`.
 - `LegacyAuthenticationModeCondition`, `NonKeycloakAuthenticationModeCondition`.
 - DAPS SSL bundle configuration (`spring.ssl.bundle.jks.daps.*`) from all property files (consumer, provider, CI, TCK, Terraform).
+- Removed md files for authentication plan, breakdown and implementation steps.
 
 ## [0.6.9-SNAPSHOT] - 27.03.2026.
 

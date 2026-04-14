@@ -78,13 +78,12 @@
 
 ### Security model
 
-- There are two major auth modes in `connector`:
-  - default / non-Keycloak mode: `WebSecurityConfig`
-  - Keycloak mode: `KeycloakSecurityConfig`
-- Keycloak mode is activated by `application.keycloak.enable=true`.
+- Authentication in `connector` is configured via `ConnectorSecurityConfig`.
+- The active authentication provider is selected with the `application.auth.provider` property.
+- Optional DCP-related behavior can be enabled with `application.auth.dcp.enabled=true`.
 - Protocol endpoints (`/connector/**`, `/catalog/**`, `/negotiations/**`, `/transfers/**`) require `ROLE_CONNECTOR`.
 - Management endpoints under `/api/**` require `ROLE_ADMIN`.
-- `doc/security.md` is the source-of-truth doc for Keycloak, DAPS, TLS, and OCSP behavior. Read it before changing authentication behavior.
+- `doc/security.md` is the source-of-truth doc for authentication, DAPS, TLS, and OCSP behavior. Read it before changing authentication behavior.
 
 ### Runtime profiles and roles
 
