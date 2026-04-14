@@ -637,8 +637,7 @@ public class DataTransferAPIService {
             policyCheck(transferProcessDownloading);
         } catch (DataTransferAPIException e) {
             transferProcessRepository.save(transferProcessDownloading.withIsDownloading(false));
-            return CompletableFuture.failedFuture(
-                    new DataTransferAPIException(e.getLocalizedMessage()));
+            return CompletableFuture.failedFuture(e);
         }
         log.info("Starting download transfer process id - {} data...", transferProcessId);
 
@@ -684,6 +683,7 @@ public class DataTransferAPIService {
                                 .state(transferProcessDownloading.getState())
                                 .role(transferProcessDownloading.getRole())
                                 .datasetId(transferProcessDownloading.getDatasetId())
+                                .retryCount(transferProcessDownloading.getRetryCount())
                                 .created(transferProcessDownloading.getCreated())
                                 .createdBy(transferProcessDownloading.getCreatedBy())
                                 .modified(transferProcessDownloading.getModified())
