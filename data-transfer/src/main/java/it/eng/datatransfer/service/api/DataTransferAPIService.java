@@ -91,6 +91,7 @@ public class DataTransferAPIService {
      */
     @PostConstruct
     void resetStaleDownloadingFlags() {
+//TODO remove or move when the suspend/resume logic is in place. Check also if cleanup is still needed for stale parts on S3 (download never finished) .
         List<TransferProcess> stale = transferProcessRepository.findAllByIsDownloadInProgressTrue();
         if (!stale.isEmpty()) {
             log.warn("Found {} transfer process(es) with stale isDownloadInProgress=true flag. Resetting on startup.", stale.size());
