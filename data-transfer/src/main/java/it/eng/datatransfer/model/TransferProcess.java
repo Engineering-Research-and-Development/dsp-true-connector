@@ -74,7 +74,7 @@ public class TransferProcess extends AbstractTransferMessage {
      * frontend can drive a download spinner.
      */
     @JsonIgnore
-    private boolean isDownloading;
+    private boolean isDownloadInProgress;
 
     /**
      * Id of the downloaded and stored data on consumer side.
@@ -158,8 +158,8 @@ public class TransferProcess extends AbstractTransferMessage {
             return this;
         }
 
-        public Builder isDownloading(boolean isDownloading) {
-            message.isDownloading = isDownloading;
+        public Builder isDownloadInProgress(boolean isDownloadInProgress) {
+            message.isDownloadInProgress = isDownloadInProgress;
             return this;
         }
 
@@ -270,7 +270,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .callbackAddress(this.callbackAddress)
                 .dataAddress(this.dataAddress)
                 .isDownloaded(this.isDownloaded)
-                .isDownloading(this.isDownloading)
+                .isDownloadInProgress(this.isDownloadInProgress)
                 .dataId(this.dataId)
                 .format(this.format)
                 .state(newTransferState)
@@ -302,7 +302,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .callbackAddress(this.callbackAddress)
                 .dataAddress(this.dataAddress)
                 .isDownloaded(this.isDownloaded)
-                .isDownloading(this.isDownloading)
+                .isDownloadInProgress(this.isDownloadInProgress)
                 .dataId(this.dataId)
                 .format(this.format)
                 .state(this.state)
@@ -319,13 +319,13 @@ public class TransferProcess extends AbstractTransferMessage {
     }
 
     /**
-     * Creates a new TransferProcess with the specified isDownloading flag.
+     * Creates a new TransferProcess with the specified isDownloadInProgress flag.
      * All other fields remain unchanged.
      *
-     * @param isDownloading {@code true} if a download is currently in progress, {@code false} otherwise
-     * @return new TransferProcess instance with updated isDownloading flag
+     * @param isDownloadInProgress {@code true} if a download is currently in progress, {@code false} otherwise
+     * @return new TransferProcess instance with updated isDownloadInProgress flag
      */
-    public TransferProcess withIsDownloading(boolean isDownloading) {
+    public TransferProcess withIsDownloadInProgress(boolean isDownloadInProgress) {
         return TransferProcess.Builder.newInstance()
                 .id(this.id)
                 .agreementId(this.agreementId)
@@ -334,7 +334,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .callbackAddress(this.callbackAddress)
                 .dataAddress(this.dataAddress)
                 .isDownloaded(this.isDownloaded)
-                .isDownloading(isDownloading)
+                .isDownloadInProgress(isDownloadInProgress)
                 .dataId(this.dataId)
                 .format(this.format)
                 .state(this.state)

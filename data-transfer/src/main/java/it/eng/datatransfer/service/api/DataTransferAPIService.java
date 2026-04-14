@@ -86,18 +86,18 @@ public class DataTransferAPIService {
     }
 
     /**
-     * Resets any {@code isDownloading=true} flags left over from a previous crash or unclean shutdown.
+     * Resets any {@code isDownloadInProgress=true} flags left over from a previous crash or unclean shutdown.
      * Called automatically once the Spring context has finished initializing.
      */
     @PostConstruct
     void resetStaleDownloadingFlags() {
-        List<TransferProcess> stale = transferProcessRepository.findAllByIsDownloadingTrue();
+        List<TransferProcess> stale = transferProcessRepository.findAllByIsDownloadInProgressTrue();
         if (!stale.isEmpty()) {
-            log.warn("Found {} transfer process(es) with stale isDownloading=true flag. Resetting on startup.", stale.size());
+            log.warn("Found {} transfer process(es) with stale isDownloadInProgress=true flag. Resetting on startup.", stale.size());
             stale.forEach(tp -> {
-                TransferProcess reset = tp.withIsDownloading(false);
+                TransferProcess reset = tp.withIsDownloadInProgress(false);
                 transferProcessRepository.save(reset);
-                log.info("Reset isDownloading flag for transfer process {}", tp.getId());
+                log.info("Reset isDownloadInProgress flag for transfer process {}", tp.getId());
             });
         }
     }
@@ -616,7 +616,7 @@ public class DataTransferAPIService {
             throw new DataTransferAPIException("Download aborted, data for Transfer Process " + transferProcessId + " has already been downloaded");
         }
 
-        if (transferProcess.isDownloading()) {
+        if (transferProcess.isDownloadInProgress()) {
             log.error("Download aborted, Transfer Process {} is already in progress", transferProcessId);
             // Throw synchronously so the exception propagates to the HTTP layer and returns 400.
             throw new DataTransferAPIException("Download aborted, Transfer Process " + transferProcessId + " is already in progress");
@@ -624,10 +624,10 @@ public class DataTransferAPIService {
 
         // Mark download as in progress and persist so the frontend spinner can react.
         // The @Version field provides optimistic locking: a concurrent request that also
-        // passed the isDownloading check above will fail here with OptimisticLockingFailureException.
+        // passed the isDownloadInProgress check above will fail here with OptimisticLockingFailureException.
         TransferProcess transferProcessDownloading;
         try {
-            transferProcessDownloading = transferProcessRepository.save(transferProcess.withIsDownloading(true));
+            transferProcessDownloading = transferProcessRepository.save(transferProcess.withIsDownloadInProgress(true));
         } catch (OptimisticLockingFailureException e) {
             log.error("Download aborted, Transfer Process {} is already in progress (concurrent request)", transferProcessId);
             throw new DataTransferAPIException("Download aborted, Transfer Process " + transferProcessId + " is already in progress");
@@ -636,7 +636,7 @@ public class DataTransferAPIService {
         try {
             policyCheck(transferProcessDownloading);
         } catch (DataTransferAPIException e) {
-            transferProcessRepository.save(transferProcessDownloading.withIsDownloading(false));
+            transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
             return CompletableFuture.failedFuture(e);
         }
         log.info("Starting download transfer process id - {} data...", transferProcessId);
@@ -646,7 +646,7 @@ public class DataTransferAPIService {
         try {
             strategy = dataTransferStrategyFactory.getStrategy(transferProcessDownloading.getFormat());
         } catch (Exception e) {
-            transferProcessRepository.save(transferProcessDownloading.withIsDownloading(false));
+            transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
             throw e;
         }
 
@@ -655,7 +655,7 @@ public class DataTransferAPIService {
         try {
             transferFuture = strategy.transfer(transferProcessDownloading);
         } catch (Exception e) {
-            transferProcessRepository.save(transferProcessDownloading.withIsDownloading(false));
+            transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
             throw e;
         }
 
@@ -677,7 +677,7 @@ public class DataTransferAPIService {
                                 .callbackAddress(transferProcessDownloading.getCallbackAddress())
                                 .dataAddress(transferProcessDownloading.getDataAddress())
                                 .isDownloaded(true)
-                                .isDownloading(false)
+                                .isDownloadInProgress(false)
                                 .dataId(transferProcessDownloading.getId())
                                 .format(transferProcessDownloading.getFormat())
                                 .state(transferProcessDownloading.getState())
@@ -695,7 +695,7 @@ public class DataTransferAPIService {
                     } else {
                         log.error("Transfer process id - {} data transmission interrupted : {}", transferProcessId, throwable.getMessage());
                         // Reset the in-progress flag so future downloads can be attempted.
-                        transferProcessRepository.save(transferProcessDownloading.withIsDownloading(false));
+                        transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
                         publisher.publishEvent(AuditEventType.TRANSFER_FAILED,
                                 "Data transfer failed for process " + transferProcessDownloading.getId(),
                                 auditMap("role", IConstants.ROLE_PROTOCOL,
