@@ -118,6 +118,18 @@ class UserServiceTest {
 		
 		verify(userRepository).save(any(User.class));
 	}
+
+	@Test
+	@DisplayName("Update user without logged in principal in disabled mode")
+	void updateUser_withoutLoggedInUser() {
+		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
+		when(userDTO.getFirstName()).thenReturn("First Name update");
+		when(userDTO.getLastName()).thenReturn("Last Name update");
+
+		userService.updateUser(USER_ID, null, userDTO);
+
+		verify(userRepository).save(any(User.class));
+	}
 	
 	@Test
 	@DisplayName("Update user - user not found")
@@ -154,6 +166,22 @@ class UserServiceTest {
 		
 		userService.updatePassword(USER_ID, TestUtil.USER.getEmail(), userDTO);
 		
+		verify(userRepository).save(any(User.class));
+	}
+
+	@Test
+	@DisplayName("Update user password without logged in principal in disabled mode")
+	void updatePassword_withoutLoggedInUser() {
+		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
+		when(encoder.matches(anyString(), anyString())).thenReturn(true);
+		when(userDTO.getPassword()).thenReturn("aaa");
+		when(passwordValidator.isValid(anyString())).thenReturn(passwordValidationResult);
+		when(passwordValidationResult.isValid()).thenReturn(true);
+		when(userDTO.getNewPassword()).thenReturn("newPassword");
+		when(encoder.encode(anyString())).thenReturn("passwordEncoded");
+
+		userService.updatePassword(USER_ID, null, userDTO);
+
 		verify(userRepository).save(any(User.class));
 	}
 	

@@ -9,6 +9,7 @@ import it.eng.tools.property.ApplicationPropertyKeys;
 import it.eng.tools.repository.ApplicationPropertiesRepository;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.serializer.ToolsSerializer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -33,6 +34,13 @@ public class ApplicationPropertyIT extends BaseIntegrationTest {
 
     @Autowired
     private ApplicationPropertiesRepository repository;
+
+    @AfterEach
+    public void cleanup() {
+        // Only delete the test-specific property; do not call deleteAll() as the system
+        // relies on pre-loaded application properties.
+        repository.deleteById(TEST_KEY);
+    }
 
     @Test
     @WithUserDetails(TestUtil.ADMIN_USER)
@@ -104,7 +112,6 @@ public class ApplicationPropertyIT extends BaseIntegrationTest {
         GenericApiResponse<List<ApplicationProperty>> apiResp = ToolsSerializer.deserializePlain(json, typeRef);
 
         assertNotNull(apiResp.getData());
-        repository.deleteById(changedProperty.getKey());
     }
 
 }

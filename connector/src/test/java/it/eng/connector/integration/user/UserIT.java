@@ -8,6 +8,7 @@ import it.eng.connector.repository.UserRepository;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.serializer.ToolsSerializer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -16,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -25,10 +27,35 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 public class UserIT extends BaseIntegrationTest {
 
+    // Known test-specific email addresses used across all tests in this class.
+    // Only these are deleted in @AfterEach; deleteAll() is intentionally avoided to
+    // preserve seed users (admin, connector user) that the application requires.
+    private static final List<String> TEST_USER_EMAILS = List.of(
+            "test@mail.com",
+            "email_test@mail.com",
+            "otherUser@mail.com",
+            "otherUser1@mail.com",
+            "otherUser3@mail.com",
+            "otherUser4@mail.com"
+    );
+
+    // updateUser test creates a duplicate entry under the admin email; track by ID for safe cleanup.
+    private String savedTestAdminDuplicateId;
+
     @Autowired
     private UserRepository userRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @AfterEach
+    public void cleanup() {
+        TEST_USER_EMAILS.forEach(email ->
+                userRepository.findByEmail(email).ifPresent(userRepository::delete));
+        if (savedTestAdminDuplicateId != null) {
+            userRepository.deleteById(savedTestAdminDuplicateId);
+            savedTestAdminDuplicateId = null;
+        }
+    }
 
     @Test
     @WithUserDetails(TestUtil.ADMIN_USER)
@@ -107,8 +134,6 @@ public class UserIT extends BaseIntegrationTest {
         // verify expected behavior
         result.andExpect(status().is4xxClientError())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-
-        userRepository.delete(user);
     }
 
     @Test
@@ -117,6 +142,8 @@ public class UserIT extends BaseIntegrationTest {
         User user = new User(createNewId(), "FirstNameTest", "LastNameTest", TestUtil.ADMIN_USER, "password",
                 true, false, false, Role.ROLE_ADMIN);
         userRepository.save(user);
+        // Track ID for @AfterEach cleanup; can't delete by email as it matches the seed admin user.
+        savedTestAdminDuplicateId = user.getId();
 
         UserDTO userDTO = new UserDTO("FirstNameTestUpdate", "LastNameTestUpdate", null, null, null, Role.ROLE_ADMIN);
 
@@ -130,8 +157,6 @@ public class UserIT extends BaseIntegrationTest {
         User userUpdated = userRepository.findById(user.getId()).get();
         assertEquals(userUpdated.getFirstName(), "FirstNameTestUpdate");
         assertEquals(userUpdated.getLastName(), "LastNameTestUpdate");
-
-        userRepository.delete(userUpdated);
     }
 
     @Test
@@ -154,8 +179,6 @@ public class UserIT extends BaseIntegrationTest {
         User userUpdated = userRepository.findById(user.getId()).get();
         assertEquals(userUpdated.getFirstName(), "FirstNameTest");
         assertEquals(userUpdated.getLastName(), "LastNameTest");
-
-        userRepository.delete(user);
     }
 
     @Test
@@ -176,8 +199,6 @@ public class UserIT extends BaseIntegrationTest {
 
         result.andExpect(status().is2xxSuccessful())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-
-        userRepository.delete(user);
     }
 
     @Test
@@ -198,8 +219,6 @@ public class UserIT extends BaseIntegrationTest {
 
         result.andExpect(status().is4xxClientError())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-
-        userRepository.delete(user);
     }
 
     @Test
@@ -223,7 +242,5 @@ public class UserIT extends BaseIntegrationTest {
 
         result.andExpect(status().is4xxClientError())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-
-        userRepository.delete(user);
     }
 }

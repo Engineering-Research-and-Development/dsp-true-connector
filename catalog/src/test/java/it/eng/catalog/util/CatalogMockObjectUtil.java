@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.util.*;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class CatalogMockObjectUtil {
 
@@ -45,11 +46,11 @@ public class CatalogMockObjectUtil {
             Multilanguage.Builder.newInstance().language("en").value("For test update").build();
 
     public static final DataService DATA_SERVICE_FOR_UPDATE = DataService.Builder.newInstance()
-            .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
-            .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
+            .keyword(Stream.of("keyword1", "keyword2").collect(Collectors.toCollection(HashSet::new)))
+            .theme(Stream.of("white", "blue", "aqua").collect(Collectors.toCollection(HashSet::new)))
             .conformsTo(CONFORMSTO)
             .creator(CREATOR + " update")
-            .description(Arrays.asList(MULTILANGUAGE_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .description(Stream.of(MULTILANGUAGE_UPDATE).collect(Collectors.toCollection(HashSet::new)))
             .identifier(IDENTIFIER)
             .issued(ISSUED)
             .modified(MODIFIED)
@@ -62,11 +63,11 @@ public class CatalogMockObjectUtil {
 
     public static final DataService DATA_SERVICE = DataService.Builder.newInstance()
             .id(UUID.randomUUID().toString())
-            .keyword(Arrays.asList("DataService keyword1", "DataService keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
-            .theme(Arrays.asList("DataService theme1", "DataService theme2").stream().collect(Collectors.toCollection(HashSet::new)))
+            .keyword(Stream.of("DataService keyword1", "DataService keyword2").collect(Collectors.toCollection(HashSet::new)))
+            .theme(Stream.of("DataService theme1", "DataService theme2").collect(Collectors.toCollection(HashSet::new)))
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
-            .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .description(Stream.of(MULTILANGUAGE).collect(Collectors.toCollection(HashSet::new)))
             .identifier(IDENTIFIER)
             .issued(ISSUED)
             .modified(MODIFIED)
@@ -109,72 +110,72 @@ public class CatalogMockObjectUtil {
 
     public static final Permission PERMISSION = Permission.Builder.newInstance()
             .action(Action.USE)
-            .constraint(Arrays.asList(CONSTRAINT).stream().collect(Collectors.toCollection(HashSet::new)))
+            .constraint(Stream.of(CONSTRAINT).collect(Collectors.toCollection(HashSet::new)))
             .build();
 
     public static final Permission PERMISSION_UPDATE = Permission.Builder.newInstance()
             .action(Action.USE)
-            .constraint(Arrays.asList(CONSTRAINT_COUNT_5_TIMES).stream().collect(Collectors.toCollection(HashSet::new)))
+            .constraint(Stream.of(CONSTRAINT_COUNT_5_TIMES).collect(Collectors.toCollection(HashSet::new)))
             .build();
 
     public static final Permission PERMISSION_ANONYMIZE = Permission.Builder.newInstance()
             .action(Action.ANONYMIZE)
-            .constraint(Arrays.asList(CONSTRAINT_COUNT_5_TIMES).stream().collect(Collectors.toCollection(HashSet::new)))
+            .constraint(Stream.of(CONSTRAINT_COUNT_5_TIMES).collect(Collectors.toCollection(HashSet::new)))
             .build();
 
     public static final Offer OFFER = Offer.Builder.newInstance()
             .id("urn:offer_id")
 //            .target(TARGET)
-            .permission(Arrays.asList(PERMISSION).stream().collect(Collectors.toCollection(HashSet::new)))
+            .permission(Stream.of(PERMISSION).collect(Collectors.toCollection(HashSet::new)))
             .build();
 
     public static final Offer OFFER_WITH_TARGET = Offer.Builder.newInstance()
             .id("urn:offer_id")
             .target(DATASET_ID)
-            .permission(Arrays.asList(PERMISSION).stream().collect(Collectors.toCollection(HashSet::new)))
+            .permission(Stream.of(PERMISSION).collect(Collectors.toCollection(HashSet::new)))
             .build();
 
     public static final Offer OFFER_UPDATE = Offer.Builder.newInstance()
             .id("urn:offer_id_update")
             .target(TARGET)
-            .permission(Arrays.asList(PERMISSION_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .permission(Stream.of(PERMISSION_UPDATE).collect(Collectors.toCollection(HashSet::new)))
             .build();
 
     public static final Distribution DISTRIBUTION = Distribution.Builder.newInstance()
             .title(TITLE)
-            .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .description(Stream.of(MULTILANGUAGE).collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
             .modified(MODIFIED)
             .format("HTTP:PULL")
-            .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
+            .hasPolicy(Stream.of(OFFER).collect(Collectors.toCollection(HashSet::new)))
             .accessService(DATA_SERVICE)
             .build();
 
     public static final Distribution DISTRIBUTION_FOR_UPDATE = Distribution.Builder.newInstance()
             .title(TITLE + " update")
-            .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .description(Stream.of(MULTILANGUAGE).collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
             .modified(MODIFIED)
-            .hasPolicy(Arrays.asList(OFFER_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .hasPolicy(Stream.of(OFFER_UPDATE).collect(Collectors.toCollection(HashSet::new)))
             .accessService(DATA_SERVICE)
             .createdBy("admin@mail.com")
             .lastModifiedBy("admin@mail.com")
             .build();
 
-    public static final Collection<Distribution> DISTRIBUTIONS = Arrays.asList(DISTRIBUTION);
+    public static final Collection<Distribution> DISTRIBUTIONS = Collections.singletonList(DISTRIBUTION);
     public static final Dataset DATASET = Dataset.Builder.newInstance()
             .id(DATASET_ID)
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
-            .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
-            .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .distribution(Stream.of(DISTRIBUTION).collect(Collectors.toCollection(HashSet::new)))
+            .description(Stream.of(MULTILANGUAGE).collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
-            .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
+            .keyword(Stream.of("keyword1", "keyword2").collect(Collectors.toCollection(HashSet::new)))
             .identifier(IDENTIFIER)
             .modified(MODIFIED)
-            .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
+            .theme(Stream.of("white", "blue", "aqua").collect(Collectors.toCollection(HashSet::new)))
             .title(TITLE)
-            .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
+            .hasPolicy(Stream.of(OFFER).collect(Collectors.toCollection(HashSet::new)))
             .build();
 
     public static final Dataset DATASET_WITH_ARTIFACT = Dataset.Builder.newInstance()
@@ -182,52 +183,52 @@ public class CatalogMockObjectUtil {
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
             .artifact(ARTIFACT_FILE)
-            .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
-            .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .distribution(Stream.of(DISTRIBUTION).collect(Collectors.toCollection(HashSet::new)))
+            .description(Stream.of(MULTILANGUAGE).collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
-            .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
+            .keyword(Stream.of("keyword1", "keyword2").collect(Collectors.toCollection(HashSet::new)))
             .identifier(IDENTIFIER)
             .modified(MODIFIED)
-            .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
+            .theme(Stream.of("white", "blue", "aqua").collect(Collectors.toCollection(HashSet::new)))
             .title(TITLE)
-            .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
+            .hasPolicy(Stream.of(OFFER).collect(Collectors.toCollection(HashSet::new)))
             .build();
 
     public static final Dataset DATASET_FOR_UPDATE = Dataset.Builder.newInstance()
             .conformsTo(CONFORMSTO)
             .creator(CREATOR + " update")
-            .distribution(Arrays.asList(DISTRIBUTION_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
-            .description(Arrays.asList(MULTILANGUAGE_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .distribution(Stream.of(DISTRIBUTION_FOR_UPDATE).collect(Collectors.toCollection(HashSet::new)))
+            .description(Stream.of(MULTILANGUAGE_UPDATE).collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
-            .keyword(Arrays.asList("keyword1 update", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
+            .keyword(Stream.of("keyword1 update", "keyword2").collect(Collectors.toCollection(HashSet::new)))
             .identifier(IDENTIFIER)
             .modified(MODIFIED)
-            .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
+            .theme(Stream.of("white", "blue", "aqua").collect(Collectors.toCollection(HashSet::new)))
             .title(TITLE + " update")
-            .hasPolicy(Arrays.asList(OFFER_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
+            .hasPolicy(Stream.of(OFFER_UPDATE).collect(Collectors.toCollection(HashSet::new)))
             .createdBy("admin@mail.com")
             .lastModifiedBy("admin@mail.com")
             .issued(ISSUED)
             .modified(MODIFIED)
             .build();
 
-    public static final Set<Dataset> DATASETS = Arrays.asList(DATASET).stream().collect(Collectors.toCollection(HashSet::new));
+    public static final Set<Dataset> DATASETS = Stream.of(DATASET).collect(Collectors.toCollection(HashSet::new));
 
     public static final Catalog CATALOG = Catalog.Builder.newInstance()
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
-            .description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build()).stream().collect(Collectors.toCollection(HashSet::new)))
+            .description(Stream.of(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build()).collect(Collectors.toCollection(HashSet::new)))
             .identifier(IDENTIFIER)
             .issued(ISSUED)
-            .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
+            .keyword(Stream.of("keyword1", "keyword2").collect(Collectors.toCollection(HashSet::new)))
             .modified(MODIFIED)
-            .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
+            .theme(Stream.of("white", "blue", "aqua").collect(Collectors.toCollection(HashSet::new)))
             .title(TITLE)
             .participantId("urn:example:DataProviderA")
-            .service(Arrays.asList(DATA_SERVICE).stream().collect(Collectors.toCollection(HashSet::new)))
-            .dataset(Arrays.asList(DATASET).stream().collect(Collectors.toCollection(HashSet::new)))
-            .distribution(Arrays.asList(DISTRIBUTION).stream().collect(Collectors.toCollection(HashSet::new)))
-            .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
+            .service(Stream.of(DATA_SERVICE).collect(Collectors.toCollection(HashSet::new)))
+            .dataset(Stream.of(DATASET).collect(Collectors.toCollection(HashSet::new)))
+            .distribution(Stream.of(DISTRIBUTION).collect(Collectors.toCollection(HashSet::new)))
+            .hasPolicy(Stream.of(OFFER).collect(Collectors.toCollection(HashSet::new)))
             .build();
 
     /**
@@ -262,17 +263,16 @@ public class CatalogMockObjectUtil {
     public static final Catalog CATALOG_FOR_UPDATE = Catalog.Builder.newInstance()
             .conformsTo(CONFORMSTO)
             .creator(CREATOR)
-            .description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog description update").build())
-                    .stream().collect(Collectors.toCollection(HashSet::new)))
+            .description(Stream.of(Multilanguage.Builder.newInstance().language("en").value("Catalog description update").build()).collect(Collectors.toCollection(HashSet::new)))
             .identifier(IDENTIFIER)
-            .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
-            .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
+            .keyword(Stream.of("keyword1", "keyword2").collect(Collectors.toCollection(HashSet::new)))
+            .theme(Stream.of("white", "blue", "aqua").collect(Collectors.toCollection(HashSet::new)))
             .title(TITLE)
             .participantId("urn:example:DataProviderA")
-            .service(Arrays.asList(DATA_SERVICE_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
-            .dataset(Arrays.asList(DATASET_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
-            .distribution(Arrays.asList(DISTRIBUTION_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
-            .hasPolicy(Arrays.asList(OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
+            .service(Stream.of(DATA_SERVICE_FOR_UPDATE).collect(Collectors.toCollection(HashSet::new)))
+            .dataset(Stream.of(DATASET_FOR_UPDATE).collect(Collectors.toCollection(HashSet::new)))
+            .distribution(Stream.of(DISTRIBUTION_FOR_UPDATE).collect(Collectors.toCollection(HashSet::new)))
+            .hasPolicy(Stream.of(OFFER).collect(Collectors.toCollection(HashSet::new)))
             .issued(ISSUED)
             .modified(MODIFIED)
             .build();
@@ -283,13 +283,13 @@ public class CatalogMockObjectUtil {
             .filter(List.of("some-filter"))
             .build();
 
-    public static final Collection<Catalog> CATALOGS = Arrays.asList(CATALOG);
+    public static final Collection<Catalog> CATALOGS = Collections.singletonList(CATALOG);
 
     public static final DatasetRequestMessage DATASET_REQUEST_MESSAGE = DatasetRequestMessage.Builder.newInstance()
             .dataset(CatalogSerializer.serializeProtocol(DATASET))
             .build();
 
-    public static final Collection<DataService> DATA_SERVICES = Arrays.asList(DATA_SERVICE);
+    public static final Collection<DataService> DATA_SERVICES = Collections.singletonList(DATA_SERVICE);
 
     public static void getAllKeysUsingJsonNodeFieldNames(JsonNode jsonNode, Set<String> keys) {
         if (jsonNode.isObject()) {
@@ -328,11 +328,11 @@ public class CatalogMockObjectUtil {
      */
     public static DataService createNewDataService() {
         return DataService.Builder.newInstance()
-                .keyword(Arrays.asList("DataService keyword1", "DataService keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
-                .theme(Arrays.asList("DataService theme1", "DataService theme2").stream().collect(Collectors.toCollection(HashSet::new)))
+                .keyword(Stream.of("DataService keyword1", "DataService keyword2").collect(Collectors.toCollection(HashSet::new)))
+                .theme(Stream.of("DataService theme1", "DataService theme2").collect(Collectors.toCollection(HashSet::new)))
                 .conformsTo(CONFORMSTO)
                 .creator(CREATOR)
-                .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+                .description(new HashSet<>(Collections.singletonList(MULTILANGUAGE)))
                 .identifier(IDENTIFIER)
                 .issued(ISSUED)
                 .modified(MODIFIED)
@@ -350,11 +350,11 @@ public class CatalogMockObjectUtil {
     public static Distribution createNewDistribution() {
         return Distribution.Builder.newInstance()
                 .title(TITLE)
-                .description(Arrays.asList(MULTILANGUAGE).stream().collect(Collectors.toCollection(HashSet::new)))
+                .description(new HashSet<>(Collections.singletonList(MULTILANGUAGE)))
                 .issued(ISSUED)
                 .modified(MODIFIED)
                 .format("HttpData-PULL")
-                .hasPolicy(Arrays.asList(createNewOffer()).stream().collect(Collectors.toCollection(HashSet::new)))
+                .hasPolicy(new HashSet<>(Collections.singletonList(createNewOffer())))
                 .accessService(createNewDataService())
                 .build();
     }
@@ -367,7 +367,7 @@ public class CatalogMockObjectUtil {
     public static Permission createNewPermission() {
         return Permission.Builder.newInstance()
                 .action(Action.USE)
-                .constraint(Arrays.asList(CONSTRAINT).stream().collect(Collectors.toCollection(HashSet::new)))
+                .constraint(Stream.of(CONSTRAINT).collect(Collectors.toCollection(HashSet::new)))
                 .build();
     }
 
@@ -378,7 +378,7 @@ public class CatalogMockObjectUtil {
      */
     public static Offer createNewOffer() {
         return Offer.Builder.newInstance()
-                .permission(Arrays.asList(createNewPermission()).stream().collect(Collectors.toCollection(HashSet::new)))
+                .permission(Stream.of(createNewPermission()).collect(Collectors.toCollection(HashSet::new)))
                 .build();
     }
 
@@ -393,15 +393,15 @@ public class CatalogMockObjectUtil {
                 .id(datasetId)
                 .conformsTo(CONFORMSTO)
                 .creator(CREATOR)
-                .distribution(Arrays.asList(createNewDistribution()).stream().collect(Collectors.toCollection(HashSet::new)))
-                .description(Arrays.asList(createNewMultilanguage()).stream().collect(Collectors.toCollection(HashSet::new)))
+                .distribution(new HashSet<>(Collections.singletonList(createNewDistribution())))
+                .description(new HashSet<>(Collections.singletonList(createNewMultilanguage())))
                 .issued(ISSUED)
-                .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
+                .keyword(new HashSet<>(Arrays.asList("keyword1", "keyword2")))
                 .identifier(IDENTIFIER)
                 .modified(MODIFIED)
-                .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
+                .theme(new HashSet<>(Arrays.asList("white", "blue", "aqua")))
                 .title(TITLE)
-                .hasPolicy(Arrays.asList(createNewOffer()).stream().collect(Collectors.toCollection(HashSet::new)))
+                .hasPolicy(new HashSet<>(Collections.singletonList(createNewOffer())))
                 .artifact(createNewArtifact(datasetId))
                 .build();
     }

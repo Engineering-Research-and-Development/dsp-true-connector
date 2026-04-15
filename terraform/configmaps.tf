@@ -207,8 +207,8 @@ resource "kubernetes_secret" "ui_a_ssl" {
   }
   type = "Opaque"
   data = {
-    "ui-a-cert.key" = filebase64("${path.module}/app-resources/ui_a_resources/ssl/ui-a-cert.key")
-    "ui-a-cert.crt" = filebase64("${path.module}/app-resources/ui_a_resources/ssl/ui-a-cert.crt")
+    "ui-a-cert.key" = file("${path.module}/app-resources/ui_a_resources/ssl/ui-a-cert.key")
+    "ui-a-cert.crt" = file("${path.module}/app-resources/ui_a_resources/ssl/ui-a-cert.crt")
   }
 }
 
@@ -227,7 +227,7 @@ resource "kubernetes_secret" "ui_b_ssl" {
   }
   type = "Opaque"
   data = {
-    "ui-b-cert.key" = filebase64("${path.module}/app-resources/ui_b_resources/ssl/ui-b-cert.key")
-    "ui-b-cert.crt" = filebase64("${path.module}/app-resources/ui_b_resources/ssl/ui-b-cert.crt")
+    "ui-b-cert.key" = file("${path.module}/app-resources/ui_b_resources/ssl/ui-b-cert.key")
+    "ui-b-cert.crt" = file("${path.module}/app-resources/ui_b_resources/ssl/ui-b-cert.crt")
   }
 }
