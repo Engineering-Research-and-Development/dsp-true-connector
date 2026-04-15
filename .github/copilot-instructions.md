@@ -83,7 +83,7 @@
 - Optional DCP-related behavior can be enabled with `application.auth.dcp.enabled=true`.
 - Protocol endpoints (`/connector/**`, `/catalog/**`, `/negotiations/**`, `/transfers/**`) require `ROLE_CONNECTOR`.
 - Management endpoints under `/api/**` require `ROLE_ADMIN`.
-- `doc/security.md` is the source-of-truth doc for authentication, DAPS, TLS, and OCSP behavior. Read it before changing authentication behavior.
+- `doc/security.md` is the source-of-truth doc for authentication, TLS, and OCSP behavior. Read it before changing authentication behavior.
 
 ### Runtime profiles and roles
 

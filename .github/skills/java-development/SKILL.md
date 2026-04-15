@@ -43,6 +43,7 @@ The detailed guidance below was adapted from `.github/instructions/java.instruct
   references (e.g., `stream.map(Foo::toBar)`).
 - **Null Handling**: Avoid returning or accepting `null`. Use `Optional<T>` for possibly-absent values and `Objects`
   utility methods like `equals()` and `requireNonNull()`.
+- Don't use fully qualified names in code; use imports instead.
 
 ### Naming Conventions
 
