@@ -73,7 +73,7 @@ public class KeycloakAuthenticationFilter extends OncePerRequestFilter {
             log.debug("JWT decoded successfully. Subject: {}, Issuer: {}", jwt.getSubject(), jwt.getIssuer());
 
             Collection<GrantedAuthority> authorities = authoritiesConverter.convert(jwt);
-            log.info("Extracted authorities from JWT: {}", authorities);
+            log.debug("Extracted authorities from JWT: {}", authorities);
 
             Authentication authentication = new JwtAuthenticationToken(jwt, authorities);
 

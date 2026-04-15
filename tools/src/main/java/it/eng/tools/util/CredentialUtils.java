@@ -20,7 +20,7 @@ public class CredentialUtils {
 
 	/**
 	 * Retrieves connector credentials for connector-to-connector communication.
-	 * Uses JWT token from DAPS or Keycloak.
+	 * Uses JWT token from Keycloak/BASIC/DISABLED.
 	 *
 	 * @return Bearer token authorization header
 	 */
@@ -29,6 +29,7 @@ public class CredentialUtils {
 		if (token == null || AuthenticationCache.DUMMY_TOKEN_VALUE.equals(token)) {
 			// Fall back to basic auth if no token is available
 			log.info("getConnectorCredentials() - No valid token available, falling back to Basic Auth");
+			//TODO consider to move users from connector to tools module so user can be loaded from Mongo and not hardcoded.
 			return okhttp3.Credentials.basic("connector@mail.com", "password");
 		}
 		return "Bearer " + token;

@@ -67,7 +67,7 @@ public class AuthenticationCache {
 									.toInstant()
 									.atZone(ZoneId.systemDefault())
 									.toLocalDateTime();
-						} catch (JWTDecodeException e) {
+						} catch (JWTDecodeException | NullPointerException e) {
 							log.error("Could not get token expiration time {}", e.getMessage());
 							// Setting to default values since the JWT token was not correct
 							cachedToken = null;

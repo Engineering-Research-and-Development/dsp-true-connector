@@ -167,7 +167,3 @@ class KeycloakAuthenticationServiceTest {
 		assertTrue(result);
 	}
 }
-//
-//
-//
-//

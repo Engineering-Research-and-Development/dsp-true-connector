@@ -69,11 +69,6 @@ public class KeycloakAuthenticationService implements AuthProvider {
 
             tokenResponse = okHttpClient.newCall(request).execute();
 
-            if (tokenResponse == null) {
-                log.error("Token response is null");
-                return null;
-            }
-
             if (!tokenResponse.isSuccessful()) {
                 log.error("Failed to fetch token. HTTP status: {}", tokenResponse.code());
                 return null;
@@ -108,7 +103,7 @@ public class KeycloakAuthenticationService implements AuthProvider {
 
     /**
      * Validates a Keycloak token.
-     * Currently returns true for any non-null token.
+     * Currently, returns true for any non-null token.
      * Enhanced validation can be added by calling Keycloak's introspection endpoint.
      *
      * @param token the token to validate

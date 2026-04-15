@@ -55,7 +55,7 @@ final class KeycloakRealmRoleConverter implements Converter<Jwt, Collection<Gran
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toUnmodifiableSet());
 
-        log.info("Converted Keycloak roles {} to Spring authorities: {}", roles, authorities);
+        log.debug("Converted Keycloak roles {} to Spring authorities: {}", roles, authorities);
         return authorities;
     }
 }
