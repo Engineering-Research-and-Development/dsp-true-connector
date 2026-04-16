@@ -18,7 +18,6 @@ The following are stored in Kubernetes Secrets and injected as environment varia
 - ✅ `KEYSTORE_PASSWORD` - From Secret key `keystore_password`
 - ✅ `KEY_PASSWORD` - From Secret key `key_password`
 - ✅ `TRUSTSTORE_PASSWORD` - From Secret key `truststore_password`
-- ✅ `DAPS_KEYSTORE_PASSWORD` - From Secret key `daps_keystore_password`
 
 ### Configuration in ConfigMaps (Non-sensitive)
 Only non-sensitive configuration values are in ConfigMaps:
@@ -90,7 +89,6 @@ All keystore and truststore passwords are stored in Kubernetes Secrets and injec
 | Keystore Password | `keystore_password` | `$${KEYSTORE_PASSWORD}` |
 | Key Password | `key_password` | `$${KEY_PASSWORD}` |
 | Truststore Password | `truststore_password` | `$${TRUSTSTORE_PASSWORD}` |
-| DAPS Keystore Password | `daps_keystore_password` | `$${DAPS_KEYSTORE_PASSWORD}` |
 
 ---
 
@@ -192,11 +190,6 @@ spec:
           secretKeyRef:
             name: dsp-connector-a-credentials
             key: truststore_password
-      - name: DAPS_KEYSTORE_PASSWORD
-        valueFrom:
-          secretKeyRef:
-            name: dsp-connector-a-credentials
-            key: daps_keystore_password
     
     volumeMounts:
     - name: config

@@ -54,16 +54,6 @@ variable "keystore_connector_b_config" {
   }
 }
 
-variable "daps_config" {
-  description = "DAPS configuration"
-  type = map(string)
-  default = {
-    DAPS_KEYSTORE_NAME     = ""
-    DAPS_KEYSTORE_PASSWORD = ""
-    DAPS_KEYSTORE_ALIAS    = ""
-  }
-}
-
 variable "connector_b_callback_address" {
   description = "Connector B callback address"
   type        = string

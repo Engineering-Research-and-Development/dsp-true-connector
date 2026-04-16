@@ -11,7 +11,6 @@ resource "kubernetes_secret" "connector_a_credentials" {
     "KEYSTORE_PASSWORD"        = var.keystore_connector_a_config["KEYSTORE_PASSWORD"]
     "KEY_PASSWORD"             = var.keystore_connector_a_config["KEY_PASSWORD"]
     "TRUSTSTORE_PASSWORD"      = var.keystore_connector_a_config["TRUSTSTORE_PASSWORD"]
-    "DAPS_KEYSTORE_PASSWORD"   = var.daps_config["DAPS_KEYSTORE_PASSWORD"]
   }
 }
 
@@ -28,7 +27,6 @@ resource "kubernetes_secret" "connector_b_credentials" {
     "KEYSTORE_PASSWORD"        = var.keystore_connector_b_config["KEYSTORE_PASSWORD"]
     "KEY_PASSWORD"             = var.keystore_connector_b_config["KEY_PASSWORD"]
     "TRUSTSTORE_PASSWORD"      = var.keystore_connector_b_config["TRUSTSTORE_PASSWORD"]
-    "DAPS_KEYSTORE_PASSWORD"   = var.daps_config["DAPS_KEYSTORE_PASSWORD"]
   }
 }
 
@@ -60,8 +58,6 @@ resource "kubernetes_config_map" "connector_a_env" {
   }
   data = {
     CALLBACK_ADDRESS       = var.connector_a_callback_address
-    DAPS_KEYSTORE_NAME     = var.daps_config["DAPS_KEYSTORE_NAME"]
-    DAPS_KEYSTORE_ALIAS    = var.daps_config["DAPS_KEYSTORE_ALIAS"]
     KEYSTORE_NAME          = var.keystore_connector_a_config["KEYSTORE_NAME"]
     KEYSTORE_ALIAS         = var.keystore_connector_a_config["KEYSTORE_ALIAS"]
     TRUSTSTORE_NAME        = var.keystore_connector_a_config["TRUSTSTORE_NAME"]
@@ -74,8 +70,6 @@ resource "kubernetes_config_map" "connector_b_env" {
   }
   data = {
     CALLBACK_ADDRESS       = var.connector_b_callback_address
-    DAPS_KEYSTORE_NAME     = var.daps_config["DAPS_KEYSTORE_NAME"]
-    DAPS_KEYSTORE_ALIAS    = var.daps_config["DAPS_KEYSTORE_ALIAS"]
     KEYSTORE_NAME          = var.keystore_connector_b_config["KEYSTORE_NAME"]
     KEYSTORE_ALIAS         = var.keystore_connector_b_config["KEYSTORE_ALIAS"]
     TRUSTSTORE_NAME        = var.keystore_connector_b_config["TRUSTSTORE_NAME"]
@@ -121,9 +115,6 @@ resource "local_file" "connector_a_properties" {
     KEYSTORE_PASSWORD                   = "$${KEYSTORE_PASSWORD}"
     TRUSTSTORE_NAME                     = var.keystore_connector_a_config["TRUSTSTORE_NAME"]
     TRUSTSTORE_PASSWORD                 = "$${TRUSTSTORE_PASSWORD}"
-    DAPS_KEYSTORE_NAME                  = var.daps_config["DAPS_KEYSTORE_NAME"]
-    DAPS_KEYSTORE_PASSWORD              = "$${DAPS_KEYSTORE_PASSWORD}"
-    DAPS_KEYSTORE_ALIAS                 = var.daps_config["DAPS_KEYSTORE_ALIAS"]
     APPLICATION_AUTOMATIC_TRANSFER      = var.connector_a_config.automatic_transfer
     APPLICATION_AUTOMATIC_NEGOTIATION   = var.connector_a_config.automatic_negotiation
     MONGODB_HOST                        = var.connector_a_config.mongodb_host
@@ -161,9 +152,6 @@ resource "local_file" "connector_b_properties" {
     KEYSTORE_PASSWORD                   = "$${KEYSTORE_PASSWORD}"
     TRUSTSTORE_NAME                     = var.keystore_connector_b_config["TRUSTSTORE_NAME"]
     TRUSTSTORE_PASSWORD                 = "$${TRUSTSTORE_PASSWORD}"
-    DAPS_KEYSTORE_NAME                  = var.daps_config["DAPS_KEYSTORE_NAME"]
-    DAPS_KEYSTORE_PASSWORD              = "$${DAPS_KEYSTORE_PASSWORD}"
-    DAPS_KEYSTORE_ALIAS                 = var.daps_config["DAPS_KEYSTORE_ALIAS"]
     APPLICATION_AUTOMATIC_TRANSFER      = var.connector_b_config.automatic_transfer
     APPLICATION_AUTOMATIC_NEGOTIATION   = var.connector_b_config.automatic_negotiation
     MONGODB_HOST                        = var.connector_b_config.mongodb_host

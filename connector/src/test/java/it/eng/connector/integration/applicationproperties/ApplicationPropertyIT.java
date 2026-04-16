@@ -64,7 +64,7 @@ public class ApplicationPropertyIT extends BaseIntegrationTest {
 
         result =
                 mockMvc.perform(
-                        get(ApiEndpoints.PROPERTIES_V1 + "/?key_prefix=" + ApplicationPropertyKeys.DAPS_PREFIX)
+                        get(ApiEndpoints.PROPERTIES_V1 + "/?key_prefix=" + ApplicationPropertyKeys.PROTOCOL_AUTHENTICATION)
                                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                                 .accept(MediaType.APPLICATION_JSON_VALUE));
         result.andExpect(status().isOk())
@@ -74,7 +74,7 @@ public class ApplicationPropertyIT extends BaseIntegrationTest {
         apiResp = ToolsSerializer.deserializePlain(json, typeRef);
 
         assertNotNull(apiResp.getData());
-        Optional<ApplicationProperty> shouldBeEmpty = apiResp.getData().stream().filter(prop -> !prop.getKey().contains(ApplicationPropertyKeys.DAPS_PREFIX)).findAny();
+        Optional<ApplicationProperty> shouldBeEmpty = apiResp.getData().stream().filter(prop -> !prop.getKey().contains(ApplicationPropertyKeys.PROTOCOL_AUTHENTICATION)).findAny();
         assertTrue(shouldBeEmpty.isEmpty());
     }
 

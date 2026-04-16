@@ -62,7 +62,6 @@ Project is structured as multi-module maven project:
 - [Refactoring Documentation](doc/refactoring/README.md) - Major refactoring efforts
   - [Authentication System](doc/refactoring/AUTHENTICATION_REFACTORING.md)
   - [Circular Dependency Resolution](doc/refactoring/CIRCULAR_DEPENDENCY_RESOLUTION.md)
-  - [DAPS Integration](doc/refactoring/DAPS_REFACTORING_HISTORY.md)
   - [Keycloak Integration](doc/refactoring/KEYCLOAK_INTEGRATION_HISTORY.md)
   - [Provider/Consumer Roles](doc/refactoring/PROVIDER_CONSUMER_ROLES.md)
   - [Test Coverage](doc/refactoring/TEST_COVERAGE_AND_IMPROVEMENTS.md)
