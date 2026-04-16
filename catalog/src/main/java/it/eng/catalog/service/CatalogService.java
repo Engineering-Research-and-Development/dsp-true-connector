@@ -55,6 +55,8 @@ public class CatalogService {
 
         List<Catalog> allCatalogs = repository.findAll();
 
+        log.info("Catalogs found: {}", allCatalogs.size());
+
         // remove datasets that do not have files in S3
         // external files can not be checked at the time of writing and will be automatically allowed
         allCatalogs.forEach(catalog -> catalog.getDataset().removeIf(

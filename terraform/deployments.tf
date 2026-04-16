@@ -76,8 +76,9 @@ resource "kubernetes_deployment" "minio" {
       }
       spec {
         container {
-          name  = "minio"
-          image = var.minio_image
+          name              = "minio"
+          image             = var.minio_image
+          image_pull_policy = "IfNotPresent"
           command = [
             "minio",
             "server",
@@ -147,8 +148,9 @@ resource "kubernetes_deployment" "mongodb" {
       }
       spec {
         container {
-          name  = "mongodb"
-          image = var.mongodb_image
+          name              = "mongodb"
+          image             = var.mongodb_image
+          image_pull_policy = "IfNotPresent"
           port {
             container_port = 27017
           }
