@@ -89,10 +89,27 @@ public class DataTransferMockObjectUtil {
             .dataAddress(DATA_ADDRESS)
             .datasetId(DATASET_ID)
             .isDownloaded(false)
+            .isDownloadInProgress(false)
             .dataId(null)
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_PROVIDER)
+            .state(TransferState.STARTED)
+            .format(DataTransferFormat.HTTP_PULL.name())
+            .build();
+
+    /** Transfer process in STARTED state with an active download in progress. */
+    public static final TransferProcess TRANSFER_PROCESS_STARTED_DOWNLOADING = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .datasetId(DATASET_ID)
+            .isDownloaded(false)
+            .isDownloadInProgress(true)
+            .dataId(null)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_CONSUMER)
             .state(TransferState.STARTED)
             .format(DataTransferFormat.HTTP_PULL.name())
             .build();

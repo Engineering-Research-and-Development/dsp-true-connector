@@ -91,8 +91,8 @@
   - `connector/src/main/resources/application-consumer.properties`
   - `connector/src/main/resources/application-provider.properties`
   - `connector/src/main/resources/application-tck.properties`
-- `consumer` runs on port `8080` and sets `application.isconsumer=true`.
-- `provider` runs on port `8090` and sets `application.isconsumer=false`.
+- `consumer` runs on port `8080`.
+- `provider` runs on port `8090`.
 - The TCK profile is separate from the normal verify flow.
 
 ## Key repository conventions

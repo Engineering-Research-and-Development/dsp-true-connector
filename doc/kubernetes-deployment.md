@@ -61,13 +61,6 @@ keystore_connector_b_config = {
   TRUSTSTORE_PASSWORD = "password"
 }
 
-# DAPS Configuration (empty if not using DAPS)
-daps_config = {
-  DAPS_KEYSTORE_NAME     = ""
-  DAPS_KEYSTORE_PASSWORD = ""
-  DAPS_KEYSTORE_ALIAS    = ""
-}
-
 # Connector A Configuration
 connector_a_config = {
   automatic_transfer      = false

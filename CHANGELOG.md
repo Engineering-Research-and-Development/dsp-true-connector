@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.11-SNAPSHOT] - 16.04.2026.
+
+### Added
+- `TransferProcess.isDownloadInProgress` — new boolean field persisted to MongoDB and exposed in plain API responses, enabling the frontend to drive a download spinner. Includes crash recovery via `@PostConstruct resetStaleDownloadingFlags()` in `DataTransferAPIService` that resets stale `isDownloadInProgress=true` records left behind by a previous crash or restart.
+
+### Changed
+- `DataTransferAPIService.downloadData()` — replaced the in-memory `ConcurrentHashMap<String, CompletableFuture<Void>> activeTransfers` concurrent-download guard with the new DB-backed `isDownloadInProgress` flag. The flag is now visible to the frontend and survives server restarts; concurrent requests are rejected via Spring Data MongoDB `@Version` optimistic locking (`OptimisticLockingFailureException`).
+- `TemporaryBucketUserService.deleteTemporaryUser()` — IAM user is now deleted before the policy; Minio rejects policy deletion with `XMinioIAMPolicyInUse` when the policy is still attached to a user, so removing the user first releases the attachment and allows the subsequent policy deletion to succeed.
+
 ## [0.6.10-SNAPSHOT] - 02.04.2026.
 
 ### Added
@@ -35,7 +44,7 @@ All notable changes to this project will be documented in this file.
 - `NegotiationConfiguration` — new Spring `@Configuration` class in the negotiation module providing the `negotiationTaskScheduler` bean (`ThreadPoolTaskScheduler`, pool size 5, thread prefix `negotiation-retry-`) for non-blocking retry scheduling in `AutomaticNegotiationService`; pool size tunable via `application.negotiation.scheduler.pool-size`.
 - `DataTransferConfigurationTest` and `NegotiationConfigurationTest` — unit tests covering the new scheduler beans.
 
-### Fixed
+### Changed
 - `downloadData()` endpoint now correctly returns HTTP 400 when the transfer process is not in `STARTED` state, was already downloaded, or a download is already in progress. Previously, the async refactor caused all validation failures to be silently swallowed and always return HTTP 202.
 - Resolved 11 bugs identified in a deep-scan audit of `DataTransferAPIService` and related classes:
   - Temporary IAM user leak on `requestTransfer()` failure — `deleteTemporaryUser()` is now always called in a `finally` block.
@@ -59,8 +68,6 @@ All notable changes to this project will be documented in this file.
 - `InitialDataLoader` no longer aborts application startup when the seed data JSON file is missing from the classpath; the loader now logs an info message and returns cleanly. Any I/O or parse error during loading is also caught and logged without re-throwing.
 - `TemporaryBucketUserService.createTemporaryUser()` — added compensating `deleteUser()` call in a `catch` block to prevent orphaned IAM users when policy attachment or MongoDB persistence fails after the IAM user has already been created.
 - `TemporaryBucketUserService.deleteTemporaryUser()` — policy is now revoked before the IAM user is deleted so the user loses access immediately, not after.
-
-### Changed
 - Using temporary user for S3 upload in HTTP-PUSH transfer strategy, with policy scoped to single object key and cleanup after transfer completion.
 - S3 multipart upload default chunk size reduced from 50 MB to 10 MB (10,485,760 bytes); updated in `S3Properties`, all `application*.properties` files (ci, connector, terraform), and upload strategy unit tests.
 - Default `s3.upload-mode` changed from `ASYNC` to `SYNC` in `application-consumer.properties` and `application-provider.properties`.

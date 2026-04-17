@@ -220,6 +220,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
         assertEquals(transferProcessStarted.getAgreementId(), transferProcessFromDb.getAgreementId());
         assertEquals(transferProcessStarted.getCallbackAddress(), transferProcessFromDb.getCallbackAddress());
         assertEquals(TransferState.COMPLETED, transferProcessFromDb.getState());
+        assertFalse(transferProcessFromDb.isDownloadInProgress());
         // +1 from test
         assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
     }
@@ -341,6 +342,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
         assertEquals(transferProcessStarted.getAgreementId(), transferProcessFromDb.getAgreementId());
         assertEquals(transferProcessStarted.getCallbackAddress(), transferProcessFromDb.getCallbackAddress());
         assertEquals(TransferState.COMPLETED, transferProcessFromDb.getState());
+        assertFalse(transferProcessFromDb.isDownloadInProgress());
         // +1 from test
         assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
     }
@@ -431,6 +433,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
         TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessStarted.getId()).get();
 
         assertFalse(transferProcessFromDb.isDownloaded());
+        assertFalse(transferProcessFromDb.isDownloadInProgress());
         assertNull(transferProcessFromDb.getDataId());
         assertEquals(transferProcessStarted.getConsumerPid(), transferProcessFromDb.getConsumerPid());
         assertEquals(transferProcessStarted.getProviderPid(), transferProcessFromDb.getProviderPid());
