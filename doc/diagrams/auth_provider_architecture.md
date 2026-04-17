@@ -368,7 +368,7 @@ connector/src/main/java/it/eng/connector/configuration/
 │  │  auth.provider=     │  │  auth.provider=     │              │
 │  │  KEYCLOAK           │  │  KEYCLOAK           │              │
 │  │                     │  │                     │              │
-│  │  isconsumer=true    │  │  isconsumer=false   │              │
+│  │                     │  │                     │              │
 │  └──────────┬──────────┘  └─────────────────────┘              │
 │             │                       ▲                           │
 │             │  DSP Protocol         │                           │
