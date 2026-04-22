@@ -209,11 +209,14 @@ Deleted on `TERMINATED` (including URL-expiry path) and on natural `COMPLETED`. 
 
 ### Exception routing in `whenComplete`
 
-| Exception type | Action |
+`cancellationRegistry.deregister(transferProcessId)` is called on **every** exit path (success and all error types) before any other action.
+
+| Exit condition | Action |
 |---|---|
-| `TransferCancelledException` | Graceful suspend — deregister token, reset `isDownloadInProgress`. No failure event. |
-| `PresignedUrlExpiredException` | Send termination message, transition to `TERMINATED`, delete checkpoint, clean up temp user. |
-| Any other `Throwable` | Existing error path — reset flag, publish `TRANSFER_FAILED`. |
+| Success (no throwable) | Deregister token, save completed `TransferProcess`, delete `TransferArtifactState`, send `TransferCompletionMessage`. |
+| `TransferCancelledException` | Deregister token, reset `isDownloadInProgress`. No failure event — transfer is already `SUSPENDED`. Checkpoint preserved. |
+| `PresignedUrlExpiredException` | Deregister token, send `TransferTerminationMessage` (code `"409"`, reason `"download URL expired"`), transition to `TERMINATED`, delete checkpoint, clean up temp user. |
+| Any other `Throwable` | Deregister token, existing error path — reset `isDownloadInProgress`, publish `TRANSFER_FAILED`. |
 
 ---
 
