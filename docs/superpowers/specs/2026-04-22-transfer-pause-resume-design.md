@@ -17,8 +17,11 @@ When a `TransferSuspensionMessage` is received, the running download is not inte
 | Question | Decision |
 |---|---|
 | Resume granularity | Abort multipart on suspend; `Range: bytes=N-` + fresh multipart on resume |
-| Who owns suspend (PULL) | Consumer |
-| Who owns suspend (PUSH) | Provider |
+| Who can suspend | Either party (Consumer **or** Provider) — both strategies, both roles |
+| Who can resume | Only the party who sent the last `TransferSuspensionMessage` |
+| Initial `TransferStartMessage` | Provider only (standard DSP) |
+| Resume `TransferStartMessage` | Either party — DSP spec permits this; validated against `suspendedBy` |
+| Suspend effect | Immediate — `CancellationRegistry` is signalled inline with `TransferSuspensionMessage` handling, no intermediary step |
 | Cancellation style | Graceful — finish current chunk, then stop |
 | Implementation approach | `AtomicBoolean` cancellation token threaded through call stack |
 | Crash / disconnect resilience | Full — checkpoint to MongoDB after every part |
@@ -43,6 +46,8 @@ No other component needs to know about this map.
 
 The checkpoint store. Already has all required fields: `uploadId`, `partNumber`, `etags`, `downloadedBytes`, `totalBytes`, `presignURL`, `destBucket`, `destObject`. Currently unpopulated — this feature populates it.
 
+One new field is added: **`suspendedBy`** (`String` — `"CONSUMER"` or `"PROVIDER"`). This is set when the transfer is suspended and validated on every resume attempt.
+
 After every uploaded part, the strategy upserts this document with updated `downloadedBytes`, `partNumber`, and the new ETag. On transfer `COMPLETED` or `TERMINATED`, the document is deleted.
 
 ### `TransferCancelledException` (new unchecked exception — `data-transfer`)
@@ -57,29 +62,56 @@ Thrown by the transfer strategy when a presigned URL returns `403 Forbidden` on 
 
 ## Suspend Flow
 
-### Request side (triggered by `TransferSuspensionMessage`)
+Either party (Consumer or Provider) can send a `TransferSuspensionMessage`. Whoever sends it is recorded as `suspendedBy` and is the only one who may resume the transfer.
 
-1. `AbstractDataTransferService.suspendDataTransfer()` transitions `TransferProcess` to `SUSPENDED` in MongoDB (existing behaviour, unchanged).
-2. `DataTransferAPIService.suspendTransfer()` calls `cancellationRegistry.signal(transferProcessId)` immediately after — sets the `AtomicBoolean` to `true`.
+### Identifying the active party
 
-**Race condition guard:** If the transfer completes naturally between the state transition (step 1) and the signal (step 2), `suspendTransfer()` checks whether the state is already terminal (`COMPLETED` / `TERMINATED`) and no-ops gracefully.
+The party running the active transfer thread is always the same:
+- **PULL** — Consumer runs the download. Consumer's connector holds the `CancellationToken`.
+- **PUSH** — Provider runs the upload. Provider's connector holds the `CancellationToken`.
+
+When `suspendDataTransfer()` is called (either because this connector initiated the suspension, or because it received a `TransferSuspensionMessage`), it calls `cancellationRegistry.signal(transferProcessId)`. This is a no-op on the non-active side (no token registered there), so the same code path works unconditionally on both connectors.
+
+### Suspension initiated by the ACTIVE party (own request)
+
+*Example: Consumer suspends a PULL transfer; Provider suspends a PUSH transfer.*
+
+1. Management API receives the suspend request.
+2. `suspendDataTransfer()` is called:
+   a. Records `suspendedBy = <this connector's role>` in `TransferArtifactState`.
+   b. Transitions `TransferProcess` to `SUSPENDED` in MongoDB.
+   c. Calls `cancellationRegistry.signal(transferProcessId)` — stops the running download/upload.
+3. Sends `TransferSuspensionMessage` to the counterpart's callback endpoint.
+
+### Suspension initiated by the NON-ACTIVE party (remote request)
+
+*Example: Provider suspends a PULL transfer; Consumer suspends a PUSH transfer.*
+
+1. Non-active party's management API receives the suspend request.
+2. Non-active party sends `TransferSuspensionMessage` to the active party's callback endpoint.
+3. Active party's protocol endpoint receives the message:
+   a. Records `suspendedBy = <sender's role>` in `TransferArtifactState`.
+   b. Transitions `TransferProcess` to `SUSPENDED` in MongoDB.
+   c. Calls `cancellationRegistry.signal(transferProcessId)` — stops the running download/upload immediately.
 
 ### Upload side (running on executor thread)
 
 After each part finishes uploading, before requesting the next chunk:
 
-1. Call `onPartCompleted` callback → upsert `TransferArtifactState` to MongoDB
+1. Call `onPartCompleted` callback → upsert `TransferArtifactState` to MongoDB.
 2. Check `cancellationToken.get()` — if `true`:
-   - Abort the in-progress S3 multipart upload
-   - Throw `TransferCancelledException`
+   - Abort the in-progress S3 multipart upload.
+   - Throw `TransferCancelledException`.
 
 ### `downloadData()` completion handler
 
 `whenComplete` catches `TransferCancelledException`:
-- Calls `cancellationRegistry.deregister(transferProcessId)`
-- Resets `isDownloadInProgress = false`
-- Does **not** publish `TRANSFER_FAILED` — the transfer is already `SUSPENDED`
-- Does **not** delete `TransferArtifactState` — it is needed for resume
+- Calls `cancellationRegistry.deregister(transferProcessId)`.
+- Resets `isDownloadInProgress = false`.
+- Does **not** publish `TRANSFER_FAILED` — the transfer is already `SUSPENDED`.
+- Does **not** delete `TransferArtifactState` — it is needed for resume.
+
+**Race condition guard:** If the transfer completes naturally between the state transition and the signal, `suspendDataTransfer()` checks whether the state is already terminal (`COMPLETED` / `TERMINATED`) and no-ops gracefully.
 
 ---
 
@@ -87,23 +119,44 @@ After each part finishes uploading, before requesting the next chunk:
 
 When `startTransfer()` is called on a `SUSPENDED` transfer, `downloadData()` runs the normal entry path but checks for an existing checkpoint first.
 
+### Resume authorisation
+
+A `TransferStartMessage` on a `SUSPENDED` transfer is accepted only if the sender's role matches `suspendedBy` recorded in `TransferArtifactState`. If it does not match, the message is rejected with a protocol error.
+
+**Initial start vs. resume start:** The initial `TransferStartMessage` (from `REQUESTED` state) can only be sent by the Provider (standard DSP). Resume `TransferStartMessage` (from `SUSPENDED` state) can be sent by either party — DSP spec explicitly permits this — but is gated by the `suspendedBy` check above.
+
+### Resume message flow
+
+**Case A — Active party resumes (Consumer resumes PULL they suspended; Provider resumes PUSH they suspended):**
+1. Management API receives the resume request.
+2. Validates `suspendedBy == <this connector's role>`.
+3. Sends `TransferStartMessage` to counterpart's callback endpoint.
+4. Counterpart receives it, transitions state to `STARTED`, sends acknowledgment.
+5. Initiating side triggers `downloadData()` / `uploadData()` locally (same decoupled mechanism as initial start).
+
+**Case B — Non-active party resumes (Provider resumes a PULL they suspended; Consumer resumes a PUSH they suspended):**
+1. Management API receives the resume request.
+2. Validates `suspendedBy == <this connector's role>`.
+3. Sends `TransferStartMessage` to counterpart's callback endpoint (same as initial start).
+4. Active party receives it, transitions state to `STARTED`, triggers `downloadData()` / `uploadData()`.
+
 ### Resume detection in `downloadData()`
 
-1. Look up `TransferArtifactState` by `transferProcessId` from `TransferArtifactStateRepository`
-2. If found → resume path
-3. If not found → fresh download (existing behaviour, unchanged)
+1. Look up `TransferArtifactState` by `transferProcessId` from `TransferArtifactStateRepository`.
+2. If found → resume path.
+3. If not found → fresh download (existing behaviour, unchanged).
 
 ### Resume path
 
-1. Load `downloadedBytes` from the checkpoint — this is the HTTP `Range` start offset
-2. Register a fresh `AtomicBoolean(false)` in `CancellationRegistry`
-3. Call `strategy.transfer(transferProcess, Optional<TransferArtifactState>)` with the loaded state
+1. Load `downloadedBytes` from the checkpoint — this is the HTTP `Range` start offset.
+2. Register a fresh `AtomicBoolean(false)` in `CancellationRegistry`.
+3. Call `strategy.transfer(transferProcess, Optional<TransferArtifactState>)` with the loaded state.
 4. The strategy opens the HTTP connection with `Range: bytes=N-` instead of a plain `GET`
    - S3 / MinIO responds with `206 Partial Content`
-   - The `Range` header is NOT part of the presigned URL signature — safe to add on PULL and PUSH alike
+   - The `Range` header is NOT part of the presigned URL signature — safe to add on PULL and PUSH alike (verified by `MinioPresignedUrlRangeIT`)
 5. Start a **fresh** S3 multipart upload (new `uploadId`) — we do not continue the aborted multipart
    - The destination object key is unchanged; the new multipart replaces any partial state
-6. Checkpointing and cancellation proceed identically to the original download
+6. Checkpointing and cancellation proceed identically to the original download.
 
 ### Strategy interface change
 
