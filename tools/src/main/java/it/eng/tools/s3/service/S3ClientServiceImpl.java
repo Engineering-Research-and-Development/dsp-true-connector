@@ -7,6 +7,7 @@ import it.eng.tools.s3.model.S3UploadMode;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.upload.S3UploadStrategy;
 import it.eng.tools.s3.service.upload.S3UploadStrategyFactory;
+import it.eng.tools.s3.service.upload.UploadCheckpointCallback;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.ApplicationPropertiesService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,6 +31,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Implementation of the S3 client service.
@@ -71,7 +73,9 @@ public class S3ClientServiceImpl implements S3ClientService {
     public CompletableFuture<String> uploadFile(InputStream inputStream,
                                                 Map<String, String> destinationS3Properties,
                                                 String contentType,
-                                                String contentDisposition) {
+                                                String contentDisposition,
+                                                AtomicBoolean cancellationToken,
+                                                UploadCheckpointCallback checkpointCallback) {
 
         BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
                     .bucketName(destinationS3Properties.get(S3Utils.BUCKET_NAME))
@@ -93,9 +97,9 @@ public class S3ClientServiceImpl implements S3ClientService {
                 bucketCredentials);
 
         // Get appropriate strategy from factory based on upload mode
-        S3UploadStrategy strategy = uploadStrategyFactory.getStrategy(uploadMode);
-
-        return strategy.uploadFile(inputStream, s3ClientRequest, bucketName, objectKey, contentType, contentDisposition);
+        return uploadStrategyFactory.getStrategy(uploadMode)
+                .uploadFile(inputStream, s3ClientRequest, bucketName, objectKey,
+                        contentType, contentDisposition, cancellationToken, checkpointCallback);
     }
 
     /**
