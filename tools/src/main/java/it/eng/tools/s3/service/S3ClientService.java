@@ -19,6 +19,7 @@ public interface S3ClientService {
      * Uploads a file without cancellation or checkpoint support.
      *
      * <p>Delegates to the 6-parameter overload with a no-op token and callback.
+     * The {@code inputStream} is closed automatically after the upload completes.
      *
      * @param inputStream             data source
      * @param destinationS3Properties destination bucket properties
@@ -38,6 +39,8 @@ public interface S3ClientService {
     /**
      * Uploads a file with cancellation support and checkpoint callbacks.
      *
+     * <p>The {@code inputStream} is closed automatically after the upload completes.
+     *
      * @param inputStream             data source
      * @param destinationS3Properties destination bucket properties
      * @param contentType             MIME type
@@ -45,6 +48,8 @@ public interface S3ClientService {
      * @param cancellationToken       set to {@code true} to request graceful stop
      * @param checkpointCallback      invoked after each successfully uploaded part
      * @return CompletableFuture resolving to the final ETag
+     * @throws it.eng.tools.exceptions.TransferCancelledException if {@code cancellationToken}
+     *         is set to {@code true} before or during the upload
      */
     CompletableFuture<String> uploadFile(InputStream inputStream,
                                          Map<String, String> destinationS3Properties,

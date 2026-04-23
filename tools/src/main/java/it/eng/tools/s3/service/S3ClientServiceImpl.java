@@ -5,7 +5,6 @@ import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.model.S3UploadMode;
 import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.service.upload.S3UploadStrategy;
 import it.eng.tools.s3.service.upload.S3UploadStrategyFactory;
 import it.eng.tools.s3.service.upload.UploadCheckpointCallback;
 import it.eng.tools.s3.util.S3Utils;
