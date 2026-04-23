@@ -21,7 +21,10 @@ public interface UploadCheckpointCallback {
      *
      * @param partNumber          the 1-based part number within the current multipart upload
      * @param etag                the ETag returned by S3 for this part
-     * @param totalBytesUploaded  cumulative bytes uploaded in this multipart upload so far
+     * @param totalBytesUploaded  cumulative bytes transferred in <em>this</em> multipart upload
+     *                            session so far; does <em>not</em> include any byte range offset
+     *                            from which a resumed upload started — callers must add their
+     *                            {@code rangeStart} to obtain the absolute file offset
      */
     void onPartCompleted(int partNumber, String etag, long totalBytesUploaded);
 
