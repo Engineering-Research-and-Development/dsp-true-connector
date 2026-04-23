@@ -1,5 +1,6 @@
 package it.eng.tools.s3.service.upload;
 
+import it.eng.tools.exceptions.TransferCancelledException;
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Asynchronous S3 upload strategy implementation.
@@ -40,6 +42,22 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
     public S3AsyncUploadStrategy(S3ClientProvider s3ClientProvider, S3Properties s3Properties) {
         this.s3ClientProvider = s3ClientProvider;
         this.s3Properties = s3Properties;
+    }
+
+    @Override
+    public CompletableFuture<String> uploadFile(InputStream inputStream,
+                                               S3ClientRequest s3ClientRequest,
+                                               String bucketName,
+                                               String objectKey,
+                                               String contentType,
+                                               String contentDisposition,
+                                               AtomicBoolean cancellationToken,
+                                               UploadCheckpointCallback checkpointCallback) {
+        // TODO: Implement cancellation and checkpoint support for async strategy in future tasks
+        // For now, delegate to the existing 6-parameter method (ignoring cancellation/checkpoint)
+        log.warn("S3AsyncUploadStrategy does not yet support cancellation or checkpoint callbacks. " +
+                "Falling back to basic upload for key: {}", objectKey);
+        return uploadFile(inputStream, s3ClientRequest, bucketName, objectKey, contentType, contentDisposition);
     }
 
     @Override

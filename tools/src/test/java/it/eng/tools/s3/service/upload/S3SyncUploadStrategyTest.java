@@ -25,6 +25,10 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import it.eng.tools.exceptions.TransferCancelledException;
+import it.eng.tools.s3.service.upload.UploadCheckpointCallback;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 /**
  * Unit tests for S3SyncUploadStrategy.
  */
@@ -242,6 +246,58 @@ public class S3SyncUploadStrategyTest {
         assertEquals(OBJECT_KEY, captured.key());
         assertEquals(CONTENT_TYPE, captured.contentType());
         assertEquals(CONTENT_DISPOSITION, captured.contentDisposition());
+    }
+
+    // --- Cancellation + checkpoint tests ---
+
+    @Test
+    @DisplayName("uploadFile with cancellation token already set throws TransferCancelledException and aborts multipart")
+    void uploadFileWithCancellationAborts() {
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CreateMultipartUploadResponse.builder().uploadId(UPLOAD_ID).build());
+        when(s3Properties.getChunkSize()).thenReturn(10 * 1024 * 1024);
+
+        AtomicBoolean cancelToken = new AtomicBoolean(true); // pre-cancelled
+        InputStream input = new ByteArrayInputStream("some bytes".getBytes());
+
+        CompletableFuture<String> future = syncUploadStrategy.uploadFile(
+                input, s3ClientRequest, BUCKET_NAME, OBJECT_KEY,
+                CONTENT_TYPE, CONTENT_DISPOSITION, cancelToken, UploadCheckpointCallback.noOp());
+
+        CompletionException ex = assertThrows(CompletionException.class, future::join);
+        assertInstanceOf(TransferCancelledException.class, ex.getCause());
+        verify(s3Client).abortMultipartUpload(any(AbortMultipartUploadRequest.class));
+        verify(s3Client, never()).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
+    }
+
+    @Test
+    @DisplayName("uploadFile invokes checkpoint callback after each part with cumulative byte count")
+    void uploadFileInvokesCheckpointCallback() {
+        byte[] data = new byte[15 * 1024 * 1024]; // 15 MB -> 2 parts at 10 MB chunk
+        when(s3Properties.getChunkSize()).thenReturn(10 * 1024 * 1024);
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CreateMultipartUploadResponse.builder().uploadId(UPLOAD_ID).build());
+        when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+                .thenReturn(UploadPartResponse.builder().eTag(ETAG).build());
+        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(ETAG).build());
+
+        List<Integer> partNums = new java.util.ArrayList<>();
+        List<Long> byteCounts = new java.util.ArrayList<>();
+        UploadCheckpointCallback cb = new UploadCheckpointCallback() {
+            @Override public void onUploadStarted(String uploadId) {}
+            @Override public void onPartCompleted(int partNumber, String etag, long totalBytesUploaded) {
+                partNums.add(partNumber);
+                byteCounts.add(totalBytesUploaded);
+            }
+        };
+
+        syncUploadStrategy.uploadFile(new ByteArrayInputStream(data), s3ClientRequest,
+                BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION,
+                new AtomicBoolean(false), cb).join();
+
+        assertEquals(List.of(1, 2), partNums);
+        assertEquals(15 * 1024 * 1024, (long) byteCounts.get(1));
     }
 }
 
