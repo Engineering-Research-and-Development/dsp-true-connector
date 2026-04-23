@@ -13,6 +13,7 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
+import it.eng.datatransfer.repository.TransferArtifactStateRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
@@ -64,6 +65,10 @@ public class DataTransferServiceTest {
     private TemporaryBucketUserService temporaryBucketUserService;
     @Mock
     private FieldEncryptionService fieldEncryptionService;
+    @Mock
+    private CancellationRegistry cancellationRegistry;
+    @Mock
+    private TransferArtifactStateRepository transferArtifactStateRepository;
 
     @InjectMocks
     private DataTransferService service;
@@ -461,7 +466,7 @@ public class DataTransferServiceTest {
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.SUSPENDED, argTransferProcess.getValue().getState());
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED);
+        verifyAuditEvent(AuditEventType.TRANSFER_PAUSED);
     }
 
     @Test
@@ -479,7 +484,7 @@ public class DataTransferServiceTest {
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.SUSPENDED, argTransferProcess.getValue().getState());
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED);
+        verifyAuditEvent(AuditEventType.TRANSFER_PAUSED);
     }
 
     @Test

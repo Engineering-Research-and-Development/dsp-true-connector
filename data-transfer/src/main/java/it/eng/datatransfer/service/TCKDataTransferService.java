@@ -8,6 +8,8 @@ import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
+import it.eng.datatransfer.repository.TransferArtifactStateRepository;
+import it.eng.datatransfer.service.CancellationRegistry;
 import it.eng.datatransfer.rest.protocol.DataTransferCallback;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
@@ -53,8 +55,12 @@ public class TCKDataTransferService extends AbstractDataTransferService {
                                   CredentialUtils credentialUtils,
                                   DataTransferProperties dataTransferProperties,
                                   TemporaryBucketUserService temporaryBucketUserService,
-                                  FieldEncryptionService fieldEncryptionService) {
-        super(transferProcessRepository, auditEventPublisher, okHttpRestClient, transferRequestMessageRepository, dataTransferProperties, temporaryBucketUserService, fieldEncryptionService);
+                                  FieldEncryptionService fieldEncryptionService,
+                                  CancellationRegistry cancellationRegistry,
+                                  TransferArtifactStateRepository transferArtifactStateRepository) {
+        super(transferProcessRepository, auditEventPublisher, okHttpRestClient, transferRequestMessageRepository,
+                dataTransferProperties, temporaryBucketUserService, fieldEncryptionService,
+                cancellationRegistry, transferArtifactStateRepository);
         this.dataTransferAPIService = dataTransferAPIService;
         this.auditEventPublisher = auditEventPublisher;
         this.okHttpRestClient = okHttpRestClient;

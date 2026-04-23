@@ -6,6 +6,8 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
+import it.eng.datatransfer.repository.TransferArtifactStateRepository;
+import it.eng.datatransfer.service.CancellationRegistry;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
@@ -25,8 +27,12 @@ public class DataTransferService extends AbstractDataTransferService {
                                OkHttpRestClient okHttpRestClient,
                                DataTransferProperties transferProperties,
                                TemporaryBucketUserService temporaryBucketUserService,
-                               FieldEncryptionService fieldEncryptionService) {
-        super(transferProcessRepository, publisher, okHttpRestClient, transferRequestMessageRepository, transferProperties, temporaryBucketUserService, fieldEncryptionService);
+                               FieldEncryptionService fieldEncryptionService,
+                               CancellationRegistry cancellationRegistry,
+                               TransferArtifactStateRepository transferArtifactStateRepository) {
+        super(transferProcessRepository, publisher, okHttpRestClient, transferRequestMessageRepository,
+                transferProperties, temporaryBucketUserService, fieldEncryptionService,
+                cancellationRegistry, transferArtifactStateRepository);
     }
 
     /**

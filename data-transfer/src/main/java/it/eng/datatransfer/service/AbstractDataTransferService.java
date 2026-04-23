@@ -22,6 +22,8 @@ import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.FieldEncryptionService;
+import it.eng.datatransfer.repository.TransferArtifactStateRepository;
+import it.eng.datatransfer.model.TransferArtifactState;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpMethod;
@@ -42,6 +44,8 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
     private final DataTransferProperties transferProperties;
     private final TemporaryBucketUserService temporaryBucketUserService;
     private final FieldEncryptionService fieldEncryptionService;
+    private final CancellationRegistry cancellationRegistry;
+    private final TransferArtifactStateRepository transferArtifactStateRepository;
 
     protected AbstractDataTransferService(TransferProcessRepository transferProcessRepository,
                                           AuditEventPublisher publisher,
@@ -49,7 +53,9 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                                           TransferRequestMessageRepository transferRequestMessageRepository,
                                           DataTransferProperties transferProperties,
                                           TemporaryBucketUserService temporaryBucketUserService,
-                                          FieldEncryptionService fieldEncryptionService) {
+                                          FieldEncryptionService fieldEncryptionService,
+                                          CancellationRegistry cancellationRegistry,
+                                          TransferArtifactStateRepository transferArtifactStateRepository) {
         this.transferProcessRepository = transferProcessRepository;
         this.publisher = publisher;
         this.okHttpRestClient = okHttpRestClient;
@@ -57,6 +63,8 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
         this.transferProperties = transferProperties;
         this.temporaryBucketUserService = temporaryBucketUserService;
         this.fieldEncryptionService = fieldEncryptionService;
+        this.cancellationRegistry = cancellationRegistry;
+        this.transferArtifactStateRepository = transferArtifactStateRepository;
     }
 
     /**
@@ -243,6 +251,32 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
             throw new TransferProcessInvalidStateException(errorMessage, transferProcessRequested.getConsumerPid(), transferProcessRequested.getProviderPid());
         }
 
+        if (TransferState.SUSPENDED.equals(transferProcessRequested.getState())) {
+            String senderRole = IConstants.ROLE_CONSUMER.equals(transferProcessRequested.getRole())
+                    ? IConstants.ROLE_PROVIDER : IConstants.ROLE_CONSUMER;
+            TransferArtifactState artifactState = transferArtifactStateRepository
+                    .findById(transferProcessRequested.getId()).orElse(null);
+            if (artifactState != null && artifactState.getSuspendedBy() != null
+                    && !artifactState.getSuspendedBy().equals(senderRole)) {
+                String errorMsg = "Resume rejected: suspended by " + artifactState.getSuspendedBy()
+                        + " but start sent by " + senderRole;
+                publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR,
+                        "Transfer process resume rejected",
+                        Map.of("role", IConstants.ROLE_PROTOCOL,
+                                "consumerPid", transferProcessRequested.getConsumerPid(),
+                                "providerPid", transferProcessRequested.getProviderPid(),
+                                "suspendedBy", artifactState.getSuspendedBy(),
+                                "senderRole", senderRole));
+                throw new TransferProcessInvalidStateException(errorMsg,
+                        transferProcessRequested.getConsumerPid(), transferProcessRequested.getProviderPid());
+            }
+            // Clear suspendedBy now that the authorised party is resuming
+            if (artifactState != null) {
+                artifactState.setSuspendedBy(null);
+                transferArtifactStateRepository.save(artifactState);
+            }
+        }
+
         stateTransitionCheck(transferProcessRequested, TransferState.STARTED);
 
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
@@ -276,10 +310,16 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                         "transferProcess", transferProcessStarted,
                         "consumerPid", transferProcessStarted.getConsumerPid(),
                         "providerPid", transferProcessStarted.getProviderPid()));
-        // Automatic download trigger
+        // HTTP_PULL on CONSUMER: always auto-trigger download (initial start + Case B resume)
         if (transferProcessStarted.getRole().equals(IConstants.ROLE_CONSUMER)
-                && transferProperties.isAutomaticTransfer()
                 && DataTransferFormat.HTTP_PULL.format().equals(transferProcessStarted.getFormat())) {
+            publisher.publishEvent(new AutoTransferDownloadEvent(transferProcessStarted.getId()));
+        }
+        // HTTP_PUSH on PROVIDER receiving a start message in SUSPENDED state (Case B resume):
+        // trigger the upload to consumer's S3
+        if (transferProcessStarted.getRole().equals(IConstants.ROLE_PROVIDER)
+                && DataTransferFormat.HTTP_PUSH.format().equals(transferProcessStarted.getFormat())
+                && TransferState.SUSPENDED.equals(transferProcessRequested.getState())) {
             publisher.publishEvent(new AutoTransferDownloadEvent(transferProcessStarted.getId()));
         }
         return transferProcessStarted;
@@ -394,6 +434,18 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
         log.debug("Suspending data transfer for consumerPid {} and providerPid {}", consumerPidFinal, providerPidFinal);
 
         stateTransitionCheck(transferProcess, TransferState.SUSPENDED);
+        
+        // Record which party initiated the suspension (the sender = opposite of local role)
+        String senderRole = IConstants.ROLE_CONSUMER.equals(transferProcess.getRole())
+                ? IConstants.ROLE_PROVIDER : IConstants.ROLE_CONSUMER;
+        TransferArtifactState artifactState = transferArtifactStateRepository.findById(transferProcess.getId())
+                .orElseGet(() -> TransferArtifactState.Builder.newInstance()
+                        .id(transferProcess.getId()).build());
+        artifactState.setSuspendedBy(senderRole);
+        transferArtifactStateRepository.save(artifactState);
+        // Signal any running upload/download on this JVM to stop gracefully after current chunk
+        cancellationRegistry.signal(transferProcess.getId());
+        
         log.info("Acting as consumer, suspend the transfer process");
         TransferProcess transferProcessSuspended = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
         publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
@@ -401,8 +453,8 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .newTransferProcess(transferProcessSuspended)
                 .build());
         publisher.publishEvent(transferSuspensionMessage);
-        publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
-                "Transfer process completed",
+        publisher.publishEvent(AuditEventType.TRANSFER_PAUSED,
+                "Transfer process suspended",
                 Map.of("role", IConstants.ROLE_PROTOCOL,
                         "transferProcess", transferProcessSuspended,
                         "consumerPid", transferProcessSuspended.getConsumerPid(),
