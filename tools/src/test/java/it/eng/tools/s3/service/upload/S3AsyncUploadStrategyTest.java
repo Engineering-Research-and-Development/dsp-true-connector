@@ -135,6 +135,9 @@ public class S3AsyncUploadStrategyTest {
                 .thenReturn(CompletableFuture.failedFuture(
                         S3Exception.builder().message("Complete upload failed").build()));
 
+        when(s3AsyncClient.abortMultipartUpload(any(AbortMultipartUploadRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(AbortMultipartUploadResponse.builder().build()));
+
         // Act
         CompletableFuture<String> result = asyncUploadStrategy.uploadFile(
                 inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION);
@@ -144,6 +147,7 @@ public class S3AsyncUploadStrategyTest {
         assertTrue(exception.getMessage().contains("Failed to upload file"));
         verify(s3AsyncClient).createMultipartUpload(any(CreateMultipartUploadRequest.class));
         verify(s3AsyncClient).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
+        verify(s3AsyncClient).abortMultipartUpload(any(AbortMultipartUploadRequest.class));
     }
 
     @Test
@@ -191,6 +195,9 @@ public class S3AsyncUploadStrategyTest {
                 .thenReturn(CompletableFuture.failedFuture(
                         S3Exception.builder().message("Part upload failed").build()));
 
+        when(s3AsyncClient.abortMultipartUpload(any(AbortMultipartUploadRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(AbortMultipartUploadResponse.builder().build()));
+
         // Act
         CompletableFuture<String> result = asyncUploadStrategy.uploadFile(
                 inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION);
@@ -199,6 +206,7 @@ public class S3AsyncUploadStrategyTest {
         Exception exception = assertThrows(CompletionException.class, () -> result.join());
         assertTrue(exception.getMessage().contains("Failed to") || exception.getCause() instanceof S3Exception);
         verify(s3AsyncClient).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+        verify(s3AsyncClient).abortMultipartUpload(any(AbortMultipartUploadRequest.class));
     }
 
     @Test
@@ -227,7 +235,7 @@ public class S3AsyncUploadStrategyTest {
     }
 
     @Test
-    @DisplayName("Should use AsyncRequestBody.fromInputStream (not fromBytes) to avoid extra memory copy")
+    @DisplayName("uploadFile passes known content length per part to AsyncRequestBody")
     void uploadFile_UsesFromInputStream_NotFromBytes() {
         // Arrange — small content ensures exactly one part
         InputStream inputStream = new ByteArrayInputStream("part-data".getBytes());

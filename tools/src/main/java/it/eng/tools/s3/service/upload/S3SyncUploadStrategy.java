@@ -93,10 +93,6 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
 
             } catch (TransferCancelledException e) {
                 throw new CompletionException(e);
-            } catch (IOException e) {
-                log.error("Upload failed (SYNC) key={}: {}", objectKey, e.getMessage());
-                if (uploadId != null) abortMultipartUpload(s3Client, bucketName, objectKey, uploadId);
-                throw new CompletionException("Failed to upload file", e);
             } catch (Exception e) {
                 log.error("Upload failed (SYNC) key={}: {}", objectKey, e.getMessage());
                 if (uploadId != null) abortMultipartUpload(s3Client, bucketName, objectKey, uploadId);

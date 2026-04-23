@@ -20,6 +20,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Asynchronous S3 upload strategy implementation.
@@ -55,6 +56,7 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
                                                AtomicBoolean cancellationToken,
                                                UploadCheckpointCallback checkpointCallback) {
         S3AsyncClient s3AsyncClient = s3ClientProvider.s3AsyncClient(s3ClientRequest);
+        AtomicReference<String> uploadIdRef = new AtomicReference<>();
 
         log.info("Creating multipart upload (ASYNC) for key: {}", objectKey);
 
@@ -63,6 +65,7 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
                         .contentDisposition(contentDisposition).key(objectKey).build())
                 .thenComposeAsync(response -> {
                     String uploadId = response.uploadId();
+                    uploadIdRef.set(uploadId);
                     log.info("Created multipart upload (ASYNC) uploadId={} key={}", uploadId, objectKey);
                     checkpointCallback.onUploadStarted(uploadId);
                     return uploadParts(inputStream, s3AsyncClient, bucketName, objectKey, uploadId,
@@ -75,10 +78,20 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
                     Throwable cause = throwable instanceof CompletionException && throwable.getCause() != null
                             ? throwable.getCause() : throwable;
                     if (cause instanceof TransferCancelledException) {
-                        log.info("Transfer cancelled (ASYNC) key={}. Aborting multipart.", objectKey);
+                        log.info("Transfer cancelled (ASYNC) key={}. Abort dispatched.", objectKey);
                         throw new CompletionException(cause);
                     }
                     log.error("Upload failed (ASYNC) key={}: {}", objectKey, throwable.getMessage());
+                    String uploadId = uploadIdRef.get();
+                    if (uploadId != null) {
+                        s3AsyncClient.abortMultipartUpload(AbortMultipartUploadRequest.builder()
+                                .bucket(bucketName).key(objectKey).uploadId(uploadId).build())
+                                .exceptionally(t -> {
+                                    log.warn("Failed to abort multipart upload key={} uploadId={}: {}",
+                                            objectKey, uploadId, t.getMessage());
+                                    return null;
+                                });
+                    }
                     throw new CompletionException("Failed to upload file", throwable);
                 })
                 .whenComplete((result, throwable) -> {
@@ -121,7 +134,12 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
                     if (cancellationToken.get()) {
                         log.info("Cancellation signalled before part {} (ASYNC) key={}. Aborting.", partNumber, objectKey);
                         s3AsyncClient.abortMultipartUpload(AbortMultipartUploadRequest.builder()
-                                .bucket(bucketName).key(objectKey).uploadId(uploadId).build());
+                                .bucket(bucketName).key(objectKey).uploadId(uploadId).build())
+                                .exceptionally(t -> {
+                                    log.warn("Failed to abort multipart upload (ASYNC) key={} uploadId={}: {}",
+                                            objectKey, uploadId, t.getMessage());
+                                    return null;
+                                });
                         throw new CompletionException(new TransferCancelledException(objectKey));
                     }
                     int totalRead = readFully(inputStream, buffer);
