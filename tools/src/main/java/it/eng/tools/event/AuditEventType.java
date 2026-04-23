@@ -39,6 +39,9 @@ public enum AuditEventType {
     TRANSFER_VIEW("Transfer completed"),
     TRANSFER_COMPLETED("Transfer completed"),
     TRANSFER_FAILED("Transfer failed"),
+    TRANSFER_PAUSED("Transfer paused"),
+    TRANSFER_RESUMED("Transfer resumed"),
+    TRANSFER_URL_EXPIRED("Transfer URL expired"),
 
     NEGOTIATION_ACCESS_COUNT_INCREASE("Access count increase");
 

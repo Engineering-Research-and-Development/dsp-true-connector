@@ -35,6 +35,8 @@ public class TransferArtifactState {
     private String presignURL;
     private String destBucket;
     private String destObject;
+    @Setter
+    private String suspendedBy;
 
     @CreatedDate
     private Instant issued;
@@ -148,6 +150,17 @@ public class TransferArtifactState {
         @JsonProperty("version")
         public Builder version(Long version) {
             transferArtifactState.version = version;
+            return this;
+        }
+
+        /**
+         * Sets which party suspended this transfer; either {@code "CONSUMER"} or {@code "PROVIDER"}.
+         *
+         * @param suspendedBy the role that suspended the transfer
+         * @return this builder
+         */
+        public Builder suspendedBy(String suspendedBy) {
+            transferArtifactState.suspendedBy = suspendedBy;
             return this;
         }
 
