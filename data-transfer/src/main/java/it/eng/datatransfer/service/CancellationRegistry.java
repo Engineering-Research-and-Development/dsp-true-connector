@@ -10,6 +10,11 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <p>Each active download registers a token before starting. The suspend path calls
  * {@link #signal} to set the token to {@code true}, causing the running upload loop
  * to stop gracefully after its current chunk.
+ *
+ * <p><strong>Contract:</strong> at most one token may be registered per
+ * {@code transferProcessId} at a time. Callers must call {@link #deregister}
+ * on all exit paths (success, cancellation, expiry, error) before a new
+ * token for the same ID can be registered.
  */
 @Component
 public class CancellationRegistry {
@@ -21,10 +26,15 @@ public class CancellationRegistry {
      *
      * @param transferProcessId the internal MongoDB ID of the TransferProcess
      * @return the new token, initially {@code false}
+     * @throws IllegalStateException if a token is already registered for the given ID
      */
     public AtomicBoolean register(String transferProcessId) {
         AtomicBoolean token = new AtomicBoolean(false);
-        tokens.put(transferProcessId, token);
+        AtomicBoolean existing = tokens.putIfAbsent(transferProcessId, token);
+        if (existing != null) {
+            throw new IllegalStateException(
+                "Token already registered for transfer: " + transferProcessId);
+        }
         return token;
     }
 

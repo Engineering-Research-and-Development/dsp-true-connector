@@ -1,14 +1,11 @@
 package it.eng.datatransfer.exceptions;
 
-import java.io.Serial;
-
 /**
  * Thrown when a running transfer is stopped by a suspension signal via {@code CancellationRegistry}.
  */
 public class TransferCancelledException extends RuntimeException {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = -3918462109287541872L;
 
     /**
      * Constructs a new exception for the given transfer process.

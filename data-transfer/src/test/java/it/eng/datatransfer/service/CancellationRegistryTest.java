@@ -62,4 +62,11 @@ class CancellationRegistryTest {
         registry.deregister("tp-5");
         assertFalse(registry.isRegistered("tp-5"));
     }
+
+    @Test
+    @DisplayName("register throws IllegalStateException if token already registered for the same id")
+    void registerThrowsIfAlreadyRegistered() {
+        registry.register("tp-dup");
+        assertThrows(IllegalStateException.class, () -> registry.register("tp-dup"));
+    }
 }
