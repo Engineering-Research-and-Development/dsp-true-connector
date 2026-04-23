@@ -154,7 +154,8 @@ public class TransferArtifactState {
         }
 
         /**
-         * Sets which party suspended this transfer; either {@code "CONSUMER"} or {@code "PROVIDER"}.
+         * Sets which party suspended this transfer; either {@link it.eng.tools.model.IConstants#ROLE_CONSUMER}
+         * ({@code "consumer"}) or {@link it.eng.tools.model.IConstants#ROLE_PROVIDER} ({@code "provider"}).
          *
          * @param suspendedBy the role that suspended the transfer
          * @return this builder
