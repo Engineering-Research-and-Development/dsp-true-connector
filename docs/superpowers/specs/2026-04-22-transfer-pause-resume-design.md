@@ -125,25 +125,41 @@ A `TransferStartMessage` on a `SUSPENDED` transfer is accepted only if the sende
 
 **Initial start vs. resume start:** The initial `TransferStartMessage` (from `REQUESTED` state) can only be sent by the Provider (standard DSP). Resume `TransferStartMessage` (from `SUSPENDED` state) can be sent by either party — DSP spec explicitly permits this — but is gated by the `suspendedBy` check above.
 
+### Auto-trigger on TransferStartMessage
+
+The transfer execution (download/upload) is triggered **automatically** when a `TransferStartMessage` is received, with no separate management API call needed — mirroring how `TransferCompletionMessage` is sent automatically when a download finishes.
+
+The `automaticTransfer` property guard is **removed** from this path. The active-party connector always auto-starts on receipt.
+
+| Role | Format | Direction | Trigger point | Action |
+|------|--------|-----------|---------------|--------|
+| CONSUMER | HTTP_PULL | Receives `TransferStartMessage` (initial from Provider, or resume when Provider suspended) | End of `startDataTransfer()` | Publish `AutoTransferDownloadEvent` |
+| CONSUMER | HTTP_PULL | Sends `TransferStartMessage` (resume when Consumer suspended) | After 200 OK in `startTransfer()` API method | Publish `AutoTransferDownloadEvent` |
+| PROVIDER | HTTP_PUSH | Sends `TransferStartMessage` (initial or resume) | After 200 OK in `processStart()` chain | Already calls `processDownload()` |
+| CONSUMER | HTTP_PUSH | Receives `TransferStartMessage` | No action — Provider is active party | — |
+| PROVIDER | HTTP_PULL | Receives `TransferStartMessage` | No action — Consumer is active party | — |
+
+Because `downloadData()` already checks for a `TransferArtifactState` checkpoint, the same code path handles both fresh downloads and resumes — no separate "resume" API call is required.
+
 ### Resume message flow
 
 **Case A — Active party resumes (Consumer resumes PULL they suspended; Provider resumes PUSH they suspended):**
 1. Management API receives the resume request.
 2. Validates `suspendedBy == <this connector's role>`.
 3. Sends `TransferStartMessage` to counterpart's callback endpoint.
-4. Counterpart receives it, transitions state to `STARTED`, sends acknowledgment.
-5. Initiating side triggers `downloadData()` / `uploadData()` locally (same decoupled mechanism as initial start).
+4. Counterpart receives it, transitions state to `STARTED`, sends 200 OK.
+5. Sender's `startTransfer()` receives 200 OK → auto-triggers `downloadData()` / `processDownload()`.
 
 **Case B — Non-active party resumes (Provider resumes a PULL they suspended; Consumer resumes a PUSH they suspended):**
 1. Management API receives the resume request.
 2. Validates `suspendedBy == <this connector's role>`.
-3. Sends `TransferStartMessage` to counterpart's callback endpoint (same as initial start).
-4. Active party receives it, transitions state to `STARTED`, triggers `downloadData()` / `uploadData()`.
+3. Sends `TransferStartMessage` to active party's callback endpoint.
+4. Active party receives it, transitions state to `STARTED`, auto-triggers `downloadData()` via `AutoTransferDownloadEvent`.
 
 ### Resume detection in `downloadData()`
 
 1. Look up `TransferArtifactState` by `transferProcessId` from `TransferArtifactStateRepository`.
-2. If found → resume path.
+2. If found → resume path (publish `TRANSFER_RESUMED` audit event).
 3. If not found → fresh download (existing behaviour, unchanged).
 
 ### Resume path
@@ -273,6 +289,43 @@ Deleted on `TERMINATED` (including URL-expiry path) and on natural `COMPLETED`. 
 
 ---
 
+## Audit Logging
+
+Audit events are published at every significant success point and on every exception path. The existing `AuditEventPublisher` and `AuditEventType` enum are used throughout.
+
+### New `AuditEventType` values
+
+Two new values are added to the enum:
+
+| Enum value | Label | Where published |
+|---|---|---|
+| `TRANSFER_PAUSED` | `"Transfer paused"` | `whenComplete` catches `TransferCancelledException` |
+| `TRANSFER_RESUMED` | `"Transfer resumed"` | `downloadData()` detects existing `TransferArtifactState` |
+| `TRANSFER_URL_EXPIRED` | `"Transfer URL expired"` | `whenComplete` catches `PresignedUrlExpiredException` |
+
+`TRANSFER_FAILED` already exists and is published on other throwables.
+
+### Audit event placement
+
+| Event | Type | Payload fields |
+|---|---|---|
+| Transfer download / upload started | `PROTOCOL_TRANSFER_STARTED` (existing) | `transferProcessId`, `role`, `format`, `resuming=false/true`, `rangeStart` |
+| Transfer paused (graceful stop on cancellation token) | `TRANSFER_PAUSED` (new) | `transferProcessId`, `role`, `format`, `downloadedBytes`, `suspendedBy` |
+| Transfer resumed (checkpoint detected) | `TRANSFER_RESUMED` (new) | `transferProcessId`, `role`, `format`, `resumeFromBytes` |
+| Transfer completed successfully | `TRANSFER_COMPLETED` (existing) | `transferProcessId`, `role`, `format` |
+| Transfer URL expired on resume | `TRANSFER_URL_EXPIRED` (new) | `transferProcessId`, `role`, `format`, `errorMessage` |
+| Transfer failed (other exception) | `TRANSFER_FAILED` (existing) | `transferProcessId`, `role`, `format`, `errorMessage` |
+| `suspendedBy` mismatch on resume attempt | `PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR` (existing) | `transferProcessId`, `suspendedBy`, `requestedBy`, `errorMessage` |
+
+### Logging rules
+
+- All audit events on the **success path** are published after the state is persisted.
+- All audit events on **exception paths** are published before cleanup (so the state is captured at the point of failure).
+- `cancellationRegistry.deregister()` is always called **before** audit publishing on all paths.
+- Standard `log.info` / `log.error` / `log.warn` SLF4J calls accompany every audit event for operational visibility.
+
+---
+
 ## Testing
 
 ### Unit tests (new)
@@ -309,7 +362,10 @@ Deleted on `TERMINATED` (including URL-expiry path) and on natural `COMPLETED`. 
 
 | File | Change summary |
 |---|---|
-| `DataTransferAPIService.java` | Add `CancellationRegistry` + `TransferArtifactStateRepository` deps; checkpoint lambda in `downloadData()`; signal in `suspendTransfer()`; checkpoint lookup + delete in resume/complete paths; `PresignedUrlExpiredException` handler |
+| `AuditEventType.java` | Add `TRANSFER_PAUSED`, `TRANSFER_RESUMED`, `TRANSFER_URL_EXPIRED` enum values |
+| `TransferArtifactState.java` | Add `suspendedBy` field (`String`) |
+| `AbstractDataTransferService.java` | Remove `automaticTransfer` guard from auto-trigger in `startDataTransfer()`; publish `AutoTransferDownloadEvent` unconditionally for `HTTP_PULL` + `CONSUMER` receiver; validate `suspendedBy` on `SUSPENDED` → `STARTED` transition |
+| `DataTransferAPIService.java` | Add `CancellationRegistry` + `TransferArtifactStateRepository` deps; checkpoint lambda in `downloadData()`; signal + set `suspendedBy` in `suspendTransfer()`; checkpoint lookup + delete in resume/complete paths; `PresignedUrlExpiredException` handler; auto-trigger `downloadData()` after 200 OK for `HTTP_PULL` + `CONSUMER` in `startTransfer()`; full audit logging on all success and exception paths |
 | `DataTransferStrategy.java` | Add `transfer(TransferProcess, Optional<TransferArtifactState>)` overload |
 | `HttpPullTransferStrategy.java` | Add resume context parameter; set `Range` header; throw `PresignedUrlExpiredException` on 403 |
 | `HttpPushTransferStrategy.java` | Add resume context parameter; set `Range` header on resume |
