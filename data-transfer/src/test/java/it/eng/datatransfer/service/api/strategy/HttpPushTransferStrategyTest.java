@@ -2,6 +2,8 @@ package it.eng.datatransfer.service.api.strategy;
 
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.*;
+import it.eng.datatransfer.repository.TransferArtifactStateRepository;
+import it.eng.datatransfer.service.CancellationRegistry;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
@@ -25,8 +27,10 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -44,6 +48,10 @@ public class HttpPushTransferStrategyTest {
     private FieldEncryptionService fieldEncryptionService;
     @Mock
     private HttpURLConnection mockConnection;
+    @Mock
+    private TransferArtifactStateRepository transferArtifactStateRepository;
+    @Mock
+    private CancellationRegistry cancellationRegistry;
 
     /**
      * Strategy under test. Created manually in setUp so we can inject a direct
@@ -73,9 +81,15 @@ public class HttpPushTransferStrategyTest {
     @BeforeEach
     void setUp() {
         // Runnable::run is a valid Executor that executes tasks on the calling thread
-        strategy = new HttpPushTransferStrategy(s3Properties, s3ClientService, Runnable::run, fieldEncryptionService);
+        strategy = new HttpPushTransferStrategy(s3Properties, s3ClientService, Runnable::run, fieldEncryptionService,
+                transferArtifactStateRepository, cancellationRegistry);
         // Return the decrypted value for any encrypted secret key used in tests
         lenient().when(fieldEncryptionService.decrypt(TEST_ENCRYPTED_SECRET_KEY)).thenReturn(TEST_SECRET_KEY);
+        
+        // Setup basic mocks for the new dependencies
+        lenient().when(transferArtifactStateRepository.findById(anyString())).thenReturn(Optional.empty());
+        lenient().when(transferArtifactStateRepository.save(any(TransferArtifactState.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(cancellationRegistry.register(anyString())).thenReturn(new AtomicBoolean(false));
     }
 
     @Test
@@ -145,7 +159,9 @@ public class HttpPushTransferStrategyTest {
                 any(InputStream.class),
                 eq(endpointPropertiesMap),
                 eq(TEST_CONTENT_TYPE),
-                eq(TEST_CONTENT_DISPOSITION)
+                eq(TEST_CONTENT_DISPOSITION),
+                any(AtomicBoolean.class),
+                any()
         )).thenReturn(CompletableFuture.completedFuture("test-etag"));
 
         try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
@@ -165,7 +181,9 @@ public class HttpPushTransferStrategyTest {
                     any(InputStream.class),
                     eq(endpointPropertiesMap),
                     eq(TEST_CONTENT_TYPE),
-                    eq(TEST_CONTENT_DISPOSITION)
+                    eq(TEST_CONTENT_DISPOSITION),
+                    any(AtomicBoolean.class),
+                    any()
             );
         }
     }
@@ -224,7 +242,8 @@ public class HttpPushTransferStrategyTest {
         when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
         when(s3ClientService.generateGetPresignedUrl(eq(TEST_BUCKET), eq(TEST_DATASET_ID), any()))
                 .thenReturn("http://presigned-url");
-        when(s3ClientService.uploadFile(any(InputStream.class), any(Map.class), anyString(), anyString()))
+        when(s3ClientService.uploadFile(any(InputStream.class), any(Map.class), anyString(), anyString(),
+                any(AtomicBoolean.class), any()))
                 .thenReturn(CompletableFuture.completedFuture("test-etag"));
 
         // 100 MB content-length → dynamic timeout = ceil(100*1024*1024 * 1.1 / (1024*1024)) * 1000 = 111_000 ms
@@ -278,7 +297,8 @@ public class HttpPushTransferStrategyTest {
         when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
         when(s3ClientService.generateGetPresignedUrl(eq(TEST_BUCKET), eq(TEST_DATASET_ID), any()))
                 .thenReturn("http://presigned-url");
-        when(s3ClientService.uploadFile(any(InputStream.class), any(Map.class), anyString(), anyString()))
+        when(s3ClientService.uploadFile(any(InputStream.class), any(Map.class), anyString(), anyString(),
+                any(AtomicBoolean.class), any()))
                 .thenReturn(CompletableFuture.completedFuture("test-etag"));
 
         try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
