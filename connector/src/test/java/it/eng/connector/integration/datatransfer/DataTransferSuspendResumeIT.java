@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>Tests verify that:
  * <ul>
  *   <li>A suspend call signals the cancellation registry and persists the {@code suspendedBy} role.</li>
- *   <li>A resume attempt by the wrong party is rejected with a 4xx error.</li>
+ *   <li>A resume attempt by the wrong party is rejected with HTTP 400 Bad Request.</li>
  * </ul>
  */
 public class DataTransferSuspendResumeIT extends BaseIntegrationTest {
@@ -128,7 +128,7 @@ public class DataTransferSuspendResumeIT extends BaseIntegrationTest {
      * Verifies that a resume attempt by the wrong party is rejected with HTTP 400.
      *
      * <p>The transfer was suspended by the provider, so only the provider may resume it.
-     * When the consumer attempts to resume, a 4xx response is expected.
+     * When the consumer attempts to resume, HTTP 400 Bad Request is expected.
      *
      * @throws Exception if MockMvc fails
      */
