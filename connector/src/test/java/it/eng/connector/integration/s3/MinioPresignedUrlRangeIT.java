@@ -3,6 +3,7 @@ package it.eng.connector.integration.s3;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -41,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * (e.g. via {@code docker compose -f ci/docker/docker-compose.yml up -d}).
  */
 @Slf4j
+@Disabled("Requires a local MinIO instance on localhost:9000 — run manually with docker compose up")
 public class MinioPresignedUrlRangeIT {
 
     // Credentials from application-consumer.properties
