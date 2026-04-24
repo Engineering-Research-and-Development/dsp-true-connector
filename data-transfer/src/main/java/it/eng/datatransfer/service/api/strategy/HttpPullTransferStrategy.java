@@ -48,6 +48,8 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
     private static final int FALLBACK_READ_TIMEOUT = 1_800_000; // 30 minutes
     /** Assumed minimum transfer speed in bytes/sec used for dynamic timeout (1 MB/s). */
     private static final long MIN_TRANSFER_SPEED_BYTES_PER_SEC = 1024L * 1024L;
+    /** HTTP 206 Partial Content — returned when a Range header was honoured. */
+    private static final int HTTP_PARTIAL_CONTENT = 206;
 
     /**
      * Creates an instance using the Spring-managed {@code httpPullTransferExecutor} bean.
@@ -95,23 +97,8 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
         AtomicBoolean cancellationToken = cancellationRegistry.register(transferProcess.getId());
 
         String transferProcessId = transferProcess.getId();
-        UploadCheckpointCallback checkpointCallback = new UploadCheckpointCallback() {
-            @Override
-            public void onUploadStarted(String uploadId) {
-                TransferArtifactState state = transferArtifactStateRepository.findById(transferProcessId)
-                        .orElseGet(() -> TransferArtifactState.Builder.newInstance().id(transferProcessId).build());
-                state.setUploadId(uploadId);
-                transferArtifactStateRepository.save(state);
-            }
-            @Override
-            public void onPartCompleted(int partNumber, String etag, long totalBytesUploaded) {
-                // totalBytesUploaded is relative to this multipart session; add rangeStart for absolute offset
-                TransferArtifactState state = transferArtifactStateRepository.findById(transferProcessId)
-                        .orElseGet(() -> TransferArtifactState.Builder.newInstance().id(transferProcessId).build());
-                state.setDownloadedBytes(rangeStart + totalBytesUploaded);
-                transferArtifactStateRepository.save(state);
-            }
-        };
+        UploadCheckpointCallback checkpointCallback = new CheckpointCallbackImpl(
+                transferProcessId, rangeStart, transferArtifactStateRepository);
 
         return downloadAndUploadToS3(
                 transferProcess.getDataAddress().getEndpoint(),
@@ -151,7 +138,7 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
                 }
 
                 if (rangeStart > 0) {
-                    connection.setRequestProperty("Range", "bytes=" + rangeStart + "-");
+                    connection.setRequestProperty(HttpHeaders.RANGE, "bytes=" + rangeStart + "-");
                     log.info("Added Range header bytes={}- for key: {}", rangeStart, key);
                 }
 
@@ -164,9 +151,10 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
                 int responseCode = connection.getResponseCode();
                 if (responseCode == HttpURLConnection.HTTP_FORBIDDEN) {
                     connection.disconnect();
+                    connectionRef.set(null);
                     throw new PresignedUrlExpiredException(key);
                 }
-                if (responseCode != HttpURLConnection.HTTP_OK && responseCode != 206) {
+                if (responseCode != HttpURLConnection.HTTP_OK && responseCode != HTTP_PARTIAL_CONTENT) {
                     // Disconnect eagerly on error response and clear the ref so whenComplete skips it
                     connection.disconnect();
                     connectionRef.set(null);
@@ -256,5 +244,38 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
             }
         }
         return null;
+    }
+
+    /**
+     * Implementation of {@link UploadCheckpointCallback} for saving HTTP PULL transfer progress.
+     */
+    private static class CheckpointCallbackImpl implements UploadCheckpointCallback {
+        private final String transferProcessId;
+        private final long rangeStart;
+        private final TransferArtifactStateRepository repository;
+
+        CheckpointCallbackImpl(String transferProcessId, long rangeStart,
+                               TransferArtifactStateRepository repository) {
+            this.transferProcessId = transferProcessId;
+            this.rangeStart = rangeStart;
+            this.repository = repository;
+        }
+
+        @Override
+        public void onUploadStarted(String uploadId) {
+            TransferArtifactState state = repository.findById(transferProcessId)
+                    .orElseThrow(() -> new IllegalStateException("Checkpoint missing for transfer: " + transferProcessId));
+            state.setUploadId(uploadId);
+            repository.save(state);
+        }
+
+        @Override
+        public void onPartCompleted(int partNumber, String etag, long totalBytesUploaded) {
+            // totalBytesUploaded is relative to this multipart session; add rangeStart for absolute offset
+            TransferArtifactState state = repository.findById(transferProcessId)
+                    .orElseThrow(() -> new IllegalStateException("Checkpoint missing for transfer: " + transferProcessId));
+            state.setDownloadedBytes(rangeStart + totalBytesUploaded);
+            repository.save(state);
+        }
     }
 }

@@ -50,6 +50,8 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
     private static final int FALLBACK_READ_TIMEOUT = 1_800_000; // 30 minutes
     /** Assumed minimum transfer speed in bytes/sec used for dynamic timeout (1 MB/s). */
     private static final long MIN_TRANSFER_SPEED_BYTES_PER_SEC = 1024L * 1024L;
+    /** HTTP 206 Partial Content — returned when a Range header was honoured. */
+    private static final int HTTP_PARTIAL_CONTENT = 206;
 
     /**
      * Creates an instance using the Spring-managed {@code httpPushTransferExecutor} bean.
@@ -146,8 +148,8 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
                 connection.setReadTimeout(FALLBACK_READ_TIMEOUT);
 
                 if (rangeStart > 0) {
-                    connection.setRequestProperty("Range", "bytes=" + rangeStart + "-");
-                    log.info("Added Range header bytes={}- for push presignedUrl: {}", rangeStart, presignedUrl);
+                    connection.setRequestProperty(HttpHeaders.RANGE, "bytes=" + rangeStart + "-");
+                    log.debug("Added Range header bytes={}- for push presignedUrl: {}", rangeStart, presignedUrl);
                 }
 
                 if (connection instanceof HttpsURLConnection) {
@@ -162,14 +164,14 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
                     connectionRef.set(null);
                     throw new PresignedUrlExpiredException(presignedUrl);
                 }
-                if (responseCode != HttpURLConnection.HTTP_OK && responseCode != 206) {
+                if (responseCode != HttpURLConnection.HTTP_OK && responseCode != HTTP_PARTIAL_CONTENT) {
                     // Disconnect eagerly on error response and clear the ref so whenComplete skips it
                     connection.disconnect();
                     connectionRef.set(null);
                     throw new DataTransferAPIException("Failed to get stream. HTTP response code: " + responseCode);
                 }
 
-                log.info("Presigned URL: {}", presignedUrl);
+                log.debug("Presigned URL: {}", presignedUrl);
                 log.info("HTTP response code: {}", responseCode);
 
                 // Refine read timeout now that response headers are available.
@@ -250,7 +252,7 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
         @Override
         public void onUploadStarted(String uploadId) {
             TransferArtifactState state = repository.findById(transferProcessId)
-                    .orElseGet(() -> TransferArtifactState.Builder.newInstance().id(transferProcessId).build());
+                    .orElseThrow(() -> new IllegalStateException("Checkpoint missing for transfer: " + transferProcessId));
             state.setUploadId(uploadId);
             repository.save(state);
         }
@@ -258,7 +260,7 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
         @Override
         public void onPartCompleted(int partNumber, String etag, long totalBytesUploaded) {
             TransferArtifactState state = repository.findById(transferProcessId)
-                    .orElseGet(() -> TransferArtifactState.Builder.newInstance().id(transferProcessId).build());
+                    .orElseThrow(() -> new IllegalStateException("Checkpoint missing for transfer: " + transferProcessId));
             state.setDownloadedBytes(rangeStart + totalBytesUploaded);
             repository.save(state);
         }

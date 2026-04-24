@@ -1,6 +1,7 @@
 package it.eng.datatransfer.service.api.strategy;
 
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
+import it.eng.datatransfer.exceptions.PresignedUrlExpiredException;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferArtifactStateRepository;
 import it.eng.datatransfer.service.CancellationRegistry;
@@ -69,6 +70,20 @@ public class HttpPullTransferStrategyTest {
      */
     @BeforeEach
     void setUp() {
+        // Pre-load inner classes before any test opens a MockedConstruction<URL> scope.
+        // Mockito/ByteBuddy inline mocking + mockConstruction(URL.class) causes a JVM
+        // classloader interference that prevents inner classes from loading on-demand
+        // inside the try-with-resources block.  Touching the class literals here forces
+        // the JVM to resolve them while the classloader is in a clean state.
+        @SuppressWarnings("unused")
+        Class<?> preload = TransferArtifactState.Builder.class;
+        try {
+            Class.forName("it.eng.datatransfer.service.api.strategy.HttpPullTransferStrategy$CheckpointCallbackImpl",
+                    false, HttpPullTransferStrategy.class.getClassLoader());
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException("Cannot pre-load CheckpointCallbackImpl", e);
+        }
+
         // Set up default mock behavior
         when(transferArtifactStateRepository.findById(anyString())).thenReturn(Optional.empty());
         when(transferArtifactStateRepository.save(any(TransferArtifactState.class)))
@@ -270,6 +285,103 @@ public class HttpPullTransferStrategyTest {
         }
     }
 
+    @Test
+    @DisplayName("Should throw PresignedUrlExpiredException on HTTP 403")
+    void transfer_throwsPresignedUrlExpiredException_on403() {
+        TransferProcess transferProcess = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED;
+        mockS3Properties(transferProcess.getId());
+
+        try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
+                (mock, context) -> when(mock.openConnection()).thenReturn(mockConnection))) {
+
+            when(mockConnection.getResponseCode()).thenReturn(HttpURLConnection.HTTP_FORBIDDEN);
+
+            CompletionException exception = assertThrows(CompletionException.class,
+                    () -> strategy.transfer(transferProcess).join());
+            assertInstanceOf(PresignedUrlExpiredException.class, exception.getCause());
+
+            // Connection should be disconnected exactly once (not double-disconnected)
+            verify(mockConnection, times(1)).disconnect();
+        } catch (java.io.IOException e) {
+            fail("Unexpected IOException in test setup: " + e.getMessage());
+        }
+    }
+
+    @Test
+    @DisplayName("Should add Range header when resuming from a non-zero offset")
+    void transfer_addsRangeHeader_whenResumingFromOffset() throws Exception {
+        TransferProcess transferProcess = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED;
+        mockS3Properties(transferProcess.getId());
+
+        TransferArtifactState existingState = TransferArtifactState.Builder.newInstance()
+                .id(transferProcess.getId())
+                .downloadedBytes(512L)
+                .build();
+        when(transferArtifactStateRepository.findById(transferProcess.getId()))
+                .thenReturn(Optional.of(existingState));
+
+        when(s3ClientService.uploadFile(any(), any(), anyString(), anyString(), any(AtomicBoolean.class), any()))
+                .thenReturn(CompletableFuture.completedFuture("etag"));
+
+        try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
+                (mock, context) -> when(mock.openConnection()).thenReturn(mockConnection))) {
+
+            when(mockConnection.getResponseCode()).thenReturn(206);
+            when(mockConnection.getContentType()).thenReturn(TEST_CONTENT_TYPE);
+            when(mockConnection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION)).thenReturn(TEST_CONTENT_DISPOSITION);
+            when(mockConnection.getInputStream()).thenReturn(new ByteArrayInputStream(TEST_CONTENT.getBytes()));
+
+            assertDoesNotThrow(() -> strategy.transfer(transferProcess).join());
+
+            verify(mockConnection).setRequestProperty(HttpHeaders.RANGE, "bytes=512-");
+        }
+    }
+
+    @Test
+    @DisplayName("onPartCompleted should persist rangeStart + totalBytesUploaded as absolute offset")
+    void transfer_checkpointCallback_savesAbsoluteOffset() throws Exception {
+        TransferProcess transferProcess = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED;
+        mockS3Properties(transferProcess.getId());
+
+        long rangeStart = 1024L;
+        TransferArtifactState existingState = TransferArtifactState.Builder.newInstance()
+                .id(transferProcess.getId())
+                .downloadedBytes(rangeStart)
+                .build();
+        when(transferArtifactStateRepository.findById(transferProcess.getId()))
+                .thenReturn(Optional.of(existingState));
+
+        // Capture the checkpointCallback argument passed to uploadFile
+        org.mockito.ArgumentCaptor<it.eng.tools.s3.service.upload.UploadCheckpointCallback> callbackCaptor =
+                org.mockito.ArgumentCaptor.forClass(it.eng.tools.s3.service.upload.UploadCheckpointCallback.class);
+
+        when(s3ClientService.uploadFile(any(), any(), anyString(), anyString(), any(AtomicBoolean.class), callbackCaptor.capture()))
+                .thenAnswer(invocation -> {
+                    it.eng.tools.s3.service.upload.UploadCheckpointCallback cb = callbackCaptor.getValue();
+                    cb.onPartCompleted(1, "etag-1", 512L); // 512 bytes uploaded so far in this session
+                    return CompletableFuture.completedFuture("etag-1");
+                });
+
+        try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
+                (mock, context) -> when(mock.openConnection()).thenReturn(mockConnection))) {
+
+            when(mockConnection.getResponseCode()).thenReturn(206);
+            when(mockConnection.getContentType()).thenReturn(TEST_CONTENT_TYPE);
+            when(mockConnection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION)).thenReturn(TEST_CONTENT_DISPOSITION);
+            when(mockConnection.getInputStream()).thenReturn(new ByteArrayInputStream(TEST_CONTENT.getBytes()));
+
+            assertDoesNotThrow(() -> strategy.transfer(transferProcess).join());
+        }
+
+        // Verify that the saved state has absoluteOffset = rangeStart + totalBytesUploaded = 1024 + 512 = 1536
+        org.mockito.ArgumentCaptor<TransferArtifactState> stateCaptor =
+                org.mockito.ArgumentCaptor.forClass(TransferArtifactState.class);
+        verify(transferArtifactStateRepository, atLeastOnce()).save(stateCaptor.capture());
+        assertTrue(stateCaptor.getAllValues().stream()
+                .anyMatch(s -> s.getDownloadedBytes() == rangeStart + 512L),
+                "Expected saved state with downloadedBytes = " + (rangeStart + 512L));
+    }
+
     private TransferProcess mockTransferProcess(String endpoint, List<EndpointProperty> endpointProperties) {
         DataAddress dataAddress = DataAddress.Builder.newInstance()
                 .endpoint(endpoint)
@@ -278,16 +390,17 @@ public class HttpPullTransferStrategyTest {
 
         return TransferProcess.Builder.newInstance()
                 .id(new ObjectId().toHexString())
+                .state(TransferState.STARTED)
                 .dataAddress(dataAddress)
                 .build();
     }
 
     private Map<String, String> mockS3Properties(String key) {
-        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
-        when(s3Properties.getEndpoint()).thenReturn(TEST_ENDPOINT);
-        when(s3Properties.getRegion()).thenReturn(TEST_REGION);
-        when(s3Properties.getAccessKey()).thenReturn(TEST_ACCESS_KEY);
-        when(s3Properties.getSecretKey()).thenReturn(TEST_SECRET_KEY);
+        lenient().when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
+        lenient().when(s3Properties.getEndpoint()).thenReturn(TEST_ENDPOINT);
+        lenient().when(s3Properties.getRegion()).thenReturn(TEST_REGION);
+        lenient().when(s3Properties.getAccessKey()).thenReturn(TEST_ACCESS_KEY);
+        lenient().when(s3Properties.getSecretKey()).thenReturn(TEST_SECRET_KEY);
 
         return Map.of(
                 S3Utils.OBJECT_KEY, key,
