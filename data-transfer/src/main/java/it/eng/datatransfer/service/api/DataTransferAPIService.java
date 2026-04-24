@@ -418,12 +418,11 @@ public class DataTransferAPIService {
                     final String tpIdForResume = transferProcessStarted.getId();
                     CompletableFuture.runAsync(() -> {
                         try {
-                            downloadData(tpIdForResume)
-                                    .exceptionally(err -> {
-                                        log.error("Auto-triggered download failed after Case A resume for process {}: {}",
-                                                tpIdForResume, err.getMessage());
-                                        return null;
-                                    });
+                            // downloadData() swallows async failures internally (its chain ends with
+                            // .exceptionally(t -> null)); the future it returns always completes normally.
+                            // Async failures are logged inside downloadData().
+                            // This catch only handles synchronous pre-condition failures (e.g. wrong state).
+                            downloadData(tpIdForResume);
                         } catch (Exception e) {
                             log.error("Auto-triggered download failed after Case A resume for process {}: {}",
                                     tpIdForResume, e.getMessage());
@@ -762,7 +761,8 @@ public class DataTransferAPIService {
                     } else {
                         // Unwrap any wrapper exception to find root cause
                         Throwable cause = throwable;
-                        while (cause.getCause() != null) {
+                        int depth = 0;
+                        while (cause.getCause() != null && depth++ < 20) {
                             cause = cause.getCause();
                         }
 
