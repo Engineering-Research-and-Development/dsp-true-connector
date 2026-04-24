@@ -22,6 +22,7 @@ import org.springframework.security.test.context.support.WithUserDetails;
 import org.wiremock.spring.InjectWireMock;
 
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
@@ -54,11 +55,17 @@ public class DataTransferSuspendResumeIT extends BaseIntegrationTest {
     @Autowired
     private CancellationRegistry cancellationRegistry;
 
+    private String savedTpId;
+
     /**
      * Removes all test data after each test.
      */
     @AfterEach
     public void cleanup() {
+        if (savedTpId != null) {
+            cancellationRegistry.deregister(savedTpId);
+            savedTpId = null;
+        }
         transferProcessRepository.deleteAll();
         transferArtifactStateRepository.deleteAll();
     }
@@ -91,9 +98,10 @@ public class DataTransferSuspendResumeIT extends BaseIntegrationTest {
                 .dataAddress(dataAddress)
                 .build();
         TransferProcess saved = transferProcessRepository.save(tp);
+        savedTpId = saved.getId();
 
         // Simulate an in-progress download so the registry has an entry
-        cancellationRegistry.register(saved.getId());
+        AtomicBoolean cancellationToken = cancellationRegistry.register(saved.getId());
 
         // Stub the peer suspension endpoint
         wiremock.stubFor(post(urlPathMatching(".*/transfers/.*/suspension"))
@@ -102,6 +110,9 @@ public class DataTransferSuspendResumeIT extends BaseIntegrationTest {
         mockMvc.perform(put(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + saved.getId() + "/suspend")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
+
+        assertTrue(cancellationToken.get(),
+                "Cancellation token should have been signaled to true by suspendTransfer");
 
         Optional<TransferArtifactState> artifactStateOpt = transferArtifactStateRepository.findById(saved.getId());
         assertTrue(artifactStateOpt.isPresent(), "TransferArtifactState should have been persisted");
@@ -146,6 +157,6 @@ public class DataTransferSuspendResumeIT extends BaseIntegrationTest {
 
         mockMvc.perform(put(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + saved.getId() + "/start")
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().is4xxClientError());
+                .andExpect(status().isBadRequest());
     }
 }
