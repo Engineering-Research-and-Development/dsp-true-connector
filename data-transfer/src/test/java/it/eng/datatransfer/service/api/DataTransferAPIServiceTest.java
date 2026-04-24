@@ -10,6 +10,8 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
+import it.eng.datatransfer.repository.TransferArtifactStateRepository;
+import it.eng.datatransfer.service.CancellationRegistry;
 import it.eng.datatransfer.service.api.strategy.HttpPullTransferStrategy;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
@@ -75,6 +77,10 @@ class DataTransferAPIServiceTest {
     private HttpPullTransferStrategy httpPullTransferStrategy;
     @Mock
     private ArtifactTransferService artifactTransferService;
+    @Mock
+    private CancellationRegistry cancellationRegistry;
+    @Mock
+    private TransferArtifactStateRepository transferArtifactStateRepository;
     @Mock
     private Pageable pageable;
 
@@ -399,12 +405,17 @@ class DataTransferAPIServiceTest {
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        when(transferArtifactStateRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+                .thenReturn(Optional.empty());
 
         apiService.suspendTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 
         verify(transferProcessRepository).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
+        verify(publisher, times(2)).publishEvent(eventTypeCaptor.capture(), descriptionCaptor.capture(), argCaptorAuditEventDetails.capture());
+        List<AuditEventType> capturedEvents = eventTypeCaptor.getAllValues();
+        assertTrue(capturedEvents.contains(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED));
+        assertTrue(capturedEvents.contains(AuditEventType.TRANSFER_PAUSED));
     }
 
     @Test
