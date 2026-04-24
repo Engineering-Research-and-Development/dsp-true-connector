@@ -418,11 +418,17 @@ public class DataTransferAPIService {
                     final String tpIdForResume = transferProcessStarted.getId();
                     CompletableFuture.runAsync(() -> {
                         try {
-                            // downloadData() swallows async failures internally (its chain ends with
-                            // .exceptionally(t -> null)); the future it returns always completes normally.
-                            // Async failures are logged inside downloadData().
-                            // This catch only handles synchronous pre-condition failures (e.g. wrong state).
-                            downloadData(tpIdForResume);
+                            // Most async failures are swallowed internally by downloadData()'s own chain
+                            // (.exceptionally(t -> null) at the end). However, policyCheck() failure returns
+                            // CompletableFuture.failedFuture() directly, bypassing that terminal handler.
+                            // The .exceptionally() below catches that escaped failed-future.
+                            // The catch block handles any synchronous throw before downloadData() returns a future.
+                            downloadData(tpIdForResume)
+                                    .exceptionally(err -> {
+                                        log.error("Auto-triggered download failed after Case A resume for process {}: {}",
+                                                tpIdForResume, err.getMessage());
+                                        return null;
+                                    });
                         } catch (Exception e) {
                             log.error("Auto-triggered download failed after Case A resume for process {}: {}",
                                     tpIdForResume, e.getMessage());
