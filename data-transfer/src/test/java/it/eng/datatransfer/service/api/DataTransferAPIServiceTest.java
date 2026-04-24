@@ -2,11 +2,14 @@ package it.eng.datatransfer.service.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
+import it.eng.datatransfer.exceptions.PresignedUrlExpiredException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.DataTransferRequest;
+import it.eng.datatransfer.model.TransferArtifactState;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
+import it.eng.tools.exceptions.TransferCancelledException;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
@@ -858,5 +861,128 @@ class DataTransferAPIServiceTest {
                 Arguments.of("SUSPENDED", "suspendTransfer"),
                 Arguments.of("TERMINATED", "terminateTransfer")
         );
+    }
+
+    @Test
+    @DisplayName("suspendTransfer signals CancellationRegistry and records suspendedBy after successful peer response")
+    void suspendTransferSignalsCancellationRegistryAndRecordsSuspendedBy() {
+        TransferProcess tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED;
+        when(transferProcessRepository.findById(tp.getId())).thenReturn(Optional.of(tp));
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(okHttpRestClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(apiResponse);
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(transferArtifactStateRepository.findById(tp.getId())).thenReturn(Optional.empty());
+        when(transferArtifactStateRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        apiService.suspendTransfer(tp.getId());
+
+        verify(cancellationRegistry).signal(tp.getId());
+        verify(transferArtifactStateRepository).save(
+                argThat(s -> tp.getRole().equals(s.getSuspendedBy())));
+    }
+
+    @Test
+    @DisplayName("startTransfer rejects resume when suspendedBy does not match local role")
+    void startTransfer_resumeRejected_wrongRole() {
+        TransferProcess suspendedTp = TransferProcess.Builder.newInstance()
+                .id(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER.getId())
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .state(TransferState.SUSPENDED)
+                .format(DataTransferFormat.HTTP_PULL.format())
+                .build();
+
+        when(transferProcessRepository.findById(suspendedTp.getId())).thenReturn(Optional.of(suspendedTp));
+
+        TransferArtifactState artifactState = TransferArtifactState.Builder.newInstance()
+                .id(suspendedTp.getId())
+                .suspendedBy(IConstants.ROLE_PROVIDER)
+                .build();
+        when(transferArtifactStateRepository.findById(suspendedTp.getId()))
+                .thenReturn(Optional.of(artifactState));
+
+        assertThrows(DataTransferAPIException.class,
+                () -> apiService.startTransfer(suspendedTp.getId()));
+    }
+
+    @Test
+    @DisplayName("startTransfer on SUSPENDED process emits TRANSFER_RESUMED and triggers download when consumer resumes pull")
+    void startTransfer_onSuspended_emitsResumedAudit() {
+        TransferProcess suspendedTp = TransferProcess.Builder.newInstance()
+                .id(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER.getId())
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .state(TransferState.SUSPENDED)
+                .format(DataTransferFormat.HTTP_PULL.format())
+                .build();
+
+        when(transferProcessRepository.findById(suspendedTp.getId())).thenReturn(Optional.of(suspendedTp));
+
+        TransferArtifactState artifactState = TransferArtifactState.Builder.newInstance()
+                .id(suspendedTp.getId())
+                .suspendedBy(IConstants.ROLE_CONSUMER)
+                .build();
+        when(transferArtifactStateRepository.findById(suspendedTp.getId()))
+                .thenReturn(Optional.of(artifactState));
+
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(okHttpRestClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(apiResponse);
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        assertDoesNotThrow(() -> apiService.startTransfer(suspendedTp.getId()));
+
+        verify(publisher).publishEvent(eq(AuditEventType.TRANSFER_RESUMED), anyString(), any());
+    }
+
+    @Test
+    @DisplayName("downloadData handles TransferCancelledException by keeping checkpoint and resetting in-progress flag")
+    void downloadDataHandlesCancelledException() throws Exception {
+        TransferProcess tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED;
+        when(transferProcessRepository.findById(tp.getId())).thenReturn(Optional.of(tp));
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        when(transferStrategyFactory.getStrategy(any()))
+                .thenReturn(tProcess -> CompletableFuture.failedFuture(
+                        new java.util.concurrent.CompletionException(
+                                new TransferCancelledException(tp.getId()))));
+
+        assertDoesNotThrow(() -> apiService.downloadData(tp.getId()).get());
+
+        verify(transferProcessRepository, atLeastOnce())
+                .save(argThat(saved -> !saved.isDownloadInProgress()));
+        verify(cancellationRegistry).deregister(tp.getId());
+        verify(publisher).publishEvent(eq(AuditEventType.TRANSFER_PAUSED), anyString(), any());
+        verify(publisher, never()).publishEvent(eq(AuditEventType.TRANSFER_FAILED), anyString(), any());
+        verify(okHttpRestClient, never()).sendRequestProtocol(anyString(), any(), any());
+    }
+
+    @Test
+    @DisplayName("downloadData handles PresignedUrlExpiredException by sending 409 termination and emitting TRANSFER_URL_EXPIRED")
+    void downloadDataHandlesPresignedUrlExpiredException() throws Exception {
+        TransferProcess tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED;
+        when(transferProcessRepository.findById(tp.getId())).thenReturn(Optional.of(tp));
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        when(transferStrategyFactory.getStrategy(any()))
+                .thenReturn(tProcess -> CompletableFuture.failedFuture(
+                        new java.util.concurrent.CompletionException(
+                                new PresignedUrlExpiredException(tp.getId()))));
+
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(okHttpRestClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(apiResponse);
+
+        assertDoesNotThrow(() -> apiService.downloadData(tp.getId()).get());
+
+        verify(publisher).publishEvent(eq(AuditEventType.TRANSFER_URL_EXPIRED), anyString(), any());
+        verify(okHttpRestClient, atLeastOnce()).sendRequestProtocol(anyString(), any(), any());
+        verify(cancellationRegistry).deregister(tp.getId());
     }
 }

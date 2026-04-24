@@ -101,7 +101,6 @@ public class DataTransferAPIService {
      */
     @PostConstruct
     void resetStaleDownloadingFlags() {
-//TODO remove or move when the suspend/resume logic is in place. Check also if cleanup is still needed for stale parts on S3 (download never finished) .
         List<TransferProcess> stale = transferProcessRepository.findAllByIsDownloadInProgressTrue();
         if (!stale.isEmpty()) {
             log.warn("Found {} transfer process(es) with stale isDownloadInProgress=true flag. Resetting on startup.", stale.size());
@@ -419,7 +418,7 @@ public class DataTransferAPIService {
                     final String tpIdForResume = transferProcessStarted.getId();
                     CompletableFuture.runAsync(() -> {
                         try {
-                            downloadData(tpIdForResume).join();
+                            downloadData(tpIdForResume);
                         } catch (Exception e) {
                             log.error("Auto-triggered download failed after Case A resume for process {}: {}",
                                     tpIdForResume, e.getMessage());
@@ -514,7 +513,7 @@ public class DataTransferAPIService {
 
     /**
      * Sends TransferSuspensionMessage.<br>
-     * Updates state for Transfer Process upon successful response to COMPLETED
+     * Updates state for Transfer Process upon successful response to SUSPENDED
      *
      * @param transferProcessId transfer process id
      * @return JsonNode representation of DataTransfer
@@ -523,15 +522,6 @@ public class DataTransferAPIService {
         TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 
         stateTransitionCheck(TransferState.SUSPENDED, transferProcess);
-
-        // Signal any running upload/download on this JVM
-        cancellationRegistry.signal(transferProcess.getId());
-        // Record that this connector's role initiated the suspension
-        TransferArtifactState artifactState = transferArtifactStateRepository.findById(transferProcess.getId())
-                .orElseGet(() -> TransferArtifactState.Builder.newInstance()
-                        .id(transferProcess.getId()).build());
-        artifactState.setSuspendedBy(transferProcess.getRole());
-        transferArtifactStateRepository.save(artifactState);
 
         TransferSuspensionMessage transferSuspensionMessage = TransferSuspensionMessage.Builder.newInstance()
                 .consumerPid(transferProcess.getConsumerPid())
@@ -559,9 +549,18 @@ public class DataTransferAPIService {
                         credentialUtils.getConnectorCredentials());
         log.info("Response received {}", response);
         if (response.isSuccess()) {
-            TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
-            transferProcessRepository.save(transferProcessStarted);
-            log.info("Transfer process {} saved", transferProcessStarted.getId());
+            // Signal AFTER peer confirms — safe to cancel the download now
+            cancellationRegistry.signal(transferProcess.getId());
+            // Record suspendedBy AFTER peer confirms
+            TransferArtifactState artifactState = transferArtifactStateRepository.findById(transferProcess.getId())
+                    .orElseGet(() -> TransferArtifactState.Builder.newInstance()
+                            .id(transferProcess.getId()).build());
+            artifactState.setSuspendedBy(transferProcess.getRole());
+            transferArtifactStateRepository.save(artifactState);
+
+            TransferProcess transferProcessSuspended = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
+            transferProcessRepository.save(transferProcessSuspended);
+            log.info("Transfer process {} saved", transferProcessSuspended.getId());
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
                     "Transfer process suspended successfully",
                     auditMap("transferProcess", transferProcess,
@@ -574,7 +573,7 @@ public class DataTransferAPIService {
                             "suspendedBy", transferProcess.getRole(),
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid()));
-            return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
+            return TransferSerializer.serializePlainJsonNode(transferProcessSuspended);
         } else {
             log.error("Error response received!");
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
@@ -789,7 +788,7 @@ public class DataTransferAPIService {
                             }
                         } else {
                             log.error("Transfer process {} data transmission interrupted: {}",
-                                    transferProcessId, throwable.getMessage());
+                                    transferProcessId, cause.getMessage() != null ? cause.getMessage() : throwable.getMessage());
                             transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
                             publisher.publishEvent(AuditEventType.TRANSFER_FAILED,
                                     "Data transfer failed for process " + transferProcessDownloading.getId(),
@@ -797,7 +796,7 @@ public class DataTransferAPIService {
                                             "transferProcess", transferProcessDownloading,
                                             "consumerPid", transferProcessDownloading.getConsumerPid(),
                                             "providerPid", transferProcessDownloading.getProviderPid(),
-                                            "errorMessage", throwable.getMessage()));
+                                            "errorMessage", cause.getMessage() != null ? cause.getMessage() : throwable.getMessage()));
                         }
                     }
                 }).thenAccept(transfer -> {
@@ -955,6 +954,11 @@ public class DataTransferAPIService {
         if (response.isSuccess()) {
             transferProcessRepository.save(transferProcess.copyWithNewTransferState(TransferState.TERMINATED));
             log.info("Transfer process {} terminated after URL expiry.", transferProcessId);
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED,
+                    "Transfer terminated due to URL expiry for process " + transferProcessId,
+                    Map.of("transferProcessId", transferProcessId,
+                            "consumerPid", transferProcess.getConsumerPid(),
+                            "providerPid", transferProcess.getProviderPid()));
         } else {
             log.error("Failed to send termination for process {}: {}", transferProcessId, response.getMessage());
         }
