@@ -1,12 +1,18 @@
 package it.eng.datatransfer.service.api.strategy;
 
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
+import it.eng.datatransfer.exceptions.PresignedUrlExpiredException;
 import it.eng.datatransfer.model.EndpointProperty;
+import it.eng.datatransfer.model.TransferArtifactState;
 import it.eng.datatransfer.model.TransferProcess;
+import it.eng.datatransfer.repository.TransferArtifactStateRepository;
+import it.eng.datatransfer.service.CancellationRegistry;
 import it.eng.datatransfer.service.api.DataTransferStrategy;
+import it.eng.tools.exceptions.TransferCancelledException;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.service.upload.UploadCheckpointCallback;
 import it.eng.tools.s3.util.S3Utils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -22,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 @Service
@@ -31,6 +38,8 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
     private final S3ClientService s3ClientService;
     private final S3Properties s3Properties;
     private final Executor transferExecutor;
+    private final TransferArtifactStateRepository transferArtifactStateRepository;
+    private final CancellationRegistry cancellationRegistry;
     private static final int DEFAULT_CONNECT_TIMEOUT = 10_000; // 10 seconds
     /**
      * Fallback read timeout (30 minutes) used when the server does not advertise
@@ -46,34 +55,80 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
      * @param s3ClientService service for uploading data to S3
      * @param s3Properties S3 configuration properties
      * @param transferExecutor Spring-managed executor for running async transfer tasks
+     * @param transferArtifactStateRepository repository for managing transfer state
+     * @param cancellationRegistry registry for transfer cancellation tokens
      */
     @Autowired
     public HttpPullTransferStrategy(S3ClientService s3ClientService,
                                     S3Properties s3Properties,
-                                    @Qualifier("httpPullTransferExecutor") Executor transferExecutor) {
+                                    @Qualifier("httpPullTransferExecutor") Executor transferExecutor,
+                                    TransferArtifactStateRepository transferArtifactStateRepository,
+                                    CancellationRegistry cancellationRegistry) {
         this.s3ClientService = s3ClientService;
         this.s3Properties = s3Properties;
         this.transferExecutor = transferExecutor;
+        this.transferArtifactStateRepository = transferArtifactStateRepository;
+        this.cancellationRegistry = cancellationRegistry;
     }
 
     @Override
     public CompletableFuture<Void> transfer(TransferProcess transferProcess) {
         log.info("Executing HTTP PULL transfer for process {}", transferProcess.getId());
 
-        // get authorization information from Data Address if present
         String authorization = extractAuthorization(transferProcess);
+
+        // Load existing checkpoint (0 bytes = first-time download)
+        TransferArtifactState checkpoint = transferArtifactStateRepository
+                .findById(transferProcess.getId())
+                .orElseGet(() -> TransferArtifactState.Builder.newInstance()
+                        .id(transferProcess.getId()).downloadedBytes(0).build());
+
+        long rangeStart = checkpoint.getDownloadedBytes();
+        if (rangeStart > 0) {
+            log.info("Resuming HTTP PULL for process {} from byte offset {}", transferProcess.getId(), rangeStart);
+            // Reset multipart tracking for the fresh upload that starts from scratch
+            checkpoint.setUploadId(null);
+        }
+        transferArtifactStateRepository.save(checkpoint);
+
+        // Register cancellation token before starting — deregistered in DataTransferAPIService.downloadData().whenComplete()
+        AtomicBoolean cancellationToken = cancellationRegistry.register(transferProcess.getId());
+
+        String transferProcessId = transferProcess.getId();
+        UploadCheckpointCallback checkpointCallback = new UploadCheckpointCallback() {
+            @Override
+            public void onUploadStarted(String uploadId) {
+                TransferArtifactState state = transferArtifactStateRepository.findById(transferProcessId)
+                        .orElseGet(() -> TransferArtifactState.Builder.newInstance().id(transferProcessId).build());
+                state.setUploadId(uploadId);
+                transferArtifactStateRepository.save(state);
+            }
+            @Override
+            public void onPartCompleted(int partNumber, String etag, long totalBytesUploaded) {
+                // totalBytesUploaded is relative to this multipart session; add rangeStart for absolute offset
+                TransferArtifactState state = transferArtifactStateRepository.findById(transferProcessId)
+                        .orElseGet(() -> TransferArtifactState.Builder.newInstance().id(transferProcessId).build());
+                state.setDownloadedBytes(rangeStart + totalBytesUploaded);
+                transferArtifactStateRepository.save(state);
+            }
+        };
 
         return downloadAndUploadToS3(
                 transferProcess.getDataAddress().getEndpoint(),
                 authorization,
-                transferProcess.getId()
-        ).thenAccept(key ->
-                log.info("Stored transfer process id - {} data!", key));
+                transferProcessId,
+                rangeStart,
+                cancellationToken,
+                checkpointCallback
+        ).thenAccept(key -> log.info("Stored transfer process id - {} data!", key));
     }
 
     private CompletableFuture<String> downloadAndUploadToS3(String presignedUrl,
                                                             String authorization,
-                                                            String key) {
+                                                            String key,
+                                                            long rangeStart,
+                                                            AtomicBoolean cancellationToken,
+                                                            UploadCheckpointCallback checkpointCallback) {
         // AtomicReference allows the connection to be shared across two separate lambda stages
         // (supplyAsync and whenComplete) without violating Java's effectively-final capture rule.
         // The supplyAsync lambda opens the connection and stores it here; whenComplete reads it
@@ -95,6 +150,11 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
                     connection.setRequestProperty(HttpHeaders.AUTHORIZATION, authorization);
                 }
 
+                if (rangeStart > 0) {
+                    connection.setRequestProperty("Range", "bytes=" + rangeStart + "-");
+                    log.info("Added Range header bytes={}- for key: {}", rangeStart, key);
+                }
+
                 if (connection instanceof javax.net.ssl.HttpsURLConnection) {
                     log.debug("Using HTTPS connection to: {}", presignedUrl);
                 } else {
@@ -102,7 +162,11 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
                 }
 
                 int responseCode = connection.getResponseCode();
-                if (responseCode != HttpURLConnection.HTTP_OK) {
+                if (responseCode == HttpURLConnection.HTTP_FORBIDDEN) {
+                    connection.disconnect();
+                    throw new PresignedUrlExpiredException(key);
+                }
+                if (responseCode != HttpURLConnection.HTTP_OK && responseCode != 206) {
                     // Disconnect eagerly on error response and clear the ref so whenComplete skips it
                     connection.disconnect();
                     connectionRef.set(null);
@@ -133,7 +197,12 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
                 // Returning it here produces a CompletableFuture<CompletableFuture<String>>,
                 // which thenCompose below flattens into a single CompletableFuture<String>.
                 // The connection must remain open until the upload future completes.
-                return s3ClientService.uploadFile(connection.getInputStream(), destinationS3Properties, contentType, contentDisposition);
+                return s3ClientService.uploadFile(connection.getInputStream(), destinationS3Properties,
+                        contentType, contentDisposition, cancellationToken, checkpointCallback);
+            } catch (PresignedUrlExpiredException | TransferCancelledException e) {
+                HttpURLConnection c = connectionRef.get();
+                if (c != null) c.disconnect();
+                throw e;
             } catch (IOException e) {
                 // Disconnect on IOException before the upload started (connection may or may not be open)
                 HttpURLConnection c = connectionRef.get();
