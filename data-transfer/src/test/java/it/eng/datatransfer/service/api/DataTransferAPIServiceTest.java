@@ -9,7 +9,6 @@ import it.eng.datatransfer.model.DataTransferRequest;
 import it.eng.datatransfer.model.TransferArtifactState;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
-import it.eng.tools.exceptions.TransferCancelledException;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
@@ -19,6 +18,7 @@ import it.eng.datatransfer.service.api.strategy.HttpPullTransferStrategy;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.exceptions.TransferCancelledException;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
@@ -984,5 +984,7 @@ class DataTransferAPIServiceTest {
         verify(publisher).publishEvent(eq(AuditEventType.TRANSFER_URL_EXPIRED), anyString(), any());
         verify(okHttpRestClient, atLeastOnce()).sendRequestProtocol(anyString(), any(), any());
         verify(cancellationRegistry).deregister(tp.getId());
+        verify(transferProcessRepository, atLeastOnce())
+                .save(argThat(saved -> !saved.isDownloadInProgress()));
     }
 }

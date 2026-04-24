@@ -418,7 +418,12 @@ public class DataTransferAPIService {
                     final String tpIdForResume = transferProcessStarted.getId();
                     CompletableFuture.runAsync(() -> {
                         try {
-                            downloadData(tpIdForResume);
+                            downloadData(tpIdForResume)
+                                    .exceptionally(err -> {
+                                        log.error("Auto-triggered download failed after Case A resume for process {}: {}",
+                                                tpIdForResume, err.getMessage());
+                                        return null;
+                                    });
                         } catch (Exception e) {
                             log.error("Auto-triggered download failed after Case A resume for process {}: {}",
                                     tpIdForResume, e.getMessage());
@@ -755,9 +760,9 @@ public class DataTransferAPIService {
 
                         transferProcessRepository.save(transferProcessWithData);
                     } else {
-                        // Unwrap CompletionException to find root cause
+                        // Unwrap any wrapper exception to find root cause
                         Throwable cause = throwable;
-                        while (cause instanceof java.util.concurrent.CompletionException && cause.getCause() != null) {
+                        while (cause.getCause() != null) {
                             cause = cause.getCause();
                         }
 
@@ -766,6 +771,10 @@ public class DataTransferAPIService {
 
                         if (cause instanceof TransferCancelledException) {
                             log.info("Transfer {} stopped gracefully by suspension signal. Checkpoint retained.", transferProcessId);
+                            // NOTE: 'transferProcessDownloading' is the snapshot fetched at download start.
+                            // If suspendTransfer() already saved SUSPENDED state concurrently, this save may
+                            // overwrite that with STARTED (or trigger OptimisticLockingFailureException).
+                            // Mitigation: re-read entity before saving. Tracked as a known pre-existing race.
                             transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
                             publisher.publishEvent(AuditEventType.TRANSFER_PAUSED,
                                     "Transfer paused (download stopped) for process " + transferProcessId,
