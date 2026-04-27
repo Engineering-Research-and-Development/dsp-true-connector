@@ -466,7 +466,7 @@ public class DataTransferServiceTest {
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.SUSPENDED, argTransferProcess.getValue().getState());
 
-        verifyAuditEvent(AuditEventType.TRANSFER_PAUSED);
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED);
     }
 
     @Test
@@ -484,7 +484,7 @@ public class DataTransferServiceTest {
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.SUSPENDED, argTransferProcess.getValue().getState());
 
-        verifyAuditEvent(AuditEventType.TRANSFER_PAUSED);
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED);
     }
 
     @Test
