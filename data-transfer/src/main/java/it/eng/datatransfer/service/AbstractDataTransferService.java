@@ -236,9 +236,8 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
         TransferProcess transferProcessRequested = this.findTransferProcess(consumerPidFinal, providerPidFinal);
 
         if (TransferState.REQUESTED.equals(transferProcessRequested.getState()) && IConstants.ROLE_PROVIDER.equals(transferProcessRequested.getRole())) {
-            // Only consumer can transit from REQUESTED to STARTED state
-            String errorMessage = "State transition aborted, consumer can not transit from " + TransferState.REQUESTED.name()
-                    + " to " + TransferState.STARTED.name();
+            // Only provider can send the initial TransferStartMessage
+            String errorMessage = "Only the provider can send the initial TransferStartMessage. Consumer role is not allowed to start from REQUESTED state.";
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR,
                     "Transfer process state transition error",
                     Map.of("transferProcess", transferProcessRequested,
@@ -453,7 +452,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .newTransferProcess(transferProcessSuspended)
                 .build());
         publisher.publishEvent(transferSuspensionMessage);
-        publisher.publishEvent(AuditEventType.TRANSFER_PAUSED,
+        publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
                 "Transfer process suspended",
                 Map.of("role", IConstants.ROLE_PROTOCOL,
                         "transferProcess", transferProcessSuspended,
