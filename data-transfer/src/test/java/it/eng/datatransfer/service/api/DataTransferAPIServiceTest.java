@@ -240,7 +240,7 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
         assertEquals(IConstants.ROLE_CONSUMER, argCaptorTransferProcess.getValue().getRole());
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_REQUESTED, null);
     }
 
     @Test
@@ -257,7 +257,7 @@ class DataTransferAPIServiceTest {
 
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_REQUESTED, null);
     }
 
     @Test
@@ -289,7 +289,7 @@ class DataTransferAPIServiceTest {
 
         verify(transferProcessRepository).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_STARTED, null);
     }
 
     @Test
@@ -300,7 +300,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_NOT_FOUND, null);
     }
 
     @ParameterizedTest
@@ -317,7 +317,7 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_STATE_TRANSITION_ERROR, null);
     }
 
     @Test
@@ -335,7 +335,39 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_STARTED, null);
+    }
+
+    @Test
+    @DisplayName("Start transfer - initial HTTP_PUSH by provider auto-triggers upload")
+    public void startTransfer_initialHttpPush_autoTriggersUpload() {
+        TransferProcess tpRequestedProviderPush = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .state(TransferState.REQUESTED)
+                .format(DataTransferFormat.HTTP_PUSH.format())
+                .build();
+
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.findById(tpRequestedProviderPush.getId()))
+                .thenReturn(Optional.of(tpRequestedProviderPush));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        apiService.startTransfer(tpRequestedProviderPush.getId());
+
+        // Verify auto-trigger fired: findById is called once by startTransfer() and once
+        // asynchronously by downloadData(). downloadData() exits early (state is not STARTED)
+        // but only after the repository lookup, giving us a reliable second call to assert on.
+        verify(transferProcessRepository, timeout(2000).atLeast(2)).findById(eq(tpRequestedProviderPush.getId()));
+        verify(transferProcessRepository).save(any(TransferProcess.class));
+        verifyAuditEvent(AuditEventType.TRANSFER_STARTED, null);
     }
 
     @Test
@@ -351,7 +383,7 @@ class DataTransferAPIServiceTest {
 
         verify(transferProcessRepository).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_COMPLETED, null);
     }
 
     @Test
@@ -362,7 +394,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_NOT_FOUND, null);
     }
 
     @ParameterizedTest
@@ -379,7 +411,7 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId());
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_STATE_TRANSITION_ERROR, null);
     }
 
     @Test
@@ -397,7 +429,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_FAILED, null);
     }
 
     @Test
@@ -417,7 +449,7 @@ class DataTransferAPIServiceTest {
 
         verify(publisher, times(2)).publishEvent(eventTypeCaptor.capture(), descriptionCaptor.capture(), argCaptorAuditEventDetails.capture());
         List<AuditEventType> capturedEvents = eventTypeCaptor.getAllValues();
-        assertTrue(capturedEvents.contains(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED));
+        assertTrue(capturedEvents.contains(AuditEventType.TRANSFER_SUSPENDED));
         assertTrue(capturedEvents.contains(AuditEventType.TRANSFER_PAUSED));
     }
 
@@ -429,7 +461,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_NOT_FOUND, null);
     }
 
     @ParameterizedTest
@@ -446,7 +478,7 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId());
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_STATE_TRANSITION_ERROR, null);
     }
 
     @Test
@@ -464,7 +496,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_SUSPENDED, null);
     }
 
     @Test
@@ -480,7 +512,7 @@ class DataTransferAPIServiceTest {
 
         verify(transferProcessRepository).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_TERMINATED, null);
     }
 
     @Test
@@ -491,7 +523,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_NOT_FOUND, null);
     }
 
     @ParameterizedTest
@@ -508,7 +540,7 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId());
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_STATE_TRANSITION_ERROR, null);
     }
 
     @Test
@@ -526,7 +558,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_TERMINATED, null);
     }
 
     @Test
