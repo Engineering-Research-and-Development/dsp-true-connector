@@ -7,6 +7,8 @@ import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantContextHolder;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -32,6 +34,7 @@ import static org.mockito.Mockito.when;
 public class CatalogServiceTest {
 
     private static final String BUCKET_NAME = "bucket-name";
+    private static final String TENANT_ID = "engineering";
 
     private Catalog catalog;
 
@@ -54,6 +57,12 @@ public class CatalogServiceTest {
     @BeforeEach
     public void setUp() {
         catalog = CatalogMockObjectUtil.createNewCatalog();
+        TenantContextHolder.setTenantId(TENANT_ID);
+    }
+
+    @AfterEach
+    public void tearDown() {
+        TenantContextHolder.clear();
     }
 
     @Test
@@ -68,21 +77,21 @@ public class CatalogServiceTest {
     @Test
     @DisplayName("Get catalog successfully")
     public void getCatalog_success() {
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
         when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
         when(s3ClientService.listFiles(BUCKET_NAME))
                 .thenReturn(catalog.getDataset().stream()
                         .map(Dataset::getId).collect(Collectors.toList()));
         Catalog retrievedCatalog = service.getCatalog();
         assertNotNull(retrievedCatalog);
-        verify(repository).findAll();
+        verify(repository).findAllByTenantId(TENANT_ID);
     }
 
     @Test
     @DisplayName("Get catalog check if uploading dataset is removed")
     public void getCatalog_checkIfUploadingDatasetIsRemoved() {
         assertFalse(catalog.getDataset().isEmpty());
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
         when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
         when(s3ClientService.listFiles(BUCKET_NAME))
                 .thenReturn(Collections.emptyList());
@@ -92,23 +101,23 @@ public class CatalogServiceTest {
     @Test
     @DisplayName("Get catalog throws exception when not found")
     public void getCatalog_notFound() {
-        when(repository.findAll()).thenReturn(Collections.emptyList());
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.emptyList());
         assertThrows(CatalogErrorException.class, () -> service.getCatalog());
     }
 
     @Test
     @DisplayName("Get catalog by ID successfully")
     public void getCatalogById_success() {
-        when(repository.findById(anyString())).thenReturn(Optional.of(catalog));
+        when(repository.findByIdAndTenantId(anyString(), anyString())).thenReturn(Optional.of(catalog));
         Catalog retrievedCatalog = service.getCatalogById(catalog.getId());
         assertNotNull(retrievedCatalog);
-        verify(repository).findById(catalog.getId());
+        verify(repository).findByIdAndTenantId(catalog.getId(), TENANT_ID);
     }
 
     @Test
     @DisplayName("Delete catalog successfully")
     public void deleteCatalog_success() {
-        when(repository.findById(anyString())).thenReturn(Optional.of(catalog));
+        when(repository.findByIdAndTenantId(anyString(), anyString())).thenReturn(Optional.of(catalog));
         service.deleteCatalog(catalog.getId());
         verify(repository).deleteById(catalog.getId());
     }
@@ -116,14 +125,14 @@ public class CatalogServiceTest {
     @Test
     @DisplayName("Update catalog successfully")
     public void updateCatalog_success() {
-        when(repository.findById(anyString())).thenReturn(Optional.of(catalog));
+        when(repository.findByIdAndTenantId(anyString(), anyString())).thenReturn(Optional.of(catalog));
         when(repository.save(any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG_FOR_UPDATE);
 
         Catalog updatedCatalogData = CatalogMockObjectUtil.CATALOG_FOR_UPDATE;
 
         Catalog updatedCatalog = service.updateCatalog(catalog.getId(), updatedCatalogData);
         assertNotNull(updatedCatalog);
-        verify(repository).findById(catalog.getId());
+        verify(repository).findByIdAndTenantId(catalog.getId(), TENANT_ID);
         verify(repository).save(argCaptorCatalog.capture());
         assertTrue(argCaptorCatalog.getValue().getDescription().stream().anyMatch(d -> d.getValue().contains("update")));
         assertTrue(argCaptorCatalog.getValue().getDistribution().stream().anyMatch(d -> d.getTitle().contains("update")));
@@ -144,7 +153,7 @@ public class CatalogServiceTest {
     public void updateCatalogDataServiceAfterDelete_success() {
 
         DataService dataService = CatalogMockObjectUtil.DATA_SERVICE;
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
         when(repository.save(any(Catalog.class))).thenReturn(catalog);
 
         service.updateCatalogDataServiceAfterDelete(dataService);
@@ -162,7 +171,7 @@ public class CatalogServiceTest {
                 .permission(catalog.getDataset().stream().findFirst().get().getHasPolicy().stream().findFirst().get().getPermission())
                 .build();
 
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
         when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
         when(s3ClientService.listFiles(BUCKET_NAME))
                 .thenReturn(catalog.getDataset().stream()
@@ -182,7 +191,7 @@ public class CatalogServiceTest {
                 .permission(new HashSet<>(Collections.singletonList(CatalogMockObjectUtil.PERMISSION)))
                 .build();
 
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
         when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
         when(s3ClientService.listFiles(BUCKET_NAME))
                 .thenReturn(catalog.getDataset().stream()
@@ -212,7 +221,7 @@ public class CatalogServiceTest {
                 .permission(new HashSet<>(Collections.singletonList(permission)))
                 .build();
 
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
         when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
         when(s3ClientService.listFiles(BUCKET_NAME))
                 .thenReturn(catalog.getDataset().stream()

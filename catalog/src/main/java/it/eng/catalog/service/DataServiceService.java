@@ -8,6 +8,7 @@ import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.repository.DataServiceRepository;
+import it.eng.tools.service.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -26,27 +27,37 @@ public class DataServiceService {
     }
 
     /**
-     * Retrieves a data service by its unique ID.
+     * Retrieves a data service by its unique ID, scoped to the current tenant context.
      *
      * @param id the unique ID of the data service
      * @return the dataService corresponding to the provided ID
      * @throws ResourceNotFoundAPIException if no dataService is found with the provided ID
      */
     public DataService getDataServiceById(String id) {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            return repository.findByIdAndTenantId(id, tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundAPIException("Data Service with id: " + id + " not found"));
+        }
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Data Service with id: " + id + " not found"));
     }
 
     /**
-     * Retrieves all data services in the catalog.
+     * Retrieves all data services, scoped to the current tenant context.
      *
-     * @return a list of all data services
+     * @return a collection of all data services visible to the current principal
      */
     public Collection<DataService> getAllDataServices() {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            return repository.findAllByTenantId(tenantId);
+        }
         return repository.findAll();
     }
 
     /**
-     * Saves a dataService to the repository and updates the catalog.
+     * Saves a dataService to the repository, stamping it with the current tenant ID.
+     * Also updates the catalog.
      *
      * @param dataService the dataService to be saved
      * @return saved dataService
@@ -55,6 +66,10 @@ public class DataServiceService {
     public DataService saveDataService(DataService dataService) {
     	DataService savedDataService = null;
         try {
+        	String tenantId = TenantContextHolder.getTenantId();
+        	if (tenantId != null) {
+        	    dataService.injectTenantId(tenantId);
+        	}
         	savedDataService = repository.save(dataService);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
@@ -93,7 +108,7 @@ public class DataServiceService {
      */
     public DataService updateDataService(String id, DataService dataService) {
         DataService existingDataService = getDataServiceById(id);
-        DataService storedDataService = null;;
+        DataService storedDataService;
 		try {
 			DataService updatedDataService = existingDataService.updateInstance(dataService);
 			storedDataService = repository.save(updatedDataService);

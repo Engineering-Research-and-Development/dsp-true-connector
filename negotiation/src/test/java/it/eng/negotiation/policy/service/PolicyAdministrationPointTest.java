@@ -63,7 +63,7 @@ class PolicyAdministrationPointTest {
 	
 	@Test
 	public void policyEnforcementExists() {
-		PolicyEnforcement pe = new PolicyEnforcement(UUID.randomUUID().toString(), AGREEMENT_ID, 0);
+		PolicyEnforcement pe = new PolicyEnforcement(UUID.randomUUID().toString(), AGREEMENT_ID, 0, null);
 
 		when(policyEnforcementRepository.findByAgreementId(AGREEMENT_ID)).thenReturn(Optional.of(pe));
 

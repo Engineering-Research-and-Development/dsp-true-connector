@@ -147,7 +147,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
 
         agreementRepository.save(agreement);
 
-        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0, null);
 
         policyEnforcementRepository.save(policyEnforcement);
 
@@ -181,6 +181,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 .dataAddress(dataAddress)
                 .state(TransferState.STARTED)
                 .format(DataTransferFormat.HTTP_PULL.format())
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
@@ -249,7 +250,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
 
         agreementRepository.save(agreement);
 
-        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0, null);
 
         policyEnforcementRepository.save(policyEnforcement);
 
@@ -303,6 +304,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 .datasetId(mockDataset.getId())
                 .state(TransferState.STARTED)
                 .format(DataTransferFormat.HTTP_PUSH.format())
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
@@ -376,7 +378,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
 
         insertContractNegotiation(agreement, consumerPid, providerPid);
 
-        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0, null);
 
         policyEnforcementRepository.save(policyEnforcement);
 
@@ -406,6 +408,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 .dataAddress(dataAddress)
                 .state(TransferState.STARTED)
                 .format(DataTransferFormat.HTTP_PULL.format())
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
@@ -524,6 +527,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 .dataAddress(dataAddress)
                 .state(TransferState.STARTED)
                 .format(DataTransferFormat.HTTP_PULL.format())
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
@@ -600,6 +604,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 .dataAddress(dataAddress)
                 .state(TransferState.STARTED)
                 .format(DataTransferFormat.HTTP_PULL.format())
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 

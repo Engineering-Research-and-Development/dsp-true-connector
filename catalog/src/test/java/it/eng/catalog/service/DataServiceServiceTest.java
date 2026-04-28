@@ -10,6 +10,8 @@ import static org.mockito.Mockito.when;
 
 import java.util.Optional;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,9 +25,12 @@ import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.repository.DataServiceRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.tools.service.TenantContextHolder;
 
 @ExtendWith(MockitoExtension.class)
 public class DataServiceServiceTest {
+
+    private static final String TENANT_ID = "engineering";
 
     @Mock
     private DataServiceRepository repository;
@@ -39,34 +44,45 @@ public class DataServiceServiceTest {
     @InjectMocks
     private DataServiceService dataServiceService;
 
-    private DataService dataService = CatalogMockObjectUtil.DATA_SERVICE;
+    private DataService dataService;
+
+    @BeforeEach
+    void setUp() {
+        dataService = CatalogMockObjectUtil.createNewDataService();
+        TenantContextHolder.setTenantId(TENANT_ID);
+    }
+
+    @AfterEach
+    void tearDown() {
+        TenantContextHolder.clear();
+    }
 
     @Test
     @DisplayName("Get data service by id - success")
     public void getDataServiceById_success() {
-        when(repository.findById(dataService.getId())).thenReturn(Optional.of(dataService));
+        when(repository.findByIdAndTenantId(dataService.getId(), TENANT_ID)).thenReturn(Optional.of(dataService));
 
         DataService result = dataServiceService.getDataServiceById(dataService.getId());
 
         assertEquals(dataService.getId(), result.getId());
-        verify(repository).findById(dataService.getId());
+        verify(repository).findByIdAndTenantId(dataService.getId(), TENANT_ID);
     }
 
     @Test
     @DisplayName("Get data service by id - not found")
     public void getDataServiceById_notFound() {
-        when(repository.findById("1")).thenReturn(Optional.empty());
+        when(repository.findByIdAndTenantId("1", TENANT_ID)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundAPIException.class, () -> dataServiceService.getDataServiceById("1"));
 
-        verify(repository).findById("1");
+        verify(repository).findByIdAndTenantId("1", TENANT_ID);
     }
 
     @Test
     @DisplayName("Get all data services")
     public void getAllDataServices_success() {
         dataServiceService.getAllDataServices();
-        verify(repository).findAll();
+        verify(repository).findAllByTenantId(TENANT_ID);
     }
 
     @Test
@@ -84,11 +100,11 @@ public class DataServiceServiceTest {
     @Test
     @DisplayName("Delete data service - success")
     public void deleteDataService_success() {
-        when(repository.findById(dataService.getId())).thenReturn(Optional.of(dataService));
+        when(repository.findByIdAndTenantId(dataService.getId(), TENANT_ID)).thenReturn(Optional.of(dataService));
 
         dataServiceService.deleteDataService(dataService.getId());
 
-        verify(repository).findById(dataService.getId());
+        verify(repository).findByIdAndTenantId(dataService.getId(), TENANT_ID);
         verify(repository).deleteById(dataService.getId());
         verify(catalogService).updateCatalogDataServiceAfterDelete(dataService);
     }
@@ -96,11 +112,11 @@ public class DataServiceServiceTest {
     @Test
     @DisplayName("Delete data service - not found")
     public void deleteDataService_notFound() {
-        when(repository.findById("1")).thenReturn(Optional.empty());
+        when(repository.findByIdAndTenantId("1", TENANT_ID)).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundAPIException.class, () -> dataServiceService.deleteDataService("1"));
 
-        verify(repository).findById("1");
+        verify(repository).findByIdAndTenantId("1", TENANT_ID);
         verify(repository, never()).deleteById("1");
         verify(catalogService, never()).updateCatalogDataServiceAfterDelete(any(DataService.class));
     }
@@ -108,13 +124,13 @@ public class DataServiceServiceTest {
     @Test
     @DisplayName("Update data service - success")
     public void updateDataService_success() {
-        when(repository.findById(dataService.getId())).thenReturn(Optional.of(dataService));
+        when(repository.findByIdAndTenantId(dataService.getId(), TENANT_ID)).thenReturn(Optional.of(dataService));
         when(repository.save(any(DataService.class))).thenReturn(dataService);
 
         DataService result = dataServiceService.updateDataService(dataService.getId(), CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE);
 
         assertEquals(dataService.getId(), result.getId());
-        verify(repository).findById(dataService.getId());
+        verify(repository).findByIdAndTenantId(dataService.getId(), TENANT_ID);
         verify(repository).save(argCaptorDataService.capture());
         // createor, description, title, serveDataSet
         assertTrue(argCaptorDataService.getValue().getCreator().contains("update"));

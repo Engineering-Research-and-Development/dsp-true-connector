@@ -62,7 +62,7 @@ public class EventTestUtil {
     }
     
     public static InitializeTransferProcess createTestInitializeTransferProcess() throws Exception {
-        return new InitializeTransferProcess(TEST_CALLBACK_ADDRESS, TEST_AGREEMENT_ID, TEST_DATASET_ID, TEST_ROLE);
+        return new InitializeTransferProcess(TEST_CALLBACK_ADDRESS, TEST_AGREEMENT_ID, TEST_DATASET_ID, TEST_ROLE, "engineering");
     }
     
     public static ArtifactConsumedEvent createTestArtifactConsumedEvent() throws Exception {

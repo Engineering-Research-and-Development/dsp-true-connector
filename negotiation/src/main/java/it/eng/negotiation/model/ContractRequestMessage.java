@@ -87,10 +87,10 @@ public class ContractRequestMessage {
                      .collect(Collectors.toList());
 
              // Custom validation: either providerPid or callbackAddress must be present
-             if ((message.getProviderPid() == null && message.getCallbackAddress() == null) ||
-             (message.getProviderPid() != null && message.getCallbackAddress() != null)) {
-                 messages.add("either providerPid or callbackAddress must be present");
-             }
+//             if ((message.getProviderPid() == null && message.getCallbackAddress() == null) ||
+//             (message.getProviderPid() != null && message.getCallbackAddress() != null)) {
+//                 messages.add("either providerPid or callbackAddress must be present");
+//             }
 
              if (messages.isEmpty()) {
                  return message;

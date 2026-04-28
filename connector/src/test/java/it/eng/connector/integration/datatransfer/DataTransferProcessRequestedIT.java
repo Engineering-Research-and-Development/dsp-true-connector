@@ -42,6 +42,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 // Consumer -> REQUESTED
 
+
     @Autowired
     private AgreementRepository agreementRepository;
     @Autowired
@@ -57,7 +58,6 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
     private DistributionRepository distributionRepository;
     @Autowired
     private FieldEncryptionService fieldEncryptionService;
-
     private Catalog catalog;
     private Dataset dataset;
     private Distribution distribution;
@@ -148,7 +148,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/request")
+                        post("/" + TENANT_ID + "/transfers/request")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isCreated())
@@ -194,7 +194,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/request")
+                        post("/" + TENANT_ID + "/transfers/request")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
@@ -258,7 +258,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/request")
+                        post("/" + TENANT_ID + "/transfers/request")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
@@ -304,7 +304,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/request")
+                        post("/" + TENANT_ID + "/transfers/request")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
@@ -331,7 +331,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/request")
+                        post("/" + TENANT_ID + "/transfers/request")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .header("Authorization", "Basic YXNkckBtYWlsLmNvbTpwYXNzd29yZA=="));
@@ -397,7 +397,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .build();
 
         mockMvc.perform(
-                post("/transfers/request")
+                post("/" + TENANT_ID + "/transfers/request")
                         .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isCreated());

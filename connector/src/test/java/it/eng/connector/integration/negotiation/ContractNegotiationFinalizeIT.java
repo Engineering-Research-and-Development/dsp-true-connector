@@ -35,6 +35,7 @@ public class ContractNegotiationFinalizeIT extends BaseIntegrationTest {
 // https://consumer.com/:callback/negotiations/:consumerPid/events	POST	ContractNegotiationEventMessage
 // @PostMapping("/consumer/negotiations/{consumerPid}/events")
 
+
     @Autowired
     private ContractNegotiationRepository contractNegotiationRepository;
     @Autowired
@@ -91,6 +92,7 @@ public class ContractNegotiationFinalizeIT extends BaseIntegrationTest {
                 .role(IConstants.ROLE_CONSUMER)
                 .build();
 
+        contractNegotiationVerified.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(contractNegotiationVerified);
 
         ContractNegotiationEventMessage contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
@@ -101,7 +103,7 @@ public class ContractNegotiationFinalizeIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/consumer/negotiations/" + contractNegotiationVerified.getConsumerPid() + "/events")
+                        post("/" + TENANT_ID + "/consumer/negotiations/" + contractNegotiationVerified.getConsumerPid() + "/events")
                                 .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(contractNegotiationEventMessage)))
                                 .contentType(MediaType.APPLICATION_JSON));
         // no response required
@@ -139,7 +141,7 @@ public class ContractNegotiationFinalizeIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/consumer/negotiations/" + contractNegotiationEventMessage.getConsumerPid() + "/events")
+                        post("/" + TENANT_ID + "/consumer/negotiations/" + contractNegotiationEventMessage.getConsumerPid() + "/events")
                                 .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(contractNegotiationEventMessage)))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isNotFound());
@@ -171,6 +173,7 @@ public class ContractNegotiationFinalizeIT extends BaseIntegrationTest {
                 .state(ContractNegotiationState.AGREED)
                 .build();
 
+        contractNegotiationVerified.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(contractNegotiationVerified);
 
         ContractNegotiationEventMessage contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
@@ -181,7 +184,7 @@ public class ContractNegotiationFinalizeIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/consumer/negotiations/" + contractNegotiationVerified.getConsumerPid() + "/events")
+                        post("/" + TENANT_ID + "/consumer/negotiations/" + contractNegotiationVerified.getConsumerPid() + "/events")
                                 .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(contractNegotiationEventMessage)))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());

@@ -1,5 +1,6 @@
 package it.eng.negotiation.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
@@ -48,6 +49,9 @@ public class Agreement implements Serializable {
 
     private List<Permission> permission;
 
+    @JsonIgnore
+    private String tenantId;
+
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
@@ -93,6 +97,17 @@ public class Agreement implements Serializable {
             return this;
         }
 
+        /**
+         * Sets the tenant identifier for this agreement.
+         *
+         * @param tenantId the tenant identifier
+         * @return this builder
+         */
+        public Builder tenantId(String tenantId) {
+            agreement.tenantId = tenantId;
+            return this;
+        }
+
         public Agreement build() {
             if (agreement.id == null) {
                 agreement.id = "urn:uuid:" + UUID.randomUUID();
@@ -113,6 +128,16 @@ public class Agreement implements Serializable {
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
     public String getType() {
         return Agreement.class.getSimpleName();
+    }
+
+    /**
+     * Injects the tenant identifier into this agreement instance.
+     * Used by the service layer to associate an agreement with a specific tenant.
+     *
+     * @param tenantId the tenant identifier to inject
+     */
+    public void injectTenantId(String tenantId) {
+        this.tenantId = tenantId;
     }
 
 }

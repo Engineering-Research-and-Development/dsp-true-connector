@@ -45,6 +45,8 @@ import it.eng.tools.s3.service.S3ClientService;
         })
 class DisabledSecurityIT extends BaseIntegrationTest {
 
+    private static final String CATALOG_REQUEST_PATH = "/" + TENANT_ID + "/catalog/request";
+
     @DynamicPropertySource
     static void disabledSecurityProperties(DynamicPropertyRegistry registry) {
         registry.add("application.auth.provider", () -> "DISABLED");
@@ -108,12 +110,12 @@ class DisabledSecurityIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /catalog/request without authentication returns 200 in disabled mode")
+    @DisplayName("POST /{tenantId}/catalog/request without authentication returns 200 in disabled mode")
     void catalogRequestWithoutAuthenticationReturnsOk() throws Exception {
         populateCatalog();
         uploadFile();
 
-        ResultActions result = mockMvc.perform(post("/catalog/request")
+        ResultActions result = mockMvc.perform(post(CATALOG_REQUEST_PATH)
                 .content(catalogRequestBody())
                 .contentType(MediaType.APPLICATION_JSON));
 
@@ -130,13 +132,15 @@ class DisabledSecurityIT extends BaseIntegrationTest {
 
     private void populateCatalog() {
         Catalog catalog = CatalogMockObjectUtil.createNewCatalog();
+        catalog.injectTenantId(TENANT_ID);
+        Dataset dataset = catalog.getDataset().stream().findFirst()
+                .orElseThrow(() -> new IllegalStateException("Catalog test fixture does not contain a dataset."));
+        dataset.injectTenantId(TENANT_ID);
+
         catalogRepository.save(catalog);
         datasetRepository.saveAll(catalog.getDataset());
         dataServiceRepository.saveAll(catalog.getService());
         distributionRepository.saveAll(catalog.getDistribution());
-
-        Dataset dataset = catalog.getDataset().stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("Catalog test fixture does not contain a dataset."));
         artifactRepository.save(dataset.getArtifact());
     }
 

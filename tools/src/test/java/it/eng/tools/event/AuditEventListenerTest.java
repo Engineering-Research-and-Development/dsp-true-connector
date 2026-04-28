@@ -226,6 +226,28 @@ class AuditEventListenerTest {
     }
 
     // -------------------------------------------------------------------------
+    // sanitizeDetails – tenantId preservation
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("sanitizeDetails: tenantId is preserved in the rebuilt event")
+    void sanitizeDetails_tenantId_isPreserved() {
+        var event = AuditEvent.Builder.newInstance()
+                .eventType(AuditEventType.APPLICATION_START)
+                .description("tenant test")
+                .tenantId("engineering")
+                .details(Map.of("key", "value"))
+                .build();
+
+        auditEventListener.handleAuditEvent(event);
+
+        var captor = ArgumentCaptor.forClass(AuditEvent.class);
+        verify(auditEventRepository).save(captor.capture());
+
+        assertEquals("engineering", captor.getValue().getTenantId());
+    }
+
+    // -------------------------------------------------------------------------
     // handleAuditEvent – exception safety
     // -------------------------------------------------------------------------
 

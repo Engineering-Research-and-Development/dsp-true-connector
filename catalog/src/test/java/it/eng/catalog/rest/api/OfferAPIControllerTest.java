@@ -6,7 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,7 +41,7 @@ public class OfferAPIControllerTest {
 	        verify(catalogService).validateOffer(any(Offer.class));
 	        assertNotNull(response);
 	        assertTrue(response.getStatusCode().is2xxSuccessful());
-	        assertTrue(StringUtils.contains(response.getBody().getMessage(), "Offer is valid"));
+	        assertTrue(Strings.CS.contains(response.getBody().getMessage(), "Offer is valid"));
 	    }
 	    
 	    @Test
@@ -55,6 +55,6 @@ public class OfferAPIControllerTest {
 		    verify(catalogService).validateOffer(any(Offer.class));
 	        assertNotNull(response);
 	        assertTrue(response.getStatusCode().is4xxClientError());
-	        assertTrue(StringUtils.contains(response.getBody().getMessage(), "Offer not valid"));
+	        assertTrue(Strings.CS.contains(response.getBody().getMessage(), "Offer not valid"));
 	    }
 }

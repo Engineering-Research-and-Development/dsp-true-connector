@@ -13,6 +13,7 @@ import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantContextHolder;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -50,15 +51,23 @@ public class DatasetService {
 
     /********* PROTOCOL ***********/
     /**
-     * Retrieves a dataset by its unique ID, intended for protocol use.
+     * Retrieves a dataset by its unique ID, scoped to the current tenant context.
+     * Intended for protocol use.
      *
      * @param id the unique ID of the dataset
      * @return the dataset corresponding to the provided ID
      * @throws CatalogErrorException if no dataset is found with the provided ID
      */
     public Dataset getDatasetById(String id) {
-        Dataset dataset = repository.findById(id)
-                .orElseThrow(() -> new CatalogErrorException("Dataset with id: " + id + " not found"));
+        String tenantId = TenantContextHolder.getTenantId();
+        Dataset dataset;
+        if (tenantId != null) {
+            dataset = repository.findByIdAndTenantId(id, tenantId)
+                    .orElseThrow(() -> new CatalogErrorException("Dataset with id: " + id + " not found"));
+        } else {
+            dataset = repository.findById(id)
+                    .orElseThrow(() -> new CatalogErrorException("Dataset with id: " + id + " not found"));
+        }
 
         List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
 
@@ -86,27 +95,38 @@ public class DatasetService {
 
     /********* API ***********/
     /**
-     * Retrieves a dataset by its unique ID, intended for API use.
+     * Retrieves a dataset by its unique ID, scoped to the current tenant context.
+     * Intended for API use.
      *
      * @param id the unique ID of the dataset
      * @return the dataset corresponding to the provided ID
      * @throws ResourceNotFoundAPIException if no dataset is found with the provided ID
      */
     public Dataset getDatasetByIdForApi(String id) {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            return repository.findByIdAndTenantId(id, tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundAPIException("Dataset with id: " + id + " not found"));
+        }
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Dataset with id: " + id + " not found"));
     }
 
     /**
-     * Retrieves all datasets in the catalog.
+     * Retrieves all datasets, scoped to the current tenant context.
      *
-     * @return a list of all datasets
+     * @return a collection of all datasets visible to the current principal
      */
     public Collection<Dataset> getAllDatasets() {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            return repository.findAllByTenantId(tenantId);
+        }
         return repository.findAll();
     }
 
     /**
      * Saves a dataset to the repository and updates the catalog.
+     * Stamps the current tenant ID on the dataset before persisting.
      *
      * @param dataset       the dataset to be saved
      * @param externalURL   URL of external data
@@ -119,8 +139,12 @@ public class DatasetService {
         Dataset savedDataSet = null;
         try {
 //			TODO revert changes in case of failure
+            String tenantId = TenantContextHolder.getTenantId();
             Artifact artifact = artifactService.uploadArtifact(dataset.getId(), file, externalURL, authorization);
             Dataset datasetWithArtifact = addArtifactToDataset(dataset, artifact);
+            if (tenantId != null) {
+                datasetWithArtifact.injectTenantId(tenantId);
+            }
             savedDataSet = repository.save(datasetWithArtifact);
         } catch (Exception e) {
             log.error(e.getMessage(), e);
@@ -223,6 +247,7 @@ public class DatasetService {
     private Dataset addArtifactToDataset(Dataset dataset, Artifact artifact) {
         Dataset datasetWithArtifact = Dataset.Builder.newInstance()
                 .id(dataset.getId())
+                .tenantId(dataset.getTenantId())
                 .artifact(artifact)
                 .conformsTo(dataset.getConformsTo())
                 .createdBy(dataset.getCreatedBy())

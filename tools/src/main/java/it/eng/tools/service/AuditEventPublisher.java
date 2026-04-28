@@ -74,6 +74,11 @@ public class AuditEventPublisher {
                     .username(requestInfo.getUsername())
                     .source(requestInfo.getRemoteHost());
         }
+        // Add tenant context if available
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            auditEventBuilder.tenantId(tenantId);
+        }
         return auditEventBuilder;
     }
 }

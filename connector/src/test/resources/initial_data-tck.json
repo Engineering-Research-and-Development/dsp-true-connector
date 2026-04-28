@@ -2373,5 +2373,19 @@
       "agreementId": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "count": "0"
     }
+  ],
+  "tenants": [
+    {
+      "_class": "it.eng.tools.model.Tenant",
+      "_id": "engineering",
+      "name": "Engineering",
+      "description": "Default Engineering tenant",
+      "connectorId": "urn:connector:engineering",
+      "callbackAddress": "http://localhost:8080",
+      "enabled": true,
+      "automaticNegotiation": false,
+      "automaticTransfer": false,
+      "version": 0
+    }
   ]
 }

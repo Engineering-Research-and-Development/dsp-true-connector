@@ -51,6 +51,9 @@ public class Distribution implements Serializable {
     private String format;
 
     @JsonIgnore
+    private String tenantId;
+
+    @JsonIgnore
     @CreatedBy
     private String createdBy;
     @JsonIgnore
@@ -138,6 +141,17 @@ public class Distribution implements Serializable {
             return this;
         }
 
+        /**
+         * Sets the tenant identifier for this distribution.
+         *
+         * @param tenantId the tenant ID
+         * @return this builder
+         */
+        public Distribution.Builder tenantId(String tenantId) {
+            distribution.tenantId = tenantId;
+            return this;
+        }
+
         public Distribution build() {
             if (distribution.id == null) {
                 distribution.id = "urn:uuid:" + UUID.randomUUID().toString();
@@ -153,6 +167,16 @@ public class Distribution implements Serializable {
                             .map(v -> v.getPropertyPath() + " " + v.getMessage())
                             .collect(Collectors.joining(",")));
         }
+    }
+
+    /**
+     * Directly sets the tenant identifier on this instance, bypassing the builder.
+     * Used by the service layer to stamp tenant ownership before persisting.
+     *
+     * @param tenantId the tenant ID to associate with this distribution
+     */
+    public void injectTenantId(String tenantId) {
+        this.tenantId = tenantId;
     }
 
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
@@ -173,6 +197,7 @@ public class Distribution implements Serializable {
                 .version(this.version)
                 .issued(this.issued)
                 .createdBy(this.createdBy)
+                .tenantId(this.tenantId)
                 .modified(updatedDistribution.getModified() != null ? updatedDistribution.getModified() : this.modified)
                 .title(updatedDistribution.getTitle() != null ? updatedDistribution.getTitle() : this.title)
                 .description(updatedDistribution.getDescription() != null ? updatedDistribution.getDescription() : this.description)

@@ -36,6 +36,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
 
+    private static final String CATALOG_REQUEST_PATH = "/" + TENANT_ID + "/catalog/request";
+
     @Autowired
     private CatalogRepository catalogRepository;
 
@@ -122,18 +124,18 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /catalog/request without bearer token returns 401 in Keycloak mode")
+    @DisplayName("POST /{tenantId}/catalog/request without bearer token returns 401 in Keycloak mode")
     void catalogRequestWithoutBearerTokenReturnsUnauthorized() throws Exception {
-        mockMvc.perform(post("/catalog/request")
+        mockMvc.perform(post(CATALOG_REQUEST_PATH)
                         .content(catalogRequestBody())
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("POST /catalog/request with admin token returns 403 in Keycloak mode")
+    @DisplayName("POST /{tenantId}/catalog/request with admin token returns 403 in Keycloak mode")
     void catalogRequestWithAdminTokenReturnsForbidden() throws Exception {
-        mockMvc.perform(post("/catalog/request")
+        mockMvc.perform(post(CATALOG_REQUEST_PATH)
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(adminAccessToken()))
                         .content(catalogRequestBody())
                         .contentType(MediaType.APPLICATION_JSON))
@@ -141,12 +143,12 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /catalog/request with connector token returns 200 in Keycloak mode")
+    @DisplayName("POST /{tenantId}/catalog/request with connector token returns 200 in Keycloak mode")
     void catalogRequestWithConnectorTokenReturnsOk() throws Exception {
         populateCatalog();
         uploadFile();
 
-        ResultActions result = mockMvc.perform(post("/catalog/request")
+        ResultActions result = mockMvc.perform(post(CATALOG_REQUEST_PATH)
                 .header(HttpHeaders.AUTHORIZATION, bearerToken(connectorAccessToken()))
                 .content(catalogRequestBody())
                 .contentType(MediaType.APPLICATION_JSON));
@@ -164,8 +166,10 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
 
     private void populateCatalog() {
         Catalog catalog = CatalogMockObjectUtil.createNewCatalog();
+        catalog.injectTenantId(TENANT_ID);
         Dataset dataset = catalog.getDataset().stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("Catalog test fixture does not contain a dataset."));
+        dataset.injectTenantId(TENANT_ID);
 
         catalogRepository.save(catalog);
         datasetRepository.saveAll(catalog.getDataset());

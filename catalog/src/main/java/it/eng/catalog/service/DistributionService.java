@@ -9,6 +9,7 @@ import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Distribution;
 import it.eng.catalog.repository.DistributionRepository;
+import it.eng.tools.service.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -27,27 +28,37 @@ public class DistributionService {
     }
 
     /**
-     * Retrieves a distribution by its unique ID.
+     * Retrieves a distribution by its unique ID, scoped to the current tenant context.
      *
      * @param id the unique ID of the distribution
      * @return the distribution corresponding to the provided ID
      * @throws ResourceNotFoundAPIException if no distribution is found with the provided ID
      */
     public Distribution getDistributionById(String id) {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            return repository.findByIdAndTenantId(id, tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundAPIException("Distribution with id: " + id + " not found"));
+        }
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Distribution with id: " + id + " not found"));
     }
 
     /**
-     * Retrieves all distributions in the catalog.
+     * Retrieves all distributions, scoped to the current tenant context.
      *
-     * @return a list of all distributions
+     * @return a collection of all distributions visible to the current principal
      */
     public Collection<Distribution> getAllDistributions() {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            return repository.findAllByTenantId(tenantId);
+        }
         return repository.findAll();
     }
 
     /**
-     * Saves a distribution to the repository and updates the catalog.
+     * Saves a distribution to the repository, stamping it with the current tenant ID.
+     * Also updates the catalog.
      *
      * @param distribution the distribution to be saved
      * @return saved distribution
@@ -56,6 +67,10 @@ public class DistributionService {
     public Distribution saveDistribution(Distribution distribution) {
         Distribution savedDistribution = null;
 		try {
+		    String tenantId = TenantContextHolder.getTenantId();
+		    if (tenantId != null) {
+		        distribution.injectTenantId(tenantId);
+		    }
 			savedDistribution = repository.save(distribution);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);

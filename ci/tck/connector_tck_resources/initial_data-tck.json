@@ -136,7 +136,8 @@
       "participantId": "urn:example:DataProviderA",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     }
   ],
   "datasets": [
@@ -198,7 +199,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.catalog.model.Dataset",
@@ -251,7 +253,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.catalog.model.Dataset",
@@ -304,7 +307,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.catalog.model.Dataset",
@@ -357,7 +361,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.catalog.model.Dataset",
@@ -410,7 +415,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.catalog.model.Dataset",
@@ -463,7 +469,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.catalog.model.Dataset",
@@ -516,7 +523,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.catalog.model.Dataset",
@@ -569,7 +577,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.catalog.model.Dataset",
@@ -622,7 +631,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.catalog.model.Dataset",
@@ -675,7 +685,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.catalog.model.Dataset",
@@ -728,7 +739,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.catalog.model.Dataset",
@@ -781,7 +793,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.catalog.model.Dataset",
@@ -834,7 +847,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.catalog.model.Dataset",
@@ -887,7 +901,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.catalog.model.Dataset",
@@ -940,7 +955,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.catalog.model.Dataset",
@@ -993,7 +1009,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     }
   ],
   "dataservices": [
@@ -1023,7 +1040,8 @@
       "endpointURL": "http://localhost:8090/",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     }
   ],
   "distributions": [
@@ -1040,7 +1058,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5",
@@ -1055,7 +1074,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     }
   ],
   "artifacts": [
@@ -1076,7 +1096,8 @@
       "version": {
         "$numberLong": "0"
       },
-      "_class": "it.eng.tools.model.Artifact"
+      "_class": "it.eng.tools.model.Artifact",
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8",
@@ -1094,7 +1115,8 @@
       "version": {
         "$numberLong": "0"
       },
-      "_class": "it.eng.tools.model.Artifact"
+      "_class": "it.eng.tools.model.Artifact",
+      "tenantId": "engineering"
     }
   ],
   "application_properties": [
@@ -1179,7 +1201,7 @@
   "contract_negotiations": [
     {
       "_id": "urn:uuid:CONTRACT_NEGOTIATION_ID_INITIALIZED_API_GHA",
-      "callbackAddress": "http://localhost:8080/consumer",
+      "callbackAddress": "http://localhost:8080/engineering/consumer",
       "assigner": "urn:uuid:ASSIGNER_PROVIDER",
       "role": "provider",
       "agreement": {
@@ -1189,7 +1211,8 @@
       "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
       "state": "FINALIZED",
       "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
-      "_class": "it.eng.negotiation.model.ContractNegotiation"
+      "_class": "it.eng.negotiation.model.ContractNegotiation",
+      "tenantId": "engineering"
     }
   ],
   "agreements": [
@@ -1211,7 +1234,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATP0102",
@@ -1231,7 +1255,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATP0103",
@@ -1251,7 +1276,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATP0104",
@@ -1271,7 +1297,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATP0105",
@@ -1291,7 +1318,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATP0201",
@@ -1311,7 +1339,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATP0202",
@@ -1331,7 +1360,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATP0203",
@@ -1351,7 +1381,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATP0204",
@@ -1371,7 +1402,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATP0205",
@@ -1391,7 +1423,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATP0301",
@@ -1411,7 +1444,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATP0302",
@@ -1431,7 +1465,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATP0303",
@@ -1451,7 +1486,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATP0304",
@@ -1471,7 +1507,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATP0305",
@@ -1491,7 +1528,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATP0306",
@@ -1511,7 +1549,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATPC0101",
@@ -1531,7 +1570,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATPC0102",
@@ -1551,7 +1591,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATPC0103",
@@ -1571,7 +1612,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATPC0104",
@@ -1591,7 +1633,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATPC0105",
@@ -1611,7 +1654,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATPC0201",
@@ -1631,7 +1675,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATPC0202",
@@ -1651,7 +1696,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATPC0203",
@@ -1671,7 +1717,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATPC0204",
@@ -1691,7 +1738,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATPC0205",
@@ -1711,7 +1759,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATPC0301",
@@ -1731,7 +1780,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATPC0302",
@@ -1751,7 +1801,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATPC0303",
@@ -1771,7 +1822,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATPC0304",
@@ -1791,7 +1843,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATPC0305",
@@ -1811,7 +1864,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "ATPC0306",
@@ -1831,7 +1885,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
@@ -1851,7 +1906,8 @@
             }
           ]
         }
-      ]
+      ],
+      "tenantId": "engineering"
     }
   ],
   "transfer_process": [
@@ -1859,7 +1915,7 @@
       "_id": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://localhost:8090/",
+      "callbackAddress": "http://localhost:8090/engineering",
       "agreementId": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "state": "INITIALIZED",
       "role": "provider",
@@ -1868,7 +1924,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0101-1434-1234-8baf-ab7fd66ql4d5",
@@ -1883,7 +1940,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0102-1434-1234-8baf-ab7fd66ql4d5",
@@ -1898,7 +1956,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0103-1434-1234-8baf-ab7fd66ql4d5",
@@ -1913,7 +1972,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0104-1434-1234-8baf-ab7fd66ql4d5",
@@ -1928,7 +1988,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0105-1434-1234-8baf-ab7fd66ql4d5",
@@ -1943,7 +2004,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0201-1434-1234-8baf-ab7fd66ql4d5",
@@ -1958,7 +2020,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0202-1434-1234-8baf-ab7fd66ql4d5",
@@ -1973,7 +2036,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0203-1434-1234-8baf-ab7fd66ql4d5",
@@ -1988,7 +2052,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0204-1434-1234-8baf-ab7fd66ql4d5",
@@ -2003,7 +2068,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0205-1434-1234-8baf-ab7fd66ql4d5",
@@ -2018,7 +2084,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0301-1434-1234-8baf-ab7fd66ql4d5",
@@ -2033,7 +2100,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0302-1434-1234-8baf-ab7fd66ql4d5",
@@ -2048,7 +2116,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0303-1434-1234-8baf-ab7fd66ql4d5",
@@ -2063,7 +2132,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0304-1434-1234-8baf-ab7fd66ql4d5",
@@ -2078,7 +2148,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0305-1434-1234-8baf-ab7fd66ql4d5",
@@ -2093,7 +2164,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0306-1434-1234-8baf-ab7fd66ql4d5",
@@ -2108,7 +2180,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATP0101-1434-1234-8baf-ab7fd66ql4d5",
@@ -2123,7 +2196,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATPC0101-1434-1234-8baf-ab7fd66ql4d5",
@@ -2138,7 +2212,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATPC0102-1434-1234-8baf-ab7fd66ql4d5",
@@ -2153,7 +2228,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATPC0103-1434-1234-8baf-ab7fd66ql4d5",
@@ -2168,7 +2244,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATPC0104-1434-1234-8baf-ab7fd66ql4d5",
@@ -2183,7 +2260,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATPC0105-1434-1234-8baf-ab7fd66ql4d5",
@@ -2198,7 +2276,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATPC0201-1434-1234-8baf-ab7fd66ql4d5",
@@ -2213,7 +2292,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATPC0202-1434-1234-8baf-ab7fd66ql4d5",
@@ -2228,7 +2308,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATPC0203-1434-1234-8baf-ab7fd66ql4d5",
@@ -2243,7 +2324,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATPC0204-1434-1234-8baf-ab7fd66ql4d5",
@@ -2258,7 +2340,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATPC0205-1434-1234-8baf-ab7fd66ql4d5",
@@ -2273,7 +2356,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATPC0301-1434-1234-8baf-ab7fd66ql4d5",
@@ -2288,7 +2372,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATPC0302-1434-1234-8baf-ab7fd66ql4d5",
@@ -2303,7 +2388,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATPC0303-1434-1234-8baf-ab7fd66ql4d5",
@@ -2318,7 +2404,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATPC0304-1434-1234-8baf-ab7fd66ql4d5",
@@ -2333,7 +2420,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATPC0305-1434-1234-8baf-ab7fd66ql4d5",
@@ -2348,7 +2436,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:ATPC0306-1434-1234-8baf-ab7fd66ql4d5",
@@ -2363,7 +2452,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2025-09-29T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     }
   ],
   "policy_enforcements": [
@@ -2371,7 +2461,21 @@
       "_id": "urn:uuid:abc45800-pole-4932-8baf-ab7fd36ql4d9",
       "_class": "it.eng.negotiation.model.PolicyEnforcement",
       "agreementId": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
-      "count": "0"
+      "count": "0",
+      "tenantId": "engineering"
+    }
+  ],
+  "tenants": [
+    {
+      "_id": "engineering",
+      "name": "Engineering",
+      "description": "Engineering tenant",
+      "connectorId": "urn:connector:engineering",
+      "callbackAddress": "http://localhost:8090/engineering",
+      "enabled": true,
+      "automaticNegotiation": false,
+      "automaticTransfer": false,
+      "version": 0
     }
   ]
 }

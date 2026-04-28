@@ -36,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
 
+
     @InjectWireMock
     private WireMockServer wiremock;
 
@@ -170,6 +171,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
                 // wiremock acts as provider
                 .callbackAddress(wiremock.baseUrl())
                 .build();
+        contractNegotiation.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(contractNegotiation);
 
         // prepare provider/wiremock response
@@ -208,6 +210,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
                 // wiremock acts as provider
                 .callbackAddress(wiremock.baseUrl())
                 .build();
+        contractNegotiation.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(contractNegotiation);
 
         // prepare provider/wiremock response
@@ -258,6 +261,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
                 // wiremock acts as provider
                 .callbackAddress(wiremock.baseUrl())
                 .build();
+        contractNegotiation.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(contractNegotiation);
 
         // prepare provider/wiremock response
@@ -301,6 +305,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
                 // wiremock acts as provider
                 .callbackAddress(wiremock.baseUrl())
                 .build();
+        contractNegotiation.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(contractNegotiation);
 
         // prepare provider/wiremock response
@@ -341,6 +346,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
                 .callbackAddress(wiremock.baseUrl())
                 .role(IConstants.ROLE_CONSUMER)
                 .build();
+        contractNegotiation.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(contractNegotiation);
 
         // prepare provider/wiremock response
@@ -392,6 +398,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
                 .callbackAddress(wiremock.baseUrl())
                 .role(IConstants.ROLE_CONSUMER)
                 .build();
+        contractNegotiation.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(contractNegotiation);
 
         // prepare provider/wiremock response

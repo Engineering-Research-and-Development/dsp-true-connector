@@ -79,6 +79,9 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     @Field("retryCount")
     private int retryCount;
 
+    @JsonIgnore
+    private String tenantId;
+
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
@@ -183,6 +186,17 @@ public class ContractNegotiation extends AbstractNegotiationObject {
             return this;
         }
 
+        /**
+         * Sets the tenant identifier for this contract negotiation.
+         *
+         * @param tenantId the tenant identifier
+         * @return this builder
+         */
+        public Builder tenantId(String tenantId) {
+            message.tenantId = tenantId;
+            return this;
+        }
+
         public ContractNegotiation build() {
             if (message.id == null) {
                 message.id = message.createNewPid();
@@ -211,6 +225,16 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     }
 
     /**
+     * Injects the tenant identifier into this contract negotiation instance.
+     * Used by the service layer to associate a negotiation with a specific tenant.
+     *
+     * @param tenantId the tenant identifier to inject
+     */
+    public void injectTenantId(String tenantId) {
+        this.tenantId = tenantId;
+    }
+
+    /**
      * Create new ContractNegotiation from initial, with new state.
      *
      * @param newState new ContractNegotiationState
@@ -233,6 +257,7 @@ public class ContractNegotiation extends AbstractNegotiationObject {
                 .modified(modified)
                 .version(this.version)
                 .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
                 .state(newState)
                 .build();
     }
@@ -256,6 +281,7 @@ public class ContractNegotiation extends AbstractNegotiationObject {
                 .agreement(this.agreement)
                 .state(this.state)
                 .retryCount(retryCount)
+                .tenantId(this.tenantId)
                 .createdBy(this.createdBy)
                 .created(this.created)
                 .lastModifiedBy(this.lastModifiedBy)

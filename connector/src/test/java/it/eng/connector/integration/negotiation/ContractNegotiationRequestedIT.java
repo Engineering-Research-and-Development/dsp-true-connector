@@ -40,6 +40,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
 // -> REQUESTED
 //	@PostMapping(path = "/request")
 
+
     @Autowired
     private CatalogRepository catalogRepository;
     @Autowired
@@ -56,7 +57,6 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
     private ContractNegotiationRepository contractNegotiationRepository;
     @Autowired
     private OfferRepository offerRepository;
-
     private Catalog catalog;
     private Dataset dataset;
 
@@ -131,7 +131,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/negotiations/request")
+                        post("/" + TENANT_ID + "/negotiations/request")
                                 .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(contractRequestMessage)))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isCreated())
@@ -165,7 +165,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/negotiations/request")
+                        post("/" + TENANT_ID + "/negotiations/request")
                                 .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(crm)))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
@@ -202,7 +202,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/negotiations/request")
+                        post("/" + TENANT_ID + "/negotiations/request")
                                 .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(crm)))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
@@ -239,7 +239,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/negotiations/request")
+                        post("/" + TENANT_ID + "/negotiations/request")
                                 .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(crm)))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
@@ -277,6 +277,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .state(ContractNegotiationState.OFFERED)
                 .role(IConstants.ROLE_PROVIDER)
                 .build();
+        existingNegotiation.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(existingNegotiation);
 
         // Consumer sends a counteroffer with the same constraints
@@ -294,7 +295,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .build();
 
         final ResultActions result = mockMvc.perform(
-                post("/negotiations/" + existingNegotiation.getProviderPid() + "/request")
+                post("/" + TENANT_ID + "/negotiations/" + existingNegotiation.getProviderPid() + "/request")
                         .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(counterofferMessage)))
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -336,6 +337,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .state(ContractNegotiationState.OFFERED)
                 .role(IConstants.ROLE_PROVIDER)
                 .build();
+        existingNegotiation.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(existingNegotiation);
 
         // Create counteroffer message with mismatched providerPid
@@ -353,7 +355,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .build();
 
         final ResultActions result = mockMvc.perform(
-                post("/negotiations/" + existingNegotiation.getProviderPid() + "/request")
+                post("/" + TENANT_ID + "/negotiations/" + existingNegotiation.getProviderPid() + "/request")
                         .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(counterofferMessage)))
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -391,7 +393,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .build();
 
         final ResultActions result = mockMvc.perform(
-                post("/negotiations/" + nonExistentProviderPid + "/request")
+                post("/" + TENANT_ID + "/negotiations/" + nonExistentProviderPid + "/request")
                         .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(counterofferMessage)))
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -425,6 +427,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .state(ContractNegotiationState.REQUESTED) // Invalid state for counteroffer
                 .role(IConstants.ROLE_PROVIDER)
                 .build();
+        existingNegotiation.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(existingNegotiation);
 
         Offer counterOffer = Offer.Builder.newInstance()
@@ -441,7 +444,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .build();
 
         final ResultActions result = mockMvc.perform(
-                post("/negotiations/" + existingNegotiation.getProviderPid() + "/request")
+                post("/" + TENANT_ID + "/negotiations/" + existingNegotiation.getProviderPid() + "/request")
                         .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(counterofferMessage)))
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -480,6 +483,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .state(ContractNegotiationState.OFFERED)
                 .role(IConstants.ROLE_PROVIDER)
                 .build();
+        existingNegotiation.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(existingNegotiation);
 
         // Create counteroffer with invalid offer (non-existent offer ID)
@@ -497,7 +501,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .build();
 
         final ResultActions result = mockMvc.perform(
-                post("/negotiations/" + existingNegotiation.getProviderPid() + "/request")
+                post("/" + TENANT_ID + "/negotiations/" + existingNegotiation.getProviderPid() + "/request")
                         .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(counterofferMessage)))
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -536,6 +540,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .state(ContractNegotiationState.OFFERED)
                 .role(IConstants.ROLE_PROVIDER)
                 .build();
+        existingNegotiation.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(existingNegotiation);
 
         // Create counteroffer with different target
@@ -553,7 +558,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
                 .build();
 
         final ResultActions result = mockMvc.perform(
-                post("/negotiations/" + existingNegotiation.getProviderPid() + "/request")
+                post("/" + TENANT_ID + "/negotiations/" + existingNegotiation.getProviderPid() + "/request")
                         .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(counterofferMessage)))
                         .contentType(MediaType.APPLICATION_JSON));
 

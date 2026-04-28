@@ -32,7 +32,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URL;
 import java.time.Instant;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -232,15 +232,15 @@ public class DataTransferAPIViewDataIT extends BaseIntegrationTest {
                 .assigner(NegotiationMockObjectUtil.ASSIGNER)
                 .target(NegotiationMockObjectUtil.TARGET)
                 .timestamp(Instant.now().toString())
-                .permission(Arrays.asList(Permission.Builder.newInstance()
+                .permission(Collections.singletonList(Permission.Builder.newInstance()
                         .action(Action.USE)
-                        .constraint(Arrays.asList(constraint))
+                        .constraint(Collections.singletonList(constraint))
                         .build()))
                 .build();
 
         agreementRepository.save(agreement);
 
-        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), currentCount);
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), currentCount, null);
         policyEnforcementRepository.save(policyEnforcement);
 
         return agreement;

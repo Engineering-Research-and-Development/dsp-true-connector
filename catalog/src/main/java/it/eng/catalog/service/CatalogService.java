@@ -11,6 +11,7 @@ import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantContextHolder;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -43,7 +44,9 @@ public class CatalogService {
 
     /********* PROTOCOL ***********/
     /**
-     * Retrieves the catalog.
+     * Retrieves the catalog scoped to the current tenant context.
+     * When a tenant ID is set via {@link TenantContextHolder}, only catalogs owned
+     * by that tenant are returned. Super-admin requests (null tenant ID) see all catalogs.
      *
      * @return The retrieved catalog.
      * @throws CatalogErrorException Thrown if the catalog is not found.
@@ -52,8 +55,14 @@ public class CatalogService {
 // TODO: remove the filtering of datasets by files in S3, after the file upload and dataset insert are separated
 //  (choose artifact from files list instead of uploading when making a new dataset)
         List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+        String tenantId = TenantContextHolder.getTenantId();
 
-        List<Catalog> allCatalogs = repository.findAll();
+        List<Catalog> allCatalogs;
+        if (tenantId != null) {
+            allCatalogs = repository.findAllByTenantId(tenantId);
+        } else {
+            allCatalogs = repository.findAll();
+        }
 
         log.info("Catalogs found: {}", allCatalogs.size());
 
@@ -80,14 +89,21 @@ public class CatalogService {
     /* ******** API ***********/
 
     /**
-     * Public method for fetching the catalog for further API processing purposes.<br>
-     * It throws ResourceNotFoundAPIException instead of CatalogErrorException used in protocol requests
+     * Public method for fetching the catalog for further API processing purposes.
+     * Scoped to the current tenant context when a tenant ID is set.
+     * It throws ResourceNotFoundAPIException instead of CatalogErrorException used in protocol requests.
      *
      * @return Catalog
      * @throws ResourceNotFoundAPIException Thrown if the catalog is not found.
      */
     public Catalog getCatalogForApi() {
-        List<Catalog> allCatalogs = repository.findAll();
+        String tenantId = TenantContextHolder.getTenantId();
+        List<Catalog> allCatalogs;
+        if (tenantId != null) {
+            allCatalogs = repository.findAllByTenantId(tenantId);
+        } else {
+            allCatalogs = repository.findAll();
+        }
 
         if (allCatalogs.isEmpty()) {
             throw new ResourceNotFoundAPIException("Catalog not found");
@@ -97,11 +113,16 @@ public class CatalogService {
     }
 
     private Catalog getCatalogByIdForApi(String id) {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            return repository.findByIdAndTenantId(id, tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id: " + id + " not found"));
+        }
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id: " + id + " not found"));
     }
 
     /**
-     * Saves the given catalog.
+     * Saves the given catalog, stamping it with the current tenant ID if one is set.
      *
      * @param catalog The catalog to be saved.
      * @return Saved Catalog object
@@ -110,6 +131,10 @@ public class CatalogService {
         // TODO handle the situation when we insert catalog for the first time, and the object like dataSets, distributions, etc. should be stored into separate documents
         Catalog storedCatalog = null;
         try {
+            String tenantId = TenantContextHolder.getTenantId();
+            if (tenantId != null && catalog.getTenantId() == null) {
+                catalog.injectTenantId(tenantId);
+            }
             storedCatalog = repository.save(catalog);
         } catch (Exception e) {
             log.error(e.getMessage(), e);
@@ -119,12 +144,17 @@ public class CatalogService {
     }
 
     /**
-     * Retrieves the catalog by its ID.
+     * Retrieves the catalog by its ID, scoped to the current tenant context.
      *
      * @param id The ID of the catalog to retrieve.
      * @return An optional containing the retrieved catalog, or empty if not found.
      */
     public Catalog getCatalogById(String id) {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            return repository.findByIdAndTenantId(id, tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id" + id + " not found"));
+        }
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id" + id + " not found"));
     }
 

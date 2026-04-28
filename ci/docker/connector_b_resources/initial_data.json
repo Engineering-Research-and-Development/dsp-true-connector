@@ -10,7 +10,8 @@
       "enabled": true,
       "expired": false,
       "locked": false,
-      "role": "ROLE_ADMIN"
+      "role": "ROLE_ADMIN",
+      "tenantId": "connector_b_tenant_id"
     },
     {
       "_class": "it.eng.connector.model.User",
@@ -22,7 +23,20 @@
       "enabled": "true",
       "expired": false,
       "locked": false,
-      "role": "ROLE_CONNECTOR"
+      "role": "ROLE_CONNECTOR",
+      "tenantId": "connector_b_tenant_id"
+    },
+    {
+      "_class": "it.eng.connector.model.User",
+      "_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "firstName": "Super",
+      "lastName": "Admin",
+      "email": "superadmin@mail.com",
+      "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
+      "enabled": true,
+      "expired": false,
+      "locked": false,
+      "role": "ROLE_SUPER_ADMIN"
     }
   ],
   "catalogs": [
@@ -74,6 +88,7 @@
         }
       ],
       "participantId": "urn:example:DataProviderA",
+      "tenantId": "connector_b_tenant_id",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
@@ -104,6 +119,7 @@
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "TRUEConnector team information dataset",
+      "tenantId": "connector_b_tenant_id",
       "hasPolicy": [
         {
           "_id": "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5",
@@ -164,8 +180,9 @@
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "DSP TRUE Connector",
+      "tenantId": "connector_b_tenant_id",
       "endpointDescription": "connector",
-      "endpointURL": "http://connector-b:8080/",
+      "endpointURL": "http://connector-b:8080/connector_b_tenant_id",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
@@ -177,6 +194,7 @@
       "_class": "it.eng.catalog.model.Distribution",
       "title": "HTTP Data PULL",
       "format": "HttpData-PULL",
+      "tenantId": "connector_b_tenant_id",
       "accessService": {
         "$ref": "dataservices",
         "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
@@ -192,6 +210,7 @@
       "_class": "it.eng.catalog.model.Distribution",
       "title": "HTTP Data PUSH",
       "format": "HttpData-PUSH",
+      "tenantId": "connector_b_tenant_id",
       "accessService": {
         "$ref": "dataservices",
         "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
@@ -221,7 +240,8 @@
       "version": {
         "$numberLong": "0"
       },
-      "_class": "it.eng.tools.model.Artifact"
+      "_class": "it.eng.tools.model.Artifact",
+      "tenantId": "connector_b_tenant_id"
     }
   ],
   "application_properties": [
@@ -306,7 +326,7 @@
   "contract_negotiations": [
     {
       "_id": "urn:uuid:CONTRACT_NEGOTIATION_ID_INITIALIZED_API_GHA",
-      "callbackAddress": "http://localhost:8080/consumer",
+      "callbackAddress": "http://172.17.0.1:8080/connector_b_tenant_id/consumer",
       "assigner": "urn:uuid:ASSIGNER_PROVIDER",
       "role": "provider",
       "agreement": {
@@ -316,6 +336,7 @@
       "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
       "state": "FINALIZED",
       "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
+      "tenantId": "connector_b_tenant_id",
       "_class": "it.eng.negotiation.model.ContractNegotiation"
     }
   ],
@@ -323,6 +344,7 @@
     {
       "_id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "_class": "it.eng.negotiation.model.Agreement",
+      "tenantId": "connector_b_tenant_id",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2023-01-01T01:00:00Z",
       "assigner": "urn:tsdshhs636378",
@@ -341,13 +363,12 @@
       ]
     }
   ],
-  "transfer_request_messages": [],
   "transfer_process": [
     {
       "_id": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://172.17.0.1:8080/",
+      "callbackAddress": "http://172.17.0.1:8080/connector_b_tenant_id/consumer",
       "agreementId": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "state": "INITIALIZED",
       "role": "provider",
@@ -356,7 +377,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "connector_b_tenant_id"
     }
   ],
   "transfer_start_messages": [],
@@ -365,7 +387,21 @@
       "_id": "urn:uuid:abc45800-pole-4932-8baf-ab7fd36ql4d9",
       "_class": "it.eng.negotiation.model.PolicyEnforcement",
       "agreementId": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
+      "tenantId": "connector_b_tenant_id",
       "count": "0"
+    }
+  ],
+  "tenants": [
+    {
+      "_id": "connector_b_tenant_id",
+      "name": "Engineering",
+      "description": "Engineering tenant",
+      "connectorId": "urn:connector_b:engineering",
+      "callbackAddress": "http://172.17.0.1:8090/connector_b_tenant_id",
+      "enabled": true,
+      "automaticNegotiation": false,
+      "automaticTransfer": false,
+      "version": 0
     }
   ]
 }

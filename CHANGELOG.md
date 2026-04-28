@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] — Multi-Tenant Support
+
+### Added
+- **Multi-tenant foundation** — `Tenant` model, `TenantRepository`, `TenantService`, `TenantContextHolder` (ThreadLocal + MDC), `TenantAPIController` for full tenant lifecycle management via `/api/v1/tenants`.
+- `TenantAwareProtocolController` — abstract base class for all DSP protocol controllers; resolves the `{tenantId}` path variable and sets `TenantContextHolder` before any request processing.
+- `ApiTenantContextFilter` — sets tenant scope for management API requests from the authenticated user's `tenantId`; super-admins may override with `X-Tenant-Id` header.
+- `TenantContextClearingInterceptor` — clears `TenantContextHolder` after each request to prevent ThreadLocal leaks.
+- `ROLE_SUPER_ADMIN` — cross-tenant access role; users without a tenant restriction see data across all tenants.
+- `InitialDataLoader.ensureEngineeringTenant()` — bootstraps a default `engineering` tenant on startup; connector refuses to start if no enabled tenant exists.
+- Audit event types `TENANT_CREATED`, `TENANT_DELETED`, `TENANT_ENABLED`, `TENANT_DISABLED`, `TENANT_NOT_FOUND`.
+- `tenantId` field added to `Catalog`, `Dataset`, `Distribution`, `DataService`, `Artifact`, `ContractNegotiation`, `Agreement`, and `TransferProcess` models; field is `@JsonIgnore` so it is transparent to DSP protocol messages.
+- Tenant-scoped repository query methods (`findByIdAndTenantId`, `findAllByTenantId`, etc.) for all tenant-aware collections.
+- **DSP protocol endpoint URL prefix** — all protocol endpoints now require `/{tenantId}/` prefix:
+  - Catalog: `/{tenantId}/catalog/request`
+  - Negotiations: `/{tenantId}/negotiations`, `/{tenantId}/consumer/negotiations/...`
+  - Transfers: `/{tenantId}/transfers/request`, `/{tenantId}/consumer/transfers/...`
+- `tenantId` propagation through the async `InitializeTransferProcess` event so data transfer initialization on worker threads receives the correct tenant context.
+- MDC `tenantId` field in all log output (all `logback.xml` files updated).
+- `doc/multi-tenant-user-guide.md` — operator and user manual.
+- `doc/multi-tenant-technical.md` — developer and architecture reference.
+
+### Changed
+- All DSP protocol controllers now extend `TenantAwareProtocolController` and include `tenantId` as first path variable and method parameter.
+- `ConnectorSecurityConfig` security matchers updated to cover `/{tenantId}/` prefixed patterns.
+- `initial_data.json` — all seed catalog, dataset, distribution, data-service, and artifact entries include `"tenantId": "engineering"`.
+
 ## [0.6.11-SNAPSHOT] - 16.04.2026.
 
 ### Added

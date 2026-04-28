@@ -40,7 +40,14 @@ public enum AuditEventType {
     TRANSFER_COMPLETED("Transfer completed"),
     TRANSFER_FAILED("Transfer failed"),
 
-    NEGOTIATION_ACCESS_COUNT_INCREASE("Access count increase");
+    NEGOTIATION_ACCESS_COUNT_INCREASE("Access count increase"),
+
+    TENANT_CREATED("Tenant created"),
+    TENANT_DELETED("Tenant deleted"),
+    TENANT_ENABLED("Tenant enabled"),
+    TENANT_DISABLED("Tenant disabled"),
+    TENANT_UPDATED("Tenant updated"),
+    TENANT_NOT_FOUND("Tenant not found");
 
     private final String auditEventType;
     private static final Map<String, AuditEventType> BY_LABEL;

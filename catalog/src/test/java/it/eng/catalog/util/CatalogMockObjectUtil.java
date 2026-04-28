@@ -237,10 +237,21 @@ public class CatalogMockObjectUtil {
      * @return A new Catalog instance.
      */
     public static Catalog createNewCatalog() {
+        return createNewCatalog(null);
+    }
+
+    /**
+     * Creates a new Catalog instance with predefined values and the given tenantId injected.
+     * Pass {@code null} to leave tenantId unset (SUPER_ADMIN / no-tenant scenarios).
+     *
+     * @param tenantId tenant identifier to inject, or {@code null}
+     * @return A new Catalog instance with tenantId set.
+     */
+    public static Catalog createNewCatalog(String tenantId) {
 //        the Dataset has all the necessary data, and with this we unsure that all nested fields are the same, with createNewMethods some fields would not match
 //        e.g. catalog.getDistribution and catalog.getDataset.getDistribution are equal since the same Distribution is set in both places
-        Dataset dataset = createNewDataset();
-        return Catalog.Builder.newInstance()
+        Dataset dataset = createNewDataset(tenantId);
+        Catalog catalog = Catalog.Builder.newInstance()
                 .conformsTo(CONFORMSTO)
                 .creator(CREATOR)
                 .description(dataset.getDescription())
@@ -258,6 +269,10 @@ public class CatalogMockObjectUtil {
                 // Let's not set the policies at Catalog level
 //                .hasPolicy(dataset.getHasPolicy())
                 .build();
+        if (tenantId != null) {
+            catalog.injectTenantId(tenantId);
+        }
+        return catalog;
     }
 
     public static final Catalog CATALOG_FOR_UPDATE = Catalog.Builder.newInstance()
@@ -327,7 +342,18 @@ public class CatalogMockObjectUtil {
      * @return A new DataService instance.
      */
     public static DataService createNewDataService() {
-        return DataService.Builder.newInstance()
+        return createNewDataService(null);
+    }
+
+    /**
+     * Creates a new DataService instance with the given tenantId injected.
+     * Pass {@code null} to leave tenantId unset.
+     *
+     * @param tenantId tenant identifier to inject, or {@code null}
+     * @return A new DataService instance with tenantId set.
+     */
+    public static DataService createNewDataService(String tenantId) {
+        DataService dataService = DataService.Builder.newInstance()
                 .keyword(Stream.of("DataService keyword1", "DataService keyword2").collect(Collectors.toCollection(HashSet::new)))
                 .theme(Stream.of("DataService theme1", "DataService theme2").collect(Collectors.toCollection(HashSet::new)))
                 .conformsTo(CONFORMSTO)
@@ -340,6 +366,10 @@ public class CatalogMockObjectUtil {
                 .endpointURL("http://dataservice.com")
                 .endpointDescription("endpoint description")
                 .build();
+        if (tenantId != null) {
+            dataService.injectTenantId(tenantId);
+        }
+        return dataService;
     }
 
     /**
@@ -348,15 +378,30 @@ public class CatalogMockObjectUtil {
      * @return A new Distribution instance.
      */
     public static Distribution createNewDistribution() {
-        return Distribution.Builder.newInstance()
+        return createNewDistribution(null);
+    }
+
+    /**
+     * Creates a new Distribution instance with the given tenantId injected.
+     * Pass {@code null} to leave tenantId unset.
+     *
+     * @param tenantId tenant identifier to inject, or {@code null}
+     * @return A new Distribution instance with tenantId set.
+     */
+    public static Distribution createNewDistribution(String tenantId) {
+        Distribution distribution = Distribution.Builder.newInstance()
                 .title(TITLE)
                 .description(new HashSet<>(Collections.singletonList(MULTILANGUAGE)))
                 .issued(ISSUED)
                 .modified(MODIFIED)
                 .format("HttpData-PULL")
                 .hasPolicy(new HashSet<>(Collections.singletonList(createNewOffer())))
-                .accessService(createNewDataService())
+                .accessService(createNewDataService(tenantId))
                 .build();
+        if (tenantId != null) {
+            distribution.injectTenantId(tenantId);
+        }
+        return distribution;
     }
 
     /**
@@ -388,12 +433,23 @@ public class CatalogMockObjectUtil {
      * @return A new Dataset instance.
      */
     public static Dataset createNewDataset() {
+        return createNewDataset(null);
+    }
+
+    /**
+     * Creates a new Dataset instance with the given tenantId injected.
+     * Pass {@code null} to leave tenantId unset.
+     *
+     * @param tenantId tenant identifier to inject, or {@code null}
+     * @return A new Dataset instance with tenantId set.
+     */
+    public static Dataset createNewDataset(String tenantId) {
         String datasetId = ToolsUtil.generateUniqueId();
-        return Dataset.Builder.newInstance()
+        Dataset dataset = Dataset.Builder.newInstance()
                 .id(datasetId)
                 .conformsTo(CONFORMSTO)
                 .creator(CREATOR)
-                .distribution(new HashSet<>(Collections.singletonList(createNewDistribution())))
+                .distribution(new HashSet<>(Collections.singletonList(createNewDistribution(tenantId))))
                 .description(new HashSet<>(Collections.singletonList(createNewMultilanguage())))
                 .issued(ISSUED)
                 .keyword(new HashSet<>(Arrays.asList("keyword1", "keyword2")))
@@ -404,6 +460,10 @@ public class CatalogMockObjectUtil {
                 .hasPolicy(new HashSet<>(Collections.singletonList(createNewOffer())))
                 .artifact(createNewArtifact(datasetId))
                 .build();
+        if (tenantId != null) {
+            dataset.injectTenantId(tenantId);
+        }
+        return dataset;
     }
 
     /**

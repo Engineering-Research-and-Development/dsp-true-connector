@@ -24,6 +24,7 @@ import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.serializer.ToolsSerializer;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -112,6 +113,11 @@ public class DataTransferAPIService {
      * @return page of TransferProcess
      */
     public Page<TransferProcess> findDataTransfers(Map<String, Object> filters, Pageable pageable) {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            filters = new HashMap<>(filters);
+            filters.put("tenantId", tenantId);
+        }
         return transferProcessRepository.findWithDynamicFilters(filters, TransferProcess.class, pageable);
     }
 
@@ -205,6 +211,7 @@ public class DataTransferAPIService {
                         .callbackAddress(transferProcessInitialized.getCallbackAddress())
                         .role(IConstants.ROLE_CONSUMER)
                         .state(transferProcessFromResponse.getState())
+                        .tenantId(transferProcessInitialized.getTenantId())
                         .created(transferProcessInitialized.getCreated())
                         .createdBy(transferProcessInitialized.getCreatedBy())
                         .modified(transferProcessInitialized.getModified())
@@ -233,21 +240,26 @@ public class DataTransferAPIService {
             JsonNode jsonNode;
             try {
                 jsonNode = mapper.readTree(response.getData());
-                TransferError transferError = TransferSerializer.deserializeProtocol(jsonNode, TransferError.class);
-                Map<String, Object> details = new HashMap<>();
-                details.put("transferProcess", transferProcessInitialized);
-                details.put("role", IConstants.ROLE_API);
-                details.put("errorMessage", transferError);
-                if (transferProcessInitialized.getConsumerPid() != null) {
-                    details.put("consumerPid", transferProcessInitialized.getConsumerPid());
+                try {
+                    TransferError transferError = TransferSerializer.deserializeProtocol(jsonNode, TransferError.class);
+                    Map<String, Object> details = new HashMap<>();
+                    details.put("transferProcess", transferProcessInitialized);
+                    details.put("role", IConstants.ROLE_API);
+                    details.put("errorMessage", transferError);
+                    if (transferProcessInitialized.getConsumerPid() != null) {
+                        details.put("consumerPid", transferProcessInitialized.getConsumerPid());
+                    }
+                    if (transferProcessInitialized.getProviderPid() != null) {
+                        details.put("providerPid", transferProcessInitialized.getProviderPid());
+                    }
+                    publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
+                            "Transfer process request failed",
+                            details);
+                    throw new DataTransferAPIException(transferError, "Error making request");
+                } catch (jakarta.validation.ValidationException ve) {
+                    log.warn("Provider error response is not a DSP TransferError: {}", response.getData());
+                    throw new DataTransferAPIException("Transfer request failed: " + response.getMessage());
                 }
-                if (transferProcessInitialized.getProviderPid() != null) {
-                    details.put("providerPid", transferProcessInitialized.getProviderPid());
-                }
-                publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
-                        "Transfer process request failed",
-                        details);
-                throw new DataTransferAPIException(transferError, "Error making request");
             } catch (JsonProcessingException ex) {
                 throw new DataTransferAPIException("Error occurred");
             }
@@ -374,6 +386,7 @@ public class DataTransferAPIService {
                     .state(TransferState.STARTED)
                     .role(transferProcess.getRole())
                     .datasetId(transferProcess.getDatasetId())
+                    .tenantId(transferProcess.getTenantId())
                     .created(transferProcess.getCreated())
                     .createdBy(transferProcess.getCreatedBy())
                     .modified(transferProcess.getModified())
@@ -685,6 +698,7 @@ public class DataTransferAPIService {
                                 .role(transferProcessDownloading.getRole())
                                 .datasetId(transferProcessDownloading.getDatasetId())
                                 .retryCount(transferProcessDownloading.getRetryCount())
+                                .tenantId(transferProcessDownloading.getTenantId())
                                 .created(transferProcessDownloading.getCreated())
                                 .createdBy(transferProcessDownloading.getCreatedBy())
                                 .modified(transferProcessDownloading.getModified())
@@ -793,7 +807,10 @@ public class DataTransferAPIService {
      * @return TransferProcess object
      */
     public TransferProcess findTransferProcessById(String transferProcessId) {
-        return transferProcessRepository.findById(transferProcessId)
+        String tenantId = TenantContextHolder.getTenantId();
+        return (tenantId != null
+                ? transferProcessRepository.findByIdAndTenantId(transferProcessId, tenantId)
+                : transferProcessRepository.findById(transferProcessId))
                 .orElseThrow(() -> {
                     publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND,
                             "Transfer process with id " + transferProcessId + " not found",

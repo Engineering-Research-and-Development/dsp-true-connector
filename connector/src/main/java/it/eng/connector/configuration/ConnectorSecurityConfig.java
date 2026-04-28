@@ -32,16 +32,18 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import it.eng.connector.filter.ApiTenantContextFilter;
 import it.eng.connector.repository.UserRepository;
 import it.eng.tools.auth.AuthenticationMode;
 import it.eng.tools.auth.AuthenticationModeResolver;
 import it.eng.tools.auth.condition.BasicAuthenticationModeCondition;
-import it.eng.tools.auth.condition.DcpEnabledCondition;
 import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
+import it.eng.tools.controller.ApiEndpoints;
 import org.springframework.http.HttpHeaders;
 
 /**
@@ -115,13 +117,15 @@ public class ConnectorSecurityConfig {
      *
      * @param http the HttpSecurity builder
      * @param keycloakFilter optional Keycloak filter, present when mode is KEYCLOAK
+     * @param apiTenantContextFilter the tenant context filter for API requests
      * @return the configured filter chain
      * @throws Exception if the chain cannot be built
      */
     @Bean
     @Order(1)
     SecurityFilterChain adminFilterChain(HttpSecurity http,
-            ObjectProvider<KeycloakAuthenticationFilter> keycloakFilter) throws Exception {
+            ObjectProvider<KeycloakAuthenticationFilter> keycloakFilter,
+            ObjectProvider<ApiTenantContextFilter> apiTenantContextFilter) throws Exception {
         applyCommonConfiguration(http);
         http.securityMatcher("/api/**", "/actuator/**", "/env");
 
@@ -130,13 +134,20 @@ public class ConnectorSecurityConfig {
         } else if (authMode == AuthenticationMode.KEYCLOAK) {
             http.anonymous(AbstractHttpConfigurer::disable)
                     .addFilterBefore(keycloakFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
-                    .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(ADMIN_ROLE))
+                    .addFilterAfter(apiTenantContextFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
+                    .authorizeHttpRequests(auth -> auth
+                            .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole("SUPER_ADMIN")
+                            .anyRequest().hasAnyRole(ADMIN_ROLE, "SUPER_ADMIN"))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         } else {
-            // BASIC
+            // BASIC: ApiTenantContextFilter must run AFTER BasicAuthenticationFilter so that
+            // the Authentication is already populated in SecurityContextHolder when we read it.
             http.anonymous(AbstractHttpConfigurer::disable)
                     .httpBasic(basic -> basic.authenticationEntryPoint(authEntryPoint))
-                    .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(ADMIN_ROLE))
+                    .addFilterAfter(apiTenantContextFilter.getObject(), BasicAuthenticationFilter.class)
+                    .authorizeHttpRequests(auth -> auth
+                            .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole("SUPER_ADMIN")
+                            .anyRequest().hasAnyRole(ADMIN_ROLE, "SUPER_ADMIN"))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         }
         return http.build();
@@ -159,7 +170,14 @@ public class ConnectorSecurityConfig {
             ObjectProvider<KeycloakAuthenticationFilter> keycloakFilter,
             ObjectProvider<DcpAuthenticationFilter> dcpFilter) throws Exception {
         applyCommonConfiguration(http);
-        http.securityMatcher("/connector/**", "/catalog/**", "/negotiations/**", "/transfers/**");
+        // Tenant-prefixed paths (/{tenantId}/catalog/request etc.) — added in Phase 1.
+        // Legacy non-prefixed catalog paths have been removed; the catalog controller
+        // now requires the /{tenantId} prefix (Phase 2).
+        // Negotiation and consumer paths now also require the /{tenantId} prefix (Phase 3).
+        http.securityMatcher(
+                "/*/connector/**", "/*/catalog/**", "/*/negotiations/**", "/*/transfers/**",
+                "/*/consumer/**",
+                "/connector/**", "/transfers/**");
 
         if (authMode == AuthenticationMode.DISABLED) {
             http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
@@ -299,6 +317,18 @@ public class ConnectorSecurityConfig {
     // =========================================================================
     // Shared beans
     // =========================================================================
+
+    /**
+     * Creates the {@link ApiTenantContextFilter} bean for resolving tenant context from API requests.
+     * Not annotated with {@code @Component} to prevent auto-registration as a servlet filter;
+     * it is added explicitly to the admin security filter chain only.
+     *
+     * @return the filter instance
+     */
+    @Bean
+    ApiTenantContextFilter apiTenantContextFilter() {
+        return new ApiTenantContextFilter();
+    }
 
     /**
      * Password encoder used for hashing and verifying user passwords.

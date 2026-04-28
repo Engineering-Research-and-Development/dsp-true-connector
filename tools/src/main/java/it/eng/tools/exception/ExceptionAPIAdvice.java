@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-@RestControllerAdvice(basePackages = "it.eng.connector.rest.api")
+@RestControllerAdvice(basePackages = {"it.eng.connector.rest.api", "it.eng.tools.rest.api"})
 public class ExceptionAPIAdvice extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(value = {BadRequestException.class})
@@ -25,6 +25,16 @@ public class ExceptionAPIAdvice extends ResponseEntityExceptionHandler {
     @ExceptionHandler(value = {S3ServerException.class})
     protected ResponseEntity<Object> handleS3ServerExceptionAPIException(S3ServerException ex, WebRequest request) {
         return handleExceptionInternal(ex, GenericApiResponse.error(ex.getLocalizedMessage()), new HttpHeaders(), HttpStatus.INTERNAL_SERVER_ERROR, request);
+    }
+
+    @ExceptionHandler(value = {TenantNotFoundException.class})
+    protected ResponseEntity<Object> handleTenantNotFoundException(TenantNotFoundException ex, WebRequest request) {
+        return handleExceptionInternal(ex, GenericApiResponse.error(ex.getLocalizedMessage()), new HttpHeaders(), HttpStatus.NOT_FOUND, request);
+    }
+
+    @ExceptionHandler(value = {TenantDisabledException.class})
+    protected ResponseEntity<Object> handleTenantDisabledException(TenantDisabledException ex, WebRequest request) {
+        return handleExceptionInternal(ex, GenericApiResponse.error(ex.getLocalizedMessage()), new HttpHeaders(), HttpStatus.FORBIDDEN, request);
     }
 
 }

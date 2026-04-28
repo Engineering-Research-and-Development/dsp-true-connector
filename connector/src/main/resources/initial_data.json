@@ -74,6 +74,7 @@
       ],
       "participantId": "urn:example:DSP_TRUEConnector",
       "homepage": "https://www.homepage.com/test",
+      "tenantId": "engineering",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
@@ -104,6 +105,7 @@
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "TRUEConnector team information dataset",
+      "tenantId": "engineering",
       "hasPolicy": [
         {
           "_id": "urn:uuid:fdc45798-a123-4955-8baf-ab7fd66ac4d5",
@@ -164,6 +166,7 @@
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "DSP TRUE Connector",
+      "tenantId": "engineering",
       "endpointDescription": "connector",
       "endpointURL": "http://localhost:8090/",
       "createdBy": "admin@mail.com",
@@ -179,6 +182,7 @@
       "format": {
         "_id": "HttpData-PULL"
       },
+      "tenantId": "engineering",
       "accessService": [
         {
           "$ref": "dataservices",
@@ -198,6 +202,7 @@
       "format": {
         "_id": "HttpData-PUSH"
       },
+      "tenantId": "engineering",
       "accessService": [
         {
           "$ref": "dataservices",
@@ -250,5 +255,19 @@
   "transfer_request_messages": [],
   "transfer_process": [],
   "transfer_start_messages": [],
-  "policy_enforcements": []
+  "policy_enforcements": [],
+  "tenants": [
+    {
+      "_class": "it.eng.tools.model.Tenant",
+      "_id": "engineering",
+      "name": "Engineering",
+      "description": "Default Engineering tenant",
+      "connectorId": "urn:connector:engineering",
+      "callbackAddress": "http://localhost:8080/engineering",
+      "enabled": true,
+      "automaticNegotiation": false,
+      "automaticTransfer": false,
+      "version": 0
+    }
+  ]
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.repository.TenantRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
@@ -41,16 +42,18 @@ public class InitialDataLoader {
     private final S3BucketProvisionService s3BucketProvisionService;
     private final S3Properties s3Properties;
     private final AuditEventPublisher publisher;
+    private final TenantRepository tenantRepository;
 
     public InitialDataLoader(MongoTemplate mongoTemplate, Environment environment, S3ClientService s3ClientService,
                              S3BucketProvisionService s3BucketProvisionService, S3Properties s3Properties,
-                             AuditEventPublisher publisher) {
+                             AuditEventPublisher publisher, TenantRepository tenantRepository) {
         this.mongoTemplate = mongoTemplate;
         this.environment = environment;
         this.s3ClientService = s3ClientService;
         this.s3BucketProvisionService = s3BucketProvisionService;
         this.s3Properties = s3Properties;
         this.publisher = publisher;
+        this.tenantRepository = tenantRepository;
     }
 
     /**
@@ -111,6 +114,10 @@ public class InitialDataLoader {
             } catch (Exception e) {
                 log.error("Error loading initial data: {}", e.getMessage());
                 throw new RuntimeException("Failed to load initial data", e);
+            }
+
+            if (tenantRepository.findByEnabled(true).isEmpty()) {
+                throw new IllegalStateException("No enabled tenants found — connector cannot start");
             }
         };
     }
