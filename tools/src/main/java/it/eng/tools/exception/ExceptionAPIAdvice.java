@@ -1,16 +1,29 @@
 package it.eng.tools.exception;
 
 import it.eng.tools.response.GenericApiResponse;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 
+/**
+ * API-layer exception handler for controllers in the admin API packages.
+ *
+ * <p>This advice is ordered with {@link Ordered#HIGHEST_PRECEDENCE} so that it
+ * is evaluated before the broader {@code DataspaceProtocolEndpointsExceptionHandler}.
+ * Spring 6 requires explicit {@code @Order} when multiple
+ * {@link ResponseEntityExceptionHandler} subclasses coexist; without it the
+ * dispatch order is undefined and overrides such as
+ * {@link #handleHttpMessageNotReadable} may never be invoked.</p>
+ */
+@Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice(basePackages = {"it.eng.connector.rest.api", "it.eng.tools.rest.api"})
 public class ExceptionAPIAdvice extends ResponseEntityExceptionHandler {
 

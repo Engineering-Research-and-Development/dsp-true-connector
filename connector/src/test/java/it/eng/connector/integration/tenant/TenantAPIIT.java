@@ -1,18 +1,25 @@
 package it.eng.connector.integration.tenant;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.TenantRepository;
+import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.serializer.ToolsSerializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.Objects;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -50,13 +57,15 @@ public class TenantAPIIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/tenants as SUPER_ADMIN returns 200")
+    @DisplayName("GET /api/v1/tenants as SUPER_ADMIN returns 200 with GenericApiResponse")
     public void getTenantsAsSuperAdmin_returns200() throws Exception {
         mockMvc.perform(get(ApiEndpoints.TENANTS_V1)
                         .with(user("super").roles("SUPER_ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
@@ -84,6 +93,8 @@ public class TenantAPIIT extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").exists())
                 .andExpect(jsonPath("$.data.id").value("engineering"));
     }
 
@@ -107,6 +118,8 @@ public class TenantAPIIT extends BaseIntegrationTest {
                         .content(Objects.requireNonNull(ToolsSerializer.serializePlain(newTenant))))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").exists())
                 .andExpect(jsonPath("$.data.id").value(NEW_TENANT_ID))
                 .andExpect(jsonPath("$.data.name").value("Test Tenant IT"));
     }
@@ -127,7 +140,9 @@ public class TenantAPIIT extends BaseIntegrationTest {
                         .with(user("super").roles("SUPER_ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
@@ -151,6 +166,8 @@ public class TenantAPIIT extends BaseIntegrationTest {
                         .content(Objects.requireNonNull(ToolsSerializer.serializePlain(updates))))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").exists())
                 .andExpect(jsonPath("$.data.name").value("Updated Name"))
                 .andExpect(jsonPath("$.data.description").value("Updated description"))
                 .andExpect(jsonPath("$.data.automaticNegotiation").value(true));
@@ -170,7 +187,10 @@ public class TenantAPIIT extends BaseIntegrationTest {
                         .with(user("super").roles("SUPER_ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(Objects.requireNonNull(ToolsSerializer.serializePlain(updates))))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
@@ -189,6 +209,8 @@ public class TenantAPIIT extends BaseIntegrationTest {
                         .with(user("super").roles("SUPER_ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").exists())
                 .andExpect(jsonPath("$.data.enabled").value(true));
     }
 
@@ -201,6 +223,8 @@ public class TenantAPIIT extends BaseIntegrationTest {
                         .with(user("super").roles("SUPER_ADMIN")))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").exists())
                 .andExpect(jsonPath("$.data.enabled").value(false));
     }
 
@@ -209,7 +233,10 @@ public class TenantAPIIT extends BaseIntegrationTest {
     public void enableTenant_nonExisting_returns404() throws Exception {
         mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/" + NON_EXISTING_TENANT_ID + "/enable")
                         .with(user("super").roles("SUPER_ADMIN")))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
@@ -217,7 +244,10 @@ public class TenantAPIIT extends BaseIntegrationTest {
     public void disableTenant_nonExisting_returns404() throws Exception {
         mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/" + NON_EXISTING_TENANT_ID + "/disable")
                         .with(user("super").roles("SUPER_ADMIN")))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
@@ -225,7 +255,10 @@ public class TenantAPIIT extends BaseIntegrationTest {
     public void deleteTenant_nonExisting_returns404() throws Exception {
         mockMvc.perform(delete(ApiEndpoints.TENANTS_V1 + "/" + NON_EXISTING_TENANT_ID)
                         .with(user("super").roles("SUPER_ADMIN")))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
@@ -235,11 +268,15 @@ public class TenantAPIIT extends BaseIntegrationTest {
 
         mockMvc.perform(delete(ApiEndpoints.TENANTS_V1 + "/" + NEW_TENANT_ID)
                         .with(user("super").roles("SUPER_ADMIN")))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
 
         mockMvc.perform(get(ApiEndpoints.TENANTS_V1 + "/" + NEW_TENANT_ID)
                         .with(user("super").roles("SUPER_ADMIN")))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
@@ -247,17 +284,32 @@ public class TenantAPIIT extends BaseIntegrationTest {
     public void getTenantById_nonExisting_returns404() throws Exception {
         mockMvc.perform(get(ApiEndpoints.TENANTS_V1 + "/" + NON_EXISTING_TENANT_ID)
                         .with(user("super").roles("SUPER_ADMIN")))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").exists());
     }
 
     @Test
-    @DisplayName("POST /api/v1/tenants with missing required fields returns 400")
+    @DisplayName("POST /api/v1/tenants with missing required fields returns 400 with GenericApiResponse")
     public void createTenant_missingRequiredFields_returns400() throws Exception {
-        mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+        MvcResult result = mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
                         .with(user("super").roles("SUPER_ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"description\": \"missing id, name, connectorId and callbackAddress\"}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+
+        TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<>() {};
+        GenericApiResponse<String> response = ToolsSerializer.deserializePlain(
+                result.getResponse().getContentAsString(), typeRef);
+
+        assertNotNull(response);
+        assertFalse(response.isSuccess());
+        assertNotNull(response.getMessage());
+        assertThat(response.getMessage()).isNotBlank();
+        assertNull(response.getData());
     }
 
     @Test

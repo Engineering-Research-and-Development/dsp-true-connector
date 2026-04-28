@@ -10,7 +10,8 @@
       "enabled": true,
       "expired": false,
       "locked": false,
-      "role": "ROLE_ADMIN"
+      "role": "ROLE_ADMIN",
+      "tenantId": "engineering-provider"
     },
     {
       "_class": "it.eng.connector.model.User",
@@ -22,7 +23,20 @@
       "enabled": "true",
       "expired": false,
       "locked": false,
-      "role": "ROLE_CONNECTOR"
+      "role": "ROLE_CONNECTOR",
+      "tenantId": "engineering-provider"
+    },
+    {
+      "_class": "it.eng.connector.model.User",
+      "_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "firstName": "Super",
+      "lastName": "Admin",
+      "email": "superadmin@mail.com",
+      "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
+      "enabled": true,
+      "expired": false,
+      "locked": false,
+      "role": "ROLE_SUPER_ADMIN"
     }
   ],
   "catalogs": [
@@ -75,6 +89,7 @@
       ],
       "participantId": "urn:example:DataProviderB",
       "homepage": "https://www.homepage.com/test",
+      "tenantId": "engineering-provider",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
@@ -137,6 +152,7 @@
         "$ref": "artifacts",
         "$id": "urn:uuid:fdc45798-a123-4955-8baf-vc3gh22qh3j8"
       },
+      "tenantId": "engineering-provider",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
@@ -167,6 +183,7 @@
       "title": "DSP TRUE Connector",
       "endpointDescription": "connector",
       "endpointURL": "http://localhost:8090/",
+      "tenantId": "engineering-provider",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
@@ -182,6 +199,7 @@
         "$ref": "dataservices",
         "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
       },
+      "tenantId": "engineering-provider",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "issued": "2024-04-23T16:26:00.000Z",
@@ -197,6 +215,7 @@
         "$ref": "dataservices",
         "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
       },
+      "tenantId": "engineering-provider",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "issued": "2024-04-23T16:26:00.000Z",
@@ -217,6 +236,7 @@
       "lastModifiedDate": {
         "$date": "2024-12-10T16:04:59.358Z"
       },
+      "tenantId": "engineering-provider",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": {
@@ -307,11 +327,11 @@
   "tenants": [
     {
       "_class": "it.eng.tools.model.Tenant",
-      "_id": "engineering",
+      "_id": "engineering-provider",
       "name": "Engineering",
-      "description": "Default Engineering tenant",
-      "connectorId": "urn:connector:engineering",
-      "callbackAddress": "http://localhost:8090/engineering",
+      "description": "Default Engineering Provider tenant",
+      "connectorId": "urn:connector:engineering-provider",
+      "callbackAddress": "http://localhost:8090/engineering-provider",
       "enabled": true,
       "automaticNegotiation": false,
       "automaticTransfer": false,
