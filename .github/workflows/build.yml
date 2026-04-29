@@ -91,11 +91,14 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v4
 
+      - name: Generate large test data file for suspend/resume timing
+        run: bash ./ci/docker/generate-test-data.sh
+
       - name: Run docker container for datatransfer-api-http-pull-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
       - name: Wait for container starting
-        run: sleep 30
+        run: sleep 60
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -119,11 +122,14 @@ jobs:
       - name: Git Checkout
         uses: actions/checkout@v4
 
+      - name: Generate large test data file for suspend/resume timing
+        run: bash ./ci/docker/generate-test-data.sh
+
       - name: Run docker container for datatransfer-api-http-push-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
       - name: Wait for container starting
-        run: sleep 30
+        run: sleep 60
 
       - name: Check if the container is up and running
         run: docker ps -a
