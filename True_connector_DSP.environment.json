@@ -16,19 +16,19 @@
 		},
 		{
 			"key": "CONSUMER_SERVER_PROTOCOL_CATALOG",
-			"value": "{{CONSUMER}}/catalog",
+			"value": "{{CONSUMER}}/{{TENANT_ID}}/catalog",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "CONSUMER_SERVER_PROTOCOL_NEGOTIATION",
-			"value": "{{CONSUMER}}/negotiations",
+			"value": "{{CONSUMER}}/{{TENANT_ID}}/negotiations",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER",
-			"value": "{{CONSUMER}}/consumer/transfers",
+			"value": "{{CONSUMER}}/{{TENANT_ID}}/consumer/transfers",
 			"type": "default",
 			"enabled": true
 		},
@@ -76,19 +76,19 @@
 		},
 		{
 			"key": "PROVIDER_SERVER_PROTOCOL_CATALOG",
-			"value": "{{PROVIDER}}/catalog",
+			"value": "{{PROVIDER}}/{{TENANT_ID}}/catalog",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "PROVIDER_SERVER_PROTOCOL_DATA_TRANSFER",
-			"value": "{{PROVIDER}}/transfers",
+			"value": "{{PROVIDER}}/{{TENANT_ID}}/transfers",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "PROVIDER_SERVER_PROTOCOL_NEGOTIATION",
-			"value": "{{PROVIDER}}/negotiations",
+			"value": "{{PROVIDER}}/{{TENANT_ID}}/negotiations",
 			"type": "default",
 			"enabled": true
 		},
@@ -229,9 +229,99 @@
 			"value": "",
 			"type": "default",
 			"enabled": true
+		},
+		{
+			"key": "TENANT_ID",
+			"value": "engineering",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_TENANTS",
+			"value": "{{CONSUMER}}/api/v1/tenants",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "CONSUMER_SERVER_API_USERS",
+			"value": "{{CONSUMER}}/api/v1/users",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "BASIC_ADMIN_USER",
+			"value": "admin@mail.com",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "BASIC_ADMIN_PASSWORD",
+			"value": "password",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "BASIC_SUPER_ADMIN_USER",
+			"value": "superadmin@mail.com",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "BASIC_SUPER_ADMIN_PASSWORD",
+			"value": "password",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "consumer_contractNegotiationId",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "provider_contractNegotiationId",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "consumer_transferProcessId",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "provider_transferProcessId",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "consumer_presignedGetUrl",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_USERNAME_SUPERADMIN",
+			"value": "superadmin@test.com",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_PASSWORD_SUPERADMIN",
+			"value": "password",
+			"type": "default",
+			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",
-	"_postman_exported_at": "2024-12-23T09:53:33.179Z",
+	"_postman_exported_at": "2026-04-30T12:53:39.000Z",
 	"_postman_exported_using": "Postman/11.23.2"
 }
