@@ -364,7 +364,9 @@
               "    var attempts = parseInt(pm.collectionVariables.get('pollAttempts') || '0') + 1;",
               "    pm.collectionVariables.set('pollAttempts', attempts.toString());",
               "    if (attempts < 60) {",
-              "        pm.execution.setNextRequest('[C] Poll delay');",
+              "        var start = new Date().getTime();",
+              "        while (new Date().getTime() - start < 2000) {}",
+              "        pm.execution.setNextRequest('[C] Wait for download to complete');",
               "    } else {",
               "        pm.test('Transfer completed in time', function () {",
               "            pm.expect.fail('Download did not complete within 60 poll attempts (~2 min)');",
@@ -376,46 +378,6 @@
           }
         }
       ]
-    },
-    {
-      "name": "[C] Poll delay",
-      "event": [
-        {
-          "listen": "prerequest",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              ""
-            ]
-          }
-        },
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "// Redirect back to the poll step after the 2s delay",
-              "pm.execution.setNextRequest('[C] Wait for download to complete');"
-            ]
-          }
-        }
-      ],
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "https://postman-echo.com/delay/2",
-          "protocol": "https",
-          "host": [
-            "postman-echo",
-            "com"
-          ],
-          "path": [
-            "delay",
-            "2"
-          ]
-        }
-      }
     },
     {
       "name": "[C] View data",
@@ -439,9 +401,9 @@
           "listen": "prerequest",
           "script": {
             "exec": [
-              "// Introduce a delay of 2 seconds before sending the request\r",
-              "setTimeout(() => {}, 2000);\r",
-              ""
+              "// Introduce a delay of 2 seconds before sending the request",
+              "var start = new Date().getTime();",
+              "while (new Date().getTime() - start < 2000) {}"
             ],
             "type": "text/javascript",
             "packages": {}
