@@ -399,6 +399,7 @@
           "listen": "prerequest",
           "script": {
             "exec": [
+              "// Introduce a delay of 2 seconds before sending the request",
               "var start = new Date().getTime();",
               "while (new Date().getTime() - start < 2000) {}"
             ],
