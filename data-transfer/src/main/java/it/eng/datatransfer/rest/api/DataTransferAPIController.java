@@ -70,6 +70,7 @@ public class DataTransferAPIController {
     @GetMapping(path = {"/{transferProcessId}/download"})
     public ResponseEntity<GenericApiResponse<String>> downloadData(
             @PathVariable("transferProcessId") String transferProcessId) {
+        //TODO: think about removing this in the future
         log.info("Downloading transfer process id - {} data", transferProcessId);
         apiService.downloadData(transferProcessId)
                 .exceptionally(throwable -> {
