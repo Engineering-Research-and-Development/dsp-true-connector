@@ -95,6 +95,25 @@ Authorization: Basic <admin-credentials>
 
 ---
 
+## User Model
+
+Each connector deployment uses three categories of user:
+
+| Role | Typical email | `tenantId` | Responsibilities |
+|------|--------------|-----------|-----------------|
+| **Super-admin** (`ROLE_SUPER_ADMIN`) | `superadmin@mail.com` | none | Create/manage tenants, cross-tenant visibility |
+| **Tenant admin** (`ROLE_ADMIN`) | `admin@mail.com` | e.g., `engineering` | Manage catalog, datasets, negotiations, transfers for one tenant |
+| **Connector user** (`ROLE_CONNECTOR`) | `connector@mail.com` | e.g., `engineering` | Authenticate DSP protocol calls for one tenant |
+
+> Each tenant requires its own `ROLE_ADMIN` and `ROLE_CONNECTOR` user with their `tenantId` set. Users with different tenants must have unique email addresses.
+
+The default `initial_data.json` seeds:
+- `superadmin@mail.com` — `ROLE_SUPER_ADMIN`, no tenant
+- `admin@mail.com` — `ROLE_ADMIN`, scoped to the default `engineering` tenant
+- `connector@mail.com` — `ROLE_CONNECTOR`, scoped to the default `engineering` tenant
+
+---
+
 ## Super-Admin Access
 
 A user with `ROLE_SUPER_ADMIN` can:

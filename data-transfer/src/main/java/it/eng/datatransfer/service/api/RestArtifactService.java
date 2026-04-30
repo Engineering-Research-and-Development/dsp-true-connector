@@ -9,9 +9,9 @@ import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ExternalData;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantBucketResolver;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.util.codec.binary.Base64;
@@ -30,21 +30,22 @@ public class RestArtifactService {
     private final OkHttpRestClient okHttpRestClient;
     private final AuditEventPublisher publisher;
     private final S3ClientService s3ClientService;
-    private final S3Properties s3Properties;
     private final ArtifactTransferService artifactTransferService;
+    private final TenantBucketResolver tenantBucketResolver;
 
     public RestArtifactService(TransferProcessStrategy dataTransferService,
                                OkHttpRestClient okHttpRestClient,
                                AuditEventPublisher publisher,
                                S3ClientService s3ClientService,
-                               S3Properties s3Properties, ArtifactTransferService artifactTransferService) {
+                               ArtifactTransferService artifactTransferService,
+                               TenantBucketResolver tenantBucketResolver) {
         super();
         this.dataTransferService = dataTransferService;
         this.okHttpRestClient = okHttpRestClient;
         this.publisher = publisher;
         this.s3ClientService = s3ClientService;
-        this.s3Properties = s3Properties;
         this.artifactTransferService = artifactTransferService;
+        this.tenantBucketResolver = tenantBucketResolver;
     }
 
     public void getArtifact(String transactionId, HttpServletResponse response) {
@@ -53,7 +54,7 @@ public class RestArtifactService {
 
         switch (artifact.getArtifactType()) {
             case FILE:
-                getFile(artifact.getValue(), response);
+                getFile(artifact.getValue(), transferProcess.getTenantId(), response);
                 break;
             case EXTERNAL:
                 getExternalData(artifact.getValue(), artifact.getAuthorization(), response);
@@ -68,14 +69,15 @@ public class RestArtifactService {
 
 
     @Deprecated(since = "Use S3ClientService over presignedURL")
-    private void getFile(String fileId, HttpServletResponse response) {
+    private void getFile(String fileId, String tenantId, HttpServletResponse response) {
+        String bucketName = tenantBucketResolver.resolveBucketName(tenantId);
         // Check if file exists in S3
-        if (!s3ClientService.fileExists(s3Properties.getBucketName(), fileId)) {
+        if (!s3ClientService.fileExists(bucketName, fileId)) {
             log.error("Data not found in S3");
             throw new DataTransferAPIException("Data not found in S3");
         }
         // Download file from S3
-        s3ClientService.downloadFile(s3Properties.getBucketName(), fileId, response);
+        s3ClientService.downloadFile(bucketName, fileId, response);
     }
 
     private void getExternalData(String value, String authorization, HttpServletResponse response) {

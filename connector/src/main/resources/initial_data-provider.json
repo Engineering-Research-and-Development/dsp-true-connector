@@ -332,6 +332,7 @@
       "description": "Default Engineering Provider tenant",
       "connectorId": "urn:connector:engineering-provider",
       "callbackAddress": "http://localhost:8090/engineering-provider",
+      "bucketName": "dsp-true-connector-provider",
       "enabled": true,
       "automaticNegotiation": false,
       "automaticTransfer": false,

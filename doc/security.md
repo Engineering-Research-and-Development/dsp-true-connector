@@ -178,6 +178,39 @@ application.auth.provider=BASIC
 - Initial users and data are seeded from `initial_data.json` on startup
 - On authentication failure at protocol endpoints, returns a DSP-compliant error JSON
 
+### User Model (Basic Mode)
+
+Three distinct user roles are used in `initial_data.json` and at runtime:
+
+| Role | Email | `tenantId` | Purpose |
+|------|-------|-----------|---------|
+| `ROLE_SUPER_ADMIN` | `superadmin@mail.com` | `null` | Manages tenants and cross-tenant operations. No data scope restriction — all tenant data is visible. |
+| `ROLE_ADMIN` | `admin@mail.com` | per-tenant (e.g., `engineering`) | Per-tenant admin. Manages catalog, dataset, negotiation, and transfer data for their assigned tenant only. |
+| `ROLE_CONNECTOR` | `connector@mail.com` | per-tenant (e.g., `engineering`) | Per-tenant connector user. Authenticates DSP protocol calls (connector-to-connector). |
+
+Each tenant should have its own `ROLE_ADMIN` and `ROLE_CONNECTOR` users with `tenantId` set to that tenant's ID. Multiple tenants cannot share the same email address.
+
+### Internal Service Account (`BASIC` mode only)
+
+Inter-module calls (e.g., negotiation → catalog offer validation, data-transfer → agreement lookup) are authenticated using a dedicated **internal service account** rather than a regular user.
+
+**How it works:**
+
+1. `CredentialUtils.getAPICredentials()` returns `Basic internal-service:<secret>` using the value of `application.internal.secret`.
+2. `InternalServiceAuthenticationProvider` (active only in `BASIC` mode) validates this credential **without a MongoDB lookup** — the user is created in memory with `ROLE_ADMIN` and `tenantId=null`.
+3. Because `tenantId` is `null`, `ApiTenantContextFilter` reads the `X-Tenant-Id` header from the request and sets the correct tenant context.
+
+**Configuration:**
+
+```properties
+# Can be overridden via APPLICATION_INTERNAL_SECRET environment variable
+application.internal.secret=${APPLICATION_INTERNAL_SECRET:internal-service-secret-change-in-prod}
+```
+
+> **Security note:** Change the default secret in all production deployments. Set `APPLICATION_INTERNAL_SECRET` as an environment variable or use a secrets manager rather than hard-coding the value in property files.
+
+**In Keycloak mode** (`application.auth.provider=KEYCLOAK`), this provider is inactive. `getAPICredentials()` returns a Bearer JWT obtained via the backend client credentials grant. The Keycloak service account token typically has no `tenantId` claim, so `ApiTenantContextFilter` reads `X-Tenant-Id` the same way. Ensure the Keycloak backend service account does **not** have a `tenantId` claim configured.
+
 ### Password Strength Requirements
 
 ```properties

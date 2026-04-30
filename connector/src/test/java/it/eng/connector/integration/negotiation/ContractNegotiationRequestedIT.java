@@ -63,7 +63,9 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
     @BeforeEach
     public void populateCatalog() {
         catalog = CatalogMockObjectUtil.createNewCatalog();
+        catalog.injectTenantId(TENANT_ID);
         dataset = catalog.getDataset().stream().findFirst().get();
+        dataset.injectTenantId(TENANT_ID);
 
         catalogRepository.save(catalog);
         datasetRepository.saveAll(catalog.getDataset());

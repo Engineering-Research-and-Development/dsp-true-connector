@@ -6,6 +6,7 @@ import it.eng.tools.model.Artifact;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.service.TenantBucketResolver;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +34,8 @@ public class ArtifactServiceTest {
     private S3ClientService s3ClientService;
     @Mock
     private S3Properties s3Properties;
+    @Mock
+    private TenantBucketResolver tenantBucketResolver;
     @Mock
     private InputStream inputStream;
     @Mock
@@ -76,7 +79,7 @@ public class ArtifactServiceTest {
     @Test
     @DisplayName("Upload file - success")
     public void uploadFile_success() throws IOException {
-        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
+        when(tenantBucketResolver.resolveBucketName()).thenReturn(TEST_BUCKET);
         when(s3Properties.getEndpoint()).thenReturn(TEST_ENDPOINT);
         when(s3Properties.getRegion()).thenReturn(TEST_REGION);
         when(s3Properties.getAccessKey()).thenReturn(TEST_ACCESS_KEY);
@@ -97,7 +100,7 @@ public class ArtifactServiceTest {
     @Test
     @DisplayName("Upload file - fail")
     public void uploadFile_fail() throws IOException {
-        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
+        when(tenantBucketResolver.resolveBucketName()).thenReturn(TEST_BUCKET);
         when(s3Properties.getEndpoint()).thenReturn(TEST_ENDPOINT);
         when(s3Properties.getRegion()).thenReturn(TEST_REGION);
         when(s3Properties.getAccessKey()).thenReturn(TEST_ACCESS_KEY);
@@ -129,7 +132,7 @@ public class ArtifactServiceTest {
     @Test
     @DisplayName("Delete artifact file - success")
     public void deleteArtifactFile_success() {
-        when(s3Properties.getBucketName()).thenReturn("test-bucket");
+        when(tenantBucketResolver.resolveBucketName()).thenReturn("test-bucket");
         doNothing().when(s3ClientService).deleteFile(anyString(), anyString());
         doNothing().when(artifactRepository).delete(any(Artifact.class));
 

@@ -8,6 +8,7 @@ import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.service.TenantBucketResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.ContentDisposition;
@@ -25,12 +26,15 @@ public class ArtifactService {
     private final ArtifactRepository artifactRepository;
     private final S3ClientService s3ClientService;
     private final S3Properties s3Properties;
+    private final TenantBucketResolver tenantBucketResolver;
 
-    public ArtifactService(ArtifactRepository artifactRepository, S3ClientService s3ClientService, S3Properties s3Properties) {
+    public ArtifactService(ArtifactRepository artifactRepository, S3ClientService s3ClientService,
+                           S3Properties s3Properties, TenantBucketResolver tenantBucketResolver) {
         super();
         this.artifactRepository = artifactRepository;
         this.s3ClientService = s3ClientService;
         this.s3Properties = s3Properties;
+        this.tenantBucketResolver = tenantBucketResolver;
     }
 
     public List<Artifact> getArtifacts(String artifactId) {
@@ -75,7 +79,7 @@ public class ArtifactService {
         switch (newArtifact.getArtifactType()) {
             case EXTERNAL: {
                 try {
-                    s3ClientService.deleteFile(s3Properties.getBucketName(), oldArtifact.getValue());
+                    s3ClientService.deleteFile(tenantBucketResolver.resolveBucketName(), oldArtifact.getValue());
                 } catch (Exception e) {
                     log.warn("Error while deleting file from S3: {}", e.getMessage());
                 }
@@ -98,7 +102,7 @@ public class ArtifactService {
             }
             case FILE: {
                 try {
-                    s3ClientService.deleteFile(s3Properties.getBucketName(), artifact.getValue());
+                    s3ClientService.deleteFile(tenantBucketResolver.resolveBucketName(), artifact.getValue());
                 } catch (Exception e) {
                     log.warn("Error while deleting file from S3: {}", e.getMessage());
                 }
@@ -118,7 +122,7 @@ public class ArtifactService {
         // Upload file to S3
         Map<String, String> destinationS3Properties = Map.of(
                 S3Utils.OBJECT_KEY, fileId,
-                S3Utils.BUCKET_NAME, s3Properties.getBucketName(),
+                S3Utils.BUCKET_NAME, tenantBucketResolver.resolveBucketName(),
                 S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
                 S3Utils.REGION, s3Properties.getRegion(),
                 S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),

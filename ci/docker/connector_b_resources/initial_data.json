@@ -398,6 +398,7 @@
       "description": "Engineering tenant",
       "connectorId": "urn:connector_b:engineering",
       "callbackAddress": "http://172.17.0.1:8090/connector_b_tenant_id",
+      "bucketName": "dsp-true-connector-b",
       "enabled": true,
       "automaticNegotiation": false,
       "automaticTransfer": false,

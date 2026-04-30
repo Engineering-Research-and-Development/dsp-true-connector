@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.tools.model.ExternalData;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
@@ -56,6 +57,22 @@ public class OkHttpRestClient {
 	 * @return GenericApiResponse
 	 */
 	public GenericApiResponse<String> sendRequestProtocol(String targetAddress, JsonNode jsonNode, String authorization) {
+		return sendRequestProtocol(targetAddress, jsonNode, authorization, null);
+	}
+
+	/**
+	 * Sends a protocol/internal request, optionally scoping it to a specific tenant.
+	 * When {@code tenantId} is non-null the {@value TenantContextHolder#HEADER_X_TENANT_ID} header is
+	 * added so that {@code ApiTenantContextFilter} activates the correct tenant context on the
+	 * receiving thread, ensuring tenant-aware service logic filters by the intended tenant.
+	 *
+	 * @param targetAddress  destination URL
+	 * @param jsonNode       request body (may be {@code null})
+	 * @param authorization  full Authorization header value (Basic or Bearer)
+	 * @param tenantId       tenant to act on behalf of; {@code null} means super-admin / global
+	 * @return GenericApiResponse
+	 */
+	public GenericApiResponse<String> sendRequestProtocol(String targetAddress, JsonNode jsonNode, String authorization, String tenantId) {
 		// send response to targetAddress
 		Request.Builder requestBuilder = new Request.Builder().url(targetAddress);
         RequestBody body;
@@ -68,12 +85,14 @@ public class OkHttpRestClient {
         if(StringUtils.isNotBlank(authorization)) {
 			requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorization);
 		}
+		if (StringUtils.isNotBlank(tenantId)) {
+			requestBuilder.addHeader(TenantContextHolder.HEADER_X_TENANT_ID, tenantId);
+		}
 		Request request = requestBuilder.build();
         log.info("Sending request using address: {}", targetAddress);
 		try (Response response = okHttpClient.newCall(request).execute()) {
 			int code = response.code();
 			log.info("Status {}", code);
-			//why is this not JSONNode
             String resp = null;
             if (response.body() != null) {
                 resp = response.body().string();
@@ -175,6 +194,13 @@ public class OkHttpRestClient {
 		Request.Builder requestBuilder = new Request.Builder()
 				.url(targetAddress);
 		requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, credentialUtils.getAPICredentials());
+		// Propagate tenant context so the receiving thread applies correct tenant filtering.
+		String tenantId = TenantContextHolder.getTenantId();
+		if (StringUtils.isNotBlank(tenantId)) {
+			requestBuilder.addHeader(TenantContextHolder.HEADER_X_TENANT_ID, tenantId);
+		} else {
+			log.debug("sendInternalRequest: no tenant context set — request will run as super-admin");
+		}
 		if(HttpMethod.GET.equals(method)) {
 			// performing get
 			requestBuilder.addHeader(HttpHeaders.CONTENT_TYPE, "application/json");

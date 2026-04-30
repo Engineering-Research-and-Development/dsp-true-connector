@@ -14,6 +14,13 @@ public class TenantContextHolder {
     /** MDC key used for tenant-scoped log correlation. */
     public static final String MDC_TENANT_KEY = "tenantId";
 
+    /**
+     * HTTP request header used to pass tenant context in internal and super-admin API calls.
+     * {@code ApiTenantContextFilter} reads this header for principals that have no tenantId of
+     * their own (super-admin / service accounts) and activates the requested tenant context.
+     */
+    public static final String HEADER_X_TENANT_ID = "X-Tenant-Id";
+
     private static final ThreadLocal<String> TENANT_ID_HOLDER = new ThreadLocal<>();
 
     private TenantContextHolder() {

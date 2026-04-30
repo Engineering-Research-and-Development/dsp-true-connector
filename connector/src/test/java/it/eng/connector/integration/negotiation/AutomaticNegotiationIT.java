@@ -210,7 +210,7 @@ public class AutomaticNegotiationIT {
             System.setProperty("s3.accessKey", s3AccessKey);
             System.setProperty("s3.secretKey", s3SecretKey);
             System.setProperty("s3.region", "us-east-1");
-            System.setProperty("s3.bucketName", "provider-bucket");
+            System.setProperty("s3.bucketName", "dsp-true-connector-provider");
         }
 
         try {

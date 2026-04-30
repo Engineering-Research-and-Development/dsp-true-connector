@@ -30,7 +30,7 @@ import java.io.IOException;
 public class ApiTenantContextFilter extends OncePerRequestFilter {
 
     /** Request header that allows super-admin users to act on behalf of a specific tenant. */
-    public static final String HEADER_X_TENANT_ID = "X-Tenant-Id";
+    public static final String HEADER_X_TENANT_ID = TenantContextHolder.HEADER_X_TENANT_ID;
 
     /**
      * Constructs a new {@link ApiTenantContextFilter}.

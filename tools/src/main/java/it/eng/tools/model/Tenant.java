@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = Tenant.Builder.class)
 @JsonPropertyOrder({"id", "name", "description", "connectorId", "callbackAddress",
-        "automaticNegotiation", "automaticTransfer", "enabled"})
+        "automaticNegotiation", "automaticTransfer", "enabled", "bucketName"})
 @Document(collection = "tenants")
 public class Tenant {
 
@@ -57,6 +57,13 @@ public class Tenant {
     private boolean automaticTransfer;
 
     private boolean enabled;
+
+    /**
+     * The S3 bucket name for this tenant's artifact storage.
+     * When non-null, artifacts for this tenant are stored in a dedicated bucket identified
+     * by this name. When null, S3 operations fall back to the global configured bucket.
+     */
+    private String bucketName;
 
     @JsonIgnore
     @CreatedDate
@@ -186,6 +193,18 @@ public class Tenant {
          */
         public Builder enabled(boolean enabled) {
             tenant.enabled = enabled;
+            return this;
+        }
+
+        /**
+         * Sets the S3 bucket name for this tenant's artifact storage.
+         * When set, artifacts are stored in a dedicated per-tenant bucket.
+         *
+         * @param bucketName the S3 bucket name, or {@code null} to use the global default
+         * @return this builder
+         */
+        public Builder bucketName(String bucketName) {
+            tenant.bucketName = bucketName;
             return this;
         }
 

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.TenantRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3BucketProvisionService;
@@ -135,8 +136,15 @@ public class InitialDataLoader {
         log.info("Uploading mock data to S3...");
 
         try {
-            // Ensure S3 bucket and credentials exist
-            String bucketName = s3Properties.getBucketName();
+            // Resolve bucket name: use the first enabled tenant's bucket, or fall back to global S3 config
+            String bucketName = tenantRepository.findAll().stream()
+                    .filter(t -> t.isEnabled() && t.getBucketName() != null && !t.getBucketName().isBlank())
+                    .findFirst()
+                    .map(Tenant::getBucketName)
+                    .orElse(s3Properties.getBucketName());
+            // Provision the bucket and per-tenant IAM user/credentials, but use admin credentials
+            // to upload the mock file — the per-bucket user's secret is stored encrypted and is
+            // only needed for presigned-URL generation at request time.
             s3BucketProvisionService.ensureBucketCredentials(bucketName);
 
             ClassPathResource file = new ClassPathResource("ENG-employee.json");
@@ -150,7 +158,7 @@ public class InitialDataLoader {
 
                 Map<String, String> destinationS3Properties = Map.of(
                         S3Utils.OBJECT_KEY, fileKey,
-                        S3Utils.BUCKET_NAME, s3Properties.getBucketName(),
+                        S3Utils.BUCKET_NAME, bucketName,
                         S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
                         S3Utils.REGION, s3Properties.getRegion(),
                         S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),

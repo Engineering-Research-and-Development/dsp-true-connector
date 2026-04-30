@@ -115,9 +115,15 @@ public class ConnectorSecurityConfig {
      * Admin security filter chain covering {@code /api/**}, {@code /actuator/**} and {@code /env}.
      * Requires {@code ROLE_ADMIN}. Disabled mode permits all requests.
      *
+     * <p>In BASIC mode, both {@link InternalServiceAuthenticationProvider} and
+     * {@link DaoAuthenticationProvider} are registered so that internal machine-to-machine
+     * calls authenticated as {@code internal-service} bypass tenant-scoped user lookup.
+     *
      * @param http the HttpSecurity builder
      * @param keycloakFilter optional Keycloak filter, present when mode is KEYCLOAK
      * @param apiTenantContextFilter the tenant context filter for API requests
+     * @param daoAuthenticationProvider the DAO provider for normal user authentication (BASIC mode)
+     * @param internalServiceAuthProvider the internal-service provider (BASIC mode)
      * @return the configured filter chain
      * @throws Exception if the chain cannot be built
      */
@@ -125,7 +131,9 @@ public class ConnectorSecurityConfig {
     @Order(1)
     SecurityFilterChain adminFilterChain(HttpSecurity http,
             ObjectProvider<KeycloakAuthenticationFilter> keycloakFilter,
-            ObjectProvider<ApiTenantContextFilter> apiTenantContextFilter) throws Exception {
+            ObjectProvider<ApiTenantContextFilter> apiTenantContextFilter,
+            ObjectProvider<DaoAuthenticationProvider> daoAuthenticationProvider,
+            ObjectProvider<InternalServiceAuthenticationProvider> internalServiceAuthProvider) throws Exception {
         applyCommonConfiguration(http);
         http.securityMatcher("/api/**", "/actuator/**", "/env");
 
@@ -142,8 +150,13 @@ public class ConnectorSecurityConfig {
         } else {
             // BASIC: ApiTenantContextFilter must run AFTER BasicAuthenticationFilter so that
             // the Authentication is already populated in SecurityContextHolder when we read it.
+            // InternalServiceAuthenticationProvider is checked first; unmatched usernames fall
+            // through to DaoAuthenticationProvider for normal user login.
             http.anonymous(AbstractHttpConfigurer::disable)
                     .httpBasic(basic -> basic.authenticationEntryPoint(authEntryPoint))
+                    .authenticationManager(new ProviderManager(
+                            internalServiceAuthProvider.getObject(),
+                            daoAuthenticationProvider.getObject()))
                     .addFilterAfter(apiTenantContextFilter.getObject(), BasicAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth
                             .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole("SUPER_ADMIN")

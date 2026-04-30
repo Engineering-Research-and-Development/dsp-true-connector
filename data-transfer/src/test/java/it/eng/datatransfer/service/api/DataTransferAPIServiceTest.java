@@ -17,8 +17,8 @@ import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
@@ -66,7 +66,7 @@ class DataTransferAPIServiceTest {
     @Mock
     private S3ClientService s3ClientService;
     @Mock
-    private S3Properties s3Properties;
+    private TenantBucketResolver tenantBucketResolver;
     @Mock
     private AuditEventPublisher publisher;
     @Mock
@@ -702,7 +702,7 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
-        when(s3Properties.getBucketName()).thenReturn(bucketName);
+        when(tenantBucketResolver.resolveBucketName(any())).thenReturn(bucketName);
         when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(true);
 
         when(s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L)))
@@ -728,7 +728,7 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
-        when(s3Properties.getBucketName()).thenReturn(bucketName);
+        when(tenantBucketResolver.resolveBucketName(any())).thenReturn(bucketName);
         when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(true);
         doThrow(RuntimeException.class).when(s3ClientService).generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
 
@@ -749,7 +749,7 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
-        when(s3Properties.getBucketName()).thenReturn(bucketName);
+        when(tenantBucketResolver.resolveBucketName(any())).thenReturn(bucketName);
         when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(false);
 
         assertThrows(DataTransferAPIException.class,

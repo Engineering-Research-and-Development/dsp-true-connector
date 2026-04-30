@@ -8,9 +8,9 @@ import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.ExternalData;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantBucketResolver;
 import org.apache.tomcat.util.codec.binary.Base64;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -44,8 +44,6 @@ public class RestArtifactServiceTest {
     @Mock
     private S3ClientService s3ClientService;
     @Mock
-    private S3Properties s3Properties;
-    @Mock
     private DataTransferService dataTransferService;
     @Mock
     private AuditEventPublisher publisher;
@@ -53,6 +51,8 @@ public class RestArtifactServiceTest {
     private OkHttpRestClient okHttpRestClient;
     @Mock
     private ArtifactTransferService artifactTransferService;
+    @Mock
+    private TenantBucketResolver tenantBucketResolver;
 
     @InjectMocks
     private RestArtifactService restArtifactService;
@@ -127,7 +127,7 @@ public class RestArtifactServiceTest {
         when(artifactTransferService.findArtifact(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED))
                 .thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
 
-        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
+        when(tenantBucketResolver.resolveBucketName(any())).thenReturn(TEST_BUCKET);
         when(s3ClientService.fileExists(TEST_BUCKET, DataTransferMockObjectUtil.ARTIFACT_FILE.getValue()))
                 .thenReturn(true);
 
@@ -150,7 +150,7 @@ public class RestArtifactServiceTest {
         when(artifactTransferService.findArtifact(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED))
                 .thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
 
-        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
+        when(tenantBucketResolver.resolveBucketName(any())).thenReturn(TEST_BUCKET);
         when(s3ClientService.fileExists(TEST_BUCKET, DataTransferMockObjectUtil.ARTIFACT_FILE.getValue()))
                 .thenReturn(false);
 

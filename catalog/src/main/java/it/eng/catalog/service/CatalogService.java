@@ -8,9 +8,9 @@ import it.eng.catalog.repository.CatalogRepository;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.model.IConstants;
-import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.TenantContextHolder;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
@@ -32,14 +32,14 @@ public class CatalogService {
     private final CatalogRepository repository;
     private final AuditEventPublisher publisher;
     private final S3ClientService s3ClientService;
-    private final S3Properties s3Properties;
+    private final TenantBucketResolver tenantBucketResolver;
 
     public CatalogService(CatalogRepository repository, AuditEventPublisher publisher, S3ClientService s3ClientService,
-                          S3Properties s3Properties) {
+                          TenantBucketResolver tenantBucketResolver) {
         this.repository = repository;
         this.publisher = publisher;
         this.s3ClientService = s3ClientService;
-        this.s3Properties = s3Properties;
+        this.tenantBucketResolver = tenantBucketResolver;
     }
 
     /********* PROTOCOL ***********/
@@ -54,7 +54,7 @@ public class CatalogService {
     public Catalog getCatalog() {
 // TODO: remove the filtering of datasets by files in S3, after the file upload and dataset insert are separated
 //  (choose artifact from files list instead of uploading when making a new dataset)
-        List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+        List<String> files = s3ClientService.listFiles(tenantBucketResolver.resolveBucketName());
         String tenantId = TenantContextHolder.getTenantId();
 
         List<Catalog> allCatalogs;

@@ -7,6 +7,7 @@ import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.TenantContextHolder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,6 +47,8 @@ public class CatalogServiceTest {
     private S3Properties s3Properties;
     @Mock
     private S3ClientService s3ClientService;
+    @Mock
+    private TenantBucketResolver tenantBucketResolver;
 
 
     @Captor
@@ -78,7 +81,7 @@ public class CatalogServiceTest {
     @DisplayName("Get catalog successfully")
     public void getCatalog_success() {
         when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
-        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(tenantBucketResolver.resolveBucketName()).thenReturn(BUCKET_NAME);
         when(s3ClientService.listFiles(BUCKET_NAME))
                 .thenReturn(catalog.getDataset().stream()
                         .map(Dataset::getId).collect(Collectors.toList()));
@@ -92,7 +95,7 @@ public class CatalogServiceTest {
     public void getCatalog_checkIfUploadingDatasetIsRemoved() {
         assertFalse(catalog.getDataset().isEmpty());
         when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
-        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(tenantBucketResolver.resolveBucketName()).thenReturn(BUCKET_NAME);
         when(s3ClientService.listFiles(BUCKET_NAME))
                 .thenReturn(Collections.emptyList());
         assertThrows(CatalogErrorException.class, () -> service.getCatalog());
@@ -172,7 +175,7 @@ public class CatalogServiceTest {
                 .build();
 
         when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
-        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(tenantBucketResolver.resolveBucketName()).thenReturn(BUCKET_NAME);
         when(s3ClientService.listFiles(BUCKET_NAME))
                 .thenReturn(catalog.getDataset().stream()
                         .map(Dataset::getId).collect(Collectors.toList()));
@@ -192,7 +195,7 @@ public class CatalogServiceTest {
                 .build();
 
         when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
-        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(tenantBucketResolver.resolveBucketName()).thenReturn(BUCKET_NAME);
         when(s3ClientService.listFiles(BUCKET_NAME))
                 .thenReturn(catalog.getDataset().stream()
                         .map(Dataset::getId).collect(Collectors.toList()));
@@ -222,7 +225,7 @@ public class CatalogServiceTest {
                 .build();
 
         when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
-        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(tenantBucketResolver.resolveBucketName()).thenReturn(BUCKET_NAME);
         when(s3ClientService.listFiles(BUCKET_NAME))
                 .thenReturn(catalog.getDataset().stream()
                         .map(Dataset::getId).collect(Collectors.toList()));

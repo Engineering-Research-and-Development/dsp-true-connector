@@ -165,25 +165,28 @@ Protocol endpoints (`/{tenantId}/catalog/**`, `/{tenantId}/negotiations/**`, `/{
 
 ### Filter Chain for Management API
 
-Management endpoints (`/api/**`) require `ROLE_ADMIN`.
+Management endpoints (`/api/**`) require `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`.
 
-`ApiTenantContextFilter` (registered after `BasicAuthenticationFilter`) reads the authenticated `User.tenantId` and sets `TenantContextHolder`. For super-admins, the `X-Tenant-Id` request header overrides the user's own tenant.
+`ApiTenantContextFilter` (registered after `BasicAuthenticationFilter`) reads the authenticated `User.tenantId` and sets `TenantContextHolder`. For super-admins (users with `tenantId=null`), the `X-Tenant-Id` request header overrides the user's own tenant.
 
-### Super-Admin Behaviour
+### User Model
 
-A user with `ROLE_SUPER_ADMIN`:
-- Has no `tenantId` restriction by default — all queries return data across all tenants
-- Can scope a single request to one tenant by sending `X-Tenant-Id: <tenantId>` header
+Three user roles participate in the multi-tenant security model:
 
-```java
-// ApiTenantContextFilter snippet
-String headerTenantId = request.getHeader("X-Tenant-Id");
-if (isSuperAdmin && headerTenantId != null) {
-    TenantContextHolder.setTenantId(headerTenantId);
-} else if (!isSuperAdmin) {
-    TenantContextHolder.setTenantId(user.getTenantId());
-}
-```
+| Role | `tenantId` | Scope | Notes |
+|------|-----------|-------|-------|
+| `ROLE_SUPER_ADMIN` | `null` | All tenants | Manages tenant lifecycle. `X-Tenant-Id` header scopes a single request to one tenant. |
+| `ROLE_ADMIN` | per-tenant | Own tenant only | Day-to-day management of catalog, dataset, negotiation, and transfer for one tenant. |
+| `ROLE_CONNECTOR` | per-tenant | Own tenant only | Authenticates DSP protocol calls. One per tenant. |
+
+### Internal Service Calls
+
+When a module makes an internal management API call on behalf of the current request (e.g., negotiation module validates an offer against the catalog), the call uses a synthetic **internal service account**:
+
+- **BASIC mode**: `InternalServiceAuthenticationProvider` authenticates `internal-service:<secret>` without a MongoDB lookup. The synthetic user has `ROLE_ADMIN` and `tenantId=null`, so `ApiTenantContextFilter` reads `X-Tenant-Id` from the forwarded header.
+- **KEYCLOAK mode**: the backend client credentials JWT is used. The service account must not have a `tenantId` claim so tenant context is read from `X-Tenant-Id`.
+
+The forwarded `X-Tenant-Id` value comes from `TenantContextHolder.getTenantId()` captured on the originating request thread.
 
 ---
 

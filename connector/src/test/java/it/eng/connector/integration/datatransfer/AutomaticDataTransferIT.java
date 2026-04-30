@@ -145,13 +145,13 @@ public class AutomaticDataTransferIT {
         providerCtx = startInstance(mongoHost, mongoPort, PROVIDER_PORT,
                 "provider", "provider_db", PROVIDER_BASE_URL,
                 providerMinIO.getS3URL(), providerMinIO.getUserName(), providerMinIO.getPassword(),
-                "provider-bucket");
+                "dsp-true-connector-provider");
 
         // ── Consumer — downloaded artifact will land in consumerMinIO ─────────────
         consumerCtx = startInstance(mongoHost, mongoPort, CONSUMER_PORT,
                 "consumer", "consumer_db", CONSUMER_BASE_URL + "/" + TENANT_ID,
                 consumerMinIO.getS3URL(), consumerMinIO.getUserName(), consumerMinIO.getPassword(),
-                "consumer-bucket");
+                "dsp-true-connector-consumer");
 
         // ── WireMock consumer — callbackAddress points to WireMock ────────────────
         // Provider sends TransferStartMessage to http://localhost:WIREMOCK_PORT/engineering/consumer/transfers/{pid}/start.
@@ -160,7 +160,7 @@ public class AutomaticDataTransferIT {
                 "consumer-wiremock", "consumer_wiremock_db",
                 "http://localhost:" + WIREMOCK_PORT + "/" + TENANT_ID,
                 consumerMinIO.getS3URL(), consumerMinIO.getUserName(), consumerMinIO.getPassword(),
-                "consumer-bucket");
+                "dsp-true-connector-consumer");
 
         populateProviderCatalog();
     }
@@ -291,8 +291,10 @@ public class AutomaticDataTransferIT {
         var s3Properties           = providerCtx.getBean(S3Properties.class);
 
         Catalog catalog = CatalogMockObjectUtil.createNewCatalog();
+        catalog.injectTenantId(TENANT_ID);
         Dataset dataset = catalog.getDataset().stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("No dataset in catalog"));
+        dataset.injectTenantId(TENANT_ID);
 
         datasetId = dataset.getId();
         log.info("Provider catalog populated — datasetId='{}'", datasetId);

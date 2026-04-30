@@ -124,6 +124,7 @@ public class BaseIntegrationTest {
                     .name("Engineering")
                     .connectorId("connector-engineering")
                     .callbackAddress("http://engineering.example.com/callback")
+                    .bucketName(s3Properties.getBucketName())
                     .enabled(true)
                     .build());
         }

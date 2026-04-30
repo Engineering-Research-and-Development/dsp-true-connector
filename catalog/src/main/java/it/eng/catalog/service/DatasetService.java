@@ -10,9 +10,9 @@ import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.model.IConstants;
-import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.TenantContextHolder;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
@@ -36,16 +36,16 @@ public class DatasetService {
     private final CatalogService catalogService;
     private final ArtifactService artifactService;
     private final S3ClientService s3ClientService;
-    private final S3Properties s3Properties;
+    private final TenantBucketResolver tenantBucketResolver;
     private final AuditEventPublisher publisher;
 
     public DatasetService(DatasetRepository repository, CatalogService catalogService, ArtifactService artifactService,
-                          S3ClientService s3ClientService, S3Properties s3Properties, AuditEventPublisher publisher) {
+                          S3ClientService s3ClientService, TenantBucketResolver tenantBucketResolver, AuditEventPublisher publisher) {
         this.repository = repository;
         this.catalogService = catalogService;
         this.artifactService = artifactService;
         this.s3ClientService = s3ClientService;
-        this.s3Properties = s3Properties;
+        this.tenantBucketResolver = tenantBucketResolver;
         this.publisher = publisher;
     }
 
@@ -69,7 +69,7 @@ public class DatasetService {
                     .orElseThrow(() -> new CatalogErrorException("Dataset with id: " + id + " not found"));
         }
 
-        List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+        List<String> files = s3ClientService.listFiles(tenantBucketResolver.resolveBucketName());
 
         if (dataset.getArtifact() != null && dataset.getArtifact().getArtifactType() == ArtifactType.FILE
                 && !files.contains(dataset.getId())) {

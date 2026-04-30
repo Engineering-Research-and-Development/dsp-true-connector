@@ -24,6 +24,7 @@ import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.serializer.ToolsSerializer;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
@@ -60,6 +61,7 @@ public class DataTransferAPIService {
     private final DataTransferStrategyFactory dataTransferStrategyFactory;
     private final ArtifactTransferService artifactTransferService;
     private final TemporaryBucketUserService temporaryBucketUserService;
+    private final TenantBucketResolver tenantBucketResolver;
 
     public DataTransferAPIService(TransferProcessRepository transferProcessRepository,
                                   OkHttpRestClient okHttpRestClient,
@@ -71,7 +73,8 @@ public class DataTransferAPIService {
                                   S3Properties s3Properties,
                                   DataTransferStrategyFactory dataTransferStrategyFactory,
                                   ArtifactTransferService artifactTransferService,
-                                  TemporaryBucketUserService temporaryBucketUserService) {
+                                  TemporaryBucketUserService temporaryBucketUserService,
+                                  TenantBucketResolver tenantBucketResolver) {
         super();
         this.transferProcessRepository = transferProcessRepository;
         this.okHttpRestClient = okHttpRestClient;
@@ -84,6 +87,7 @@ public class DataTransferAPIService {
         this.dataTransferStrategyFactory = dataTransferStrategyFactory;
         this.artifactTransferService = artifactTransferService;
         this.temporaryBucketUserService = temporaryBucketUserService;
+        this.tenantBucketResolver = tenantBucketResolver;
     }
 
     /**
@@ -132,23 +136,24 @@ public class DataTransferAPIService {
      */
     public JsonNode requestTransfer(DataTransferRequest dataTransferRequest) {
         TransferProcess transferProcessInitialized = findTransferProcessById(dataTransferRequest.getTransferProcessId());
+        String bucketName = tenantBucketResolver.resolveBucketName(transferProcessInitialized.getTenantId());
 
         stateTransitionCheck(TransferState.REQUESTED, transferProcessInitialized);
         DataAddress dataAddressForMessage = null;
         boolean isHttpPush = DataTransferFormat.HTTP_PUSH.format().equals(dataTransferRequest.getFormat());
         if (isHttpPush) {
 
-            String endpointOverride = resolveExternalPresignedEndpoint();
+            String endpointOverride = resolveExternalPresignedEndpoint(bucketName);
             String objectKey = transferProcessInitialized.getId();
             var temporaryBucketUser = temporaryBucketUserService.createTemporaryUser(
                     transferProcessInitialized.getId(),
-                    s3Properties.getBucketName(),
+                    bucketName,
                     objectKey);
 
             List<EndpointProperty> endpointProperties = List.of(
                     EndpointProperty.Builder.newInstance()
                             .name(S3Utils.BUCKET_NAME)
-                            .value(s3Properties.getBucketName())
+                            .value(bucketName)
                             .build(),
                     EndpointProperty.Builder.newInstance()
                             .name(S3Utils.REGION)
@@ -277,7 +282,7 @@ public class DataTransferAPIService {
         }
     }
 
-    private String resolveExternalPresignedEndpoint() {
+    private String resolveExternalPresignedEndpoint(String bucketName) {
         String endpoint = s3Properties.getExternalPresignedEndpoint();
         if (endpoint != null && !endpoint.isBlank()) {
             return endpoint;
@@ -286,14 +291,13 @@ public class DataTransferAPIService {
         if (region == null || region.isBlank()) {
             throw new IllegalStateException("S3 region must be configured when externalPresignedEndpoint is blank");
         }
-        String bucket = s3Properties.getBucketName();
-        if (bucket == null || bucket.isBlank()) {
+        if (bucketName == null || bucketName.isBlank()) {
             throw new IllegalStateException("S3 bucketName must be configured when externalPresignedEndpoint is blank");
         }
         if ("us-east-1".equals(region)) {
-            return String.format("https://%s.s3.amazonaws.com", bucket);
+            return String.format("https://%s.s3.amazonaws.com", bucketName);
         }
-        return String.format("https://%s.s3.%s.amazonaws.com", bucket, region);
+        return String.format("https://%s.s3.%s.amazonaws.com", bucketName, region);
     }
 
     /**
@@ -329,7 +333,7 @@ public class DataTransferAPIService {
                     // Generate a presigned URL for S3 with 7 days duration, which will be used as the endpoint for the data transfer
                     {
                         try {
-                            yield s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(7L));
+                            yield s3ClientService.generateGetPresignedUrl(tenantBucketResolver.resolveBucketName(transferProcess.getTenantId()), transferProcess.getDatasetId(), Duration.ofDays(7L));
                         } catch (Exception e) {
                             throw new DataTransferAPIException("The requested artifact is currently not available. Please try again later.");
                         }
@@ -738,6 +742,7 @@ public class DataTransferAPIService {
      */
     public String viewData(String transferProcessId) {
         TransferProcess transferProcess = findTransferProcessById(transferProcessId);
+        String bucketName = tenantBucketResolver.resolveBucketName(transferProcess.getTenantId());
 
         if (!transferProcess.getState().equals(TransferState.COMPLETED)) {
             log.error("Transfer process is not in COMPLETED state");
@@ -752,14 +757,14 @@ public class DataTransferAPIService {
         policyCheck(transferProcess);
 
         // Check if file exists in S3
-        if (!s3ClientService.fileExists(s3Properties.getBucketName(), transferProcessId)) {
+        if (!s3ClientService.fileExists(bucketName, transferProcessId)) {
             log.error("Data not found in S3");
             throw new DataTransferAPIException("Data not found in S3");
         }
 
         try {
 //            TODO verify Duration does not exceed EndDateTime, if it is present
-            String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcessId, Duration.ofDays(7L));
+            String artifactURL = s3ClientService.generateGetPresignedUrl(bucketName, transferProcessId, Duration.ofDays(7L));
             publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
             publisher.publishEvent(AuditEventType.TRANSFER_VIEW,
                     "Transfer process (view) generated artifact URL",

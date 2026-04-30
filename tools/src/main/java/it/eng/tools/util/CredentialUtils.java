@@ -1,5 +1,6 @@
 package it.eng.tools.util;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import it.eng.tools.auth.AuthenticationCache;
@@ -12,8 +13,19 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class CredentialUtils {
 
+	/** Username used by internal services for machine-to-machine API calls. */
+	static final String INTERNAL_SERVICE_USERNAME = "internal-service";
+
 	private final AuthenticationCache authenticationCache;
 
+	@Value("${application.internal.secret:}")
+	private String internalSecret;
+
+	/**
+	 * Constructs the credential utils with the required authentication cache.
+	 *
+	 * @param authenticationCache the cache holding the current Bearer token
+	 */
 	public CredentialUtils(AuthenticationCache authenticationCache) {
 		this.authenticationCache = authenticationCache;
 	}
@@ -37,9 +49,16 @@ public class CredentialUtils {
 	
 	/**
 	 * Retrieves API credentials for internal API calls.
-	 * Uses JWT token from Keycloak when enabled, otherwise falls back to Basic auth.
 	 *
-	 * @return Authorization header (Bearer token or Basic auth)
+	 * <p>When a valid Bearer token is available (Keycloak mode), it is returned as an
+	 * {@code Authorization: Bearer} header value. Otherwise, Basic Auth credentials are
+	 * built using the {@code internal-service} username and the configured shared secret,
+	 * which maps to {@link it.eng.connector.configuration.InternalServiceAuthenticationProvider}
+	 * in BASIC mode. Using the internal-service account ensures the principal has
+	 * {@code tenantId=null}, allowing {@code ApiTenantContextFilter} to honour the
+	 * {@code X-Tenant-Id} request header for correct multi-tenant routing.
+	 *
+	 * @return the Authorization header value (Bearer token or Basic auth)
 	 */
 	public String getAPICredentials() {
 		log.info("getAPICredentials() - Requesting credentials for internal API call");
@@ -48,9 +67,8 @@ public class CredentialUtils {
 			(AuthenticationCache.DUMMY_TOKEN_VALUE.equals(token) ? "DUMMY_TOKEN" : "JWT token (length: " + token.length() + ")"));
 
 		if (token == null || AuthenticationCache.DUMMY_TOKEN_VALUE.equals(token)) {
-			// Fall back to basic auth if no token is available (when Keycloak is disabled)
-			log.warn("getAPICredentials() - No valid token available, falling back to Basic Auth");
-			return okhttp3.Credentials.basic("admin@mail.com", "password");
+			log.info("getAPICredentials() - Using internal service credentials");
+			return okhttp3.Credentials.basic(INTERNAL_SERVICE_USERNAME, internalSecret);
 		}
 		log.info("getAPICredentials() - Using Bearer token for authentication");
 		return "Bearer " + token;

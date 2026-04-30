@@ -49,7 +49,7 @@ class AgreementServiceTest {
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
         when(credentialUtils.getAPICredentials()).thenReturn("credentials");
         when(connectorProperties.getConnectorURL()).thenReturn("http://test.localhost:8080");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), any(String.class)))
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), any(String.class), isNull()))
                 .thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
 
@@ -65,7 +65,7 @@ class AgreementServiceTest {
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
         when(credentialUtils.getAPICredentials()).thenReturn("credentials");
         when(connectorProperties.getConnectorURL()).thenReturn("http://test.localhost:8080");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), any(String.class)))
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), any(String.class), isNull()))
                 .thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(false);
 

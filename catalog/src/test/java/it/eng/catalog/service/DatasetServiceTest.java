@@ -11,6 +11,7 @@ import it.eng.tools.model.Artifact;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.TenantContextHolder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,6 +53,9 @@ public class DatasetServiceTest {
     private S3ClientService s3ClientService;
 
     @Mock
+    private TenantBucketResolver tenantBucketResolver;
+
+    @Mock
     private AuditEventPublisher auditEventPublisher;
 
     @Captor
@@ -83,7 +87,7 @@ public class DatasetServiceTest {
     @DisplayName("Get dataset by id - success")
     public void getDatasetById_success() {
         String bucketName = "test-bucket";
-        when(s3Properties.getBucketName()).thenReturn(bucketName);
+        when(tenantBucketResolver.resolveBucketName()).thenReturn(bucketName);
         when(s3ClientService.listFiles(bucketName))
                 .thenReturn(List.of(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId()));
         when(repository.findByIdAndTenantId(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), TENANT_ID))

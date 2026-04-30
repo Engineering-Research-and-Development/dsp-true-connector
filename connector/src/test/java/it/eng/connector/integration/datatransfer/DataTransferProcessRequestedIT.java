@@ -76,9 +76,11 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
         dataset = Dataset.Builder.newInstance()
                 .hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
                 .distribution(new HashSet<>(Arrays.asList(distribution, distributionHttpPush)))
+                .tenantId(TENANT_ID)
                 .build();
         catalog = Catalog.Builder.newInstance()
                 .dataset(Collections.singleton(dataset))
+                .tenantId(TENANT_ID)
                 .build();
 
         distributionRepository.save(distribution);
@@ -104,7 +106,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
         // finalized contract negotiation
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
-                .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                .constraint(Collections.singletonList(Constraint.Builder.newInstance()
                         .leftOperand(LeftOperand.COUNT)
                         .operator(Operator.LTEQ)
                         .rightOperand("5")
@@ -114,7 +116,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .assignee("assignee")
                 .assigner("assigner")
                 .target("test_dataset")
-                .permission(Arrays.asList(permission))
+                .permission(Collections.singletonList(permission))
                 .build();
         agreementRepository.save(agreement);
 
@@ -214,7 +216,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
         // finalized contract negotiation
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
-                .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                .constraint(Collections.singletonList(Constraint.Builder.newInstance()
                         .leftOperand(LeftOperand.COUNT)
                         .operator(Operator.LTEQ)
                         .rightOperand("5")
@@ -224,7 +226,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .assignee("assignee")
                 .assigner("assigner")
                 .target("test_dataset")
-                .permission(Arrays.asList(permission))
+                .permission(Collections.singletonList(permission))
                 .build();
         agreementRepository.save(agreement);
 
@@ -352,7 +354,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .assignee("assignee")
                 .assigner("assigner")
                 .target("test_dataset")
-                .permission(Arrays.asList(Permission.Builder.newInstance().action(Action.USE).build()))
+                .permission(Collections.singletonList(Permission.Builder.newInstance().action(Action.USE).build()))
                 .build();
         agreementRepository.save(agreement);
 

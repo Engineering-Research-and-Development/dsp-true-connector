@@ -331,6 +331,7 @@
       "description": "Default Engineering tenant",
       "connectorId": "urn:connector:engineering",
       "callbackAddress": "http://localhost:8080/engineering",
+      "bucketName": "dsp-true-connector-consumer",
       "enabled": true,
       "automaticNegotiation": false,
       "automaticTransfer": false,
