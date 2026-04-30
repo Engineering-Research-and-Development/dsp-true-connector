@@ -348,8 +348,7 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              "var start = new Date().getTime();",
-              "while (new Date().getTime() - start < 2000) {}"
+              ""
             ]
           }
         },
@@ -363,6 +362,8 @@
               "    var attempts = parseInt(pm.collectionVariables.get('pollAttempts') || '0') + 1;",
               "    pm.collectionVariables.set('pollAttempts', attempts.toString());",
               "    if (attempts < 60) {",
+              "        var start = new Date().getTime();",
+              "        while (new Date().getTime() - start < 2000) {}",
               "        pm.execution.setNextRequest('[C] Wait for download to complete');",
               "    } else {",
               "        pm.test('Transfer completed in time', function () {",
