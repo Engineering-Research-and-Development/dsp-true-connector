@@ -350,7 +350,9 @@
           "script": {
             "type": "text/javascript",
             "exec": [
-              ""
+              "// Introduce a delay before retrying to avoid hammering the endpoint",
+              "var start = new Date().getTime();",
+              "while (new Date().getTime() - start < 1500) {}"
             ]
           }
         },
@@ -364,8 +366,6 @@
               "    var attempts = parseInt(pm.collectionVariables.get('pollAttempts') || '0') + 1;",
               "    pm.collectionVariables.set('pollAttempts', attempts.toString());",
               "    if (attempts < 60) {",
-              "        var start = new Date().getTime();",
-              "        while (new Date().getTime() - start < 2000) {}",
               "        pm.execution.setNextRequest('[C] Wait for download to complete');",
               "    } else {",
               "        pm.test('Transfer completed in time', function () {",
@@ -401,9 +401,9 @@
           "listen": "prerequest",
           "script": {
             "exec": [
-              "// Introduce a delay of 2 seconds before sending the request",
+              "// Introduce a delay of 1.5 seconds before sending the request",
               "var start = new Date().getTime();",
-              "while (new Date().getTime() - start < 2000) {}"
+              "while (new Date().getTime() - start < 1500) {}"
             ],
             "type": "text/javascript",
             "packages": {}
