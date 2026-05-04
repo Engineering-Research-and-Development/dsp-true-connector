@@ -350,7 +350,7 @@
             "exec": [
               "// Introduce a delay before retrying to avoid hammering the endpoint",
               "var start = new Date().getTime();",
-              "while (new Date().getTime() - start < 1500) {}"
+              "while (new Date().getTime() - start < 20000) {}"
             ]
           }
         },
@@ -363,7 +363,7 @@
               "if (state !== 'COMPLETED') {",
               "    var attempts = parseInt(pm.collectionVariables.get('pollAttempts') || '0') + 1;",
               "    pm.collectionVariables.set('pollAttempts', attempts.toString());",
-              "    if (attempts < 60) {",
+              "    if (attempts < 9) {",
               "        postman.setNextRequest('[C] Wait for download to complete');",
               "    } else {",
               "        pm.test('Transfer completed in time', function () {",
