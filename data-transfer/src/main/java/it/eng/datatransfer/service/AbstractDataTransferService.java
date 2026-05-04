@@ -26,6 +26,7 @@ import it.eng.datatransfer.repository.TransferArtifactStateRepository;
 import it.eng.datatransfer.model.TransferArtifactState;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpMethod;
 
 import java.util.HashMap;
@@ -437,11 +438,24 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
         // Record which party initiated the suspension (the sender = opposite of local role)
         String senderRole = IConstants.ROLE_CONSUMER.equals(transferProcess.getRole())
                 ? IConstants.ROLE_PROVIDER : IConstants.ROLE_CONSUMER;
-        TransferArtifactState artifactState = transferArtifactStateRepository.findById(transferProcess.getId())
-                .orElseGet(() -> TransferArtifactState.Builder.newInstance()
-                        .id(transferProcess.getId()).build());
-        artifactState.setSuspendedBy(senderRole);
-        transferArtifactStateRepository.save(artifactState);
+        TransferArtifactState artifactState;
+        try {
+            artifactState = transferArtifactStateRepository.findById(transferProcess.getId())
+                    .orElseGet(() -> TransferArtifactState.Builder.newInstance()
+                            .id(transferProcess.getId()).build());
+            artifactState.setSuspendedBy(senderRole);
+            transferArtifactStateRepository.save(artifactState);
+        } catch (DuplicateKeyException e) {
+            // The upload strategy concurrently inserted the state document between our findById and save.
+            // Re-read to pick up the @Version, then apply the suspendedBy field and save.
+            log.debug("Concurrent TransferArtifactState insert for {}; retrying after re-read", transferProcess.getId());
+            artifactState = transferArtifactStateRepository.findById(transferProcess.getId())
+                    .orElseThrow(() -> new TransferProcessInternalException(
+                            "TransferArtifactState not found after concurrent insert",
+                            transferProcess.getConsumerPid(), transferProcess.getProviderPid()));
+            artifactState.setSuspendedBy(senderRole);
+            transferArtifactStateRepository.save(artifactState);
+        }
         // Signal any running upload/download on this JVM to stop gracefully after current chunk
         cancellationRegistry.signal(transferProcess.getId());
         

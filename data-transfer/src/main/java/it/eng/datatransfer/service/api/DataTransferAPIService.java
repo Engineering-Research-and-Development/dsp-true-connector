@@ -796,11 +796,11 @@ public class DataTransferAPIService {
 
                         if (cause instanceof TransferCancelledException) {
                             log.info("Transfer {} stopped gracefully by suspension signal. Checkpoint retained.", transferProcessId);
-                            // NOTE: 'transferProcessDownloading' is the snapshot fetched at download start.
-                            // If suspendTransfer() already saved SUSPENDED state concurrently, this save may
-                            // overwrite that with STARTED (or trigger OptimisticLockingFailureException).
-                            // Mitigation: re-read entity before saving. Tracked as a known pre-existing race.
-                            transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
+                            // Re-read the current entity to avoid OptimisticLockingFailureException:
+                            // concurrent suspend/resume operations may have changed @Version since we
+                            // captured transferProcessDownloading at download start.
+                            transferProcessRepository.findById(transferProcessId)
+                                    .ifPresent(tp -> transferProcessRepository.save(tp.withIsDownloadInProgress(false)));
                             publisher.publishEvent(AuditEventType.TRANSFER_PAUSED,
                                     "Transfer paused (download stopped) for process " + transferProcessId,
                                     Map.of("transferProcessId", transferProcessId,
@@ -808,7 +808,8 @@ public class DataTransferAPIService {
                                             "providerPid", transferProcessDownloading.getProviderPid()));
                         } else if (cause instanceof PresignedUrlExpiredException) {
                             log.warn("Presigned URL expired for process {}. Terminating transfer.", transferProcessId);
-                            transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
+                            transferProcessRepository.findById(transferProcessId)
+                                    .ifPresent(tp -> transferProcessRepository.save(tp.withIsDownloadInProgress(false)));
                             publisher.publishEvent(AuditEventType.TRANSFER_URL_EXPIRED,
                                     "Presigned URL expired for process " + transferProcessId,
                                     Map.of("transferProcessId", transferProcessId,
@@ -823,7 +824,8 @@ public class DataTransferAPIService {
                         } else {
                             log.error("Transfer process {} data transmission interrupted: {}",
                                     transferProcessId, cause.getMessage() != null ? cause.getMessage() : throwable.getMessage());
-                            transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
+                            transferProcessRepository.findById(transferProcessId)
+                                    .ifPresent(tp -> transferProcessRepository.save(tp.withIsDownloadInProgress(false)));
                             publisher.publishEvent(AuditEventType.TRANSFER_FAILED,
                                     "Data transfer failed for process " + transferProcessDownloading.getId(),
                                     auditMap("role", IConstants.ROLE_API,

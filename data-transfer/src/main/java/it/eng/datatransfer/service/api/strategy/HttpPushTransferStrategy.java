@@ -136,6 +136,9 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
         AtomicReference<HttpURLConnection> connectionRef = new AtomicReference<>();
 
         return CompletableFuture.supplyAsync(() -> {
+            if (cancellationToken.get()) {
+                throw new TransferCancelledException("Transfer was cancelled before upload started");
+            }
             try {
                 URL url = new URL(presignedUrl);
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -169,6 +172,14 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
                     connection.disconnect();
                     connectionRef.set(null);
                     throw new DataTransferAPIException("Failed to get stream. HTTP response code: " + responseCode);
+                }
+
+                // Check for cancellation before committing to the upload — the suspension signal
+                // may have arrived while getResponseCode() was blocked waiting for response headers.
+                if (cancellationToken.get()) {
+                    connection.disconnect();
+                    connectionRef.set(null);
+                    throw new TransferCancelledException("Transfer was cancelled after response headers");
                 }
 
                 log.debug("Presigned URL: {}", presignedUrl);
