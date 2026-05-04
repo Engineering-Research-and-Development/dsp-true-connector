@@ -366,7 +366,7 @@
               "    var attempts = parseInt(pm.collectionVariables.get('pollAttempts') || '0') + 1;",
               "    pm.collectionVariables.set('pollAttempts', attempts.toString());",
               "    if (attempts < 60) {",
-              "        pm.execution.setNextRequest('[C] Wait for download to complete');",
+              "        postman.setNextRequest('[C] Wait for download to complete');",
               "    } else {",
               "        pm.test('Transfer completed in time', function () {",
               "            pm.expect.fail('Download did not complete within 60 poll attempts (~2 min)');",
