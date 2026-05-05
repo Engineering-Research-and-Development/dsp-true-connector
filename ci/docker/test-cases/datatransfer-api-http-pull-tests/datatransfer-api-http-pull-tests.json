@@ -281,6 +281,46 @@
       "response": []
     },
     {
+      "name": "[P] Start transfer - rejected (suspended by consumer)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check if status code is 400 - resume rejected (suspended by consumer)\", function () {\r",
+              "    pm.response.to.have.status(400);\r",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/start",
+          "host": [
+            "{{PROVIDER_API_TRANSFERS}}"
+          ],
+          "path": [
+            "{{provider_transferProcessId}}",
+            "start"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
       "name": "[C] Start transfer",
       "event": [
         {

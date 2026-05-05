@@ -281,20 +281,17 @@
       "response": []
     },
     {
-      "name": "[P] Start transfer",
+      "name": "[P] Start transfer - rejected (suspended by consumer)",
       "event": [
         {
           "listen": "test",
           "script": {
             "exec": [
-              "pm.test(\"Check if status code is 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "    var jsonData = pm.response.json();\r",
-              "    pm.collectionVariables.set(\"presignedURL\", jsonData[\"data\"][\"dataAddress\"][\"endpoint\"])\r",
+              "pm.test(\"Check if status code is 400 - resume rejected (suspended by consumer)\", function () {\r",
+              "    pm.response.to.have.status(400);\r",
               "});"
             ],
-            "type": "text/javascript",
-            "packages": {}
+            "type": "text/javascript"
           }
         }
       ],
@@ -323,6 +320,46 @@
           ],
           "path": [
             "{{provider_transferProcessId}}",
+            "start"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "[C] Start transfer",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check if status code is 200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/start",
+          "host": [
+            "{{CONSUMER_API_TRANSFERS}}"
+          ],
+          "path": [
+            "{{consumer_transferProcessId}}",
             "start"
           ]
         }
