@@ -69,6 +69,8 @@ public class DataTransferServiceTest {
     private CancellationRegistry cancellationRegistry;
     @Mock
     private TransferArtifactStateRepository transferArtifactStateRepository;
+    @Mock
+    private org.springframework.scheduling.TaskScheduler taskScheduler;
 
     @InjectMocks
     private DataTransferService service;

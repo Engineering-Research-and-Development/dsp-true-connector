@@ -26,8 +26,10 @@ import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -57,10 +59,11 @@ public class TCKDataTransferService extends AbstractDataTransferService {
                                   TemporaryBucketUserService temporaryBucketUserService,
                                   FieldEncryptionService fieldEncryptionService,
                                   CancellationRegistry cancellationRegistry,
-                                  TransferArtifactStateRepository transferArtifactStateRepository) {
+                                  TransferArtifactStateRepository transferArtifactStateRepository,
+                                  @Qualifier("transferTaskScheduler") TaskScheduler taskScheduler) {
         super(transferProcessRepository, auditEventPublisher, okHttpRestClient, transferRequestMessageRepository,
                 dataTransferProperties, temporaryBucketUserService, fieldEncryptionService,
-                cancellationRegistry, transferArtifactStateRepository);
+                cancellationRegistry, transferArtifactStateRepository, taskScheduler);
         this.dataTransferAPIService = dataTransferAPIService;
         this.auditEventPublisher = auditEventPublisher;
         this.okHttpRestClient = okHttpRestClient;

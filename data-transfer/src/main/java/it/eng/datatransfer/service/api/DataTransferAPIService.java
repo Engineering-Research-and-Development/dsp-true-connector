@@ -598,6 +598,18 @@ public class DataTransferAPIService {
                                         + transferProcess.getId()));
                 artifactState.setSuspendedBy(transferProcess.getRole());
                 transferArtifactStateRepository.save(artifactState);
+            } catch (OptimisticLockingFailureException e) {
+                // The pull/push strategy's checkpoint writer concurrently updated the artifact state
+                // (e.g. saving a byte-range checkpoint) between our read and this save.
+                // Re-read the fresh entity and re-apply the suspendedBy field.
+                log.debug("Concurrent update to TransferArtifactState {} during suspension; retrying",
+                        transferProcess.getId());
+                artifactState = transferArtifactStateRepository.findById(transferProcess.getId())
+                        .orElseThrow(() -> new DataTransferAPIException(
+                                "TransferArtifactState not found after concurrent update for: "
+                                        + transferProcess.getId()));
+                artifactState.setSuspendedBy(transferProcess.getRole());
+                transferArtifactStateRepository.save(artifactState);
             }
 
             TransferProcess transferProcessSuspended = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);

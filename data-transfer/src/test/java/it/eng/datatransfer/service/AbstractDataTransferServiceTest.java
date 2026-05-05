@@ -1,6 +1,7 @@
 package it.eng.datatransfer.service;
 
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
+import it.eng.datatransfer.event.AutoTransferDownloadEvent;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferArtifactStateRepository;
@@ -18,12 +19,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,6 +45,7 @@ class AbstractDataTransferServiceTest {
     @Mock private FieldEncryptionService fieldEncryptionService;
     @Mock private CancellationRegistry cancellationRegistry;
     @Mock private TransferArtifactStateRepository transferArtifactStateRepository;
+    @Mock private org.springframework.scheduling.TaskScheduler taskScheduler;
 
     private AbstractDataTransferService service;
 
@@ -51,7 +55,7 @@ class AbstractDataTransferServiceTest {
                 transferProcessRepository, transferRequestMessageRepository,
                 publisher, okHttpRestClient, dataTransferProperties,
                 temporaryBucketUserService, fieldEncryptionService,
-                cancellationRegistry, transferArtifactStateRepository);
+                cancellationRegistry, transferArtifactStateRepository, taskScheduler);
     }
 
     @Test
@@ -130,6 +134,33 @@ class AbstractDataTransferServiceTest {
         service.startDataTransfer(msg, CONSUMER_PID, PROVIDER_PID);
 
         verify(publisher).publishEvent(any(it.eng.datatransfer.event.AutoTransferDownloadEvent.class));
+    }
+
+    @Test
+    @DisplayName("startDataTransfer for PROVIDER+HTTP_PUSH+SUSPENDED schedules async AutoTransferDownloadEvent")
+    void startDataTransferSchedulesAsyncDownloadForProviderPushResume() {
+        TransferProcess suspended = TransferProcess.Builder.newInstance()
+                .id(TP_ID).consumerPid(CONSUMER_PID).providerPid(PROVIDER_PID)
+                .state(TransferState.SUSPENDED).role(IConstants.ROLE_PROVIDER)
+                .format(DataTransferFormat.HTTP_PUSH.format()).build();
+        TransferArtifactState artifactState = TransferArtifactState.Builder.newInstance()
+                .id(TP_ID)
+                .suspendedBy(IConstants.ROLE_CONSUMER)
+                .build();
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(CONSUMER_PID, PROVIDER_PID))
+                .thenReturn(Optional.of(suspended));
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(transferArtifactStateRepository.findById(TP_ID)).thenReturn(Optional.of(artifactState));
+        when(transferArtifactStateRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        TransferStartMessage msg = TransferStartMessage.Builder.newInstance()
+                .consumerPid(CONSUMER_PID).providerPid(PROVIDER_PID).build();
+
+        service.startDataTransfer(msg, CONSUMER_PID, PROVIDER_PID);
+
+        // Event must be scheduled asynchronously, not published synchronously on the calling thread
+        verify(taskScheduler).schedule(any(Runnable.class), any(Instant.class));
+        verify(publisher, never()).publishEvent(any(AutoTransferDownloadEvent.class));
     }
 
     // Helper

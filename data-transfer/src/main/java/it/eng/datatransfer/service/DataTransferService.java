@@ -13,7 +13,9 @@ import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.FieldEncryptionService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Profile;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -29,10 +31,11 @@ public class DataTransferService extends AbstractDataTransferService {
                                TemporaryBucketUserService temporaryBucketUserService,
                                FieldEncryptionService fieldEncryptionService,
                                CancellationRegistry cancellationRegistry,
-                               TransferArtifactStateRepository transferArtifactStateRepository) {
+                               TransferArtifactStateRepository transferArtifactStateRepository,
+                               @Qualifier("transferTaskScheduler") TaskScheduler taskScheduler) {
         super(transferProcessRepository, publisher, okHttpRestClient, transferRequestMessageRepository,
                 transferProperties, temporaryBucketUserService, fieldEncryptionService,
-                cancellationRegistry, transferArtifactStateRepository);
+                cancellationRegistry, transferArtifactStateRepository, taskScheduler);
     }
 
     /**
