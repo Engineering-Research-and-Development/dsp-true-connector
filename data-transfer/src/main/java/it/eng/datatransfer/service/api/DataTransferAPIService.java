@@ -33,6 +33,7 @@ import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.codec.binary.Base64;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -581,11 +582,23 @@ public class DataTransferAPIService {
             // Signal AFTER peer confirms — safe to cancel the download now
             cancellationRegistry.signal(transferProcess.getId());
             // Record suspendedBy AFTER peer confirms
-            TransferArtifactState artifactState = transferArtifactStateRepository.findById(transferProcess.getId())
-                    .orElseGet(() -> TransferArtifactState.Builder.newInstance()
-                            .id(transferProcess.getId()).build());
-            artifactState.setSuspendedBy(transferProcess.getRole());
-            transferArtifactStateRepository.save(artifactState);
+            TransferArtifactState artifactState;
+            try {
+                artifactState = transferArtifactStateRepository.findById(transferProcess.getId())
+                        .orElseGet(() -> TransferArtifactState.Builder.newInstance()
+                                .id(transferProcess.getId()).build());
+                artifactState.setSuspendedBy(transferProcess.getRole());
+                transferArtifactStateRepository.save(artifactState);
+            } catch (DuplicateKeyException e) {
+                log.debug("Concurrent TransferArtifactState insert for {}; retrying after re-read",
+                        transferProcess.getId());
+                artifactState = transferArtifactStateRepository.findById(transferProcess.getId())
+                        .orElseThrow(() -> new DataTransferAPIException(
+                                "TransferArtifactState not found after concurrent insert for: "
+                                        + transferProcess.getId()));
+                artifactState.setSuspendedBy(transferProcess.getRole());
+                transferArtifactStateRepository.save(artifactState);
+            }
 
             TransferProcess transferProcessSuspended = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
             transferProcessRepository.save(transferProcessSuspended);
