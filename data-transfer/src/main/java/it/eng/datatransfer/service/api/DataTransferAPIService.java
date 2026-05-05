@@ -601,7 +601,20 @@ public class DataTransferAPIService {
             }
 
             TransferProcess transferProcessSuspended = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
-            transferProcessRepository.save(transferProcessSuspended);
+            try {
+                transferProcessRepository.save(transferProcessSuspended);
+            } catch (OptimisticLockingFailureException e) {
+                // The download strategy's whenComplete handler concurrently updated TransferProcess
+                // (e.g. clearing isDownloadInProgress) between our read and this save.
+                // Re-read the fresh entity and re-apply the SUSPENDED state.
+                String tpId = transferProcessSuspended.getId();
+                log.debug("Concurrent update to TransferProcess {} during suspension; retrying with fresh read", tpId);
+                TransferProcess fresh = transferProcessRepository.findById(tpId)
+                        .orElseThrow(() -> new DataTransferAPIException(
+                                "TransferProcess not found after concurrent update for: " + tpId));
+                transferProcessSuspended = fresh.copyWithNewTransferState(TransferState.SUSPENDED);
+                transferProcessRepository.save(transferProcessSuspended);
+            }
             log.info("Transfer process {} saved", transferProcessSuspended.getId());
             publisher.publishEvent(AuditEventType.TRANSFER_SUSPENDED,
                     "Transfer process suspended successfully",
