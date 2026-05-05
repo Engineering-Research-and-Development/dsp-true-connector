@@ -27,6 +27,7 @@ import it.eng.datatransfer.model.TransferArtifactState;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpMethod;
 
 import java.util.HashMap;
@@ -472,7 +473,20 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                         "transferProcess", transferProcessSuspended,
                         "consumerPid", transferProcessSuspended.getConsumerPid(),
                         "providerPid", transferProcessSuspended.getProviderPid()));
-        return saveTransferProcess(transferProcessSuspended);
+        try {
+            return saveTransferProcess(transferProcessSuspended);
+        } catch (OptimisticLockingFailureException e) {
+            // The upload strategy's whenComplete handler concurrently updated TransferProcess
+            // (e.g. clearing isDownloadInProgress) between our read and this save.
+            // Re-read the fresh entity and re-apply the SUSPENDED state.
+            log.debug("Concurrent update to TransferProcess {} during suspension; retrying with fresh read",
+                    transferProcessSuspended.getId());
+            TransferProcess fresh = transferProcessRepository.findById(transferProcessSuspended.getId())
+                    .orElseThrow(() -> new TransferProcessInternalException(
+                            "TransferProcess not found after concurrent update",
+                            consumerPidFinal, providerPidFinal));
+            return saveTransferProcess(fresh.copyWithNewTransferState(TransferState.SUSPENDED));
+        }
     }
 
     /**

@@ -2,6 +2,7 @@ package it.eng.datatransfer.service.api.strategy;
 
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.exceptions.PresignedUrlExpiredException;
+import org.springframework.dao.DuplicateKeyException;
 import it.eng.datatransfer.model.EndpointProperty;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferArtifactState;
@@ -92,7 +93,17 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
             log.info("Resuming HTTP PUSH for process {} from byte offset {}", transferProcess.getId(), rangeStart);
             checkpoint.setUploadId(null);
         }
-        transferArtifactStateRepository.save(checkpoint);
+        try {
+            transferArtifactStateRepository.save(checkpoint);
+        } catch (DuplicateKeyException e) {
+            // suspendDataTransfer() concurrently inserted the state document (Fix 1).
+            // Re-read to get the version assigned by the concurrent insert.
+            log.debug("Concurrent TransferArtifactState insert for {}; retrying after re-read", transferProcess.getId());
+            checkpoint = transferArtifactStateRepository.findById(transferProcess.getId())
+                    .orElseThrow(() -> new DataTransferAPIException(
+                            "TransferArtifactState not found after concurrent insert for: " + transferProcess.getId()));
+            rangeStart = checkpoint.getDownloadedBytes();
+        }
 
         AtomicBoolean cancellationToken = cancellationRegistry.register(transferProcess.getId());
 
