@@ -12,6 +12,7 @@ import it.eng.datatransfer.service.api.DataTransferStrategy;
 import it.eng.tools.exceptions.TransferCancelledException;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.service.upload.UploadCheckpointCallback;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.FieldEncryptionService;
 import lombok.extern.slf4j.Slf4j;
@@ -141,7 +142,7 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
                                                Map<String, String> destinationS3Properties,
                                                long rangeStart,
                                                AtomicBoolean cancellationToken,
-                                               CheckpointCallbackImpl checkpointCallback) {
+                                               UploadCheckpointCallback checkpointCallback) {
         // AtomicReference allows the connection to be shared across two separate lambda stages
         // (supplyAsync and whenComplete) without violating Java's effectively-final capture rule.
         // The supplyAsync lambda opens the connection and stores it here; whenComplete reads it
