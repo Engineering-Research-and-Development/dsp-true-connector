@@ -12,7 +12,6 @@ import it.eng.datatransfer.service.api.DataTransferStrategy;
 import it.eng.tools.exceptions.TransferCancelledException;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
-import it.eng.tools.s3.service.upload.UploadCheckpointCallback;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.FieldEncryptionService;
 import lombok.extern.slf4j.Slf4j;
@@ -108,14 +107,17 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
         AtomicBoolean cancellationToken = cancellationRegistry.register(transferProcess.getId());
 
         CheckpointCallbackImpl checkpointCallback = new CheckpointCallbackImpl(
-                transferProcess.getId(), rangeStart, transferArtifactStateRepository);
+                checkpoint, rangeStart, transferArtifactStateRepository);
 
         // Always generate a fresh presigned URL for PUSH (provider controls the source)
         String presignedUrl = s3ClientService.generateGetPresignedUrl(
                 s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(1L));
 
         return transfer(presignedUrl, destinationS3Properties, rangeStart, cancellationToken, checkpointCallback)
-                .thenAccept(key -> log.info("Pushed transfer process id - {} data!", key));
+                .thenAccept(key -> {
+                    checkpointCallback.flush();
+                    log.info("Pushed transfer process id - {} data!", key);
+                });
     }
 
     /**
@@ -139,7 +141,7 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
                                                Map<String, String> destinationS3Properties,
                                                long rangeStart,
                                                AtomicBoolean cancellationToken,
-                                               UploadCheckpointCallback checkpointCallback) {
+                                               CheckpointCallbackImpl checkpointCallback) {
         // AtomicReference allows the connection to be shared across two separate lambda stages
         // (supplyAsync and whenComplete) without violating Java's effectively-final capture rule.
         // The supplyAsync lambda opens the connection and stores it here; whenComplete reads it
@@ -256,35 +258,4 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
         return (int) Math.min(millis, Integer.MAX_VALUE);
     }
 
-    /**
-     * Implementation of UploadCheckpointCallback for saving transfer progress.
-     */
-    private static class CheckpointCallbackImpl implements UploadCheckpointCallback {
-        private final String transferProcessId;
-        private final long rangeStart;
-        private final TransferArtifactStateRepository repository;
-
-        CheckpointCallbackImpl(String transferProcessId, long rangeStart, 
-                              TransferArtifactStateRepository repository) {
-            this.transferProcessId = transferProcessId;
-            this.rangeStart = rangeStart;
-            this.repository = repository;
-        }
-
-        @Override
-        public void onUploadStarted(String uploadId) {
-            TransferArtifactState state = repository.findById(transferProcessId)
-                    .orElseThrow(() -> new IllegalStateException("Checkpoint missing for transfer: " + transferProcessId));
-            state.setUploadId(uploadId);
-            repository.save(state);
-        }
-
-        @Override
-        public void onPartCompleted(int partNumber, String etag, long totalBytesUploaded) {
-            TransferArtifactState state = repository.findById(transferProcessId)
-                    .orElseThrow(() -> new IllegalStateException("Checkpoint missing for transfer: " + transferProcessId));
-            state.setDownloadedBytes(rangeStart + totalBytesUploaded);
-            repository.save(state);
-        }
-    }
 }
