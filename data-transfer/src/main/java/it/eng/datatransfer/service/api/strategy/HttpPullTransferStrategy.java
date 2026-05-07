@@ -97,8 +97,8 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
         AtomicBoolean cancellationToken = cancellationRegistry.register(transferProcess.getId());
 
         String transferProcessId = transferProcess.getId();
-        UploadCheckpointCallback checkpointCallback = new CheckpointCallbackImpl(
-                transferProcessId, rangeStart, transferArtifactStateRepository);
+        CheckpointCallbackImpl checkpointCallback = new CheckpointCallbackImpl(
+                checkpoint, rangeStart, transferArtifactStateRepository);
 
         return downloadAndUploadToS3(
                 transferProcess.getDataAddress().getEndpoint(),
@@ -107,7 +107,10 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
                 rangeStart,
                 cancellationToken,
                 checkpointCallback
-        ).thenAccept(key -> log.info("Stored transfer process id - {} data!", key));
+        ).thenAccept(key -> {
+            checkpointCallback.flush();
+            log.info("Stored transfer process id - {} data!", key);
+        });
     }
 
     private CompletableFuture<String> downloadAndUploadToS3(String presignedUrl,
@@ -257,36 +260,4 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
         return null;
     }
 
-    /**
-     * Implementation of {@link UploadCheckpointCallback} for saving HTTP PULL transfer progress.
-     */
-    private static class CheckpointCallbackImpl implements UploadCheckpointCallback {
-        private final String transferProcessId;
-        private final long rangeStart;
-        private final TransferArtifactStateRepository repository;
-
-        CheckpointCallbackImpl(String transferProcessId, long rangeStart,
-                               TransferArtifactStateRepository repository) {
-            this.transferProcessId = transferProcessId;
-            this.rangeStart = rangeStart;
-            this.repository = repository;
-        }
-
-        @Override
-        public void onUploadStarted(String uploadId) {
-            TransferArtifactState state = repository.findById(transferProcessId)
-                    .orElseThrow(() -> new IllegalStateException("Checkpoint missing for transfer: " + transferProcessId));
-            state.setUploadId(uploadId);
-            repository.save(state);
-        }
-
-        @Override
-        public void onPartCompleted(int partNumber, String etag, long totalBytesUploaded) {
-            // totalBytesUploaded is relative to this multipart session; add rangeStart for absolute offset
-            TransferArtifactState state = repository.findById(transferProcessId)
-                    .orElseThrow(() -> new IllegalStateException("Checkpoint missing for transfer: " + transferProcessId));
-            state.setDownloadedBytes(rangeStart + totalBytesUploaded);
-            repository.save(state);
-        }
-    }
 }

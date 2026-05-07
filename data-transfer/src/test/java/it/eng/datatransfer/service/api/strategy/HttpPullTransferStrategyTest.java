@@ -78,7 +78,7 @@ public class HttpPullTransferStrategyTest {
         @SuppressWarnings("unused")
         Class<?> preload = TransferArtifactState.Builder.class;
         try {
-            Class.forName("it.eng.datatransfer.service.api.strategy.HttpPullTransferStrategy$CheckpointCallbackImpl",
+            Class.forName("it.eng.datatransfer.service.api.strategy.CheckpointCallbackImpl",
                     false, HttpPullTransferStrategy.class.getClassLoader());
         } catch (ClassNotFoundException e) {
             throw new IllegalStateException("Cannot pre-load CheckpointCallbackImpl", e);
@@ -123,6 +123,10 @@ public class HttpPullTransferStrategyTest {
 
             // Act — .join() ensures the synchronous future has completed before asserting
             assertDoesNotThrow(() -> strategy.transfer(transferProcess).join());
+
+            // The final flush in thenAccept must persist the in-memory state
+            verify(transferArtifactStateRepository, atLeastOnce())
+                    .save(any(TransferArtifactState.class));
 
             verify(s3ClientService).uploadFile(
                     any(InputStream.class),
