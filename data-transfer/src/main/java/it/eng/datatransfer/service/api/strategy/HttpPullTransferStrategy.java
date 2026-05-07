@@ -17,6 +17,7 @@ import it.eng.tools.s3.util.S3Utils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
@@ -91,7 +92,17 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
             // Reset multipart tracking for the fresh upload that starts from scratch
             checkpoint.setUploadId(null);
         }
-        transferArtifactStateRepository.save(checkpoint);
+        try {
+            transferArtifactStateRepository.save(checkpoint);
+        } catch (DuplicateKeyException e) {
+            // suspendDataTransfer() concurrently inserted the state document.
+            // Re-read to get the version assigned by the concurrent insert.
+            log.debug("Concurrent TransferArtifactState insert for {}; retrying after re-read", transferProcess.getId());
+            checkpoint = transferArtifactStateRepository.findById(transferProcess.getId())
+                    .orElseThrow(() -> new DataTransferAPIException(
+                            "TransferArtifactState not found after concurrent insert for: " + transferProcess.getId()));
+            rangeStart = checkpoint.getDownloadedBytes();
+        }
 
         // Register cancellation token before starting — deregistered in DataTransferAPIService.downloadData().whenComplete()
         AtomicBoolean cancellationToken = cancellationRegistry.register(transferProcess.getId());

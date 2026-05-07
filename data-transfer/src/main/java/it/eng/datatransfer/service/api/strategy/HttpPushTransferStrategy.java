@@ -96,7 +96,7 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
         try {
             transferArtifactStateRepository.save(checkpoint);
         } catch (DuplicateKeyException e) {
-            // suspendDataTransfer() concurrently inserted the state document (Fix 1).
+            // suspendDataTransfer() concurrently inserted the state document.
             // Re-read to get the version assigned by the concurrent insert.
             log.debug("Concurrent TransferArtifactState insert for {}; retrying after re-read", transferProcess.getId());
             checkpoint = transferArtifactStateRepository.findById(transferProcess.getId())
