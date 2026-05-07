@@ -9,6 +9,7 @@ import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.service.upload.UploadCheckpointCallback;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.FieldEncryptionService;
 import it.eng.tools.util.ToolsUtil;
@@ -177,7 +178,11 @@ public class HttpPushTransferStrategyTest {
                 eq(TEST_CONTENT_DISPOSITION),
                 any(AtomicBoolean.class),
                 any()
-        )).thenReturn(CompletableFuture.completedFuture("test-etag"));
+        )).thenAnswer(inv -> {
+            UploadCheckpointCallback cb = inv.getArgument(5);
+            cb.onPartCompleted(1, "etag-1", 5_000_000L); // 1 part < 4 → stays in buffer
+            return CompletableFuture.completedFuture("test-etag");
+        });
 
         try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
                 (mock, context) -> when(mock.openConnection()).thenReturn(mockConnection))) {
@@ -192,8 +197,8 @@ public class HttpPushTransferStrategyTest {
             // Act — .join() ensures the synchronous future has completed before asserting
             assertDoesNotThrow(() -> strategy.transfer(transferProcess).join());
 
-            // The final flush in thenAccept must persist the in-memory state
-            verify(transferArtifactStateRepository, atLeastOnce())
+            // Initial save (line 96 of strategy) + flush() in thenAccept = 2 saves
+            verify(transferArtifactStateRepository, times(2))
                     .save(any(TransferArtifactState.class));
 
             verify(s3ClientService).uploadFile(
