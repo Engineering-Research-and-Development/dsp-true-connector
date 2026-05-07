@@ -10,9 +10,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.OptimisticLockingFailureException;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -142,7 +142,7 @@ class CheckpointCallbackImplTest {
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch done = new CountDownLatch(threads);
         ExecutorService pool = Executors.newFixedThreadPool(threads);
-        List<Throwable> errors = new ArrayList<>();
+        List<Throwable> errors = new CopyOnWriteArrayList<>();
 
         for (int i = 1; i <= threads; i++) {
             final int partNum = i;
