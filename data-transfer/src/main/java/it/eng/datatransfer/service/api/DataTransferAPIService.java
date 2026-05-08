@@ -414,26 +414,42 @@ public class DataTransferAPIService {
                 boolean isPushProvider = IConstants.ROLE_PROVIDER.equals(transferProcessStarted.getRole())
                         && DataTransferFormat.HTTP_PUSH.format().equals(transferProcessStarted.getFormat());
                 if (isPullConsumer || isPushProvider) {
-                    log.info("Case A resume for process {}. Auto-triggering download.", transferProcessStarted.getId());
                     final String tpIdForResume = transferProcessStarted.getId();
-                    CompletableFuture.runAsync(() -> {
-                        try {
-                            // Most async failures are swallowed internally by downloadData()'s own chain
-                            // (.exceptionally(t -> null) at the end). However, policyCheck() failure returns
-                            // CompletableFuture.failedFuture() directly, bypassing that terminal handler.
-                            // The .exceptionally() below catches that escaped failed-future.
-                            // The catch block handles any synchronous throw before downloadData() returns a future.
-                            downloadData(tpIdForResume)
-                                    .exceptionally(err -> {
-                                        log.error("Auto-triggered download failed after Case A resume for process {}: {}",
-                                                tpIdForResume, err.getMessage());
-                                        return null;
-                                    });
-                        } catch (Exception e) {
-                            log.error("Auto-triggered download failed after Case A resume for process {}: {}",
-                                    tpIdForResume, e.getMessage());
-                        }
-                    });
+                    if (transferProcessStarted.isDownloaded()) {
+                        // Upload completed while the transfer was suspended (fast async upload race):
+                        // isDownloaded=true but the transfer was never completed because
+                        // completeTransfer() could not run while the state was SUSPENDED.
+                        // Now that the state is STARTED, complete immediately without re-downloading.
+                        log.info("Case A resume for process {} — data already downloaded. Completing directly.", tpIdForResume);
+                        CompletableFuture.runAsync(() -> {
+                            try {
+                                completeTransfer(tpIdForResume);
+                            } catch (Exception e) {
+                                log.error("Auto-completion after Case A resume failed for process {}: {}",
+                                        tpIdForResume, e.getMessage());
+                            }
+                        });
+                    } else {
+                        log.info("Case A resume for process {}. Auto-triggering download.", tpIdForResume);
+                        CompletableFuture.runAsync(() -> {
+                            try {
+                                // Most async failures are swallowed internally by downloadData()'s own chain
+                                // (.exceptionally(t -> null) at the end). However, policyCheck() failure returns
+                                // CompletableFuture.failedFuture() directly, bypassing that terminal handler.
+                                // The .exceptionally() below catches that escaped failed-future.
+                                // The catch block handles any synchronous throw before downloadData() returns a future.
+                                downloadData(tpIdForResume)
+                                        .exceptionally(err -> {
+                                            log.error("Auto-triggered download failed after Case A resume for process {}: {}",
+                                                    tpIdForResume, err.getMessage());
+                                            return null;
+                                        });
+                            } catch (Exception e) {
+                                log.error("Auto-triggered download failed after Case A resume for process {}: {}",
+                                        tpIdForResume, e.getMessage());
+                            }
+                        });
+                    }
                 }
                 publisher.publishEvent(AuditEventType.TRANSFER_RESUMED,
                         "Transfer resumed by " + transferProcessStarted.getRole()
@@ -798,29 +814,13 @@ public class DataTransferAPIService {
                                 "Download completed successfully for process " + transferProcessId,
                                 Map.of("transferProcessId", transferProcessId));
 
-                        TransferProcess transferProcessWithData = TransferProcess.Builder.newInstance()
-                                .id(transferProcessDownloading.getId())
-                                .agreementId(transferProcessDownloading.getAgreementId())
-                                .consumerPid(transferProcessDownloading.getConsumerPid())
-                                .providerPid(transferProcessDownloading.getProviderPid())
-                                .callbackAddress(transferProcessDownloading.getCallbackAddress())
-                                .dataAddress(transferProcessDownloading.getDataAddress())
-                                .isDownloaded(true)
-                                .isDownloadInProgress(false)
-                                .dataId(transferProcessDownloading.getId())
-                                .format(transferProcessDownloading.getFormat())
-                                .state(transferProcessDownloading.getState())
-                                .role(transferProcessDownloading.getRole())
-                                .datasetId(transferProcessDownloading.getDatasetId())
-                                .retryCount(transferProcessDownloading.getRetryCount())
-                                .created(transferProcessDownloading.getCreated())
-                                .createdBy(transferProcessDownloading.getCreatedBy())
-                                .modified(transferProcessDownloading.getModified())
-                                .lastModifiedBy(transferProcessDownloading.getLastModifiedBy())
-                                .version(transferProcessDownloading.getVersion())
-                                .build();
-
-                        transferProcessRepository.save(transferProcessWithData);
+                        // Re-read the current entity to avoid OptimisticLockingFailureException:
+                        // a concurrent suspendTransfer() may have incremented @Version after the
+                        // isDownloadInProgress=true save that produced transferProcessDownloading.
+                        // If save() threw OLE here, isDownloadInProgress would remain true in the DB,
+                        // blocking all subsequent downloadData() calls ("already in progress").
+                        transferProcessRepository.findById(transferProcessId)
+                                .ifPresent(tp -> transferProcessRepository.save(tp.withDownloadComplete()));
                     } else {
                         // Unwrap any wrapper exception to find root cause
                         Throwable cause = throwable;
