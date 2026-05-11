@@ -8,9 +8,11 @@
         <artifactId>trueconnector</artifactId>
         <version>${revision}</version>
     </parent>
+    <groupId>it.eng.dataplane</groupId>
     <artifactId>data-plane-api</artifactId>
     <packaging>jar</packaging>
     <name>Data Plane API</name>
+    <description>Data Plane API - SPI interfaces and DSP message models for the Dataplane Signaling Protocol</description>
     <dependencies>
         <dependency>
             <groupId>it.eng</groupId>

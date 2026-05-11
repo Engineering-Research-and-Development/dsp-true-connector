@@ -8,12 +8,14 @@
         <artifactId>trueconnector</artifactId>
         <version>${revision}</version>
     </parent>
+    <groupId>it.eng.dataplane</groupId>
     <artifactId>data-plane-http-pull</artifactId>
     <packaging>jar</packaging>
     <name>Data Plane HTTP Pull</name>
+    <description>Data Plane HTTP-PULL - Standalone Spring Boot service for HttpData-PULL transfers</description>
     <dependencies>
         <dependency>
-            <groupId>it.eng</groupId>
+            <groupId>it.eng.dataplane</groupId>
             <artifactId>data-plane-core</artifactId>
             <version>${revision}</version>
         </dependency>
