@@ -73,6 +73,10 @@
         <module>tools</module>
         <module>negotiation</module>
         <module>data-transfer</module>
+        <module>data-plane-api</module>
+        <module>data-plane-core</module>
+        <module>data-plane-http-pull</module>
+        <module>data-plane-http-push</module>
     </modules>
 
     <dependencyManagement>
@@ -536,6 +540,27 @@
                     <version>${jacoco.version}</version>
                 </plugin>
                 <plugin>
+                    <groupId>org.cyclonedx</groupId>
+                    <artifactId>cyclonedx-maven-plugin</artifactId>
+                    <version>2.9.1</version>
+                    <configuration>
+                        <projectType>library</projectType>
+                        <schemaVersion>1.5</schemaVersion>
+                        <includeBomSerialNumber>true</includeBomSerialNumber>
+                        <includeCompileScope>true</includeCompileScope>
+                        <includeProvidedScope>true</includeProvidedScope>
+                        <includeRuntimeScope>true</includeRuntimeScope>
+                        <includeSystemScope>true</includeSystemScope>
+                        <includeTestScope>false</includeTestScope>
+                        <includeLicenseText>false</includeLicenseText>
+                        <outputReactorProjects>true</outputReactorProjects>
+                        <outputFormat>json</outputFormat>
+                        <outputName>sbom</outputName>
+                        <outputDirectory>${project.basedir}</outputDirectory>
+                        <verbose>false</verbose>
+                    </configuration>
+                </plugin>
+                <plugin>
                     <groupId>org.eclipse.m2e</groupId>
                     <artifactId>lifecycle-mapping</artifactId>
                     <version>1.0.0</version>
@@ -654,6 +679,20 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.cyclonedx</groupId>
+                <artifactId>cyclonedx-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>generate-sbom</id>
+                        <phase>package</phase>
+                        <inherited>false</inherited>
+                        <goals>
+                            <goal>makeAggregateBom</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
