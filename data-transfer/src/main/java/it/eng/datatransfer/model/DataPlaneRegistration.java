@@ -1,5 +1,8 @@
 package it.eng.datatransfer.model;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
@@ -24,6 +27,7 @@ import java.util.stream.Collectors;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @Document(collection = "data_plane_registrations")
+@JsonDeserialize(builder = DataPlaneRegistration.Builder.class)
 public class DataPlaneRegistration {
 
     @Id
@@ -46,6 +50,8 @@ public class DataPlaneRegistration {
     /**
      * Builder for {@link DataPlaneRegistration}.
      */
+    @JsonPOJOBuilder(withPrefix = "")
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
 
         private final DataPlaneRegistration registration;
