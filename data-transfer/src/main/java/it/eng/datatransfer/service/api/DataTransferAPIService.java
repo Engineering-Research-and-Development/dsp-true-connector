@@ -912,8 +912,9 @@ public class DataTransferAPIService {
      * Attempts to forward a {@link DataFlowStartMessage} to the registered Data Plane for the given
      * transfer process. If no Data Plane is registered for the transfer type the call is skipped
      * silently (backward-compatible fallback). If the Data Plane call fails with a
-     * {@link DataPlaneClientException} the transfer process is immediately set to TERMINATED so the
-     * failure is visible in the state machine without propagating an exception to the API caller.
+     * {@link DataPlaneClientException}, {@link #terminateTransfer(String)} is called so the consumer
+     * is notified and the local state is set to TERMINATED. If notifying the counter-party also
+     * fails, the TERMINATED state is persisted locally as a best-effort fallback.
      * If the transfer type is not set the call is skipped silently.
      *
      * @param transferProcess the provider-side process that just moved to STARTED
@@ -942,15 +943,23 @@ public class DataTransferAPIService {
         } catch (DataPlaneClientException e) {
             log.error("Data Plane communication failed for process {}: {}. Terminating transfer.",
                     transferProcess.getId(), e.getMessage());
-            TransferProcess terminated = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
-            transferProcessRepository.save(terminated);
+            try {
+                terminateTransfer(transferProcess.getId());
+            } catch (Exception terminateEx) {
+                log.error("Failed to send termination to counter-party: {}", terminateEx.getMessage());
+                TransferProcess terminated = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
+                transferProcessRepository.save(terminated);
+            }
         }
     }
 
     /**
      * Attempts to forward a {@link DataFlowPrepareMessage} to the registered Data Plane for an
      * HTTP-PUSH consumer-side transfer process. If no Data Plane is registered the call is skipped
-     * silently. If the Data Plane call fails the transfer process is set to TERMINATED.
+     * silently. If the Data Plane call fails with a {@link DataPlaneClientException},
+     * {@link #terminateTransfer(String)} is called so the counter-party is notified and the local
+     * state is set to TERMINATED. If notifying the counter-party also fails, the TERMINATED state
+     * is persisted locally as a best-effort fallback.
      * If the transfer type is not set the call is skipped silently.
      *
      * @param transferProcess the consumer-side process that was just persisted in REQUESTED state
@@ -973,8 +982,13 @@ public class DataTransferAPIService {
         } catch (DataPlaneClientException e) {
             log.error("Data Plane communication failed during prepare for process {}: {}. Terminating transfer.",
                     transferProcess.getId(), e.getMessage());
-            TransferProcess terminated = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
-            transferProcessRepository.save(terminated);
+            try {
+                terminateTransfer(transferProcess.getId());
+            } catch (Exception terminateEx) {
+                log.error("Failed to send termination to counter-party: {}", terminateEx.getMessage());
+                TransferProcess terminated = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
+                transferProcessRepository.save(terminated);
+            }
         }
     }
 

@@ -824,6 +824,9 @@ class DataTransferAPIServiceTest {
         DataFlowStartMessage sent = startMsgCaptor.getValue();
         assertEquals(requestedProviderWithFormat.getId(), sent.getProcessId());
         assertEquals(DataTransferFormat.HTTP_PULL.name(), sent.getTransferType());
+        assertNotNull(sent.getCallbackAddress(), "callbackAddress must be set so DP can send callbacks");
+        assertTrue(sent.getCallbackAddress().contains("dataflows"),
+                "callbackAddress should reference the DPS callback endpoint");
     }
 
     @Test
