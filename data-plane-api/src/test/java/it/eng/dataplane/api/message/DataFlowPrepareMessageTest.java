@@ -44,7 +44,12 @@ class DataFlowPrepareMessageTest {
     @DisplayName("Missing processId throws ValidationException")
     void missingProcessIdThrowsValidation() {
         assertThrows(ValidationException.class, () ->
-            DataFlowPrepareMessage.Builder.newInstance().build());
+            DataFlowPrepareMessage.Builder.newInstance()
+                .messageId("msg-1")
+                .agreementId("agr-1")
+                .datasetId("ds-1")
+                .callbackAddress("http://cp:8080/tenant1/transfers")
+                .build());
     }
 
     @Test

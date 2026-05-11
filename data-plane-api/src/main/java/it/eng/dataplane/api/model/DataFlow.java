@@ -158,8 +158,10 @@ public class DataFlow {
             }
             if (instance.createdAt == null) instance.createdAt = LocalDateTime.now();
             if (instance.state == null) instance.state = DataFlowState.INITIALIZED;
-            Set<ConstraintViolation<DataFlow>> violations =
-                Validation.buildDefaultValidatorFactory().getValidator().validate(instance);
+            Set<ConstraintViolation<DataFlow>> violations;
+            try (var factory = Validation.buildDefaultValidatorFactory()) {
+                violations = factory.getValidator().validate(instance);
+            }
             if (violations.isEmpty()) return instance;
             throw new ValidationException("DataFlow - " +
                 violations.stream()
