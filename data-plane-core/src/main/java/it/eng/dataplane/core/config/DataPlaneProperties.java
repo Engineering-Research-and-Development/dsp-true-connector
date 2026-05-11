@@ -18,7 +18,12 @@ public class DataPlaneProperties {
     /** This DP's public endpoint URL (used for self-registration with CP). */
     private String endpoint;
 
-    /** Control Plane base endpoint URL (populated at startup or by PUT /controlplanes). */
+    /**
+     * Control Plane base endpoint URL.
+     * Populated at startup from {@code dataplane.control-plane-endpoint} property
+     * or updated dynamically via PUT /controlplanes from the Control Plane.
+     * Used by DataFlowService callbacks and routing in later phases.
+     */
     private String controlPlaneEndpoint;
 
     /** Control Plane admin API endpoint URL (for registration calls). */

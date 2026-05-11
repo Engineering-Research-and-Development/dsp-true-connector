@@ -13,6 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 /**
  * Core service for managing data flow lifecycle on the Data Plane.
@@ -22,6 +25,9 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class DataFlowService {
+
+    private static final Executor VIRTUAL_THREAD_EXECUTOR =
+        Executors.newCachedThreadPool();
 
     private final DataFlowRepository repository;
     private final DataTransferProtocolRegistry registry;
@@ -95,8 +101,10 @@ public class DataFlowService {
     private void handleCompletion(DataFlowEntity entity, DataFlowResult result) {
         if (result.isSuccess()) {
             updateState(entity, DataFlowState.COMPLETED);
-            controlPlaneClient.sendStatus(entity.getCallbackAddress(), entity.getProcessId(),
-                DataFlowState.COMPLETED, null, null);
+            CompletableFuture.runAsync(() ->
+                controlPlaneClient.sendStatus(entity.getCallbackAddress(), entity.getProcessId(),
+                    DataFlowState.COMPLETED, null, null),
+                VIRTUAL_THREAD_EXECUTOR);
         } else {
             handleError(entity, new RuntimeException(result.getErrorMessage()));
         }
@@ -104,9 +112,16 @@ public class DataFlowService {
 
     private void handleError(DataFlowEntity entity, Throwable ex) {
         log.error("DataFlow {} failed: {}", entity.getId(), ex.getMessage(), ex);
-        updateState(entity, DataFlowState.TERMINATED);
-        controlPlaneClient.sendStatus(entity.getCallbackAddress(), entity.getProcessId(),
-            DataFlowState.TERMINATED, null, ex.getMessage());
+        try {
+            entity.setErrorMessage(ex.getMessage());
+            updateState(entity, DataFlowState.TERMINATED);
+        } catch (Exception saveEx) {
+            log.error("Failed to persist TERMINATED state for DataFlow {}: {}", entity.getId(), saveEx.getMessage());
+        }
+        CompletableFuture.runAsync(() ->
+            controlPlaneClient.sendStatus(entity.getCallbackAddress(), entity.getProcessId(),
+                DataFlowState.TERMINATED, null, ex.getMessage()),
+            VIRTUAL_THREAD_EXECUTOR);
     }
 
     private void updateState(DataFlowEntity entity, DataFlowState state) {
