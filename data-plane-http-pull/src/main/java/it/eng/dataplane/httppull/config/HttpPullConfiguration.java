@@ -2,9 +2,9 @@ package it.eng.dataplane.httppull.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 /**
  * Configuration for the HTTP-PULL Data Plane.
@@ -17,28 +17,15 @@ import java.util.concurrent.Executor;
 public class HttpPullConfiguration {
 
     /**
-     * Bounded executor used by {@link it.eng.dataplane.httppull.HttpPullTransferProtocol}
-     * to run HTTP-PULL transfers concurrently.
+     * Virtual-thread executor for async HTTP-PULL transfers (Java 21).
+     * Each transfer runs on its own virtual thread — no fixed pool ceiling,
+     * blocked I/O does not park OS threads, so thousands of concurrent transfers
+     * are practical without tuning thread pool sizes.
      *
-     * <p>{@link ThreadPoolTaskExecutor} is a Spring-managed bean: its thread pool is
-     * initialised on application start and shut down gracefully (via {@code ExecutorService.shutdown()})
-     * when the Spring context closes, preventing thread leaks across application and test lifecycles.
-     *
-     * <p>Pool sizing rationale: each concurrent transfer may hold up to ~50 MB of heap for buffered
-     * data; 8 concurrent transfers correspond to approximately 400 MB. Tune
-     * {@code maxPoolSize} and the queue capacity to match available RAM and expected workload.
-     *
-     * @return a configured {@link ThreadPoolTaskExecutor} with a core/max pool size of 8
+     * @return virtual-thread-per-task executor
      */
     @Bean("transferExecutor")
     public Executor transferExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(8);
-        executor.setMaxPoolSize(8);
-        executor.setQueueCapacity(50);
-        executor.setThreadNamePrefix("http-pull-transfer-");
-        executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.initialize();
-        return executor;
+        return Executors.newVirtualThreadPerTaskExecutor();
     }
 }

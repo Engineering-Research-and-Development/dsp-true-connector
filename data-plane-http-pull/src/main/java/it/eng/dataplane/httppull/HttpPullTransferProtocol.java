@@ -38,10 +38,10 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
 
     private static final int DEFAULT_CONNECT_TIMEOUT = 10_000; // 10 seconds
     /**
-     * Fallback read timeout (30 minutes) used when the server does not advertise
-     * Content-Length. For known sizes the timeout is computed dynamically.
+     * Fallback read timeout (60 seconds) used when the server does not advertise Content-Length.
+     * For known sizes the timeout is computed dynamically based on file size.
      */
-    private static final int FALLBACK_READ_TIMEOUT = 1_800_000; // 30 minutes
+    private static final int FALLBACK_READ_TIMEOUT = 60_000; // 60 seconds
     /** Assumed minimum transfer speed in bytes/sec used for dynamic timeout (1 MB/s). */
     private static final long MIN_TRANSFER_SPEED_BYTES_PER_SEC = 1024L * 1024L;
 
