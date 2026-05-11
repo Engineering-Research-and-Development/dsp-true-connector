@@ -9,6 +9,9 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import it.eng.connector.util.TestUtil;
+import it.eng.datatransfer.model.DataPlaneRegistration;
+import it.eng.datatransfer.model.DataTransferFormat;
+import it.eng.datatransfer.repository.DataPlaneRegistrationRepository;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.controller.ApiEndpoints;
@@ -35,10 +38,12 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import org.wiremock.spring.EnableWireMock;
+import org.wiremock.spring.InjectWireMock;
 
 import java.io.UnsupportedEncodingException;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -62,6 +67,9 @@ public class BaseIntegrationTest {
     /** Default tenant ID used across all integration tests. */
     protected static final String TENANT_ID = "engineering";
 
+    /** API key used for Data Plane registrations in tests. */
+    protected static final String DP_API_KEY = "test-dp-api-key";
+
     // starts a mongodb and s3 simulated cloud storage container; the containers are shared among all tests; docker must be running
     protected static final MongoDBContainer mongoDBContainer =
             new MongoDBContainer(DockerImageName.parse("mongo:7.0.12"))
@@ -70,12 +78,18 @@ public class BaseIntegrationTest {
             new MinIOContainer(DockerImageName.parse("minio/minio"))
                     .withReuse(false);
 
+    /** WireMock server shared across all integration tests for stubbing external HTTP calls. */
+    @InjectWireMock
+    protected com.github.tomakehurst.wiremock.WireMockServer wireMock;
+
     @Autowired
     protected MockMvc mockMvc;
     @Autowired
     protected S3Properties s3Properties;
     @Autowired
     protected TenantRepository tenantRepository;
+    @Autowired
+    protected DataPlaneRegistrationRepository dataPlaneRegistrationRepository;
     protected JsonMapper jsonMapper;
 
     protected String createNewId() {
@@ -110,6 +124,32 @@ public class BaseIntegrationTest {
                 .addModule(instantConverterModule)
                 .build();
         ensureDefaultTenant();
+    }
+
+    /**
+     * Registers HTTP-PULL and HTTP-PUSH Data Plane entries in MongoDB pointing to the WireMock
+     * server. Uses a distinct {@code @BeforeEach} method name so it runs even when subclasses
+     * override {@code setup()}.
+     */
+    @BeforeEach
+    public void ensureTestDataPlanes() {
+        ensureDataPlaneRegistrations();
+    }
+
+    /**
+     * Registers HTTP-PULL and HTTP-PUSH Data Plane entries in MongoDB pointing to the WireMock
+     * server. Called from {@code @BeforeEach} so every test starts with both DPs available.
+     * The registered API key is {@link #DP_API_KEY}.
+     */
+    protected void ensureDataPlaneRegistrations() {
+        dataPlaneRegistrationRepository.deleteAll();
+        dataPlaneRegistrationRepository.save(DataPlaneRegistration.Builder.newInstance()
+                .endpoint(wireMock.baseUrl())
+                .supportedTransferTypes(Set.of(
+                        DataTransferFormat.HTTP_PULL.format(),
+                        DataTransferFormat.HTTP_PUSH.format()))
+                .apiKey(DP_API_KEY)
+                .build());
     }
 
     /**

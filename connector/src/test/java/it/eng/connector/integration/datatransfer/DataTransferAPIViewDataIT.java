@@ -2,6 +2,7 @@ package it.eng.connector.integration.datatransfer;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
@@ -38,6 +39,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -129,6 +131,15 @@ public class DataTransferAPIViewDataIT extends BaseIntegrationTest {
         } catch (Exception e) {
             throw new Exception("File storing aborted, " + e.getLocalizedMessage());
         }
+
+        // stub DP prepare response: returns presigned URL for the stored file
+        WireMock.stubFor(WireMock.post("/dataflows/prepare")
+                .willReturn(aResponse()
+                        .withHeader("Content-Type", "application/json")
+                        .withStatus(200)
+                        .withBody("{\"processId\":\"" + transferProcessCompleted.getId()
+                                + "\",\"dataAddress\":{\"presignedUrl\":\"http://example.com/file.txt\"}}")));
+
         // send request
         final ResultActions result =
                 mockMvc.perform(

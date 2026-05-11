@@ -51,6 +51,7 @@ import java.util.stream.Stream;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -190,6 +191,10 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                         aResponse().withHeader("Content-Type", "application/json")
                                 .withStatus(200)));
 
+        // stub DP start: accept the dataflow start request
+        WireMock.stubFor(WireMock.post("/dataflows/start")
+                .willReturn(aResponse().withStatus(200)));
+
         // send request
         final ResultActions result =
                 mockMvc.perform(
@@ -209,6 +214,13 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
         assertTrue(apiResp.isSuccess());
         assertNotNull(apiResp.getData());
         assertEquals("Download started for transfer process " + transferProcessStarted.getId(), apiResp.getData());
+
+        // Simulate DP completion callback: DP signals to CP that download is done
+        mockMvc.perform(post(ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE)
+                .header("X-Api-Key", DP_API_KEY)
+                .content("{\"processId\":\"" + transferProcessStarted.getId() + "\",\"state\":\"COMPLETED\"}")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
 
         // Download is async — poll until COMPLETED or timeout
         TransferProcess transferProcessFromDb = awaitTransferState(
@@ -313,6 +325,10 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                         aResponse().withHeader("Content-Type", "application/json")
                                 .withStatus(200)));
 
+        // stub DP start: accept the dataflow start request
+        WireMock.stubFor(WireMock.post("/dataflows/start")
+                .willReturn(aResponse().withStatus(200)));
+
         // send request
         final ResultActions result =
                 mockMvc.perform(
@@ -332,6 +348,13 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
         assertTrue(apiResp.isSuccess());
         assertNotNull(apiResp.getData());
         assertEquals("Download started for transfer process " + transferProcessStarted.getId(), apiResp.getData());
+
+        // Simulate DP completion callback: DP signals to CP that download is done
+        mockMvc.perform(post(ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE)
+                .header("X-Api-Key", DP_API_KEY)
+                .content("{\"processId\":\"" + transferProcessStarted.getId() + "\",\"state\":\"COMPLETED\"}")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
 
         // Download is async — poll until COMPLETED or timeout
         TransferProcess transferProcessFromDb = awaitTransferState(
