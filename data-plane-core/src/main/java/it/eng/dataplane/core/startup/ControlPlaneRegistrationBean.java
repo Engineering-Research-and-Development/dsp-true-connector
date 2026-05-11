@@ -12,6 +12,7 @@ import okhttp3.Response;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
+import it.eng.tools.controller.ApiEndpoints;
 import java.io.IOException;
 import java.util.Map;
 
@@ -59,7 +60,7 @@ public class ControlPlaneRegistrationBean implements ApplicationListener<Applica
     }
 
     private void registerWithRetry() {
-        String url = properties.getControlPlaneAdminEndpoint() + "/api/v1/dataplanes";
+        String url = properties.getControlPlaneAdminEndpoint() + ApiEndpoints.DATA_PLANES;
         Map<String, Object> payload = Map.of(
             "endpoint", properties.getEndpoint(),
             "supportedTransferTypes", registry.getSupportedProtocols()
