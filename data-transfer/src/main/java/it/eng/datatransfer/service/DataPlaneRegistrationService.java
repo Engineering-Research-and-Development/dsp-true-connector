@@ -1,5 +1,6 @@
 package it.eng.datatransfer.service;
 
+import it.eng.datatransfer.exceptions.DataPlaneNotFoundException;
 import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.datatransfer.repository.DataPlaneRegistrationRepository;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,8 @@ public class DataPlaneRegistrationService {
      */
     public void deregister(String id) {
         log.info("Deregistering Data Plane with id {}", id);
+        repository.findById(id)
+                .orElseThrow(() -> new DataPlaneNotFoundException("Data Plane registration not found: " + id));
         repository.deleteById(id);
     }
 

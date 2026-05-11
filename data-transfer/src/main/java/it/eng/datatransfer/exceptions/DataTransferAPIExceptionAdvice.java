@@ -22,4 +22,9 @@ public class DataTransferAPIExceptionAdvice extends ResponseEntityExceptionHandl
         return new ResponseEntity<>(GenericApiResponse.error(ex.getLocalizedMessage()), HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(value = {DataPlaneNotFoundException.class})
+    protected ResponseEntity<Object> handleDataPlaneNotFoundException(DataPlaneNotFoundException ex, WebRequest request) {
+        return new ResponseEntity<>(GenericApiResponse.error(ex.getLocalizedMessage()), HttpStatus.NOT_FOUND);
+    }
+
 }

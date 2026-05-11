@@ -1,8 +1,9 @@
 package it.eng.datatransfer.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
@@ -41,6 +42,7 @@ public class DataPlaneRegistration {
 
     private String authType;
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String apiKey;
 
     private Instant lastHeartbeat;

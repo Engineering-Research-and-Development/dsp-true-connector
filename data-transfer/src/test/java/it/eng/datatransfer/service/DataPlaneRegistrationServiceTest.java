@@ -1,5 +1,6 @@
 package it.eng.datatransfer.service;
 
+import it.eng.datatransfer.exceptions.DataPlaneNotFoundException;
 import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.datatransfer.repository.DataPlaneRegistrationRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -10,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -63,11 +65,23 @@ public class DataPlaneRegistrationServiceTest {
     @DisplayName("deregister calls deleteById with the given id")
     public void deregisterDeletesById() {
         String id = "test-id-123";
+        DataPlaneRegistration reg = buildRegistration();
+        when(repository.findById(id)).thenReturn(Optional.of(reg));
         doNothing().when(repository).deleteById(id);
 
         service.deregister(id);
 
         verify(repository).deleteById(id);
+    }
+
+    @Test
+    @DisplayName("deregister throws DataPlaneNotFoundException when id does not exist")
+    public void deregisterThrowsWhenNotFound() {
+        String id = "non-existent-id";
+        when(repository.findById(id)).thenReturn(Optional.empty());
+
+        assertThrows(DataPlaneNotFoundException.class, () -> service.deregister(id));
+        verify(repository, never()).deleteById(any());
     }
 
     @Test
