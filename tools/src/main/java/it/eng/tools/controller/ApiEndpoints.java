@@ -65,4 +65,9 @@ public interface ApiEndpoints {
      * Tools module - v1 API endpoint for tenant management.
      */
     public static final String TENANTS_V1 = "/api/v1/tenants";
+
+    /**
+     * DataTransfer module - v1 API endpoint for Data Plane registrations.
+     */
+    public static final String DATA_PLANES = "/api/v1/dataplanes";
 }
