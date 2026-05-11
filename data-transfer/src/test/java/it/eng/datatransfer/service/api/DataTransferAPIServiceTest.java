@@ -533,23 +533,24 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
-        // First save (isDownloadInProgress=true): return the saved object as-is (realistic DB save behaviour).
-        // Second save (completion): return the fully downloaded process.
+        // Only one save: mark isDownloadInProgress=true and fire-and-start.
+        // Completion is driven by the DataFlowCallbackController callback, not here.
         when(transferProcessRepository.save(any(TransferProcess.class)))
-                .thenAnswer(invocation -> invocation.getArgument(0))
-                .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED);
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         assertDoesNotThrow(() -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
         verify(dataPlaneClient).start(any(DataFlowStartMessage.class));
-        // Two saves: once to mark isDownloadInProgress=true, once to mark isDownloaded=true on completion
-        verify(transferProcessRepository, times(2)).save(argCaptorTransferProcess.capture());
+        // Exactly one save: to mark isDownloadInProgress=true
+        verify(transferProcessRepository, times(1)).save(argCaptorTransferProcess.capture());
 
-        // The process saved as isDownloadInProgress=true
-        TransferProcess processWithInProgressFlag = argCaptorTransferProcess.getAllValues().get(0);
+        TransferProcess processWithInProgressFlag = argCaptorTransferProcess.getValue();
         assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), processWithInProgressFlag.getId());
         assertTrue(processWithInProgressFlag.isDownloadInProgress());
         assertEquals(DataTransferFormat.HTTP_PULL.name(), processWithInProgressFlag.getFormat());
+
+        // completeTransfer() must NOT be called — completion is driven by the DP callback
+        verify(okHttpRestClient, never()).sendRequestProtocol(contains("/transfers/"), any(JsonNode.class), anyString());
     }
 
     @Test

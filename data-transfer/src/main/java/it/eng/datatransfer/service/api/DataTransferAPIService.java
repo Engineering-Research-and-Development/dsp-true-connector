@@ -685,8 +685,10 @@ public class DataTransferAPIService {
         }
         log.info("Starting download transfer process id - {} data...", transferProcessId);
 
-        // Route transfer to the Data Plane service via DPS
-        CompletableFuture<Void> transferFuture;
+        // Dispatch to the external Data Plane microservice via DPS.
+        // The data plane performs the actual transfer asynchronously and POSTs back to
+        // DataFlowCallbackController when done. Completion/termination lifecycle is driven
+        // entirely by those callbacks — do NOT call completeTransfer() here.
         try {
             String callbackAddress = dataTransferProperties.consumerCallbackAddress() + ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE;
             DataFlowStartMessage startMessage = DataFlowStartMessage.Builder.newInstance()
@@ -698,66 +700,12 @@ public class DataTransferAPIService {
                     .datasetId(transferProcessDownloading.getDatasetId())
                     .build();
             dataPlaneClient.start(startMessage);
-            transferFuture = CompletableFuture.completedFuture(null);
         } catch (Exception e) {
             transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
             throw e;
         }
 
-        return transferFuture
-                .whenComplete((transfer, throwable) -> {
-                    if (throwable == null) {
-                        log.info("Download completed successfully for process {}", transferProcessId);
-
-                        publisher.publishEvent(
-                                AuditEventType.TRANSFER_COMPLETED,
-                                "Download completed successfully for process " + transferProcessId,
-                                Map.of("transferProcessId", transferProcessId));
-
-                        TransferProcess transferProcessWithData = TransferProcess.Builder.newInstance()
-                                .id(transferProcessDownloading.getId())
-                                .agreementId(transferProcessDownloading.getAgreementId())
-                                .consumerPid(transferProcessDownloading.getConsumerPid())
-                                .providerPid(transferProcessDownloading.getProviderPid())
-                                .callbackAddress(transferProcessDownloading.getCallbackAddress())
-                                .dataAddress(transferProcessDownloading.getDataAddress())
-                                .isDownloaded(true)
-                                .isDownloadInProgress(false)
-                                .dataId(transferProcessDownloading.getId())
-                                .format(transferProcessDownloading.getFormat())
-                                .state(transferProcessDownloading.getState())
-                                .role(transferProcessDownloading.getRole())
-                                .datasetId(transferProcessDownloading.getDatasetId())
-                                .retryCount(transferProcessDownloading.getRetryCount())
-                                .tenantId(transferProcessDownloading.getTenantId())
-                                .created(transferProcessDownloading.getCreated())
-                                .createdBy(transferProcessDownloading.getCreatedBy())
-                                .modified(transferProcessDownloading.getModified())
-                                .lastModifiedBy(transferProcessDownloading.getLastModifiedBy())
-                                .version(transferProcessDownloading.getVersion())
-                                .build();
-
-                        transferProcessRepository.save(transferProcessWithData);
-                    } else {
-                        log.error("Transfer process id - {} data transmission interrupted : {}", transferProcessId, throwable.getMessage());
-                        // Reset the in-progress flag so future downloads can be attempted.
-                        transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
-                        publisher.publishEvent(AuditEventType.TRANSFER_FAILED,
-                                "Data transfer failed for process " + transferProcessDownloading.getId(),
-                                auditMap("role", IConstants.ROLE_PROTOCOL,
-                                        "transferProcess", transferProcessDownloading,
-                                        "consumerPid", transferProcessDownloading.getConsumerPid(),
-                                        "providerPid", transferProcessDownloading.getProviderPid(),
-                                        "errorMessage", throwable.getMessage()));
-                    }
-                }).thenAccept(transfer -> {
-                    // since the download is completed successfully, we can send the TransferCompletionMessage
-                    log.info("Data downloaded successfully for transfer process id - {}. Now sending TransferCompletionMessage.", transferProcessId);
-                    completeTransfer(transferProcessId);
-                }).exceptionally(throwable -> {
-                    log.error("Failed to send TransferCompletionMessage for process {}: {}", transferProcessId, throwable.getMessage());
-                    return null;
-                });
+        return CompletableFuture.completedFuture(null);
     }
 
     /**

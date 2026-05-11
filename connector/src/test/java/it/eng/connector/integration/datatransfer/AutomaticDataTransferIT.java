@@ -469,7 +469,8 @@ public class AutomaticDataTransferIT {
                 "Consumer TP dataId must be set after successful download");
 
         // Verify artifact landed in Consumer's MinIO.
-        // HttpPullTransferStrategy stores the artifact with key = transferProcess.getId() = consumerTpId.
+        // DataTransferAPIService delegates to DataPlaneClient.start() which orchestrates the external
+        // data-plane microservice to execute the HTTP_PULL transfer and store the artifact with key = consumerTpId.
         var consumerS3      = consumerCtx.getBean(S3ClientService.class);
         var consumerS3Props = consumerCtx.getBean(S3Properties.class);
         assertTrue(consumerS3.fileExists(consumerS3Props.getBucketName(), consumerTpId),
@@ -495,10 +496,10 @@ public class AutomaticDataTransferIT {
         // TransferRequestMessage sent to the provider.
         // Provider's initiateDataTransfer fires AutoTransferStartEvent → processStart:
         //   1. startTransfer: sends TransferStartMessage to consumer → Provider STARTED.
-        //   2. HTTP_PUSH chain: HttpPushTransferStrategy generates a presigned GET URL for
-        //      the artifact in provider MinIO, downloads it, then uploads it to consumer MinIO
-        //      using the dataAddress from the request → provider sends TransferCompletionMessage
-        //      → Provider COMPLETED.
+        //   2. HTTP_PUSH chain: DataTransferAPIService delegates to DataPlaneClient.start() which
+        //      orchestrates the external data-plane microservice to download from provider MinIO,
+        //      then upload to consumer MinIO using the dataAddress credentials → provider sends
+        //      TransferCompletionMessage → Provider COMPLETED.
         // Consumer receives TransferStartMessage → STARTED (no auto-download for HTTP_PUSH).
         // Consumer receives TransferCompletionMessage → COMPLETED.
         String requestBody = """
@@ -521,7 +522,7 @@ public class AutomaticDataTransferIT {
 
         // ── Poll Provider TP until COMPLETED ──────────────────────────────────────
         // Provider transitions: INITIALIZED → REQUESTED → STARTED → COMPLETED
-        // (COMPLETED is set after HttpPushTransferStrategy pushes data and sends completion)
+        // (COMPLETED is set after the external data-plane microservice completes the push and sends completion)
         TransferProcess completedProviderTp = pollUntilTransferStateByAgreementId(
                 providerTpRepo, agreementId, TransferState.COMPLETED, "provider");
 
