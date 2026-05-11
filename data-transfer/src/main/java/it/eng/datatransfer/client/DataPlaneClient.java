@@ -3,6 +3,7 @@ package it.eng.datatransfer.client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
+import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
 import it.eng.datatransfer.exceptions.DataPlaneClientException;
 import it.eng.datatransfer.model.DataPlaneRegistration;
@@ -64,7 +65,8 @@ public class DataPlaneClient {
     }
 
     /**
-     * Sends a {@link DataFlowPrepareMessage} to the selected Data Plane.
+     * Sends a {@link DataFlowPrepareMessage} to the selected Data Plane and returns the
+     * {@link DataFlowPrepareResponse} with protocol-specific addressing data.
      *
      * <p>The transfer type is passed explicitly because {@link DataFlowPrepareMessage} has no
      * {@code transferType} field — the caller (Control Plane) derives it from the
@@ -72,13 +74,14 @@ public class DataPlaneClient {
      *
      * @param prepareMessage the prepare message to forward
      * @param transferType   the transfer type used to select the target Data Plane
+     * @return the response from the Data Plane with protocol-specific addressing data
      * @throws IllegalStateException if no Data Plane is registered for the transfer type
      */
-    public void prepare(DataFlowPrepareMessage prepareMessage, String transferType) {
+    public DataFlowPrepareResponse prepare(DataFlowPrepareMessage prepareMessage, String transferType) {
         DataPlaneRegistration dp = selectOrThrow(transferType);
         String url = dp.getEndpoint() + "/dataflows/prepare";
         log.info("Sending DataFlowPrepareMessage to '{}'", url);
-        post(url, prepareMessage, dp.getApiKey());
+        return postForResponse(url, prepareMessage, dp.getApiKey(), DataFlowPrepareResponse.class);
     }
 
     /**
@@ -105,6 +108,10 @@ public class DataPlaneClient {
     }
 
     private void post(String url, Object body, String apiKey) {
+        postForResponse(url, body, apiKey, Void.class);
+    }
+
+    private <T> T postForResponse(String url, Object body, String apiKey, Class<T> responseType) {
         String json = serializeBody(body);
         RequestBody requestBody = RequestBody.create(json, JSON);
         Request.Builder builder = new Request.Builder()
@@ -120,6 +127,14 @@ public class DataPlaneClient {
                 throw new DataPlaneClientException("Data Plane returned HTTP " + response.code() + " for " + url);
             }
             log.debug("Data Plane responded with HTTP {}", response.code());
+            if (responseType == Void.class || response.body() == null) {
+                return null;
+            }
+            String responseBody = response.body().string();
+            if (responseBody == null || responseBody.isBlank()) {
+                return null;
+            }
+            return objectMapper.readValue(responseBody, responseType);
         } catch (IOException e) {
             log.error("Failed to send POST to {}: {}", url, e.getMessage());
             throw new DataPlaneClientException("Failed to send message to data plane at " + url, e);

@@ -1,8 +1,10 @@
 package it.eng.dataplane.core.controller;
 
-import it.eng.dataplane.api.message.DataFlowStartMessage;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
+import it.eng.dataplane.api.message.DataFlowPrepareResponse;
+import it.eng.dataplane.api.message.DataFlowStartMessage;
 import it.eng.dataplane.api.model.DataFlow;
+import it.eng.dataplane.core.registry.DataTransferProtocolRegistry;
 import it.eng.dataplane.core.service.DataFlowService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 public class DataFlowController {
 
     private final DataFlowService dataFlowService;
+    private final DataTransferProtocolRegistry protocolRegistry;
 
     /**
      * Initiates a new data transfer based on a Control Plane request.
@@ -50,18 +53,33 @@ public class DataFlowController {
     }
 
     /**
-     * Handles a prepare request from the Control Plane (HTTP-PUSH consumer setup).
-     * The consumer CP calls this before the provider starts pushing, so the DP can
-     * allocate resources or record context. Returns 200 OK as an acknowledgement;
-     * no persistent state is created at this stage.
+     * Handles a prepare request from the Control Plane.
+     *
+     * <p>Delegates to the registered {@link it.eng.dataplane.api.spi.DataTransferProtocol}
+     * implementation so the Data Plane can allocate resources (e.g. temporary IAM credentials
+     * for HTTP-PUSH, or generate a pre-signed URL for HTTP-PULL) before the DSP transfer
+     * messages are exchanged between connectors.</p>
      *
      * @param message the DataFlowPrepareMessage from the Control Plane
-     * @return 200 OK
+     * @return 200 OK with {@link DataFlowPrepareResponse} containing protocol-specific addressing data
      */
     @PostMapping("/prepare")
-    public ResponseEntity<Void> prepareDataFlow(@RequestBody DataFlowPrepareMessage message) {
+    public ResponseEntity<DataFlowPrepareResponse> prepareDataFlow(@RequestBody DataFlowPrepareMessage message) {
         log.info("Received prepare request for processId={}", message.getProcessId());
-        return ResponseEntity.ok().build();
+        String transferType = message.getDataAddress() != null
+                ? message.getDataAddress().getOrDefault("transferType", "")
+                : "";
+        var protocol = protocolRegistry.getProtocol(transferType);
+        DataFlowPrepareResponse response;
+        if (protocol != null) {
+            response = protocol.prepare(message);
+        } else {
+            log.warn("No protocol found for transferType='{}'; returning empty prepare response", transferType);
+            response = DataFlowPrepareResponse.Builder.newInstance()
+                    .processId(message.getProcessId())
+                    .build();
+        }
+        return ResponseEntity.ok(response);
     }
 
     /**

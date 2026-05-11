@@ -1,8 +1,11 @@
 package it.eng.dataplane.httppush;
 
+import it.eng.dataplane.api.message.DataFlowPrepareMessage;
+import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.api.spi.DataTransferProtocol;
+import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.util.S3Utils;
@@ -38,6 +41,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class HttpPushTransferProtocol implements DataTransferProtocol {
 
     private final S3ClientService s3ClientService;
+    private final S3Properties s3Properties;
     private final TemporaryBucketUserService temporaryBucketUserService;
     private final TenantBucketResolver tenantBucketResolver;
     private final FieldEncryptionService fieldEncryptionService;
@@ -62,6 +66,46 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     @Override
     public String getProtocolId() {
         return "HttpData-PUSH";
+    }
+
+    /**
+     * Prepares the consumer-side bucket for an HTTP-PUSH transfer by creating a temporary
+     * IAM user with write-only access to the consumer's bucket.
+     *
+     * <p>The consumer Control Plane calls this before sending the DSP {@code TransferRequestMessage}
+     * to the provider, so the temporary credentials can be embedded in the message's
+     * {@code dataAddress}. The provider then uses these credentials to push the artifact
+     * directly into the consumer's bucket.</p>
+     *
+     * @param message the prepare message; {@code processId} is used as the S3 object key
+     * @return response with {@code dataAddress} containing S3 credentials and bucket info
+     */
+    @Override
+    public DataFlowPrepareResponse prepare(DataFlowPrepareMessage message) {
+        String processId = message.getProcessId();
+        String bucketName = s3Properties.getBucketName();
+        log.info("Preparing HTTP-PUSH temp user for processId={} in bucket={}", processId, bucketName);
+
+        var tempUser = temporaryBucketUserService.createTemporaryUser(processId, bucketName, processId);
+        log.info("Created temporary IAM user '{}' for processId={}", tempUser.getAccessKey(), processId);
+
+        Map<String, String> dataAddress = new HashMap<>();
+        dataAddress.put(S3Utils.BUCKET_NAME, bucketName);
+        dataAddress.put(S3Utils.REGION, s3Properties.getRegion());
+        dataAddress.put(S3Utils.OBJECT_KEY, processId);
+        dataAddress.put(S3Utils.ACCESS_KEY, tempUser.getAccessKey());
+        dataAddress.put(S3Utils.SECRET_KEY, tempUser.getSecretKey());
+        String endpointOverride = StringUtils.isNotBlank(s3Properties.getExternalPresignedEndpoint())
+                ? s3Properties.getExternalPresignedEndpoint()
+                : s3Properties.getEndpoint();
+        if (StringUtils.isNotBlank(endpointOverride)) {
+            dataAddress.put(S3Utils.ENDPOINT_OVERRIDE, endpointOverride);
+        }
+
+        return DataFlowPrepareResponse.Builder.newInstance()
+                .processId(processId)
+                .dataAddress(dataAddress)
+                .build();
     }
 
     /**
@@ -123,12 +167,21 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
      * on success. If the transfer is terminated externally the cleanup cannot be performed here
      * because the process ID is not available from the data flow ID alone.
      *
-     * @param dataFlowId the ID of the data flow to terminate
+     * @param processId the DPS transfer process ID — used to look up and delete the temporary
+     *                  IAM user that was created during {@link #prepare}
      * @return future with success result
      */
     @Override
-    public CompletableFuture<DataFlowResult> terminateTransfer(String dataFlowId) {
-        log.info("Terminating HttpData-PUSH transfer {} — temporary credential cleanup skipped (no processId available)", dataFlowId);
+    public CompletableFuture<DataFlowResult> terminateTransfer(String processId) {
+        log.info("Terminating HttpData-PUSH transfer for processId={}", processId);
+        if (StringUtils.isNotBlank(processId)) {
+            try {
+                temporaryBucketUserService.deleteTemporaryUser(processId);
+                log.info("Cleaned up temporary credentials for processId={}", processId);
+            } catch (Exception e) {
+                log.warn("Failed to clean up temporary credentials for processId={}: {}", processId, e.getMessage());
+            }
+        }
         return CompletableFuture.completedFuture(DataFlowResult.success());
     }
 

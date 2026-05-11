@@ -15,14 +15,12 @@ import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
+import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.s3.service.S3ClientService;
-import it.eng.tools.s3.model.TemporaryBucketUser;
-import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
@@ -41,7 +39,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpMethod;
 
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -68,10 +65,6 @@ class DataTransferAPIServiceTest {
     @Mock
     private TransferProcessRepository transferProcessRepository;
     @Mock
-    private S3ClientService s3ClientService;
-    @Mock
-    private TenantBucketResolver tenantBucketResolver;
-    @Mock
     private AuditEventPublisher publisher;
     @Mock
     private ArtifactTransferService artifactTransferService;
@@ -79,10 +72,6 @@ class DataTransferAPIServiceTest {
     private DataPlaneClient dataPlaneClient;
     @Mock
     private Pageable pageable;
-    @Mock
-    private it.eng.tools.s3.service.TemporaryBucketUserService temporaryBucketUserService;
-    @Mock
-    private it.eng.tools.s3.properties.S3Properties s3Properties;
 
     @Captor
     private ArgumentCaptor<TransferProcess> argCaptorTransferProcess;
@@ -693,7 +682,6 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("View data - success")
     public void viewData_success() {
-        String bucketName = "test-bucket";
         String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
 
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId()))
@@ -703,23 +691,22 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
-        when(tenantBucketResolver.resolveBucketName(any())).thenReturn(bucketName);
-        when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(true);
-
-        when(s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L)))
-                .thenReturn("https://example.com/presigned-url");
+        DataFlowPrepareResponse prepareResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId(objectKey)
+                .dataAddress(Map.of("presignedUrl", "https://example.com/presigned-url"))
+                .build();
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), nullable(String.class)))
+                .thenReturn(prepareResponse);
 
         assertDoesNotThrow(() -> apiService.viewData(objectKey));
 
-        verify(s3ClientService).fileExists(bucketName, objectKey);
-        verify(s3ClientService).generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
+        verify(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), nullable(String.class));
         verify(publisher).publishEvent(any(ArtifactConsumedEvent.class));
     }
 
     @Test
     @DisplayName("View data - fail - generate presignURL exception")
     public void viewData_fail_canNotAccessData() {
-        String bucketName = "test-bucket";
         String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
 
         when(transferProcessRepository.findById(objectKey))
@@ -729,18 +716,16 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
-        when(tenantBucketResolver.resolveBucketName(any())).thenReturn(bucketName);
-        when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(true);
-        doThrow(RuntimeException.class).when(s3ClientService).generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
+        doThrow(new DataPlaneClientException("DP error generating presigned URL"))
+                .when(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), nullable(String.class));
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(objectKey));
     }
 
     @Test
-    @DisplayName("View data - fail - file not found")
+    @DisplayName("View data - fail - Data Plane not reachable")
     public void viewData_fail_fileNotFound() {
-        String bucketName = "test-bucket";
         String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
 
         when(transferProcessRepository.findById(objectKey))
@@ -750,13 +735,13 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
-        when(tenantBucketResolver.resolveBucketName(any())).thenReturn(bucketName);
-        when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(false);
+        doThrow(new DataPlaneClientException("No data plane available"))
+                .when(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), nullable(String.class));
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(objectKey));
 
-        verify(s3ClientService).fileExists(bucketName, objectKey);
+        verify(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), nullable(String.class));
     }
 
 
@@ -774,8 +759,7 @@ class DataTransferAPIServiceTest {
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId()));
 
-        verify(s3ClientService, times(0)).fileExists(anyString(), anyString());
-        verify(s3ClientService, times(0)).generateGetPresignedUrl(anyString(), anyString(), any(Duration.class));
+        verify(dataPlaneClient, times(0)).prepare(any(DataFlowPrepareMessage.class), any(String.class));
     }
 
     @Test
@@ -787,8 +771,7 @@ class DataTransferAPIServiceTest {
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED.getId()));
 
-        verify(s3ClientService, times(0)).fileExists(anyString(), anyString());
-        verify(s3ClientService, times(0)).generateGetPresignedUrl(anyString(), anyString(), any(Duration.class));
+        verify(dataPlaneClient, times(0)).prepare(any(DataFlowPrepareMessage.class), any(String.class));
     }
 
     @Test
@@ -926,17 +909,22 @@ class DataTransferAPIServiceTest {
                 httpPushInitialized.getId(),
                 DataTransferFormat.HTTP_PUSH.format(),
                 null);
-        TemporaryBucketUser tempUser = TemporaryBucketUser.Builder.newInstance()
-                .accessKey("test-access-key")
-                .secretKey("test-secret-key")
+
+        DataFlowPrepareResponse prepareResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId(httpPushInitialized.getId())
+                .dataAddress(Map.of(
+                        "bucketName", "test-bucket",
+                        "region", "us-east-1",
+                        "objectKey", httpPushInitialized.getId(),
+                        "accessKey", "test-access-key",
+                        "secretKey", "test-secret-key",
+                        "endpointOverride", "http://minio:9000"))
                 .build();
 
         when(transferProcessRepository.findById(httpPushInitialized.getId()))
                 .thenReturn(Optional.of(httpPushInitialized));
-        when(tenantBucketResolver.resolveBucketName(any())).thenReturn("test-bucket");
-        when(temporaryBucketUserService.createTemporaryUser(any(), any(), any())).thenReturn(tempUser);
-        when(s3Properties.getRegion()).thenReturn("us-east-1");
-        when(s3Properties.getExternalPresignedEndpoint()).thenReturn("http://minio:9000");
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq(DataTransferFormat.HTTP_PUSH.format())))
+                .thenReturn(prepareResponse);
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
                 .thenReturn(apiResponse);
@@ -957,7 +945,9 @@ class DataTransferAPIServiceTest {
         assertNotNull(sent.getCallbackAddress(), "callbackAddress must be set so DP can send callbacks");
         assertEquals(DataTransferMockObjectUtil.CALLBACK_ADDRESS, sent.getCallbackAddress(),
                 "callbackAddress should be the base CP URL so the DP can POST back to /api/v1/dataflows/complete");
-        assertNotNull(sent.getDataAddress(), "dataAddress must be set so DP knows where to push");
+        // The prepare MESSAGE from CP to DP does not carry dataAddress — the DP returns credentials in its response
+        assertNotNull(sent.getAgreementId(), "agreementId must be set");
+        assertNotNull(sent.getDatasetId(), "datasetId must be set");
     }
 
     @Test
@@ -976,26 +966,9 @@ class DataTransferAPIServiceTest {
                 httpPushInitialized.getId(),
                 DataTransferFormat.HTTP_PUSH.format(),
                 null);
-        TemporaryBucketUser tempUser = TemporaryBucketUser.Builder.newInstance()
-                .accessKey("test-access-key")
-                .secretKey("test-secret-key")
-                .build();
 
         when(transferProcessRepository.findById(httpPushInitialized.getId()))
                 .thenReturn(Optional.of(httpPushInitialized));
-        when(tenantBucketResolver.resolveBucketName(any())).thenReturn("test-bucket");
-        when(temporaryBucketUserService.createTemporaryUser(any(), any(), any())).thenReturn(tempUser);
-        when(s3Properties.getRegion()).thenReturn("us-east-1");
-        when(s3Properties.getExternalPresignedEndpoint()).thenReturn("http://minio:9000");
-        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
-                .thenReturn(apiResponse);
-        when(apiResponse.isSuccess()).thenReturn(true);
-        when(apiResponse.getData()).thenReturn(
-                TransferSerializer.serializeProtocol(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER));
-        when(transferProcessRepository.save(any(TransferProcess.class)))
-                .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER);
-        when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
         doThrow(new DataPlaneClientException("DP unreachable"))
                 .when(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), anyString());
 

@@ -70,7 +70,7 @@ public class DataFlowService {
 
         DataTransferProtocol protocol = registry.getProtocol(entity.getTransferType());
         if (protocol != null) {
-            protocol.terminateTransfer(entity.getId())
+            protocol.terminateTransfer(entity.getProcessId())
                 .thenAccept(result -> updateState(entity, DataFlowState.TERMINATED))
                 .exceptionally(ex -> { handleError(entity, ex); return null; });
         } else {

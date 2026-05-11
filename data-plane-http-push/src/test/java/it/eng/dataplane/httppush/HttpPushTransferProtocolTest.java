@@ -3,6 +3,7 @@ package it.eng.dataplane.httppush;
 import com.sun.net.httpserver.HttpServer;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
+import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.util.S3Utils;
@@ -48,6 +49,8 @@ class HttpPushTransferProtocolTest {
     private TenantBucketResolver tenantBucketResolver;
     @Mock
     private FieldEncryptionService fieldEncryptionService;
+    @Mock
+    private S3Properties s3Properties;
 
     private HttpPushTransferProtocol protocol;
     private HttpServer testHttpServer;
@@ -59,6 +62,7 @@ class HttpPushTransferProtocolTest {
     void setUp() {
         protocol = new HttpPushTransferProtocol(
             s3ClientService,
+            s3Properties,
             temporaryBucketUserService,
             tenantBucketResolver,
             fieldEncryptionService,

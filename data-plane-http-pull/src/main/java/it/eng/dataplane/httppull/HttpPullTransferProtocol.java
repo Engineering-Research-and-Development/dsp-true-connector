@@ -1,5 +1,7 @@
 package it.eng.dataplane.httppull;
 
+import it.eng.dataplane.api.message.DataFlowPrepareMessage;
+import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.api.spi.DataTransferProtocol;
@@ -18,6 +20,8 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -48,14 +52,62 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
     /** Assumed minimum transfer speed in bytes/sec used for dynamic timeout (1 MB/s). */
     private static final long MIN_TRANSFER_SPEED_BYTES_PER_SEC = 1024L * 1024L;
 
-    /**
-     * Returns the unique identifier for this transfer protocol.
-     *
-     * @return protocol identifier string
-     */
+    /** Data address key indicating the calling mode (VIEW for consumer viewData). */
+    static final String MODE_KEY = "mode";
+    /** Mode value for consumer viewData requests — returns a pre-signed URL for the stored file. */
+    static final String MODE_VIEW = "VIEW";
+    /** Data address key carrying the pre-signed URL in the prepare response. */
+    static final String PRESIGNED_URL_KEY = "presignedUrl";
+
     @Override
     public String getProtocolId() {
         return "HttpData-PULL";
+    }
+
+    /**
+     * Generates a pre-signed GET URL for the requested S3 object and returns it in
+     * the response {@code dataAddress}.
+     *
+     * <ul>
+     *   <li>If {@code dataAddress.mode == VIEW}: the consumer Control Plane is requesting a URL
+     *       so the API caller can download a previously stored file. The object key is
+     *       {@code message.processId} (the transfer process ID used as key when storing).</li>
+     *   <li>Otherwise (provider side): generates a URL for the artifact identified by
+     *       {@code message.datasetId}. This URL is embedded in the DSP {@code TransferStartMessage}
+     *       that the provider sends to the consumer.</li>
+     * </ul>
+     *
+     * @param message the prepare message from the Control Plane
+     * @return response containing {@code dataAddress.presignedUrl}
+     */
+    @Override
+    public DataFlowPrepareResponse prepare(DataFlowPrepareMessage message) {
+        String bucketName = s3Properties.getBucketName();
+        String mode = message.getDataAddress() != null
+                ? message.getDataAddress().getOrDefault(MODE_KEY, "")
+                : "";
+
+        String objectKey;
+        if (MODE_VIEW.equals(mode)) {
+            // Consumer viewData: the file was stored with processId as the object key
+            objectKey = message.getProcessId();
+            log.info("Preparing viewData presigned URL for processId={} in bucket={}", objectKey, bucketName);
+        } else {
+            // Provider side: object key is the dataset ID
+            objectKey = message.getDatasetId();
+            log.info("Preparing provider presigned URL for datasetId={} in bucket={}", objectKey, bucketName);
+        }
+
+        String presignedUrl = s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
+        log.debug("Generated presigned URL for mode='{}', objectKey='{}'", mode, objectKey);
+
+        Map<String, String> dataAddress = new HashMap<>();
+        dataAddress.put(PRESIGNED_URL_KEY, presignedUrl);
+
+        return DataFlowPrepareResponse.Builder.newInstance()
+                .processId(message.getProcessId())
+                .dataAddress(dataAddress)
+                .build();
     }
 
     /**

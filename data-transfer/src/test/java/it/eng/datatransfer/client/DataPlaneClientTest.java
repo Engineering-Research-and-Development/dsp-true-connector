@@ -55,12 +55,20 @@ public class DataPlaneClientTest {
     }
 
     private Call stubCall(int httpCode) throws IOException {
+        return stubCall(httpCode, "");
+    }
+
+    private Call stubCallWithBody(int httpCode, String body) throws IOException {
+        return stubCall(httpCode, body);
+    }
+
+    private Call stubCall(int httpCode, String body) throws IOException {
         Call mockCall = mock(Call.class);
         Response fakeResponse = new Response.Builder()
                 .request(new Request.Builder().url("http://dp:9090/dataflows/start").build())
                 .protocol(Protocol.HTTP_1_1)
                 .code(httpCode).message("OK")
-                .body(ResponseBody.create("", MediaType.get("application/json")))
+                .body(ResponseBody.create(body, MediaType.get("application/json")))
                 .build();
         when(mockCall.execute()).thenReturn(fakeResponse);
         return mockCall;
@@ -93,7 +101,8 @@ public class DataPlaneClientTest {
     public void prepareSendsPostToDataPlane() throws IOException {
         DataPlaneRegistration dp = registrationNoApiKey("http://dp:9090");
         when(mockRouter.selectDataPlane("HttpData-PULL")).thenReturn(Optional.of(dp));
-        Call mockCall = stubCall(200);
+        String responseBody = "{\"processId\":\"proc-2\",\"dataAddress\":{\"presignedUrl\":\"https://example.com/obj\"}}";
+        Call mockCall = stubCallWithBody(200, responseBody);
         when(mockHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
 
         DataFlowPrepareMessage msg = DataFlowPrepareMessage.Builder.newInstance()
