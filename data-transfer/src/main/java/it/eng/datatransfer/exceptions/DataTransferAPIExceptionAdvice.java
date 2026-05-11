@@ -1,5 +1,6 @@
 package it.eng.datatransfer.exceptions;
 
+import it.eng.datatransfer.rest.api.DataFlowCallbackController;
 import it.eng.datatransfer.rest.api.DataTransferAPIController;
 import it.eng.tools.response.GenericApiResponse;
 import org.springframework.http.HttpStatus;
@@ -9,7 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-@RestControllerAdvice(basePackageClasses = {DataTransferAPIController.class})
+@RestControllerAdvice(basePackageClasses = {DataTransferAPIController.class, DataFlowCallbackController.class})
 public class DataTransferAPIExceptionAdvice extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(value = {DataTransferAPIException.class})

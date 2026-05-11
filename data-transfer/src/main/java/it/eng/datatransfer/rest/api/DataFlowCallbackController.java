@@ -50,6 +50,11 @@ public class DataFlowCallbackController {
             @RequestHeader(value = X_API_KEY, required = false) String apiKey,
             @RequestBody DataFlowStatusMessage message) {
 
+        if (apiKey == null || apiKey.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(GenericApiResponse.error("Missing X-Api-Key header"));
+        }
         if (registrationService.findByApiKey(apiKey).isEmpty()) {
             log.warn("Rejected dataflow completion callback — unknown API key");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -82,6 +87,11 @@ public class DataFlowCallbackController {
             @RequestHeader(value = X_API_KEY, required = false) String apiKey,
             @RequestBody DataFlowStatusMessage message) {
 
+        if (apiKey == null || apiKey.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(GenericApiResponse.error("Missing X-Api-Key header"));
+        }
         if (registrationService.findByApiKey(apiKey).isEmpty()) {
             log.warn("Rejected dataflow error callback — unknown API key");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)

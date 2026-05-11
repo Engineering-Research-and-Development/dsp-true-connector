@@ -110,4 +110,30 @@ class DataFlowCallbackControllerTest {
         verify(apiService, never()).completeTransfer(anyString());
         verify(apiService, never()).terminateTransfer(anyString());
     }
+
+    @Test
+    @DisplayName("Complete callback with missing API key returns 401")
+    void completeCallbackWithMissingApiKeyReturns401() {
+        ResponseEntity<GenericApiResponse<?>> response =
+                controller.completeCallback(null, COMPLETION_MESSAGE);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertFalse(response.getBody().isSuccess());
+        verify(registrationService, never()).findByApiKey(any());
+        verify(apiService, never()).completeTransfer(anyString());
+    }
+
+    @Test
+    @DisplayName("Error callback with missing API key returns 401")
+    void errorCallbackWithMissingApiKeyReturns401() {
+        ResponseEntity<GenericApiResponse<?>> response =
+                controller.errorCallback(null, ERROR_MESSAGE);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertFalse(response.getBody().isSuccess());
+        verify(registrationService, never()).findByApiKey(any());
+        verify(apiService, never()).terminateTransfer(anyString());
+    }
 }
