@@ -105,6 +105,11 @@
                 <artifactId>tools</artifactId>
                 <version>${revision}</version>
             </dependency>
+            <dependency>
+                <groupId>it.eng.dataplane</groupId>
+                <artifactId>data-plane-api</artifactId>
+                <version>${revision}</version>
+            </dependency>
 
             <!-- Auth0 / JWT -->
             <dependency>

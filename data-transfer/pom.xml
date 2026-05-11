@@ -17,6 +17,10 @@
 			<artifactId>tools</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>it.eng.dataplane</groupId>
+			<artifactId>data-plane-api</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter</artifactId>
 		</dependency>

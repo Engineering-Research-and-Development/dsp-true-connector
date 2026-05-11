@@ -1,0 +1,121 @@
+package it.eng.datatransfer.client;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dataplane.api.message.DataFlowPrepareMessage;
+import it.eng.dataplane.api.message.DataFlowStartMessage;
+import it.eng.datatransfer.model.DataPlaneRegistration;
+import it.eng.datatransfer.router.DataPlaneRouter;
+import okhttp3.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.io.IOException;
+import java.util.Optional;
+import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+public class DataPlaneClientTest {
+
+    @Mock
+    private OkHttpClient mockHttpClient;
+    @Mock
+    private DataPlaneRouter mockRouter;
+
+    private DataPlaneClient client;
+
+    @BeforeEach
+    public void setUp() {
+        client = new DataPlaneClient(mockHttpClient, new ObjectMapper(), mockRouter);
+    }
+
+    private DataPlaneRegistration registrationWithApiKey(String endpoint, String apiKey) {
+        return DataPlaneRegistration.Builder.newInstance()
+                .endpoint(endpoint)
+                .apiKey(apiKey)
+                .supportedTransferTypes(Set.of("HttpData-PULL"))
+                .build();
+    }
+
+    private DataPlaneRegistration registrationNoApiKey(String endpoint) {
+        return DataPlaneRegistration.Builder.newInstance()
+                .endpoint(endpoint)
+                .supportedTransferTypes(Set.of("HttpData-PULL"))
+                .build();
+    }
+
+    private Call stubCall(int httpCode) throws IOException {
+        Call mockCall = mock(Call.class);
+        Response fakeResponse = new Response.Builder()
+                .request(new Request.Builder().url("http://dp:9090/dataflows/start").build())
+                .protocol(Protocol.HTTP_1_1)
+                .code(httpCode).message("OK")
+                .body(ResponseBody.create("", MediaType.get("application/json")))
+                .build();
+        when(mockCall.execute()).thenReturn(fakeResponse);
+        return mockCall;
+    }
+
+    @Test
+    @DisplayName("startSendsPostToDataPlaneWithApiKey - verifies URL and X-Api-Key header")
+    public void startSendsPostToDataPlaneWithApiKey() throws IOException {
+        DataPlaneRegistration dp = registrationWithApiKey("http://dp:9090", "secret-key");
+        when(mockRouter.selectDataPlane("HttpData-PULL")).thenReturn(Optional.of(dp));
+        Call mockCall = stubCall(200);
+        when(mockHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+
+        DataFlowStartMessage msg = DataFlowStartMessage.Builder.newInstance()
+                .processId("proc-1")
+                .transferType("HttpData-PULL")
+                .build();
+
+        client.start(msg);
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(mockHttpClient).newCall(captor.capture());
+        Request captured = captor.getValue();
+        assertTrue(captured.url().toString().contains("/dataflows/start"));
+        assertEquals("secret-key", captured.header("X-Api-Key"));
+    }
+
+    @Test
+    @DisplayName("prepareSendsPostToDataPlane - verifies URL contains /dataflows/prepare")
+    public void prepareSendsPostToDataPlane() throws IOException {
+        DataPlaneRegistration dp = registrationNoApiKey("http://dp:9090");
+        when(mockRouter.selectDataPlane("HttpData-PULL")).thenReturn(Optional.of(dp));
+        Call mockCall = stubCall(200);
+        when(mockHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+
+        DataFlowPrepareMessage msg = DataFlowPrepareMessage.Builder.newInstance()
+                .processId("proc-2")
+                .build();
+
+        client.prepare(msg, "HttpData-PULL");
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(mockHttpClient).newCall(captor.capture());
+        assertTrue(captor.getValue().url().toString().contains("/dataflows/prepare"));
+    }
+
+    @Test
+    @DisplayName("startThrowsWhenNoDataPlaneRegistered - router returns empty, expect IllegalStateException")
+    public void startThrowsWhenNoDataPlaneRegistered() {
+        when(mockRouter.selectDataPlane("HttpData-PULL")).thenReturn(Optional.empty());
+
+        DataFlowStartMessage msg = DataFlowStartMessage.Builder.newInstance()
+                .processId("proc-3")
+                .transferType("HttpData-PULL")
+                .build();
+
+        assertThrows(IllegalStateException.class, () -> client.start(msg));
+        verifyNoInteractions(mockHttpClient);
+    }
+}
