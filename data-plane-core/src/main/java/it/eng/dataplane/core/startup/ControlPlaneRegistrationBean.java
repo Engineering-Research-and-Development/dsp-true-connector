@@ -62,7 +62,7 @@ public class ControlPlaneRegistrationBean implements ApplicationListener<Applica
             String json = objectMapper.writeValueAsString(payload);
             Request request = new Request.Builder()
                 .url(url)
-                .put(RequestBody.create(json, JSON))
+                .post(RequestBody.create(json, JSON))
                 .addHeader("Content-Type", "application/json")
                 .build();
             try (Response response = okHttpClient.newCall(request).execute()) {
