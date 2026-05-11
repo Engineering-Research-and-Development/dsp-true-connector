@@ -136,6 +136,56 @@ services:
       - mongodb-data_b:/data/db
       - mongodb-configdb_b:/data/configdb
 
+  ### data-plane-http-pull-a
+  data-plane-http-pull-a:
+    image: data-plane-http-pull:${VERSION:-latest}
+    container_name: data-plane-http-pull-a
+    networks:
+      - network-a
+    ports:
+      - "9090:9090"
+    depends_on:
+      minio:
+        condition: service_healthy
+      connector-a:
+        condition: service_started
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-a:27017/data-plane-pull-a
+      - DATAPLANE_ENDPOINT=http://data-plane-http-pull-a:9090
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-a:8080
+      - DATAPLANE_AUTH_TYPE=API_KEY
+      - DATAPLANE_API_KEY=${DP_PULL_API_KEY:-changeme}
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESSKEY=minioadmin
+      - S3_SECRETKEY=minioadmin
+      - S3_REGION=us-east-1
+      - S3_BUCKETNAME=dsp-true-connector-provider
+
+  ### data-plane-http-push-a
+  data-plane-http-push-a:
+    image: data-plane-http-push:${VERSION:-latest}
+    container_name: data-plane-http-push-a
+    networks:
+      - network-a
+    ports:
+      - "9091:9091"
+    depends_on:
+      minio:
+        condition: service_healthy
+      connector-a:
+        condition: service_started
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-a:27017/data-plane-push-a
+      - DATAPLANE_ENDPOINT=http://data-plane-http-push-a:9091
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-a:8080
+      - DATAPLANE_AUTH_TYPE=API_KEY
+      - DATAPLANE_API_KEY=${DP_PUSH_API_KEY:-changeme}
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESSKEY=minioadmin
+      - S3_SECRETKEY=minioadmin
+      - S3_REGION=us-east-1
+      - S3_BUCKETNAME=dsp-true-connector-provider
+
 networks:
   network-a: { }
   network-b: { }
