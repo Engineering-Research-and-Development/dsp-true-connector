@@ -106,7 +106,7 @@ public class DataPlaneClient {
 
     private void post(String url, Object body, String apiKey) {
         String json = serializeBody(body);
-        RequestBody requestBody = RequestBody.create(json != null ? json : "", JSON);
+        RequestBody requestBody = RequestBody.create(json, JSON);
         Request.Builder builder = new Request.Builder()
                 .url(url)
                 .post(requestBody)
@@ -116,6 +116,9 @@ public class DataPlaneClient {
         }
         Request request = builder.build();
         try (Response response = okHttpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                throw new DataPlaneClientException("Data Plane returned HTTP " + response.code() + " for " + url);
+            }
             log.debug("Data Plane responded with HTTP {}", response.code());
         } catch (IOException e) {
             log.error("Failed to send POST to {}: {}", url, e.getMessage());
@@ -132,6 +135,9 @@ public class DataPlaneClient {
         }
         Request request = builder.build();
         try (Response response = okHttpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                throw new DataPlaneClientException("Data Plane returned HTTP " + response.code() + " for " + url);
+            }
             log.debug("DELETE {} -> {}", url, response.code());
         } catch (IOException e) {
             log.error("Failed to send DELETE to {}: {}", url, e.getMessage());
@@ -141,13 +147,12 @@ public class DataPlaneClient {
 
     private String serializeBody(Object body) {
         if (body == null) {
-            return null;
+            return "";
         }
         try {
             return objectMapper.writeValueAsString(body);
         } catch (JsonProcessingException e) {
-            log.error("Failed to serialize message body: {}", e.getMessage());
-            return null;
+            throw new DataPlaneClientException("Failed to serialize message body", e);
         }
     }
 }

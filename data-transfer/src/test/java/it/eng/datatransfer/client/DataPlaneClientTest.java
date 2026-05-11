@@ -163,4 +163,17 @@ public class DataPlaneClientTest {
 
         assertThrows(DataPlaneClientException.class, () -> client.start(msg));
     }
+
+    @Test
+    @DisplayName("terminateThrowsDataPlaneClientExceptionOnIOFailure - IOException wrapped in DataPlaneClientException")
+    void terminateThrowsDataPlaneClientExceptionOnIOFailure() throws IOException {
+        DataPlaneRegistration dp = registrationNoApiKey("http://dp:9090");
+        when(mockRouter.selectDataPlane("HttpData-PULL")).thenReturn(Optional.of(dp));
+        Call mockCall = mock(Call.class);
+        when(mockCall.execute()).thenThrow(new IOException("connection refused"));
+        when(mockHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+
+        assertThrows(DataPlaneClientException.class,
+            () -> client.terminate("proc-1", "HttpData-PULL"));
+    }
 }
