@@ -17,13 +17,14 @@ import java.util.Map;
 
 /**
  * Registers this Data Plane with the Control Plane at startup.
- * Uses the shared OkHttpClient bean (TLS-aware).
- * Retry logic is added in Task 10; this stub logs failures without retry.
+ * Retries up to 5 times with exponential backoff (2s base delay).
  */
 @Slf4j
 @Component
 public class ControlPlaneRegistrationBean implements ApplicationListener<ApplicationReadyEvent> {
 
+    private static final int MAX_ATTEMPTS = 5;
+    private static final long BASE_DELAY_MS = 2_000L;
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
 
     private final DataPlaneProperties properties;
@@ -34,7 +35,7 @@ public class ControlPlaneRegistrationBean implements ApplicationListener<Applica
     /**
      * @param properties DP runtime configuration
      * @param registry registered transfer protocol implementations
-     * @param okHttpClient TLS-aware HTTP client from OkHttpClientConfiguration
+     * @param okHttpClient TLS-aware HTTP client
      * @param objectMapper shared Jackson mapper
      */
     public ControlPlaneRegistrationBean(DataPlaneProperties properties,
@@ -49,31 +50,50 @@ public class ControlPlaneRegistrationBean implements ApplicationListener<Applica
 
     @Override
     public void onApplicationEvent(ApplicationReadyEvent event) {
-        if (properties.getControlPlaneAdminEndpoint() == null) {
+        String cpEndpoint = properties.getControlPlaneAdminEndpoint();
+        if (cpEndpoint == null || cpEndpoint.isBlank()) {
             log.warn("dataplane.control-plane-admin-endpoint not set, skipping CP registration");
             return;
         }
+        registerWithRetry();
+    }
+
+    private void registerWithRetry() {
         String url = properties.getControlPlaneAdminEndpoint() + "/api/v1/dataplanes";
-        try {
-            Map<String, Object> payload = Map.of(
-                "endpoint", properties.getEndpoint(),
-                "supportedTransferTypes", registry.getSupportedProtocols()
-            );
-            String json = objectMapper.writeValueAsString(payload);
-            Request request = new Request.Builder()
-                .url(url)
-                .post(RequestBody.create(json, JSON))
-                .addHeader("Content-Type", "application/json")
-                .build();
-            try (Response response = okHttpClient.newCall(request).execute()) {
-                if (response.isSuccessful()) {
-                    log.info("Registered with Control Plane at {}", properties.getControlPlaneAdminEndpoint());
-                } else {
-                    log.error("CP registration rejected with HTTP {}", response.code());
+        Map<String, Object> payload = Map.of(
+            "endpoint", properties.getEndpoint(),
+            "supportedTransferTypes", registry.getSupportedProtocols()
+        );
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            try {
+                String json = objectMapper.writeValueAsString(payload);
+                Request request = new Request.Builder()
+                    .url(url)
+                    .post(RequestBody.create(json, JSON))
+                    .addHeader("Content-Type", "application/json")
+                    .build();
+                try (Response response = okHttpClient.newCall(request).execute()) {
+                    if (response.isSuccessful()) {
+                        log.info("Registered with CP at {} (attempt {})", url, attempt);
+                        return;
+                    }
+                    log.warn("Registration attempt {}/{} rejected HTTP {}", attempt, MAX_ATTEMPTS, response.code());
                 }
+            } catch (IOException e) {
+                log.warn("Registration attempt {}/{} failed: {}", attempt, MAX_ATTEMPTS, e.getMessage());
             }
-        } catch (IOException e) {
-            log.error("Failed to register with Control Plane: {}", e.getMessage());
+            if (attempt < MAX_ATTEMPTS) {
+                sleep(BASE_DELAY_MS * (long) Math.pow(2, attempt - 1));
+            }
+        }
+        log.error("Failed to register with CP after {} attempts", MAX_ATTEMPTS);
+    }
+
+    protected void sleep(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 }
