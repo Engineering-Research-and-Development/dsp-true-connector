@@ -181,7 +181,7 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
                     throw new RuntimeException("Failed to get stream. HTTP response code: " + responseCode);
                 }
 
-                log.info("Presigned URL: {}", presignedUrl);
+                log.debug("Presigned URL: {}", presignedUrl);
                 log.info("HTTP response code: {}", responseCode);
 
                 long contentLength = connection.getContentLengthLong();

@@ -229,4 +229,50 @@ class HttpPushTransferProtocolTest {
         verify(temporaryBucketUserService).deleteTemporaryUser("tp-4");
         verify(temporaryBucketUserService, never()).deleteTemporaryUser(null);
     }
+
+    @Test
+    @DisplayName("initiateTransfer cleans up temporary credentials even when upload fails")
+    void initiateTransfer_cleansUpCredentialsOnUploadFailure() throws Exception {
+        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        testHttpServer.createContext("/artifact", exchange -> {
+            byte[] body = "artifact-content".getBytes();
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+        });
+        testHttpServer.start();
+
+        int port = testHttpServer.getAddress().getPort();
+        String presignedUrl = "http://localhost:" + port + "/artifact";
+
+        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
+        when(s3ClientService.generateGetPresignedUrl(anyString(), anyString(), any(Duration.class)))
+            .thenReturn(presignedUrl);
+        when(fieldEncryptionService.decrypt(anyString())).thenReturn("plain-secret");
+        // Simulate upload failure
+        when(s3ClientService.uploadFile(any(), any(), any(), any()))
+            .thenReturn(CompletableFuture.failedFuture(new RuntimeException("S3 auth failure")));
+
+        Map<String, String> dataAddress = new HashMap<>();
+        dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
+        dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
+        dataAddress.put(S3Utils.SECRET_KEY, "encrypted-secret");
+        dataAddress.put(S3Utils.REGION, "us-east-1");
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+            .processId("tp-5")
+            .transferType("HttpData-PUSH")
+            .tenantId("tenant-1")
+            .datasetId("dataset-1")
+            .dataAddress(dataAddress)
+            .build();
+
+        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("S3 auth failure");
+        // Temporary credentials must be deleted even on upload failure
+        verify(temporaryBucketUserService).deleteTemporaryUser("tp-5");
+    }
 }

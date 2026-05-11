@@ -180,7 +180,7 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
                     throw new RuntimeException("Failed to get provider artifact. HTTP response code: " + responseCode);
                 }
 
-                log.info("Provider presigned URL: {}", presignedUrl);
+                log.debug("Provider presigned URL: {}", presignedUrl);
                 log.info("HTTP response code: {}", responseCode);
 
                 long contentLength = connection.getContentLengthLong();
@@ -224,11 +224,10 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
                 if (c != null) c.disconnect();
             })
         )
-        .thenApply(etag -> {
-            String consumerBucket = consumerS3Properties.get(S3Utils.BUCKET_NAME);
-            String objectKey = consumerS3Properties.get(S3Utils.OBJECT_KEY);
-            log.info("Successfully pushed to consumer S3 bucket {} with key {}", consumerBucket, objectKey);
-            // Clean up temporary IAM credentials after a successful push
+        .handle((etag, throwable) -> {
+            // Delete temporary IAM credentials regardless of whether the upload succeeded or failed.
+            // Without this, a failed upload leaves live PutObject credentials in the consumer bucket
+            // permanently (no TTL index on TemporaryBucketUser, no scheduled cleanup).
             String processId = dataFlow.getProcessId();
             if (StringUtils.isNotBlank(processId)) {
                 try {
@@ -238,11 +237,14 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
                     log.warn("Failed to clean up temporary credentials for process {}: {}", processId, e.getMessage());
                 }
             }
+            if (throwable != null) {
+                log.error("HTTP-PUSH transfer failed for data flow {}", dataFlow.getDataFlowId(), throwable);
+                return DataFlowResult.failure(throwable.getMessage());
+            }
+            String consumerBucket = consumerS3Properties.get(S3Utils.BUCKET_NAME);
+            String objectKey = consumerS3Properties.get(S3Utils.OBJECT_KEY);
+            log.info("Successfully pushed to consumer S3 bucket {} with key {}", consumerBucket, objectKey);
             return DataFlowResult.success();
-        })
-        .exceptionally(throwable -> {
-            log.error("HTTP-PUSH transfer failed for data flow {}", dataFlow.getDataFlowId(), throwable);
-            return DataFlowResult.failure(throwable.getMessage());
         });
     }
 
