@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Service for managing Data Plane registrations on the Control Plane side.
@@ -60,5 +61,16 @@ public class DataPlaneRegistrationService {
      */
     public List<DataPlaneRegistration> findAll() {
         return repository.findAll();
+    }
+
+    /**
+     * Finds a Data Plane registration by its API key.
+     *
+     * @param apiKey the API key to look up
+     * @return an Optional containing the registration if found, or empty if no registration matches
+     */
+    public Optional<DataPlaneRegistration> findByApiKey(String apiKey) {
+        log.debug("Looking up Data Plane by API key");
+        return repository.findByApiKey(apiKey);
     }
 }

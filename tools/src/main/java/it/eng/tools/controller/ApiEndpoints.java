@@ -70,4 +70,14 @@ public interface ApiEndpoints {
      * DataTransfer module - v1 API endpoint for Data Plane registrations.
      */
     public static final String DATA_PLANES = "/api/v1/dataplanes";
+
+    /**
+     * DataTransfer module - v1 API callback endpoint for Data Plane completion signal.
+     */
+    public static final String DATAFLOW_CALLBACK_COMPLETE = "/api/v1/dataflows/complete";
+
+    /**
+     * DataTransfer module - v1 API callback endpoint for Data Plane error/termination signal.
+     */
+    public static final String DATAFLOW_CALLBACK_ERROR = "/api/v1/dataflows/error";
 }
