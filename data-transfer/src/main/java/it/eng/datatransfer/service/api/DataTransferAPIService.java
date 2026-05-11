@@ -690,7 +690,10 @@ public class DataTransferAPIService {
         // DataFlowCallbackController when done. Completion/termination lifecycle is driven
         // entirely by those callbacks — do NOT call completeTransfer() here.
         try {
-            String callbackAddress = dataTransferProperties.consumerCallbackAddress();
+            // Use providerCallbackAddress() (base URL without /consumer suffix) so the Data Plane
+            // can POST back to /api/v1/dataflows/complete on this connector's admin chain.
+            // consumerCallbackAddress() appends /consumer which is for DSP protocol only.
+            String callbackAddress = dataTransferProperties.providerCallbackAddress();
             DataFlowStartMessage startMessage = DataFlowStartMessage.Builder.newInstance()
                     .processId(transferProcessDownloading.getId())
                     .transferType(transferProcessDownloading.getFormat())
@@ -915,7 +918,9 @@ public class DataTransferAPIService {
             log.debug("Transfer type not set for process {}, skipping Data Plane prepare", transferProcess.getId());
             return;
         }
-        String callbackAddress = dataTransferProperties.consumerCallbackAddress();
+        // Use providerCallbackAddress() (base URL) so the DP can POST back to
+        // /api/v1/dataflows/complete — not the DSP /consumer callback path.
+        String callbackAddress = dataTransferProperties.providerCallbackAddress();
         DataFlowPrepareMessage prepareMessage = DataFlowPrepareMessage.Builder.newInstance()
                 .processId(transferProcess.getId())
                 .callbackAddress(callbackAddress)

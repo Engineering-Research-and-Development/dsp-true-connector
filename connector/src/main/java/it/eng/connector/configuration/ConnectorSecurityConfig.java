@@ -45,6 +45,7 @@ import it.eng.tools.auth.condition.BasicAuthenticationModeCondition;
 import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
 import it.eng.tools.controller.ApiEndpoints;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 
 /**
  * Unified security configuration for the connector.
@@ -144,6 +145,10 @@ public class ConnectorSecurityConfig {
                     .addFilterBefore(keycloakFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .addFilterAfter(apiTenantContextFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth
+                            // Data Plane callback endpoints: DP sends X-Api-Key, handled by controller
+                            .requestMatchers(HttpMethod.POST,
+                                    ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE,
+                                    ApiEndpoints.DATAFLOW_CALLBACK_ERROR).permitAll()
                             .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole("SUPER_ADMIN")
                             .anyRequest().hasAnyRole(ADMIN_ROLE, "SUPER_ADMIN"))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
@@ -159,6 +164,10 @@ public class ConnectorSecurityConfig {
                             daoAuthenticationProvider.getObject()))
                     .addFilterAfter(apiTenantContextFilter.getObject(), BasicAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth
+                            // Data Plane callback endpoints: DP sends X-Api-Key, handled by controller
+                            .requestMatchers(HttpMethod.POST,
+                                    ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE,
+                                    ApiEndpoints.DATAFLOW_CALLBACK_ERROR).permitAll()
                             .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole("SUPER_ADMIN")
                             .anyRequest().hasAnyRole(ADMIN_ROLE, "SUPER_ADMIN"))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));

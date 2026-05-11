@@ -1,6 +1,7 @@
 package it.eng.dataplane.core.controller;
 
 import it.eng.dataplane.api.message.DataFlowStartMessage;
+import it.eng.dataplane.api.message.DataFlowPrepareMessage;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.core.service.DataFlowService;
 import lombok.RequiredArgsConstructor;
@@ -37,12 +38,30 @@ public class DataFlowController {
             dataFlowService.start(dataFlow);
             return ResponseEntity.status(HttpStatus.CREATED).build();
         } catch (IllegalStateException e) {
-            log.error("DataFlow already exists: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            // DataFlow for this processId already exists — treat as idempotent OK.
+            // This can happen when the Control Plane retries the start call (e.g. [P] Push data
+            // manual trigger after DPS auto-start). Returning 200 prevents false error propagation.
+            log.info("DataFlow already exists for processId {}, returning OK (idempotent)", message.getProcessId());
+            return ResponseEntity.ok().build();
         } catch (IllegalArgumentException e) {
             log.error("Invalid request: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
+    }
+
+    /**
+     * Handles a prepare request from the Control Plane (HTTP-PUSH consumer setup).
+     * The consumer CP calls this before the provider starts pushing, so the DP can
+     * allocate resources or record context. Returns 200 OK as an acknowledgement;
+     * no persistent state is created at this stage.
+     *
+     * @param message the DataFlowPrepareMessage from the Control Plane
+     * @return 200 OK
+     */
+    @PostMapping("/prepare")
+    public ResponseEntity<Void> prepareDataFlow(@RequestBody DataFlowPrepareMessage message) {
+        log.info("Received prepare request for processId={}", message.getProcessId());
+        return ResponseEntity.ok().build();
     }
 
     /**

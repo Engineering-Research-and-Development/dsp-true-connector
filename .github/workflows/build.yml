@@ -22,11 +22,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
+          cache: 'maven'
 
       - name: Build with Maven
         run: mvn -B clean verify --file pom.xml
@@ -38,13 +39,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
+      - name: Extract metadata (tags, labels) for connector Docker image
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-      - name: Build and push Docker image
+      - name: Build and push connector Docker image
         id: push
         uses: docker/build-push-action@v6
         with:
@@ -54,6 +55,24 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:test
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Build and push data-plane-http-pull Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./data-plane-http-pull
+          file: ./data-plane-http-pull/Dockerfile
+          no-cache: true
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-data-plane-http-pull:test
+
+      - name: Build and push data-plane-http-push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./data-plane-http-push
+          file: ./data-plane-http-push/Dockerfile
+          no-cache: true
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-data-plane-http-push:test
 
   negotiation-api-without-counteroffer-tests:
     needs: build-and-push-image
@@ -67,7 +86,7 @@ jobs:
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
       - name: Wait for container starting
-        run: sleep 30
+        run: sleep 90
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -96,7 +115,7 @@ jobs:
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
       - name: Wait for container starting
-        run: sleep 30
+        run: sleep 90
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -125,7 +144,7 @@ jobs:
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
       - name: Wait for container starting
-        run: sleep 30
+        run: sleep 90
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -154,7 +173,7 @@ jobs:
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
       - name: Wait for container starting
-        run: sleep 30
+        run: sleep 90
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -183,7 +202,7 @@ jobs:
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
       - name: Wait for container starting
-        run: sleep 30
+        run: sleep 90
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -219,7 +238,7 @@ jobs:
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
       - name: Wait for container starting
-        run: sleep 30
+        run: sleep 90
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -248,7 +267,7 @@ jobs:
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
       - name: Wait for container starting
-        run: sleep 30
+        run: sleep 90
 
       - name: Check if the container is up and running
         run: docker ps -a

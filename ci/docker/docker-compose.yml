@@ -136,9 +136,9 @@ services:
       - mongodb-data_b:/data/db
       - mongodb-configdb_b:/data/configdb
 
-  ### data-plane-http-pull-a
+  ### data-plane-http-pull-a (consumer's pull data plane, registers with connector-a)
   data-plane-http-pull-a:
-    image: data-plane-http-pull:${VERSION:-latest}
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-http-pull:test
     container_name: data-plane-http-pull-a
     networks:
       - network-a
@@ -153,38 +153,43 @@ services:
       - SPRING_DATA_MONGODB_URI=mongodb://mongodb-a:27017/data-plane-pull-a
       - DATAPLANE_ENDPOINT=http://data-plane-http-pull-a:9090
       - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-a:8080
+      - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}
       - DATAPLANE_AUTH_TYPE=API_KEY
       - DATAPLANE_API_KEY=${DP_PULL_API_KEY:-changeme}
       - S3_ENDPOINT=http://minio:9000
       - S3_ACCESSKEY=minioadmin
       - S3_SECRETKEY=minioadmin
       - S3_REGION=us-east-1
-      - S3_BUCKETNAME=dsp-true-connector-provider
+      # Must match connector-a's s3.bucketName so downloaded files land in consumer's own bucket
+      - S3_BUCKETNAME=dsp-true-connector-a
 
-  ### data-plane-http-push-a
-  data-plane-http-push-a:
-    image: data-plane-http-push:${VERSION:-latest}
-    container_name: data-plane-http-push-a
+  ### data-plane-http-push-b (provider's push data plane, registers with connector-b)
+  data-plane-http-push-b:
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-http-push:test
+    container_name: data-plane-http-push-b
     networks:
       - network-a
+      - network-b
     ports:
       - "9091:9091"
     depends_on:
       minio:
         condition: service_healthy
-      connector-a:
+      connector-b:
         condition: service_started
     environment:
-      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-a:27017/data-plane-push-a
-      - DATAPLANE_ENDPOINT=http://data-plane-http-push-a:9091
-      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-a:8080
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-a:27017/data-plane-push-b
+      - DATAPLANE_ENDPOINT=http://data-plane-http-push-b:9091
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-b:8080
+      - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}
       - DATAPLANE_AUTH_TYPE=API_KEY
       - DATAPLANE_API_KEY=${DP_PUSH_API_KEY:-changeme}
       - S3_ENDPOINT=http://minio:9000
       - S3_ACCESSKEY=minioadmin
       - S3_SECRETKEY=minioadmin
       - S3_REGION=us-east-1
-      - S3_BUCKETNAME=dsp-true-connector-provider
+      # Must match connector-b's s3.bucketName so presigned GET URLs target the provider's bucket
+      - S3_BUCKETNAME=dsp-true-connector-b
 
 networks:
   network-a: { }

@@ -946,6 +946,7 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.save(any(TransferProcess.class)))
                 .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER);
         when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
+        when(properties.providerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
 
         apiService.requestTransfer(httpPushRequest);
 
@@ -955,7 +956,7 @@ class DataTransferAPIServiceTest {
         assertNotNull(sent.getProcessId(), "processId must be set");
         assertNotNull(sent.getCallbackAddress(), "callbackAddress must be set so DP can send callbacks");
         assertEquals(DataTransferMockObjectUtil.CALLBACK_ADDRESS, sent.getCallbackAddress(),
-                "callbackAddress should be the base CP URL — ControlPlaneClient appends /complete or /error based on state");
+                "callbackAddress should be the base CP URL so the DP can POST back to /api/v1/dataflows/complete");
         assertNotNull(sent.getDataAddress(), "dataAddress must be set so DP knows where to push");
     }
 

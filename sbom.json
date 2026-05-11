@@ -4,7 +4,7 @@
   "serialNumber" : "urn:uuid:b1311e61-f24d-32d9-8999-e1cc3c1458c7",
   "version" : 1,
   "metadata" : {
-    "timestamp" : "2026-05-06T09:04:48Z",
+    "timestamp" : "2026-05-11T11:52:01Z",
     "lifecycles" : [
       {
         "phase" : "build"
@@ -2311,7 +2311,7 @@
       "name" : "lombok",
       "version" : "1.18.42",
       "description" : "Spice up your java: Automatic Resource Management, automatic generation of getters, setters, equals, hashCode and toString, and more!",
-      "scope" : "optional",
+      "scope" : "required",
       "hashes" : [
         {
           "alg" : "MD5",
@@ -9601,6 +9601,15 @@
     },
     {
       "type" : "library",
+      "bom-ref" : "pkg:maven/it.eng.dataplane/data-plane-api@0.6.12-SNAPSHOT?type=jar",
+      "group" : "it.eng.dataplane",
+      "name" : "data-plane-api",
+      "version" : "0.6.12-SNAPSHOT",
+      "description" : "Data Plane API - SPI interfaces and DSP message models for the Dataplane Signaling Protocol",
+      "purl" : "pkg:maven/it.eng.dataplane/data-plane-api@0.6.12-SNAPSHOT?type=jar"
+    },
+    {
+      "type" : "library",
       "bom-ref" : "pkg:maven/it.eng.datatransfer/datatransfer@0.6.12-SNAPSHOT?type=jar",
       "group" : "it.eng.datatransfer",
       "name" : "datatransfer",
@@ -11562,6 +11571,33 @@
           "url" : "https://github.com/JetBrains/java-annotations"
         }
       ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/it.eng.dataplane/data-plane-core@0.6.12-SNAPSHOT?type=jar",
+      "group" : "it.eng.dataplane",
+      "name" : "data-plane-core",
+      "version" : "0.6.12-SNAPSHOT",
+      "description" : "Data Plane Core - Shared runtime library: registration, routing, and CP communication",
+      "purl" : "pkg:maven/it.eng.dataplane/data-plane-core@0.6.12-SNAPSHOT?type=jar"
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/it.eng.dataplane/data-plane-http-pull@0.6.12-SNAPSHOT?type=jar",
+      "group" : "it.eng.dataplane",
+      "name" : "data-plane-http-pull",
+      "version" : "0.6.12-SNAPSHOT",
+      "description" : "Data Plane HTTP-PULL - Standalone Spring Boot service for HttpData-PULL transfers",
+      "purl" : "pkg:maven/it.eng.dataplane/data-plane-http-pull@0.6.12-SNAPSHOT?type=jar"
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/it.eng.dataplane/data-plane-http-push@0.6.12-SNAPSHOT?type=jar",
+      "group" : "it.eng.dataplane",
+      "name" : "data-plane-http-push",
+      "version" : "0.6.12-SNAPSHOT",
+      "description" : "Data Plane HTTP-PUSH - Standalone Spring Boot service for HttpData-PUSH transfers",
+      "purl" : "pkg:maven/it.eng.dataplane/data-plane-http-push@0.6.12-SNAPSHOT?type=jar"
     }
   ],
   "dependencies" : [
@@ -11571,8 +11607,12 @@
         "pkg:maven/it.eng/tools@0.6.12-SNAPSHOT?type=jar",
         "pkg:maven/it.eng.catalog/catalog@0.6.12-SNAPSHOT?type=jar",
         "pkg:maven/it.eng.negotiation/negotiation@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/it.eng.dataplane/data-plane-api@0.6.12-SNAPSHOT?type=jar",
         "pkg:maven/it.eng.datatransfer/datatransfer@0.6.12-SNAPSHOT?type=jar",
-        "pkg:maven/it.eng/connector@0.6.12-SNAPSHOT?type=jar"
+        "pkg:maven/it.eng/connector@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/it.eng.dataplane/data-plane-core@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/it.eng.dataplane/data-plane-http-pull@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/it.eng.dataplane/data-plane-http-push@0.6.12-SNAPSHOT?type=jar"
       ]
     },
     {
@@ -12796,9 +12836,20 @@
       ]
     },
     {
+      "ref" : "pkg:maven/it.eng.dataplane/data-plane-api@0.6.12-SNAPSHOT?type=jar",
+      "dependsOn" : [
+        "pkg:maven/it.eng/tools@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.18.6?type=jar",
+        "pkg:maven/jakarta.validation/jakarta.validation-api@3.0.2?type=jar",
+        "pkg:maven/org.projectlombok/lombok@1.18.42?type=jar",
+        "pkg:maven/org.springframework.data/spring-data-mongodb@4.5.9?type=jar"
+      ]
+    },
+    {
       "ref" : "pkg:maven/it.eng.datatransfer/datatransfer@0.6.12-SNAPSHOT?type=jar",
       "dependsOn" : [
         "pkg:maven/it.eng/tools@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/it.eng.dataplane/data-plane-api@0.6.12-SNAPSHOT?type=jar",
         "pkg:maven/org.springframework.boot/spring-boot-starter@3.5.11?type=jar",
         "pkg:maven/org.springframework.boot/spring-boot-starter-web@3.5.11?type=jar",
         "pkg:maven/org.springframework.boot/spring-boot-starter-validation@3.5.11?type=jar",
@@ -13040,6 +13091,32 @@
     {
       "ref" : "pkg:maven/org.passay/passay@1.6.6?type=jar",
       "dependsOn" : [ ]
+    },
+    {
+      "ref" : "pkg:maven/it.eng.dataplane/data-plane-core@0.6.12-SNAPSHOT?type=jar",
+      "dependsOn" : [
+        "pkg:maven/it.eng.dataplane/data-plane-api@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/it.eng/tools@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/org.springframework.boot/spring-boot-starter-web@3.5.11?type=jar",
+        "pkg:maven/org.springframework.boot/spring-boot-starter-data-mongodb@3.5.11?type=jar",
+        "pkg:maven/org.springframework.boot/spring-boot-starter-security@3.5.11?type=jar",
+        "pkg:maven/org.springframework.boot/spring-boot-starter-oauth2-resource-server@3.5.11?type=jar",
+        "pkg:maven/org.projectlombok/lombok@1.18.42?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/it.eng.dataplane/data-plane-http-pull@0.6.12-SNAPSHOT?type=jar",
+      "dependsOn" : [
+        "pkg:maven/it.eng.dataplane/data-plane-core@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/it.eng/tools@0.6.12-SNAPSHOT?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/it.eng.dataplane/data-plane-http-push@0.6.12-SNAPSHOT?type=jar",
+      "dependsOn" : [
+        "pkg:maven/it.eng.dataplane/data-plane-core@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/it.eng/tools@0.6.12-SNAPSHOT?type=jar"
+      ]
     }
   ]
 }

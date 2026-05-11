@@ -34,4 +34,11 @@ public class DataPlaneProperties {
 
     /** API key value (when authType=API_KEY). */
     private String apiKey;
+
+    /**
+     * Admin secret used for HTTP Basic Auth when registering with the Control Plane.
+     * Must match {@code application.internal.secret} configured on the Control Plane.
+     * Leave blank to skip authentication (only valid when CP has auth disabled).
+     */
+    private String controlPlaneAdminSecret;
 }

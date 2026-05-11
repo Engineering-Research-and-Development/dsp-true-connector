@@ -70,11 +70,16 @@ public class ControlPlaneRegistrationBean implements ApplicationListener<Applica
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
                 String json = objectMapper.writeValueAsString(payload);
-                Request request = new Request.Builder()
+                Request.Builder requestBuilder = new Request.Builder()
                     .url(url)
                     .post(RequestBody.create(json, JSON))
-                    .addHeader("Content-Type", "application/json")
-                    .build();
+                    .addHeader("Content-Type", "application/json");
+                String adminSecret = properties.getControlPlaneAdminSecret();
+                if (adminSecret != null && !adminSecret.isBlank()) {
+                    requestBuilder.addHeader("Authorization",
+                        okhttp3.Credentials.basic("internal-service", adminSecret));
+                }
+                Request request = requestBuilder.build();
                 try (Response response = okHttpClient.newCall(request).execute()) {
                     if (response.isSuccessful()) {
                         log.info("Registered with CP at {} (attempt {})", url, attempt);
