@@ -558,8 +558,9 @@ class DataTransferAPIServiceTest {
 
         doThrow(DataPlaneClientException.class).when(dataPlaneClient).start(any(DataFlowStartMessage.class));
 
-        assertThrows(DataPlaneClientException.class,
-                () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+        CompletableFuture<Void> future = apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+        ExecutionException ex = assertThrows(ExecutionException.class, future::get);
+        assertInstanceOf(DataPlaneClientException.class, ex.getCause());
 
         // Two saves: isDownloadInProgress=true at start, then isDownloadInProgress=false on failure reset
         verify(transferProcessRepository, times(2)).save(any(TransferProcess.class));
@@ -580,8 +581,9 @@ class DataTransferAPIServiceTest {
 
         doThrow(IllegalStateException.class).when(dataPlaneClient).start(any(DataFlowStartMessage.class));
 
-        assertThrows(IllegalStateException.class,
-                () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+        CompletableFuture<Void> future = apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+        ExecutionException ex = assertThrows(ExecutionException.class, future::get);
+        assertInstanceOf(IllegalStateException.class, ex.getCause());
 
         // Two saves: isDownloadInProgress=true at start, then isDownloadInProgress=false on DP routing error
         verify(transferProcessRepository, times(2)).save(any(TransferProcess.class));

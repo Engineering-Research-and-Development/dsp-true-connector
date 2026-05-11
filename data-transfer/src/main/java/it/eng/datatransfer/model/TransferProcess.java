@@ -373,4 +373,68 @@ public class TransferProcess extends AbstractTransferMessage {
                 .version(this.version)
                 .build();
     }
+
+    /**
+     * Creates a new TransferProcess with the specified isDownloaded flag.
+     * All other fields remain unchanged.
+     *
+     * @param isDownloaded {@code true} if the artifact has been downloaded, {@code false} otherwise
+     * @return new TransferProcess instance with updated isDownloaded flag
+     */
+    public TransferProcess withIsDownloaded(boolean isDownloaded) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified dataId.
+     * All other fields remain unchanged.
+     *
+     * @param dataId the data identifier (e.g. S3 object key used to retrieve the downloaded artifact)
+     * @return new TransferProcess instance with updated dataId
+     */
+    public TransferProcess withDataId(String dataId) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
+                .dataId(dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
 }

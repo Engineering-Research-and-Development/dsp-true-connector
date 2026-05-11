@@ -152,18 +152,7 @@ public class DataTransferAPIService {
                 prepareResponse = dataPlaneClient.prepare(prepareMessage, dataTransferRequest.getFormat());
             } catch (DataPlaneClientException e) {
                 log.error("Data Plane prepare failed for process {}: {}", transferProcessInitialized.getId(), e.getMessage());
-                TransferProcess terminated = TransferProcess.Builder.newInstance()
-                        .id(transferProcessInitialized.getId())
-                        .agreementId(transferProcessInitialized.getAgreementId())
-                        .consumerPid(transferProcessInitialized.getConsumerPid())
-                        .providerPid(transferProcessInitialized.getProviderPid())
-                        .format(dataTransferRequest.getFormat())
-                        .callbackAddress(transferProcessInitialized.getCallbackAddress())
-                        .role(IConstants.ROLE_CONSUMER)
-                        .state(TransferState.TERMINATED)
-                        .tenantId(transferProcessInitialized.getTenantId())
-                        .datasetId(transferProcessInitialized.getDatasetId())
-                        .build();
+                TransferProcess terminated = transferProcessInitialized.copyWithNewTransferState(TransferState.TERMINATED);
                 transferProcessRepository.save(terminated);
                 return TransferSerializer.serializePlainJsonNode(terminated);
             }
@@ -465,7 +454,16 @@ public class DataTransferAPIService {
                         credentialUtils.getConnectorCredentials());
         log.info("Response received {}", response);
         if (response.isSuccess()) {
-            TransferProcess transferProcessCompleted = transferProcess.copyWithNewTransferState(TransferState.COMPLETED);
+            boolean wasDownloading = transferProcess.isDownloadInProgress();
+            TransferProcess transferProcessCompleted = transferProcess
+                    .copyWithNewTransferState(TransferState.COMPLETED)
+                    .withIsDownloadInProgress(false);
+            if (wasDownloading) {
+                // DP completed a download on behalf of this TP — mark it as downloaded.
+                transferProcessCompleted = transferProcessCompleted
+                        .withIsDownloaded(true)
+                        .withDataId(transferProcess.getId());
+            }
             transferProcessRepository.save(transferProcessCompleted);
             log.info("Transfer process {} saved", transferProcessCompleted.getId());
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED,
@@ -680,7 +678,7 @@ public class DataTransferAPIService {
             dataPlaneClient.start(startMessage);
         } catch (Exception e) {
             transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
-            throw e;
+            return CompletableFuture.failedFuture(e);
         }
 
         return CompletableFuture.completedFuture(null);
@@ -719,7 +717,7 @@ public class DataTransferAPIService {
                     .dataAddress(Map.of("mode", "VIEW"))
                     .build();
             DataFlowPrepareResponse prepareResponse = dataPlaneClient.prepare(
-                    prepareMessage, transferProcess.getFormat());
+                    prepareMessage, DataTransferFormat.HTTP_PULL.format());
             String artifactURL = prepareResponse.getDataAddress().get("presignedUrl");
             publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
             publisher.publishEvent(AuditEventType.TRANSFER_VIEW,
