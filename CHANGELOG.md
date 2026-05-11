@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] — Multi-Tenant Support
+## [Unreleased] — Multi-Tenant Support + Dataplane Signaling Protocol
 
 ### Added
 - **Multi-tenant foundation** — `Tenant` model, `TenantRepository`, `TenantService`, `TenantContextHolder` (ThreadLocal + MDC), `TenantAPIController` for full tenant lifecycle management via `/api/v1/tenants`.
@@ -22,11 +22,48 @@ All notable changes to this project will be documented in this file.
 - MDC `tenantId` field in all log output (all `logback.xml` files updated).
 - `doc/multi-tenant-user-guide.md` — operator and user manual.
 - `doc/multi-tenant-technical.md` — developer and architecture reference.
+- **Dataplane Signaling Protocol (DPS)** — TRUE Connector now implements the
+  [Eclipse Dataplane Signaling Protocol](https://github.com/eclipse-dataplane-signaling/dataplane-signaling),
+  decoupling data-movement logic from the Control Plane orchestration.
+- `data-plane-api` module — SPI interfaces and DSP message models
+  (`DataFlowStartMessage`, `DataFlowPrepareMessage`, `DataFlowStatusMessage`, `DataFlow`).
+- `data-plane-core` module — shared runtime library: `DataTransferProtocolRegistry`,
+  `ControlPlaneClient`, `ControlPlaneRegistrationBean` (startup self-registration with exponential
+  backoff retry), `ApiKeyAuthFilter`, `DataPlaneProperties`.
+- `data-plane-http-pull` module — standalone HTTP-PULL Data Plane Spring Boot application
+  (default port 9090). Generates presigned S3 GET URLs and streams artifacts to consumers.
+  Uses Java 21 virtual threads for concurrent transfers.
+- `data-plane-http-push` module — standalone HTTP-PUSH Data Plane Spring Boot application
+  (default port 9091). Pushes provider artifacts directly to consumer S3 buckets using
+  temporary IAM credentials. Uses Java 21 virtual threads for concurrent transfers.
+- `DataPlaneRegistration` model, repository, service, and admin controller (`/api/v1/dataplanes`)
+  for managing registered Data Plane services on the Control Plane side.
+- `DataPlaneClient` + `DataPlaneRouter` — CP-side components for routing and dispatching
+  `DataFlowStartMessage` to the correct Data Plane (round-robin selection).
+- `DataFlowCallbackController` — CP-side endpoint (`/api/v1/dataflows/complete`,
+  `/api/v1/dataflows/error`) receiving status callbacks from Data Planes.
+- API key authentication for all CP ↔ DP traffic (`X-Api-Key` header + `ApiKeyAuthFilter`).
+- Docker Compose services for `data-plane-http-pull` and `data-plane-http-push` in
+  `ci/docker/docker-compose.yml`.
+- `doc/data-plane-signaling-technical.md` — developer and architecture reference.
+- `doc/data-plane-signaling-user-guide.md` — operator manual covering deployment, registration,
+  scaling, and troubleshooting.
 
 ### Changed
 - All DSP protocol controllers now extend `TenantAwareProtocolController` and include `tenantId` as first path variable and method parameter.
 - `ConnectorSecurityConfig` security matchers updated to cover `/{tenantId}/` prefixed patterns.
 - `initial_data.json` — all seed catalog, dataset, distribution, data-service, and artifact entries include `"tenantId": "engineering"`.
+- `DataTransferAPIService` — transfer dispatch now routes through `DataPlaneClient` instead of
+  calling `HttpPullTransferStrategy` / `HttpPushTransferStrategy` directly. Transfer completion
+  is now driven by the DP callback (`DataFlowCallbackController`) rather than inline in the
+  service.
+- Java source/target level upgraded from **17 to 21**. All modules now compile with
+  `--release 21`. Docker base images updated to `eclipse-temurin:21-jre-jammy`.
+
+### Removed
+- `DataTransferStrategyFactory` (replaced by `DataPlaneRouter` + `DataPlaneRegistration`).
+- `HttpPullTransferStrategy` and `HttpPushTransferStrategy` from `data-transfer` module
+  (logic moved into `data-plane-http-pull` and `data-plane-http-push` respectively).
 
 ## [0.6.11-SNAPSHOT] - 16.04.2026.
 
