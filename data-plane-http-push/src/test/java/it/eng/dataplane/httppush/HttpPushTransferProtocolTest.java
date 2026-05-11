@@ -10,7 +10,6 @@ import it.eng.tools.service.FieldEncryptionService;
 import it.eng.tools.service.TenantBucketResolver;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,6 +31,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import org.mockito.ArgumentCaptor;
 
 /**
  * Unit tests for {@link HttpPushTransferProtocol}.
@@ -136,7 +137,6 @@ class HttpPushTransferProtocolTest {
 
     @Test
     @DisplayName("initiateTransfer pushes artifact to consumer S3 and cleans up temporary credentials")
-    @Disabled("Integration test — requires a real or stub HTTP server that serves artifact content")
     void initiateTransfer_successfulPushToConsumerS3() throws Exception {
         // Serve dummy artifact content from a local HTTP server
         testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
@@ -182,8 +182,8 @@ class HttpPushTransferProtocolTest {
     }
 
     @Test
-    @DisplayName("initiateTransfer does not call deleteTemporaryUser when processId is blank")
-    void initiateTransfer_skipsCleanupWhenProcessIdBlank() throws Exception {
+    @DisplayName("initiateTransfer uses processId as S3 objectKey when objectKey is absent from dataAddress")
+    void initiateTransfer_usesProcessIdAsObjectKeyFallback() throws Exception {
         testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
         testHttpServer.createContext("/artifact", exchange -> {
             byte[] body = "artifact-content".getBytes();
@@ -221,6 +221,11 @@ class HttpPushTransferProtocolTest {
         DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
 
         assertThat(result.isSuccess()).isTrue();
+        // Verify processId was used as the S3 objectKey since it was absent from dataAddress
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, String>> s3PropsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(s3ClientService).uploadFile(any(), s3PropsCaptor.capture(), any(), any());
+        assertThat(s3PropsCaptor.getValue()).containsEntry(S3Utils.OBJECT_KEY, "tp-4");
         verify(temporaryBucketUserService).deleteTemporaryUser("tp-4");
         verify(temporaryBucketUserService, never()).deleteTemporaryUser(null);
     }
