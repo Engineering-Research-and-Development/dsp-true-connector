@@ -970,8 +970,13 @@ public class DataTransferAPIService {
             log.debug("Transfer type not set for process {}, skipping Data Plane prepare", transferProcess.getId());
             return;
         }
+        String callbackAddress = dataTransferProperties.consumerCallbackAddress() + ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE;
         DataFlowPrepareMessage prepareMessage = DataFlowPrepareMessage.Builder.newInstance()
                 .processId(transferProcess.getId())
+                .callbackAddress(callbackAddress)
+                .dataAddress(toDataAddressMap(transferProcess.getDataAddress()))
+                .agreementId(transferProcess.getAgreementId())
+                .datasetId(transferProcess.getDatasetId())
                 .build();
         try {
             dataPlaneClient.prepare(prepareMessage, transferType);
