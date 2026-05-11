@@ -3,12 +3,14 @@ package it.eng.dataplane.httppull;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.api.spi.DataTransferProtocol;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.TenantBucketResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
@@ -38,10 +40,11 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
 
     private static final int DEFAULT_CONNECT_TIMEOUT = 10_000; // 10 seconds
     /**
-     * Fallback read timeout (60 seconds) used when the server does not advertise Content-Length.
-     * For known sizes the timeout is computed dynamically based on file size.
+     * Fallback read timeout (30 minutes) used when the server does not advertise Content-Length.
+     * Streaming and chunked responses omit Content-Length, so a short timeout causes silent failures
+     * for large transfers. For known sizes the timeout is computed dynamically based on file size.
      */
-    private static final int FALLBACK_READ_TIMEOUT = 60_000; // 60 seconds
+    private static final int FALLBACK_READ_TIMEOUT = 1_800_000; // 30 minutes
     /** Assumed minimum transfer speed in bytes/sec used for dynamic timeout (1 MB/s). */
     private static final long MIN_TRANSFER_SPEED_BYTES_PER_SEC = 1024L * 1024L;
 
@@ -137,10 +140,17 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
         // The supplyAsync lambda opens the connection and stores it here; whenComplete reads it
         // to guarantee disconnect() is called on all paths — success, failure, or cancellation.
         AtomicReference<HttpURLConnection> connectionRef = new AtomicReference<>();
-        
+
         // Resolve bucket in async context — must pass tenantId explicitly
         String bucketName = tenantBucketResolver.resolveBucketName(dataFlow.getTenantId());
         String objectKey = dataFlow.getProcessId();
+
+        // Extract auth from data address before entering the async lambda
+        Map<String, String> dataAddress = dataFlow.getDataAddress();
+        String authType = dataAddress.get(IConstants.AUTH_TYPE);
+        String token = dataAddress.get(IConstants.AUTHORIZATION);
+        String authorization = (StringUtils.isNotBlank(authType) && StringUtils.isNotBlank(token))
+                ? authType + " " + token : null;
 
         return CompletableFuture.supplyAsync(() -> {
             try {
@@ -153,6 +163,9 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
                 connection.setRequestMethod("GET");
                 connection.setConnectTimeout(DEFAULT_CONNECT_TIMEOUT);
                 connection.setReadTimeout(FALLBACK_READ_TIMEOUT);
+                if (StringUtils.isNotBlank(authorization)) {
+                    connection.setRequestProperty(HttpHeaders.AUTHORIZATION, authorization);
+                }
 
                 if (connection instanceof javax.net.ssl.HttpsURLConnection) {
                     log.debug("Using HTTPS connection to: {}", presignedUrl);
@@ -180,17 +193,17 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
 
                 String contentType = connection.getContentType();
                 String contentDisposition = connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION);
-                
+
                 Map<String, String> destinationS3Properties = buildS3Properties(bucketName, objectKey);
-                
+
                 // uploadFile is non-blocking and returns a CompletableFuture<String>.
                 // Returning it here produces a CompletableFuture<CompletableFuture<String>>,
                 // which we'll flatten with thenCompose.
                 // The connection must remain open until the upload future completes.
                 return s3ClientService.uploadFile(
-                    connection.getInputStream(), 
-                    destinationS3Properties, 
-                    contentType, 
+                    connection.getInputStream(),
+                    destinationS3Properties,
+                    contentType,
                     contentDisposition
                 );
             } catch (IOException e) {
@@ -199,6 +212,11 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
                 if (c != null) c.disconnect();
                 log.error("Failed to download stream from URL: {}", presignedUrl, e);
                 throw new RuntimeException(e.getMessage());
+            } catch (RuntimeException e) {
+                // Disconnect on RuntimeException (e.g. from uploadFile() synchronous path) to prevent leak
+                HttpURLConnection c = connectionRef.get();
+                if (c != null) c.disconnect();
+                throw e;
             }
         }, transferExecutor)
         // Flatten the nested future and attach a cleanup handler that runs on all completion paths
