@@ -14,7 +14,6 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
-import it.eng.datatransfer.service.api.strategy.HttpPullTransferStrategy;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
@@ -74,10 +73,6 @@ class DataTransferAPIServiceTest {
     private TenantBucketResolver tenantBucketResolver;
     @Mock
     private AuditEventPublisher publisher;
-    @Mock
-    private DataTransferStrategyFactory transferStrategyFactory;
-    @Mock
-    private HttpPullTransferStrategy httpPullTransferStrategy;
     @Mock
     private ArtifactTransferService artifactTransferService;
     @Mock
@@ -543,26 +538,22 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.save(any(TransferProcess.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0))
                 .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED);
-        when(transferStrategyFactory.getStrategy(any(String.class))).thenReturn(httpPullTransferStrategy);
-        when(httpPullTransferStrategy.transfer(isA(TransferProcess.class)))
-                .thenReturn(CompletableFuture.completedFuture(null));
 
         assertDoesNotThrow(() -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        verify(transferStrategyFactory, times(1)).getStrategy(any(String.class));
-        verify(httpPullTransferStrategy).transfer(argCaptorTransferProcess.capture());
+        verify(dataPlaneClient).start(any(DataFlowStartMessage.class));
         // Two saves: once to mark isDownloadInProgress=true, once to mark isDownloaded=true on completion
         verify(transferProcessRepository, times(2)).save(argCaptorTransferProcess.capture());
 
-        // The process passed to the strategy should have isDownloadInProgress=true
-        TransferProcess processPassedToStrategy = argCaptorTransferProcess.getAllValues().get(0);
-        assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), processPassedToStrategy.getId());
-        assertTrue(processPassedToStrategy.isDownloadInProgress());
-        assertEquals(DataTransferFormat.HTTP_PULL.name(), processPassedToStrategy.getFormat());
+        // The process saved as isDownloadInProgress=true
+        TransferProcess processWithInProgressFlag = argCaptorTransferProcess.getAllValues().get(0);
+        assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), processWithInProgressFlag.getId());
+        assertTrue(processWithInProgressFlag.isDownloadInProgress());
+        assertEquals(DataTransferFormat.HTTP_PULL.name(), processWithInProgressFlag.getFormat());
     }
 
     @Test
-    @DisplayName("Download data - fail - can not store data")
+    @DisplayName("Download data - fail - Data Plane call throws")
     public void downloadData_transferFail() {
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
@@ -571,14 +562,13 @@ class DataTransferAPIServiceTest {
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
-        when(transferStrategyFactory.getStrategy(any(String.class))).thenReturn(httpPullTransferStrategy);
         // save returns the input as-is (realistic DB save); used for both isDownloadInProgress=true and the reset
         when(transferProcessRepository.save(any(TransferProcess.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        doThrow(DataTransferAPIException.class).when(httpPullTransferStrategy).transfer(isA(TransferProcess.class));
+        doThrow(DataPlaneClientException.class).when(dataPlaneClient).start(any(DataFlowStartMessage.class));
 
-        assertThrows(DataTransferAPIException.class,
+        assertThrows(DataPlaneClientException.class,
                 () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
         // Two saves: isDownloadInProgress=true at start, then isDownloadInProgress=false on failure reset
@@ -586,7 +576,7 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
-    @DisplayName("Download data - fail - strategy not found")
+    @DisplayName("Download data - fail - no Data Plane registered")
     public void downloadData_fail_strategyNotFound() {
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
@@ -598,13 +588,12 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.save(any(TransferProcess.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        when(transferStrategyFactory.getStrategy(any(String.class)))
-                .thenThrow(DataTransferAPIException.class);
+        doThrow(IllegalStateException.class).when(dataPlaneClient).start(any(DataFlowStartMessage.class));
 
-        assertThrows(DataTransferAPIException.class,
+        assertThrows(IllegalStateException.class,
                 () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        // Two saves: isDownloadInProgress=true at start, then isDownloadInProgress=false on strategy error
+        // Two saves: isDownloadInProgress=true at start, then isDownloadInProgress=false on DP routing error
         verify(transferProcessRepository, times(2)).save(any(TransferProcess.class));
     }
 

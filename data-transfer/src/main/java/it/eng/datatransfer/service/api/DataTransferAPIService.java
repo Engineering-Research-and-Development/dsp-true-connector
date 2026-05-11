@@ -62,7 +62,6 @@ public class DataTransferAPIService {
     private final AuditEventPublisher publisher;
     private final S3ClientService s3ClientService;
     private final S3Properties s3Properties;
-    private final DataTransferStrategyFactory dataTransferStrategyFactory;
     private final ArtifactTransferService artifactTransferService;
     private final TemporaryBucketUserService temporaryBucketUserService;
     private final TenantBucketResolver tenantBucketResolver;
@@ -79,7 +78,6 @@ public class DataTransferAPIService {
      * @param publisher                 audit event publisher
      * @param s3ClientService           S3 file service
      * @param s3Properties              S3 configuration properties
-     * @param dataTransferStrategyFactory factory for legacy transfer strategies
      * @param artifactTransferService   artifact lookup service
      * @param temporaryBucketUserService temporary S3 IAM user service
      * @param tenantBucketResolver      resolves the S3 bucket for a tenant
@@ -93,7 +91,6 @@ public class DataTransferAPIService {
                                   AuditEventPublisher publisher,
                                   S3ClientService s3ClientService,
                                   S3Properties s3Properties,
-                                  DataTransferStrategyFactory dataTransferStrategyFactory,
                                   ArtifactTransferService artifactTransferService,
                                   TemporaryBucketUserService temporaryBucketUserService,
                                   TenantBucketResolver tenantBucketResolver,
@@ -107,7 +104,6 @@ public class DataTransferAPIService {
         this.publisher = publisher;
         this.s3ClientService = s3ClientService;
         this.s3Properties = s3Properties;
-        this.dataTransferStrategyFactory = dataTransferStrategyFactory;
         this.artifactTransferService = artifactTransferService;
         this.temporaryBucketUserService = temporaryBucketUserService;
         this.tenantBucketResolver = tenantBucketResolver;
@@ -164,7 +160,7 @@ public class DataTransferAPIService {
 
         stateTransitionCheck(TransferState.REQUESTED, transferProcessInitialized);
         DataAddress dataAddressForMessage = null;
-        boolean isHttpPush = DataTransferFormat.HTTP_PUSH.format().equals(dataTransferRequest.getFormat());
+        boolean isHttpPush = "HttpData-PUSH".equals(dataTransferRequest.getFormat());
         if (isHttpPush) {
 
             String endpointOverride = resolveExternalPresignedEndpoint(bucketName);
@@ -353,7 +349,7 @@ public class DataTransferAPIService {
         }
         if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
             address = DataTransferCallback.getConsumerDataTransferStart(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
-            if (DataTransferFormat.HTTP_PULL.format().equals(transferProcess.getFormat())) {
+            if ("HttpData-PULL".equals(transferProcess.getFormat())) {
                 Artifact artifact = artifactTransferService.findArtifact(transferProcess);
                 String artifactURL = switch (artifact.getArtifactType()) {
                     case FILE ->
@@ -689,19 +685,20 @@ public class DataTransferAPIService {
         }
         log.info("Starting download transfer process id - {} data...", transferProcessId);
 
-        // Get appropriate strategy and execute transfer
-        DataTransferStrategy strategy;
-        try {
-            strategy = dataTransferStrategyFactory.getStrategy(transferProcessDownloading.getFormat());
-        } catch (Exception e) {
-            transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
-            throw e;
-        }
-
-        // Wrap strategy.transfer() so a synchronous exception also resets the flag.
+        // Route transfer to the Data Plane service via DPS
         CompletableFuture<Void> transferFuture;
         try {
-            transferFuture = strategy.transfer(transferProcessDownloading);
+            String callbackAddress = dataTransferProperties.consumerCallbackAddress() + ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE;
+            DataFlowStartMessage startMessage = DataFlowStartMessage.Builder.newInstance()
+                    .processId(transferProcessDownloading.getId())
+                    .transferType(transferProcessDownloading.getFormat())
+                    .callbackAddress(callbackAddress)
+                    .dataAddress(toDataAddressMap(transferProcessDownloading.getDataAddress()))
+                    .agreementId(transferProcessDownloading.getAgreementId())
+                    .datasetId(transferProcessDownloading.getDatasetId())
+                    .build();
+            dataPlaneClient.start(startMessage);
+            transferFuture = CompletableFuture.completedFuture(null);
         } catch (Exception e) {
             transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
             throw e;
