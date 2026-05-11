@@ -13,15 +13,13 @@ class DataFlowPrepareMessageTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Test
-    @DisplayName("Serialization includes processId, transferType, @context and @type")
+    @DisplayName("Serialization includes processId, @context and @type")
     void serializationIncludesExpectedFields() throws Exception {
         DataFlowPrepareMessage msg = DataFlowPrepareMessage.Builder.newInstance()
             .processId("proc-1")
-            .transferType("HttpData-PUSH")
             .build();
         String json = MAPPER.writeValueAsString(msg);
         assertTrue(json.contains("proc-1"));
-        assertTrue(json.contains("HttpData-PUSH"));
         assertTrue(json.contains(DSpaceConstants.CONTEXT));
         assertTrue(json.contains(DSpaceConstants.DSPACE_2025_01_CONTEXT));
         assertTrue(json.contains(DSpaceConstants.TYPE));
@@ -33,7 +31,6 @@ class DataFlowPrepareMessageTest {
         DataFlowPrepareMessage original = DataFlowPrepareMessage.Builder.newInstance()
             .messageId("msg-1")
             .processId("proc-1")
-            .transferType("HttpData-PUSH")
             .agreementId("agr-1")
             .datasetId("ds-1")
             .callbackAddress("http://cp:8080/tenant1/transfers")
@@ -47,14 +44,7 @@ class DataFlowPrepareMessageTest {
     @DisplayName("Missing processId throws ValidationException")
     void missingProcessIdThrowsValidation() {
         assertThrows(ValidationException.class, () ->
-            DataFlowPrepareMessage.Builder.newInstance().transferType("HttpData-PUSH").build());
-    }
-
-    @Test
-    @DisplayName("Missing transferType throws ValidationException")
-    void missingTransferTypeThrowsValidation() {
-        assertThrows(ValidationException.class, () ->
-            DataFlowPrepareMessage.Builder.newInstance().processId("proc-1").build());
+            DataFlowPrepareMessage.Builder.newInstance().build());
     }
 
     @Test

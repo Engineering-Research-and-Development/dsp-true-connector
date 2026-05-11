@@ -57,6 +57,7 @@ services:
     ports:
       - "0.0.0.0:8888:2222" #FTP
       - "8080:8080"
+      - "5005:5005" # Debug port
     depends_on:
       - mongodb-a
       - minio
@@ -105,6 +106,7 @@ services:
     ports:
       - "0.0.0.0:8889:2222" #FTP
       - "8090:8080"
+      - "5006:5005" # Debug port
     depends_on:
       - mongodb-b
       - minio

@@ -7,7 +7,10 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.mongodb.core.mapping.Document;
+
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -15,6 +18,7 @@ import java.util.stream.Collectors;
 /** Represents a data flow being executed by a Data Plane service. */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
+@Document(collection = "data_flows")
 public class DataFlow {
 
     private String dataFlowId;
@@ -30,8 +34,8 @@ public class DataFlow {
     private String tenantId;
     private String participantId;
     private String counterPartyId;
-    private String error;
-    private Instant createdAt;
+    private String errorMessage;
+    private LocalDateTime createdAt;
     private Instant updatedAt;
 
     /** Builder for {@link DataFlow}. */
@@ -137,10 +141,10 @@ public class DataFlow {
         /**
          * Sets the error message.
          *
-         * @param error error message
+         * @param errorMessage error message
          * @return this builder
          */
-        public Builder error(String error) { instance.error = error; return this; }
+        public Builder errorMessage(String errorMessage) { instance.errorMessage = errorMessage; return this; }
 
         /**
          * Builds the DataFlow, applying defaults and validating required fields.
@@ -149,7 +153,10 @@ public class DataFlow {
          * @throws ValidationException if required fields are missing
          */
         public DataFlow build() {
-            if (instance.createdAt == null) instance.createdAt = Instant.now();
+            if (instance.dataFlowId == null) {
+                instance.dataFlowId = java.util.UUID.randomUUID().toString();
+            }
+            if (instance.createdAt == null) instance.createdAt = LocalDateTime.now();
             if (instance.state == null) instance.state = DataFlowState.INITIALIZED;
             Set<ConstraintViolation<DataFlow>> violations =
                 Validation.buildDefaultValidatorFactory().getValidator().validate(instance);

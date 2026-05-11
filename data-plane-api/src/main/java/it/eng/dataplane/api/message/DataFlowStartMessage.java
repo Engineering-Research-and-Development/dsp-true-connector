@@ -10,6 +10,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.ValidatorFactory;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -29,10 +30,10 @@ public class DataFlowStartMessage {
     @JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
     private List<String> context = List.of(DSpaceConstants.DSPACE_2025_01_CONTEXT);
 
-    @NotNull
+    @NotBlank
     private String processId;
 
-    @NotNull
+    @NotBlank
     private String transferType;
 
     private String messageId;

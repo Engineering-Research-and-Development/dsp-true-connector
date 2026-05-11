@@ -11,6 +11,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.ValidatorFactory;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -32,14 +33,14 @@ public class DataFlowStatusMessage {
 
     private String dataFlowId;
 
-    @NotNull
+    @NotBlank
     private String processId;
 
     @NotNull
     private DataFlowState state;
 
     private Map<String, String> dataAddress;
-    private String error;
+    private String errorMessage;
 
     /** Builder for {@link DataFlowStatusMessage}. */
     @JsonPOJOBuilder(withPrefix = "")
@@ -90,10 +91,10 @@ public class DataFlowStatusMessage {
         /**
          * Sets the error message for failed transfers.
          *
-         * @param error error description
+         * @param errorMessage error description
          * @return this builder
          */
-        public Builder error(String error) { message.error = error; return this; }
+        public Builder errorMessage(String errorMessage) { message.errorMessage = errorMessage; return this; }
 
         /**
          * Builds and validates the message.

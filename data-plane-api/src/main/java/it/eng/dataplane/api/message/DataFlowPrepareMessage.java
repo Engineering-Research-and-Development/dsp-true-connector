@@ -10,6 +10,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.ValidatorFactory;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -29,11 +30,8 @@ public class DataFlowPrepareMessage {
     @JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
     private List<String> context = List.of(DSpaceConstants.DSPACE_2025_01_CONTEXT);
 
-    @NotNull
+    @NotBlank
     private String processId;
-
-    @NotNull
-    private String transferType;
 
     private String messageId;
     private String participantId;
@@ -66,14 +64,6 @@ public class DataFlowPrepareMessage {
          * @return this builder
          */
         public Builder processId(String processId) { message.processId = processId; return this; }
-
-        /**
-         * Sets the transfer type.
-         *
-         * @param transferType e.g. "HttpData-PUSH"
-         * @return this builder
-         */
-        public Builder transferType(String transferType) { message.transferType = transferType; return this; }
 
         /**
          * Sets the message ID.
