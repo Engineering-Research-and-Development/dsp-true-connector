@@ -32,7 +32,14 @@ public interface DSpaceConstants {
     public static final String PROVIDER_PID = "providerPid";
     public static final String PARTICIPANT_ID = "participantId";
     public static final String DATA_ADDRESS = "dataAddress";
-
+    public static final String COUNTER_PARTY_ID = "counterPartyId";
+    public static final String DATASET_ID = "datasetId";
+    public static final String DATASPACE_CONTEXT = "dataspaceContext";
+    public static final String DATA_FLOW_ID = "dataFlowId";
+    public static final String MESSAGE_ID = "messageId";
+    public static final String PROCESS_ID = "processId";
+    public static final String TRANSFER_TYPE = "transferType";
+    public static final String CLAIMS = "claims";
 
     public static final String ENDPOINT_TYPE = "endpointType";
     public static final String ENDPOINT = "endpoint";
