@@ -14,6 +14,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import it.eng.datatransfer.exceptions.DataPlaneClientException;
+
 import java.io.IOException;
 import java.util.Optional;
 import java.util.Set;
@@ -117,5 +119,48 @@ public class DataPlaneClientTest {
 
         assertThrows(IllegalStateException.class, () -> client.start(msg));
         verifyNoInteractions(mockHttpClient);
+    }
+
+    @Test
+    @DisplayName("terminateSendsDeleteToDataPlane - verifies DELETE method and URL contains processId")
+    public void terminateSendsDeleteToDataPlane() throws IOException {
+        DataPlaneRegistration dp = registrationWithApiKey("http://dp:9090", "secret-key");
+        when(mockRouter.selectDataPlane("HttpData-PULL")).thenReturn(Optional.of(dp));
+        Call mockCall = stubCall(200);
+        when(mockHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+
+        client.terminate("proc-term-1", "HttpData-PULL");
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(mockHttpClient).newCall(captor.capture());
+        Request captured = captor.getValue();
+        assertEquals("DELETE", captured.method());
+        assertTrue(captured.url().toString().contains("/dataflows/proc-term-1"));
+    }
+
+    @Test
+    @DisplayName("terminateThrowsWhenNoDataPlaneRegistered - router returns empty, expect IllegalStateException")
+    public void terminateThrowsWhenNoDataPlaneRegistered() {
+        when(mockRouter.selectDataPlane("HttpData-PULL")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class, () -> client.terminate("proc-term-2", "HttpData-PULL"));
+        verifyNoInteractions(mockHttpClient);
+    }
+
+    @Test
+    @DisplayName("postThrowsDataPlaneClientExceptionOnIOFailure - IOException wrapped in DataPlaneClientException")
+    public void postThrowsDataPlaneClientExceptionOnIOFailure() throws IOException {
+        DataPlaneRegistration dp = registrationNoApiKey("http://dp:9090");
+        when(mockRouter.selectDataPlane("HttpData-PULL")).thenReturn(Optional.of(dp));
+        Call mockCall = mock(Call.class);
+        when(mockCall.execute()).thenThrow(new IOException("Connection refused"));
+        when(mockHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+
+        DataFlowStartMessage msg = DataFlowStartMessage.Builder.newInstance()
+                .processId("proc-fail")
+                .transferType("HttpData-PULL")
+                .build();
+
+        assertThrows(DataPlaneClientException.class, () -> client.start(msg));
     }
 }

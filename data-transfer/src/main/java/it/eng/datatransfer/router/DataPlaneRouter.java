@@ -42,7 +42,7 @@ public class DataPlaneRouter {
             return Optional.empty();
         }
         AtomicInteger counter = counters.computeIfAbsent(transferType, k -> new AtomicInteger(0));
-        int index = Math.abs(counter.getAndIncrement() % candidates.size());
+        int index = (counter.getAndIncrement() & Integer.MAX_VALUE) % candidates.size();
         DataPlaneRegistration selected = candidates.get(index);
         log.debug("Selected Data Plane '{}' for transfer type '{}'", selected.getEndpoint(), transferType);
         return Optional.of(selected);

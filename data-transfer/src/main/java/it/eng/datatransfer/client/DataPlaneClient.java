@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
+import it.eng.datatransfer.exceptions.DataPlaneClientException;
 import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.datatransfer.router.DataPlaneRouter;
 import lombok.extern.slf4j.Slf4j;
@@ -83,17 +84,18 @@ public class DataPlaneClient {
     /**
      * Sends a termination request for the given process to the selected Data Plane.
      *
-     * <p>The message is POSTed to {@code {dpEndpoint}/dataflows/{processId}}.</p>
+     * <p>Sends {@code DELETE {dpEndpoint}/dataflows/{processId}} as required by the DSP spec.</p>
      *
      * @param processId    the transfer process ID to terminate
      * @param transferType the transfer type used to select the target Data Plane
-     * @throws IllegalStateException if no Data Plane is registered for the transfer type
+     * @throws IllegalStateException   if no Data Plane is registered for the transfer type
+     * @throws DataPlaneClientException if the DELETE request fails due to an I/O error
      */
     public void terminate(String processId, String transferType) {
         DataPlaneRegistration dp = selectOrThrow(transferType);
         String url = dp.getEndpoint() + "/dataflows/" + processId;
         log.info("Sending terminate request for process '{}' to '{}'", processId, url);
-        post(url, null, dp.getApiKey());
+        delete(url, dp);
     }
 
     private DataPlaneRegistration selectOrThrow(String transferType) {
@@ -116,7 +118,24 @@ public class DataPlaneClient {
         try (Response response = okHttpClient.newCall(request).execute()) {
             log.debug("Data Plane responded with HTTP {}", response.code());
         } catch (IOException e) {
-            log.error("Failed to send message to Data Plane at '{}': {}", url, e.getMessage());
+            log.error("Failed to send POST to {}: {}", url, e.getMessage());
+            throw new DataPlaneClientException("Failed to send message to data plane at " + url, e);
+        }
+    }
+
+    private void delete(String url, DataPlaneRegistration dp) {
+        Request.Builder builder = new Request.Builder()
+                .url(url)
+                .delete();
+        if (dp.getApiKey() != null) {
+            builder.addHeader(X_API_KEY, dp.getApiKey());
+        }
+        Request request = builder.build();
+        try (Response response = okHttpClient.newCall(request).execute()) {
+            log.debug("DELETE {} -> {}", url, response.code());
+        } catch (IOException e) {
+            log.error("Failed to send DELETE to {}: {}", url, e.getMessage());
+            throw new DataPlaneClientException("Failed to terminate transfer at " + url, e);
         }
     }
 
