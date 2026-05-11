@@ -3,6 +3,7 @@ package it.eng.dataplane.core.client;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dataplane.api.message.DataFlowStatusMessage;
 import it.eng.dataplane.api.model.DataFlowState;
+import it.eng.dataplane.core.config.DataPlaneProperties;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -10,6 +11,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.springframework.stereotype.Component;
+
 import java.io.IOException;
 import java.util.Map;
 import java.util.UUID;
@@ -27,18 +29,22 @@ public class ControlPlaneClient {
 
     private final OkHttpClient okHttpClient;
     private final ObjectMapper objectMapper;
+    private final DataPlaneProperties properties;
 
     /**
      * @param okHttpClient TLS-aware HTTP client from OkHttpClientConfiguration
      * @param objectMapper shared Jackson mapper
+     * @param properties Data Plane configuration properties
      */
-    public ControlPlaneClient(OkHttpClient okHttpClient, ObjectMapper objectMapper) {
+    public ControlPlaneClient(OkHttpClient okHttpClient, ObjectMapper objectMapper, DataPlaneProperties properties) {
         this.okHttpClient = okHttpClient;
         this.objectMapper = objectMapper;
+        this.properties = properties;
     }
 
     /**
      * Sends a DataFlowStatusMessage to the Control Plane callback endpoint.
+     * Includes the {@code X-Api-Key} header if configured.
      *
      * @param callbackAddress base callback URL from Control Plane
      * @param processId the TransferProcess ID on the CP
@@ -58,11 +64,14 @@ public class ControlPlaneClient {
             .build();
         try {
             String json = objectMapper.writeValueAsString(message);
-            Request request = new Request.Builder()
+            Request.Builder requestBuilder = new Request.Builder()
                 .url(url)
                 .post(RequestBody.create(json, JSON))
-                .addHeader("Content-Type", "application/json")
-                .build();
+                .addHeader("Content-Type", "application/json");
+            if (properties.getApiKey() != null && !properties.getApiKey().isBlank()) {
+                requestBuilder.addHeader("X-Api-Key", properties.getApiKey());
+            }
+            Request request = requestBuilder.build();
             try (Response response = okHttpClient.newCall(request).execute()) {
                 log.info("Sent {} status for processId={}, HTTP {}", state, processId, response.code());
                 if (!response.isSuccessful()) {
