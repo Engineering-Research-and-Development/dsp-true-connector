@@ -1,6 +1,9 @@
 package it.eng.datatransfer.service.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import it.eng.dataplane.api.message.DataFlowStartMessage;
+import it.eng.datatransfer.client.DataPlaneClient;
+import it.eng.datatransfer.exceptions.DataPlaneClientException;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.model.DataTransferFormat;
@@ -75,6 +78,8 @@ class DataTransferAPIServiceTest {
     private HttpPullTransferStrategy httpPullTransferStrategy;
     @Mock
     private ArtifactTransferService artifactTransferService;
+    @Mock
+    private DataPlaneClient dataPlaneClient;
     @Mock
     private Pageable pageable;
 
@@ -788,6 +793,71 @@ class DataTransferAPIServiceTest {
 
         verify(s3ClientService, times(0)).fileExists(anyString(), anyString());
         verify(s3ClientService, times(0)).generateGetPresignedUrl(anyString(), anyString(), any(Duration.class));
+    }
+
+    @Test
+    @DisplayName("Start transfer - provider sends DataFlowStartMessage to Data Plane on success")
+    public void startTransfer_sendsDataFlowStartMessageToDataPlane() {
+        TransferProcess requestedProviderWithFormat = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.REQUESTED)
+                .format(DataTransferFormat.HTTP_PULL.name())
+                .build();
+
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.findById(requestedProviderWithFormat.getId()))
+                .thenReturn(Optional.of(requestedProviderWithFormat));
+        when(properties.providerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
+
+        apiService.startTransfer(requestedProviderWithFormat.getId());
+
+        ArgumentCaptor<DataFlowStartMessage> startMsgCaptor = ArgumentCaptor.forClass(DataFlowStartMessage.class);
+        verify(dataPlaneClient).start(startMsgCaptor.capture());
+        DataFlowStartMessage sent = startMsgCaptor.getValue();
+        assertEquals(requestedProviderWithFormat.getId(), sent.getProcessId());
+        assertEquals(DataTransferFormat.HTTP_PULL.name(), sent.getTransferType());
+    }
+
+    @Test
+    @DisplayName("Start transfer - terminates process when Data Plane call fails")
+    public void startTransfer_terminatesProcessWhenDataPlaneFails() {
+        TransferProcess requestedProviderWithFormat = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.REQUESTED)
+                .format(DataTransferFormat.HTTP_PULL.name())
+                .build();
+
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.findById(requestedProviderWithFormat.getId()))
+                .thenReturn(Optional.of(requestedProviderWithFormat));
+        when(properties.providerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
+        doThrow(new DataPlaneClientException("DP unreachable"))
+                .when(dataPlaneClient).start(any(DataFlowStartMessage.class));
+
+        // Should not throw — the exception is caught internally and the process is terminated
+        assertDoesNotThrow(() -> apiService.startTransfer(requestedProviderWithFormat.getId()));
+
+        // Two saves: one for STARTED, one for TERMINATED
+        verify(transferProcessRepository, times(2)).save(argCaptorTransferProcess.capture());
+        List<TransferProcess> saved = argCaptorTransferProcess.getAllValues();
+        assertEquals(TransferState.STARTED, saved.get(0).getState());
+        assertEquals(TransferState.TERMINATED, saved.get(1).getState());
     }
 
     private static Stream<Arguments> startTransfer_wrongStates() {

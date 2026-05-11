@@ -4,6 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dataplane.api.message.DataFlowPrepareMessage;
+import it.eng.dataplane.api.message.DataFlowStartMessage;
+import it.eng.datatransfer.client.DataPlaneClient;
+import it.eng.datatransfer.exceptions.DataPlaneClientException;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.model.*;
@@ -62,7 +66,25 @@ public class DataTransferAPIService {
     private final ArtifactTransferService artifactTransferService;
     private final TemporaryBucketUserService temporaryBucketUserService;
     private final TenantBucketResolver tenantBucketResolver;
+    private final DataPlaneClient dataPlaneClient;
 
+    /**
+     * Creates a new {@code DataTransferAPIService}.
+     *
+     * @param transferProcessRepository repository for transfer processes
+     * @param okHttpRestClient          HTTP client for protocol messages
+     * @param credentialUtils           connector credential provider
+     * @param dataTransferProperties    configuration properties
+     * @param usageControlProperties    usage control configuration
+     * @param publisher                 audit event publisher
+     * @param s3ClientService           S3 file service
+     * @param s3Properties              S3 configuration properties
+     * @param dataTransferStrategyFactory factory for legacy transfer strategies
+     * @param artifactTransferService   artifact lookup service
+     * @param temporaryBucketUserService temporary S3 IAM user service
+     * @param tenantBucketResolver      resolves the S3 bucket for a tenant
+     * @param dataPlaneClient           DPS client for forwarding data-flow messages
+     */
     public DataTransferAPIService(TransferProcessRepository transferProcessRepository,
                                   OkHttpRestClient okHttpRestClient,
                                   CredentialUtils credentialUtils,
@@ -74,7 +96,8 @@ public class DataTransferAPIService {
                                   DataTransferStrategyFactory dataTransferStrategyFactory,
                                   ArtifactTransferService artifactTransferService,
                                   TemporaryBucketUserService temporaryBucketUserService,
-                                  TenantBucketResolver tenantBucketResolver) {
+                                  TenantBucketResolver tenantBucketResolver,
+                                  DataPlaneClient dataPlaneClient) {
         super();
         this.transferProcessRepository = transferProcessRepository;
         this.okHttpRestClient = okHttpRestClient;
@@ -88,6 +111,7 @@ public class DataTransferAPIService {
         this.artifactTransferService = artifactTransferService;
         this.temporaryBucketUserService = temporaryBucketUserService;
         this.tenantBucketResolver = tenantBucketResolver;
+        this.dataPlaneClient = dataPlaneClient;
     }
 
     /**
@@ -228,6 +252,9 @@ public class DataTransferAPIService {
 
                 transferProcessRepository.save(transferProcessForDB);
                 log.info("Transfer process {} saved", transferProcessForDB.getId());
+                if (isHttpPush) {
+                    sendDataFlowPrepareToDataPlane(transferProcessForDB);
+                }
                 publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
                         "Transfer process requested successfully",
                         auditMap("transferProcess", transferProcessForDB,
@@ -399,6 +426,9 @@ public class DataTransferAPIService {
                     .build();
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
+            if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcessStarted.getRole())) {
+                sendDataFlowStartToDataPlane(transferProcessStarted);
+            }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
                     "Transfer process started successfully",
                     auditMap("transferProcess", transferProcessStarted,
@@ -876,5 +906,100 @@ public class DataTransferAPIService {
                             "providerPid", transferProcess.getProviderPid(),
                             "role", IConstants.ROLE_API));
         }
+    }
+
+    /**
+     * Attempts to forward a {@link DataFlowStartMessage} to the registered Data Plane for the given
+     * transfer process. If no Data Plane is registered for the transfer type the call is skipped
+     * silently (backward-compatible fallback). If the Data Plane call fails with a
+     * {@link DataPlaneClientException} the transfer process is immediately set to TERMINATED so the
+     * failure is visible in the state machine without propagating an exception to the API caller.
+     * If the transfer type is not set the call is skipped silently.
+     *
+     * @param transferProcess the provider-side process that just moved to STARTED
+     */
+    private void sendDataFlowStartToDataPlane(TransferProcess transferProcess) {
+        String transferType = transferProcess.getFormat();
+        if (StringUtils.isBlank(transferType)) {
+            log.debug("Transfer type not set for process {}, skipping Data Plane routing", transferProcess.getId());
+            return;
+        }
+        String callbackAddress = dataTransferProperties.providerCallbackAddress() + ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE;
+        DataFlowStartMessage startMessage = DataFlowStartMessage.Builder.newInstance()
+                .processId(transferProcess.getId())
+                .transferType(transferType)
+                .callbackAddress(callbackAddress)
+                .dataAddress(toDataAddressMap(transferProcess.getDataAddress()))
+                .agreementId(transferProcess.getAgreementId())
+                .datasetId(transferProcess.getDatasetId())
+                .build();
+        try {
+            dataPlaneClient.start(startMessage);
+            log.info("DataFlowStartMessage forwarded to Data Plane for process {}", transferProcess.getId());
+        } catch (IllegalStateException e) {
+            log.info("No Data Plane registered for transfer type '{}', skipping DPS routing for process {}",
+                    transferType, transferProcess.getId());
+        } catch (DataPlaneClientException e) {
+            log.error("Data Plane communication failed for process {}: {}. Terminating transfer.",
+                    transferProcess.getId(), e.getMessage());
+            TransferProcess terminated = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
+            transferProcessRepository.save(terminated);
+        }
+    }
+
+    /**
+     * Attempts to forward a {@link DataFlowPrepareMessage} to the registered Data Plane for an
+     * HTTP-PUSH consumer-side transfer process. If no Data Plane is registered the call is skipped
+     * silently. If the Data Plane call fails the transfer process is set to TERMINATED.
+     * If the transfer type is not set the call is skipped silently.
+     *
+     * @param transferProcess the consumer-side process that was just persisted in REQUESTED state
+     */
+    private void sendDataFlowPrepareToDataPlane(TransferProcess transferProcess) {
+        String transferType = transferProcess.getFormat();
+        if (StringUtils.isBlank(transferType)) {
+            log.debug("Transfer type not set for process {}, skipping Data Plane prepare", transferProcess.getId());
+            return;
+        }
+        DataFlowPrepareMessage prepareMessage = DataFlowPrepareMessage.Builder.newInstance()
+                .processId(transferProcess.getId())
+                .build();
+        try {
+            dataPlaneClient.prepare(prepareMessage, transferType);
+            log.info("DataFlowPrepareMessage forwarded to Data Plane for process {}", transferProcess.getId());
+        } catch (IllegalStateException e) {
+            log.info("No Data Plane registered for transfer type '{}', skipping DPS prepare for process {}",
+                    transferType, transferProcess.getId());
+        } catch (DataPlaneClientException e) {
+            log.error("Data Plane communication failed during prepare for process {}: {}. Terminating transfer.",
+                    transferProcess.getId(), e.getMessage());
+            TransferProcess terminated = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
+            transferProcessRepository.save(terminated);
+        }
+    }
+
+    /**
+     * Converts a {@link DataAddress} model object to a flat string map suitable for
+     * {@link DataFlowStartMessage} and {@link DataFlowPrepareMessage}.
+     *
+     * @param dataAddress the data address to convert; may be {@code null}
+     * @return a mutable map of address properties, or {@code null} when input is {@code null}
+     */
+    private Map<String, String> toDataAddressMap(DataAddress dataAddress) {
+        if (dataAddress == null) {
+            return null;
+        }
+        Map<String, String> map = new HashMap<>();
+        if (dataAddress.getEndpoint() != null) {
+            map.put("endpoint", dataAddress.getEndpoint());
+        }
+        if (dataAddress.getEndpointType() != null) {
+            map.put("endpointType", dataAddress.getEndpointType());
+        }
+        if (dataAddress.getEndpointProperties() != null) {
+            dataAddress.getEndpointProperties()
+                    .forEach(p -> map.put(p.getName(), p.getValue()));
+        }
+        return map;
     }
 }
