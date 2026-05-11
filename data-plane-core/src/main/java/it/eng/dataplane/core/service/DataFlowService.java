@@ -27,7 +27,7 @@ import java.util.concurrent.Executors;
 public class DataFlowService {
 
     private static final Executor VIRTUAL_THREAD_EXECUTOR =
-        Executors.newCachedThreadPool();
+        Executors.newVirtualThreadPerTaskExecutor();
 
     private final DataFlowRepository repository;
     private final DataTransferProtocolRegistry registry;

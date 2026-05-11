@@ -21,14 +21,27 @@ public class DataPlaneRegistrationService {
     private final DataPlaneRegistrationRepository repository;
 
     /**
-     * Registers a new Data Plane instance.
+     * Registers a new Data Plane instance or updates an existing registration with the same endpoint.
+     * This makes re-registration idempotent — a DP restart replaces its previous entry rather than
+     * creating a duplicate.
      *
      * @param registration the Data Plane registration to persist
      * @return the saved registration
      */
     public DataPlaneRegistration register(DataPlaneRegistration registration) {
         log.info("Registering Data Plane at endpoint {}", registration.getEndpoint());
-        return repository.save(registration);
+        return repository.findByEndpoint(registration.getEndpoint())
+                .map(existing -> {
+                    log.info("Updating existing registration {} for endpoint {}", existing.getId(), existing.getEndpoint());
+                    DataPlaneRegistration updated = DataPlaneRegistration.Builder.newInstance()
+                            .id(existing.getId())
+                            .endpoint(registration.getEndpoint())
+                            .supportedTransferTypes(registration.getSupportedTransferTypes())
+                            .apiKey(registration.getApiKey())
+                            .build();
+                    return repository.save(updated);
+                })
+                .orElseGet(() -> repository.save(registration));
     }
 
     /**

@@ -690,7 +690,7 @@ public class DataTransferAPIService {
         // DataFlowCallbackController when done. Completion/termination lifecycle is driven
         // entirely by those callbacks — do NOT call completeTransfer() here.
         try {
-            String callbackAddress = dataTransferProperties.consumerCallbackAddress() + ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE;
+            String callbackAddress = dataTransferProperties.consumerCallbackAddress();
             DataFlowStartMessage startMessage = DataFlowStartMessage.Builder.newInstance()
                     .processId(transferProcessDownloading.getId())
                     .transferType(transferProcessDownloading.getFormat())
@@ -870,7 +870,7 @@ public class DataTransferAPIService {
             log.debug("Transfer type not set for process {}, skipping Data Plane routing", transferProcess.getId());
             return;
         }
-        String callbackAddress = dataTransferProperties.providerCallbackAddress() + ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE;
+        String callbackAddress = dataTransferProperties.providerCallbackAddress();
         DataFlowStartMessage startMessage = DataFlowStartMessage.Builder.newInstance()
                 .processId(transferProcess.getId())
                 .transferType(transferType)
@@ -915,7 +915,7 @@ public class DataTransferAPIService {
             log.debug("Transfer type not set for process {}, skipping Data Plane prepare", transferProcess.getId());
             return;
         }
-        String callbackAddress = dataTransferProperties.consumerCallbackAddress() + ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE;
+        String callbackAddress = dataTransferProperties.consumerCallbackAddress();
         DataFlowPrepareMessage prepareMessage = DataFlowPrepareMessage.Builder.newInstance()
                 .processId(transferProcess.getId())
                 .callbackAddress(callbackAddress)

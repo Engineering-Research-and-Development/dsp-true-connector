@@ -26,4 +26,12 @@ public interface DataPlaneRegistrationRepository extends MongoRepository<DataPla
      * @return an Optional containing the registration if found, or empty if not found
      */
     Optional<DataPlaneRegistration> findByApiKey(String apiKey);
+
+    /**
+     * Finds a Data Plane registration by its endpoint URL.
+     *
+     * @param endpoint the endpoint URL to search for
+     * @return an Optional containing the registration if found, or empty if not found
+     */
+    Optional<DataPlaneRegistration> findByEndpoint(String endpoint);
 }

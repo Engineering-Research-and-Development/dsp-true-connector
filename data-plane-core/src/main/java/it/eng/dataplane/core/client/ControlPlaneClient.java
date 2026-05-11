@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dataplane.api.message.DataFlowStatusMessage;
 import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.dataplane.core.config.DataPlaneProperties;
+import it.eng.tools.controller.ApiEndpoints;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -44,17 +45,22 @@ public class ControlPlaneClient {
 
     /**
      * Sends a DataFlowStatusMessage to the Control Plane callback endpoint.
+     * Routes COMPLETED state to {@code /api/v1/dataflows/complete} and all other states
+     * (TERMINATED, FAILED) to {@code /api/v1/dataflows/error}.
      * Includes the {@code X-Api-Key} header if configured.
      *
-     * @param callbackAddress base callback URL from Control Plane
+     * @param callbackBaseAddress base CP URL (e.g. {@code http://connector:8080})
      * @param processId the TransferProcess ID on the CP
      * @param state the new DataFlow state
      * @param dataAddress optional data address map
      * @param errorMessage optional error message for TERMINATED state
      */
-    public void sendStatus(String callbackAddress, String processId,
+    public void sendStatus(String callbackBaseAddress, String processId,
                            DataFlowState state, Map<String, String> dataAddress, String errorMessage) {
-        String url = callbackAddress + "/" + processId + "/dataflow/" + state.name().toLowerCase();
+        String path = (state == DataFlowState.COMPLETED)
+                ? ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE
+                : ApiEndpoints.DATAFLOW_CALLBACK_ERROR;
+        String url = callbackBaseAddress + path;
         DataFlowStatusMessage message = DataFlowStatusMessage.Builder.newInstance()
             .dataFlowId(UUID.randomUUID().toString())
             .processId(processId)

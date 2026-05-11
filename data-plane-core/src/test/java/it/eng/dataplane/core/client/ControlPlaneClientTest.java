@@ -103,17 +103,26 @@ class ControlPlaneClientTest {
     }
 
     @Test
-    void includesContentTypeHeader() throws Exception {
-        properties.setApiKey("test-api-key");
-        client = new ControlPlaneClient(okHttpClient, objectMapper, properties);
-
-        client.sendStatus("http://localhost:8080/callback", "process-456",
+    void routesCompletedStateToCompleteEndpoint() throws Exception {
+        client.sendStatus("http://localhost:8080", "process-789",
                 DataFlowState.COMPLETED, null, null);
 
         ArgumentCaptor<Request> requestCaptor = ArgumentCaptor.forClass(Request.class);
         verify(okHttpClient).newCall(requestCaptor.capture());
 
-        Request capturedRequest = requestCaptor.getValue();
-        assertEquals("application/json", capturedRequest.header("Content-Type"));
+        assertEquals("http://localhost:8080/api/v1/dataflows/complete",
+                requestCaptor.getValue().url().toString());
+    }
+
+    @Test
+    void routesTerminatedStateToErrorEndpoint() throws Exception {
+        client.sendStatus("http://localhost:8080", "process-789",
+                DataFlowState.TERMINATED, null, "something went wrong");
+
+        ArgumentCaptor<Request> requestCaptor = ArgumentCaptor.forClass(Request.class);
+        verify(okHttpClient).newCall(requestCaptor.capture());
+
+        assertEquals("http://localhost:8080/api/v1/dataflows/error",
+                requestCaptor.getValue().url().toString());
     }
 }

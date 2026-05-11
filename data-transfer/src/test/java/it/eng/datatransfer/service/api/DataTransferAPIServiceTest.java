@@ -821,8 +821,9 @@ class DataTransferAPIServiceTest {
         assertEquals(requestedProviderWithFormat.getId(), sent.getProcessId());
         assertEquals(DataTransferFormat.HTTP_PULL.name(), sent.getTransferType());
         assertNotNull(sent.getCallbackAddress(), "callbackAddress must be set so DP can send callbacks");
-        assertTrue(sent.getCallbackAddress().contains("dataflows"),
-                "callbackAddress should reference the DPS callback endpoint");
+        assertEquals(DataTransferMockObjectUtil.CALLBACK_ADDRESS, sent.getCallbackAddress(),
+                "callbackAddress should be the base CP URL — ControlPlaneClient appends /complete or /error based on state");
+        assertEquals(DataTransferFormat.HTTP_PULL.name(), sent.getTransferType());
     }
 
     @Test
@@ -953,8 +954,8 @@ class DataTransferAPIServiceTest {
         DataFlowPrepareMessage sent = prepareMsgCaptor.getValue();
         assertNotNull(sent.getProcessId(), "processId must be set");
         assertNotNull(sent.getCallbackAddress(), "callbackAddress must be set so DP can send callbacks");
-        assertTrue(sent.getCallbackAddress().contains("dataflows"),
-                "callbackAddress should reference the DPS callback endpoint");
+        assertEquals(DataTransferMockObjectUtil.CALLBACK_ADDRESS, sent.getCallbackAddress(),
+                "callbackAddress should be the base CP URL — ControlPlaneClient appends /complete or /error based on state");
         assertNotNull(sent.getDataAddress(), "dataAddress must be set so DP knows where to push");
     }
 

@@ -61,10 +61,12 @@ public class ControlPlaneRegistrationBean implements ApplicationListener<Applica
 
     private void registerWithRetry() {
         String url = properties.getControlPlaneAdminEndpoint() + ApiEndpoints.DATA_PLANES;
-        Map<String, Object> payload = Map.of(
-            "endpoint", properties.getEndpoint(),
-            "supportedTransferTypes", registry.getSupportedProtocols()
-        );
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("endpoint", properties.getEndpoint());
+        payload.put("supportedTransferTypes", registry.getSupportedProtocols());
+        if (properties.getApiKey() != null && !properties.getApiKey().isBlank()) {
+            payload.put("apiKey", properties.getApiKey());
+        }
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             try {
                 String json = objectMapper.writeValueAsString(payload);
