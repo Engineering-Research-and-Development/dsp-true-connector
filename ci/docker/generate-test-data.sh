@@ -10,7 +10,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TARGET="$SCRIPT_DIR/connector_b_resources/ENG-employee.json"
-TARGET_SIZE_MB=160
+TARGET_SIZE_MB=120
 
 echo "Generating ${TARGET_SIZE_MB} MB test file at: $TARGET"
 

@@ -429,6 +429,12 @@ public class DataTransferAPIService {
                                         tpIdForResume, e.getMessage());
                             }
                         });
+                    } else if (cancellationRegistry.isRegistered(tpIdForResume)) {
+                        // ASYNC upload is still in flight from before the suspension.
+                        // The in-progress download will call completeTransfer() when it finishes —
+                        // do not trigger a second download that would resume from the current
+                        // checkpoint offset (potentially past EOF) and produce HTTP 416.
+                        log.info("Case A resume for process {} — download in progress. Letting first download complete.", tpIdForResume);
                     } else {
                         log.info("Case A resume for process {}. Auto-triggering download.", tpIdForResume);
                         CompletableFuture.runAsync(() -> {
@@ -529,7 +535,13 @@ public class DataTransferAPIService {
         log.info("Response received {}", response);
         if (response.isSuccess()) {
             TransferProcess transferProcessCompleted = transferProcess.copyWithNewTransferState(TransferState.COMPLETED);
-            transferProcessRepository.save(transferProcessCompleted);
+            try {
+                transferProcessRepository.save(transferProcessCompleted);
+            } catch (OptimisticLockingFailureException e) {
+                log.warn("OLE saving COMPLETED for process {}, retrying with fresh read", transferProcessId);
+                transferProcessRepository.findById(transferProcessId)
+                        .ifPresent(freshTp -> transferProcessRepository.save(freshTp.copyWithNewTransferState(TransferState.COMPLETED)));
+            }
             log.info("Transfer process {} saved", transferProcessCompleted.getId());
             publisher.publishEvent(AuditEventType.TRANSFER_COMPLETED,
                     "Transfer process completed successfully",

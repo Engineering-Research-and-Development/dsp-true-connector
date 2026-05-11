@@ -28,6 +28,7 @@ import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -384,6 +385,35 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.TRANSFER_COMPLETED, null);
+    }
+
+    @Test
+    @DisplayName("completeTransfer retries with fresh entity read when first save throws OptimisticLockingFailureException")
+    void completeTransfer_oleOnFirstSave_retriesWithFreshRead() {
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
+                .thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+
+        TransferProcess staleStarted = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED;
+
+        // First findById: stale entity used by completeTransfer() for message construction.
+        // Second findById: fresh entity fetched in the OLE retry path.
+        when(transferProcessRepository.findById(staleStarted.getId()))
+                .thenReturn(Optional.of(staleStarted))
+                .thenReturn(Optional.of(staleStarted));
+
+        // First save throws OLE; second save (the retry) succeeds.
+        when(transferProcessRepository.save(any()))
+                .thenThrow(new OptimisticLockingFailureException("version conflict"))
+                .thenAnswer(i -> i.getArgument(0));
+
+        // Must not throw — OLE must be caught and the retry must succeed.
+        assertDoesNotThrow(() -> apiService.completeTransfer(staleStarted.getId()));
+
+        // Two saves: the failing first attempt and the successful retry.
+        verify(transferProcessRepository, times(2)).save(argCaptorTransferProcess.capture());
+        assertEquals(TransferState.COMPLETED, argCaptorTransferProcess.getAllValues().get(1).getState());
     }
 
     @Test
@@ -1315,6 +1345,49 @@ class DataTransferAPIServiceTest {
         assertDoesNotThrow(() -> apiService.startTransfer(suspendedPush.getId()));
 
         verify(transferProcessRepository, timeout(2000).atLeast(2)).findById(suspendedPush.getId());
+        verify(okHttpRestClient, times(1)).sendRequestProtocol(anyString(), any(), any());
+    }
+
+    /**
+     * HTTP-PULL Case A resume — async upload still in flight.
+     *
+     * <p>When the consumer resumes a SUSPENDED HTTP-PULL transfer where
+     * {@code isDownloaded=false} but the first download is still registered in
+     * {@link it.eng.datatransfer.service.CancellationRegistry}, a redundant second
+     * {@code downloadData()} call must be suppressed. The in-flight download will call
+     * {@code completeTransfer()} on its own when it finishes.</p>
+     */
+    @Test
+    @DisplayName("startTransfer Case A HTTP-PULL async: download in progress suppresses redundant re-download")
+    void startTransfer_caseA_httpPull_asyncRace_downloadInFlight_suppressesReDownload() {
+        TransferProcess suspendedPull = TransferProcess.Builder.newInstance()
+                .id(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER.getId())
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .format(DataTransferFormat.HTTP_PULL.format())
+                .state(TransferState.SUSPENDED)
+                .isDownloaded(false)
+                .build();
+
+        when(transferProcessRepository.findById(suspendedPull.getId())).thenReturn(Optional.of(suspendedPull));
+        when(transferArtifactStateRepository.findById(suspendedPull.getId())).thenReturn(Optional.empty());
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(okHttpRestClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(apiResponse);
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+
+        // Simulate: first download is still registered in the cancellation registry (ASYNC upload in flight)
+        when(cancellationRegistry.isRegistered(suspendedPull.getId())).thenReturn(true);
+
+        assertDoesNotThrow(() -> apiService.startTransfer(suspendedPull.getId()));
+
+        // Must NOT trigger a second download — strategy must never be invoked
+        verify(transferStrategyFactory, never()).getStrategy(anyString());
+        // Only the start-handshake protocol message; completeTransfer() must NOT be called
         verify(okHttpRestClient, times(1)).sendRequestProtocol(anyString(), any(), any());
     }
 }
