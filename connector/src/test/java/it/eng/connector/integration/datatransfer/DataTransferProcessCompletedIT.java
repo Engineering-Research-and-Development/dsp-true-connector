@@ -262,7 +262,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Complete transfer process - temporary user deleted after HTTP-PUSH completion")
+    @DisplayName("Complete transfer process - CP completes successfully; temp user cleanup is DP's responsibility")
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void completeTransferProcess_provider_httpPush_deletesTemporaryUser() throws Exception {
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
@@ -275,7 +275,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
-        // Simulate the temporary S3 user that is created before HTTP-PUSH data upload
+        // Simulate a temporary S3 user record stored by the CP (legacy path — cleanup now delegated to DP)
         TemporaryBucketUser temporaryBucketUser = TemporaryBucketUser.Builder.newInstance()
                 .transferProcessId(transferProcessStarted.getId())
                 .accessKey("temp-test-access-key")
@@ -284,9 +284,6 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
                 .objectKey("test-object-key")
                 .build();
         temporaryBucketUserRepository.save(temporaryBucketUser);
-
-        assertTrue(temporaryBucketUserRepository.existsById(transferProcessStarted.getId()),
-                "Temporary bucket user should exist before transfer completion");
 
         TransferCompletionMessage transferCompletionMessage = TransferCompletionMessage.Builder.newInstance()
                 .consumerPid(transferProcessStarted.getConsumerPid())
@@ -299,7 +296,8 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
 
-        assertFalse(temporaryBucketUserRepository.existsById(transferProcessStarted.getId()),
-                "Temporary bucket user should be removed after transfer completion");
+        // CP no longer deletes temporary bucket users — that is the Data Plane's responsibility
+        assertTrue(temporaryBucketUserRepository.existsById(transferProcessStarted.getId()),
+                "CP must NOT delete the temporary bucket user record — cleanup is delegated to the Data Plane");
     }
 }

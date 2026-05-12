@@ -7,9 +7,7 @@ import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
-import it.eng.tools.service.FieldEncryptionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
@@ -23,10 +21,8 @@ public class DataTransferService extends AbstractDataTransferService {
                                TransferRequestMessageRepository transferRequestMessageRepository,
                                AuditEventPublisher publisher,
                                OkHttpRestClient okHttpRestClient,
-                               DataTransferProperties transferProperties,
-                               TemporaryBucketUserService temporaryBucketUserService,
-                               FieldEncryptionService fieldEncryptionService) {
-        super(transferProcessRepository, publisher, okHttpRestClient, transferRequestMessageRepository, transferProperties, temporaryBucketUserService, fieldEncryptionService);
+                               DataTransferProperties transferProperties) {
+        super(transferProcessRepository, publisher, okHttpRestClient, transferRequestMessageRepository, transferProperties);
     }
 
     /**

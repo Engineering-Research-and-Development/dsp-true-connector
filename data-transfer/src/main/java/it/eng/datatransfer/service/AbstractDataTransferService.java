@@ -18,10 +18,7 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.s3.service.TemporaryBucketUserService;
-import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.AuditEventPublisher;
-import it.eng.tools.service.FieldEncryptionService;
 import it.eng.tools.service.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -41,23 +38,17 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
     // Consider this for removal
     private final TransferRequestMessageRepository transferRequestMessageRepository;
     private final DataTransferProperties transferProperties;
-    private final TemporaryBucketUserService temporaryBucketUserService;
-    private final FieldEncryptionService fieldEncryptionService;
 
     protected AbstractDataTransferService(TransferProcessRepository transferProcessRepository,
                                           AuditEventPublisher publisher,
                                           OkHttpRestClient okHttpRestClient,
                                           TransferRequestMessageRepository transferRequestMessageRepository,
-                                          DataTransferProperties transferProperties,
-                                          TemporaryBucketUserService temporaryBucketUserService,
-                                          FieldEncryptionService fieldEncryptionService) {
+                                          DataTransferProperties transferProperties) {
         this.transferProcessRepository = transferProcessRepository;
         this.publisher = publisher;
         this.okHttpRestClient = okHttpRestClient;
         this.transferRequestMessageRepository = transferRequestMessageRepository;
         this.transferProperties = transferProperties;
-        this.temporaryBucketUserService = temporaryBucketUserService;
-        this.fieldEncryptionService = fieldEncryptionService;
     }
 
     /**
@@ -172,24 +163,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
 
         transferRequestMessageRepository.save(transferRequestMessage);
 
-        // For HTTP_PUSH, encrypt the secretKey in the DataAddress before persisting to MongoDB
         DataAddress dataAddress = transferRequestMessage.getDataAddress();
-        if (DataTransferFormat.HTTP_PUSH.format().equals(transferRequestMessage.getFormat()) && dataAddress != null) {
-            List<EndpointProperty> encryptedProperties = dataAddress.getEndpointProperties().stream()
-                    .map(prop -> S3Utils.SECRET_KEY.equals(prop.getName())
-                            ? EndpointProperty.Builder.newInstance()
-                                    .name(prop.getName())
-                                    .value(fieldEncryptionService.encrypt(prop.getValue()))
-                                    .build()
-                            : prop)
-                    .toList();
-            dataAddress = DataAddress.Builder.newInstance()
-                    .endpointType(dataAddress.getEndpointType())
-                    .endpoint(dataAddress.getEndpoint())
-                    .endpointProperties(encryptedProperties)
-                    .build();
-            log.debug("Encrypted secretKey in DataAddress for HTTP_PUSH transfer process");
-        }
 
         TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
                 .id(transferProcessInitialized.getId())
@@ -339,12 +313,6 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .build();
 
         saveTransferProcess(transferProcessCompleted);
-        // Clean up temporary S3 user created for HTTP-PUSH (best-effort)
-        try {
-            temporaryBucketUserService.deleteTemporaryUser(transferProcessStarted.getId());
-        } catch (Exception e) {
-            log.warn("Could not clean up temporary bucket user for transfer process {}: {}", transferProcessStarted.getId(), e.getMessage());
-        }
         publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
                 .oldTransferProcess(transferProcessStarted)
                 .newTransferProcess(transferProcessCompleted)

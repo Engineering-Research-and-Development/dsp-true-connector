@@ -23,7 +23,6 @@ import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.serializer.ToolsSerializer;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantContextHolder;
@@ -158,32 +157,12 @@ public class DataTransferAPIService {
             }
             Map<String, String> dpDataAddress = prepareResponse.getDataAddress();
 
-            List<EndpointProperty> endpointProperties = List.of(
-                    EndpointProperty.Builder.newInstance()
-                            .name(S3Utils.BUCKET_NAME)
-                            .value(dpDataAddress.get(S3Utils.BUCKET_NAME))
-                            .build(),
-                    EndpointProperty.Builder.newInstance()
-                            .name(S3Utils.REGION)
-                            .value(dpDataAddress.get(S3Utils.REGION))
-                            .build(),
-                    EndpointProperty.Builder.newInstance()
-                            .name(S3Utils.OBJECT_KEY)
-                            .value(dpDataAddress.get(S3Utils.OBJECT_KEY))
-                            .build(),
-                    EndpointProperty.Builder.newInstance()
-                            .name(S3Utils.ACCESS_KEY)
-                            .value(dpDataAddress.get(S3Utils.ACCESS_KEY))
-                            .build(),
-                    EndpointProperty.Builder.newInstance()
-                            .name(S3Utils.SECRET_KEY)
-                            .value(dpDataAddress.get(S3Utils.SECRET_KEY))
-                            .build(),
-                    EndpointProperty.Builder.newInstance()
-                            .name(S3Utils.ENDPOINT_OVERRIDE)
-                            .value(dpDataAddress.get(S3Utils.ENDPOINT_OVERRIDE))
-                            .build()
-            );
+            List<EndpointProperty> endpointProperties = dpDataAddress.entrySet().stream()
+                    .map(e -> EndpointProperty.Builder.newInstance()
+                            .name(e.getKey())
+                            .value(e.getValue())
+                            .build())
+                    .toList();
 
             dataAddressForMessage = DataAddress.Builder.newInstance()
                     .endpointProperties(endpointProperties)

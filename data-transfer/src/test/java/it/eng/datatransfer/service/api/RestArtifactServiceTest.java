@@ -8,22 +8,16 @@ import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.ExternalData;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
-import it.eng.tools.service.TenantBucketResolver;
 import org.apache.tomcat.util.codec.binary.Base64;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ContentDisposition;
-import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
-import software.amazon.awssdk.core.ResponseBytes;
-import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
 import java.nio.charset.StandardCharsets;
 
@@ -34,15 +28,12 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class RestArtifactServiceTest {
 
-    private static final String TEST_BUCKET = "test-bucket";
     private static final String FILE = "test.json";
     private static final String CONTENT_DISPOSITION = ContentDisposition.attachment()
             .filename(FILE)
             .build()
             .toString();
     private MockHttpServletResponse mockHttpServletResponse;
-    @Mock
-    private S3ClientService s3ClientService;
     @Mock
     private DataTransferService dataTransferService;
     @Mock
@@ -51,8 +42,6 @@ public class RestArtifactServiceTest {
     private OkHttpRestClient okHttpRestClient;
     @Mock
     private ArtifactTransferService artifactTransferService;
-    @Mock
-    private TenantBucketResolver tenantBucketResolver;
 
     @InjectMocks
     private RestArtifactService restArtifactService;
@@ -119,40 +108,12 @@ public class RestArtifactServiceTest {
     }
 
     @Test
-    @DisplayName("Get file - success")
-    public void getFile_success() {
-        mockHttpServletResponse = new MockHttpServletResponse();
+    @DisplayName("Get file - throws DataTransferAPIException because FILE artifacts use presigned URLs now")
+    public void getFile_throwsUnsupported() {
         when(dataTransferService.findTransferProcess(CONSUMER_PID, PROVIDER_PID))
                 .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED);
         when(artifactTransferService.findArtifact(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED))
                 .thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
-
-        when(tenantBucketResolver.resolveBucketName(any())).thenReturn(TEST_BUCKET);
-        when(s3ClientService.fileExists(TEST_BUCKET, DataTransferMockObjectUtil.ARTIFACT_FILE.getValue()))
-                .thenReturn(true);
-
-        ResponseBytes<GetObjectResponse> s3Response = Mockito.mock(ResponseBytes.class);
-        GetObjectResponse objectResponse = GetObjectResponse.builder()
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .contentDisposition(CONTENT_DISPOSITION)
-                .build();
-
-        assertDoesNotThrow(() -> restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));
-
-        verify(publisher).publishEvent(any(ArtifactConsumedEvent.class));
-    }
-
-    @Test
-    @DisplayName("Get file - fail")
-    public void getFile_fail() {
-        when(dataTransferService.findTransferProcess(CONSUMER_PID, PROVIDER_PID))
-                .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED);
-        when(artifactTransferService.findArtifact(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED))
-                .thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
-
-        when(tenantBucketResolver.resolveBucketName(any())).thenReturn(TEST_BUCKET);
-        when(s3ClientService.fileExists(TEST_BUCKET, DataTransferMockObjectUtil.ARTIFACT_FILE.getValue()))
-                .thenReturn(false);
 
         assertThrows(DataTransferAPIException.class, () -> restArtifactService.getArtifact(TRANSACTION_ID, mockHttpServletResponse));
     }

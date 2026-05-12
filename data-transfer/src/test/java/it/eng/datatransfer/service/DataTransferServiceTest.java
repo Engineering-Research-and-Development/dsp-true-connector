@@ -18,10 +18,7 @@ import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.s3.service.TemporaryBucketUserService;
-import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.AuditEventPublisher;
-import it.eng.tools.service.FieldEncryptionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -60,10 +57,6 @@ public class DataTransferServiceTest {
     private OkHttpRestClient okHttpRestClient;
     @Mock
     private DataTransferProperties transferProperties;
-    @Mock
-    private TemporaryBucketUserService temporaryBucketUserService;
-    @Mock
-    private FieldEncryptionService fieldEncryptionService;
 
     @InjectMocks
     private DataTransferService service;
@@ -216,17 +209,16 @@ public class DataTransferServiceTest {
     }
 
     @Test
-    @DisplayName("DataTransfer requested - HTTP_PUSH - secretKey is encrypted before persisting to MongoDB")
-    public void initiateTransferProcess_httpPush_encryptsSecretKey() {
-        String plainSecretKey = "plain-secret-key";
-        String encryptedSecretKey = "encrypted-secret-key";
+    @DisplayName("DataTransfer requested - HTTP_PUSH - endpoint properties are stored as-is (no encryption)")
+    public void initiateTransferProcess_httpPush_storesEndpointPropertiesAsIs() {
+        String secretKey = "plain-secret-key";
 
         DataAddress httpPushDataAddress = DataAddress.Builder.newInstance()
                 .endpointProperties(List.of(
-                        EndpointProperty.Builder.newInstance().name(S3Utils.BUCKET_NAME).value("my-bucket").build(),
-                        EndpointProperty.Builder.newInstance().name(S3Utils.ACCESS_KEY).value("access-key").build(),
-                        EndpointProperty.Builder.newInstance().name(S3Utils.SECRET_KEY).value(plainSecretKey).build(),
-                        EndpointProperty.Builder.newInstance().name(S3Utils.ENDPOINT_OVERRIDE).value("http://minio:9000").build()
+                        EndpointProperty.Builder.newInstance().name("bucketName").value("my-bucket").build(),
+                        EndpointProperty.Builder.newInstance().name("accessKey").value("access-key").build(),
+                        EndpointProperty.Builder.newInstance().name("secretKey").value(secretKey).build(),
+                        EndpointProperty.Builder.newInstance().name("endpointOverride").value("http://minio:9000").build()
                 ))
                 .build();
 
@@ -240,7 +232,6 @@ public class DataTransferServiceTest {
 
         when(transferProcessRepository.findByAgreementId(DataTransferMockObjectUtil.AGREEMENT_ID))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
-        when(fieldEncryptionService.encrypt(plainSecretKey)).thenReturn(encryptedSecretKey);
 
         List<String> formats = new ArrayList<>();
         formats.add(DataTransferFormat.HTTP_PUSH.format());
@@ -253,13 +244,12 @@ public class DataTransferServiceTest {
         verify(transferProcessRepository).save(argTransferProcess.capture());
         TransferProcess saved = argTransferProcess.getValue();
         String storedSecretKey = saved.getDataAddress().getEndpointProperties().stream()
-                .filter(p -> S3Utils.SECRET_KEY.equals(p.getName()))
+                .filter(p -> "secretKey".equals(p.getName()))
                 .findFirst()
                 .map(EndpointProperty::getValue)
                 .orElse(null);
-        assertEquals(encryptedSecretKey, storedSecretKey,
-                "secretKey stored in MongoDB must be encrypted, not plain text");
-        verify(fieldEncryptionService).encrypt(plainSecretKey);
+        assertEquals(secretKey, storedSecretKey,
+                "secretKey must be stored as-is — encryption is the DP's responsibility");
     }
 
     // TransferStartMessage
@@ -372,7 +362,6 @@ public class DataTransferServiceTest {
         assertEquals(TransferState.COMPLETED, transferProcessCompleted.getState());
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.COMPLETED, argTransferProcess.getValue().getState());
-        verify(temporaryBucketUserService).deleteTemporaryUser(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED);
     }
 
@@ -388,22 +377,6 @@ public class DataTransferServiceTest {
         assertEquals(TransferState.COMPLETED, transferProcessCompleted.getState());
         verify(transferProcessRepository).save(argTransferProcess.capture());
         assertEquals(TransferState.COMPLETED, argTransferProcess.getValue().getState());
-        verify(temporaryBucketUserService).deleteTemporaryUser(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED);
-    }
-
-    @Test
-    @DisplayName("TransferCompletionMessage from STARTED - deleteTemporaryUser throws - transfer still completes")
-    public void completeDataTransfer_fromStarted_deleteUserFails() {
-        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
-                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
-        doThrow(new RuntimeException("S3 cleanup error")).when(temporaryBucketUserService).deleteTemporaryUser(any());
-
-        TransferProcess transferProcessCompleted = service.completeDataTransfer(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE,
-                null, DataTransferMockObjectUtil.PROVIDER_PID);
-
-        assertEquals(TransferState.COMPLETED, transferProcessCompleted.getState());
-        verify(temporaryBucketUserService).deleteTemporaryUser(any());
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED);
     }
 
