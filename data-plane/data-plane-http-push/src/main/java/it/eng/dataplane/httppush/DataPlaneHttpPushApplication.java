@@ -10,7 +10,7 @@ import org.springframework.context.annotation.ComponentScan;
  * OkHttpClient, S3, and other shared infrastructure.
  */
 @SpringBootApplication
-@ComponentScan(basePackages = {"it.eng.dataplane.httppush", "it.eng.dataplane.core", "it.eng.tools"})
+@ComponentScan(basePackages = {"it.eng.dataplane.httppush", "it.eng.dataplane.core", "it.eng.dataplane.s3"})
 public class DataPlaneHttpPushApplication {
 
     /**

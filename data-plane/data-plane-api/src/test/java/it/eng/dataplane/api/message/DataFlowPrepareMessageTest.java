@@ -1,7 +1,7 @@
 package it.eng.dataplane.api.message;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import it.eng.tools.model.DSpaceConstants;
+import it.eng.dataplane.api.DataPlaneConstants;
 import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,9 +20,9 @@ class DataFlowPrepareMessageTest {
             .build();
         String json = MAPPER.writeValueAsString(msg);
         assertTrue(json.contains("proc-1"));
-        assertTrue(json.contains(DSpaceConstants.CONTEXT));
-        assertTrue(json.contains(DSpaceConstants.DSPACE_2025_01_CONTEXT));
-        assertTrue(json.contains(DSpaceConstants.TYPE));
+        assertTrue(json.contains(DataPlaneConstants.CONTEXT));
+        assertTrue(json.contains(DataPlaneConstants.DSPACE_2025_01_CONTEXT));
+        assertTrue(json.contains(DataPlaneConstants.TYPE));
     }
 
     @Test

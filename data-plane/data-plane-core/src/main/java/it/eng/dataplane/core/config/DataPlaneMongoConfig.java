@@ -16,8 +16,7 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 @EnableMongoAuditing
 @EnableMongoRepositories(basePackages = {
         "it.eng.dataplane.core.repository",
-        "it.eng.tools.s3.repository",
-        "it.eng.tools.repository"
+        "it.eng.dataplane.s3.repository"
 })
 public class DataPlaneMongoConfig {
 }

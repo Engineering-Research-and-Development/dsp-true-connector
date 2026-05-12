@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dataplane.api.message.DataFlowStatusMessage;
 import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.dataplane.core.config.DataPlaneProperties;
-import it.eng.tools.controller.ApiEndpoints;
+import it.eng.dataplane.core.DataPlaneApiEndpoints;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -58,8 +58,8 @@ public class ControlPlaneClient {
     public void sendStatus(String callbackBaseAddress, String processId,
                            DataFlowState state, Map<String, String> dataAddress, String errorMessage) {
         String path = (state == DataFlowState.COMPLETED)
-                ? ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE
-                : ApiEndpoints.DATAFLOW_CALLBACK_ERROR;
+                ? DataPlaneApiEndpoints.DATAFLOW_CALLBACK_COMPLETE
+                : DataPlaneApiEndpoints.DATAFLOW_CALLBACK_ERROR;
         String url = callbackBaseAddress + path;
         DataFlowStatusMessage message = DataFlowStatusMessage.Builder.newInstance()
             .dataFlowId(UUID.randomUUID().toString())

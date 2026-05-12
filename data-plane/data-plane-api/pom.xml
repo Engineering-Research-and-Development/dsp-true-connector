@@ -16,11 +16,6 @@
     <description>Data Plane API - SPI interfaces and DSP message models for the Dataplane Signaling Protocol</description>
     <dependencies>
         <dependency>
-            <groupId>it.eng</groupId>
-            <artifactId>tools</artifactId>
-            <version>${revision}</version>
-        </dependency>
-        <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
@@ -37,6 +32,11 @@
             <artifactId>spring-data-mongodb</artifactId>
         </dependency>
         <!-- TEST -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-engine</artifactId>

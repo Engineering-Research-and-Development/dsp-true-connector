@@ -18,6 +18,7 @@
     <modules>
         <module>data-plane-api</module>
         <module>data-plane-core</module>
+        <module>data-plane-s3</module>
         <module>data-plane-http-pull</module>
         <module>data-plane-http-push</module>
     </modules>

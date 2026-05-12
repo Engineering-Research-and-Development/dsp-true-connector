@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
-import it.eng.tools.model.DSpaceConstants;
+import it.eng.dataplane.api.DataPlaneConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
@@ -39,8 +39,8 @@ import java.util.stream.Collectors;
 public class DataFlowPrepareResponse {
 
     @NotNull
-    @JsonProperty(value = DSpaceConstants.CONTEXT, access = Access.READ_ONLY)
-    private List<String> context = List.of(DSpaceConstants.DSPACE_2025_01_CONTEXT);
+    @JsonProperty(value = DataPlaneConstants.CONTEXT, access = Access.READ_ONLY)
+    private List<String> context = List.of(DataPlaneConstants.DSPACE_2025_01_CONTEXT);
 
     @NotBlank
     private String processId;
@@ -114,7 +114,7 @@ public class DataFlowPrepareResponse {
      *
      * @return simple class name
      */
-    @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
+    @JsonProperty(value = DataPlaneConstants.TYPE, access = Access.READ_ONLY)
     public String getType() {
         return DataFlowPrepareResponse.class.getSimpleName();
     }
