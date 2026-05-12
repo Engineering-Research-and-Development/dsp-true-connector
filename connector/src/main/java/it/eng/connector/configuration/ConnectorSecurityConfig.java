@@ -145,6 +145,8 @@ public class ConnectorSecurityConfig {
                     .addFilterBefore(keycloakFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .addFilterAfter(apiTenantContextFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth
+                            // Health endpoint is unauthenticated for CI/CD and orchestration health checks
+                            .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                             // Data Plane callback endpoints: DP sends X-Api-Key, handled by controller
                             .requestMatchers(HttpMethod.POST,
                                     ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE,
@@ -164,6 +166,8 @@ public class ConnectorSecurityConfig {
                             daoAuthenticationProvider.getObject()))
                     .addFilterAfter(apiTenantContextFilter.getObject(), BasicAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth
+                            // Health endpoint is unauthenticated for CI/CD and orchestration health checks
+                            .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                             // Data Plane callback endpoints: DP sends X-Api-Key, handled by controller
                             .requestMatchers(HttpMethod.POST,
                                     ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE,
