@@ -68,6 +68,7 @@
     </properties>
 
     <modules>
+        <module>s3-support</module>
         <module>connector</module>
         <module>catalog</module>
         <module>tools</module>
@@ -96,6 +97,11 @@
                         <artifactId>android-json</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>it.eng</groupId>
+                <artifactId>s3-support</artifactId>
+                <version>${revision}</version>
             </dependency>
             <dependency>
                 <groupId>it.eng</groupId>

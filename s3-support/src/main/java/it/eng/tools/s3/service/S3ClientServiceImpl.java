@@ -8,11 +8,13 @@ import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.upload.S3UploadStrategy;
 import it.eng.tools.s3.service.upload.S3UploadStrategyFactory;
 import it.eng.tools.s3.util.S3Utils;
-import it.eng.tools.service.ApplicationPropertiesService;
+import it.eng.tools.service.ApplicationPropertyReader;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
@@ -33,6 +35,12 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * Implementation of the S3 client service.
+ *
+ * <p>Upload mode is resolved from the optional {@link ApplicationPropertyReader} first
+ * (allowing runtime overrides in the Control Plane via MongoDB-backed properties), then
+ * falls back to the {@code s3.upload-mode} application property. In Data Plane context,
+ * no {@link ApplicationPropertyReader} bean is present, so the property file value is
+ * used directly.
  */
 @Service
 @Slf4j
@@ -41,8 +49,8 @@ public class S3ClientServiceImpl implements S3ClientService {
     private final S3ClientProvider s3ClientProvider;
     private final S3Properties s3Properties;
     private final BucketCredentialsService bucketCredentialsService;
-    private final ApplicationPropertiesService applicationPropertiesService;
     private final S3UploadStrategyFactory uploadStrategyFactory;
+    private final ApplicationPropertyReader propertyReader;
 
     private static final String S3_UPLOAD_MODE_PROPERTY_KEY = "s3.upload.mode";
 
@@ -52,19 +60,21 @@ public class S3ClientServiceImpl implements S3ClientService {
      * @param s3ClientProvider         provider for S3 client (sync and async)
      * @param s3Properties             the S3 properties
      * @param bucketCredentialsService service for managing bucket credentials
-     * @param applicationPropertiesService service for reading application properties from MongoDB
      * @param uploadStrategyFactory    factory for creating upload strategy instances
+     * @param propertyReader           optional reader for runtime property overrides;
+     *                                 may be {@code null} in Data Plane context
      */
+    @Autowired
     public S3ClientServiceImpl(S3ClientProvider s3ClientProvider,
                                S3Properties s3Properties,
                                BucketCredentialsService bucketCredentialsService,
-                               ApplicationPropertiesService applicationPropertiesService,
-                               S3UploadStrategyFactory uploadStrategyFactory) {
+                               S3UploadStrategyFactory uploadStrategyFactory,
+                               @Nullable ApplicationPropertyReader propertyReader) {
         this.s3ClientProvider = s3ClientProvider;
         this.s3Properties = s3Properties;
         this.bucketCredentialsService = bucketCredentialsService;
-        this.applicationPropertiesService = applicationPropertiesService;
         this.uploadStrategyFactory = uploadStrategyFactory;
+        this.propertyReader = propertyReader;
     }
 
     @Override
@@ -100,30 +110,30 @@ public class S3ClientServiceImpl implements S3ClientService {
 
     /**
      * Determines the S3 upload mode from configuration.
-     * Priority: 1. MongoDB property, 2. application.properties, 3. default (SYNC)
+     *
+     * <p>Priority: 1. Runtime property override (via {@link ApplicationPropertyReader} if present),
+     * 2. {@code s3.upload-mode} application property, 3. default (SYNC).
      *
      * @return the configured S3UploadMode
      */
     private S3UploadMode getUploadMode() {
-        try {
-            // First, try to get from MongoDB
-            return applicationPropertiesService.getPropertyByKey(S3_UPLOAD_MODE_PROPERTY_KEY)
-                    .map(property -> {
-                        String value = property.getValue();
-                        log.debug("Using S3 upload mode from MongoDB: {}", value);
-                        return S3UploadMode.fromString(value);
-                    })
-                    .orElseGet(() -> {
-                        // Fall back to application.properties
-                        String value = s3Properties.getUploadMode();
-                        log.debug("Using S3 upload mode from application.properties: {}", value);
-                        return S3UploadMode.fromString(value);
-                    });
-        } catch (Exception e) {
-            // If any error occurs, fall back to application.properties or default
-            log.warn("Error reading upload mode from MongoDB, falling back to application.properties: {}", e.getMessage());
-            return S3UploadMode.fromString(s3Properties.getUploadMode());
+        if (propertyReader != null) {
+            try {
+                return propertyReader.getPropertyValue(S3_UPLOAD_MODE_PROPERTY_KEY)
+                        .map(value -> {
+                            log.debug("Using S3 upload mode from property reader: {}", value);
+                            return S3UploadMode.fromString(value);
+                        })
+                        .orElseGet(() -> {
+                            String mode = s3Properties.getUploadMode();
+                            log.debug("Using S3 upload mode from application properties: {}", mode);
+                            return S3UploadMode.fromString(mode);
+                        });
+            } catch (Exception e) {
+                log.warn("Error reading upload mode from property reader, falling back to application properties: {}", e.getMessage());
+            }
         }
+        return S3UploadMode.fromString(s3Properties.getUploadMode());
     }
 
 

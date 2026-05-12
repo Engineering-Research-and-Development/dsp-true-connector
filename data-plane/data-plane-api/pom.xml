@@ -9,7 +9,6 @@
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <groupId>it.eng.dataplane</groupId>
     <artifactId>data-plane-api</artifactId>
     <packaging>jar</packaging>
     <name>Data Plane API</name>

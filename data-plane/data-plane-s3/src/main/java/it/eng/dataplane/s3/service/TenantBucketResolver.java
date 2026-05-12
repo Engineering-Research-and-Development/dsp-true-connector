@@ -1,6 +1,6 @@
 package it.eng.dataplane.s3.service;
 
-import it.eng.dataplane.s3.properties.S3Properties;
+import it.eng.tools.s3.properties.S3Properties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 

@@ -1,7 +1,7 @@
 package it.eng.dataplane.httppush.config;
 
-import it.eng.dataplane.s3.properties.S3Properties;
-import it.eng.dataplane.s3.service.S3BucketProvisionService;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3BucketProvisionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
