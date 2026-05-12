@@ -7,10 +7,10 @@ import org.springframework.context.annotation.ComponentScan;
 /**
  * Spring Boot entry point for the HTTP-PUSH Data Plane service.
  * Component-scans both data-plane and tools packages to auto-configure
- * OkHttpClient, S3, and other shared infrastructure.
+ * S3, encryption, and other shared infrastructure from s3-support.
  */
 @SpringBootApplication
-@ComponentScan(basePackages = {"it.eng.dataplane.httppush", "it.eng.dataplane.core", "it.eng.dataplane.s3"})
+@ComponentScan(basePackages = {"it.eng.dataplane", "it.eng.tools"})
 public class DataPlaneHttpPushApplication {
 
     /**
