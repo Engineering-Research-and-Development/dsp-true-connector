@@ -136,7 +136,8 @@ services:
       - mongodb-data_b:/data/db
       - mongodb-configdb_b:/data/configdb
 
-  ### data-plane-http-pull-a (consumer's pull data plane, registers with connector-a)
+  ### data-plane-http-pull-a (consumer pull DP — registers with connector-a)
+  ### Used for: viewData presigned URL generation (consumer side)
   data-plane-http-pull-a:
     image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-http-pull:test
     container_name: data-plane-http-pull-a
@@ -162,8 +163,67 @@ services:
       - S3_REGION=us-east-1
       # Must match connector-a's s3.bucketName so downloaded files land in consumer's own bucket
       - S3_BUCKETNAME=dsp-true-connector-a
+      # viewData presigned URLs are consumed by external clients (Newman); use Docker bridge gateway
+      - S3_EXTERNAL_PRESIGNED_ENDPOINT=http://172.17.0.1:9000
 
-  ### data-plane-http-push-b (provider's push data plane, registers with connector-b)
+  ### data-plane-http-pull-b (provider pull DP — registers with connector-b)
+  ### Used for: startTransfer presigned URL generation for artifact in provider's bucket
+  data-plane-http-pull-b:
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-http-pull:test
+    container_name: data-plane-http-pull-b
+    networks:
+      - network-b
+    ports:
+      - "9092:9090"
+    depends_on:
+      minio:
+        condition: service_healthy
+      connector-b:
+        condition: service_started
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-b:27017/data-plane-pull-b
+      - DATAPLANE_ENDPOINT=http://data-plane-http-pull-b:9090
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-b:8080
+      - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}
+      - DATAPLANE_AUTH_TYPE=API_KEY
+      - DATAPLANE_API_KEY=${DP_PULL_API_KEY:-changeme}
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESSKEY=minioadmin
+      - S3_SECRETKEY=minioadmin
+      - S3_REGION=us-east-1
+      # Provider's bucket; presigned URLs are consumed by consumer DP (Docker network) → use minio hostname
+      - S3_BUCKETNAME=dsp-true-connector-b
+
+  ### data-plane-http-push-a (consumer push DP — registers with connector-a)
+  ### Used for: requestTransfer — creates temporary IAM user in consumer's bucket
+  data-plane-http-push-a:
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-http-push:test
+    container_name: data-plane-http-push-a
+    networks:
+      - network-a
+    ports:
+      - "9093:9091"
+    depends_on:
+      minio:
+        condition: service_healthy
+      connector-a:
+        condition: service_started
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-a:27017/data-plane-push-a
+      - DATAPLANE_ENDPOINT=http://data-plane-http-push-a:9091
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-a:8080
+      - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}
+      - DATAPLANE_AUTH_TYPE=API_KEY
+      - DATAPLANE_API_KEY=${DP_PUSH_API_KEY:-changeme}
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESSKEY=minioadmin
+      - S3_SECRETKEY=minioadmin
+      - S3_REGION=us-east-1
+      # Consumer's bucket; temp credentials are used by provider DP (Docker network) → use minio hostname
+      - S3_BUCKETNAME=dsp-true-connector-a
+
+  ### data-plane-http-push-b (provider push DP — registers with connector-b)
+  ### Used for: startTransfer — pushes artifact to consumer's temporary S3 credentials
   data-plane-http-push-b:
     image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-http-push:test
     container_name: data-plane-http-push-b
@@ -178,7 +238,7 @@ services:
       connector-b:
         condition: service_started
     environment:
-      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-a:27017/data-plane-push-b
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-b:27017/data-plane-push-b
       - DATAPLANE_ENDPOINT=http://data-plane-http-push-b:9091
       - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-b:8080
       - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}
@@ -188,7 +248,7 @@ services:
       - S3_ACCESSKEY=minioadmin
       - S3_SECRETKEY=minioadmin
       - S3_REGION=us-east-1
-      # Must match connector-b's s3.bucketName so presigned GET URLs target the provider's bucket
+      # Provider's bucket; presigned GET URLs for artifact are consumed within Docker network
       - S3_BUCKETNAME=dsp-true-connector-b
 
 networks:

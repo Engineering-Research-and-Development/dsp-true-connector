@@ -70,11 +70,21 @@ public class DataFlowController {
                 ? message.getDataAddress().getOrDefault("transferType", "")
                 : "";
         var protocol = protocolRegistry.getProtocol(transferType);
+        if (protocol == null) {
+            // Each DP container hosts exactly one protocol — fall back to it when the
+            // Control Plane does not embed transferType in the prepare message dataAddress.
+            var supported = protocolRegistry.getSupportedProtocols();
+            if (!supported.isEmpty()) {
+                String fallback = supported.iterator().next();
+                protocol = protocolRegistry.getProtocol(fallback);
+                log.info("No transferType in prepare message; using single registered protocol '{}'", fallback);
+            }
+        }
         DataFlowPrepareResponse response;
         if (protocol != null) {
             response = protocol.prepare(message);
         } else {
-            log.warn("No protocol found for transferType='{}'; returning empty prepare response", transferType);
+            log.warn("No protocol registered; returning empty prepare response for processId={}", message.getProcessId());
             response = DataFlowPrepareResponse.Builder.newInstance()
                     .processId(message.getProcessId())
                     .build();

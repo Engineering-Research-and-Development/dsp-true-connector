@@ -85,8 +85,21 @@ jobs:
       - name: Run docker container for negotiation-api-without-counteroffer-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
-      - name: Wait for container starting
-        run: sleep 90
+      - name: Wait for connectors to be healthy
+        run: |
+          echo "Waiting for connector-a (port 8080) and connector-b (port 8090)..."
+          for i in $(seq 1 36); do
+            A=$(curl -sf http://localhost:8080/actuator/health -o /dev/null && echo ok || echo fail)
+            B=$(curl -sf http://localhost:8090/actuator/health -o /dev/null && echo ok || echo fail)
+            if [ "$A" = "ok" ] && [ "$B" = "ok" ]; then
+              echo "Both connectors healthy after $((i * 10)) seconds"
+              break
+            fi
+            echo "Attempt $i/36 — connector-a=$A connector-b=$B — waiting 10s..."
+            sleep 10
+          done
+          curl -sf http://localhost:8080/actuator/health || (echo "connector-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-a && exit 1)
+          curl -sf http://localhost:8090/actuator/health || (echo "connector-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-b && exit 1)
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -114,8 +127,21 @@ jobs:
       - name: Run docker container for negotiation-api-with-counteroffer-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
-      - name: Wait for container starting
-        run: sleep 90
+      - name: Wait for connectors to be healthy
+        run: |
+          echo "Waiting for connector-a (port 8080) and connector-b (port 8090)..."
+          for i in $(seq 1 36); do
+            A=$(curl -sf http://localhost:8080/actuator/health -o /dev/null && echo ok || echo fail)
+            B=$(curl -sf http://localhost:8090/actuator/health -o /dev/null && echo ok || echo fail)
+            if [ "$A" = "ok" ] && [ "$B" = "ok" ]; then
+              echo "Both connectors healthy after $((i * 10)) seconds"
+              break
+            fi
+            echo "Attempt $i/36 — connector-a=$A connector-b=$B — waiting 10s..."
+            sleep 10
+          done
+          curl -sf http://localhost:8080/actuator/health || (echo "connector-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-a && exit 1)
+          curl -sf http://localhost:8090/actuator/health || (echo "connector-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-b && exit 1)
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -143,8 +169,37 @@ jobs:
       - name: Run docker container for datatransfer-api-http-pull-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
-      - name: Wait for container starting
-        run: sleep 90
+      - name: Wait for connectors to be healthy
+        run: |
+          echo "Waiting for connector-a (port 8080) and connector-b (port 8090)..."
+          for i in $(seq 1 36); do
+            A=$(curl -sf http://localhost:8080/actuator/health -o /dev/null && echo ok || echo fail)
+            B=$(curl -sf http://localhost:8090/actuator/health -o /dev/null && echo ok || echo fail)
+            if [ "$A" = "ok" ] && [ "$B" = "ok" ]; then
+              echo "Both connectors healthy after $((i * 10)) seconds"
+              break
+            fi
+            echo "Attempt $i/36 — connector-a=$A connector-b=$B — waiting 10s..."
+            sleep 10
+          done
+          curl -sf http://localhost:8080/actuator/health || (echo "connector-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-a && exit 1)
+          curl -sf http://localhost:8090/actuator/health || (echo "connector-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-b && exit 1)
+
+      - name: Wait for data plane containers to be healthy
+        run: |
+          echo "Waiting for pull DPs (ports 9090 and 9092) to be healthy..."
+          for i in $(seq 1 18); do
+            PA=$(curl -sf http://localhost:9090/actuator/health -o /dev/null && echo ok || echo fail)
+            PB=$(curl -sf http://localhost:9092/actuator/health -o /dev/null && echo ok || echo fail)
+            if [ "$PA" = "ok" ] && [ "$PB" = "ok" ]; then
+              echo "Both pull DPs healthy after $((i * 10)) seconds"
+              break
+            fi
+            echo "Attempt $i/18 — pull-a=$PA pull-b=$PB — waiting 10s..."
+            sleep 10
+          done
+          curl -sf http://localhost:9090/actuator/health || (echo "data-plane-http-pull-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs data-plane-http-pull-a && exit 1)
+          curl -sf http://localhost:9092/actuator/health || (echo "data-plane-http-pull-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs data-plane-http-pull-b && exit 1)
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -172,8 +227,37 @@ jobs:
       - name: Run docker container for datatransfer-api-http-push-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
-      - name: Wait for container starting
-        run: sleep 90
+      - name: Wait for connectors to be healthy
+        run: |
+          echo "Waiting for connector-a (port 8080) and connector-b (port 8090)..."
+          for i in $(seq 1 36); do
+            A=$(curl -sf http://localhost:8080/actuator/health -o /dev/null && echo ok || echo fail)
+            B=$(curl -sf http://localhost:8090/actuator/health -o /dev/null && echo ok || echo fail)
+            if [ "$A" = "ok" ] && [ "$B" = "ok" ]; then
+              echo "Both connectors healthy after $((i * 10)) seconds"
+              break
+            fi
+            echo "Attempt $i/36 — connector-a=$A connector-b=$B — waiting 10s..."
+            sleep 10
+          done
+          curl -sf http://localhost:8080/actuator/health || (echo "connector-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-a && exit 1)
+          curl -sf http://localhost:8090/actuator/health || (echo "connector-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-b && exit 1)
+
+      - name: Wait for data plane containers to be healthy
+        run: |
+          echo "Waiting for push DPs (ports 9091 and 9093) to be healthy..."
+          for i in $(seq 1 18); do
+            PA=$(curl -sf http://localhost:9093/actuator/health -o /dev/null && echo ok || echo fail)
+            PB=$(curl -sf http://localhost:9091/actuator/health -o /dev/null && echo ok || echo fail)
+            if [ "$PA" = "ok" ] && [ "$PB" = "ok" ]; then
+              echo "Both push DPs healthy after $((i * 10)) seconds"
+              break
+            fi
+            echo "Attempt $i/18 — push-a=$PA push-b=$PB — waiting 10s..."
+            sleep 10
+          done
+          curl -sf http://localhost:9093/actuator/health || (echo "data-plane-http-push-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs data-plane-http-push-a && exit 1)
+          curl -sf http://localhost:9091/actuator/health || (echo "data-plane-http-push-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs data-plane-http-push-b && exit 1)
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -201,8 +285,21 @@ jobs:
       - name: Run docker container for api-endpoints-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
-      - name: Wait for container starting
-        run: sleep 90
+      - name: Wait for connectors to be healthy
+        run: |
+          echo "Waiting for connector-a (port 8080) and connector-b (port 8090)..."
+          for i in $(seq 1 36); do
+            A=$(curl -sf http://localhost:8080/actuator/health -o /dev/null && echo ok || echo fail)
+            B=$(curl -sf http://localhost:8090/actuator/health -o /dev/null && echo ok || echo fail)
+            if [ "$A" = "ok" ] && [ "$B" = "ok" ]; then
+              echo "Both connectors healthy after $((i * 10)) seconds"
+              break
+            fi
+            echo "Attempt $i/36 — connector-a=$A connector-b=$B — waiting 10s..."
+            sleep 10
+          done
+          curl -sf http://localhost:8080/actuator/health || (echo "connector-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-a && exit 1)
+          curl -sf http://localhost:8090/actuator/health || (echo "connector-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-b && exit 1)
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -237,8 +334,21 @@ jobs:
       - name: Run docker container for dataset-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
-      - name: Wait for container starting
-        run: sleep 90
+      - name: Wait for connectors to be healthy
+        run: |
+          echo "Waiting for connector-a (port 8080) and connector-b (port 8090)..."
+          for i in $(seq 1 36); do
+            A=$(curl -sf http://localhost:8080/actuator/health -o /dev/null && echo ok || echo fail)
+            B=$(curl -sf http://localhost:8090/actuator/health -o /dev/null && echo ok || echo fail)
+            if [ "$A" = "ok" ] && [ "$B" = "ok" ]; then
+              echo "Both connectors healthy after $((i * 10)) seconds"
+              break
+            fi
+            echo "Attempt $i/36 — connector-a=$A connector-b=$B — waiting 10s..."
+            sleep 10
+          done
+          curl -sf http://localhost:8080/actuator/health || (echo "connector-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-a && exit 1)
+          curl -sf http://localhost:8090/actuator/health || (echo "connector-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-b && exit 1)
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -266,8 +376,21 @@ jobs:
       - name: Run docker container for connector-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
-      - name: Wait for container starting
-        run: sleep 90
+      - name: Wait for connectors to be healthy
+        run: |
+          echo "Waiting for connector-a (port 8080) and connector-b (port 8090)..."
+          for i in $(seq 1 36); do
+            A=$(curl -sf http://localhost:8080/actuator/health -o /dev/null && echo ok || echo fail)
+            B=$(curl -sf http://localhost:8090/actuator/health -o /dev/null && echo ok || echo fail)
+            if [ "$A" = "ok" ] && [ "$B" = "ok" ]; then
+              echo "Both connectors healthy after $((i * 10)) seconds"
+              break
+            fi
+            echo "Attempt $i/36 — connector-a=$A connector-b=$B — waiting 10s..."
+            sleep 10
+          done
+          curl -sf http://localhost:8080/actuator/health || (echo "connector-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-a && exit 1)
+          curl -sf http://localhost:8090/actuator/health || (echo "connector-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-b && exit 1)
 
       - name: Check if the container is up and running
         run: docker ps -a
