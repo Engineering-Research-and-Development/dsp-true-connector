@@ -292,19 +292,27 @@ public class S3ClientServiceImpl implements S3ClientService {
 
     private String resolveExternalEndpoint(String bucketName) {
         String externalEndpoint = s3Properties.getExternalPresignedEndpoint();
-        if (externalEndpoint == null || externalEndpoint.isBlank()) {
-            // Fallback for AWS: build virtual-hosted-style endpoint using region and bucket name
-            String region = s3Properties.getRegion();
-            if (region == null || region.isBlank()) {
-                throw new IllegalStateException("S3 region must be configured when externalPresignedEndpoint is blank");
-            }
-            if ("us-east-1".equals(region)) {
-                externalEndpoint = String.format("https://%s.s3.amazonaws.com", bucketName);
-            } else {
-                externalEndpoint = String.format("https://%s.s3.%s.amazonaws.com", bucketName, region);
-            }
-            log.info("Derived externalPresignedEndpoint for AWS: {}", externalEndpoint);
+        if (externalEndpoint != null && !externalEndpoint.isBlank()) {
+            return externalEndpoint;
         }
+        // No explicit external endpoint — check if s3.endpoint is a custom (MinIO) endpoint
+        String s3Endpoint = s3Properties.getEndpoint();
+        if (s3Endpoint != null && !s3Endpoint.isBlank() && !isAwsEndpoint(s3Endpoint)) {
+            // MinIO/custom S3: presigned URLs embedded with the same endpoint consumers must use
+            log.debug("Using s3.endpoint as presigned URL base: {}", s3Endpoint);
+            return s3Endpoint;
+        }
+        // AWS mode: derive virtual-hosted-style endpoint from region and bucket name
+        String region = s3Properties.getRegion();
+        if (region == null || region.isBlank()) {
+            throw new IllegalStateException("S3 region must be configured when externalPresignedEndpoint is blank");
+        }
+        if ("us-east-1".equals(region)) {
+            externalEndpoint = String.format("https://%s.s3.amazonaws.com", bucketName);
+        } else {
+            externalEndpoint = String.format("https://%s.s3.%s.amazonaws.com", bucketName, region);
+        }
+        log.info("Derived externalPresignedEndpoint for AWS: {}", externalEndpoint);
         return externalEndpoint;
     }
 

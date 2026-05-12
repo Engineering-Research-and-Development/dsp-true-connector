@@ -163,8 +163,11 @@ services:
       - S3_REGION=us-east-1
       # Must match connector-a's s3.bucketName so downloaded files land in consumer's own bucket
       - S3_BUCKETNAME=dsp-true-connector-a
-      # viewData presigned URLs are consumed by external clients (Newman); use Docker bridge gateway
-      - S3_EXTERNAL_PRESIGNED_ENDPOINT=http://172.17.0.1:9000
+      # viewData presigned URLs are consumed by external clients (Newman running on the host).
+      # Defaults to localhost:9000 (MinIO port is published). GHA overrides via MINIO_EXTERNAL_URL
+      # to the Docker bridge gateway (172.17.0.1:9000) because matt-ball/newman-action runs Newman
+      # inside a Docker container where localhost does not reach the host.
+      - S3_EXTERNAL_PRESIGNED_ENDPOINT=${MINIO_EXTERNAL_URL:-http://localhost:9000}
 
   ### data-plane-http-pull-b (provider pull DP — registers with connector-b)
   ### Used for: startTransfer presigned URL generation for artifact in provider's bucket

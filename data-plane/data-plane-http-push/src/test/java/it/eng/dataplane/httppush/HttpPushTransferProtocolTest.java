@@ -7,7 +7,6 @@ import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.util.S3Utils;
-import it.eng.tools.service.FieldEncryptionService;
 import it.eng.dataplane.s3.service.TenantBucketResolver;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,8 +47,6 @@ class HttpPushTransferProtocolTest {
     @Mock
     private TenantBucketResolver tenantBucketResolver;
     @Mock
-    private FieldEncryptionService fieldEncryptionService;
-    @Mock
     private S3Properties s3Properties;
 
     private HttpPushTransferProtocol protocol;
@@ -65,7 +62,6 @@ class HttpPushTransferProtocolTest {
             s3Properties,
             temporaryBucketUserService,
             tenantBucketResolver,
-            fieldEncryptionService,
             syncExecutor
         );
     }
@@ -159,7 +155,6 @@ class HttpPushTransferProtocolTest {
         when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
         when(s3ClientService.generateGetPresignedUrl(eq("provider-bucket"), anyString(), any(Duration.class)))
             .thenReturn(presignedUrl);
-        when(fieldEncryptionService.decrypt(anyString())).thenReturn("plain-secret");
         when(s3ClientService.uploadFile(any(), any(), any(), any()))
             .thenReturn(CompletableFuture.completedFuture("etag-xyz"));
 
@@ -167,7 +162,7 @@ class HttpPushTransferProtocolTest {
         dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
         dataAddress.put(S3Utils.OBJECT_KEY, "tp-obj-key");
         dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
-        dataAddress.put(S3Utils.SECRET_KEY, "encrypted-secret");
+        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
         dataAddress.put(S3Utils.ENDPOINT_OVERRIDE, "http://consumer-minio:9000");
         dataAddress.put(S3Utils.REGION, "us-east-1");
 
@@ -204,14 +199,13 @@ class HttpPushTransferProtocolTest {
         when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
         when(s3ClientService.generateGetPresignedUrl(anyString(), anyString(), any(Duration.class)))
             .thenReturn(presignedUrl);
-        when(fieldEncryptionService.decrypt(anyString())).thenReturn("plain-secret");
         when(s3ClientService.uploadFile(any(), any(), any(), any()))
             .thenReturn(CompletableFuture.completedFuture("etag-xyz"));
 
         Map<String, String> dataAddress = new HashMap<>();
         dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
         dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
-        dataAddress.put(S3Utils.SECRET_KEY, "encrypted-secret");
+        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
         dataAddress.put(S3Utils.REGION, "us-east-1");
 
         DataFlow dataFlow = DataFlow.Builder.newInstance()
@@ -253,7 +247,6 @@ class HttpPushTransferProtocolTest {
         when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
         when(s3ClientService.generateGetPresignedUrl(anyString(), anyString(), any(Duration.class)))
             .thenReturn(presignedUrl);
-        when(fieldEncryptionService.decrypt(anyString())).thenReturn("plain-secret");
         // Simulate upload failure
         when(s3ClientService.uploadFile(any(), any(), any(), any()))
             .thenReturn(CompletableFuture.failedFuture(new RuntimeException("S3 auth failure")));
@@ -261,7 +254,7 @@ class HttpPushTransferProtocolTest {
         Map<String, String> dataAddress = new HashMap<>();
         dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
         dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
-        dataAddress.put(S3Utils.SECRET_KEY, "encrypted-secret");
+        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
         dataAddress.put(S3Utils.REGION, "us-east-1");
 
         DataFlow dataFlow = DataFlow.Builder.newInstance()

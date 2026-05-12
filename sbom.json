@@ -4,7 +4,7 @@
   "serialNumber" : "urn:uuid:b1311e61-f24d-32d9-8999-e1cc3c1458c7",
   "version" : 1,
   "metadata" : {
-    "timestamp" : "2026-05-12T10:42:16Z",
+    "timestamp" : "2026-05-12T14:45:49Z",
     "lifecycles" : [
       {
         "phase" : "build"
@@ -12971,7 +12971,8 @@
         "pkg:maven/com.fasterxml.jackson.core/jackson-databind@2.18.6?type=jar",
         "pkg:maven/jakarta.validation/jakarta.validation-api@3.0.2?type=jar",
         "pkg:maven/org.projectlombok/lombok@1.18.42?type=jar",
-        "pkg:maven/org.springframework.data/spring-data-mongodb@4.5.9?type=jar"
+        "pkg:maven/org.springframework.data/spring-data-mongodb@4.5.9?type=jar",
+        "pkg:maven/org.springframework.boot/spring-boot-starter-validation@3.5.11?type=jar"
       ]
     },
     {

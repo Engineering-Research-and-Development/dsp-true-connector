@@ -9,7 +9,6 @@ import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.util.S3Utils;
-import it.eng.tools.service.FieldEncryptionService;
 import it.eng.dataplane.s3.service.TenantBucketResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +43,6 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     private final S3Properties s3Properties;
     private final TemporaryBucketUserService temporaryBucketUserService;
     private final TenantBucketResolver tenantBucketResolver;
-    private final FieldEncryptionService fieldEncryptionService;
     @Qualifier("transferExecutor")
     private final Executor transferExecutor;
 
@@ -303,7 +301,8 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
 
     /**
      * Builds the consumer S3 properties map from the data address.
-     * The secretKey is decrypted because it is stored encrypted in the TransferProcess.
+     * The secretKey is passed as plain text — the consumer DP returns it unencrypted
+     * in the {@code DataFlowPrepareResponse} and the CP forwards it without encrypting.
      *
      * @param dataAddress the data address map from the DataFlow
      * @param processId   the transfer process ID used as object key fallback
@@ -318,12 +317,10 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
 
         props.put(S3Utils.ACCESS_KEY, dataAddress.get(S3Utils.ACCESS_KEY));
 
-        // The secretKey is stored encrypted in the TransferProcess — decrypt it here
-        String encryptedSecret = dataAddress.get(S3Utils.SECRET_KEY);
-        String plainSecret = StringUtils.isNotBlank(encryptedSecret)
-            ? fieldEncryptionService.decrypt(encryptedSecret)
-            : encryptedSecret;
-        props.put(S3Utils.SECRET_KEY, plainSecret);
+        // The secretKey arrives as plain text — set directly without decryption.
+        // The consumer DP (prepare()) returns a plain secretKey in the DataFlowPrepareResponse.
+        // The CP passes it through without encrypting, so no decryption is needed here.
+        props.put(S3Utils.SECRET_KEY, dataAddress.get(S3Utils.SECRET_KEY));
 
         String endpointOverride = dataAddress.get(S3Utils.ENDPOINT_OVERRIDE);
         if (StringUtils.isNotBlank(endpointOverride)) {

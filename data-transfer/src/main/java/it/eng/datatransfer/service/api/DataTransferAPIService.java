@@ -375,9 +375,6 @@ public class DataTransferAPIService {
                     .build();
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
-            if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcessStarted.getRole())) {
-                sendDataFlowStartToDataPlane(transferProcessStarted);
-            }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
                     "Transfer process started successfully",
                     auditMap("transferProcess", transferProcessStarted,
@@ -642,10 +639,11 @@ public class DataTransferAPIService {
         // DataFlowCallbackController when done. Completion/termination lifecycle is driven
         // entirely by those callbacks — do NOT call completeTransfer() here.
         try {
-            // Use providerCallbackAddress() (base URL without /consumer suffix) so the Data Plane
+            // Use dataPlaneFeedbackAddress() (global base URL, no tenant path) so the Data Plane
             // can POST back to /api/v1/dataflows/complete on this connector's admin chain.
-            // consumerCallbackAddress() appends /consumer which is for DSP protocol only.
-            String callbackAddress = dataTransferProperties.providerCallbackAddress();
+            // providerCallbackAddress() would include the tenant path which the admin
+            // DataFlowCallbackController does not have, causing a 404.
+            String callbackAddress = dataTransferProperties.dataPlaneFeedbackAddress();
             DataFlowStartMessage startMessage = DataFlowStartMessage.Builder.newInstance()
                     .processId(transferProcessDownloading.getId())
                     .transferType(transferProcessDownloading.getFormat())
@@ -828,7 +826,9 @@ public class DataTransferAPIService {
             log.debug("Transfer type not set for process {}, skipping Data Plane routing", transferProcess.getId());
             return;
         }
-        String callbackAddress = dataTransferProperties.providerCallbackAddress();
+        // Use the global feedback address (no tenant path) so the DP can POST back to
+        // /api/v1/dataflows/complete on the admin chain.
+        String callbackAddress = dataTransferProperties.dataPlaneFeedbackAddress();
         DataFlowStartMessage startMessage = DataFlowStartMessage.Builder.newInstance()
                 .processId(transferProcess.getId())
                 .transferType(transferType)
