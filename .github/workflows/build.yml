@@ -59,8 +59,8 @@ jobs:
       - name: Build and push data-plane-http-pull Docker image
         uses: docker/build-push-action@v6
         with:
-          context: ./data-plane-http-pull
-          file: ./data-plane-http-pull/Dockerfile
+          context: ./data-plane/data-plane-http-pull
+          file: ./data-plane/data-plane-http-pull/Dockerfile
           no-cache: true
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-data-plane-http-pull:test
@@ -68,8 +68,8 @@ jobs:
       - name: Build and push data-plane-http-push Docker image
         uses: docker/build-push-action@v6
         with:
-          context: ./data-plane-http-push
-          file: ./data-plane-http-push/Dockerfile
+          context: ./data-plane/data-plane-http-push
+          file: ./data-plane/data-plane-http-push/Dockerfile
           no-cache: true
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-data-plane-http-push:test

@@ -73,10 +73,7 @@
         <module>tools</module>
         <module>negotiation</module>
         <module>data-transfer</module>
-        <module>data-plane-api</module>
-        <module>data-plane-core</module>
-        <module>data-plane-http-pull</module>
-        <module>data-plane-http-push</module>
+        <module>data-plane</module>
     </modules>
 
     <dependencyManagement>

@@ -4,15 +4,16 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>it.eng</groupId>
-        <artifactId>trueconnector</artifactId>
+        <groupId>it.eng.dataplane</groupId>
+        <artifactId>data-plane</artifactId>
         <version>${revision}</version>
+        <relativePath>../pom.xml</relativePath>
     </parent>
     <groupId>it.eng.dataplane</groupId>
-    <artifactId>data-plane-http-pull</artifactId>
+    <artifactId>data-plane-http-push</artifactId>
     <packaging>jar</packaging>
-    <name>Data Plane HTTP Pull</name>
-    <description>Data Plane HTTP-PULL - Standalone Spring Boot service for HttpData-PULL transfers</description>
+    <name>Data Plane HTTP Push</name>
+    <description>Data Plane HTTP-PUSH - Standalone Spring Boot service for HttpData-PUSH transfers</description>
     <dependencies>
         <dependency>
             <groupId>it.eng.dataplane</groupId>
