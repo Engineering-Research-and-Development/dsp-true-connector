@@ -8,6 +8,7 @@ import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.dataplane.core.model.DataFlowEntity;
 import it.eng.dataplane.core.registry.DataTransferProtocolRegistry;
 import it.eng.dataplane.core.repository.DataFlowRepository;
+import it.eng.dataplane.core.service.DataPlaneAuditEventService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,13 +39,16 @@ class DataFlowServiceTest {
     private ControlPlaneClient controlPlaneClient;
 
     @Mock
+    private DataPlaneAuditEventService auditEventService;
+
+    @Mock
     private DataTransferProtocol protocol;
 
     private DataFlowService service;
 
     @BeforeEach
     void setUp() {
-        service = new DataFlowService(repository, registry, controlPlaneClient);
+        service = new DataFlowService(repository, registry, controlPlaneClient, auditEventService);
     }
 
     /**

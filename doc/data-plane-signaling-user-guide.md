@@ -104,7 +104,69 @@ for 7 days.
 
 ---
 
-## Suspend and Resume
+## Audit Events
+
+Both the Control Plane and each Data Plane record audit events to their respective MongoDB
+collections.
+
+### Control Plane audit events for DP registration
+
+Query via the CP admin API:
+
+```bash
+# All DP registration events
+curl "http://localhost:8080/api/v1/audit-events?eventType=Data+Plane+registered" \
+  -u admin@mail.com:password
+
+# All DP audit event types
+curl http://localhost:8080/api/v1/audit-events/types \
+  -u admin@mail.com:password
+```
+
+| Event type | Trigger |
+|---|---|
+| `DATAPLANE_REGISTERED` | New DP connected (`POST /api/v1/dataplanes`) |
+| `DATAPLANE_REGISTRATION_UPDATED` | DP restarted and re-registered (idempotent update) |
+| `DATAPLANE_DEREGISTERED` | DP removed (`DELETE /api/v1/dataplanes/{id}`) |
+| `DATAPLANE_REGISTRATION_NOT_FOUND` | Delete attempted on unknown registration ID |
+
+### Data Plane audit events
+
+Each DP exposes its own audit event API at `/api/v1/audit-events` (protected by `X-Api-Key`):
+
+```bash
+# All events for a specific transfer
+curl "http://localhost:9090/api/v1/audit-events?processId=urn:uuid:..." \
+  -H "X-Api-Key: dp-secret-key"
+
+# Filter by transfer type
+curl "http://localhost:9090/api/v1/audit-events?transferType=HttpData-PULL" \
+  -H "X-Api-Key: dp-secret-key"
+
+# Filter by event type
+curl "http://localhost:9090/api/v1/audit-events?eventType=Data+flow+completed" \
+  -H "X-Api-Key: dp-secret-key"
+
+# Supported event types
+curl http://localhost:9090/api/v1/audit-events/types \
+  -H "X-Api-Key: dp-secret-key"
+```
+
+| Event type | When |
+|---|---|
+| `DATAFLOW_STARTED` | DP receives `/dataflows/start` |
+| `DATAFLOW_PREPARE_REQUESTED` | DP receives `/dataflows/prepare` |
+| `DATAFLOW_COMPLETED` | Transfer finishes and CP is notified |
+| `DATAFLOW_FAILED` | Transfer fails, CP is notified of error |
+| `DATAFLOW_TERMINATED` | Explicit terminate received |
+| `DATAFLOW_SUSPENDED` | Suspend received |
+| `DP_REGISTRATION_SUCCESS` | DP successfully registered with CP on startup |
+| `DP_REGISTRATION_FAILED` | CP registration failed after all retries |
+
+Events are stored in the `dp_audit_events` MongoDB collection on each DP's own MongoDB instance.
+This is separate from the CP's `audit_events` collection because the DP is an independent service.
+
+---
 
 A transfer in `STARTED` state can be suspended **before** data movement has started:
 

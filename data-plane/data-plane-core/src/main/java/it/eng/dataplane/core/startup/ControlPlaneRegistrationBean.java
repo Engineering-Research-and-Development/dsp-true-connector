@@ -2,7 +2,9 @@ package it.eng.dataplane.core.startup;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dataplane.core.config.DataPlaneProperties;
+import it.eng.dataplane.core.model.DataPlaneAuditEventType;
 import it.eng.dataplane.core.registry.DataTransferProtocolRegistry;
+import it.eng.dataplane.core.service.DataPlaneAuditEventService;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -32,21 +34,25 @@ public class ControlPlaneRegistrationBean implements ApplicationListener<Applica
     private final DataTransferProtocolRegistry registry;
     private final OkHttpClient okHttpClient;
     private final ObjectMapper objectMapper;
+    private final DataPlaneAuditEventService auditEventService;
 
     /**
      * @param properties DP runtime configuration
      * @param registry registered transfer protocol implementations
      * @param okHttpClient TLS-aware HTTP client
      * @param objectMapper shared Jackson mapper
+     * @param auditEventService audit event service for recording registration outcomes
      */
     public ControlPlaneRegistrationBean(DataPlaneProperties properties,
                                         DataTransferProtocolRegistry registry,
                                         OkHttpClient okHttpClient,
-                                        ObjectMapper objectMapper) {
+                                        ObjectMapper objectMapper,
+                                        DataPlaneAuditEventService auditEventService) {
         this.properties = properties;
         this.registry = registry;
         this.okHttpClient = okHttpClient;
         this.objectMapper = objectMapper;
+        this.auditEventService = auditEventService;
     }
 
     @Override
@@ -83,6 +89,9 @@ public class ControlPlaneRegistrationBean implements ApplicationListener<Applica
                 try (Response response = okHttpClient.newCall(request).execute()) {
                     if (response.isSuccessful()) {
                         log.info("Registered with CP at {} (attempt {})", url, attempt);
+                        auditEventService.saveEvent(DataPlaneAuditEventType.DP_REGISTRATION_SUCCESS,
+                                null, null, "Data Plane registered with Control Plane",
+                                Map.of("controlPlaneUrl", url, "attempt", String.valueOf(attempt)));
                         return;
                     }
                     log.warn("Registration attempt {}/{} rejected HTTP {}", attempt, MAX_ATTEMPTS, response.code());
@@ -95,6 +104,9 @@ public class ControlPlaneRegistrationBean implements ApplicationListener<Applica
             }
         }
         log.error("Failed to register with CP after {} attempts", MAX_ATTEMPTS);
+        auditEventService.saveEvent(DataPlaneAuditEventType.DP_REGISTRATION_FAILED,
+                null, null, "Data Plane registration with Control Plane failed",
+                Map.of("controlPlaneUrl", url, "attempts", String.valueOf(MAX_ATTEMPTS)));
     }
 
     protected void sleep(long ms) {

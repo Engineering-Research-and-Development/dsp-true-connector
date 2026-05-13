@@ -214,8 +214,11 @@ Suspend is safe and allowed when:
 | `POST` | `/dataflows/prepare` | Prepare without transferring (returns presigned URL) |
 | `DELETE` | `/dataflows/{id}` | Terminate/abort a data flow |
 | `GET` | `/actuator/health` | Health check |
+| `GET` | `/api/v1/audit-events` | List audit events (paginated, filterable) |
+| `GET` | `/api/v1/audit-events/{id}` | Fetch a single audit event by ID |
+| `GET` | `/api/v1/audit-events/types` | List all supported audit event types |
 
-All endpoints require the `X-Api-Key` header.
+All endpoints require the `X-Api-Key` header except `/actuator/health`.
 
 ---
 
@@ -247,9 +250,39 @@ See `doc/security.md` for truststore configuration details.
 
 ## MongoDB Collections
 
-| Collection | Model | Owner |
-|---|---|---|
-| `data_plane_registrations` | `DataPlaneRegistration` | CP (`data-transfer` module) |
+| Collection | Model | Owner | Description |
+|---|---|---|---|
+| `data_plane_registrations` | `DataPlaneRegistration` | CP (`data-transfer`) | Registered DP endpoints |
+| `dp_audit_events` | `DataPlaneAuditEvent` | Each DP (`data-plane-core`) | DP lifecycle audit trail |
+| `audit_events` | `AuditEvent` | CP (`tools`) | CP audit trail (incl. DP registration events) |
+
+The DP's `dp_audit_events` collection is **per-DP instance** — each pull and push DP has its own
+collection in its own MongoDB. It is kept separate from the CP's `audit_events` collection because
+each DP is a fully independent application with its own database connection.
+
+### CP audit events for DP registration
+
+The CP publishes to `audit_events` whenever a DP registers or deregisters:
+
+| Event type | When |
+|---|---|
+| `DATAPLANE_REGISTERED` | New DP endpoint registered (`POST /api/v1/dataplanes`) |
+| `DATAPLANE_REGISTRATION_UPDATED` | Existing endpoint re-registered (DP restart) |
+| `DATAPLANE_DEREGISTERED` | DP removed (`DELETE /api/v1/dataplanes/{id}`) |
+| `DATAPLANE_REGISTRATION_NOT_FOUND` | Delete attempted on unknown ID |
+
+### DP audit event types
+
+| Event type | When |
+|---|---|
+| `DATAFLOW_STARTED` | `POST /dataflows/start` received and persisted |
+| `DATAFLOW_PREPARE_REQUESTED` | `POST /dataflows/prepare` received |
+| `DATAFLOW_COMPLETED` | Transfer completed successfully |
+| `DATAFLOW_FAILED` | Transfer failed (error propagated to CP) |
+| `DATAFLOW_TERMINATED` | Explicit `DELETE /dataflows/{id}` received |
+| `DATAFLOW_SUSPENDED` | `POST /dataflows/suspend/{id}` received |
+| `DP_REGISTRATION_SUCCESS` | CP registration succeeded at startup |
+| `DP_REGISTRATION_FAILED` | CP registration failed after all retries |
 
 ---
 

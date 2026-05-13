@@ -14,6 +14,9 @@ public final class DataPlaneApiEndpoints {
     /** Callback endpoint to report a failed data flow. */
     public static final String DATAFLOW_CALLBACK_ERROR = "/api/v1/dataflows/error";
 
+    /** Endpoint for querying Data Plane audit events. */
+    public static final String AUDIT_EVENTS_V1 = "/api/v1/audit-events";
+
     private DataPlaneApiEndpoints() {
     }
 }

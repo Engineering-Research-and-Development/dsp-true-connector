@@ -4,8 +4,10 @@ import it.eng.dataplane.api.message.DataFlowPrepareMessage;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
 import it.eng.dataplane.api.model.DataFlow;
+import it.eng.dataplane.core.model.DataPlaneAuditEventType;
 import it.eng.dataplane.core.registry.DataTransferProtocolRegistry;
 import it.eng.dataplane.core.service.DataFlowService;
+import it.eng.dataplane.core.service.DataPlaneAuditEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -24,6 +26,7 @@ public class DataFlowController {
 
     private final DataFlowService dataFlowService;
     private final DataTransferProtocolRegistry protocolRegistry;
+    private final DataPlaneAuditEventService auditEventService;
 
     /**
      * Initiates a new data transfer based on a Control Plane request.
@@ -89,6 +92,9 @@ public class DataFlowController {
                     .processId(message.getProcessId())
                     .build();
         }
+        auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_PREPARE_REQUESTED,
+                message.getProcessId(), transferType,
+                "Data flow prepare requested", null);
         return ResponseEntity.ok(response);
     }
 

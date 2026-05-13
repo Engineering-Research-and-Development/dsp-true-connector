@@ -3,6 +3,7 @@ package it.eng.dataplane.core.startup;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dataplane.core.config.DataPlaneProperties;
 import it.eng.dataplane.core.registry.DataTransferProtocolRegistry;
+import it.eng.dataplane.core.service.DataPlaneAuditEventService;
 import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
@@ -39,13 +40,16 @@ class ControlPlaneRegistrationBeanTest {
     @Mock
     private Call call;
 
+    @Mock
+    private DataPlaneAuditEventService auditEventService;
+
     private ControlPlaneRegistrationBean bean;
     private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
-        bean = spy(new ControlPlaneRegistrationBean(properties, registry, okHttpClient, objectMapper) {
+        bean = spy(new ControlPlaneRegistrationBean(properties, registry, okHttpClient, objectMapper, auditEventService) {
             @Override
             protected void sleep(long ms) {
                 // no-op in tests to avoid delays

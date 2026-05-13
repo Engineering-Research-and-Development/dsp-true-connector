@@ -47,7 +47,12 @@ public enum AuditEventType {
     TENANT_ENABLED("Tenant enabled"),
     TENANT_DISABLED("Tenant disabled"),
     TENANT_UPDATED("Tenant updated"),
-    TENANT_NOT_FOUND("Tenant not found");
+    TENANT_NOT_FOUND("Tenant not found"),
+
+    DATAPLANE_REGISTERED("Data Plane registered"),
+    DATAPLANE_REGISTRATION_UPDATED("Data Plane registration updated"),
+    DATAPLANE_DEREGISTERED("Data Plane deregistered"),
+    DATAPLANE_REGISTRATION_NOT_FOUND("Data Plane registration not found");
 
     private final String auditEventType;
     private static final Map<String, AuditEventType> BY_LABEL;

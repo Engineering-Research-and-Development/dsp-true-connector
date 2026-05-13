@@ -3,6 +3,7 @@ package it.eng.datatransfer.service;
 import it.eng.datatransfer.exceptions.DataPlaneNotFoundException;
 import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.datatransfer.repository.DataPlaneRegistrationRepository;
+import it.eng.tools.service.AuditEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,6 +24,9 @@ public class DataPlaneRegistrationServiceTest {
 
     @Mock
     private DataPlaneRegistrationRepository repository;
+
+    @Mock
+    private AuditEventPublisher auditEventPublisher;
 
     @InjectMocks
     private DataPlaneRegistrationService service;

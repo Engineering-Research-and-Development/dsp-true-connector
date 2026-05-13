@@ -4,7 +4,7 @@
   "serialNumber" : "urn:uuid:b1311e61-f24d-32d9-8999-e1cc3c1458c7",
   "version" : 1,
   "metadata" : {
-    "timestamp" : "2026-05-12T14:45:49Z",
+    "timestamp" : "2026-05-13T14:04:02Z",
     "lifecycles" : [
       {
         "phase" : "build"
@@ -11753,6 +11753,42 @@
           "url" : "https://github.com/apache/httpcomponents-client/tree/4.5.14/httpclient"
         }
       ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/it.eng.dataplane/data-plane-core@0.6.12-SNAPSHOT?type=jar",
+      "group" : "it.eng.dataplane",
+      "name" : "data-plane-core",
+      "version" : "0.6.12-SNAPSHOT",
+      "description" : "Data Plane Core - Shared runtime library: registration, routing, and CP communication",
+      "purl" : "pkg:maven/it.eng.dataplane/data-plane-core@0.6.12-SNAPSHOT?type=jar"
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/it.eng.dataplane/data-plane-s3@0.6.12-SNAPSHOT?type=jar",
+      "group" : "it.eng.dataplane",
+      "name" : "data-plane-s3",
+      "version" : "0.6.12-SNAPSHOT",
+      "description" : "Data Plane S3 bridge — provides TenantBucketResolver and OkHttpClientConfiguration for DP context, depends on shared s3-support",
+      "purl" : "pkg:maven/it.eng.dataplane/data-plane-s3@0.6.12-SNAPSHOT?type=jar"
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/it.eng.dataplane/data-plane-http-pull@0.6.12-SNAPSHOT?type=jar",
+      "group" : "it.eng.dataplane",
+      "name" : "data-plane-http-pull",
+      "version" : "0.6.12-SNAPSHOT",
+      "description" : "Data Plane HTTP-PULL - Standalone Spring Boot service for HttpData-PULL transfers",
+      "purl" : "pkg:maven/it.eng.dataplane/data-plane-http-pull@0.6.12-SNAPSHOT?type=jar"
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/it.eng.dataplane/data-plane-http-push@0.6.12-SNAPSHOT?type=jar",
+      "group" : "it.eng.dataplane",
+      "name" : "data-plane-http-push",
+      "version" : "0.6.12-SNAPSHOT",
+      "description" : "Data Plane HTTP-PUSH - Standalone Spring Boot service for HttpData-PUSH transfers",
+      "purl" : "pkg:maven/it.eng.dataplane/data-plane-http-push@0.6.12-SNAPSHOT?type=jar"
     }
   ],
   "dependencies" : [
@@ -12962,7 +12998,11 @@
     {
       "ref" : "pkg:maven/it.eng.dataplane/data-plane@0.6.12-SNAPSHOT?type=pom",
       "dependsOn" : [
-        "pkg:maven/it.eng.dataplane/data-plane-api@0.6.12-SNAPSHOT?type=jar"
+        "pkg:maven/it.eng.dataplane/data-plane-api@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/it.eng.dataplane/data-plane-core@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/it.eng.dataplane/data-plane-s3@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/it.eng.dataplane/data-plane-http-pull@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/it.eng.dataplane/data-plane-http-push@0.6.12-SNAPSHOT?type=jar"
       ]
     },
     {
@@ -13228,6 +13268,43 @@
     {
       "ref" : "pkg:maven/org.passay/passay@1.6.6?type=jar",
       "dependsOn" : [ ]
+    },
+    {
+      "ref" : "pkg:maven/it.eng.dataplane/data-plane-core@0.6.12-SNAPSHOT?type=jar",
+      "dependsOn" : [
+        "pkg:maven/it.eng.dataplane/data-plane-api@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/com.squareup.okhttp3/okhttp@4.12.0?type=jar",
+        "pkg:maven/org.springframework.boot/spring-boot-starter-web@3.5.11?type=jar",
+        "pkg:maven/org.springframework.boot/spring-boot-starter-data-mongodb@3.5.11?type=jar",
+        "pkg:maven/org.springframework.boot/spring-boot-starter-actuator@3.5.11?type=jar",
+        "pkg:maven/org.springframework.boot/spring-boot-starter-security@3.5.11?type=jar",
+        "pkg:maven/org.springframework.boot/spring-boot-starter-oauth2-resource-server@3.5.11?type=jar",
+        "pkg:maven/org.projectlombok/lombok@1.18.42?type=jar",
+        "pkg:maven/org.springframework.boot/spring-boot-starter-validation@3.5.11?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/it.eng.dataplane/data-plane-s3@0.6.12-SNAPSHOT?type=jar",
+      "dependsOn" : [
+        "pkg:maven/it.eng/s3-support@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/org.projectlombok/lombok@1.18.42?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/it.eng.dataplane/data-plane-http-pull@0.6.12-SNAPSHOT?type=jar",
+      "dependsOn" : [
+        "pkg:maven/it.eng.dataplane/data-plane-core@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/it.eng.dataplane/data-plane-s3@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/org.springframework.boot/spring-boot-starter-validation@3.5.11?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/it.eng.dataplane/data-plane-http-push@0.6.12-SNAPSHOT?type=jar",
+      "dependsOn" : [
+        "pkg:maven/it.eng.dataplane/data-plane-core@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/it.eng.dataplane/data-plane-s3@0.6.12-SNAPSHOT?type=jar",
+        "pkg:maven/org.springframework.boot/spring-boot-starter-validation@3.5.11?type=jar"
+      ]
     }
   ]
 }

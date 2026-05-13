@@ -6,12 +6,14 @@ import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.dataplane.core.model.DataFlowEntity;
+import it.eng.dataplane.core.model.DataPlaneAuditEventType;
 import it.eng.dataplane.core.registry.DataTransferProtocolRegistry;
 import it.eng.dataplane.core.repository.DataFlowRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -32,6 +34,7 @@ public class DataFlowService {
     private final DataFlowRepository repository;
     private final DataTransferProtocolRegistry registry;
     private final ControlPlaneClient controlPlaneClient;
+    private final DataPlaneAuditEventService auditEventService;
 
     /**
      * Starts a data transfer using the appropriate protocol implementation.
@@ -52,6 +55,10 @@ public class DataFlowService {
 
         DataFlowEntity entity = toEntity(dataFlow, DataFlowState.STARTED);
         repository.save(entity);
+
+        auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_STARTED,
+                dataFlow.getProcessId(), dataFlow.getTransferType(),
+                "Data flow started", Map.of("dataFlowId", String.valueOf(dataFlow.getDataFlowId())));
 
         protocol.initiateTransfer(dataFlow)
             .thenAccept(result -> handleCompletion(entity, result))
@@ -76,6 +83,8 @@ public class DataFlowService {
         } else {
             updateState(entity, DataFlowState.TERMINATED);
         }
+        auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_TERMINATED,
+                processId, entity.getTransferType(), "Data flow terminated", null);
     }
 
     /**
@@ -96,11 +105,15 @@ public class DataFlowService {
         } else {
             updateState(entity, DataFlowState.SUSPENDED);
         }
+        auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_SUSPENDED,
+                processId, entity.getTransferType(), "Data flow suspended", null);
     }
 
     private void handleCompletion(DataFlowEntity entity, DataFlowResult result) {
         if (result.isSuccess()) {
             updateState(entity, DataFlowState.COMPLETED);
+            auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_COMPLETED,
+                    entity.getProcessId(), entity.getTransferType(), "Data flow completed", null);
             CompletableFuture.runAsync(() ->
                 controlPlaneClient.sendStatus(entity.getCallbackAddress(), entity.getProcessId(),
                     DataFlowState.COMPLETED, null, null),
@@ -118,6 +131,9 @@ public class DataFlowService {
         } catch (Exception saveEx) {
             log.error("Failed to persist TERMINATED state for DataFlow {}: {}", entity.getId(), saveEx.getMessage());
         }
+        auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_FAILED,
+                entity.getProcessId(), entity.getTransferType(), "Data flow failed",
+                Map.of("error", ex.getMessage() != null ? ex.getMessage() : "unknown"));
         CompletableFuture.runAsync(() ->
             controlPlaneClient.sendStatus(entity.getCallbackAddress(), entity.getProcessId(),
                 DataFlowState.TERMINATED, null, ex.getMessage()),
