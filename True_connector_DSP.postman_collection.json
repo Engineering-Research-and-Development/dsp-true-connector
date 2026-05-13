@@ -2677,12 +2677,12 @@
 									}
 								],
 								"url": {
-									"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+									"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}/{{provider_transferProcessId}}/download",
 									"host": [
-										"{{CONSUMER_SERVER_API_TRANSFERS}}"
+										"{{PROVIDER_SERVER_API_TRANSFERS}}"
 									],
 									"path": [
-										"{{consumer_transferProcessId}}",
+										"{{provider_transferProcessId}}",
 										"download"
 									]
 								}
@@ -3119,6 +3119,543 @@
 						}
 					},
 					"response": []
+				}
+			]
+		},
+		{
+			"name": "DataPlane Management",
+			"item": [
+				{
+					"name": "CP - Data Planes",
+					"item": [
+						{
+							"name": "List registered Data Planes (Consumer CP)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER}}/api/v1/dataplanes",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"dataplanes"
+									]
+								},
+								"description": "List all Data Plane instances registered with the Consumer Control Plane."
+							},
+							"response": []
+						},
+						{
+							"name": "List registered Data Planes (Provider CP)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PROVIDER}}/api/v1/dataplanes",
+									"host": [
+										"{{PROVIDER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"dataplanes"
+									]
+								},
+								"description": "List all Data Plane instances registered with the Provider Control Plane."
+							},
+							"response": []
+						},
+						{
+							"name": "Register Data Plane (Consumer CP)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER}}/api/v1/dataplanes",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"dataplanes"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"endpoint\": \"http://localhost:9090\",\n  \"supportedTransferTypes\": [\n    \"HttpData-PULL\"\n  ]\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "internal-service",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "internal-service-secret-change-in-prod",
+											"type": "string"
+										}
+									]
+								},
+								"description": "Manually register a Data Plane with the Consumer CP. The DP registers itself automatically on startup."
+							},
+							"response": []
+						},
+						{
+							"name": "Register Data Plane (Provider CP)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PROVIDER}}/api/v1/dataplanes",
+									"host": [
+										"{{PROVIDER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"dataplanes"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"endpoint\": \"http://localhost:9091\",\n  \"supportedTransferTypes\": [\n    \"HttpData-PUSH\"\n  ]\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "internal-service",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "internal-service-secret-change-in-prod",
+											"type": "string"
+										}
+									]
+								},
+								"description": "Manually register a Data Plane with the Provider CP."
+							},
+							"response": []
+						},
+						{
+							"name": "Deregister Data Plane (Consumer CP)",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{CONSUMER}}/api/v1/dataplanes/{{dp_id}}",
+									"host": [
+										"{{CONSUMER}}"
+									],
+									"path": [
+										"api",
+										"v1",
+										"dataplanes",
+										"{{dp_id}}"
+									]
+								},
+								"description": "Remove a Data Plane registration from the Consumer CP by its ID."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "HTTP-PULL DP Admin (port 9090)",
+					"item": [
+						{
+							"name": "Health check",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PULL_DP_A}}/actuator/health",
+									"host": [
+										"{{PULL_DP_A}}"
+									],
+									"path": [
+										"actuator",
+										"health"
+									]
+								},
+								"description": "Check health of the HTTP-PULL Data Plane."
+							},
+							"response": []
+						},
+						{
+							"name": "List active DataFlows",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PULL_DP_A}}/dataflows",
+									"host": [
+										"{{PULL_DP_A}}"
+									],
+									"path": [
+										"dataflows"
+									]
+								},
+								"description": "List all active DataFlow records managed by this Data Plane."
+							},
+							"response": []
+						},
+						{
+							"name": "Prepare DataFlow (generate presigned URL)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PULL_DP_A}}/dataflows/prepare",
+									"host": [
+										"{{PULL_DP_A}}"
+									],
+									"path": [
+										"dataflows",
+										"prepare"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"processId\": \"{{consumer_transferProcessId}}\",\n  \"callbackAddress\": \"http://localhost:8080\",\n  \"agreementId\": \"{{agreementId}}\",\n  \"datasetId\": \"{{provider_datasetId}}\",\n  \"dataAddress\": {\n    \"transferType\": \"HttpData-PULL\"\n  }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"description": "Ask the HTTP-PULL DP to allocate a presigned GET URL for the artifact."
+							},
+							"response": []
+						},
+						{
+							"name": "Start DataFlow (consumer download)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PULL_DP_A}}/dataflows/start",
+									"host": [
+										"{{PULL_DP_A}}"
+									],
+									"path": [
+										"dataflows",
+										"start"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"processId\": \"{{consumer_transferProcessId}}\",\n  \"transferType\": \"HttpData-PULL\",\n  \"callbackAddress\": \"http://localhost:8080\",\n  \"agreementId\": \"{{agreementId}}\",\n  \"datasetId\": \"{{provider_datasetId}}\",\n  \"dataAddress\": {}\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"description": "Instruct the HTTP-PULL DP to download the artifact from the provider and upload to S3."
+							},
+							"response": []
+						},
+						{
+							"name": "Terminate DataFlow",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PULL_DP_A}}/dataflows/terminate/{{consumer_transferProcessId}}",
+									"host": [
+										"{{PULL_DP_A}}"
+									],
+									"path": [
+										"dataflows",
+										"terminate",
+										"{{consumer_transferProcessId}}"
+									]
+								},
+								"description": "Terminate an active DataFlow on the HTTP-PULL DP."
+							},
+							"response": []
+						},
+						{
+							"name": "Suspend DataFlow",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PULL_DP_A}}/dataflows/suspend/{{consumer_transferProcessId}}",
+									"host": [
+										"{{PULL_DP_A}}"
+									],
+									"path": [
+										"dataflows",
+										"suspend",
+										"{{consumer_transferProcessId}}"
+									]
+								},
+								"description": "Suspend an active DataFlow on the HTTP-PULL DP."
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "HTTP-PUSH DP Admin (port 9091)",
+					"item": [
+						{
+							"name": "Health check",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PUSH_DP_A}}/actuator/health",
+									"host": [
+										"{{PUSH_DP_A}}"
+									],
+									"path": [
+										"actuator",
+										"health"
+									]
+								},
+								"description": "Check health of the HTTP-PUSH Data Plane."
+							},
+							"response": []
+						},
+						{
+							"name": "List active DataFlows",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PUSH_DP_A}}/dataflows",
+									"host": [
+										"{{PUSH_DP_A}}"
+									],
+									"path": [
+										"dataflows"
+									]
+								},
+								"description": "List all active DataFlow records managed by this Data Plane."
+							},
+							"response": []
+						},
+						{
+							"name": "Prepare DataFlow (create temp IAM user)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PUSH_DP_A}}/dataflows/prepare",
+									"host": [
+										"{{PUSH_DP_A}}"
+									],
+									"path": [
+										"dataflows",
+										"prepare"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"processId\": \"{{consumer_transferProcessId}}\",\n  \"callbackAddress\": \"http://localhost:8080\",\n  \"agreementId\": \"{{agreementId}}\",\n  \"datasetId\": \"{{provider_datasetId}}\",\n  \"dataAddress\": {\n    \"transferType\": \"HttpData-PUSH\"\n  }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"description": "Ask the HTTP-PUSH DP to create a temporary IAM user and return S3 credentials for the consumer bucket."
+							},
+							"response": []
+						},
+						{
+							"name": "Start DataFlow (provider pushes artifact)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PUSH_DP_A}}/dataflows/start",
+									"host": [
+										"{{PUSH_DP_A}}"
+									],
+									"path": [
+										"dataflows",
+										"start"
+									]
+								},
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"processId\": \"{{provider_transferProcessId}}\",\n  \"transferType\": \"HttpData-PUSH\",\n  \"callbackAddress\": \"http://localhost:8080\",\n  \"agreementId\": \"{{agreementId}}\",\n  \"datasetId\": \"{{provider_datasetId}}\",\n  \"dataAddress\": {\n    \"bucketName\": \"dsp-true-connector-b\",\n    \"objectKey\": \"{{consumer_transferProcessId}}\",\n    \"accessKey\": \"TempUser-example\",\n    \"secretKey\": \"example-secret\",\n    \"endpointOverride\": \"http://localhost:9000\",\n    \"region\": \"us-east-1\"\n  }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"description": "Instruct the HTTP-PUSH DP to retrieve the artifact from provider S3 and push it to the consumer S3 bucket using the temporary credentials."
+							},
+							"response": []
+						},
+						{
+							"name": "Terminate DataFlow",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PUSH_DP_A}}/dataflows/terminate/{{provider_transferProcessId}}",
+									"host": [
+										"{{PUSH_DP_A}}"
+									],
+									"path": [
+										"dataflows",
+										"terminate",
+										"{{provider_transferProcessId}}"
+									]
+								},
+								"description": "Terminate an active DataFlow on the HTTP-PUSH DP."
+							},
+							"response": []
+						},
+						{
+							"name": "Suspend DataFlow",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{PUSH_DP_A}}/dataflows/suspend/{{provider_transferProcessId}}",
+									"host": [
+										"{{PUSH_DP_A}}"
+									],
+									"path": [
+										"dataflows",
+										"suspend",
+										"{{provider_transferProcessId}}"
+									]
+								},
+								"description": "Suspend an active DataFlow on the HTTP-PUSH DP."
+							},
+							"response": []
+						}
+					]
 				}
 			]
 		},
@@ -6290,12 +6827,12 @@
 									}
 								],
 								"url": {
-									"raw": "{{CONSUMER_SERVER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+									"raw": "{{PROVIDER_SERVER_API_TRANSFERS}}/{{provider_transferProcessId}}/download",
 									"host": [
-										"{{CONSUMER_SERVER_API_TRANSFERS}}"
+										"{{PROVIDER_SERVER_API_TRANSFERS}}"
 									],
 									"path": [
-										"{{consumer_transferProcessId}}",
+										"{{provider_transferProcessId}}",
 										"download"
 									]
 								},
@@ -7780,6 +8317,31 @@
 		{
 			"key": "consumer_presignedGetUrl",
 			"value": ""
+		},
+		{
+			"key": "dp_id",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "PULL_DP_A",
+			"value": "http://localhost:9090",
+			"type": "string"
+		},
+		{
+			"key": "PULL_DP_B",
+			"value": "http://localhost:9092",
+			"type": "string"
+		},
+		{
+			"key": "PUSH_DP_A",
+			"value": "http://localhost:9091",
+			"type": "string"
+		},
+		{
+			"key": "PUSH_DP_B",
+			"value": "http://localhost:9093",
+			"type": "string"
 		}
 	]
 }
