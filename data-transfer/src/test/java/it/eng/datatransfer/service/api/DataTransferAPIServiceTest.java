@@ -796,7 +796,7 @@ class DataTransferAPIServiceTest {
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(requestedProviderWithFormat.getId()))
                 .thenReturn(Optional.of(requestedProviderWithFormat));
-        when(properties.providerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
+        when(properties.dataPlaneFeedbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
 
         apiService.startTransfer(requestedProviderWithFormat.getId());
 
@@ -807,7 +807,7 @@ class DataTransferAPIServiceTest {
         assertEquals(DataTransferFormat.HTTP_PULL.name(), sent.getTransferType());
         assertNotNull(sent.getCallbackAddress(), "callbackAddress must be set so DP can send callbacks");
         assertEquals(DataTransferMockObjectUtil.CALLBACK_ADDRESS, sent.getCallbackAddress(),
-                "callbackAddress should be the base CP URL — ControlPlaneClient appends /complete or /error based on state");
+                "callbackAddress should be the global CP URL (no tenant path) so DP can POST back to /api/v1/dataflows/complete");
         assertEquals(DataTransferFormat.HTTP_PULL.name(), sent.getTransferType());
     }
 
@@ -831,7 +831,7 @@ class DataTransferAPIServiceTest {
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(requestedProviderWithFormat.getId()))
                 .thenReturn(Optional.of(requestedProviderWithFormat));
-        when(properties.providerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
+        when(properties.dataPlaneFeedbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
         doThrow(new DataPlaneClientException("DP unreachable"))
                 .when(dataPlaneClient).start(any(DataFlowStartMessage.class));
 

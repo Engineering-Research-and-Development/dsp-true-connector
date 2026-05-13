@@ -375,6 +375,9 @@ public class DataTransferAPIService {
                     .build();
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
+            if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcessStarted.getRole())) {
+                sendDataFlowStartToDataPlane(transferProcessStarted);
+            }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
                     "Transfer process started successfully",
                     auditMap("transferProcess", transferProcessStarted,
