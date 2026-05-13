@@ -3150,7 +3150,22 @@
 										"dataplanes"
 									]
 								},
-								"description": "List all Data Plane instances registered with the Consumer Control Plane."
+								"description": "List all Data Plane instances registered with the Consumer Control Plane.",
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -3176,7 +3191,22 @@
 										"dataplanes"
 									]
 								},
-								"description": "List all Data Plane instances registered with the Provider Control Plane."
+								"description": "List all Data Plane instances registered with the Provider Control Plane.",
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -3303,7 +3333,22 @@
 										"{{dp_id}}"
 									]
 								},
-								"description": "Remove a Data Plane registration from the Consumer CP by its ID."
+								"description": "Remove a Data Plane registration from the Consumer CP by its ID.",
+								"auth": {
+									"type": "basic",
+									"basic": [
+										{
+											"key": "username",
+											"value": "admin@mail.com",
+											"type": "string"
+										},
+										{
+											"key": "password",
+											"value": "password",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						}
@@ -3346,6 +3391,11 @@
 										"key": "Content-Type",
 										"value": "application/json",
 										"type": "text"
+									},
+									{
+										"key": "X-Api-Key",
+										"value": "{{DP_API_KEY}}",
+										"type": "text"
 									}
 								],
 								"url": {
@@ -3369,6 +3419,11 @@
 									{
 										"key": "Content-Type",
 										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "X-Api-Key",
+										"value": "{{DP_API_KEY}}",
 										"type": "text"
 									}
 								],
@@ -3404,6 +3459,11 @@
 										"key": "Content-Type",
 										"value": "application/json",
 										"type": "text"
+									},
+									{
+										"key": "X-Api-Key",
+										"value": "{{DP_API_KEY}}",
+										"type": "text"
 									}
 								],
 								"url": {
@@ -3438,6 +3498,11 @@
 										"key": "Content-Type",
 										"value": "application/json",
 										"type": "text"
+									},
+									{
+										"key": "X-Api-Key",
+										"value": "{{DP_API_KEY}}",
+										"type": "text"
 									}
 								],
 								"url": {
@@ -3463,6 +3528,11 @@
 									{
 										"key": "Content-Type",
 										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "X-Api-Key",
+										"value": "{{DP_API_KEY}}",
 										"type": "text"
 									}
 								],
@@ -3520,6 +3590,11 @@
 										"key": "Content-Type",
 										"value": "application/json",
 										"type": "text"
+									},
+									{
+										"key": "X-Api-Key",
+										"value": "{{DP_API_KEY}}",
+										"type": "text"
 									}
 								],
 								"url": {
@@ -3543,6 +3618,11 @@
 									{
 										"key": "Content-Type",
 										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "X-Api-Key",
+										"value": "{{DP_API_KEY}}",
 										"type": "text"
 									}
 								],
@@ -3578,6 +3658,11 @@
 										"key": "Content-Type",
 										"value": "application/json",
 										"type": "text"
+									},
+									{
+										"key": "X-Api-Key",
+										"value": "{{DP_API_KEY}}",
+										"type": "text"
 									}
 								],
 								"url": {
@@ -3612,6 +3697,11 @@
 										"key": "Content-Type",
 										"value": "application/json",
 										"type": "text"
+									},
+									{
+										"key": "X-Api-Key",
+										"value": "{{DP_API_KEY}}",
+										"type": "text"
 									}
 								],
 								"url": {
@@ -3637,6 +3727,11 @@
 									{
 										"key": "Content-Type",
 										"value": "application/json",
+										"type": "text"
+									},
+									{
+										"key": "X-Api-Key",
+										"value": "{{DP_API_KEY}}",
 										"type": "text"
 									}
 								],
@@ -8341,6 +8436,11 @@
 		{
 			"key": "PUSH_DP_B",
 			"value": "http://localhost:9093",
+			"type": "string"
+		},
+		{
+			"key": "DP_API_KEY",
+			"value": "changeme",
 			"type": "string"
 		}
 	]
