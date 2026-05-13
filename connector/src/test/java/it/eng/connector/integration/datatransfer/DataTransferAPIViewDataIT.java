@@ -6,6 +6,7 @@ import com.github.tomakehurst.wiremock.client.WireMock;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
+import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
@@ -115,11 +116,12 @@ public class DataTransferAPIViewDataIT extends BaseIntegrationTest {
                 .agreementId(agreement.getId())
                 .callbackAddress(wiremock.baseUrl())
                 .isDownloaded(true)
+                .format(DataTransferFormat.HTTP_PULL.format())
                 .state(TransferState.COMPLETED)
                 .build();
         transferProcessRepository.save(transferProcessCompleted);
 
-        ContentDisposition contentDisposition = ContentDisposition.attachment()
+        ContentDisposition contentDisposition= ContentDisposition.attachment()
                 .filename(FILE_NAME)
                 .build();
 
