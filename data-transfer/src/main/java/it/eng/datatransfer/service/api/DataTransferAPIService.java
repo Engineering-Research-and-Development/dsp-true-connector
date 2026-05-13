@@ -375,9 +375,6 @@ public class DataTransferAPIService {
                     .build();
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
-            if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcessStarted.getRole())) {
-                sendDataFlowStartToDataPlane(transferProcessStarted);
-            }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
                     "Transfer process started successfully",
                     auditMap("transferProcess", transferProcessStarted,
@@ -477,6 +474,13 @@ public class DataTransferAPIService {
         TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 
         stateTransitionCheck(TransferState.SUSPENDED, transferProcess);
+
+        if (transferProcess.isDownloadInProgress()) {
+            log.error("Cannot suspend transfer {} while data transfer is in progress", transferProcessId);
+            throw new DataTransferAPIException(
+                    "Cannot suspend transfer while data transfer is in progress. "
+                            + "The active data plane transfer cannot be paused mid-flight.");
+        }
 
         TransferSuspensionMessage transferSuspensionMessage = TransferSuspensionMessage.Builder.newInstance()
                 .consumerPid(transferProcess.getConsumerPid())
