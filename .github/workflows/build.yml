@@ -111,7 +111,25 @@ jobs:
       - name: Run Newman tests
         run: |
           npm install -g newman@latest
-          newman run ./ci/docker/test-cases/datatransfer-api-http-pull-tests/datatransfer-api-http-pull-tests.json --timeout-script 25000 --max-response-size 10485760
+          newman run ./ci/docker/test-cases/datatransfer-api-http-pull-tests/datatransfer-api-http-pull-tests.json --timeout-script 25000 --export-environment /tmp/newman-env.json
+
+      - name: Verify presigned URL downloads
+        run: |
+          PRESIGNED_URL_1=$(jq -r '.values[] | select(.key=="presignedURL_1") | .value' /tmp/newman-env.json)
+          PRESIGNED_URL_2=$(jq -r '.values[] | select(.key=="presignedURL_2") | .value' /tmp/newman-env.json)
+          for N in 1 2; do
+            URL_VAR="PRESIGNED_URL_$N"
+            URL="${!URL_VAR}"
+            echo "=== Verifying presigned URL $N ==="
+            curl -f -o "/tmp/download_${N}.json" -D "/tmp/headers_${N}.txt" "$URL"
+            grep -i "content-type:.*application/json" "/tmp/headers_${N}.txt"
+            grep -i "content-disposition:.*ENG-employee.json" "/tmp/headers_${N}.txt"
+            FILE_SIZE=$(wc -c < "/tmp/download_${N}.json")
+            echo "File size: $FILE_SIZE bytes"
+            [ "$FILE_SIZE" -gt 104857600 ] || { echo "ERROR: File too small: $FILE_SIZE bytes"; exit 1; }
+            jq -e 'length > 0 and (.[0] | has("employee"))' "/tmp/download_${N}.json" > /dev/null
+            echo "Content verification passed for URL $N"
+          done
 
       - name: Dump docker datatransfer-api-http-pull-tests
         if: failure()
@@ -147,7 +165,25 @@ jobs:
       - name: Run Newman tests
         run: |
           npm install -g newman@latest
-          newman run ./ci/docker/test-cases/datatransfer-api-http-pull-tests/datatransfer-api-http-pull-tests.json --timeout-script 25000 --max-response-size 10485760
+          newman run ./ci/docker/test-cases/datatransfer-api-http-pull-tests/datatransfer-api-http-pull-tests.json --timeout-script 25000 --export-environment /tmp/newman-env.json
+
+      - name: Verify presigned URL downloads
+        run: |
+          PRESIGNED_URL_1=$(jq -r '.values[] | select(.key=="presignedURL_1") | .value' /tmp/newman-env.json)
+          PRESIGNED_URL_2=$(jq -r '.values[] | select(.key=="presignedURL_2") | .value' /tmp/newman-env.json)
+          for N in 1 2; do
+            URL_VAR="PRESIGNED_URL_$N"
+            URL="${!URL_VAR}"
+            echo "=== Verifying presigned URL $N ==="
+            curl -f -o "/tmp/download_${N}.json" -D "/tmp/headers_${N}.txt" "$URL"
+            grep -i "content-type:.*application/json" "/tmp/headers_${N}.txt"
+            grep -i "content-disposition:.*ENG-employee.json" "/tmp/headers_${N}.txt"
+            FILE_SIZE=$(wc -c < "/tmp/download_${N}.json")
+            echo "File size: $FILE_SIZE bytes"
+            [ "$FILE_SIZE" -gt 104857600 ] || { echo "ERROR: File too small: $FILE_SIZE bytes"; exit 1; }
+            jq -e 'length > 0 and (.[0] | has("employee"))' "/tmp/download_${N}.json" > /dev/null
+            echo "Content verification passed for URL $N"
+          done
 
       - name: Dump docker datatransfer-api-http-pull-tests-async
         if: failure()
@@ -183,7 +219,25 @@ jobs:
       - name: Run Newman tests
         run: |
           npm install -g newman@latest
-          newman run ./ci/docker/test-cases/datatransfer-api-http-push-tests/datatransfer-api-http-push-tests.json --timeout-script 25000 --max-response-size 10485760
+          newman run ./ci/docker/test-cases/datatransfer-api-http-push-tests/datatransfer-api-http-push-tests.json --timeout-script 25000 --export-environment /tmp/newman-env.json
+
+      - name: Verify presigned URL downloads
+        run: |
+          PRESIGNED_URL_1=$(jq -r '.values[] | select(.key=="presignedURL_1") | .value' /tmp/newman-env.json)
+          PRESIGNED_URL_2=$(jq -r '.values[] | select(.key=="presignedURL_2") | .value' /tmp/newman-env.json)
+          for N in 1 2; do
+            URL_VAR="PRESIGNED_URL_$N"
+            URL="${!URL_VAR}"
+            echo "=== Verifying presigned URL $N ==="
+            curl -f -o "/tmp/download_${N}.json" -D "/tmp/headers_${N}.txt" "$URL"
+            grep -i "content-type:.*application/json" "/tmp/headers_${N}.txt"
+            grep -i "content-disposition:.*ENG-employee.json" "/tmp/headers_${N}.txt"
+            FILE_SIZE=$(wc -c < "/tmp/download_${N}.json")
+            echo "File size: $FILE_SIZE bytes"
+            [ "$FILE_SIZE" -gt 104857600 ] || { echo "ERROR: File too small: $FILE_SIZE bytes"; exit 1; }
+            jq -e 'length > 0 and (.[0] | has("employee"))' "/tmp/download_${N}.json" > /dev/null
+            echo "Content verification passed for URL $N"
+          done
 
       - name: Dump docker datatransfer-api-http-push-tests
         if: failure()
@@ -219,7 +273,25 @@ jobs:
       - name: Run Newman tests
         run: |
           npm install -g newman@latest
-          newman run ./ci/docker/test-cases/datatransfer-api-http-push-tests/datatransfer-api-http-push-tests.json --timeout-script 25000 --max-response-size 10485760
+          newman run ./ci/docker/test-cases/datatransfer-api-http-push-tests/datatransfer-api-http-push-tests.json --timeout-script 25000 --export-environment /tmp/newman-env.json
+
+      - name: Verify presigned URL downloads
+        run: |
+          PRESIGNED_URL_1=$(jq -r '.values[] | select(.key=="presignedURL_1") | .value' /tmp/newman-env.json)
+          PRESIGNED_URL_2=$(jq -r '.values[] | select(.key=="presignedURL_2") | .value' /tmp/newman-env.json)
+          for N in 1 2; do
+            URL_VAR="PRESIGNED_URL_$N"
+            URL="${!URL_VAR}"
+            echo "=== Verifying presigned URL $N ==="
+            curl -f -o "/tmp/download_${N}.json" -D "/tmp/headers_${N}.txt" "$URL"
+            grep -i "content-type:.*application/json" "/tmp/headers_${N}.txt"
+            grep -i "content-disposition:.*ENG-employee.json" "/tmp/headers_${N}.txt"
+            FILE_SIZE=$(wc -c < "/tmp/download_${N}.json")
+            echo "File size: $FILE_SIZE bytes"
+            [ "$FILE_SIZE" -gt 104857600 ] || { echo "ERROR: File too small: $FILE_SIZE bytes"; exit 1; }
+            jq -e 'length > 0 and (.[0] | has("employee"))' "/tmp/download_${N}.json" > /dev/null
+            echo "Content verification passed for URL $N"
+          done
 
       - name: Dump docker datatransfer-api-http-push-tests-async
         if: failure()
