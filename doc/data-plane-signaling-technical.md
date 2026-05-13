@@ -12,108 +12,234 @@ acting as the orchestrator and each DP as an independent service.
 ## Architecture
 
 ```
-Consumer CP              Provider CP              Provider DP (HTTP-PULL or HTTP-PUSH)
-    |                        |                              |
-    |--- TransferRequest ---->|                              |
-    |                        |--- POST /dataflows/start --->|
-    |                        |                              |--- executes transfer
-    |                        |<-- POST /{cpCallback} ------|
-    |<-- TransferStartMsg ----|                              |
+Consumer CP                Provider CP               Provider DP
+    |                          |                          |
+    |-- TransferRequestMsg --->|                          |
+    |                          |-- POST /dataflows/prepare->|  (HTTP-PULL: get presigned URL)
+    |                          |<-- presignedUrl ----------|
+    |<-- TransferStartMsg(url)--|                          |
+    |                          |                          |
+    | (admin triggers download) |                          |
+    |                          |                          |
+Consumer DP                    |                          |
+    |                          |                          |
+    |<-- POST /dataflows/start  (HTTP-PULL: download artifact from presigned URL)
+    |-- artifact --> consumer S3
+    |-- POST /api/v1/dataflows/complete --> Consumer CP
+    |                          |
+    Consumer CP → COMPLETED    |
 ```
+
+For HTTP-PUSH the flow is different — see the [HTTP-PUSH Transfer Flow](#http-push) section.
 
 ### Modules
 
 | Module | Role | Artifact |
 |---|---|---|
-| `data-plane-api` | SPI interfaces + DSP message models | Library JAR |
-| `data-plane-core` | Shared runtime: registration, routing, client | Library JAR |
-| `data-plane-http-pull` | HTTP-PULL standalone service (port 9090) | Spring Boot fat JAR |
-| `data-plane-http-push` | HTTP-PUSH standalone service (port 9091) | Spring Boot fat JAR |
+| `data-plane-api` | SPI interfaces + DPS message models | Library JAR |
+| `data-plane-core` | Shared runtime: registration, routing, CP client | Library JAR |
+| `data-plane-http-pull` | HTTP-PULL standalone service (default port 9090) | Spring Boot fat JAR |
+| `data-plane-http-push` | HTTP-PUSH standalone service (default port 9091) | Spring Boot fat JAR |
 
-### Control Plane additions
+### Control Plane additions (`data-transfer` module)
 
 | Component | Package | Purpose |
 |---|---|---|
-| `DataPlaneRegistration` | `it.eng.datatransfer.model` | Persisted DP registration record |
-| `DataPlaneRegistrationService` | `it.eng.datatransfer.service` | CRUD + routing logic |
+| `DataPlaneRegistration` | `it.eng.datatransfer.model` | Persisted DP registration record (MongoDB) |
+| `DataPlaneRegistrationService` | `it.eng.datatransfer.service` | CRUD + routing lookup |
 | `DataPlaneRouter` | `it.eng.datatransfer.router` | Selects DP by transfer type (round-robin) |
-| `DataPlaneClient` | `it.eng.datatransfer.client` | CP → DP HTTP calls |
-| `DataFlowCallbackController` | `it.eng.datatransfer.rest.api` | Receives DP status callbacks |
+| `DataPlaneClient` | `it.eng.datatransfer.client` | CP → DP HTTP calls (`prepare`, `start`, `terminate`) |
+| `DataFlowCallbackController` | `it.eng.datatransfer.rest.api` | Receives DP completion/error callbacks |
 | `DataPlaneRegistrationController` | `it.eng.datatransfer.rest.api` | Admin CRUD for DP registrations |
 
 ---
 
 ## Data Plane Registration
 
-A DP registers itself with the CP at startup by calling:
+A DP registers itself with the CP at startup:
 
 ```
 POST /api/v1/dataplanes
 {
-  "endpoint":              "http://dp-http-pull:9090",
+  "endpoint":               "http://dp-http-pull:9090",
   "supportedTransferTypes": ["HttpData-PULL"],
-  "apiKey": "shared-secret"
+  "apiKey":                 "shared-secret"
 }
 ```
 
 `ControlPlaneRegistrationBean` (in `data-plane-core`) performs this call with exponential-backoff
-retry (5 attempts, base delay 2 s). If `dataplane.control-plane-admin-endpoint` is not set,
-registration is skipped (useful for local development without a CP).
+retry (5 attempts, base delay 2 s, max 60 s). If `dataplane.control-plane-admin-endpoint` is blank,
+registration is skipped (useful for development without a CP).
 
-The CP stores the registration in MongoDB and uses it to route `DataFlowStartMessage` requests.
+The CP stores the registration in MongoDB collection `data_plane_registrations`.
 
 ---
 
-## Transfer Flow
+## Transfer Flows
 
 ### HTTP-PULL
 
-1. CP receives `TransferRequestMessage` from consumer with `transferType = HttpData-PULL`.
-2. CP calls `POST /dataflows/start` on the registered HTTP-PULL DP with a `DataFlowStartMessage`.
-3. DP generates a presigned S3 GET URL and sends `TransferStartMessage` back to the consumer.
-4. Consumer downloads the artifact directly from the presigned URL.
-5. DP posts a completion callback to the CP's `DataFlowCallbackController`.
-6. CP transitions the transfer process to `COMPLETED`.
+The artifact lives in the **provider's S3 bucket**. The consumer downloads it into the
+**consumer's S3 bucket** via the consumer-side pull DP.
+
+```
+Consumer CP                 Provider CP               Provider-side Pull DP
+     |                           |                              |
+     |--- TransferRequestMsg --->|                              |
+     |    (format=HttpData-PULL) |                              |
+     |                           |                              |
+     |            [provider admin calls startTransfer()]        |
+     |                           |-- POST /dataflows/prepare -->|
+     |                           |   DataFlowPrepareMessage     |
+     |                           |<-- presignedUrl (GET, 7d) ---|
+     |                           |                              |
+     |<-- TransferStartMessage --|                              |
+     |    dataAddress.endpoint   |                              |
+     |    = presignedUrl         |                              |
+     |                           |                              |
+     |    [consumer admin calls downloadData()]                 |
+Consumer-side Pull DP            |                              |
+     |<-- POST /dataflows/start -|                              |
+     |    DataFlowStartMessage   |                              |
+     |    dataAddress.endpoint   |                              |
+     |    = presignedUrl         |                              |
+     |                           |                              |
+     |--- GET presignedUrl --------------------------------------------> Provider S3
+     |<-- artifact stream ------------------------------------------------|
+     |--- PUT artifact -------> Consumer S3 (key = transferProcessId)
+     |                           |                              |
+     |-- POST /api/v1/dataflows/complete --> Consumer CP        |
+     |                           |                              |
+Consumer CP → COMPLETED          |                              |
+```
+
+Key points:
+- `POST /dataflows/prepare` (not `/dataflows/start`) is used for HTTP-PULL at start time.
+  It returns a presigned GET URL that is embedded in `TransferStartMessage.dataAddress.endpoint`.
+- `POST /dataflows/start` is sent to the **consumer's** registered pull DP when the consumer
+  admin triggers the download (e.g. via `GET /api/v1/transfers/{id}/download`).
+- The artifact is stored in the **consumer's S3 bucket** with `objectKey = transferProcessId`.
+- After COMPLETED, the consumer can retrieve a new presigned URL via `viewData`.
 
 ### HTTP-PUSH
 
-1. CP routes `TransferRequestMessage` (type `HttpData-PUSH`) to the HTTP-PUSH DP.
-2. CP sends a `DataFlowStartMessage` to the DP with consumer S3 credentials in `dataAddress`.
-3. DP downloads the artifact from the provider's S3 bucket using a presigned GET URL.
-4. DP uploads the artifact directly to the consumer's S3 bucket using the provided credentials.
-5. DP posts a completion callback to the CP.
-6. CP transitions the transfer process to `COMPLETED`.
+The artifact lives in the **provider's S3 bucket**. The provider-side push DP downloads it and
+uploads it directly to the **consumer's S3 bucket** using temporary credentials.
+
+```
+Consumer CP                  Provider CP               Provider-side Push DP
+     |                            |                             |
+     |  [consumer admin calls requestTransfer()]                |
+     |  Consumer CP creates temp MinIO/IAM user                 |
+     |  with PUT-only access to consumer's bucket               |
+     |                            |                             |
+     |---- TransferRequestMsg --->|                             |
+     |     dataAddress = {        |                             |
+     |       bucketName,          |                             |
+     |       objectKey (=transferProcessId),                    |
+     |       accessKey, secretKey (temp),                       |
+     |       endpointOverride     |                             |
+     |     }                      |                             |
+     |                            |                             |
+     |            [provider admin calls startTransfer()]        |
+     |<-- TransferStartMessage ---|                             |
+     |    (dataAddress forwarded) |                             |
+     |                            |                             |
+     |            [provider admin calls downloadData()]         |
+     |                            |-- POST /dataflows/start --->|
+     |                            |   DataFlowStartMessage:     |
+     |                            |   - dataAddress = consumer  |
+     |                            |     S3 credentials          |
+     |                            |   - datasetId (artifact key)|
+     |                            |                             |
+     |                            |  Push DP generates presigned|
+     |                            |  GET URL for provider S3    |
+     |                            |  Downloads artifact         |
+     |                            |  Uploads to consumer S3 --->|-- Consumer S3
+     |                            |                             |
+     |<-- POST /api/v1/dataflows/complete ← Provider CP <-------|
+     |                            |                             |
+Both CPs → COMPLETED             |                             |
+```
+
+Key points:
+- Temporary credentials are created per-transfer by `TemporaryBucketUserService`. They grant
+  only `s3:PutObject` on the exact `objectKey = transferProcessId`.
+- `POST /dataflows/start` is sent to the **provider's** registered push DP only when the provider
+  admin triggers the push (e.g. via `GET /api/v1/transfers/{id}/download`). It is **not** sent
+  automatically on `startTransfer()`.
+- The pushed artifact is stored in the **consumer's S3 bucket** with `objectKey = transferProcessId`.
+- After COMPLETED, the consumer can retrieve a presigned URL via `viewData`.
+- Temporary credentials are cleaned up by `TemporaryBucketUserService.deleteTemporaryUser()`
+  after transfer completion or termination.
+
+### viewData
+
+After a transfer reaches `COMPLETED` and `isDownloaded = true`, the consumer can call
+`GET /api/v1/transfers/{id}/view` to receive a presigned S3 GET URL for the stored artifact.
+
+The CP delegates to the registered DP for the transfer's format:
+- HTTP-PULL: pull DP's `POST /dataflows/prepare` with `dataAddress = { "mode": "VIEW" }`
+- HTTP-PUSH: push DP's `POST /dataflows/prepare` with `dataAddress = { "mode": "VIEW" }`
+
+The DP generates a presigned GET URL for the consumer's bucket (key = `transferProcessId`)
+and returns it in `DataFlowPrepareResponse.dataAddress.presignedUrl`.
+
+### Transfer Lifecycle and Suspend Semantics
+
+```
+REQUESTED → STARTED → COMPLETED  (normal path)
+                    → SUSPENDED → STARTED  (suspend/resume)
+                    → TERMINATED
+         → TERMINATED
+```
+
+**Suspend limitation**: `suspendTransfer()` is rejected with HTTP 400 if a data plane transfer
+is already in progress (`isDownloadInProgress = true`). HTTP-PULL and HTTP-PUSH are fire-and-forget
+operations — once the DP starts moving data, the CP cannot pause it. Suspending mid-transfer would
+leave the state machine permanently broken (the DP's subsequent COMPLETED callback would be
+rejected by an invalid SUSPENDED→COMPLETED transition).
+
+Suspend is safe and allowed when:
+- The transfer is in `STARTED` state **and** no `downloadData()` call has been made yet.
+- This corresponds to the window between `startTransfer()` and `downloadData()`.
+
+---
+
+## DPS API Endpoints (on each DP)
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/dataflows/start` | Begin a data transfer (async) |
+| `POST` | `/dataflows/prepare` | Prepare without transferring (returns presigned URL) |
+| `DELETE` | `/dataflows/{id}` | Terminate/abort a data flow |
+| `GET` | `/actuator/health` | Health check |
+
+All endpoints require the `X-Api-Key` header.
 
 ---
 
 ## API Key Authentication
 
-All CP → DP calls carry an `X-Api-Key` header (value: `DataPlaneRegistration.apiKey`).
-All DP → CP callbacks carry an `X-Api-Key` header (value: `DataPlaneProperties.apiKey`).
+All CP → DP calls carry an `X-Api-Key` header (value = `DataPlaneRegistration.apiKey`).  
+All DP → CP callbacks carry an `X-Api-Key` header (value = `dataplane.api-key` property).
 
-On each side, `ApiKeyAuthFilter` validates the header against the stored value. Requests with a
-missing or mismatched key receive HTTP 401.
-
-Set API keys in properties:
-- CP: stored in `DataPlaneRegistration.apiKey` (written at registration time)
-- DP: `dataplane.api-key=<secret>` in `application.properties`
+On each side, `ApiKeyAuthFilter` validates the header. Missing or mismatched key → HTTP 401.
 
 ---
 
 ## Concurrency Model
 
-Each DP app uses Java 21 virtual threads (`Executors.newVirtualThreadPerTaskExecutor()`).
-Each transfer runs on its own virtual thread. There is no fixed pool ceiling — thousands of
-concurrent transfers are practical on a single DP instance.
+Each DP uses Java 21 virtual threads (`Executors.newVirtualThreadPerTaskExecutor()`).
+Each transfer runs on its own virtual thread. There is no fixed pool ceiling.
 
 ---
 
 ## OkHttpClient / TLS
 
-Both DP apps component-scan `it.eng.tools`, which auto-configures `OkHttpClient` via
-`OkHttpClientConfiguration`:
+Both DP apps component-scan `it.eng.tools`, which auto-configures `OkHttpClient`:
 - `server.ssl.enabled=true` → TLS client with custom truststore (OCSP-validated)
-- `server.ssl.enabled=false` → insecure noop client (development only)
+- `server.ssl.enabled=false` → plain HTTP (development only)
 
 See `doc/security.md` for truststore configuration details.
 
@@ -129,22 +255,35 @@ See `doc/security.md` for truststore configuration details.
 
 ## Key Configuration Properties
 
-### Data Plane (`application.properties` in each DP app)
+### Data Plane (`application.properties` in each DP)
 
 | Property | Description | Example |
 |---|---|---|
-| `dataplane.endpoint` | Public URL of this DP | `http://dp-http-pull:9090` |
+| `dataplane.endpoint` | Public URL of this DP (reachable from CP) | `http://dp-http-pull:9090` |
 | `dataplane.control-plane-admin-endpoint` | CP admin base URL | `http://connector:8080` |
 | `dataplane.api-key` | Shared secret for DP↔CP auth | `dp-secret-key` |
 | `server.port` | Listening port | `9090` (pull) / `9091` (push) |
 | `server.ssl.enabled` | Enable TLS | `true` / `false` |
 
+### S3 properties required by the push DP
+
+The push DP needs S3 access to the provider's bucket to generate presigned GET URLs:
+
+| Property | Description |
+|---|---|
+| `s3.endpoint` | S3/MinIO endpoint (blank = AWS) |
+| `s3.accessKey` | Admin access key |
+| `s3.secretKey` | Admin secret key |
+| `s3.region` | S3 region |
+| `s3.bucketName` | Default bucket name |
+| `s3.externalPresignedEndpoint` | Public-facing endpoint for presigned URLs (MinIO behind NAT) |
+
 ---
 
 ## Extending with a New Data Plane Type
 
-1. Create a new Spring Boot module (e.g., `data-plane-mqtt`) that depends on `data-plane-core`.
-2. Implement the `DataTransferProtocol` SPI interface and annotate with `@Component`.
-3. The DP app self-registers with the CP on startup via `ControlPlaneRegistrationBean`.
-4. Register the supported transfer type(s) in `DataPlaneProperties.supportedTransferTypes`.
+1. Create a new Spring Boot module (e.g., `data-plane-mqtt`) depending on `data-plane-core`.
+2. Implement the `DataTransferProtocol` SPI interface and annotate it with `@Component`.
+3. Declare the supported transfer type in `DataPlaneProperties.supportedTransferTypes`.
+4. On startup, `ControlPlaneRegistrationBean` automatically registers the DP with the CP.
 5. No CP code changes needed — `DataPlaneRouter` selects the correct DP by transfer type.
