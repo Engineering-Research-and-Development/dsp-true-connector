@@ -110,8 +110,8 @@ jobs:
 
       - name: Run Newman tests
         run: |
-          npm install -g newman@latest
-          newman run ./ci/docker/test-cases/datatransfer-api-http-pull-tests/datatransfer-api-http-pull-tests.json --timeout-script 25000 --max-response-size 10485760
+          npm install newman@latest
+          node ci/run-newman.js ./ci/docker/test-cases/datatransfer-api-http-pull-tests/datatransfer-api-http-pull-tests.json 25000
 
       - name: Dump docker datatransfer-api-http-pull-tests
         if: failure()
@@ -146,8 +146,8 @@ jobs:
 
       - name: Run Newman tests
         run: |
-          npm install -g newman@latest
-          newman run ./ci/docker/test-cases/datatransfer-api-http-pull-tests/datatransfer-api-http-pull-tests.json --timeout-script 25000 --max-response-size 10485760
+          npm install newman@latest
+          node ci/run-newman.js ./ci/docker/test-cases/datatransfer-api-http-pull-tests/datatransfer-api-http-pull-tests.json 25000
 
       - name: Dump docker datatransfer-api-http-pull-tests-async
         if: failure()
@@ -182,8 +182,8 @@ jobs:
 
       - name: Run Newman tests
         run: |
-          npm install -g newman@latest
-          newman run ./ci/docker/test-cases/datatransfer-api-http-push-tests/datatransfer-api-http-push-tests.json --timeout-script 25000 --max-response-size 10485760
+          npm install newman@latest
+          node ci/run-newman.js ./ci/docker/test-cases/datatransfer-api-http-push-tests/datatransfer-api-http-push-tests.json 25000
 
       - name: Dump docker datatransfer-api-http-push-tests
         if: failure()
@@ -218,8 +218,8 @@ jobs:
 
       - name: Run Newman tests
         run: |
-          npm install -g newman@latest
-          newman run ./ci/docker/test-cases/datatransfer-api-http-push-tests/datatransfer-api-http-push-tests.json --timeout-script 25000 --max-response-size 10485760
+          npm install newman@latest
+          node ci/run-newman.js ./ci/docker/test-cases/datatransfer-api-http-push-tests/datatransfer-api-http-push-tests.json 25000
 
       - name: Dump docker datatransfer-api-http-push-tests-async
         if: failure()
