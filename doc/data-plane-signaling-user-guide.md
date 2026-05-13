@@ -115,11 +115,11 @@ Query via the CP admin API:
 
 ```bash
 # All DP registration events
-curl "http://localhost:8080/api/v1/audit-events?eventType=Data+Plane+registered" \
+curl "http://localhost:8080/api/v1/audit?eventType=Data+Plane+registered" \
   -u admin@mail.com:password
 
 # All DP audit event types
-curl http://localhost:8080/api/v1/audit-events/types \
+curl http://localhost:8080/api/v1/audit/types \
   -u admin@mail.com:password
 ```
 
@@ -132,23 +132,23 @@ curl http://localhost:8080/api/v1/audit-events/types \
 
 ### Data Plane audit events
 
-Each DP exposes its own audit event API at `/api/v1/audit-events` (protected by `X-Api-Key`):
+Each DP exposes its own audit event API at `/api/v1/audit` (protected by `X-Api-Key`):
 
 ```bash
 # All events for a specific transfer
-curl "http://localhost:9090/api/v1/audit-events?processId=urn:uuid:..." \
+curl "http://localhost:9090/api/v1/audit?processId=urn:uuid:..." \
   -H "X-Api-Key: dp-secret-key"
 
 # Filter by transfer type
-curl "http://localhost:9090/api/v1/audit-events?transferType=HttpData-PULL" \
+curl "http://localhost:9090/api/v1/audit?transferType=HttpData-PULL" \
   -H "X-Api-Key: dp-secret-key"
 
 # Filter by event type
-curl "http://localhost:9090/api/v1/audit-events?eventType=Data+flow+completed" \
+curl "http://localhost:9090/api/v1/audit?eventType=Data+flow+completed" \
   -H "X-Api-Key: dp-secret-key"
 
 # Supported event types
-curl http://localhost:9090/api/v1/audit-events/types \
+curl http://localhost:9090/api/v1/audit/types \
   -H "X-Api-Key: dp-secret-key"
 ```
 

@@ -3733,14 +3733,14 @@
 									}
 								],
 								"url": {
-									"raw": "{{PULL_DP_A}}/api/v1/audit-events?page=0&size=20&sort=timestamp,desc",
+									"raw": "{{PULL_DP_A}}/api/v1/audit?page=0&size=20&sort=timestamp,desc",
 									"host": [
 										"{{PULL_DP_A}}"
 									],
 									"path": [
 										"api",
 										"v1",
-										"audit-events"
+										"audit"
 									],
 									"query": [
 										{
@@ -3793,14 +3793,14 @@
 									}
 								],
 								"url": {
-									"raw": "{{PULL_DP_A}}/api/v1/audit-events/:auditEventId",
+									"raw": "{{PULL_DP_A}}/api/v1/audit/:auditEventId",
 									"host": [
 										"{{PULL_DP_A}}"
 									],
 									"path": [
 										"api",
 										"v1",
-										"audit-events",
+										"audit",
 										":auditEventId"
 									],
 									"variable": [
@@ -3831,14 +3831,14 @@
 									}
 								],
 								"url": {
-									"raw": "{{PULL_DP_A}}/api/v1/audit-events/types",
+									"raw": "{{PULL_DP_A}}/api/v1/audit/types",
 									"host": [
 										"{{PULL_DP_A}}"
 									],
 									"path": [
 										"api",
 										"v1",
-										"audit-events",
+										"audit",
 										"types"
 									]
 								},
@@ -4062,14 +4062,14 @@
 									}
 								],
 								"url": {
-									"raw": "{{PUSH_DP_A}}/api/v1/audit-events?page=0&size=20&sort=timestamp,desc",
+									"raw": "{{PUSH_DP_A}}/api/v1/audit?page=0&size=20&sort=timestamp,desc",
 									"host": [
 										"{{PUSH_DP_A}}"
 									],
 									"path": [
 										"api",
 										"v1",
-										"audit-events"
+										"audit"
 									],
 									"query": [
 										{
@@ -4122,14 +4122,14 @@
 									}
 								],
 								"url": {
-									"raw": "{{PUSH_DP_A}}/api/v1/audit-events/:auditEventId",
+									"raw": "{{PUSH_DP_A}}/api/v1/audit/:auditEventId",
 									"host": [
 										"{{PUSH_DP_A}}"
 									],
 									"path": [
 										"api",
 										"v1",
-										"audit-events",
+										"audit",
 										":auditEventId"
 									],
 									"variable": [
@@ -4160,14 +4160,14 @@
 									}
 								],
 								"url": {
-									"raw": "{{PUSH_DP_A}}/api/v1/audit-events/types",
+									"raw": "{{PUSH_DP_A}}/api/v1/audit/types",
 									"host": [
 										"{{PUSH_DP_A}}"
 									],
 									"path": [
 										"api",
 										"v1",
-										"audit-events",
+										"audit",
 										"types"
 									]
 								},

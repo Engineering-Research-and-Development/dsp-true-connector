@@ -214,9 +214,9 @@ Suspend is safe and allowed when:
 | `POST` | `/dataflows/prepare` | Prepare without transferring (returns presigned URL) |
 | `DELETE` | `/dataflows/{id}` | Terminate/abort a data flow |
 | `GET` | `/actuator/health` | Health check |
-| `GET` | `/api/v1/audit-events` | List audit events (paginated, filterable) |
-| `GET` | `/api/v1/audit-events/{id}` | Fetch a single audit event by ID |
-| `GET` | `/api/v1/audit-events/types` | List all supported audit event types |
+| `GET` | `/api/v1/audit` | List audit events (paginated, filterable) |
+| `GET` | `/api/v1/audit/{id}` | Fetch a single audit event by ID |
+| `GET` | `/api/v1/audit/types` | List all supported audit event types |
 
 All endpoints require the `X-Api-Key` header except `/actuator/health`.
 

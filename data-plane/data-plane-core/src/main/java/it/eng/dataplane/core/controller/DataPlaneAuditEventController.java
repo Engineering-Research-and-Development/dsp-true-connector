@@ -1,5 +1,6 @@
 package it.eng.dataplane.core.controller;
 
+import it.eng.dataplane.core.DataPlaneApiEndpoints;
 import it.eng.dataplane.core.model.DataPlaneAuditEvent;
 import it.eng.dataplane.core.service.DataPlaneAuditEventService;
 import lombok.RequiredArgsConstructor;
@@ -24,12 +25,12 @@ import java.util.Map;
  * REST controller exposing Data Plane audit event query endpoints.
  * All endpoints require API-key authentication via the {@code X-Api-Key} header.
  *
- * <p>Base path: {@code /api/v1/audit-events}
+ * <p>Base path: {@code /api/v1/audit}
  */
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping(path = "/api/v1/audit-events", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(path = DataPlaneApiEndpoints.AUDIT_EVENTS_V1, produces = MediaType.APPLICATION_JSON_VALUE)
 public class DataPlaneAuditEventController {
 
     private final DataPlaneAuditEventService auditEventService;
