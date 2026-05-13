@@ -171,7 +171,7 @@ jobs:
         # so localhost does not reach the host. Use the Docker bridge gateway instead.
         env:
           MINIO_EXTERNAL_URL: http://172.17.0.1:9000
-        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile pull up -d
 
       - name: Wait for connectors to be healthy
         run: |
@@ -207,12 +207,12 @@ jobs:
 
       - name: Wait for data planes to register with connectors
         run: |
-          echo "Waiting for all DPs to register (need ≥2 per connector)..."
+          echo "Waiting for pull DPs to register (need ≥1 per connector)..."
           for i in $(seq 1 30); do
             A=$(curl -sf -u admin@mail.com:password http://localhost:8080/api/v1/dataplanes 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])) if d.get('success') else 0)" 2>/dev/null || echo 0)
             B=$(curl -sf -u admin@mail.com:password http://localhost:8090/api/v1/dataplanes 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])) if d.get('success') else 0)" 2>/dev/null || echo 0)
-            if [ "$A" -ge 2 ] && [ "$B" -ge 2 ]; then
-              echo "All DPs registered: connector-a=$A, connector-b=$B after $((i * 5)) seconds"
+            if [ "$A" -ge 1 ] && [ "$B" -ge 1 ]; then
+              echo "Pull DPs registered: connector-a=$A, connector-b=$B after $((i * 5)) seconds"
               break
             fi
             echo "Attempt $i/30 — connector-a DPs=$A, connector-b DPs=$B — waiting 5s..."
@@ -220,8 +220,8 @@ jobs:
           done
           A=$(curl -sf -u admin@mail.com:password http://localhost:8080/api/v1/dataplanes | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])))")
           B=$(curl -sf -u admin@mail.com:password http://localhost:8090/api/v1/dataplanes | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])))")
-          [ "$A" -ge 2 ] || (echo "connector-a has only $A DPs registered" && exit 1)
-          [ "$B" -ge 2 ] || (echo "connector-b has only $B DPs registered" && exit 1)
+          [ "$A" -ge 1 ] || (echo "connector-a has $A pull DPs registered" && exit 1)
+          [ "$B" -ge 1 ] || (echo "connector-b has $B pull DPs registered" && exit 1)
 
       - name: Check if the container is up and running
         run: docker ps -a
@@ -249,7 +249,7 @@ jobs:
       - name: Run docker container for datatransfer-api-http-push-tests
         env:
           MINIO_EXTERNAL_URL: http://172.17.0.1:9000
-        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile push up -d
 
       - name: Wait for connectors to be healthy
         run: |
@@ -285,12 +285,12 @@ jobs:
 
       - name: Wait for data planes to register with connectors
         run: |
-          echo "Waiting for all DPs to register (need ≥2 per connector)..."
+          echo "Waiting for push DPs to register (need ≥1 per connector)..."
           for i in $(seq 1 30); do
             A=$(curl -sf -u admin@mail.com:password http://localhost:8080/api/v1/dataplanes 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])) if d.get('success') else 0)" 2>/dev/null || echo 0)
             B=$(curl -sf -u admin@mail.com:password http://localhost:8090/api/v1/dataplanes 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])) if d.get('success') else 0)" 2>/dev/null || echo 0)
-            if [ "$A" -ge 2 ] && [ "$B" -ge 2 ]; then
-              echo "All DPs registered: connector-a=$A, connector-b=$B after $((i * 5)) seconds"
+            if [ "$A" -ge 1 ] && [ "$B" -ge 1 ]; then
+              echo "Push DPs registered: connector-a=$A, connector-b=$B after $((i * 5)) seconds"
               break
             fi
             echo "Attempt $i/30 — connector-a DPs=$A, connector-b DPs=$B — waiting 5s..."
@@ -298,8 +298,8 @@ jobs:
           done
           A=$(curl -sf -u admin@mail.com:password http://localhost:8080/api/v1/dataplanes | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])))")
           B=$(curl -sf -u admin@mail.com:password http://localhost:8090/api/v1/dataplanes | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])))")
-          [ "$A" -ge 2 ] || (echo "connector-a has only $A DPs registered" && exit 1)
-          [ "$B" -ge 2 ] || (echo "connector-b has only $B DPs registered" && exit 1)
+          [ "$A" -ge 1 ] || (echo "connector-a has $A push DPs registered" && exit 1)
+          [ "$B" -ge 1 ] || (echo "connector-b has $B push DPs registered" && exit 1)
 
       - name: Check if the container is up and running
         run: docker ps -a

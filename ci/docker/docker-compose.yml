@@ -138,9 +138,11 @@ services:
 
   ### data-plane-http-pull-a (consumer pull DP — registers with connector-a)
   ### Used for: viewData presigned URL generation (consumer side)
+  ### Started only when --profile pull is passed to docker compose
   data-plane-http-pull-a:
     image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-http-pull:test
     container_name: data-plane-http-pull-a
+    profiles: ["pull"]
     networks:
       - network-a
     ports:
@@ -171,9 +173,11 @@ services:
 
   ### data-plane-http-pull-b (provider pull DP — registers with connector-b)
   ### Used for: startTransfer presigned URL generation for artifact in provider's bucket
+  ### Started only when --profile pull is passed to docker compose
   data-plane-http-pull-b:
     image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-http-pull:test
     container_name: data-plane-http-pull-b
+    profiles: ["pull"]
     networks:
       - network-b
     ports:
@@ -199,9 +203,11 @@ services:
 
   ### data-plane-http-push-a (consumer push DP — registers with connector-a)
   ### Used for: requestTransfer — creates temporary IAM user in consumer's bucket
+  ### Started only when --profile push is passed to docker compose
   data-plane-http-push-a:
     image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-http-push:test
     container_name: data-plane-http-push-a
+    profiles: ["push"]
     networks:
       - network-a
     ports:
@@ -224,12 +230,16 @@ services:
       - S3_REGION=us-east-1
       # Consumer's bucket; temp credentials are used by provider DP (Docker network) → use minio hostname
       - S3_BUCKETNAME=dsp-true-connector-a
+      # External endpoint for presigned URLs returned to API callers (viewData after PUSH transfer)
+      - S3_EXTERNALPRESIGNEDENDPOINT=${MINIO_EXTERNAL_URL:-}
 
   ### data-plane-http-push-b (provider push DP — registers with connector-b)
   ### Used for: startTransfer — pushes artifact to consumer's temporary S3 credentials
+  ### Started only when --profile push is passed to docker compose
   data-plane-http-push-b:
     image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-http-push:test
     container_name: data-plane-http-push-b
+    profiles: ["push"]
     networks:
       - network-a
       - network-b

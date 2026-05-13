@@ -694,7 +694,7 @@ public class DataTransferAPIService {
                     .dataAddress(Map.of("mode", "VIEW"))
                     .build();
             DataFlowPrepareResponse prepareResponse = dataPlaneClient.prepare(
-                    prepareMessage, DataTransferFormat.HTTP_PULL.format());
+                    prepareMessage, transferProcess.getFormat());
             String artifactURL = prepareResponse.getDataAddress().get("presignedUrl");
             publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
             publisher.publishEvent(AuditEventType.TRANSFER_VIEW,

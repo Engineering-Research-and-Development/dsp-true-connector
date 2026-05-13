@@ -66,22 +66,46 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
         return "HttpData-PUSH";
     }
 
+    /** Data address key indicating the calling mode (VIEW for consumer viewData). */
+    private static final String MODE_KEY = "mode";
+    /** Mode value for consumer viewData requests — returns a pre-signed URL for the pushed file. */
+    private static final String MODE_VIEW = "VIEW";
+    /** Data address key carrying the pre-signed URL in the prepare response. */
+    private static final String PRESIGNED_URL_KEY = "presignedUrl";
+
     /**
      * Prepares the consumer-side bucket for an HTTP-PUSH transfer by creating a temporary
-     * IAM user with write-only access to the consumer's bucket.
+     * IAM user with write-only access to the consumer's bucket, or generates a presigned
+     * GET URL when called with {@code dataAddress.mode = VIEW} (consumer viewData request).
      *
-     * <p>The consumer Control Plane calls this before sending the DSP {@code TransferRequestMessage}
-     * to the provider, so the temporary credentials can be embedded in the message's
-     * {@code dataAddress}. The provider then uses these credentials to push the artifact
-     * directly into the consumer's bucket.</p>
+     * <p>Normal flow: the consumer Control Plane calls this before sending the DSP
+     * {@code TransferRequestMessage} to the provider, so the temporary credentials can be
+     * embedded in the message's {@code dataAddress}. The provider then uses these credentials
+     * to push the artifact directly into the consumer's bucket.</p>
+     *
+     * <p>VIEW mode: the consumer Control Plane calls this after a completed transfer to obtain
+     * a presigned GET URL for the file that was pushed to the consumer's bucket
+     * (stored under key {@code processId}).</p>
      *
      * @param message the prepare message; {@code processId} is used as the S3 object key
-     * @return response with {@code dataAddress} containing S3 credentials and bucket info
+     * @return response with {@code dataAddress} containing S3 credentials/bucket info or presigned URL
      */
     @Override
     public DataFlowPrepareResponse prepare(DataFlowPrepareMessage message) {
         String processId = message.getProcessId();
         String bucketName = s3Properties.getBucketName();
+
+        Map<String, String> incoming = message.getDataAddress();
+        if (incoming != null && MODE_VIEW.equals(incoming.get(MODE_KEY))) {
+            log.info("Preparing viewData presigned URL for processId={} in bucket={}", processId, bucketName);
+            String presignedUrl = s3ClientService.generateGetPresignedUrl(bucketName, processId, Duration.ofDays(7L));
+            log.debug("Generated presigned URL for pushed file, objectKey='{}'", processId);
+            return DataFlowPrepareResponse.Builder.newInstance()
+                    .processId(processId)
+                    .dataAddress(Map.of(PRESIGNED_URL_KEY, presignedUrl))
+                    .build();
+        }
+
         log.info("Preparing HTTP-PUSH temp user for processId={} in bucket={}", processId, bucketName);
 
         var tempUser = temporaryBucketUserService.createTemporaryUser(processId, bucketName, processId);
