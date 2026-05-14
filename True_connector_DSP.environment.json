@@ -274,37 +274,37 @@
 		},
 		{
 			"key": "userId",
-			"value": "",
+			"value": "admin@mail.com",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "consumer_contractNegotiationId",
-			"value": "",
+			"value": "urn:uuid:00000000-0000-0000-0000-000000000001",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "provider_contractNegotiationId",
-			"value": "",
+			"value": "urn:uuid:00000000-0000-0000-0000-000000000002",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "consumer_transferProcessId",
-			"value": "",
+			"value": "urn:uuid:00000000-0000-0000-0000-000000000003",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "provider_transferProcessId",
-			"value": "",
+			"value": "urn:uuid:00000000-0000-0000-0000-000000000004",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "consumer_presignedGetUrl",
-			"value": "",
+			"value": "https://minio.example.com/presigned-placeholder",
 			"type": "default",
 			"enabled": true
 		},

@@ -8792,55 +8792,55 @@
 		},
 		{
 			"key": "consumer_contractNegotiationId",
-			"value": ""
+			"value": "urn:uuid:00000000-0000-0000-0000-000000000001"
 		},
 		{
 			"key": "consumerPid",
-			"value": ""
+			"value": "urn:uuid:00000000-0000-0000-0000-000000000005"
 		},
 		{
 			"key": "providerPid",
-			"value": ""
+			"value": "urn:uuid:00000000-0000-0000-0000-000000000006"
 		},
 		{
 			"key": "provider_contractNegotiationId",
-			"value": ""
+			"value": "urn:uuid:00000000-0000-0000-0000-000000000002"
 		},
 		{
 			"key": "provider_transferProcessId",
-			"value": ""
+			"value": "urn:uuid:00000000-0000-0000-0000-000000000004"
 		},
 		{
 			"key": "consumer_transferProcessId",
-			"value": ""
+			"value": "urn:uuid:00000000-0000-0000-0000-000000000003"
 		},
 		{
 			"key": "agreementId",
-			"value": ""
+			"value": "urn:uuid:00000000-0000-0000-0000-000000000009"
 		},
 		{
 			"key": "transactionId",
-			"value": ""
+			"value": "urn:uuid:00000000-0000-0000-0000-000000000007"
 		},
 		{
 			"key": "dataAddress_endpoint",
-			"value": ""
+			"value": "https://provider.example.com/data/artifact"
 		},
 		{
 			"key": "provider_datasetId",
-			"value": ""
+			"value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
 		},
 		{
 			"key": "provider_offerId",
-			"value": ""
+			"value": "urn:uuid:00000000-0000-0000-0000-000000000010"
 		},
 		{
 			"key": "consumer_presignedGetUrl",
-			"value": ""
+			"value": "https://minio.example.com/presigned-placeholder"
 		},
 		{
 			"key": "dp_id",
-			"value": "",
+			"value": "urn:uuid:00000000-0000-0000-0000-000000000008",
 			"type": "string"
 		},
 		{
