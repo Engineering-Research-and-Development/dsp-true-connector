@@ -350,7 +350,9 @@ class DataTransferAPIServiceTest {
         assertThrows(DataTransferAPIException.class, () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()));
 
         verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
-        verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
+        // save() is called twice: once to pre-save STARTED before notifying peer,
+        // and once to roll back to REQUESTED when the peer returns an error.
+        verify(transferProcessRepository, times(2)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, null);
     }

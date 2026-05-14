@@ -373,34 +373,41 @@ public class DataTransferAPIService {
                 .dataAddress(transferProcess.getDataAddress() == null ? dataAddress : transferProcess.getDataAddress())
                 .build();
 
+        // Save STARTED state BEFORE sending TransferStartMessage to the peer.
+        // This eliminates a race condition where the peer (consumer) triggers a fast
+        // auto-download and sends TransferCompletionMessage back to us before our
+        // synchronous HTTP call returns and we would otherwise save STARTED. Without
+        // this early save, the completion handler would find the TP still in REQUESTED
+        // and reject the message with a 400 Bad Request.
+        TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+                .id(transferProcess.getId())
+                .agreementId(transferProcess.getAgreementId())
+                .consumerPid(transferProcess.getConsumerPid())
+                .providerPid(transferProcess.getProviderPid())
+                .callbackAddress(transferProcess.getCallbackAddress())
+                .dataAddress(transferStartMessage.getDataAddress())
+                .isDownloaded(transferProcess.isDownloaded())
+                .dataId(transferProcess.getDataId())
+                .format(transferProcess.getFormat())
+                .state(TransferState.STARTED)
+                .role(transferProcess.getRole())
+                .datasetId(transferProcess.getDatasetId())
+                .tenantId(transferProcess.getTenantId())
+                .created(transferProcess.getCreated())
+                .createdBy(transferProcess.getCreatedBy())
+                .modified(transferProcess.getModified())
+                .lastModifiedBy(transferProcess.getLastModifiedBy())
+                .version(transferProcess.getVersion())
+                .build();
+        transferProcessRepository.save(transferProcessStarted);
+        log.info("Transfer process {} pre-saved as STARTED before notifying peer", transferProcessStarted.getId());
+
         GenericApiResponse<String> response = okHttpRestClient
                 .sendRequestProtocol(address,
                         TransferSerializer.serializeProtocolJsonNode(transferStartMessage),
                         credentialUtils.getConnectorCredentials());
         log.info("Response received {}", response);
         if (response.isSuccess()) {
-            TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
-                    .id(transferProcess.getId())
-                    .agreementId(transferProcess.getAgreementId())
-                    .consumerPid(transferProcess.getConsumerPid())
-                    .providerPid(transferProcess.getProviderPid())
-                    .callbackAddress(transferProcess.getCallbackAddress())
-                    .dataAddress(transferStartMessage.getDataAddress())
-                    .isDownloaded(transferProcess.isDownloaded())
-                    .dataId(transferProcess.getDataId())
-                    .format(transferProcess.getFormat())
-                    .state(TransferState.STARTED)
-                    .role(transferProcess.getRole())
-                    .datasetId(transferProcess.getDatasetId())
-                    .tenantId(transferProcess.getTenantId())
-                    .created(transferProcess.getCreated())
-                    .createdBy(transferProcess.getCreatedBy())
-                    .modified(transferProcess.getModified())
-                    .lastModifiedBy(transferProcess.getLastModifiedBy())
-                    .version(transferProcess.getVersion())
-                    .build();
-            transferProcessRepository.save(transferProcessStarted);
-            log.info("Transfer process {} saved", transferProcessStarted.getId());
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
                     "Transfer process started successfully",
                     auditMap("transferProcess", transferProcessStarted,
@@ -409,7 +416,9 @@ public class DataTransferAPIService {
                             "providerPid", transferProcessStarted.getProviderPid()));
             return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
         } else {
-            log.error("Error response received!");
+            log.error("Error response received — rolling back TP to REQUESTED state");
+            // Roll back: restore the original REQUESTED state so the admin can retry.
+            transferProcessRepository.save(transferProcess);
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
                     "Transfer process start failed",
                     auditMap("transferProcess", transferProcess,
