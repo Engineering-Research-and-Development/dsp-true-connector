@@ -12,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.security.MessageDigest;
 import java.util.List;
 
 /**
@@ -30,7 +31,9 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         String apiKey = request.getHeader(API_KEY_HEADER);
-        if (apiKey != null && !apiKey.isBlank() && apiKey.equals(properties.getApiKey())) {
+        if (apiKey != null && !apiKey.isBlank()
+                && MessageDigest.isEqual(apiKey.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                        properties.getApiKey().getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
             UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken("control-plane", null, List.of());
             SecurityContextHolder.getContext().setAuthentication(auth);
