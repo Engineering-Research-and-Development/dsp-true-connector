@@ -10,6 +10,7 @@ import it.eng.tools.model.IConstants;
 import it.eng.tools.service.AuditEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
@@ -105,7 +106,15 @@ public class AutomaticDataTransferService {
             log.warn("Auto transfer phase [{}] failed for TransferProcess {} (attempt {}/{}): {}",
                     phase, id, attemptNumber, totalAttempts, e.getMessage());
 
-            transferProcessRepository.save(tp.withRetryCount(nextRetryCount));
+            // Re-read to pick up the latest @Version; the action may have concurrently
+            // modified the entity (e.g. a state transition) between the initial load and now.
+            transferProcessRepository.findById(id).ifPresent(fresh -> {
+                try {
+                    transferProcessRepository.save(fresh.withRetryCount(nextRetryCount));
+                } catch (OptimisticLockingFailureException ole) {
+                    log.warn("Concurrent modification prevented retry-count update for TransferProcess {}; retry count may be slightly inaccurate", id);
+                }
+            });
 
             if (nextRetryCount > maxRetries) {
                 log.error("Auto transfer phase [{}] exhausted all {} attempt(s) for TransferProcess {}. Transitioning to TERMINATED.",
