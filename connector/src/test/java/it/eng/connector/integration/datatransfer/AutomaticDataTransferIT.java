@@ -22,6 +22,9 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.ArtifactRepository;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.TenantService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
@@ -30,6 +33,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.testcontainers.containers.GenericContainer;
@@ -38,6 +42,8 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -172,11 +178,11 @@ public class AutomaticDataTransferIT {
                 minioUrl, minIOContainer.getUserName(), minIOContainer.getPassword(),
                 "provider-bucket");
 
-        // ── Consumer — real connector instance ────────────────────────────────────
+        // ── Consumer — real connector instance with MinIO for HTTP-PUSH temp user creation ──
         consumerCtx = startInstance(mongoHost, mongoPort, CONSUMER_PORT,
                 "consumer", "consumer_db", CONSUMER_BASE_URL + "/" + TENANT_ID,
-                null, null, null,
-                null);
+                minIOContainer.getS3URL(), minIOContainer.getUserName(), minIOContainer.getPassword(),
+                "consumer-bucket");
 
         // ── WireMock consumer — callbackAddress points to WireMock ────────────────
         // Provider sends TransferStartMessage to http://localhost:WIREMOCK_PORT/engineering/consumer/transfers/{pid}/start.
@@ -319,6 +325,8 @@ public class AutomaticDataTransferIT {
         var dataServiceRepository  = providerCtx.getBean(DataServiceRepository.class);
         var distributionRepository = providerCtx.getBean(DistributionRepository.class);
         var artifactRepository     = providerCtx.getBean(ArtifactRepository.class);
+        var s3ClientService        = providerCtx.getBean(S3ClientService.class);
+        var s3Properties           = providerCtx.getBean(S3Properties.class);
 
         Catalog catalog = CatalogMockObjectUtil.createNewCatalog();
         catalog.injectTenantId(TENANT_ID);
@@ -336,6 +344,29 @@ public class AutomaticDataTransferIT {
         distributionRepository.saveAll(catalog.getDistribution());
         if (dataset.getArtifact() != null) {
             artifactRepository.save(dataset.getArtifact());
+        }
+
+        // Upload test artifact to provider MinIO with key=datasetId so that
+        // generateGetPresignedUrl() (which calls headObject) can succeed for HTTP-PULL tests.
+        try {
+            String bucketName = s3Properties.getBucketName();
+            Map<String, String> destProps = Map.of(
+                    S3Utils.OBJECT_KEY, datasetId,
+                    S3Utils.BUCKET_NAME, bucketName,
+                    S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
+                    S3Utils.REGION, s3Properties.getRegion(),
+                    S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),
+                    S3Utils.SECRET_KEY, s3Properties.getSecretKey());
+            String contentDisposition = ContentDisposition.attachment()
+                    .filename("artifact.json")
+                    .build()
+                    .toString();
+            try (InputStream is = new ByteArrayInputStream("{\"data\":\"test artifact\"}".getBytes(StandardCharsets.UTF_8))) {
+                s3ClientService.uploadFile(is, destProps, MediaType.APPLICATION_JSON_VALUE, contentDisposition).get();
+            }
+            log.info("Test artifact uploaded to provider MinIO — bucket='{}', key='{}'", bucketName, datasetId);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to upload test artifact to provider MinIO", e);
         }
 
         // Add an HTTP_PUSH distribution to the dataset so that checkSupportedFormats

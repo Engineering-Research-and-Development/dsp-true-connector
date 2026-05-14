@@ -173,7 +173,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Request transfer process - HTTP-PUSH creates temporary user")
+    @DisplayName("Request transfer process - HTTP-PUSH creates temporary user directly in CP")
     @WithUserDetails(TestUtil.API_USER)
     public void initiateDataTransfer_httpPush_createsTemporaryUser() throws Exception {
         TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
@@ -189,18 +189,6 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
 
         DataTransferRequest dataTransferRequest = new DataTransferRequest(transferProcessInitialized.getId(),
                 DataTransferFormat.HTTP_PUSH.format(), null);
-
-        // mock DP prepare response for HTTP-PUSH (DP creates temp IAM user and returns credentials)
-        String prepareResponseJson = String.format(
-                "{\"processId\":\"%s\",\"dataAddress\":{\"bucketName\":\"test-bucket\",\"region\":\"us-east-1\","
-                + "\"objectKey\":\"%s\",\"accessKey\":\"test-access-key\","
-                + "\"secretKey\":\"test-secret-key\",\"endpointOverride\":\"http://localhost:9000\"}}",
-                transferProcessInitialized.getId(), transferProcessInitialized.getId());
-        WireMock.stubFor(WireMock.post("/dataflows/prepare")
-                .willReturn(
-                        aResponse().withHeader("Content-Type", "application/json")
-                                .withStatus(200)
-                                .withBody(prepareResponseJson)));
 
         // mock provider success response for HTTP-PUSH TransferRequestMessage
         TransferProcess providerResponse = TransferProcess.Builder.newInstance()
@@ -235,9 +223,10 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
         assertNotNull(genericApiResponse);
         assertTrue(genericApiResponse.isSuccess());
 
-        // With new CP→DP architecture, the DP (not the CP) creates the temporary bucket user.
-        // Verify that the CP delegated to the DP by checking WireMock received the prepare call.
-        WireMock.verify(WireMock.postRequestedFor(WireMock.urlEqualTo("/dataflows/prepare")));
+        // CP now creates the temporary bucket user directly — no DP prepare() call.
+        // Verify that a TemporaryBucketUser was persisted for this transfer process.
+        assertTrue(temporaryBucketUserRepository.existsById(transferProcessInitialized.getId()),
+                "Temporary bucket user should be created directly by the CP for HTTP-PUSH");
     }
 
     @Test
