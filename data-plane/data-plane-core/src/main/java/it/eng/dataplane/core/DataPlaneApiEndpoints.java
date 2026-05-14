@@ -2,6 +2,12 @@ package it.eng.dataplane.core;
 
 /**
  * API endpoint path constants for Data Plane to Control Plane communication.
+ *
+ * <p><strong>Note:</strong> {@link #DATA_PLANES}, {@link #DATAFLOW_CALLBACK_COMPLETE}, and
+ * {@link #DATAFLOW_CALLBACK_ERROR} duplicate values declared in
+ * {@code it.eng.tools.controller.ApiEndpoints}. Both sides intentionally keep their own copy
+ * to avoid a compile-time dependency between the Data Plane and the CP {@code tools} module.
+ * If you change a path here, update the matching constant in {@code ApiEndpoints} too.</p>
  */
 public final class DataPlaneApiEndpoints {
 

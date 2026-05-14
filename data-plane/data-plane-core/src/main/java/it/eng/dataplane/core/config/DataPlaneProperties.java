@@ -23,8 +23,9 @@ public class DataPlaneProperties {
      * Populated at startup from {@code dataplane.control-plane-endpoint} property
      * or updated dynamically via PUT /controlplanes from the Control Plane.
      * Used by DataFlowService callbacks and routing in later phases.
+     * Declared {@code volatile} to ensure visibility across threads when updated concurrently.
      */
-    private String controlPlaneEndpoint;
+    private volatile String controlPlaneEndpoint;
 
     /** Control Plane admin API endpoint URL (for registration calls). */
     private String controlPlaneAdminEndpoint;

@@ -123,9 +123,10 @@ class DataFlowServiceTest {
             .transferType("HttpData-PULL")
             .build();
 
-        DataFlowEntity existingEntity = new DataFlowEntity();
-        existingEntity.setProcessId("duplicate-process");
-        existingEntity.setState(DataFlowState.STARTED);
+        DataFlowEntity existingEntity = DataFlowEntity.Builder.newInstance()
+                .processId("duplicate-process")
+                .state(DataFlowState.STARTED)
+                .build();
 
         when(repository.findByProcessId("duplicate-process")).thenReturn(Optional.of(existingEntity));
 

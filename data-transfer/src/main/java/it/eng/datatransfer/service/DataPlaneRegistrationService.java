@@ -7,6 +7,8 @@ import it.eng.tools.event.AuditEventType;
 import it.eng.tools.service.AuditEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -28,10 +30,12 @@ public class DataPlaneRegistrationService {
      * Registers a new Data Plane instance or updates an existing registration with the same endpoint.
      * This makes re-registration idempotent — a DP restart replaces its previous entry rather than
      * creating a duplicate.
+     * Evicts the Data Plane routing cache so the next dispatch picks up the new registration.
      *
      * @param registration the Data Plane registration to persist
      * @return the saved registration
      */
+    @CacheEvict(cacheNames = "dataPlanesByType", allEntries = true)
     public DataPlaneRegistration register(DataPlaneRegistration registration) {
         log.info("Registering Data Plane at endpoint {}", registration.getEndpoint());
         return repository.findByEndpoint(registration.getEndpoint())
@@ -62,10 +66,13 @@ public class DataPlaneRegistrationService {
 
     /**
      * Finds all Data Plane registrations that support the given transfer type.
+     * Results are cached with a 10-second TTL to avoid a MongoDB round-trip on every
+     * transfer dispatch. Cache is evicted on registration changes.
      *
      * @param transferType the transfer type identifier to search for
      * @return list of matching registrations
      */
+    @Cacheable(cacheNames = "dataPlanesByType", key = "#transferType")
     public List<DataPlaneRegistration> findByTransferType(String transferType) {
         log.debug("Finding Data Planes supporting transfer type {}", transferType);
         return repository.findBySupportedTransferTypesContaining(transferType);
@@ -73,9 +80,11 @@ public class DataPlaneRegistrationService {
 
     /**
      * Deregisters a Data Plane by its id.
+     * Evicts the Data Plane routing cache so removed entries are no longer dispatched to.
      *
      * @param id the id of the registration to remove
      */
+    @CacheEvict(cacheNames = "dataPlanesByType", allEntries = true)
     public void deregister(String id) {
         log.info("Deregistering Data Plane with id {}", id);
         DataPlaneRegistration existing = repository.findById(id)

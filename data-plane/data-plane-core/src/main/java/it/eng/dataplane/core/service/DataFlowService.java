@@ -126,8 +126,8 @@ public class DataFlowService {
     private void handleError(DataFlowEntity entity, Throwable ex) {
         log.error("DataFlow {} failed: {}", entity.getId(), ex.getMessage(), ex);
         try {
-            entity.setErrorMessage(ex.getMessage());
-            updateState(entity, DataFlowState.TERMINATED);
+            DataFlowEntity failed = entity.withError(ex.getMessage(), DataFlowState.TERMINATED);
+            repository.save(failed);
         } catch (Exception saveEx) {
             log.error("Failed to persist TERMINATED state for DataFlow {}: {}", entity.getId(), saveEx.getMessage());
         }
@@ -141,26 +141,26 @@ public class DataFlowService {
     }
 
     private void updateState(DataFlowEntity entity, DataFlowState state) {
-        entity.setState(state);
-        entity.setUpdatedAt(Instant.now());
-        repository.save(entity);
+        DataFlowEntity updated = entity.withState(state);
+        repository.save(updated);
     }
 
     private DataFlowEntity toEntity(DataFlow dataFlow, DataFlowState state) {
-        DataFlowEntity entity = new DataFlowEntity();
-        entity.setId(dataFlow.getDataFlowId() != null ? dataFlow.getDataFlowId() : UUID.randomUUID().toString());
-        entity.setProcessId(dataFlow.getProcessId());
-        entity.setAgreementId(dataFlow.getAgreementId());
-        entity.setDatasetId(dataFlow.getDatasetId());
-        entity.setTransferType(dataFlow.getTransferType());
-        entity.setCallbackAddress(dataFlow.getCallbackAddress());
-        entity.setState(state);
-        entity.setDataAddress(dataFlow.getDataAddress());
-        entity.setTenantId(dataFlow.getTenantId());
-        entity.setParticipantId(dataFlow.getParticipantId());
-        entity.setCounterPartyId(dataFlow.getCounterPartyId());
-        entity.setCreatedAt(Instant.now());
-        entity.setUpdatedAt(Instant.now());
-        return entity;
+        Instant now = Instant.now();
+        return DataFlowEntity.Builder.newInstance()
+                .id(dataFlow.getDataFlowId() != null ? dataFlow.getDataFlowId() : UUID.randomUUID().toString())
+                .processId(dataFlow.getProcessId())
+                .agreementId(dataFlow.getAgreementId())
+                .datasetId(dataFlow.getDatasetId())
+                .transferType(dataFlow.getTransferType())
+                .callbackAddress(dataFlow.getCallbackAddress())
+                .state(state)
+                .dataAddress(dataFlow.getDataAddress())
+                .tenantId(dataFlow.getTenantId())
+                .participantId(dataFlow.getParticipantId())
+                .counterPartyId(dataFlow.getCounterPartyId())
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
     }
 }
