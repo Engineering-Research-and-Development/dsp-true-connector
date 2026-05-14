@@ -323,5 +323,53 @@ public class AutomaticDataTransferServiceTest {
         assertEquals("Automatic retry exhaustion", details.get("reason"));
     }
 
+    @Test
+    @DisplayName("processStart: action throws OLE — re-reads TP fresh for retryCount save, does not crash")
+    void processStart_actionThrowsOle_reReadsFreshTpForRetryCount() {
+        setUp();
+        String id = "tp_ole";
+        var tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER;
+        var tpWithRetry = tp.withRetryCount(1);
+        // First findById is from scheduleAttempt; second is the fresh re-read inside the catch block.
+        when(transferProcessRepository.findById(id))
+                .thenReturn(Optional.of(tp))
+                .thenReturn(Optional.of(tp));
+        when(transferProperties.getMaxRetryAttempts()).thenReturn(3);
+        when(transferProperties.getRetryDelayMs()).thenReturn(1000L);
+        when(apiService.startTransfer(id)).thenThrow(new org.springframework.dao.OptimisticLockingFailureException(
+                "Cannot save entity with version 1"));
+        when(transferProcessRepository.save(any())).thenReturn(tpWithRetry);
+
+        service.processStart(id);
+
+        // Retry-count save must use the freshly-read entity, not the stale one from before the action.
+        verify(transferProcessRepository, times(2)).findById(id);
+        verify(transferProcessRepository, times(1)).save(argThat(t -> t.getRetryCount() == 1));
+        verify(taskScheduler, times(1)).schedule(any(Runnable.class), any(Instant.class));
+    }
+
+    @Test
+    @DisplayName("processStart: action throws OLE and retry-count save also fails — logs warning, no crash")
+    void processStart_actionThrowsOle_retryCountSaveFails_logsWarning() {
+        setUp();
+        String id = "tp_ole2";
+        var tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER;
+        when(transferProcessRepository.findById(id))
+                .thenReturn(Optional.of(tp))
+                .thenReturn(Optional.of(tp));
+        when(transferProperties.getMaxRetryAttempts()).thenReturn(3);
+        when(transferProperties.getRetryDelayMs()).thenReturn(1000L);
+        when(apiService.startTransfer(id)).thenThrow(new org.springframework.dao.OptimisticLockingFailureException(
+                "Cannot save entity with version 1"));
+        when(transferProcessRepository.save(any())).thenThrow(new org.springframework.dao.OptimisticLockingFailureException(
+                "Cannot save entity with version 1 again"));
+
+        // Must not throw — the catch inside scheduleAttempt swallows the secondary OLE.
+        service.processStart(id);
+
+        verify(transferProcessRepository, times(2)).findById(id);
+        verify(taskScheduler, times(1)).schedule(any(Runnable.class), any(Instant.class));
+    }
+
 }
 

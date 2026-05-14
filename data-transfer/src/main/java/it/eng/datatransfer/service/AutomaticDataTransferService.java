@@ -105,7 +105,19 @@ public class AutomaticDataTransferService {
             log.warn("Auto transfer phase [{}] failed for TransferProcess {} (attempt {}/{}): {}",
                     phase, id, attemptNumber, totalAttempts, e.getMessage());
 
-            transferProcessRepository.save(tp.withRetryCount(nextRetryCount));
+            // Re-read the TP fresh so we have the current @Version value. The action may have already
+            // incremented the version (e.g. startTransfer() pre-saves STARTED before the peer HTTP call,
+            // then tries to roll back on failure). Using the stale `tp` read above would cause an
+            // OptimisticLockingFailureException here, which would crash this async thread and prevent
+            // any retry from being scheduled.
+            TransferProcess freshTp = transferProcessRepository.findById(id).orElse(null);
+            if (freshTp != null) {
+                try {
+                    transferProcessRepository.save(freshTp.withRetryCount(nextRetryCount));
+                } catch (Exception saveEx) {
+                    log.warn("Failed to persist retryCount for TransferProcess {}: {}", id, saveEx.getMessage());
+                }
+            }
 
             if (nextRetryCount > maxRetries) {
                 log.error("Auto transfer phase [{}] exhausted all {} attempt(s) for TransferProcess {}. Transitioning to TERMINATED.",

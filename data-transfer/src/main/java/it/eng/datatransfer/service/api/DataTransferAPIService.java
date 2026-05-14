@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
 import it.eng.datatransfer.client.DataPlaneClient;
-import it.eng.datatransfer.exceptions.DataPlaneClientException;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.model.*;
@@ -399,7 +398,7 @@ public class DataTransferAPIService {
                 .lastModifiedBy(transferProcess.getLastModifiedBy())
                 .version(transferProcess.getVersion())
                 .build();
-        transferProcessRepository.save(transferProcessStarted);
+        transferProcessStarted = transferProcessRepository.save(transferProcessStarted);
         log.info("Transfer process {} pre-saved as STARTED before notifying peer", transferProcessStarted.getId());
 
         GenericApiResponse<String> response = okHttpRestClient
@@ -418,7 +417,31 @@ public class DataTransferAPIService {
         } else {
             log.error("Error response received — rolling back TP to REQUESTED state");
             // Roll back: restore the original REQUESTED state so the admin can retry.
-            transferProcessRepository.save(transferProcess);
+            // Build the rollback entity from transferProcessStarted (which has the current @Version
+            // after the STARTED save) to avoid OptimisticLockingFailureException. Use the original
+            // dataAddress from transferProcess so generated fields (e.g. presigned URLs) are discarded.
+            TransferProcess rollback = TransferProcess.Builder.newInstance()
+                    .id(transferProcessStarted.getId())
+                    .agreementId(transferProcessStarted.getAgreementId())
+                    .consumerPid(transferProcessStarted.getConsumerPid())
+                    .providerPid(transferProcessStarted.getProviderPid())
+                    .callbackAddress(transferProcessStarted.getCallbackAddress())
+                    .dataAddress(transferProcess.getDataAddress())
+                    .isDownloaded(transferProcessStarted.isDownloaded())
+                    .dataId(transferProcessStarted.getDataId())
+                    .format(transferProcessStarted.getFormat())
+                    .state(TransferState.REQUESTED)
+                    .role(transferProcessStarted.getRole())
+                    .datasetId(transferProcessStarted.getDatasetId())
+                    .retryCount(transferProcessStarted.getRetryCount())
+                    .tenantId(transferProcessStarted.getTenantId())
+                    .created(transferProcessStarted.getCreated())
+                    .createdBy(transferProcessStarted.getCreatedBy())
+                    .modified(transferProcessStarted.getModified())
+                    .lastModifiedBy(transferProcessStarted.getLastModifiedBy())
+                    .version(transferProcessStarted.getVersion())
+                    .build();
+            transferProcessRepository.save(rollback);
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
                     "Transfer process start failed",
                     auditMap("transferProcess", transferProcess,
@@ -843,53 +866,6 @@ public class DataTransferAPIService {
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid(),
                             "role", IConstants.ROLE_API));
-        }
-    }
-
-    /**
-     * Attempts to forward a {@link DataFlowStartMessage} to the registered Data Plane for the given
-     * transfer process. If no Data Plane is registered for the transfer type the call is skipped
-     * silently (backward-compatible fallback). If the Data Plane call fails with a
-     * {@link DataPlaneClientException}, {@link #terminateTransfer(String)} is called so the consumer
-     * is notified and the local state is set to TERMINATED. If notifying the counter-party also
-     * fails, the TERMINATED state is persisted locally as a best-effort fallback.
-     * If the transfer type is not set the call is skipped silently.
-     *
-     * @param transferProcess the provider-side process that just moved to STARTED
-     */
-    private void sendDataFlowStartToDataPlane(TransferProcess transferProcess) {
-        String transferType = transferProcess.getFormat();
-        if (StringUtils.isBlank(transferType)) {
-            log.debug("Transfer type not set for process {}, skipping Data Plane routing", transferProcess.getId());
-            return;
-        }
-        // Use the global feedback address (no tenant path) so the DP can POST back to
-        // /api/v1/dataflows/complete on the admin chain.
-        String callbackAddress = dataTransferProperties.dataPlaneFeedbackAddress();
-        DataFlowStartMessage startMessage = DataFlowStartMessage.Builder.newInstance()
-                .processId(transferProcess.getId())
-                .transferType(transferType)
-                .callbackAddress(callbackAddress)
-                .dataAddress(toDataAddressMap(transferProcess.getDataAddress()))
-                .agreementId(transferProcess.getAgreementId())
-                .datasetId(transferProcess.getDatasetId())
-                .build();
-        try {
-            dataPlaneClient.start(startMessage);
-            log.info("DataFlowStartMessage forwarded to Data Plane for process {}", transferProcess.getId());
-        } catch (IllegalStateException e) {
-            log.info("No Data Plane registered for transfer type '{}', skipping DPS routing for process {}",
-                    transferType, transferProcess.getId());
-        } catch (DataPlaneClientException e) {
-            log.error("Data Plane communication failed for process {}: {}. Terminating transfer.",
-                    transferProcess.getId(), e.getMessage());
-            try {
-                terminateTransfer(transferProcess.getId());
-            } catch (Exception terminateEx) {
-                log.error("Failed to send termination to counter-party: {}", terminateEx.getMessage());
-                TransferProcess terminated = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
-                transferProcessRepository.save(terminated);
-            }
         }
     }
 

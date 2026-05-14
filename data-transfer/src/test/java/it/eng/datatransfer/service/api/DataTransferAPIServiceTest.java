@@ -281,6 +281,7 @@ class DataTransferAPIServiceTest {
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        when(transferProcessRepository.save(any(TransferProcess.class))).thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED);
 
         apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId());
 
@@ -301,6 +302,7 @@ class DataTransferAPIServiceTest {
         when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID)).thenReturn("provider-bucket");
         when(s3ClientService.generateGetPresignedUrl(eq("provider-bucket"), eq(DataTransferMockObjectUtil.DATASET_ID), any()))
                 .thenReturn("https://minio.example.com/presigned/artifact");
+        when(transferProcessRepository.save(any(TransferProcess.class))).thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED);
 
         apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId());
 
@@ -346,6 +348,7 @@ class DataTransferAPIServiceTest {
         when(apiResponse.getMessage()).thenReturn("error");
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
+        when(transferProcessRepository.save(any(TransferProcess.class))).thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED);
 
         assertThrows(DataTransferAPIException.class, () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()));
 
