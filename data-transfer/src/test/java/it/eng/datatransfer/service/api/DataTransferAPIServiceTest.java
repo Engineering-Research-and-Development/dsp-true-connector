@@ -1,7 +1,6 @@
 package it.eng.datatransfer.service.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import it.eng.dataplane.api.message.DataFlowPrepareMessage;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
 import it.eng.datatransfer.client.DataPlaneClient;
 import it.eng.datatransfer.exceptions.DataPlaneClientException;
@@ -15,13 +14,15 @@ import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
-import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.model.TemporaryBucketUser;
+import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.usagecontrol.UsageControlProperties;
@@ -76,6 +77,10 @@ class DataTransferAPIServiceTest {
     private S3ClientService s3ClientService;
     @Mock
     private TenantBucketResolver tenantBucketResolver;
+    @Mock
+    private TemporaryBucketUserService temporaryBucketUserService;
+    @Mock
+    private S3Properties s3Properties;
     @Mock
     private Pageable pageable;
 
@@ -862,7 +867,7 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
-    @DisplayName("Request transfer (HTTP-PUSH consumer) - sends fully populated DataFlowPrepareMessage to Data Plane")
+    @DisplayName("Request transfer (HTTP-PUSH consumer) - creates temp S3 user directly in CP and sends TransferRequestMessage")
     public void requestTransfer_sendsDataFlowPrepareMessageToDataPlane() {
         TransferProcess httpPushInitialized = TransferProcess.Builder.newInstance()
                 .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
@@ -878,21 +883,23 @@ class DataTransferAPIServiceTest {
                 DataTransferFormat.HTTP_PUSH.format(),
                 null);
 
-        DataFlowPrepareResponse prepareResponse = DataFlowPrepareResponse.Builder.newInstance()
-                .processId(httpPushInitialized.getId())
-                .dataAddress(Map.of(
-                        "bucketName", "test-bucket",
-                        "region", "us-east-1",
-                        "objectKey", httpPushInitialized.getId(),
-                        "accessKey", "test-access-key",
-                        "secretKey", "test-secret-key",
-                        "endpointOverride", "http://minio:9000"))
+        TemporaryBucketUser tempUser = TemporaryBucketUser.Builder.newInstance()
+                .transferProcessId(httpPushInitialized.getId())
+                .bucketName("test-bucket")
+                .objectKey(httpPushInitialized.getId())
+                .accessKey("test-access-key")
+                .secretKey("test-secret-key")
                 .build();
 
         when(transferProcessRepository.findById(httpPushInitialized.getId()))
                 .thenReturn(Optional.of(httpPushInitialized));
-        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq(DataTransferFormat.HTTP_PUSH.format())))
-                .thenReturn(prepareResponse);
+        when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID))
+                .thenReturn("test-bucket");
+        when(temporaryBucketUserService.createTemporaryUser(
+                httpPushInitialized.getId(), "test-bucket", httpPushInitialized.getId()))
+                .thenReturn(tempUser);
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getExternalPresignedEndpoint()).thenReturn("http://172.17.0.1:9000");
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
                 .thenReturn(apiResponse);
@@ -902,24 +909,20 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.save(any(TransferProcess.class)))
                 .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER);
         when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
-        when(properties.providerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
 
         apiService.requestTransfer(httpPushRequest);
 
-        ArgumentCaptor<DataFlowPrepareMessage> prepareMsgCaptor = ArgumentCaptor.forClass(DataFlowPrepareMessage.class);
-        verify(dataPlaneClient).prepare(prepareMsgCaptor.capture(), eq(DataTransferFormat.HTTP_PUSH.format()));
-        DataFlowPrepareMessage sent = prepareMsgCaptor.getValue();
-        assertNotNull(sent.getProcessId(), "processId must be set");
-        assertNotNull(sent.getCallbackAddress(), "callbackAddress must be set so DP can send callbacks");
-        assertEquals(DataTransferMockObjectUtil.CALLBACK_ADDRESS, sent.getCallbackAddress(),
-                "callbackAddress should be the base CP URL so the DP can POST back to /api/v1/dataflows/complete");
-        // The prepare MESSAGE from CP to DP does not carry dataAddress — the DP returns credentials in its response
-        assertNotNull(sent.getAgreementId(), "agreementId must be set");
-        assertNotNull(sent.getDatasetId(), "datasetId must be set");
+        // No longer calls dataPlaneClient.prepare() — CP creates temp user directly
+        verify(dataPlaneClient, never()).prepare(any(), any());
+        verify(temporaryBucketUserService).createTemporaryUser(
+                httpPushInitialized.getId(), "test-bucket", httpPushInitialized.getId());
+
+        // Verify a TransferRequestMessage was sent to the provider
+        verify(okHttpRestClient).sendRequestProtocol(any(), any(), any());
     }
 
     @Test
-    @DisplayName("Request transfer (HTTP-PUSH consumer) - terminates process when Data Plane prepare fails")
+    @DisplayName("Request transfer (HTTP-PUSH consumer) - terminates process when temp user creation fails")
     public void requestTransfer_terminatesProcessWhenDataPlanePrepareFails() {
         TransferProcess httpPushInitialized = TransferProcess.Builder.newInstance()
                 .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
@@ -937,14 +940,14 @@ class DataTransferAPIServiceTest {
 
         when(transferProcessRepository.findById(httpPushInitialized.getId()))
                 .thenReturn(Optional.of(httpPushInitialized));
-        doThrow(new DataPlaneClientException("DP unreachable"))
-                .when(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), anyString());
+        when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID))
+                .thenReturn("test-bucket");
+        doThrow(new RuntimeException("MinIO unreachable"))
+                .when(temporaryBucketUserService).createTemporaryUser(anyString(), anyString(), anyString());
 
         // Should not propagate — exception is caught and process is terminated
         assertDoesNotThrow(() -> apiService.requestTransfer(httpPushRequest));
 
-        // Save called for REQUESTED state, then TERMINATED via fallback (terminateTransfer throws
-        // because findById returns empty on second call, so save(TERMINATED) is the fallback)
         verify(transferProcessRepository, atLeastOnce()).save(argCaptorTransferProcess.capture());
         List<TransferProcess> saved = argCaptorTransferProcess.getAllValues();
         boolean hasTerminated = saved.stream().anyMatch(p -> p.getState() == TransferState.TERMINATED);

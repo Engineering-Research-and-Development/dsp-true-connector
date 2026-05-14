@@ -4,8 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import it.eng.dataplane.api.message.DataFlowPrepareMessage;
-import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
 import it.eng.datatransfer.client.DataPlaneClient;
 import it.eng.datatransfer.exceptions.DataPlaneClientException;
@@ -23,7 +21,10 @@ import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.service.TemporaryBucketUserService;
+import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.serializer.ToolsSerializer;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantBucketResolver;
@@ -62,20 +63,24 @@ public class DataTransferAPIService {
     private final DataPlaneClient dataPlaneClient;
     private final S3ClientService s3ClientService;
     private final TenantBucketResolver tenantBucketResolver;
+    private final TemporaryBucketUserService temporaryBucketUserService;
+    private final S3Properties s3Properties;
 
     /**
      * Creates a new {@code DataTransferAPIService}.
      *
-     * @param transferProcessRepository repository for transfer processes
-     * @param okHttpRestClient          HTTP client for protocol messages
-     * @param credentialUtils           connector credential provider
-     * @param dataTransferProperties    configuration properties
-     * @param usageControlProperties    usage control configuration
-     * @param publisher                 audit event publisher
-     * @param artifactTransferService   artifact lookup service
-     * @param dataPlaneClient           DPS client for forwarding data-flow messages
-     * @param s3ClientService           S3 client for presigned URL generation
-     * @param tenantBucketResolver      resolves the effective bucket name for the current tenant
+     * @param transferProcessRepository  repository for transfer processes
+     * @param okHttpRestClient           HTTP client for protocol messages
+     * @param credentialUtils            connector credential provider
+     * @param dataTransferProperties     configuration properties
+     * @param usageControlProperties     usage control configuration
+     * @param publisher                  audit event publisher
+     * @param artifactTransferService    artifact lookup service
+     * @param dataPlaneClient            DPS client for forwarding data-flow messages
+     * @param s3ClientService            S3 client for presigned URL generation
+     * @param tenantBucketResolver       resolves the effective bucket name for the current tenant
+     * @param temporaryBucketUserService service for creating and cleaning up temporary S3 users
+     * @param s3Properties               S3 configuration (region, external endpoint)
      */
     public DataTransferAPIService(TransferProcessRepository transferProcessRepository,
                                   OkHttpRestClient okHttpRestClient,
@@ -86,7 +91,9 @@ public class DataTransferAPIService {
                                   ArtifactTransferService artifactTransferService,
                                   DataPlaneClient dataPlaneClient,
                                   S3ClientService s3ClientService,
-                                  TenantBucketResolver tenantBucketResolver) {
+                                  TenantBucketResolver tenantBucketResolver,
+                                  TemporaryBucketUserService temporaryBucketUserService,
+                                  S3Properties s3Properties) {
         super();
         this.transferProcessRepository = transferProcessRepository;
         this.okHttpRestClient = okHttpRestClient;
@@ -98,6 +105,8 @@ public class DataTransferAPIService {
         this.dataPlaneClient = dataPlaneClient;
         this.s3ClientService = s3ClientService;
         this.tenantBucketResolver = tenantBucketResolver;
+        this.temporaryBucketUserService = temporaryBucketUserService;
+        this.s3Properties = s3Properties;
     }
 
     /**
@@ -150,34 +159,44 @@ public class DataTransferAPIService {
         stateTransitionCheck(TransferState.REQUESTED, transferProcessInitialized);
         DataAddress dataAddressForMessage = null;
         boolean isHttpPush = "HttpData-PUSH".equals(dataTransferRequest.getFormat());
-        DataFlowPrepareResponse prepareResponse = null;
         if (isHttpPush) {
-            DataFlowPrepareMessage prepareMessage = DataFlowPrepareMessage.Builder.newInstance()
-                    .processId(transferProcessInitialized.getId())
-                    .callbackAddress(dataTransferProperties.providerCallbackAddress())
-                    .agreementId(transferProcessInitialized.getAgreementId())
-                    .datasetId(transferProcessInitialized.getDatasetId())
-                    .build();
+            // Create temporary S3 user directly in the CP — no push DP is registered on the consumer side.
+            // The push DP is a provider-side component; it receives these credentials via DataFlowStartMessage.
             try {
-                prepareResponse = dataPlaneClient.prepare(prepareMessage, dataTransferRequest.getFormat());
-            } catch (DataPlaneClientException e) {
-                log.error("Data Plane prepare failed for process {}: {}", transferProcessInitialized.getId(), e.getMessage());
+                String bucketName = tenantBucketResolver.resolveBucketName(transferProcessInitialized.getTenantId());
+                String objectKey = transferProcessInitialized.getId();
+                var tempUser = temporaryBucketUserService.createTemporaryUser(objectKey, bucketName, objectKey);
+
+                Map<String, String> endpointMap = new HashMap<>();
+                endpointMap.put(S3Utils.BUCKET_NAME, bucketName);
+                endpointMap.put(S3Utils.REGION, s3Properties.getRegion());
+                endpointMap.put(S3Utils.OBJECT_KEY, objectKey);
+                endpointMap.put(S3Utils.ACCESS_KEY, tempUser.getAccessKey());
+                endpointMap.put(S3Utils.SECRET_KEY, tempUser.getSecretKey());
+                String endpointOverride = StringUtils.isNotBlank(s3Properties.getExternalPresignedEndpoint())
+                        ? s3Properties.getExternalPresignedEndpoint()
+                        : s3Properties.getEndpoint();
+                if (StringUtils.isNotBlank(endpointOverride)) {
+                    endpointMap.put(S3Utils.ENDPOINT_OVERRIDE, endpointOverride);
+                }
+
+                List<EndpointProperty> endpointProperties = endpointMap.entrySet().stream()
+                        .map(e -> EndpointProperty.Builder.newInstance()
+                                .name(e.getKey())
+                                .value(e.getValue())
+                                .build())
+                        .toList();
+
+                dataAddressForMessage = DataAddress.Builder.newInstance()
+                        .endpointProperties(endpointProperties)
+                        .build();
+            } catch (Exception e) {
+                log.error("Failed to create temporary S3 user for HTTP-PUSH transfer {}: {}",
+                        transferProcessInitialized.getId(), e.getMessage());
                 TransferProcess terminated = transferProcessInitialized.copyWithNewTransferState(TransferState.TERMINATED);
                 transferProcessRepository.save(terminated);
                 return TransferSerializer.serializePlainJsonNode(terminated);
             }
-            Map<String, String> dpDataAddress = prepareResponse.getDataAddress();
-
-            List<EndpointProperty> endpointProperties = dpDataAddress.entrySet().stream()
-                    .map(e -> EndpointProperty.Builder.newInstance()
-                            .name(e.getKey())
-                            .value(e.getValue())
-                            .build())
-                    .toList();
-
-            dataAddressForMessage = DataAddress.Builder.newInstance()
-                    .endpointProperties(endpointProperties)
-                    .build();
         }
 
         TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
@@ -269,12 +288,12 @@ public class DataTransferAPIService {
         }
         return TransferSerializer.serializePlainJsonNode(transferProcessForDB);
         } finally {
-            if (isHttpPush && !succeeded && prepareResponse != null) {
-                // Prepare created temp credentials in the push DP — clean them up via terminate
+            if (isHttpPush && !succeeded && dataAddressForMessage != null) {
+                // Temp S3 user was created — clean it up on failure
                 try {
-                    dataPlaneClient.terminate(transferProcessInitialized.getId(), dataTransferRequest.getFormat());
+                    temporaryBucketUserService.deleteTemporaryUser(transferProcessInitialized.getId());
                 } catch (Exception e) {
-                    log.warn("Could not clean up DP resources after requestTransfer failure for process {}: {}",
+                    log.warn("Could not clean up temp S3 user after requestTransfer failure for process {}: {}",
                             transferProcessInitialized.getId(), e.getMessage());
                 }
             }
@@ -865,7 +884,7 @@ public class DataTransferAPIService {
 
     /**
      * Converts a {@link DataAddress} model object to a flat string map suitable for
-     * {@link DataFlowStartMessage} and {@link DataFlowPrepareMessage}.
+     * {@link DataFlowStartMessage}.
      *
      * @param dataAddress the data address to convert; may be {@code null}
      * @return a mutable map of address properties, or {@code null} when input is {@code null}
