@@ -240,7 +240,7 @@ If you have a custom DP implementation that follows the Dataplane Signaling API 
 register it the same way using `POST /api/v1/dataplanes`. Your DP must expose:
 
 - `POST /dataflows/start` — begin a transfer (async)
-- `POST /dataflows/prepare` — prepare without transferring (returns metadata such as a presigned URL)
+- `POST /dataflows/prepare` — part of the DPS spec (implemented on each DP but not called by the built-in CP)
 - `DELETE /dataflows/{id}` — abort a transfer
 - Callback to CP: `POST {callbackAddress}/api/v1/dataflows/complete` — notify CP of completion
 

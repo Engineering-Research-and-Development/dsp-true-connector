@@ -186,11 +186,11 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     /**
      * Terminates a data transfer.
      * For HTTP-PUSH, cleanup of temporary credentials is performed during {@link #initiateTransfer}
-     * on success. If the transfer is terminated externally the cleanup cannot be performed here
-     * because the process ID is not available from the data flow ID alone.
+     * on success. If the transfer is terminated externally a best-effort attempt is made to
+     * delete the temporary IAM user created by the consumer CP.
      *
      * @param processId the DPS transfer process ID — used to look up and delete the temporary
-     *                  IAM user that was created during {@link #prepare}
+     *                  IAM user stored in MongoDB
      * @return future with success result
      */
     @Override
@@ -325,8 +325,9 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
 
     /**
      * Builds the consumer S3 properties map from the data address.
-     * The secretKey is passed as plain text — the consumer DP returns it unencrypted
-     * in the {@code DataFlowPrepareResponse} and the CP forwards it without encrypting.
+     * The secretKey is passed as plain text — the consumer CP creates the temporary IAM user
+     * and places the unencrypted secretKey into the {@code DataFlowStartMessage.dataAddress}
+     * that it sends to the provider CP, which forwards it to this DP unchanged.
      *
      * @param dataAddress the data address map from the DataFlow
      * @param processId   the transfer process ID used as object key fallback
@@ -342,8 +343,8 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
         props.put(S3Utils.ACCESS_KEY, dataAddress.get(S3Utils.ACCESS_KEY));
 
         // The secretKey arrives as plain text — set directly without decryption.
-        // The consumer DP (prepare()) returns a plain secretKey in the DataFlowPrepareResponse.
-        // The CP passes it through without encrypting, so no decryption is needed here.
+        // The consumer CP creates the temp user, places the plain secretKey in the DataFlowStartMessage
+        // dataAddress, and the provider CP forwards it here without encrypting.
         props.put(S3Utils.SECRET_KEY, dataAddress.get(S3Utils.SECRET_KEY));
 
         String endpointOverride = dataAddress.get(S3Utils.ENDPOINT_OVERRIDE);

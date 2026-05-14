@@ -46,7 +46,7 @@ For HTTP-PUSH the flow is different — see the [HTTP-PUSH Transfer Flow](#http-
 | `DataPlaneRegistration` | `it.eng.datatransfer.model` | Persisted DP registration record (MongoDB) |
 | `DataPlaneRegistrationService` | `it.eng.datatransfer.service` | CRUD + routing lookup |
 | `DataPlaneRouter` | `it.eng.datatransfer.router` | Selects DP by transfer type (round-robin) |
-| `DataPlaneClient` | `it.eng.datatransfer.client` | CP → DP HTTP calls (`prepare`, `start`, `terminate`) |
+| `DataPlaneClient` | `it.eng.datatransfer.client` | CP → DP HTTP calls (`start`, `terminate`) |
 | `DataFlowCallbackController` | `it.eng.datatransfer.rest.api` | Receives DP completion/error callbacks |
 | `DataPlaneRegistrationController` | `it.eng.datatransfer.rest.api` | Admin CRUD for DP registrations |
 
@@ -207,7 +207,7 @@ Suspend is safe and allowed when:
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/dataflows/start` | Begin a data transfer (async) |
-| `POST` | `/dataflows/prepare` | Prepare without transferring (returns presigned URL) |
+| `POST` | `/dataflows/prepare` | Prepare without transferring (part of DPS spec; not invoked by the built-in CP) |
 | `DELETE` | `/dataflows/{id}` | Terminate/abort a data flow |
 | `GET` | `/actuator/health` | Health check |
 | `GET` | `/api/v1/audit` | List audit events (paginated, filterable) |
@@ -272,7 +272,7 @@ The CP publishes to `audit_events` whenever a DP registers or deregisters:
 | Event type | When |
 |---|---|
 | `DATAFLOW_STARTED` | `POST /dataflows/start` received and persisted |
-| `DATAFLOW_PREPARE_REQUESTED` | `POST /dataflows/prepare` received |
+| `DATAFLOW_PREPARE_REQUESTED` | `POST /dataflows/prepare` received (endpoint available but not called by the built-in CP) |
 | `DATAFLOW_COMPLETED` | Transfer completed successfully |
 | `DATAFLOW_FAILED` | Transfer failed (error propagated to CP) |
 | `DATAFLOW_TERMINATED` | Explicit `DELETE /dataflows/{id}` received |
