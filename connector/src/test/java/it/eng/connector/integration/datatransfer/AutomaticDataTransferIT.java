@@ -33,6 +33,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
@@ -51,9 +52,10 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Integration test that starts two real Spring Boot application instances — one acting as
  * Consumer (port 8184) and one as Provider (port 8285) — each backed by its own MongoDB
- * database on a shared Testcontainers MongoDB container. Data-plane operations are
- * intercepted by a WireMock server acting as the Data Plane microservice (port 9101);
- * no real S3 / MinIO instance is needed.
+ * database on a shared Testcontainers MongoDB container. The provider is also backed by a
+ * shared Testcontainers MinIO instance to support HTTP-PULL presigned URL generation.
+ * Data-plane transfer operations are intercepted by a WireMock server acting as the Data
+ * Plane microservice (port 9101).
  *
  * <p>The test inserts pre-initialized {@link TransferProcess} records on both sides, then
  * triggers automatic transfer via the consumer's API and polls both repositories until the
@@ -97,6 +99,11 @@ public class AutomaticDataTransferIT {
                     .waitingFor(Wait.forLogMessage(".*Waiting for connections.*", 1))
                     .withReuse(false);
 
+    @SuppressWarnings("resource")
+    private static final MinIOContainer minIOContainer =
+            new MinIOContainer(DockerImageName.parse("minio/minio"))
+                    .withReuse(false);
+
     // ── Spring Boot contexts ──────────────────────────────────────────────────────
     private static ConfigurableApplicationContext consumerCtx;
     private static ConfigurableApplicationContext providerCtx;
@@ -126,6 +133,7 @@ public class AutomaticDataTransferIT {
     @BeforeAll
     static void startApplications() {
         mongoDBContainer.start();
+        minIOContainer.start();
 
         String mongoHost = mongoDBContainer.getHost();
         int    mongoPort = mongoDBContainer.getMappedPort(27017);
@@ -157,11 +165,12 @@ public class AutomaticDataTransferIT {
                 .willReturn(aResponse().withStatus(200)));
         log.info("DP WireMock started on port {}", DP_WIREMOCK_PORT);
 
-        // ── Provider — real connector instance ────────────────────────────────────
+        // ── Provider — real connector instance with MinIO for HTTP-PULL presigned URL generation ────
+        String minioUrl = minIOContainer.getS3URL();
         providerCtx = startInstance(mongoHost, mongoPort, PROVIDER_PORT,
                 "provider", "provider_db", PROVIDER_BASE_URL,
-                null, null, null,
-                null);
+                minioUrl, minIOContainer.getUserName(), minIOContainer.getPassword(),
+                "provider-bucket");
 
         // ── Consumer — real connector instance ────────────────────────────────────
         consumerCtx = startInstance(mongoHost, mongoPort, CONSUMER_PORT,
@@ -294,6 +303,7 @@ public class AutomaticDataTransferIT {
             dpWireMock.stop();
         }
         mongoDBContainer.stop();
+        minIOContainer.stop();
     }
 
     // ── catalog + artifact setup ──────────────────────────────────────────────────

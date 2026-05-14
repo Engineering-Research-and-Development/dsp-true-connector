@@ -134,13 +134,8 @@ public class DataTransferAPIViewDataIT extends BaseIntegrationTest {
             throw new Exception("File storing aborted, " + e.getLocalizedMessage());
         }
 
-        // stub DP prepare response: returns presigned URL for the stored file
-        WireMock.stubFor(WireMock.post("/dataflows/prepare")
-                .willReturn(aResponse()
-                        .withHeader("Content-Type", "application/json")
-                        .withStatus(200)
-                        .withBody("{\"processId\":\"" + transferProcessCompleted.getId()
-                                + "\",\"dataAddress\":{\"presignedUrl\":\"http://example.com/file.txt\"}}")));
+        // CP now generates the presigned URL directly via S3ClientService — no DP prepare call needed.
+        // The file was already uploaded to S3 above; the URL is generated from that bucket+key.
 
         // send request
         final ResultActions result =

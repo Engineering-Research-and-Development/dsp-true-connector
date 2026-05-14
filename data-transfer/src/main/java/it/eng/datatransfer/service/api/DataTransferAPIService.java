@@ -23,8 +23,10 @@ import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.serializer.ToolsSerializer;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
@@ -39,6 +41,7 @@ import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +60,8 @@ public class DataTransferAPIService {
     private final AuditEventPublisher publisher;
     private final ArtifactTransferService artifactTransferService;
     private final DataPlaneClient dataPlaneClient;
+    private final S3ClientService s3ClientService;
+    private final TenantBucketResolver tenantBucketResolver;
 
     /**
      * Creates a new {@code DataTransferAPIService}.
@@ -69,6 +74,8 @@ public class DataTransferAPIService {
      * @param publisher                 audit event publisher
      * @param artifactTransferService   artifact lookup service
      * @param dataPlaneClient           DPS client for forwarding data-flow messages
+     * @param s3ClientService           S3 client for presigned URL generation
+     * @param tenantBucketResolver      resolves the effective bucket name for the current tenant
      */
     public DataTransferAPIService(TransferProcessRepository transferProcessRepository,
                                   OkHttpRestClient okHttpRestClient,
@@ -77,7 +84,9 @@ public class DataTransferAPIService {
                                   UsageControlProperties usageControlProperties,
                                   AuditEventPublisher publisher,
                                   ArtifactTransferService artifactTransferService,
-                                  DataPlaneClient dataPlaneClient) {
+                                  DataPlaneClient dataPlaneClient,
+                                  S3ClientService s3ClientService,
+                                  TenantBucketResolver tenantBucketResolver) {
         super();
         this.transferProcessRepository = transferProcessRepository;
         this.okHttpRestClient = okHttpRestClient;
@@ -87,6 +96,8 @@ public class DataTransferAPIService {
         this.publisher = publisher;
         this.artifactTransferService = artifactTransferService;
         this.dataPlaneClient = dataPlaneClient;
+        this.s3ClientService = s3ClientService;
+        this.tenantBucketResolver = tenantBucketResolver;
     }
 
     /**
@@ -300,16 +311,12 @@ public class DataTransferAPIService {
                 Artifact artifact = artifactTransferService.findArtifact(transferProcess);
                 String artifactURL = switch (artifact.getArtifactType()) {
                     case FILE -> {
-                        // Delegate presigned URL generation to the pull Data Plane
+                        // Generate presigned download URL directly using the connector's own S3 client.
+                        // No pull Data Plane is registered at the provider side; the pull DP is a
+                        // consumer-side component that downloads from this URL.
                         try {
-                            DataFlowPrepareMessage prepareMessage = DataFlowPrepareMessage.Builder.newInstance()
-                                    .processId(transferProcess.getId())
-                                    .callbackAddress(dataTransferProperties.providerCallbackAddress())
-                                    .agreementId(transferProcess.getAgreementId())
-                                    .datasetId(transferProcess.getDatasetId())
-                                    .build();
-                            DataFlowPrepareResponse prepareResponse = dataPlaneClient.prepare(prepareMessage, transferProcess.getFormat());
-                            yield prepareResponse.getDataAddress().get("presignedUrl");
+                            String bucketName = tenantBucketResolver.resolveBucketName(transferProcess.getTenantId());
+                            yield s3ClientService.generateGetPresignedUrl(bucketName, transferProcess.getDatasetId(), Duration.ofDays(7L));
                         } catch (Exception e) {
                             throw new DataTransferAPIException("The requested artifact is currently not available. Please try again later.");
                         }
@@ -691,18 +698,11 @@ public class DataTransferAPIService {
         policyCheck(transferProcess);
 
         try {
-            // Delegate presigned URL generation to the pull Data Plane (consumer side)
+            // Generate presigned URL directly using the connector's own S3 client.
+            // The artifact is stored in the consumer's S3 bucket with the transferProcessId as the object key.
             // TODO verify Duration does not exceed EndDateTime, if it is present
-            DataFlowPrepareMessage prepareMessage = DataFlowPrepareMessage.Builder.newInstance()
-                    .processId(transferProcessId)
-                    .callbackAddress(dataTransferProperties.providerCallbackAddress())
-                    .agreementId(transferProcess.getAgreementId())
-                    .datasetId(transferProcess.getDatasetId())
-                    .dataAddress(Map.of("mode", "VIEW"))
-                    .build();
-            DataFlowPrepareResponse prepareResponse = dataPlaneClient.prepare(
-                    prepareMessage, transferProcess.getFormat());
-            String artifactURL = prepareResponse.getDataAddress().get("presignedUrl");
+            String bucketName = tenantBucketResolver.resolveBucketName(transferProcess.getTenantId());
+            String artifactURL = s3ClientService.generateGetPresignedUrl(bucketName, transferProcessId, Duration.ofDays(7L));
             publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
             publisher.publishEvent(AuditEventType.TRANSFER_VIEW,
                     "Transfer process (view) generated artifact URL",
@@ -711,7 +711,7 @@ public class DataTransferAPIService {
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid()));
             return artifactURL;
-        } catch (DataPlaneClientException | IllegalStateException e) {
+        } catch (Exception e) {
             log.error("Error while accessing data", e);
             publisher.publishEvent(AuditEventType.TRANSFER_VIEW,
                     "Transfer process (view) generated artifact URL failed",

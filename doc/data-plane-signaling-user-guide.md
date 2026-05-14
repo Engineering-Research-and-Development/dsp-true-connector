@@ -66,9 +66,9 @@ Leave `s3.endpoint` blank when using AWS S3 (the SDK resolves the correct endpoi
 ### HTTP-PULL — consumer fetches the artifact
 
 1. **Consumer** requests a transfer (`HttpData-PULL`).
-2. **Provider admin** calls *Start transfer* — the CP asks the registered pull DP to generate
-   a presigned download URL for the artifact. That URL is sent to the consumer inside
-   `TransferStartMessage`.
+2. **Provider admin** calls *Start transfer* — the CP generates a presigned S3 download URL
+   for the artifact **directly via its own S3 client** (no pull DP is registered or needed on
+   the provider side). That URL is sent to the consumer inside `TransferStartMessage`.
 3. **Consumer admin** calls *Download data* — the consumer-side pull DP downloads the artifact
    from the presigned URL and stores it in the consumer's S3 bucket.
 4. The DP notifies the CP when done; both sides move to `COMPLETED`.
@@ -98,9 +98,9 @@ After a transfer reaches `COMPLETED`, call:
 GET /api/v1/transfers/{transferProcessId}/view
 ```
 
-The CP delegates to the registered DP to generate a presigned S3 GET URL for the artifact
+The CP generates a presigned S3 GET URL for the artifact **directly via its own S3 client**
 (stored under `objectKey = transferProcessId` in the consumer's bucket). The URL is valid
-for 7 days.
+for 7 days. No DP call is made.
 
 ---
 

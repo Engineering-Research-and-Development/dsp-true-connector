@@ -21,7 +21,9 @@ import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -70,6 +72,10 @@ class DataTransferAPIServiceTest {
     private ArtifactTransferService artifactTransferService;
     @Mock
     private DataPlaneClient dataPlaneClient;
+    @Mock
+    private S3ClientService s3ClientService;
+    @Mock
+    private TenantBucketResolver tenantBucketResolver;
     @Mock
     private Pageable pageable;
 
@@ -276,6 +282,26 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, null);
+    }
+
+    @Test
+    @DisplayName("Start transfer process success - provider HTTP-PULL generates presigned URL via S3")
+    public void startTransfer_success_providerHttpPull_generatesPresignedUrlFromS3() {
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL));
+        when(artifactTransferService.findArtifact(any())).thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
+        when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID)).thenReturn("provider-bucket");
+        when(s3ClientService.generateGetPresignedUrl(eq("provider-bucket"), eq(DataTransferMockObjectUtil.DATASET_ID), any()))
+                .thenReturn("https://minio.example.com/presigned/artifact");
+
+        apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId());
+
+        verify(s3ClientService).generateGetPresignedUrl(eq("provider-bucket"), eq(DataTransferMockObjectUtil.DATASET_ID), any());
+        verify(dataPlaneClient, never()).prepare(any(), any());
+        verify(transferProcessRepository).save(any(TransferProcess.class));
     }
 
     @Test
@@ -705,17 +731,13 @@ class DataTransferAPIServiceTest {
         GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
-
-        DataFlowPrepareResponse prepareResponse = DataFlowPrepareResponse.Builder.newInstance()
-                .processId(objectKey)
-                .dataAddress(Map.of("presignedUrl", "https://example.com/presigned-url"))
-                .build();
-        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), nullable(String.class)))
-                .thenReturn(prepareResponse);
+        when(tenantBucketResolver.resolveBucketName(any())).thenReturn("test-bucket");
+        when(s3ClientService.generateGetPresignedUrl(eq("test-bucket"), eq(objectKey), any()))
+                .thenReturn("https://example.com/presigned-url");
 
         assertDoesNotThrow(() -> apiService.viewData(objectKey));
 
-        verify(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), nullable(String.class));
+        verify(s3ClientService).generateGetPresignedUrl(eq("test-bucket"), eq(objectKey), any());
         verify(publisher).publishEvent(any(ArtifactConsumedEvent.class));
     }
 
@@ -730,16 +752,16 @@ class DataTransferAPIServiceTest {
         GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
-
-        doThrow(new DataPlaneClientException("DP error generating presigned URL"))
-                .when(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), nullable(String.class));
+        when(tenantBucketResolver.resolveBucketName(any())).thenReturn("test-bucket");
+        doThrow(new RuntimeException("S3 error generating presigned URL"))
+                .when(s3ClientService).generateGetPresignedUrl(any(), any(), any());
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(objectKey));
     }
 
     @Test
-    @DisplayName("View data - fail - Data Plane not reachable")
+    @DisplayName("View data - fail - S3 not reachable")
     public void viewData_fail_fileNotFound() {
         String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
 
@@ -749,14 +771,14 @@ class DataTransferAPIServiceTest {
         GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
-
-        doThrow(new DataPlaneClientException("No data plane available"))
-                .when(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), nullable(String.class));
+        when(tenantBucketResolver.resolveBucketName(any())).thenReturn("test-bucket");
+        doThrow(new RuntimeException("No S3 endpoint available"))
+                .when(s3ClientService).generateGetPresignedUrl(any(), any(), any());
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(objectKey));
 
-        verify(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), nullable(String.class));
+        verify(s3ClientService).generateGetPresignedUrl(any(), any(), any());
     }
 
 
@@ -774,7 +796,7 @@ class DataTransferAPIServiceTest {
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId()));
 
-        verify(dataPlaneClient, times(0)).prepare(any(DataFlowPrepareMessage.class), any(String.class));
+        verify(s3ClientService, times(0)).generateGetPresignedUrl(any(), any(), any());
     }
 
     @Test
@@ -786,7 +808,7 @@ class DataTransferAPIServiceTest {
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED.getId()));
 
-        verify(dataPlaneClient, times(0)).prepare(any(DataFlowPrepareMessage.class), any(String.class));
+        verify(s3ClientService, times(0)).generateGetPresignedUrl(any(), any(), any());
     }
 
     private static Stream<Arguments> startTransfer_wrongStates() {

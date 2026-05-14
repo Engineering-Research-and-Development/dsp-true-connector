@@ -12,16 +12,14 @@ acting as the orchestrator and each DP as an independent service.
 ## Architecture
 
 ```
-Consumer CP                Provider CP               Provider DP
+Consumer CP                Provider CP               Consumer DP
     |                          |                          |
     |-- TransferRequestMsg --->|                          |
-    |                          |-- POST /dataflows/prepare->|  (HTTP-PULL: get presigned URL)
-    |                          |<-- presignedUrl ----------|
+    |                          | (generate presigned URL  |
+    |                          |  via S3ClientService)    |
     |<-- TransferStartMsg(url)--|                          |
     |                          |                          |
     | (admin triggers download) |                          |
-    |                          |                          |
-Consumer DP                    |                          |
     |                          |                          |
     |<-- POST /dataflows/start  (HTTP-PULL: download artifact from presigned URL)
     |-- artifact --> consumer S3
@@ -83,39 +81,40 @@ The artifact lives in the **provider's S3 bucket**. The consumer downloads it in
 **consumer's S3 bucket** via the consumer-side pull DP.
 
 ```
-Consumer CP                 Provider CP               Provider-side Pull DP
-     |                           |                              |
-     |--- TransferRequestMsg --->|                              |
-     |    (format=HttpData-PULL) |                              |
-     |                           |                              |
-     |            [provider admin calls startTransfer()]        |
-     |                           |-- POST /dataflows/prepare -->|
-     |                           |   DataFlowPrepareMessage     |
-     |                           |<-- presignedUrl (GET, 7d) ---|
-     |                           |                              |
-     |<-- TransferStartMessage --|                              |
-     |    dataAddress.endpoint   |                              |
-     |    = presignedUrl         |                              |
-     |                           |                              |
-     |    [consumer admin calls downloadData()]                 |
-Consumer-side Pull DP            |                              |
-     |<-- POST /dataflows/start -|                              |
-     |    DataFlowStartMessage   |                              |
-     |    dataAddress.endpoint   |                              |
-     |    = presignedUrl         |                              |
-     |                           |                              |
+Consumer CP                 Provider CP
+     |                           |
+     |--- TransferRequestMsg --->|
+     |    (format=HttpData-PULL) |
+     |                           |
+     |            [provider admin calls startTransfer()]
+     |                           |
+     |                           | (generates presigned GET URL directly
+     |                           |  via S3ClientService — no DP call)
+     |                           |
+     |<-- TransferStartMessage --|
+     |    dataAddress.endpoint   |
+     |    = presignedUrl         |
+     |                           |
+     |    [consumer admin calls downloadData()]
+Consumer-side Pull DP            |
+     |<-- POST /dataflows/start -|
+     |    DataFlowStartMessage   |
+     |    dataAddress.endpoint   |
+     |    = presignedUrl         |
+     |                           |
      |--- GET presignedUrl --------------------------------------------> Provider S3
      |<-- artifact stream ------------------------------------------------|
      |--- PUT artifact -------> Consumer S3 (key = transferProcessId)
-     |                           |                              |
-     |-- POST /api/v1/dataflows/complete --> Consumer CP        |
-     |                           |                              |
-Consumer CP → COMPLETED          |                              |
+     |                           |
+     |-- POST /api/v1/dataflows/complete --> Consumer CP
+     |                           |
+Consumer CP → COMPLETED          |
 ```
 
 Key points:
-- `POST /dataflows/prepare` (not `/dataflows/start`) is used for HTTP-PULL at start time.
-  It returns a presigned GET URL that is embedded in `TransferStartMessage.dataAddress.endpoint`.
+- The provider CP generates the presigned GET URL **directly via `S3ClientService`** — it does
+  **not** need a pull DP registered on the provider side. The pull DP is a **consumer-side only**
+  component.
 - `POST /dataflows/start` is sent to the **consumer's** registered pull DP when the consumer
   admin triggers the download (e.g. via `GET /api/v1/transfers/{id}/download`).
 - The artifact is stored in the **consumer's S3 bucket** with `objectKey = transferProcessId`.
@@ -178,12 +177,9 @@ Key points:
 After a transfer reaches `COMPLETED` and `isDownloaded = true`, the consumer can call
 `GET /api/v1/transfers/{id}/view` to receive a presigned S3 GET URL for the stored artifact.
 
-The CP delegates to the registered DP for the transfer's format:
-- HTTP-PULL: pull DP's `POST /dataflows/prepare` with `dataAddress = { "mode": "VIEW" }`
-- HTTP-PUSH: push DP's `POST /dataflows/prepare` with `dataAddress = { "mode": "VIEW" }`
-
-The DP generates a presigned GET URL for the consumer's bucket (key = `transferProcessId`)
-and returns it in `DataFlowPrepareResponse.dataAddress.presignedUrl`.
+The CP generates the presigned URL **directly via `S3ClientService`** using the consumer's
+own S3 bucket (key = `transferProcessId`). No DP call is made — the CP owns the S3 client
+and can generate the URL itself.
 
 ### Transfer Lifecycle and Suspend Semantics
 

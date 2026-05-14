@@ -76,6 +76,20 @@ public class DataTransferMockObjectUtil {
             .state(TransferState.REQUESTED)
             .build();
 
+    /** Provider transfer process in REQUESTED state with HTTP-PULL format (artifact stored in S3). */
+    public static final TransferProcess TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .datasetId(DATASET_ID)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
+            .state(TransferState.REQUESTED)
+            .format(DataTransferFormat.HTTP_PULL.format())
+            .build();
+
     public static final TransferProcess TRANSFER_PROCESS_REQUESTED_CONSUMER = TransferProcess.Builder.newInstance()
             .consumerPid(CONSUMER_PID)
             .providerPid(PROVIDER_PID)

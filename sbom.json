@@ -4,7 +4,7 @@
   "serialNumber" : "urn:uuid:b1311e61-f24d-32d9-8999-e1cc3c1458c7",
   "version" : 1,
   "metadata" : {
-    "timestamp" : "2026-05-14T09:17:02Z",
+    "timestamp" : "2026-05-14T10:06:19Z",
     "lifecycles" : [
       {
         "phase" : "build"
@@ -9727,6 +9727,138 @@
     },
     {
       "type" : "library",
+      "bom-ref" : "pkg:maven/org.springframework.boot/spring-boot-starter-cache@3.5.11?type=jar",
+      "publisher" : "VMware, Inc.",
+      "group" : "org.springframework.boot",
+      "name" : "spring-boot-starter-cache",
+      "version" : "3.5.11",
+      "description" : "Starter for using Spring Framework's caching support",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "e2bcbd1ca5442c527f0f4d43a414501d"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "1570aa5a6dac7fa71b75874c9470e57e543ae94b"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "72d3cc8f350835e3472205930d66df09005fc5be288ed655a12b4aba9d80113f"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "0d655410e7a7199e5eac3d6cb080fd48a6374a7afab8685d6a03565d2872a8274f80eeba905ca491bbfb90d714ad4ab7afbc42262ecf1c1bce260c88571efac2"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "d8ec2751eb044d227a8234050efd2646f770a81c9bdf76abbcec6a7cf974abfb270f0409016600dd0c4771f805fbe353"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "a5eed23be932c047180c9ba4a0f3302ec0a04c6af2cf37060ade7d31a1872d7b43d44302eca7ec44d6739e6e05bd3802"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "e68a8ec7a44626eac202ab7462c4811149b3c7abbd4517a4d4ab62d6f6e48bde"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "817b0b7be34bef5410c820b4c8b8c4acd0901728c28af4a6309b5b69f24d7f456bd4a763292ff4b0c39fdbd42a233618880512e394af049d2dd60ae94de7f148"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.springframework.boot/spring-boot-starter-cache@3.5.11?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://spring.io/projects/spring-boot"
+        },
+        {
+          "type" : "issue-tracker",
+          "url" : "https://github.com/spring-projects/spring-boot/issues"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/spring-projects/spring-boot"
+        }
+      ]
+    },
+    {
+      "type" : "library",
+      "bom-ref" : "pkg:maven/org.springframework/spring-context-support@6.2.16?type=jar",
+      "publisher" : "Spring IO",
+      "group" : "org.springframework",
+      "name" : "spring-context-support",
+      "version" : "6.2.16",
+      "description" : "Spring Context Support",
+      "scope" : "required",
+      "hashes" : [
+        {
+          "alg" : "MD5",
+          "content" : "eae900ff12246dde95c07857050715a6"
+        },
+        {
+          "alg" : "SHA-1",
+          "content" : "5894b963f121c50c606cb34c4fc876bb4394772c"
+        },
+        {
+          "alg" : "SHA-256",
+          "content" : "d292ddb7eb99eda8adddd9c818a69bb06d39b50405473e9fded7dd268183175c"
+        },
+        {
+          "alg" : "SHA-512",
+          "content" : "bbf213bcfd41f92e5d0e2ee16f762dd4609584252c63e0e0139674359846ed42b5484b7cf5ed8259532c9988b08560ff91044c1d0e4fb0b035d824b9c06eace1"
+        },
+        {
+          "alg" : "SHA-384",
+          "content" : "e3a690ca34363f68a556d0124a07eaa267bf0fdc9c82c1ee9b47e6d266f80e627a032e4a9a733406ffa5c390829b21bb"
+        },
+        {
+          "alg" : "SHA3-384",
+          "content" : "e9b83b5da50b1a7602ee60fc4e3f73ff8b7e32850434413f3d27efb184a132023f1af0c9be0c90427e46395ee2a4b2a0"
+        },
+        {
+          "alg" : "SHA3-256",
+          "content" : "eefe0f5361ef2ec46a3aefee493f29376c0a75fd920a9e17d6cbb2be6d21439c"
+        },
+        {
+          "alg" : "SHA3-512",
+          "content" : "20425210615b1223544f3d21aa9cb67de64c8c5572b83e68b490fd6deb6541f5a98c835e27a492a796decaf18e2b43a5887c1907beb6cc6cca08a453e113ea4c"
+        }
+      ],
+      "licenses" : [
+        {
+          "license" : {
+            "id" : "Apache-2.0"
+          }
+        }
+      ],
+      "purl" : "pkg:maven/org.springframework/spring-context-support@6.2.16?type=jar",
+      "externalReferences" : [
+        {
+          "type" : "website",
+          "url" : "https://github.com/spring-projects/spring-framework"
+        },
+        {
+          "type" : "issue-tracker",
+          "url" : "https://github.com/spring-projects/spring-framework/issues"
+        },
+        {
+          "type" : "vcs",
+          "url" : "https://github.com/spring-projects/spring-framework"
+        }
+      ]
+    },
+    {
+      "type" : "library",
       "bom-ref" : "pkg:maven/org.apache.sshd/sshd-core@2.14.0?type=jar",
       "publisher" : "The Apache Software Foundation",
       "group" : "org.apache.sshd",
@@ -13024,6 +13156,8 @@
         "pkg:maven/org.springframework.boot/spring-boot-starter-web@3.5.11?type=jar",
         "pkg:maven/org.springframework.boot/spring-boot-starter-validation@3.5.11?type=jar",
         "pkg:maven/org.springframework.boot/spring-boot-starter-data-mongodb@3.5.11?type=jar",
+        "pkg:maven/org.springframework.boot/spring-boot-starter-cache@3.5.11?type=jar",
+        "pkg:maven/com.github.ben-manes.caffeine/caffeine@3.2.3?type=jar",
         "pkg:maven/org.projectlombok/lombok@1.18.42?type=jar",
         "pkg:maven/org.apache.sshd/sshd-core@2.14.0?type=jar",
         "pkg:maven/org.apache.sshd/sshd-sftp@2.14.0?type=jar",
@@ -13031,6 +13165,21 @@
         "pkg:maven/org.apache.sshd/sshd-cli@2.14.0?type=jar",
         "pkg:maven/org.apache.mina/mina-core@2.2.4?type=jar",
         "pkg:maven/commons-io/commons-io@2.14.0?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/org.springframework.boot/spring-boot-starter-cache@3.5.11?type=jar",
+      "dependsOn" : [
+        "pkg:maven/org.springframework.boot/spring-boot-starter@3.5.11?type=jar",
+        "pkg:maven/org.springframework/spring-context-support@6.2.16?type=jar"
+      ]
+    },
+    {
+      "ref" : "pkg:maven/org.springframework/spring-context-support@6.2.16?type=jar",
+      "dependsOn" : [
+        "pkg:maven/org.springframework/spring-beans@6.2.16?type=jar",
+        "pkg:maven/org.springframework/spring-context@6.2.16?type=jar",
+        "pkg:maven/org.springframework/spring-core@6.2.16?type=jar"
       ]
     },
     {
