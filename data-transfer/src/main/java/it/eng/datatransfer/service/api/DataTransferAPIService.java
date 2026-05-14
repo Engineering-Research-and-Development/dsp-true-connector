@@ -483,7 +483,8 @@ public class DataTransferAPIService {
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcessCompleted.getConsumerPid(),
                             "providerPid", transferProcessCompleted.getProviderPid()));
-            // Temp user cleanup (HTTP-PUSH) is now handled by the push Data Plane
+            // Temporary IAM credentials (HTTP-PUSH) are cleaned up by the consumer CP
+            // in AbstractDataTransferService.completeDataTransfer when the consumer TP transitions to COMPLETED.
             return TransferSerializer.serializePlainJsonNode(transferProcessCompleted);
         } else {
             log.error("Error response received!");
@@ -613,7 +614,8 @@ public class DataTransferAPIService {
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid()));
-            // Temp user cleanup (HTTP-PUSH) is now handled by the push Data Plane
+            // Temporary IAM credentials (HTTP-PUSH) are cleaned up by the consumer CP
+            // in AbstractDataTransferService.terminateDataTransfer when the consumer TP transitions to TERMINATED.
             return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
         } else {
             log.error("Error response received!");

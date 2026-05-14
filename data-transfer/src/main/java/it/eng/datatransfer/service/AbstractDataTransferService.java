@@ -18,6 +18,7 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
@@ -38,17 +39,20 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
     // Consider this for removal
     private final TransferRequestMessageRepository transferRequestMessageRepository;
     private final DataTransferProperties transferProperties;
+    private final TemporaryBucketUserService temporaryBucketUserService;
 
     protected AbstractDataTransferService(TransferProcessRepository transferProcessRepository,
                                           AuditEventPublisher publisher,
                                           OkHttpRestClient okHttpRestClient,
                                           TransferRequestMessageRepository transferRequestMessageRepository,
-                                          DataTransferProperties transferProperties) {
+                                          DataTransferProperties transferProperties,
+                                          TemporaryBucketUserService temporaryBucketUserService) {
         this.transferProcessRepository = transferProcessRepository;
         this.publisher = publisher;
         this.okHttpRestClient = okHttpRestClient;
         this.transferRequestMessageRepository = transferRequestMessageRepository;
         this.transferProperties = transferProperties;
+        this.temporaryBucketUserService = temporaryBucketUserService;
     }
 
     /**
@@ -313,6 +317,17 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .build();
 
         saveTransferProcess(transferProcessCompleted);
+        if (IConstants.ROLE_CONSUMER.equals(transferProcessCompleted.getRole())
+                && DataTransferFormat.HTTP_PUSH.format().equals(transferProcessCompleted.getFormat())) {
+            try {
+                temporaryBucketUserService.deleteTemporaryUser(transferProcessCompleted.getId());
+                log.info("Cleaned up temporary IAM credentials for HTTP-PUSH consumer transfer process {}",
+                        transferProcessCompleted.getId());
+            } catch (Exception e) {
+                log.warn("Failed to clean up temporary IAM credentials for process {}: {}",
+                        transferProcessCompleted.getId(), e.getMessage());
+            }
+        }
         publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
                 .oldTransferProcess(transferProcessStarted)
                 .newTransferProcess(transferProcessCompleted)
@@ -347,6 +362,17 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
 
         TransferProcess transferProcessTerminated = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
         saveTransferProcess(transferProcessTerminated);
+        if (IConstants.ROLE_CONSUMER.equals(transferProcessTerminated.getRole())
+                && DataTransferFormat.HTTP_PUSH.format().equals(transferProcessTerminated.getFormat())) {
+            try {
+                temporaryBucketUserService.deleteTemporaryUser(transferProcessTerminated.getId());
+                log.info("Cleaned up temporary IAM credentials for terminated HTTP-PUSH consumer transfer process {}",
+                        transferProcessTerminated.getId());
+            } catch (Exception e) {
+                log.warn("Failed to clean up temporary IAM credentials for process {}: {}",
+                        transferProcessTerminated.getId(), e.getMessage());
+            }
+        }
         publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
                 .oldTransferProcess(transferProcess)
                 .newTransferProcess(transferProcessTerminated)

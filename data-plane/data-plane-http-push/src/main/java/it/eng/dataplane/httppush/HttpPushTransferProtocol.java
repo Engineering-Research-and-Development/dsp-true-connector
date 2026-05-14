@@ -185,25 +185,15 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
 
     /**
      * Terminates a data transfer.
-     * For HTTP-PUSH, cleanup of temporary credentials is performed during {@link #initiateTransfer}
-     * on success. If the transfer is terminated externally a best-effort attempt is made to
-     * delete the temporary IAM user created by the consumer CP.
+     * Temporary IAM credentials created by the consumer CP for HTTP-PUSH transfers are cleaned up
+     * by the consumer CP when it receives the termination event, not by this provider-side DP.
      *
-     * @param processId the DPS transfer process ID — used to look up and delete the temporary
-     *                  IAM user stored in MongoDB
+     * @param processId the DPS transfer process ID
      * @return future with success result
      */
     @Override
     public CompletableFuture<DataFlowResult> terminateTransfer(String processId) {
         log.info("Terminating HttpData-PUSH transfer for processId={}", processId);
-        if (StringUtils.isNotBlank(processId)) {
-            try {
-                temporaryBucketUserService.deleteTemporaryUser(processId);
-                log.info("Cleaned up temporary credentials for processId={}", processId);
-            } catch (Exception e) {
-                log.warn("Failed to clean up temporary credentials for processId={}: {}", processId, e.getMessage());
-            }
-        }
         return CompletableFuture.completedFuture(DataFlowResult.success());
     }
 
@@ -300,18 +290,6 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
             })
         )
         .handle((etag, throwable) -> {
-            // Delete temporary IAM credentials regardless of whether the upload succeeded or failed.
-            // Without this, a failed upload leaves live PutObject credentials in the consumer bucket
-            // permanently (no TTL index on TemporaryBucketUser, no scheduled cleanup).
-            String processId = dataFlow.getProcessId();
-            if (StringUtils.isNotBlank(processId)) {
-                try {
-                    temporaryBucketUserService.deleteTemporaryUser(processId);
-                    log.info("Cleaned up temporary credentials for transfer process {}", processId);
-                } catch (Exception e) {
-                    log.warn("Failed to clean up temporary credentials for process {}: {}", processId, e.getMessage());
-                }
-            }
             if (throwable != null) {
                 log.error("HTTP-PUSH transfer failed for data flow {}", dataFlow.getDataFlowId(), throwable);
                 return DataFlowResult.failure(throwable.getMessage());

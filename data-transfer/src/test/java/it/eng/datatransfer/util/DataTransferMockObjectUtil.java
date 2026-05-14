@@ -161,6 +161,23 @@ public class DataTransferMockObjectUtil {
             .isDownloaded(true)
             .build();
 
+    /** Transfer process in STARTED state, consumer side, HTTP-PUSH format — used to verify temp IAM user cleanup. */
+    public static final TransferProcess TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .datasetId(DATASET_ID)
+            .isDownloaded(false)
+            .isDownloadInProgress(false)
+            .dataId(null)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_CONSUMER)
+            .tenantId(TENANT_ID)
+            .state(TransferState.STARTED)
+            .format(DataTransferFormat.HTTP_PUSH.format())
+            .build();
+
     public static final TransferProcess TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED = TransferProcess.Builder.newInstance()
             .consumerPid(CONSUMER_PID)
             .providerPid(PROVIDER_PID)

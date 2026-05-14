@@ -177,7 +177,7 @@ class HttpPushTransferProtocolTest {
         DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
 
         assertThat(result.isSuccess()).isTrue();
-        verify(temporaryBucketUserService).deleteTemporaryUser("tp-3");
+        verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
     }
 
     @Test
@@ -224,12 +224,12 @@ class HttpPushTransferProtocolTest {
         ArgumentCaptor<Map<String, String>> s3PropsCaptor = ArgumentCaptor.forClass(Map.class);
         verify(s3ClientService).uploadFile(any(), s3PropsCaptor.capture(), any(), any());
         assertThat(s3PropsCaptor.getValue()).containsEntry(S3Utils.OBJECT_KEY, "tp-4");
-        verify(temporaryBucketUserService).deleteTemporaryUser("tp-4");
-        verify(temporaryBucketUserService, never()).deleteTemporaryUser(null);
+        // Cleanup of temporary credentials is handled by the consumer CP, not the provider-side push DP
+        verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
     }
 
     @Test
-    @DisplayName("initiateTransfer cleans up temporary credentials even when upload fails")
+    @DisplayName("initiateTransfer does not clean up temporary credentials on upload failure — consumer CP handles cleanup")
     void initiateTransfer_cleansUpCredentialsOnUploadFailure() throws Exception {
         testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
         testHttpServer.createContext("/artifact", exchange -> {
@@ -269,7 +269,8 @@ class HttpPushTransferProtocolTest {
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getErrorMessage()).contains("S3 auth failure");
-        // Temporary credentials must be deleted even on upload failure
-        verify(temporaryBucketUserService).deleteTemporaryUser("tp-5");
+        // Cleanup of temporary credentials is the consumer CP's responsibility,
+        // not the provider-side push DP — even when upload fails.
+        verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
     }
 }

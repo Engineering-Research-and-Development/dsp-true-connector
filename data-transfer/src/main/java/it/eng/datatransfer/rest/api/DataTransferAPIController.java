@@ -110,7 +110,7 @@ public class DataTransferAPIController {
      */
     @GetMapping(path = "/{transferProcessId}")
     public ResponseEntity<GenericApiResponse<JsonNode>> getTransferProcessById(
-            @PathVariable("transferProcessId") String transferProcessId) {
+            @PathVariable String transferProcessId) {
         log.info("Fetching transfer process details for id {}", transferProcessId);
         TransferProcess transferProcess = apiService.findTransferProcessById(transferProcessId);
         return ResponseEntity.ok()
@@ -169,7 +169,7 @@ public class DataTransferAPIController {
      * @return GenericApiResponse response with success message.
      */
     @PutMapping(path = "/{transferProcessId}/start")
-    public ResponseEntity<GenericApiResponse<JsonNode>> startTransfer(@PathVariable("transferProcessId") String transferProcessId) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> startTransfer(@PathVariable String transferProcessId) {
         log.info("Starting data transfer {}", transferProcessId);
         JsonNode response = apiService.startTransfer(transferProcessId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)

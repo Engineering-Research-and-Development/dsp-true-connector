@@ -18,6 +18,7 @@ import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -57,6 +58,8 @@ public class DataTransferServiceTest {
     private OkHttpRestClient okHttpRestClient;
     @Mock
     private DataTransferProperties transferProperties;
+    @Mock
+    private TemporaryBucketUserService temporaryBucketUserService;
 
     @InjectMocks
     private DataTransferService service;
@@ -417,6 +420,30 @@ public class DataTransferServiceTest {
         verify(transferProcessRepository, times(0)).save(argTransferProcess.capture());
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR);
+    }
+
+    @Test
+    @DisplayName("HTTP-PUSH consumer completion cleans up temporary IAM credentials")
+    public void completeDataTransfer_httpPush_consumer_deletesTemporaryUser() {
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH));
+
+        service.completeDataTransfer(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE,
+                DataTransferMockObjectUtil.CONSUMER_PID, null);
+
+        verify(temporaryBucketUserService).deleteTemporaryUser(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH.getId());
+    }
+
+    @Test
+    @DisplayName("HTTP-PUSH consumer termination cleans up temporary IAM credentials")
+    public void terminateDataTransfer_httpPush_consumer_deletesTemporaryUser() {
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH));
+
+        service.terminateDataTransfer(DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE,
+                DataTransferMockObjectUtil.CONSUMER_PID, null);
+
+        verify(temporaryBucketUserService).deleteTemporaryUser(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH.getId());
     }
 
     // suspend
