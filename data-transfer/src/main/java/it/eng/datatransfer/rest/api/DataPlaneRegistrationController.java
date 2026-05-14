@@ -4,8 +4,10 @@ import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.datatransfer.service.DataPlaneRegistrationService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -31,10 +33,10 @@ public class DataPlaneRegistrationController {
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GenericApiResponse<DataPlaneRegistration>> register(
-            @RequestBody DataPlaneRegistration registration) {
+            @Valid @RequestBody DataPlaneRegistration registration) {
         log.info("Registering Data Plane at endpoint {}", registration.getEndpoint());
         DataPlaneRegistration saved = service.register(registration);
-        return ResponseEntity.status(201)
+        return ResponseEntity.status(HttpStatus.CREATED)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(saved, "Data Plane registered"));
     }

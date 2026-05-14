@@ -30,10 +30,16 @@ public class ApiKeyAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
+        String configuredKey = properties.getApiKey();
+        if (configuredKey == null || configuredKey.isBlank()) {
+            log.warn("dataplane.api-key is not configured — all requests will be unauthenticated");
+            filterChain.doFilter(request, response);
+            return;
+        }
         String apiKey = request.getHeader(API_KEY_HEADER);
         if (apiKey != null && !apiKey.isBlank()
                 && MessageDigest.isEqual(apiKey.getBytes(java.nio.charset.StandardCharsets.UTF_8),
-                        properties.getApiKey().getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
+                        configuredKey.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
             UsernamePasswordAuthenticationToken auth =
                 new UsernamePasswordAuthenticationToken("control-plane", null, List.of());
             SecurityContextHolder.getContext().setAuthentication(auth);

@@ -3,6 +3,7 @@ package it.eng.datatransfer.service;
 import it.eng.datatransfer.exceptions.DataPlaneNotFoundException;
 import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.datatransfer.repository.DataPlaneRegistrationRepository;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.service.AuditEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -49,6 +51,7 @@ public class DataPlaneRegistrationServiceTest {
         assertNotNull(result);
         assertEquals(reg.getEndpoint(), result.getEndpoint());
         verify(repository).save(reg);
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATAPLANE_REGISTERED), any(String.class), any());
     }
 
     @Test
@@ -76,6 +79,7 @@ public class DataPlaneRegistrationServiceTest {
         service.deregister(id);
 
         verify(repository).deleteById(id);
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATAPLANE_DEREGISTERED), any(String.class), any());
     }
 
     @Test
@@ -86,6 +90,7 @@ public class DataPlaneRegistrationServiceTest {
 
         assertThrows(DataPlaneNotFoundException.class, () -> service.deregister(id));
         verify(repository, never()).deleteById(any());
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATAPLANE_REGISTRATION_NOT_FOUND), any(String.class), any());
     }
 
     @Test

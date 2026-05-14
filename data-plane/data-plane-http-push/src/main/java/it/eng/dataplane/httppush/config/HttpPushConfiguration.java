@@ -16,7 +16,7 @@ import java.util.concurrent.Executors;
 /**
  * Configuration for the HTTP-PUSH Data Plane.
  * The OkHttpClient bean used by ControlPlaneClient and ControlPlaneRegistrationBean is
- * provided automatically by OkHttpClientConfiguration in tools (component-scanned via
+ * provided automatically by {@code OkHttpClientConfiguration} in {@code data-plane-s3} (component-scanned via
  * the application class). It reads server.ssl.enabled: true = TLS client with custom
  * truststore; false = insecure noop client for development.
  */

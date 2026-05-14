@@ -28,7 +28,8 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 @EnableMongoRepositories(basePackages = {
         "it.eng.dataplane.core.repository",
         "it.eng.tools.s3.repository"
-})public class DataPlaneMongoConfig {
+})
+public class DataPlaneMongoConfig {
 
     /**
      * Configures {@link MappingMongoConverter} with a dot-replacement character
