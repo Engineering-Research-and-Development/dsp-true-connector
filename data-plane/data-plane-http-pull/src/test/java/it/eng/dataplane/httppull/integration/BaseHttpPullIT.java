@@ -24,10 +24,16 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
+import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Base class for HTTP-PULL Data Plane integration tests.
@@ -128,13 +134,7 @@ public class BaseHttpPullIT {
      * @param content UTF-8 text to store
      */
     protected static void uploadToTestMinIO(String key, String content) {
-        try (S3Client s3 = S3Client.builder()
-                .endpointOverride(URI.create(minIOContainer.getS3URL()))
-                .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(minIOContainer.getUserName(), minIOContainer.getPassword())))
-                .region(Region.of("us-east-1"))
-                .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
-                .build()) {
+        try (S3Client s3 = buildAdminS3Client()) {
             // Ensure bucket exists (idempotent) before putting the object
             try {
                 s3.createBucket(CreateBucketRequest.builder().bucket(TEST_BUCKET_NAME).build());
@@ -145,6 +145,69 @@ public class BaseHttpPullIT {
                     PutObjectRequest.builder().bucket(TEST_BUCKET_NAME).key(key).build(),
                     RequestBody.fromString(content));
         }
+    }
+
+    /**
+     * Checks whether an S3 object with the given key exists in the test MinIO bucket.
+     *
+     * @param key the S3 object key to check
+     * @return {@code true} if the object exists, {@code false} otherwise
+     */
+    protected static boolean objectExistsInMinIO(String key) {
+        try (S3Client s3 = buildAdminS3Client()) {
+            s3.headObject(HeadObjectRequest.builder().bucket(TEST_BUCKET_NAME).key(key).build());
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Downloads and returns the UTF-8 content of an S3 object from the test MinIO bucket.
+     *
+     * @param key the S3 object key to download
+     * @return the object content as a UTF-8 string
+     * @throws IOException if the object cannot be read
+     */
+    protected static String downloadContentFromMinIO(String key) throws IOException {
+        try (S3Client s3 = buildAdminS3Client()) {
+            var response = s3.getObject(GetObjectRequest.builder().bucket(TEST_BUCKET_NAME).key(key).build());
+            return new String(response.readAllBytes(), StandardCharsets.UTF_8);
+        }
+    }
+
+    /**
+     * Polls MinIO until the specified object key appears in the test bucket or the timeout elapses.
+     *
+     * @param key            the S3 object key to wait for
+     * @param timeoutSeconds maximum number of seconds to wait
+     * @throws InterruptedException if the polling thread is interrupted
+     */
+    protected static void awaitObjectExists(String key, int timeoutSeconds) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + timeoutSeconds * 1000L;
+        while (System.currentTimeMillis() < deadline) {
+            if (objectExistsInMinIO(key)) {
+                return;
+            }
+            Thread.sleep(300);
+        }
+        fail("Object '" + key + "' did not appear in bucket '" + TEST_BUCKET_NAME + "' within " + timeoutSeconds + "s");
+    }
+
+    /**
+     * Builds an S3Client configured for the test MinIO container using admin credentials.
+     * Callers must close the returned client (use try-with-resources).
+     *
+     * @return a configured {@link S3Client}
+     */
+    protected static S3Client buildAdminS3Client() {
+        return S3Client.builder()
+                .endpointOverride(URI.create(minIOContainer.getS3URL()))
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(minIOContainer.getUserName(), minIOContainer.getPassword())))
+                .region(Region.of("us-east-1"))
+                .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
+                .build();
     }
 
     /**
