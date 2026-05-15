@@ -254,9 +254,11 @@ terminate, audit). See `doc/security.md` for truststore configuration details.
   **falls back to HTTP/1.1** transparently for plain HTTP (development MinIO without TLS).
 - Is a **Spring `@Bean`** (`dataPlaneHttpClient`) defined in `DataPlaneHttpClientConfiguration`
   and injected into both protocol classes — thread-safe, shared across all concurrent transfers.
-- **Mirrors the SSL posture of `OkHttpClient`**: `server.ssl.enabled=false` → trust-all
-  `SSLContext` (development only); `server.ssl.enabled=true` → `SSLContext` from the `connector`
-  SSL bundle (custom truststore). `java.net.http.HttpClient` does **not** use the
+- **Mirrors the SSL posture of the connector's `OkHttpClientConfiguration`** (in `tools`):
+  `server.ssl.enabled=false` → trust-all `SSLContext` (development only);
+  `server.ssl.enabled=true` → `SSLContext` from the `connector` SSL bundle (custom keystore +
+  truststore configured via `spring.ssl.bundle.jks.connector.*` in the DP's
+  `application.properties`). `java.net.http.HttpClient` does **not** use the
   `HttpsURLConnection` JVM-level defaults set by `GlobalSSLConfiguration`, so the `SSLContext`
   must be supplied explicitly.
 - Uses a fixed **30-minute request timeout** for all artifact transfers (set before `send()` is

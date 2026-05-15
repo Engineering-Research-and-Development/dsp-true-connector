@@ -19,12 +19,14 @@ import java.time.Duration;
 
 /**
  * Configures the shared {@link HttpClient} used by data-plane protocols for artifact downloads
- * (presigned GET URL → S3 upload). The client mirrors the SSL posture of {@code OkHttpClientConfiguration}:
+ * (presigned GET URL → S3 upload). The client mirrors the SSL posture of the connector's
+ * {@code OkHttpClientConfiguration} (in {@code tools}):
  * <ul>
  *   <li><b>Insecure mode</b> ({@code server.ssl.enabled=false}): trust-all {@link SSLContext},
  *       accepting all certificates without validation — development / testing only.</li>
  *   <li><b>Secure mode</b> ({@code server.ssl.enabled=true}): {@link SSLContext} built from the
- *       {@code connector} SSL bundle configured in application properties (OCSP-validated truststore).</li>
+ *       {@code connector} SSL bundle, which must be configured in the DP's application properties
+ *       via {@code spring.ssl.bundle.jks.connector.*} (custom keystore + truststore).</li>
  * </ul>
  *
  * <p>{@code java.net.http.HttpClient} does not use {@link javax.net.ssl.HttpsURLConnection}
@@ -44,7 +46,7 @@ public class DataPlaneHttpClientConfiguration {
     /**
      * Constructs the configuration.
      *
-     * @param sslBundles Spring SSL bundles (may be empty when SSL is disabled)
+     * @param sslBundles Spring SSL bundles registry
      * @param sslEnabled {@code true} when {@code server.ssl.enabled=true}
      */
     public DataPlaneHttpClientConfiguration(SslBundles sslBundles,
@@ -77,17 +79,19 @@ public class DataPlaneHttpClientConfiguration {
 
     /**
      * Builds an {@link SSLContext} from the {@code connector} SSL bundle.
-     * Used in secure (production) mode.
+     * Requires {@code spring.ssl.bundle.jks.connector.*} to be configured in the DP's
+     * application properties (custom keystore + truststore, not the JVM default).
      *
      * @return {@link SSLContext} backed by the configured truststore
      */
     private SSLContext secureContext() {
         try {
             SSLContext ctx = sslBundles.getBundle(SSL_BUNDLE_NAME).createSslContext();
-            log.info("DataPlane HttpClient: using secure SSLContext from '{}' bundle", SSL_BUNDLE_NAME);
+            log.info("DataPlane HttpClient: using SSLContext from '{}' bundle", SSL_BUNDLE_NAME);
             return ctx;
         } catch (NoSuchSslBundleException e) {
-            log.error("SSL bundle '{}' not found — falling back to JVM default SSLContext", SSL_BUNDLE_NAME, e);
+            log.error("SSL bundle '{}' not found — check spring.ssl.bundle.jks.connector.* properties; "
+                    + "falling back to JVM default SSLContext", SSL_BUNDLE_NAME, e);
             return defaultContext();
         }
     }
@@ -122,7 +126,8 @@ public class DataPlaneHttpClientConfiguration {
     }
 
     /**
-     * Returns the JVM default {@link SSLContext} as a last-resort fallback.
+     * Returns the JVM default {@link SSLContext} as a last-resort fallback when the SSL bundle
+     * is misconfigured.
      *
      * @return JVM default {@link SSLContext}
      */
