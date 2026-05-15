@@ -51,6 +51,19 @@ All notable changes to this project will be documented in this file.
 - `HttpPullTransferStrategy` and `HttpPushTransferStrategy` from `data-transfer` module
   (logic moved into `data-plane-http-pull` and `data-plane-http-push` respectively).
 
+### CI/CD
+- Upgraded all GitHub Actions to Node.js 24 compatible versions ahead of the June 2, 2026
+  deadline when Node.js 20 runners are removed:
+  `actions/checkout` v4→v6, `actions/setup-java` v4→v5, `docker/login-action` v3→v4,
+  `docker/metadata-action` v5→v6, `docker/build-push-action` v6→v7,
+  `softprops/action-gh-release` v1→v3, `aquasecurity/trivy-action` 0.30.0→0.36.0.
+- Replaced abandoned `matt-ball/newman-action@v2.0.0` (no Node.js 24 support) with
+  `npx --yes newman run` — Newman now runs directly on the host runner instead of inside a
+  Docker container. Updated `MINIO_EXTERNAL_URL` from bridge IP `172.17.0.1:9000` to
+  `localhost:9000` in pull/push test jobs accordingly.
+- Replaced `jwalton/gh-docker-logs@v2` (abandoned) with `docker compose ... logs` run step.
+- Fixed `release.yml` and `develop.yml`: `java-version` corrected from `17` to `21`.
+
 ## [0.6.13-SNAPSHOT] — Multi-Tenant Support
 
 ### Added
