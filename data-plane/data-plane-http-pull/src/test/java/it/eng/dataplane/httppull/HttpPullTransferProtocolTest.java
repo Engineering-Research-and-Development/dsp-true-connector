@@ -132,6 +132,32 @@ class HttpPullTransferProtocolTest {
     }
 
     @Test
+    @DisplayName("initiateTransfer returns failure when server responds with non-200 status")
+    void initiateTransfer_returnsFailureOnNon200Response() throws Exception {
+        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        testHttpServer.createContext("/not-found", exchange -> {
+            exchange.sendResponseHeaders(404, -1);
+            exchange.close();
+        });
+        testHttpServer.start();
+
+        String url = "http://localhost:" + testHttpServer.getAddress().getPort() + "/not-found";
+        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("test-bucket");
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-404")
+                .transferType("HttpData-PULL")
+                .tenantId("tenant-1")
+                .dataAddress(Map.of("endpoint", url))
+                .build();
+
+        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("404");
+    }
+
+    @Test
     @DisplayName("initiateTransfer sets Authorization header from dataAddress when AUTH_TYPE and AUTHORIZATION are present")
     void initiateTransfer_setsAuthorizationHeader() throws Exception {
         // Capture the Authorization header received by the test server

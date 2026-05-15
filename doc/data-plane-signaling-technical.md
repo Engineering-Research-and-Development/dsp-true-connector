@@ -234,13 +234,30 @@ Each transfer runs on its own virtual thread. There is no fixed pool ceiling.
 
 ---
 
-## OkHttpClient / TLS
+## HTTP Clients
+
+### OkHttpClient — CP↔DP management calls
 
 Both DP apps component-scan `it.eng.tools`, which auto-configures `OkHttpClient`:
 - `server.ssl.enabled=true` → TLS client with custom truststore (OCSP-validated)
 - `server.ssl.enabled=false` → plain HTTP (development only)
 
-See `doc/security.md` for truststore configuration details.
+`OkHttpClient` is used **only** for the CP↔DP management REST calls (registration, prepare, start,
+terminate, audit). See `doc/security.md` for truststore configuration details.
+
+### java.net.http.HttpClient — artifact downloads
+
+`HttpPullTransferProtocol` and `HttpPushTransferProtocol` use the JDK's built-in
+`java.net.http.HttpClient` for actual artifact downloads (presigned URL → S3 upload). This client:
+
+- **Negotiates HTTP/2** via ALPN on TLS connections (AWS S3, production MinIO with TLS) and
+  **falls back to HTTP/1.1** transparently for plain HTTP (development MinIO without TLS).
+- Is a **shared, static, thread-safe** instance — safe to use across concurrent virtual-thread
+  transfers with no extra synchronisation.
+- Uses a fixed **30-minute request timeout** for all artifact transfers (set before `send()` is
+  called, because `java.net.http.HttpClient` does not allow changing the timeout mid-flight).
+- No `AtomicReference` wrapper is needed — the response `InputStream` is closed in a
+  `whenComplete` handler attached to the upload future.
 
 ---
 

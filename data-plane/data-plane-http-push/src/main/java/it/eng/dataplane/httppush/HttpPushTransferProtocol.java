@@ -18,14 +18,16 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * HTTP-PUSH transfer protocol implementation.
@@ -48,13 +50,22 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
 
     private static final int DEFAULT_CONNECT_TIMEOUT = 10_000; // 10 seconds
     /**
-     * Fallback read timeout (30 minutes) used when the server does not advertise Content-Length.
-     * Streaming and chunked responses omit Content-Length, so a short timeout causes silent failures
-     * for large transfers. For known sizes the timeout is computed dynamically based on file size.
+     * Request timeout (30 minutes) used for all artifact downloads.
+     * java.net.http.HttpClient requires the timeout to be set before sending,
+     * so a generous fallback is applied to all requests regardless of file size.
      */
-    private static final int FALLBACK_READ_TIMEOUT = 1_800_000; // 30 minutes
-    /** Assumed minimum transfer speed in bytes/sec used for dynamic timeout (1 MB/s). */
-    private static final long MIN_TRANSFER_SPEED_BYTES_PER_SEC = 1024L * 1024L;
+    private static final int REQUEST_TIMEOUT_MS = 1_800_000; // 30 minutes
+
+    /**
+     * Shared HTTP client configured to prefer HTTP/2 (with automatic fallback to HTTP/1.1).
+     * HTTP/2 is negotiated via ALPN on TLS connections (AWS S3, production MinIO with TLS).
+     * Plain HTTP connections (development MinIO) fall back to HTTP/1.1 transparently.
+     * The client is thread-safe and safe to share across concurrent virtual-thread transfers.
+     */
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_2)
+            .connectTimeout(Duration.ofMillis(DEFAULT_CONNECT_TIMEOUT))
+            .build();
 
     /**
      * Returns the unique identifier for this transfer protocol.
@@ -199,18 +210,13 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
 
     /**
      * Performs the actual push: generates a presigned provider URL, streams the artifact,
-     * and uploads to the consumer bucket. Cleans up temporary credentials on success.
+     * and uploads to the consumer bucket. Uses {@link java.net.http.HttpClient} which
+     * negotiates HTTP/2 on TLS connections and falls back to HTTP/1.1 for plain HTTP.
      *
      * @param dataFlow the data flow with provider and consumer metadata
      * @return future with transfer result
      */
     private CompletableFuture<DataFlowResult> pushArtifactToConsumer(DataFlow dataFlow) {
-        // AtomicReference allows the connection to be shared across two separate lambda stages
-        // (supplyAsync and whenComplete) without violating Java's effectively-final capture rule.
-        // The supplyAsync lambda opens the connection and stores it here; whenComplete reads it
-        // to guarantee disconnect() is called on all paths — success, failure, or cancellation.
-        AtomicReference<HttpURLConnection> connectionRef = new AtomicReference<>();
-
         // Resolve provider bucket and generate presigned URL before entering async lambda
         String providerBucket = tenantBucketResolver.resolveBucketName(dataFlow.getTenantId());
         String datasetId = dataFlow.getDatasetId();
@@ -222,73 +228,47 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
-                URL url = new URL(presignedUrl);
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                // Store immediately so whenComplete can close it even if a later step throws
-                connectionRef.set(connection);
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(presignedUrl))
+                        .GET()
+                        .timeout(Duration.ofMillis(REQUEST_TIMEOUT_MS))
+                        .build();
 
-                connection.setRequestMethod("GET");
-                connection.setConnectTimeout(DEFAULT_CONNECT_TIMEOUT);
-                connection.setReadTimeout(FALLBACK_READ_TIMEOUT);
+                log.debug("Sending GET request to provider artifact: {}", presignedUrl);
+                HttpResponse<InputStream> response = HTTP_CLIENT.send(
+                        request, HttpResponse.BodyHandlers.ofInputStream());
 
-                if (connection instanceof javax.net.ssl.HttpsURLConnection) {
-                    log.debug("Using HTTPS connection to provider artifact: {}", presignedUrl);
-                } else {
-                    log.debug("Using HTTP connection to provider artifact: {}", presignedUrl);
+                int statusCode = response.statusCode();
+                if (statusCode != 200) {
+                    closeQuietly(response.body());
+                    throw new RuntimeException("Failed to get provider artifact. HTTP response code: " + statusCode);
                 }
 
-                int responseCode = connection.getResponseCode();
-                if (responseCode != HttpURLConnection.HTTP_OK) {
-                    // Disconnect eagerly on error response and clear the ref so whenComplete skips it
-                    connection.disconnect();
-                    connectionRef.set(null);
-                    throw new RuntimeException("Failed to get provider artifact. HTTP response code: " + responseCode);
-                }
+                log.info("HTTP response code: {}", statusCode);
+                response.headers().firstValueAsLong("content-length").ifPresent(len ->
+                        log.debug("Content-Length: {} bytes", len));
 
-                log.debug("Provider presigned URL: {}", presignedUrl);
-                log.info("HTTP response code: {}", responseCode);
+                String contentType = response.headers().firstValue(HttpHeaders.CONTENT_TYPE).orElse(null);
+                String contentDisposition = response.headers().firstValue(HttpHeaders.CONTENT_DISPOSITION).orElse(null);
 
-                long contentLength = connection.getContentLengthLong();
-                if (contentLength > 0) {
-                    int dynamicTimeout = computeReadTimeout(contentLength);
-                    connection.setReadTimeout(dynamicTimeout);
-                    log.debug("Content-Length: {} bytes — dynamic read timeout set to {} ms", contentLength, dynamicTimeout);
-                }
-
-                String contentType = connection.getContentType();
-                String contentDisposition = connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION);
-
-                // uploadFile is non-blocking and returns a CompletableFuture<String>.
-                // Returning it here produces a CompletableFuture<CompletableFuture<String>>,
-                // which we'll flatten with thenCompose.
-                // The connection must remain open until the upload future completes.
+                // uploadFile is non-blocking. The response body InputStream is closed after
+                // the upload future completes on all paths.
                 return s3ClientService.uploadFile(
-                    connection.getInputStream(),
-                    consumerS3Properties,
-                    contentType,
-                    contentDisposition
-                );
+                        response.body(),
+                        consumerS3Properties,
+                        contentType,
+                        contentDisposition
+                ).whenComplete((etag, ex) -> closeQuietly(response.body()));
             } catch (IOException e) {
-                // Disconnect on IOException before the upload started
-                HttpURLConnection c = connectionRef.get();
-                if (c != null) c.disconnect();
                 log.error("Failed to download provider artifact from presigned URL: {}", presignedUrl, e);
                 throw new RuntimeException(e.getMessage());
-            } catch (RuntimeException e) {
-                // Disconnect on RuntimeException to prevent leak
-                HttpURLConnection c = connectionRef.get();
-                if (c != null) c.disconnect();
-                throw e;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.error("Download interrupted from presigned URL: {}", presignedUrl, e);
+                throw new RuntimeException("Transfer interrupted: " + e.getMessage());
             }
         }, transferExecutor)
-        // Flatten the nested future and attach a cleanup handler that runs on all completion paths
-        .thenCompose(uploadFuture ->
-            uploadFuture.whenComplete((result, throwable) -> {
-                // Disconnect after the upload completes (success or failure) to release the socket
-                HttpURLConnection c = connectionRef.get();
-                if (c != null) c.disconnect();
-            })
-        )
+        .thenCompose(uploadFuture -> uploadFuture)
         .handle((etag, throwable) -> {
             if (throwable != null) {
                 log.error("HTTP-PUSH transfer failed for data flow {}", dataFlow.getDataFlowId(), throwable);
@@ -339,18 +319,18 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     }
 
     /**
-     * Computes a dynamic read timeout based on file size and a conservative minimum
-     * transfer speed of {@value MIN_TRANSFER_SPEED_BYTES_PER_SEC} bytes/sec (1 MB/s).
-     * A 10 % safety margin is added on top.
+     * Closes an {@link InputStream} silently, suppressing any {@link IOException}.
+     * Used to release the HTTP response body socket after upload completes or fails.
      *
-     * <p>Example: 100 MB file → ceil(100 × 1.1 / 1) = 110 seconds timeout.
-     *
-     * @param contentLengthBytes the total file size in bytes
-     * @return the read timeout in milliseconds, capped at {@link Integer#MAX_VALUE}
+     * @param is the stream to close; no-op if {@code null}
      */
-    private int computeReadTimeout(long contentLengthBytes) {
-        long seconds = (long) Math.ceil(contentLengthBytes * 1.1 / MIN_TRANSFER_SPEED_BYTES_PER_SEC);
-        long millis = seconds * 1000L;
-        return (int) Math.min(millis, Integer.MAX_VALUE);
+    private static void closeQuietly(InputStream is) {
+        if (is != null) {
+            try {
+                is.close();
+            } catch (IOException ignored) {
+                // intentionally suppressed
+            }
+        }
     }
 }

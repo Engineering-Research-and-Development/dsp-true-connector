@@ -136,6 +136,43 @@ class HttpPushTransferProtocolTest {
     }
 
     @Test
+    @DisplayName("initiateTransfer returns failure when presigned URL returns non-200 status")
+    void initiateTransfer_returnsFailureOnNon200PresignedResponse() throws Exception {
+        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        testHttpServer.createContext("/artifact-403", exchange -> {
+            exchange.sendResponseHeaders(403, -1);
+            exchange.close();
+        });
+        testHttpServer.start();
+
+        int port = testHttpServer.getAddress().getPort();
+        String presignedUrl = "http://localhost:" + port + "/artifact-403";
+
+        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
+        when(s3ClientService.generateGetPresignedUrl(eq("provider-bucket"), anyString(), any(Duration.class)))
+            .thenReturn(presignedUrl);
+
+        Map<String, String> dataAddress = new HashMap<>();
+        dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
+        dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
+        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
+        dataAddress.put(S3Utils.REGION, "us-east-1");
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-403")
+                .transferType("HttpData-PUSH")
+                .tenantId("tenant-1")
+                .datasetId("dataset-403")
+                .dataAddress(dataAddress)
+                .build();
+
+        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("403");
+    }
+
+    @Test
     @DisplayName("initiateTransfer pushes artifact to consumer S3 and cleans up temporary credentials")
     void initiateTransfer_successfulPushToConsumerS3() throws Exception {
         // Serve dummy artifact content from a local HTTP server
