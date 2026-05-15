@@ -39,6 +39,12 @@ All notable changes to this project will be documented in this file.
   service.
 - Java source/target level upgraded from **17 to 21**. All modules now compile with
   `--release 21`. Docker base images updated to `eclipse-temurin:21-jre-jammy`.
+- `HttpPullTransferProtocol` and `HttpPushTransferProtocol` now use `java.net.http.HttpClient`
+  (JDK built-in) instead of `HttpURLConnection` for artifact downloads. The client negotiates
+  **HTTP/2** via ALPN on TLS connections (AWS S3, production MinIO) and falls back to HTTP/1.1
+  for plain HTTP (development MinIO). A single shared static instance is reused across all
+  concurrent transfers. Dynamic per-file read timeout replaced with a fixed 30-minute timeout
+  (required by `HttpClient` API — timeout must be set before `send()`).
 
 ### Removed
 - `DataTransferStrategyFactory` (replaced by `DataPlaneRouter` + `DataPlaneRegistration`).
