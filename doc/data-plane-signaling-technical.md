@@ -252,8 +252,13 @@ terminate, audit). See `doc/security.md` for truststore configuration details.
 
 - **Negotiates HTTP/2** via ALPN on TLS connections (AWS S3, production MinIO with TLS) and
   **falls back to HTTP/1.1** transparently for plain HTTP (development MinIO without TLS).
-- Is a **shared, static, thread-safe** instance — safe to use across concurrent virtual-thread
-  transfers with no extra synchronisation.
+- Is a **Spring `@Bean`** (`dataPlaneHttpClient`) defined in `DataPlaneHttpClientConfiguration`
+  and injected into both protocol classes — thread-safe, shared across all concurrent transfers.
+- **Mirrors the SSL posture of `OkHttpClient`**: `server.ssl.enabled=false` → trust-all
+  `SSLContext` (development only); `server.ssl.enabled=true` → `SSLContext` from the `connector`
+  SSL bundle (custom truststore). `java.net.http.HttpClient` does **not** use the
+  `HttpsURLConnection` JVM-level defaults set by `GlobalSSLConfiguration`, so the `SSLContext`
+  must be supplied explicitly.
 - Uses a fixed **30-minute request timeout** for all artifact transfers (set before `send()` is
   called, because `java.net.http.HttpClient` does not allow changing the timeout mid-flight).
 - No `AtomicReference` wrapper is needed — the response `InputStream` is closed in a

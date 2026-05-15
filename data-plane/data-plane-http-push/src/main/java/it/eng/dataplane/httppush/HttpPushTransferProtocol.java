@@ -47,25 +47,15 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     private final TenantBucketResolver tenantBucketResolver;
     @Qualifier("transferExecutor")
     private final Executor transferExecutor;
+    @Qualifier("dataPlaneHttpClient")
+    private final HttpClient httpClient;
 
-    private static final int DEFAULT_CONNECT_TIMEOUT = 10_000; // 10 seconds
     /**
      * Request timeout (30 minutes) used for all artifact downloads.
      * java.net.http.HttpClient requires the timeout to be set before sending,
      * so a generous fallback is applied to all requests regardless of file size.
      */
     private static final int REQUEST_TIMEOUT_MS = 1_800_000; // 30 minutes
-
-    /**
-     * Shared HTTP client configured to prefer HTTP/2 (with automatic fallback to HTTP/1.1).
-     * HTTP/2 is negotiated via ALPN on TLS connections (AWS S3, production MinIO with TLS).
-     * Plain HTTP connections (development MinIO) fall back to HTTP/1.1 transparently.
-     * The client is thread-safe and safe to share across concurrent virtual-thread transfers.
-     */
-    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_2)
-            .connectTimeout(Duration.ofMillis(DEFAULT_CONNECT_TIMEOUT))
-            .build();
 
     /**
      * Returns the unique identifier for this transfer protocol.
@@ -235,7 +225,7 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
                         .build();
 
                 log.debug("Sending GET request to provider artifact: {}", presignedUrl);
-                HttpResponse<InputStream> response = HTTP_CLIENT.send(
+                HttpResponse<InputStream> response = httpClient.send(
                         request, HttpResponse.BodyHandlers.ofInputStream());
 
                 int statusCode = response.statusCode();

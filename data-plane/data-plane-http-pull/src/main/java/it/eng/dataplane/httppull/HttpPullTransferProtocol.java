@@ -42,8 +42,9 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
     private final TenantBucketResolver tenantBucketResolver;
     @Qualifier("transferExecutor")
     private final Executor transferExecutor;
+    @Qualifier("dataPlaneHttpClient")
+    private final HttpClient httpClient;
 
-    private static final int DEFAULT_CONNECT_TIMEOUT = 10_000; // 10 seconds
     /**
      * Request timeout (30 minutes) used for all artifact downloads.
      * Streaming and chunked responses may omit Content-Length; a short timeout causes silent
@@ -51,17 +52,6 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
      * before sending, so a generous fallback is used for all requests.
      */
     private static final int REQUEST_TIMEOUT_MS = 1_800_000; // 30 minutes
-
-    /**
-     * Shared HTTP client configured to prefer HTTP/2 (with automatic fallback to HTTP/1.1).
-     * HTTP/2 is negotiated via ALPN on TLS connections (AWS S3, production MinIO with TLS).
-     * Plain HTTP connections (development MinIO) fall back to HTTP/1.1 transparently.
-     * The client is thread-safe and safe to share across concurrent virtual-thread transfers.
-     */
-    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_2)
-            .connectTimeout(Duration.ofMillis(DEFAULT_CONNECT_TIMEOUT))
-            .build();
 
     /** Data address key indicating the calling mode (VIEW for consumer viewData). */
     static final String MODE_KEY = "mode";
@@ -221,7 +211,7 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
                 }
 
                 log.debug("Sending GET request to: {}", presignedUrl);
-                HttpResponse<InputStream> response = HTTP_CLIENT.send(
+                HttpResponse<InputStream> response = httpClient.send(
                         requestBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
 
                 int statusCode = response.statusCode();

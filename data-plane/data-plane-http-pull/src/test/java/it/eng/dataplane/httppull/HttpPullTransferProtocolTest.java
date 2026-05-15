@@ -18,6 +18,8 @@ import org.springframework.http.HttpHeaders;
 
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -47,13 +49,20 @@ class HttpPullTransferProtocolTest {
     // Synchronous executor for testing — runs tasks immediately in the calling thread
     private final Executor syncExecutor = Runnable::run;
 
+    // Plain HTTP/1.1 client for tests — test server uses plain HTTP, no TLS needed
+    private final HttpClient testHttpClient = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
+
     @BeforeEach
     void setUp() {
         protocol = new HttpPullTransferProtocol(
             s3ClientService,
             s3Properties,
             tenantBucketResolver,
-            syncExecutor
+            syncExecutor,
+            testHttpClient
         );
     }
 

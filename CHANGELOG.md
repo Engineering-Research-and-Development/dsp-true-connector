@@ -42,9 +42,15 @@ All notable changes to this project will be documented in this file.
 - `HttpPullTransferProtocol` and `HttpPushTransferProtocol` now use `java.net.http.HttpClient`
   (JDK built-in) instead of `HttpURLConnection` for artifact downloads. The client negotiates
   **HTTP/2** via ALPN on TLS connections (AWS S3, production MinIO) and falls back to HTTP/1.1
-  for plain HTTP (development MinIO). A single shared static instance is reused across all
-  concurrent transfers. Dynamic per-file read timeout replaced with a fixed 30-minute timeout
-  (required by `HttpClient` API — timeout must be set before `send()`).
+  for plain HTTP (development MinIO). The instance is a Spring `@Bean` (`dataPlaneHttpClient`)
+  defined in `DataPlaneHttpClientConfiguration` and injected into both protocol classes.
+  Dynamic per-file read timeout replaced with a fixed 30-minute timeout (required by `HttpClient`
+  API — timeout must be set before `send()`).
+- **Fixed:** `java.net.http.HttpClient` now honours the connector's SSL posture. Previously, the
+  static client used the JVM default `SSLContext`, which always performed strict certificate
+  validation regardless of `server.ssl.enabled`. `DataPlaneHttpClientConfiguration` mirrors
+  `OkHttpClientConfiguration`: trust-all `SSLContext` when `server.ssl.enabled=false`
+  (development), connector SSL bundle `SSLContext` when `server.ssl.enabled=true` (production).
 
 ### Removed
 - `DataTransferStrategyFactory` (replaced by `DataPlaneRouter` + `DataPlaneRegistration`).
