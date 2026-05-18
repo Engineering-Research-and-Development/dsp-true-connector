@@ -57,6 +57,17 @@ All notable changes to this project will be documented in this file.
 - `HttpPullTransferStrategy` and `HttpPushTransferStrategy` from `data-transfer` module
   (logic moved into `data-plane-http-pull` and `data-plane-http-push` respectively).
 
+### Security
+- Upgraded Spring Boot from `3.5.11` to `3.5.14`, resolving:
+  - CVE-2026-40971 (Spring Boot RabbitMQ SSL bundle does not perform hostname verification — MITM risk)
+- Upgraded `tomcat-embed-core` from `10.1.50` to `10.1.54` (BOM override), resolving:
+  - CVE-2026-29146 (HIGH — padding oracle vulnerability in EncryptInterceptor default configuration)
+  - CVE-2026-29145 (MEDIUM — CLIENT_CERT authentication bypass when soft-fail is disabled)
+  - CVE-2026-32990 (MEDIUM — incomplete SNI case-sensitivity fix allowing virtual-host certificate bypass)
+- Removed stale explicit jackson, assertj, json-smart, and httpclient5 `dependencyManagement` overrides —
+  Spring Boot 3.5.14 BOM provides equal or newer versions via `jackson-bom 2.21.2`, `assertj 3.27.7`,
+  `json-smart 2.5.2`, and `httpclient5 5.5.2`.
+
 ### CI/CD
 - Upgraded all GitHub Actions to Node.js 24 compatible versions ahead of the June 2, 2026
   deadline when Node.js 20 runners are removed:
