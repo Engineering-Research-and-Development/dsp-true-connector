@@ -19,21 +19,13 @@
         <timestamp>${maven.build.timestamp}</timestamp>
         <maven.build.timestamp.format>dd-MM-yyyy</maven.build.timestamp.format>
         <!-- Spring Boot -->
-        <spring.boot.version>3.5.11</spring.boot.version>
-        <!-- Tomcat - override Boot BOM (CVE-2025-24813 and others) -->
-        <tomcat.version>10.1.50</tomcat.version>
-        <!-- Jackson - override Boot BOM (GHSA-72hv-8253-57qq DoS in async parser) -->
-        <jackson.version>2.18.6</jackson.version>
-        <!-- Netty - override Boot BOM (CVE-2025-58056, CVE-2025-55163) -->
+        <spring.boot.version>3.5.14</spring.boot.version>
+        <!-- Tomcat - override Boot BOM (CVE-2026-32990, CVE-2026-29145, CVE-2026-29146) -->
+        <tomcat.version>10.1.54</tomcat.version>
+        <!-- Netty - override Boot BOM (CVE-2025-58056, CVE-2025-55163; SB only provides 4.1.x) -->
         <netty.version>4.2.8.Final</netty.version>
-        <!-- Commons Lang3 - override Boot BOM (CVE-2025-48924) -->
+        <!-- Commons Lang3 - override Boot BOM (CVE-2025-48924; SB 3.5.14 has 3.17.0) -->
         <commons-lang3.version>3.18.0</commons-lang3.version>
-        <!-- AssertJ - override Boot BOM (CVE-2026-24400 XXE in isXmlEqualTo) -->
-        <assertj.version>3.27.7</assertj.version>
-        <!-- HttpClient5 - override Boot BOM (CVE-2025-27820 domain check bypass) -->
-        <httpclient5.version>5.4.3</httpclient5.version>
-        <!-- json-smart - override Boot BOM (CVE-2024-57699 uncontrolled recursion DoS) -->
-        <json-smart.version>2.5.2</json-smart.version>
         <!-- Nimbus JOSE+JWT - override Boot BOM (CVE-2025-53864 deeply nested JSON DoS) -->
         <nimbus-jose-jwt.version>10.0.2</nimbus-jose-jwt.version>
         <!-- AWS SDK -->
@@ -204,29 +196,7 @@
                 <version>${failsafe.version}</version>
             </dependency>
 
-            <!-- Jackson JSR310 -->
-            <dependency>
-                <groupId>com.fasterxml.jackson.datatype</groupId>
-                <artifactId>jackson-datatype-jsr310</artifactId>
-                <version>${jackson.version}</version>
-            </dependency>
-
-            <!-- Jackson core suite - override Boot BOM (GHSA-72hv-8253-57qq) -->
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-core</artifactId>
-                <version>${jackson.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>${jackson.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-annotations</artifactId>
-                <version>${jackson.version}</version>
-            </dependency>
+            <!-- Jackson - managed by Spring Boot BOM via jackson-bom 2.21.2 (GHSA-72hv-8253-57qq fixed in 2.15+) -->
 
             <!-- Tomcat - override Boot BOM (CVE-2025-24813 and others) -->
             <dependency>
@@ -294,27 +264,11 @@
                 <version>${commons-lang3.version}</version>
             </dependency>
 
-            <!-- AssertJ - override Boot BOM (CVE-2026-24400 XXE in isXmlEqualTo) -->
-            <dependency>
-                <groupId>org.assertj</groupId>
-                <artifactId>assertj-core</artifactId>
-                <version>${assertj.version}</version>
-                <scope>test</scope>
-            </dependency>
+            <!-- AssertJ - SB 3.5.14 bundles 3.27.7 which already fixes CVE-2026-24400 -->
 
-            <!-- HttpClient5 - override Boot BOM (CVE-2025-27820 domain check bypass) -->
-            <dependency>
-                <groupId>org.apache.httpcomponents.client5</groupId>
-                <artifactId>httpclient5</artifactId>
-                <version>${httpclient5.version}</version>
-            </dependency>
+            <!-- HttpClient5 - SB 3.5.14 bundles 5.5.2 which already fixes CVE-2025-27820 -->
 
-            <!-- json-smart - override Boot BOM (CVE-2024-57699 uncontrolled recursion DoS) -->
-            <dependency>
-                <groupId>net.minidev</groupId>
-                <artifactId>json-smart</artifactId>
-                <version>${json-smart.version}</version>
-            </dependency>
+            <!-- json-smart - SB 3.5.14 bundles 2.5.2 which already fixes CVE-2024-57699 -->
 
             <!-- Nimbus JOSE+JWT - override Boot BOM (CVE-2025-53864 deeply nested JSON DoS) -->
             <dependency>
