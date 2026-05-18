@@ -156,6 +156,7 @@ services:
         condition: service_started
     environment:
       - SPRING_DATA_MONGODB_URI=mongodb://mongodb-a:27017/data-plane-pull-a
+      - DATAPLANE_ID=dp-http-pull-a
       - DATAPLANE_ENDPOINT=http://data-plane-http-pull-a:9090
       - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-a:8080
       - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}
@@ -191,6 +192,7 @@ services:
         condition: service_started
     environment:
       - SPRING_DATA_MONGODB_URI=mongodb://mongodb-b:27017/data-plane-pull-b
+      - DATAPLANE_ID=dp-http-pull-b
       - DATAPLANE_ENDPOINT=http://data-plane-http-pull-b:9090
       - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-b:8080
       - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}
@@ -221,6 +223,7 @@ services:
         condition: service_started
     environment:
       - SPRING_DATA_MONGODB_URI=mongodb://mongodb-a:27017/data-plane-push-a
+      - DATAPLANE_ID=dp-http-push-a
       - DATAPLANE_ENDPOINT=http://data-plane-http-push-a:9091
       - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-a:8080
       - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}
@@ -254,6 +257,7 @@ services:
         condition: service_started
     environment:
       - SPRING_DATA_MONGODB_URI=mongodb://mongodb-b:27017/data-plane-push-b
+      - DATAPLANE_ID=dp-http-push-b
       - DATAPLANE_ENDPOINT=http://data-plane-http-push-b:9091
       - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-b:8080
       - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}

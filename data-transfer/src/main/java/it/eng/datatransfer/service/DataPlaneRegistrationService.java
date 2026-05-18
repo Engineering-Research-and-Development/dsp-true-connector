@@ -40,9 +40,17 @@ public class DataPlaneRegistrationService {
         log.info("Registering Data Plane at endpoint {}", registration.getEndpoint());
         return repository.findByEndpoint(registration.getEndpoint())
                 .map(existing -> {
-                    log.info("Updating existing registration {} for endpoint {}", existing.getId(), existing.getEndpoint());
+                    String idToUse = (registration.getId() != null && !registration.getId().isBlank())
+                            ? registration.getId()
+                            : existing.getId();
+                    log.info("Updating existing registration {} → {} for endpoint {}", existing.getId(), idToUse, existing.getEndpoint());
+                    if (!idToUse.equals(existing.getId())) {
+                        // DP now sends a configured id different from the auto-generated UUID — replace the record
+                        repository.deleteById(existing.getId());
+                        log.info("Deleted old registration {} (replaced by {})", existing.getId(), idToUse);
+                    }
                     DataPlaneRegistration updated = DataPlaneRegistration.Builder.newInstance()
-                            .id(existing.getId())
+                            .id(idToUse)
                             .endpoint(registration.getEndpoint())
                             .supportedTransferTypes(registration.getSupportedTransferTypes())
                             .apiKey(registration.getApiKey())

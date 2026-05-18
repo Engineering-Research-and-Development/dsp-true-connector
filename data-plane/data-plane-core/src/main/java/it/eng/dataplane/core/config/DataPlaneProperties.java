@@ -5,6 +5,8 @@ import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
+import java.util.UUID;
+
 /**
  * Configuration properties for a Data Plane instance.
  * Prefix: {@code dataplane}
@@ -14,6 +16,14 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "dataplane")
 public class DataPlaneProperties {
+
+    /**
+     * Unique identifier for this Data Plane instance.
+     * Configure via {@code dataplane.id} for stable identification across restarts — required for
+     * predictable graceful deregistration from the Control Plane on shutdown.
+     * Defaults to a random UUID if not explicitly configured (changes every restart).
+     */
+    private String id = UUID.randomUUID().toString();
 
     /** This DP's public endpoint URL (used for self-registration with CP). */
     private String endpoint;
