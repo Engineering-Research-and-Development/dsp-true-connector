@@ -904,7 +904,7 @@ class DataTransferAPIServiceTest {
                 httpPushInitialized.getId(), "test-bucket", httpPushInitialized.getId()))
                 .thenReturn(tempUser);
         when(s3Properties.getRegion()).thenReturn("us-east-1");
-        when(s3Properties.getExternalPresignedEndpoint()).thenReturn("http://172.17.0.1:9000");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
                 .thenReturn(apiResponse);
