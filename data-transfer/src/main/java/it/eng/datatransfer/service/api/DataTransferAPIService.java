@@ -172,9 +172,10 @@ public class DataTransferAPIService {
                 endpointMap.put(S3Utils.OBJECT_KEY, objectKey);
                 endpointMap.put(S3Utils.ACCESS_KEY, tempUser.getAccessKey());
                 endpointMap.put(S3Utils.SECRET_KEY, tempUser.getSecretKey());
-                String endpointOverride = StringUtils.isNotBlank(s3Properties.getExternalPresignedEndpoint())
-                        ? s3Properties.getExternalPresignedEndpoint()
-                        : s3Properties.getEndpoint();
+                // Use the internal S3 endpoint (e.g., http://minio:9000) so the provider DP
+                // can reach MinIO from within the Docker network. externalPresignedEndpoint
+                // is only for URLs served to external API callers, not for server-side uploads.
+                String endpointOverride = s3Properties.getEndpoint();
                 if (StringUtils.isNotBlank(endpointOverride)) {
                     endpointMap.put(S3Utils.ENDPOINT_OVERRIDE, endpointOverride);
                 }

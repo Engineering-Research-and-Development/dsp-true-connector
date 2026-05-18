@@ -70,6 +70,8 @@ services:
       - KEYSTORE_ALIAS=${CONNECTOR_A_KEYSTORE_ALIAS}
       - TRUSTSTORE_NAME=${TRUSTSTORE_NAME}
       - TRUSTSTORE_PASSWORD=${TRUSTSTORE_PASSWORD}
+      # viewData presigned URLs are served to external clients; match the MinIO URL Newman uses.
+      - S3_EXTERNALPRESIGNEDENDPOINT=${MINIO_EXTERNAL_URL:-http://172.17.0.1:9000}
     volumes:
       - ./connector_a_resources:/config
       - ./tc_cert:/cert
