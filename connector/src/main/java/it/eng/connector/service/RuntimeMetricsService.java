@@ -3,6 +3,7 @@ package it.eng.connector.service;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import it.eng.connector.model.dashboard.RuntimeMetricsResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.lang.management.ManagementFactory;
@@ -30,6 +31,7 @@ public class RuntimeMetricsService {
     private final RuntimeMXBean runtimeMXBean;
     private final java.lang.management.OperatingSystemMXBean operatingSystemMXBean;
 
+    @Autowired
     public RuntimeMetricsService(Optional<MeterRegistry> meterRegistry) {
         this(
                 meterRegistry.orElse(null),

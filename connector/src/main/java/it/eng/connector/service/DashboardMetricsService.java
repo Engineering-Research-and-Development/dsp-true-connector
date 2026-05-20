@@ -5,6 +5,7 @@ import it.eng.datatransfer.service.TransferMetricsService;
 import it.eng.negotiation.service.NegotiationMetricsService;
 import it.eng.tools.model.dashboard.TimeWindow;
 import it.eng.tools.service.AuditEventMetricsService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -29,6 +30,7 @@ public class DashboardMetricsService {
     private final RuntimeMetricsService runtimeMetricsService;
     private final Clock clock;
 
+    @Autowired
     public DashboardMetricsService(
             NegotiationMetricsService negotiationMetricsService,
             TransferMetricsService transferMetricsService,

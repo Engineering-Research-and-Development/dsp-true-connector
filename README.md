@@ -48,6 +48,7 @@ Project is structured as multi-module maven project:
 ### Getting Started
 - **[Keycloak Integration Complete Summary](KEYCLOAK_INTEGRATION_COMPLETE_SUMMARY.md)** - ⭐ **NEW** Comprehensive Keycloak integration overview
 - [Development Procedure](doc/development_procedure.md) - Setup and coding guidelines
+- [Dashboard Metrics API](doc/dashboard-metrics.md) - Admin dashboard metrics endpoints and query contract
 - [Keycloak Setup Guide](doc/keycloak.md) - OAuth2/OIDC authentication setup
 - [Security Documentation](doc/security.md) - Security architecture and best practices
 - [Postman Collection Guide](README_POSTMAN.md) - API testing with Postman

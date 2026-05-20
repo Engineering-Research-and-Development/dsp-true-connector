@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] — Dashboard Metrics API
+
+### Added
+- Dashboard admin API endpoints for `/api/v1/dashboard/summary`, `/api/v1/dashboard/runtime`, `/api/v1/dashboard/negotiations`, `/api/v1/dashboard/transfers`, and `/api/v1/dashboard/events`.
+- Metric services across modules: `DashboardMetricsService` and `RuntimeMetricsService` in `connector`, `NegotiationMetricsService` in `negotiation`, `TransferMetricsService` in `data-transfer`, and `AuditEventMetricsService` in `tools`.
+- `ApiEndpoints` constants for dashboard routes: `DASHBOARD_V1`, `DASHBOARD_RUNTIME_V1`, `DASHBOARD_NEGOTIATIONS_V1`, `DASHBOARD_TRANSFERS_V1`, `DASHBOARD_EVENTS_V1`, and `DASHBOARD_SUMMARY_V1`.
+- `doc/dashboard-metrics.md` documenting the dashboard metrics backend contract and `DashboardMetricsAPIIT` integration coverage for the summary endpoint.
+
 ## [Unreleased] — Multi-Tenant Support
 
 ### Added
