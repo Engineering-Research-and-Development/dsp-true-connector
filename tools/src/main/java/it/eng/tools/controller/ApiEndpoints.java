@@ -65,4 +65,16 @@ public interface ApiEndpoints {
      * Tools module - v1 API endpoint for tenant management.
      */
     public static final String TENANTS_V1 = "/api/v1/tenants";
+
+    public static final String DASHBOARD_V1 = "/api/v1/dashboard";
+
+    public static final String DASHBOARD_RUNTIME_V1 = DASHBOARD_V1 + "/runtime";
+
+    public static final String DASHBOARD_NEGOTIATIONS_V1 = DASHBOARD_V1 + "/negotiations";
+
+    public static final String DASHBOARD_TRANSFERS_V1 = DASHBOARD_V1 + "/transfers";
+
+    public static final String DASHBOARD_EVENTS_V1 = DASHBOARD_V1 + "/events";
+
+    public static final String DASHBOARD_SUMMARY_V1 = DASHBOARD_V1 + "/summary";
 }
