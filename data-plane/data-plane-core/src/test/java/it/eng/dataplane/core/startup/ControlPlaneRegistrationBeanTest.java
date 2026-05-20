@@ -47,11 +47,10 @@ class ControlPlaneRegistrationBeanTest {
     private DataPlaneAuditEventService auditEventService;
 
     private ControlPlaneRegistrationBean bean;
-    private ObjectMapper objectMapper;
 
     @BeforeEach
     void setUp() {
-        objectMapper = new ObjectMapper();
+        ObjectMapper objectMapper = new ObjectMapper();
         bean = spy(new ControlPlaneRegistrationBean(properties, registry, okHttpClient, objectMapper, auditEventService) {
             @Override
             protected void sleep(long ms) {

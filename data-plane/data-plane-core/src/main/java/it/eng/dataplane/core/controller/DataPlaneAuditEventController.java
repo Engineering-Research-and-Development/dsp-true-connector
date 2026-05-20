@@ -100,8 +100,7 @@ public class DataPlaneAuditEventController {
      * @return the audit event or 404 if not found
      */
     @GetMapping("/{auditEventId}")
-    public ResponseEntity<Map<String, Object>> getAuditEventById(
-            @PathVariable("auditEventId") String auditEventId) {
+    public ResponseEntity<Map<String, Object>> getAuditEventById(@PathVariable String auditEventId) {
         log.info("Fetching DP audit event by id={}", auditEventId);
         return auditEventService.getById(auditEventId)
                 .map(event -> {
