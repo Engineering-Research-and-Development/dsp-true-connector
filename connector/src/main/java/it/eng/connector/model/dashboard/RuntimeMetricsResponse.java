@@ -6,7 +6,7 @@ package it.eng.connector.model.dashboard;
  * @param processCpuUsage the process CPU usage ratio, or {@code -1} when unavailable
  * @param systemCpuUsage the system CPU usage ratio, or {@code -1} when unavailable
  * @param heapUsedBytes the used JVM heap in bytes
- * @param heapMaxBytes the maximum JVM heap in bytes
+ * @param heapMaxBytes the maximum JVM heap in bytes, or {@code -1} when undefined
  * @param nonHeapUsedBytes the used JVM non-heap memory in bytes
  * @param liveThreadCount the current live thread count
  * @param uptimeMilliseconds the JVM uptime in milliseconds
