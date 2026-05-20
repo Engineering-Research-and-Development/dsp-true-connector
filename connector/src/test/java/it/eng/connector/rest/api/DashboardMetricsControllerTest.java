@@ -84,6 +84,7 @@ class DashboardMetricsControllerTest {
         );
 
         assertNotNull(response.getBody());
+        assertTrue(response.getStatusCode().is2xxSuccessful());
         assertTrue(response.getBody().isSuccess());
         assertEquals(summary, response.getBody().getData());
         verify(dashboardMetricsService).parseWindow("2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z", "day");
@@ -99,8 +100,68 @@ class DashboardMetricsControllerTest {
         ResponseEntity<GenericApiResponse<RuntimeMetricsResponse>> response = controller.getRuntime();
 
         assertNotNull(response.getBody());
+        assertTrue(response.getStatusCode().is2xxSuccessful());
         assertTrue(response.getBody().isSuccess());
         assertEquals(runtime, response.getBody().getData());
         verify(runtimeMetricsService).getRuntimeMetrics();
+    }
+
+    @Test
+    @DisplayName("Negotiations endpoint returns success response and delegates to service")
+    void getNegotiations_returnsSuccessResponseAndDelegates() {
+        TenantContextHolder.setTenantId(TENANT_ID);
+        NegotiationSnapshotMetrics metrics = new NegotiationSnapshotMetrics(List.of(), List.of(), 4L);
+        when(negotiationMetricsService.getSnapshotMetrics(TENANT_ID)).thenReturn(metrics);
+
+        ResponseEntity<GenericApiResponse<NegotiationSnapshotMetrics>> response = controller.getNegotiations();
+
+        assertNotNull(response.getBody());
+        assertTrue(response.getStatusCode().is2xxSuccessful());
+        assertTrue(response.getBody().isSuccess());
+        assertEquals(metrics, response.getBody().getData());
+        verify(negotiationMetricsService).getSnapshotMetrics(TENANT_ID);
+    }
+
+    @Test
+    @DisplayName("Transfers endpoint returns success response and delegates to service")
+    void getTransfers_returnsSuccessResponseAndDelegates() {
+        TenantContextHolder.setTenantId(TENANT_ID);
+        TransferSnapshotMetrics metrics = new TransferSnapshotMetrics(List.of(), List.of(), List.of(), List.of(), 6L);
+        when(transferMetricsService.getSnapshotMetrics(TENANT_ID)).thenReturn(metrics);
+
+        ResponseEntity<GenericApiResponse<TransferSnapshotMetrics>> response = controller.getTransfers();
+
+        assertNotNull(response.getBody());
+        assertTrue(response.getStatusCode().is2xxSuccessful());
+        assertTrue(response.getBody().isSuccess());
+        assertEquals(metrics, response.getBody().getData());
+        verify(transferMetricsService).getSnapshotMetrics(TENANT_ID);
+    }
+
+    @Test
+    @DisplayName("Events endpoint returns success response and delegates to service")
+    void getEvents_returnsSuccessResponseAndDelegates() {
+        TenantContextHolder.setTenantId(TENANT_ID);
+        TimeWindow window = new TimeWindow(
+                Instant.parse("2025-01-01T00:00:00Z"),
+                Instant.parse("2025-01-02T00:00:00Z"),
+                "day"
+        );
+        HistoricalEventMetrics metrics = new HistoricalEventMetrics(List.of(), List.of(), List.of(), 3L);
+        when(dashboardMetricsService.parseWindow("2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z", "day")).thenReturn(window);
+        when(auditEventMetricsService.getHistoricalMetrics(window, TENANT_ID)).thenReturn(metrics);
+
+        ResponseEntity<GenericApiResponse<HistoricalEventMetrics>> response = controller.getEvents(
+                "2025-01-01T00:00:00Z",
+                "2025-01-02T00:00:00Z",
+                "day"
+        );
+
+        assertNotNull(response.getBody());
+        assertTrue(response.getStatusCode().is2xxSuccessful());
+        assertTrue(response.getBody().isSuccess());
+        assertEquals(metrics, response.getBody().getData());
+        verify(dashboardMetricsService).parseWindow("2025-01-01T00:00:00Z", "2025-01-02T00:00:00Z", "day");
+        verify(auditEventMetricsService).getHistoricalMetrics(window, TENANT_ID);
     }
 }
