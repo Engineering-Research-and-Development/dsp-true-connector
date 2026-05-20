@@ -24,8 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @ExtendWith(MockitoExtension.class)
 class NegotiationMetricsServiceTest {
@@ -46,18 +46,13 @@ class NegotiationMetricsServiceTest {
     }
 
     @Test
-    @DisplayName("getSnapshotMetrics should map grouped counts by state and role-state")
-    void getSnapshotMetrics_shouldMapGroupedCountsByStateAndRoleState() {
+    @DisplayName("getSnapshotMetrics should derive all metrics from one grouped aggregation")
+    void getSnapshotMetrics_shouldDeriveAllMetricsFromOneGroupedAggregation() {
         doReturn(aggregationResults(List.of(
-                new Document("key", "REQUESTED").append("count", 3L),
-                new Document("key", "AGREED").append("count", 1L)
+                new Document("state", "REQUESTED").append("key", "consumer:REQUESTED").append("count", 2L),
+                new Document("state", "AGREED").append("key", "consumer:AGREED").append("count", 1L),
+                new Document("state", "REQUESTED").append("key", "provider:REQUESTED").append("count", 1L)
         )))
-                .doReturn(aggregationResults(List.of(
-                        new Document("key", "consumer:REQUESTED").append("count", 2L),
-                        new Document("key", "provider:REQUESTED").append("count", 1L),
-                        new Document("key", "consumer:AGREED").append("count", 1L)
-                )))
-                .doReturn(aggregationResults(List.of(new Document("total", 4L))))
                 .when(mongoTemplate)
                 .aggregate(any(Aggregation.class), eq(COLLECTION_NAME), eq(Document.class));
 
@@ -69,14 +64,19 @@ class NegotiationMetricsServiceTest {
         ), metrics.countsByState());
         assertIterableEquals(List.of(
                 new KeyCount("consumer:REQUESTED", 2L),
-                new KeyCount("provider:REQUESTED", 1L),
-                new KeyCount("consumer:AGREED", 1L)
+                new KeyCount("consumer:AGREED", 1L),
+                new KeyCount("provider:REQUESTED", 1L)
         ), metrics.countsByRoleAndState());
         assertEquals(4L, metrics.total());
+        verify(mongoTemplate).aggregate(aggregationCaptor.capture(), eq(COLLECTION_NAME), eq(Document.class));
+        String pipeline = String.valueOf(aggregationCaptor.getValue().toPipeline(Aggregation.DEFAULT_CONTEXT));
+        assertTrue(pipeline.contains("role"));
+        assertTrue(pipeline.contains("state"));
+        verifyNoMoreInteractions(mongoTemplate);
     }
 
     @Test
-    @DisplayName("getSnapshotMetrics should return empty metrics when aggregations return no rows")
+    @DisplayName("getSnapshotMetrics should return empty metrics when grouped aggregation returns no rows")
     void getSnapshotMetrics_shouldReturnEmptyMetricsWhenNoRowsMatch() {
         stubEmptyAggregationResults();
 
@@ -94,8 +94,8 @@ class NegotiationMetricsServiceTest {
 
         negotiationMetricsService.getSnapshotMetrics("tenant-a");
 
-        verify(mongoTemplate, atLeastOnce()).aggregate(aggregationCaptor.capture(), eq(COLLECTION_NAME), eq(Document.class));
-        String matchStage = String.valueOf(aggregationCaptor.getAllValues().get(0).toPipeline(Aggregation.DEFAULT_CONTEXT).get(0));
+        verify(mongoTemplate).aggregate(aggregationCaptor.capture(), eq(COLLECTION_NAME), eq(Document.class));
+        String matchStage = String.valueOf(aggregationCaptor.getValue().toPipeline(Aggregation.DEFAULT_CONTEXT).get(0));
 
         assertTrue(matchStage.contains("tenantId"));
         assertTrue(matchStage.contains("tenant-a"));
@@ -108,8 +108,8 @@ class NegotiationMetricsServiceTest {
 
         negotiationMetricsService.getSnapshotMetrics("   ");
 
-        verify(mongoTemplate, atLeastOnce()).aggregate(aggregationCaptor.capture(), eq(COLLECTION_NAME), eq(Document.class));
-        String matchStage = String.valueOf(aggregationCaptor.getAllValues().get(0).toPipeline(Aggregation.DEFAULT_CONTEXT).get(0));
+        verify(mongoTemplate).aggregate(aggregationCaptor.capture(), eq(COLLECTION_NAME), eq(Document.class));
+        String matchStage = String.valueOf(aggregationCaptor.getValue().toPipeline(Aggregation.DEFAULT_CONTEXT).get(0));
 
         assertFalse(matchStage.contains("tenantId"));
     }
@@ -120,8 +120,6 @@ class NegotiationMetricsServiceTest {
 
     private void stubEmptyAggregationResults() {
         doReturn(aggregationResults(List.of()))
-                .doReturn(aggregationResults(List.of()))
-                .doReturn(aggregationResults(List.of()))
                 .when(mongoTemplate)
                 .aggregate(any(Aggregation.class), eq(COLLECTION_NAME), eq(Document.class));
     }
