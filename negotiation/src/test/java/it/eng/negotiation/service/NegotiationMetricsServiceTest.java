@@ -70,8 +70,11 @@ class NegotiationMetricsServiceTest {
         assertEquals(4L, metrics.total());
         verify(mongoTemplate).aggregate(aggregationCaptor.capture(), eq(COLLECTION_NAME), eq(Document.class));
         String pipeline = String.valueOf(aggregationCaptor.getValue().toPipeline(Aggregation.DEFAULT_CONTEXT));
+        Document projectStage = (Document) aggregationCaptor.getValue().toPipeline(Aggregation.DEFAULT_CONTEXT).get(2);
+        Document projectFields = (Document) projectStage.get("$project");
         assertTrue(pipeline.contains("role"));
         assertTrue(pipeline.contains("state"));
+        assertEquals("$count", projectFields.get("count"));
         verifyNoMoreInteractions(mongoTemplate);
     }
 

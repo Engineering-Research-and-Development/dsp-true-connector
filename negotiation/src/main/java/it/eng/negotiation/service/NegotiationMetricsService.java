@@ -71,7 +71,7 @@ public class NegotiationMetricsService {
                         "$_id." + STATE_FIELD
                 )))
                         .append(STATE_FIELD, "$_id." + STATE_FIELD)
-                        .append(COUNT_FIELD, 1)
+                        .append(COUNT_FIELD, "$" + COUNT_FIELD)
                         .append("_id", 0)),
                 Aggregation.sort(Sort.by(Sort.Direction.DESC, COUNT_FIELD).and(Sort.by(Sort.Direction.ASC, KEY_FIELD)))
         );
