@@ -13,6 +13,7 @@ public enum DataPlaneAuditEventType {
     DATAFLOW_FAILED("Data flow failed"),
     DATAFLOW_TERMINATED("Data flow terminated"),
     DATAFLOW_SUSPENDED("Data flow suspended"),
+    DATAFLOW_RESUMED("Data flow resumed"),
     DP_REGISTRATION_SUCCESS("Data Plane registered with Control Plane"),
     DP_REGISTRATION_FAILED("Data Plane registration with Control Plane failed"),
     DP_DEREGISTRATION_SUCCESS("Data Plane deregistered from Control Plane"),

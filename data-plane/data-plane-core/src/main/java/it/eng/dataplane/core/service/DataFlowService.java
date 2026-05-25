@@ -83,6 +83,8 @@ public class DataFlowService {
                 .thenAccept(result -> {
                     if (result.isSuccess()) {
                         updateState(processId, DataFlowState.STARTED);
+                        auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_RESUMED,
+                                processId, entity.getTransferType(), "Data flow resumed", null);
                     } else {
                         handleError(processId, new RuntimeException(result.getErrorMessage()));
                     }

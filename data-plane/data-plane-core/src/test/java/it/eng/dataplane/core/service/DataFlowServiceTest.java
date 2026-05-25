@@ -290,6 +290,8 @@ class DataFlowServiceTest {
 
         verify(stateMachine, atLeastOnce()).assertTransition(DataFlowState.SUSPENDED, DataFlowState.STARTED);
         verify(repository, atLeastOnce()).save(argThat(saved -> saved.getState() == DataFlowState.STARTED));
+        verify(auditEventService).saveEvent(DataPlaneAuditEventType.DATAFLOW_RESUMED,
+                "tp-1", "HttpData-PULL", "Data flow resumed", null);
     }
 
     /**
