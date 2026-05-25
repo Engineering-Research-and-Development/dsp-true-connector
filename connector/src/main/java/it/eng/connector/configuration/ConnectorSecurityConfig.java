@@ -151,6 +151,8 @@ public class ConnectorSecurityConfig {
                             .requestMatchers(HttpMethod.POST,
                                     ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE,
                                     ApiEndpoints.DATAFLOW_CALLBACK_ERROR).permitAll()
+                            .requestMatchers(HttpMethod.POST,
+                                    ApiEndpoints.DATAFLOW_CALLBACKS_PATTERN).permitAll()
                             .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole("SUPER_ADMIN")
                             .anyRequest().hasAnyRole(ADMIN_ROLE, "SUPER_ADMIN"))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
@@ -172,6 +174,8 @@ public class ConnectorSecurityConfig {
                             .requestMatchers(HttpMethod.POST,
                                     ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE,
                                     ApiEndpoints.DATAFLOW_CALLBACK_ERROR).permitAll()
+                            .requestMatchers(HttpMethod.POST,
+                                    ApiEndpoints.DATAFLOW_CALLBACKS_PATTERN).permitAll()
                             .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole("SUPER_ADMIN")
                             .anyRequest().hasAnyRole(ADMIN_ROLE, "SUPER_ADMIN"))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));

@@ -3,8 +3,8 @@ package it.eng.datatransfer.rest.api;
 import it.eng.dataplane.api.message.DataFlowStatusMessage;
 import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.datatransfer.model.DataPlaneRegistration;
+import it.eng.datatransfer.service.DataFlowCallbackService;
 import it.eng.datatransfer.service.DataPlaneRegistrationService;
-import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
@@ -28,6 +28,7 @@ class DataFlowCallbackControllerTest {
 
     private static final String VALID_API_KEY = "valid-api-key-123";
     private static final String UNKNOWN_API_KEY = "unknown-key";
+    private static final String PROCESS_ID = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId();
 
     private static final DataPlaneRegistration DATA_PLANE_REGISTRATION =
             DataPlaneRegistration.Builder.newInstance()
@@ -38,19 +39,19 @@ class DataFlowCallbackControllerTest {
 
     private static final DataFlowStatusMessage COMPLETION_MESSAGE =
             DataFlowStatusMessage.Builder.newInstance()
-                    .processId(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId())
+                    .processId(PROCESS_ID)
                     .state(DataFlowState.COMPLETED)
                     .build();
 
     private static final DataFlowStatusMessage ERROR_MESSAGE =
             DataFlowStatusMessage.Builder.newInstance()
-                    .processId(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId())
+                    .processId(PROCESS_ID)
                     .state(DataFlowState.TERMINATED)
                     .errorMessage("Transfer failed")
                     .build();
 
     @Mock
-    private DataTransferAPIService apiService;
+    private DataFlowCallbackService callbackService;
 
     @Mock
     private DataPlaneRegistrationService registrationService;
@@ -58,9 +59,11 @@ class DataFlowCallbackControllerTest {
     @InjectMocks
     private DataFlowCallbackController controller;
 
+    // ── Legacy endpoint: complete ──────────────────────────────────────────────
+
     @Test
-    @DisplayName("Complete callback updates transfer process to COMPLETED")
-    void completeCallbackUpdatesTransferProcessToCompleted() {
+    @DisplayName("Legacy complete callback delegates to callbackService.handleCompleted")
+    void completeCallbackDelegatesToCallbackService() {
         when(registrationService.findByApiKey(VALID_API_KEY))
                 .thenReturn(Optional.of(DATA_PLANE_REGISTRATION));
 
@@ -70,12 +73,13 @@ class DataFlowCallbackControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
-        verify(apiService).completeTransfer(COMPLETION_MESSAGE.getProcessId());
+        verify(callbackService).handleCompleted(COMPLETION_MESSAGE.getProcessId(),
+                COMPLETION_MESSAGE.getDataAddress());
     }
 
     @Test
-    @DisplayName("Error callback updates transfer process to TERMINATED")
-    void errorCallbackUpdatesTransferProcessToTerminated() {
+    @DisplayName("Legacy error callback delegates to callbackService.handleErrored")
+    void errorCallbackDelegatesToCallbackService() {
         when(registrationService.findByApiKey(VALID_API_KEY))
                 .thenReturn(Optional.of(DATA_PLANE_REGISTRATION));
 
@@ -85,8 +89,86 @@ class DataFlowCallbackControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
-        verify(apiService).terminateTransfer(ERROR_MESSAGE.getProcessId());
+        verify(callbackService).handleErrored(ERROR_MESSAGE.getProcessId(),
+                ERROR_MESSAGE.getErrorMessage());
     }
+
+    // ── Canonical endpoints ────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("Canonical prepared callback delegates to callbackService.handlePrepared")
+    void preparedCallbackDelegatesToCallbackService() {
+        when(registrationService.findByApiKey(VALID_API_KEY))
+                .thenReturn(Optional.of(DATA_PLANE_REGISTRATION));
+        var msg = DataFlowStatusMessage.Builder.newInstance()
+                .processId(PROCESS_ID)
+                .state(DataFlowState.PREPARED)
+                .build();
+
+        ResponseEntity<GenericApiResponse<?>> response =
+                controller.preparedCallback(PROCESS_ID, VALID_API_KEY, msg);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().isSuccess());
+        verify(callbackService).handlePrepared(PROCESS_ID, msg.getDataAddress());
+    }
+
+    @Test
+    @DisplayName("Canonical started callback delegates to callbackService.handleStarted")
+    void startedCallbackDelegatesToCallbackService() {
+        when(registrationService.findByApiKey(VALID_API_KEY))
+                .thenReturn(Optional.of(DATA_PLANE_REGISTRATION));
+        var msg = DataFlowStatusMessage.Builder.newInstance()
+                .processId(PROCESS_ID)
+                .state(DataFlowState.STARTED)
+                .build();
+
+        ResponseEntity<GenericApiResponse<?>> response =
+                controller.startedCallback(PROCESS_ID, VALID_API_KEY, msg);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().isSuccess());
+        verify(callbackService).handleStarted(PROCESS_ID, msg.getDataAddress());
+    }
+
+    @Test
+    @DisplayName("Canonical completed callback delegates to callbackService.handleCompleted")
+    void completedCallbackDelegatesToCallbackService() {
+        when(registrationService.findByApiKey(VALID_API_KEY))
+                .thenReturn(Optional.of(DATA_PLANE_REGISTRATION));
+        var msg = DataFlowStatusMessage.Builder.newInstance()
+                .processId(PROCESS_ID)
+                .state(DataFlowState.COMPLETED)
+                .build();
+
+        ResponseEntity<GenericApiResponse<?>> response =
+                controller.completedCallback(PROCESS_ID, VALID_API_KEY, msg);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().isSuccess());
+        verify(callbackService).handleCompleted(PROCESS_ID, msg.getDataAddress());
+    }
+
+    @Test
+    @DisplayName("Canonical errored callback delegates to callbackService.handleErrored")
+    void erroredCallbackDelegatesToCallbackService() {
+        when(registrationService.findByApiKey(VALID_API_KEY))
+                .thenReturn(Optional.of(DATA_PLANE_REGISTRATION));
+        var msg = DataFlowStatusMessage.Builder.newInstance()
+                .processId(PROCESS_ID)
+                .state(DataFlowState.TERMINATED)
+                .errorMessage("dp crashed")
+                .build();
+
+        ResponseEntity<GenericApiResponse<?>> response =
+                controller.erroredCallback(PROCESS_ID, VALID_API_KEY, msg);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertTrue(response.getBody().isSuccess());
+        verify(callbackService).handleErrored(PROCESS_ID, "dp crashed");
+    }
+
+    // ── API-key authentication ─────────────────────────────────────────────────
 
     @Test
     @DisplayName("Callback with unknown API key returns 401")
@@ -100,15 +182,10 @@ class DataFlowCallbackControllerTest {
                 controller.errorCallback(UNKNOWN_API_KEY, ERROR_MESSAGE);
 
         assertEquals(HttpStatus.UNAUTHORIZED, completeResponse.getStatusCode());
-        assertNotNull(completeResponse.getBody());
         assertFalse(completeResponse.getBody().isSuccess());
-
         assertEquals(HttpStatus.UNAUTHORIZED, errorResponse.getStatusCode());
-        assertNotNull(errorResponse.getBody());
         assertFalse(errorResponse.getBody().isSuccess());
-
-        verify(apiService, never()).completeTransfer(anyString());
-        verify(apiService, never()).terminateTransfer(anyString());
+        verifyNoInteractions(callbackService);
     }
 
     @Test
@@ -118,10 +195,9 @@ class DataFlowCallbackControllerTest {
                 controller.completeCallback(null, COMPLETION_MESSAGE);
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        assertNotNull(response.getBody());
         assertFalse(response.getBody().isSuccess());
         verify(registrationService, never()).findByApiKey(any());
-        verify(apiService, never()).completeTransfer(anyString());
+        verifyNoInteractions(callbackService);
     }
 
     @Test
@@ -131,9 +207,38 @@ class DataFlowCallbackControllerTest {
                 controller.errorCallback(null, ERROR_MESSAGE);
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
-        assertNotNull(response.getBody());
         assertFalse(response.getBody().isSuccess());
         verify(registrationService, never()).findByApiKey(any());
-        verify(apiService, never()).terminateTransfer(anyString());
+        verifyNoInteractions(callbackService);
+    }
+
+    @Test
+    @DisplayName("Canonical completed callback with missing API key returns 401")
+    void canonicalCompletedCallbackMissingApiKeyReturns401() {
+        var msg = DataFlowStatusMessage.Builder.newInstance()
+                .processId(PROCESS_ID).state(DataFlowState.COMPLETED).build();
+
+        ResponseEntity<GenericApiResponse<?>> response =
+                controller.completedCallback(PROCESS_ID, null, msg);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertFalse(response.getBody().isSuccess());
+        verifyNoInteractions(callbackService);
+    }
+
+    @Test
+    @DisplayName("Canonical errored callback with unknown API key returns 401")
+    void canonicalErroredCallbackUnknownApiKeyReturns401() {
+        when(registrationService.findByApiKey(UNKNOWN_API_KEY)).thenReturn(Optional.empty());
+        var msg = DataFlowStatusMessage.Builder.newInstance()
+                .processId(PROCESS_ID).state(DataFlowState.TERMINATED).build();
+
+        ResponseEntity<GenericApiResponse<?>> response =
+                controller.erroredCallback(PROCESS_ID, UNKNOWN_API_KEY, msg);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertFalse(response.getBody().isSuccess());
+        verifyNoInteractions(callbackService);
     }
 }
+

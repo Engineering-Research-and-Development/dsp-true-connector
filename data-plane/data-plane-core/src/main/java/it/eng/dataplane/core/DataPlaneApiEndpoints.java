@@ -20,6 +20,18 @@ public final class DataPlaneApiEndpoints {
     /** Callback endpoint to report a failed data flow. */
     public static final String DATAFLOW_CALLBACK_ERROR = "/api/v1/dataflows/error";
 
+    /** Canonical callback endpoint template for resources-prepared. Replace {@code {processId}} with the actual ID. */
+    public static final String DATAFLOW_CALLBACK_PREPARED_TEMPLATE = "/api/v1/transfers/%s/dataflow/prepared";
+
+    /** Canonical callback endpoint template for transfer-started. Replace {@code {processId}} with the actual ID. */
+    public static final String DATAFLOW_CALLBACK_STARTED_TEMPLATE = "/api/v1/transfers/%s/dataflow/started";
+
+    /** Canonical callback endpoint template for transfer-completed. Replace {@code {processId}} with the actual ID. */
+    public static final String DATAFLOW_CALLBACK_COMPLETED_TEMPLATE = "/api/v1/transfers/%s/dataflow/completed";
+
+    /** Canonical callback endpoint template for transfer-errored. Replace {@code {processId}} with the actual ID. */
+    public static final String DATAFLOW_CALLBACK_ERRORED_TEMPLATE = "/api/v1/transfers/%s/dataflow/errored";
+
     /** Endpoint for querying Data Plane audit events. */
     public static final String AUDIT_EVENTS_V1 = "/api/v1/audit";
 

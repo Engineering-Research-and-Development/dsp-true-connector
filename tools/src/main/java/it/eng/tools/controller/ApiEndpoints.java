@@ -80,4 +80,34 @@ public interface ApiEndpoints {
      * DataTransfer module - v1 API callback endpoint for Data Plane error/termination signal.
      */
     public static final String DATAFLOW_CALLBACK_ERROR = "/api/v1/dataflows/error";
+
+    /**
+     * Canonical per-transfer Data Plane callback: resources prepared.
+     * Path variable {@code {processId}} is the internal transfer process ID.
+     */
+    public static final String DATAFLOW_CALLBACK_PREPARED = TRANSFER_DATATRANSFER_V1 + "/{processId}/dataflow/prepared";
+
+    /**
+     * Canonical per-transfer Data Plane callback: transfer started.
+     * Path variable {@code {processId}} is the internal transfer process ID.
+     */
+    public static final String DATAFLOW_CALLBACK_STARTED = TRANSFER_DATATRANSFER_V1 + "/{processId}/dataflow/started";
+
+    /**
+     * Canonical per-transfer Data Plane callback: transfer completed.
+     * Path variable {@code {processId}} is the internal transfer process ID.
+     */
+    public static final String DATAFLOW_CALLBACK_COMPLETED = TRANSFER_DATATRANSFER_V1 + "/{processId}/dataflow/completed";
+
+    /**
+     * Canonical per-transfer Data Plane callback: transfer errored.
+     * Path variable {@code {processId}} is the internal transfer process ID.
+     */
+    public static final String DATAFLOW_CALLBACK_ERRORED = TRANSFER_DATATRANSFER_V1 + "/{processId}/dataflow/errored";
+
+    /**
+     * Ant-style wildcard pattern matching all canonical per-transfer Data Plane callbacks.
+     * Used in Spring Security {@code requestMatchers} to permit these endpoints without authentication.
+     */
+    public static final String DATAFLOW_CALLBACKS_PATTERN = TRANSFER_DATATRANSFER_V1 + "/*/dataflow/*";
 }

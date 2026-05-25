@@ -44,9 +44,66 @@ public class ControlPlaneClient {
     }
 
     /**
-     * Sends a DataFlowStatusMessage to the Control Plane callback endpoint.
-     * Routes COMPLETED state to {@code /api/v1/dataflows/complete} and all other states
-     * (TERMINATED, FAILED) to {@code /api/v1/dataflows/error}.
+     * Sends a prepared callback to the Control Plane canonical endpoint.
+     * Routes to {@code /api/v1/transfers/{processId}/dataflow/prepared}.
+     *
+     * @param callbackBaseAddress base CP URL (e.g. {@code http://connector:8080})
+     * @param processId           the TransferProcess ID on the CP
+     * @param dataAddress         optional data address map
+     */
+    public void sendPrepared(String callbackBaseAddress, String processId, Map<String, String> dataAddress) {
+        String url = callbackBaseAddress
+                + String.format(DataPlaneApiEndpoints.DATAFLOW_CALLBACK_PREPARED_TEMPLATE, processId);
+        send(url, processId, DataFlowState.PREPARED, dataAddress, null);
+    }
+
+    /**
+     * Sends a started callback to the Control Plane canonical endpoint.
+     * Routes to {@code /api/v1/transfers/{processId}/dataflow/started}.
+     *
+     * @param callbackBaseAddress base CP URL (e.g. {@code http://connector:8080})
+     * @param processId           the TransferProcess ID on the CP
+     * @param dataAddress         optional data address map
+     */
+    public void sendStarted(String callbackBaseAddress, String processId, Map<String, String> dataAddress) {
+        String url = callbackBaseAddress
+                + String.format(DataPlaneApiEndpoints.DATAFLOW_CALLBACK_STARTED_TEMPLATE, processId);
+        send(url, processId, DataFlowState.STARTED, dataAddress, null);
+    }
+
+    /**
+     * Sends a completed callback to the Control Plane canonical endpoint.
+     * Routes to {@code /api/v1/transfers/{processId}/dataflow/completed}.
+     *
+     * @param callbackBaseAddress base CP URL (e.g. {@code http://connector:8080})
+     * @param processId           the TransferProcess ID on the CP
+     * @param dataAddress         optional data address map
+     */
+    public void sendCompleted(String callbackBaseAddress, String processId, Map<String, String> dataAddress) {
+        String url = callbackBaseAddress
+                + String.format(DataPlaneApiEndpoints.DATAFLOW_CALLBACK_COMPLETED_TEMPLATE, processId);
+        send(url, processId, DataFlowState.COMPLETED, dataAddress, null);
+    }
+
+    /**
+     * Sends an errored callback to the Control Plane canonical endpoint.
+     * Routes to {@code /api/v1/transfers/{processId}/dataflow/errored}.
+     *
+     * @param callbackBaseAddress base CP URL (e.g. {@code http://connector:8080})
+     * @param processId           the TransferProcess ID on the CP
+     * @param errorMessage        optional error message for TERMINATED state
+     */
+    public void sendErrored(String callbackBaseAddress, String processId, String errorMessage) {
+        String url = callbackBaseAddress
+                + String.format(DataPlaneApiEndpoints.DATAFLOW_CALLBACK_ERRORED_TEMPLATE, processId);
+        send(url, processId, DataFlowState.TERMINATED, null, errorMessage);
+    }
+
+    /**
+     * Sends a DataFlowStatusMessage to the Control Plane.
+     * Routes {@link DataFlowState#COMPLETED} to the canonical completed endpoint and
+     * {@link DataFlowState#TERMINATED} to the canonical errored endpoint.
+     * Other states fall back to the legacy error endpoint.
      * Includes the {@code X-Api-Key} header if configured.
      *
      * @param callbackBaseAddress base CP URL (e.g. {@code http://connector:8080})
@@ -57,23 +114,32 @@ public class ControlPlaneClient {
      */
     public void sendStatus(String callbackBaseAddress, String processId,
                            DataFlowState state, Map<String, String> dataAddress, String errorMessage) {
-        String path = (state == DataFlowState.COMPLETED)
-                ? DataPlaneApiEndpoints.DATAFLOW_CALLBACK_COMPLETE
-                : DataPlaneApiEndpoints.DATAFLOW_CALLBACK_ERROR;
-        String url = callbackBaseAddress + path;
+        if (state == DataFlowState.COMPLETED) {
+            sendCompleted(callbackBaseAddress, processId, dataAddress);
+        } else if (state == DataFlowState.TERMINATED) {
+            sendErrored(callbackBaseAddress, processId, errorMessage);
+        } else {
+            // Legacy fallback for other states (STARTED, SUSPENDED, etc.)
+            String url = callbackBaseAddress + DataPlaneApiEndpoints.DATAFLOW_CALLBACK_ERROR;
+            send(url, processId, state, dataAddress, errorMessage);
+        }
+    }
+
+    private void send(String url, String processId, DataFlowState state,
+                      Map<String, String> dataAddress, String errorMessage) {
         DataFlowStatusMessage message = DataFlowStatusMessage.Builder.newInstance()
-            .dataFlowId(UUID.randomUUID().toString())
-            .processId(processId)
-            .state(state)
-            .dataAddress(dataAddress)
-            .errorMessage(errorMessage)
-            .build();
+                .dataFlowId(UUID.randomUUID().toString())
+                .processId(processId)
+                .state(state)
+                .dataAddress(dataAddress)
+                .errorMessage(errorMessage)
+                .build();
         try {
             String json = objectMapper.writeValueAsString(message);
             Request.Builder requestBuilder = new Request.Builder()
-                .url(url)
-                .post(RequestBody.create(json, JSON))
-                .addHeader("Content-Type", "application/json");
+                    .url(url)
+                    .post(RequestBody.create(json, JSON))
+                    .addHeader("Content-Type", "application/json");
             if (properties.getApiKey() != null && !properties.getApiKey().isBlank()) {
                 requestBuilder.addHeader("X-Api-Key", properties.getApiKey());
             }
@@ -89,3 +155,4 @@ public class ControlPlaneClient {
         }
     }
 }
+

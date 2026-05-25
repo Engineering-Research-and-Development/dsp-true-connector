@@ -109,6 +109,20 @@ public class TransferProcess extends AbstractTransferMessage {
     private int retryCount;
 
     /**
+     * Internal tracking state of the data flow (e.g. PREPARED, STARTED, COMPLETED, TERMINATED).
+     * Not included in protocol JSON — used only for internal monitoring.
+     */
+    @JsonIgnore
+    private String dataFlowState;
+
+    /**
+     * Last error message received from the data plane.
+     * Not included in protocol JSON — used only for internal diagnostics.
+     */
+    @JsonIgnore
+    private String dataFlowErrorMessage;
+
+    /**
      * Tenant this transfer process belongs to. Null for super-admin scope.
      */
     @JsonIgnore
@@ -182,6 +196,28 @@ public class TransferProcess extends AbstractTransferMessage {
 
         public Builder retryCount(int retryCount) {
             message.retryCount = retryCount;
+            return this;
+        }
+
+        /**
+         * Sets the internal data flow state (e.g. PREPARED, STARTED, COMPLETED, TERMINATED).
+         *
+         * @param dataFlowState the data flow state string
+         * @return this builder
+         */
+        public Builder dataFlowState(String dataFlowState) {
+            message.dataFlowState = dataFlowState;
+            return this;
+        }
+
+        /**
+         * Sets the last error message received from the data plane.
+         *
+         * @param dataFlowErrorMessage the data flow error message
+         * @return this builder
+         */
+        public Builder dataFlowErrorMessage(String dataFlowErrorMessage) {
+            message.dataFlowErrorMessage = dataFlowErrorMessage;
             return this;
         }
 
@@ -299,6 +335,8 @@ public class TransferProcess extends AbstractTransferMessage {
                 .datasetId(this.datasetId)
                 .retryCount(this.retryCount)
                 .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
@@ -332,6 +370,8 @@ public class TransferProcess extends AbstractTransferMessage {
                 .datasetId(this.datasetId)
                 .retryCount(retryCount)
                 .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
@@ -365,6 +405,8 @@ public class TransferProcess extends AbstractTransferMessage {
                 .datasetId(this.datasetId)
                 .retryCount(this.retryCount)
                 .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
@@ -398,6 +440,8 @@ public class TransferProcess extends AbstractTransferMessage {
                 .datasetId(this.datasetId)
                 .retryCount(this.retryCount)
                 .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)
@@ -430,6 +474,110 @@ public class TransferProcess extends AbstractTransferMessage {
                 .datasetId(this.datasetId)
                 .retryCount(this.retryCount)
                 .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified internal dataplane state.
+     * All other fields remain unchanged.
+     *
+     * @param dataFlowState the data flow state string (e.g. PREPARED, STARTED, COMPLETED, TERMINATED)
+     * @return new TransferProcess instance with updated dataFlowState
+     */
+    public TransferProcess withDataFlowState(String dataFlowState) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
+                .dataFlowState(dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified data plane error message.
+     * All other fields remain unchanged.
+     *
+     * @param dataFlowErrorMessage the error message from the data plane
+     * @return new TransferProcess instance with updated dataFlowErrorMessage
+     */
+    public TransferProcess withDataFlowErrorMessage(String dataFlowErrorMessage) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(dataFlowErrorMessage)
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified data address.
+     * All other fields remain unchanged.
+     *
+     * @param dataAddress the data address to set
+     * @return new TransferProcess instance with updated dataAddress
+     */
+    public TransferProcess withDataAddress(DataAddress dataAddress) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)
