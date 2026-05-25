@@ -165,9 +165,7 @@ public class AutomaticDataTransferIT {
                                 "\"secretKey\":\"fake-sk\",\"endpointOverride\":\"http://fake-minio:9000\"}}")));
         dpWireMock.stubFor(WireMock.post(WireMock.urlPathEqualTo("/dataflows/start"))
                 .willReturn(aResponse().withStatus(200)));
-        dpWireMock.stubFor(WireMock.post(WireMock.urlPathEqualTo("/dataflows/terminate"))
-                .willReturn(aResponse().withStatus(200)));
-        dpWireMock.stubFor(WireMock.delete(WireMock.urlPathMatching("/dataflows/.*"))
+        dpWireMock.stubFor(WireMock.post(WireMock.urlPathMatching("/dataflows/.*/terminate"))
                 .willReturn(aResponse().withStatus(200)));
         log.info("DP WireMock started on port {}", DP_WIREMOCK_PORT);
 

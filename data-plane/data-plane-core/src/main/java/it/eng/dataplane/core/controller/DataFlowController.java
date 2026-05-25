@@ -3,7 +3,9 @@ package it.eng.dataplane.core.controller;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
+import it.eng.dataplane.api.message.DataFlowStatusMessage;
 import it.eng.dataplane.api.model.DataFlow;
+import it.eng.dataplane.core.model.DataFlowEntity;
 import it.eng.dataplane.core.model.DataPlaneAuditEventType;
 import it.eng.dataplane.core.registry.DataTransferProtocolRegistry;
 import it.eng.dataplane.core.service.DataFlowService;
@@ -101,10 +103,13 @@ public class DataFlowController {
     /**
      * Terminates an active data transfer.
      *
+     * <p>Canonical path: {@code POST /dataflows/{processId}/terminate}.
+     * Legacy alias {@code POST /dataflows/terminate/{processId}} is preserved for backward compatibility.</p>
+     *
      * @param processId the transfer process ID to terminate
      * @return 200 OK on success, 404 NOT FOUND if processId not found
      */
-    @PostMapping("/terminate/{processId}")
+    @PostMapping({"/{processId}/terminate", "/terminate/{processId}"})
     public ResponseEntity<Void> terminateDataFlow(@PathVariable String processId) {
         log.info("Received terminate request for processId={}", processId);
         
@@ -120,16 +125,64 @@ public class DataFlowController {
     /**
      * Suspends an active data transfer.
      *
+     * <p>Canonical path: {@code POST /dataflows/{processId}/suspend}.
+     * Legacy alias {@code POST /dataflows/suspend/{processId}} is preserved for backward compatibility.</p>
+     *
      * @param processId the transfer process ID to suspend
      * @return 200 OK on success, 404 NOT FOUND if processId not found
      */
-    @PostMapping("/suspend/{processId}")
+    @PostMapping({"/{processId}/suspend", "/suspend/{processId}"})
     public ResponseEntity<Void> suspendDataFlow(@PathVariable String processId) {
         log.info("Received suspend request for processId={}", processId);
         
         try {
             dataFlowService.suspend(processId);
             return ResponseEntity.ok().build();
+        } catch (IllegalStateException e) {
+            log.error("DataFlow not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    /**
+     * Resumes a suspended data transfer.
+     *
+     * @param processId the transfer process ID to resume
+     * @return 200 OK on success, 404 NOT FOUND if processId not found
+     */
+    @PostMapping("/{processId}/resume")
+    public ResponseEntity<Void> resumeDataFlow(@PathVariable String processId) {
+        log.info("Received resume request for processId={}", processId);
+
+        try {
+            dataFlowService.resume(processId);
+            return ResponseEntity.ok().build();
+        } catch (IllegalStateException e) {
+            log.error("DataFlow not found or invalid state: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    /**
+     * Returns the current status of a data transfer.
+     *
+     * @param processId the transfer process ID to query
+     * @return 200 OK with {@link DataFlowStatusMessage} on success, 404 NOT FOUND if processId not found
+     */
+    @GetMapping("/{processId}/status")
+    public ResponseEntity<DataFlowStatusMessage> statusDataFlow(@PathVariable String processId) {
+        log.info("Received status request for processId={}", processId);
+
+        try {
+            DataFlowEntity entity = dataFlowService.status(processId);
+            DataFlowStatusMessage message = DataFlowStatusMessage.Builder.newInstance()
+                    .dataFlowId(entity.getId())
+                    .processId(entity.getProcessId())
+                    .state(entity.getState())
+                    .dataAddress(entity.getDataAddress())
+                    .errorMessage(entity.getErrorMessage())
+                    .build();
+            return ResponseEntity.ok(message);
         } catch (IllegalStateException e) {
             log.error("DataFlow not found: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();

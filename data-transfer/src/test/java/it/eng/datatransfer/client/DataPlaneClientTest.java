@@ -131,7 +131,7 @@ public class DataPlaneClientTest {
     }
 
     @Test
-    @DisplayName("terminateSendsDeleteToDataPlane - verifies DELETE method and URL contains processId")
+    @DisplayName("terminateSendsPostToDataPlane - verifies POST method and canonical URL contains processId/terminate")
     public void terminateSendsDeleteToDataPlane() throws IOException {
         DataPlaneRegistration dp = registrationWithApiKey("http://dp:9090", "secret-key");
         when(mockRouter.selectDataPlane("HttpData-PULL")).thenReturn(Optional.of(dp));
@@ -143,8 +143,8 @@ public class DataPlaneClientTest {
         ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
         verify(mockHttpClient).newCall(captor.capture());
         Request captured = captor.getValue();
-        assertEquals("DELETE", captured.method());
-        assertTrue(captured.url().toString().contains("/dataflows/proc-term-1"));
+        assertEquals("POST", captured.method());
+        assertTrue(captured.url().toString().contains("/dataflows/proc-term-1/terminate"));
     }
 
     @Test
@@ -184,5 +184,39 @@ public class DataPlaneClientTest {
 
         assertThrows(DataPlaneClientException.class,
             () -> client.terminate("proc-1", "HttpData-PULL"));
+    }
+
+    @Test
+    @DisplayName("suspendSendsPostToDataPlane - verifies POST method and URL contains processId/suspend")
+    public void suspendSendsPostToDataPlane() throws IOException {
+        DataPlaneRegistration dp = registrationWithApiKey("http://dp:9090", "secret-key");
+        when(mockRouter.selectDataPlane("HttpData-PULL")).thenReturn(Optional.of(dp));
+        Call mockCall = stubCall(200);
+        when(mockHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+
+        client.suspend("proc-susp-1", "HttpData-PULL");
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(mockHttpClient).newCall(captor.capture());
+        Request captured = captor.getValue();
+        assertEquals("POST", captured.method());
+        assertTrue(captured.url().toString().contains("/dataflows/proc-susp-1/suspend"));
+    }
+
+    @Test
+    @DisplayName("resumeSendsPostToDataPlane - verifies POST method and URL contains processId/resume")
+    public void resumeSendsPostToDataPlane() throws IOException {
+        DataPlaneRegistration dp = registrationNoApiKey("http://dp:9090");
+        when(mockRouter.selectDataPlane("HttpData-PULL")).thenReturn(Optional.of(dp));
+        Call mockCall = stubCall(200);
+        when(mockHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+
+        client.resume("proc-res-1", "HttpData-PULL");
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(mockHttpClient).newCall(captor.capture());
+        Request captured = captor.getValue();
+        assertEquals("POST", captured.method());
+        assertTrue(captured.url().toString().contains("/dataflows/proc-res-1/resume"));
     }
 }

@@ -4,7 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
+import it.eng.dataplane.api.message.DataFlowStatusMessage;
+import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.dataplane.api.spi.DataTransferProtocol;
+import it.eng.dataplane.core.model.DataFlowEntity;
 import it.eng.dataplane.core.registry.DataTransferProtocolRegistry;
 import it.eng.dataplane.core.service.DataFlowService;
 import it.eng.dataplane.core.service.DataPlaneAuditEventService;
@@ -200,6 +203,58 @@ class DataFlowControllerTest {
         doThrow(new IllegalStateException("not found")).when(dataFlowService).suspend("missing");
 
         ResponseEntity<Void> response = controller.suspendDataFlow("missing");
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+    }
+
+    // ─── resumeDataFlow ──────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("resumeDataFlow returns 200 OK on success")
+    void resumeDataFlow_returns200OnSuccess() {
+        ResponseEntity<Void> response = controller.resumeDataFlow("proc-1");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(dataFlowService).resume("proc-1");
+    }
+
+    @Test
+    @DisplayName("resumeDataFlow returns 404 when processId not found")
+    void resumeDataFlow_returns404WhenNotFound() {
+        doThrow(new IllegalStateException("not found")).when(dataFlowService).resume("missing");
+
+        ResponseEntity<Void> response = controller.resumeDataFlow("missing");
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+    }
+
+    // ─── statusDataFlow ──────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("statusDataFlow returns 200 OK with DataFlowStatusMessage on success")
+    void statusDataFlow_returns200OnSuccess() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("entity-id-1")
+                .processId("proc-1")
+                .state(DataFlowState.STARTED)
+                .build();
+        when(dataFlowService.status("proc-1")).thenReturn(entity);
+
+        ResponseEntity<DataFlowStatusMessage> response = controller.statusDataFlow("proc-1");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertEquals("proc-1", response.getBody().getProcessId());
+        assertEquals("entity-id-1", response.getBody().getDataFlowId());
+        assertEquals(DataFlowState.STARTED, response.getBody().getState());
+    }
+
+    @Test
+    @DisplayName("statusDataFlow returns 404 when processId not found")
+    void statusDataFlow_returns404WhenNotFound() {
+        doThrow(new IllegalStateException("not found")).when(dataFlowService).status("missing");
+
+        ResponseEntity<DataFlowStatusMessage> response = controller.statusDataFlow("missing");
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
     }
