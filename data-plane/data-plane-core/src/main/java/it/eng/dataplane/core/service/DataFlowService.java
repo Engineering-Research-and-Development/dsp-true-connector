@@ -78,7 +78,13 @@ public class DataFlowService {
         stateMachine.assertTransition(entity.getState(), DataFlowState.STARTED);
         requiredProtocol(entity.getTransferType())
                 .resumeTransfer(entity.getId())
-                .thenAccept(result -> updateState(entity, DataFlowState.STARTED))
+                .thenAccept(result -> {
+                    if (result.isSuccess()) {
+                        updateState(entity, DataFlowState.STARTED);
+                    } else {
+                        handleError(entity, new RuntimeException(result.getErrorMessage()));
+                    }
+                })
                 .exceptionally(ex -> {
                     handleError(entity, ex);
                     return null;
@@ -100,14 +106,15 @@ public class DataFlowService {
      * Terminates an active data transfer.
      *
      * @param processId the process ID to terminate
-     * @throws IllegalStateException if no flow exists for this processId
+     * @throws IllegalStateException if no flow exists for this processId or the state transition is invalid
      */
     public void terminate(String processId) {
         DataFlowEntity entity = findRequired(processId);
+        stateMachine.assertTransition(entity.getState(), DataFlowState.TERMINATED);
 
         DataTransferProtocol protocol = registry.getProtocol(entity.getTransferType());
         if (protocol != null) {
-            protocol.terminateTransfer(entity.getProcessId())
+            protocol.terminateTransfer(entity.getId())
                 .thenAccept(result -> updateState(entity, DataFlowState.TERMINATED))
                 .exceptionally(ex -> { handleError(entity, ex); return null; });
         } else {
@@ -121,10 +128,11 @@ public class DataFlowService {
      * Suspends an active data transfer.
      *
      * @param processId the process ID to suspend
-     * @throws IllegalStateException if no flow exists for this processId
+     * @throws IllegalStateException if no flow exists for this processId or the state transition is invalid
      */
     public void suspend(String processId) {
         DataFlowEntity entity = findRequired(processId);
+        stateMachine.assertTransition(entity.getState(), DataFlowState.SUSPENDED);
 
         DataTransferProtocol protocol = registry.getProtocol(entity.getTransferType());
         if (protocol != null) {

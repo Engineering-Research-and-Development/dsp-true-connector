@@ -169,7 +169,8 @@ class DataFlowServiceTest {
     }
 
     /**
-     * Verifies that resume() moves a SUSPENDED flow back to STARTED after successful protocol resumption.
+     * Verifies that resume() moves a SUSPENDED flow back to STARTED after successful protocol resumption,
+     * and that the state machine transition is validated before invoking the protocol.
      */
     @Test
     void resumeMovesSuspendedFlowBackToStarted() {
@@ -186,7 +187,97 @@ class DataFlowServiceTest {
 
         service.resume("tp-1");
 
+        verify(stateMachine).assertTransition(DataFlowState.SUSPENDED, DataFlowState.STARTED);
         verify(repository, atLeastOnce()).save(argThat(saved -> saved.getState() == DataFlowState.STARTED));
+    }
+
+    /**
+     * Verifies that a failed result from resumeTransfer does not produce a false STARTED state.
+     * The flow must transition to TERMINATED via the error path instead.
+     */
+    @Test
+    void resumeFailedResultDoesNotMoveToStarted() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-2")
+                .processId("tp-2")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.SUSPENDED)
+                .build();
+
+        when(repository.findByProcessId("tp-2")).thenReturn(Optional.of(entity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.resumeTransfer("df-2"))
+                .thenReturn(CompletableFuture.completedFuture(DataFlowResult.failure("resume-error")));
+
+        service.resume("tp-2");
+
+        verify(repository, never()).save(argThat(saved -> saved.getState() == DataFlowState.STARTED));
+        verify(repository, atLeastOnce()).save(argThat(saved -> saved.getState() == DataFlowState.TERMINATED));
+    }
+
+    /**
+     * Verifies that terminate() invokes the protocol with the entity's internal ID, not the process ID.
+     */
+    @Test
+    void terminateUsesEntityIdForProtocolCall() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-3")
+                .processId("tp-3")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-3")).thenReturn(Optional.of(entity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.terminateTransfer("df-3"))
+                .thenReturn(CompletableFuture.completedFuture(DataFlowResult.success()));
+
+        service.terminate("tp-3");
+
+        verify(protocol).terminateTransfer("df-3");
+        verify(protocol, never()).terminateTransfer("tp-3");
+    }
+
+    /**
+     * Verifies that terminate() validates the state machine transition before acting.
+     */
+    @Test
+    void terminateValidatesStateMachineTransition() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-4")
+                .processId("tp-4")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-4")).thenReturn(Optional.of(entity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.terminateTransfer(any())).thenReturn(new CompletableFuture<>());
+
+        service.terminate("tp-4");
+
+        verify(stateMachine).assertTransition(DataFlowState.STARTED, DataFlowState.TERMINATED);
+    }
+
+    /**
+     * Verifies that suspend() validates the state machine transition before acting.
+     */
+    @Test
+    void suspendValidatesStateMachineTransition() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-5")
+                .processId("tp-5")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-5")).thenReturn(Optional.of(entity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.suspendTransfer(any())).thenReturn(new CompletableFuture<>());
+
+        service.suspend("tp-5");
+
+        verify(stateMachine).assertTransition(DataFlowState.STARTED, DataFlowState.SUSPENDED);
     }
 
     /**
