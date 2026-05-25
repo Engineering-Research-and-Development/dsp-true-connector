@@ -240,9 +240,19 @@ If you have a custom DP implementation that follows the Dataplane Signaling API 
 register it the same way using `POST /api/v1/dataplanes`. Your DP must expose:
 
 - `POST /dataflows/start` — begin a transfer (async)
-- `POST /dataflows/prepare` — part of the DPS spec (implemented on each DP but not called by the built-in CP)
-- `DELETE /dataflows/{id}` — abort a transfer
-- Callback to CP: `POST {callbackAddress}/api/v1/dataflows/complete` — notify CP of completion
+- `POST /dataflows/prepare` — prepare resources (DPS spec; not called by the built-in CP for HTTP-PULL or HTTP-PUSH)
+- `POST /dataflows/{id}/terminate` — abort a transfer (also accepts `DELETE`)
+- `POST /dataflows/{id}/suspend` — suspend a transfer
+- `POST /dataflows/{id}/resume` — resume a suspended transfer
+- `GET /dataflows/{id}/status` — query the current data flow state
+
+Your DP should send canonical per-transfer callbacks to the CP after each lifecycle event:
+
+- `POST {callbackBaseAddress}/api/v1/transfers/{processId}/dataflow/started` — transfer started
+- `POST {callbackBaseAddress}/api/v1/transfers/{processId}/dataflow/completed` — transfer completed
+- `POST {callbackBaseAddress}/api/v1/transfers/{processId}/dataflow/errored` — transfer failed
+
+Each callback must carry the `X-Api-Key` header with the DP's registered API key.
 
 See `doc/data-plane-signaling-technical.md` for the full message schemas.
 

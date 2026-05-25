@@ -23,6 +23,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * Integration tests for DSP protocol transfer completion messages:
+ * {@code POST /{tenantId}/transfers/{providerPid}/completion} (provider-facing) and
+ * {@code POST /{tenantId}/consumer/transfers/{consumerPid}/completion} (consumer-facing).
+ *
+ * <p>Covers the {@code STARTED} → {@code COMPLETED} transitions triggered by peer DSP
+ * messages. For Data Plane callback-driven completion
+ * (via {@code POST /api/v1/transfers/{id}/dataflow/completed}), see
+ * {@link DataPlaneProtocolAlignmentIT}.</p>
+ */
 public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 // STARTED -> COMPLETED
 

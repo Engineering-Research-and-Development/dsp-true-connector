@@ -38,6 +38,10 @@ Project is structured as multi-module maven project:
 * connector - wrapper module for starting application
 * data-transfer - module maintaining transfer of the data
 * tools - various tools and utilities needed across modules
+* data-plane/data-plane-api - SPI interfaces and DPS message models shared by all Data Plane modules
+* data-plane/data-plane-core - shared Data Plane runtime (registration, routing, CP client)
+* data-plane/data-plane-http-pull - HTTP-PULL Data Plane service (downloads artifact from presigned URL into consumer S3)
+* data-plane/data-plane-http-push - HTTP-PUSH Data Plane service (uploads artifact from provider S3 to consumer S3 using temporary credentials)
 
 ## GUI tool for DSP TRUEConnector
 
@@ -76,4 +80,6 @@ Project is structured as multi-module maven project:
 - [Catalog Module](catalog/doc/catalog.md)
 - [Negotiation Module](negotiation/doc/model.md)
 - [Data Transfer Module](data-transfer/doc/data-transfer.md)
+- [Data Plane Signaling — User Guide](doc/data-plane-signaling-user-guide.md)
+- [Data Plane Signaling — Technical Reference](doc/data-plane-signaling-technical.md)
 

@@ -28,6 +28,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * Integration tests for DSP protocol transfer termination messages:
+ * {@code POST /{tenantId}/transfers/{providerPid}/termination} (provider-facing) and
+ * {@code POST /{tenantId}/consumer/transfers/{consumerPid}/termination} (consumer-facing).
+ *
+ * <p>Covers the {@code REQUESTED}, {@code STARTED}, and {@code SUSPENDED} → {@code TERMINATED}
+ * transitions triggered by peer DSP messages. For Data Plane callback-driven termination
+ * (via {@code POST /api/v1/transfers/{id}/dataflow/errored}), see
+ * {@link DataPlaneProtocolAlignmentIT}.</p>
+ */
 public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
 
     // REQUESTED, STARTED, SUSPENDED -> TERMINATED
@@ -122,7 +132,7 @@ public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/" + TENANT_ID + "/transfers/" + transferTerminationMessage.getProviderPid() + "/start")
+                        post("/" + TENANT_ID + "/transfers/" + transferTerminationMessage.getProviderPid() + "/termination")
                                 .content(TransferSerializer.serializeProtocol(transferTerminationMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());
@@ -145,7 +155,7 @@ public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/" + TENANT_ID + "/consumer/transfers/" + transferTerminationMessage.getConsumerPid() + "/start")
+                        post("/" + TENANT_ID + "/consumer/transfers/" + transferTerminationMessage.getConsumerPid() + "/termination")
                                 .content(TransferSerializer.serializeProtocol(transferTerminationMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());

@@ -1,11 +1,17 @@
 package it.eng.dataplane.httppull.integration;
 
+import it.eng.dataplane.api.model.DataFlowState;
+import it.eng.dataplane.core.model.DataFlowEntity;
+import it.eng.dataplane.core.repository.DataFlowRepository;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
+import java.time.Instant;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -22,6 +28,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class DataFlowControllerIT extends BaseHttpPullIT {
 
     private static final String TRANSFER_TYPE_PULL = "HttpData-PULL";
+
+    @Autowired
+    private DataFlowRepository dataFlowRepository;
 
     /**
      * Object key pre-loaded into test MinIO for prepare-endpoint tests.
@@ -131,17 +140,7 @@ class DataFlowControllerIT extends BaseHttpPullIT {
     @DisplayName("POST /dataflows/terminate/{id} on existing DataFlow returns 200 OK")
     void terminateDataFlow_existingFlow_returns200() throws Exception {
         String processId = newId();
-        Map<String, Object> startBody = Map.of(
-                "processId", processId,
-                "transferType", TRANSFER_TYPE_PULL
-        );
-
-        mockMvc.perform(withApiKey(post("/dataflows/start"))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(startBody)))
-                .andExpect(status().isCreated());
-
-        Thread.sleep(100);
+        dataFlowRepository.save(startedEntity(processId, TRANSFER_TYPE_PULL));
 
         mockMvc.perform(withApiKey(post("/dataflows/terminate/{id}", processId)))
                 .andExpect(status().isOk());
@@ -158,17 +157,7 @@ class DataFlowControllerIT extends BaseHttpPullIT {
     @DisplayName("POST /dataflows/suspend/{id} on existing DataFlow returns 200 OK")
     void suspendDataFlow_existingFlow_returns200() throws Exception {
         String processId = newId();
-        Map<String, Object> startBody = Map.of(
-                "processId", processId,
-                "transferType", TRANSFER_TYPE_PULL
-        );
-
-        mockMvc.perform(withApiKey(post("/dataflows/start"))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(startBody)))
-                .andExpect(status().isCreated());
-
-        Thread.sleep(100);
+        dataFlowRepository.save(startedEntity(processId, TRANSFER_TYPE_PULL));
 
         mockMvc.perform(withApiKey(post("/dataflows/suspend/{id}", processId)))
                 .andExpect(status().isOk());
@@ -190,5 +179,26 @@ class DataFlowControllerIT extends BaseHttpPullIT {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk());
+    }
+
+    /**
+     * Creates a {@link DataFlowEntity} in {@link DataFlowState#STARTED} state for use in
+     * terminate and suspend tests, bypassing the {@code /dataflows/start} endpoint so the
+     * test does not depend on the async transfer completing before the lifecycle call.
+     *
+     * @param processId    the transfer process ID
+     * @param transferType the transfer type (e.g. {@code HttpData-PULL})
+     * @return a ready-to-save entity in STARTED state
+     */
+    private static DataFlowEntity startedEntity(String processId, String transferType) {
+        Instant now = Instant.now();
+        return DataFlowEntity.Builder.newInstance()
+                .id(UUID.randomUUID().toString())
+                .processId(processId)
+                .transferType(transferType)
+                .state(DataFlowState.STARTED)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
     }
 }

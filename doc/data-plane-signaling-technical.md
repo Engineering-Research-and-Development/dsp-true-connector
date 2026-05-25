@@ -23,7 +23,7 @@ Consumer CP                Provider CP               Consumer DP
     |                          |                          |
     |<-- POST /dataflows/start  (HTTP-PULL: download artifact from presigned URL)
     |-- artifact --> consumer S3
-    |-- POST /api/v1/dataflows/complete --> Consumer CP
+    |-- POST /api/v1/transfers/{id}/dataflow/completed --> Consumer CP
     |                          |
     Consumer CP → COMPLETED    |
 ```
@@ -46,8 +46,9 @@ For HTTP-PUSH the flow is different — see the [HTTP-PUSH Transfer Flow](#http-
 | `DataPlaneRegistration` | `it.eng.datatransfer.model` | Persisted DP registration record (MongoDB) |
 | `DataPlaneRegistrationService` | `it.eng.datatransfer.service` | CRUD + routing lookup |
 | `DataPlaneRouter` | `it.eng.datatransfer.router` | Selects DP by transfer type (round-robin) |
-| `DataPlaneClient` | `it.eng.datatransfer.client` | CP → DP HTTP calls (`start`, `terminate`) |
-| `DataFlowCallbackController` | `it.eng.datatransfer.rest.api` | Receives DP completion/error callbacks |
+| `DataPlaneClient` | `it.eng.datatransfer.client` | CP → DP HTTP calls (`start`, `terminate`, `suspend`, `resume`) |
+| `DataFlowCallbackController` | `it.eng.datatransfer.rest.api` | Receives canonical and legacy DP callbacks |
+| `DataFlowCallbackService` | `it.eng.datatransfer.service` | Centralizes DP callback handling; persists internal DP state before triggering DSP transitions |
 | `DataPlaneRegistrationController` | `it.eng.datatransfer.rest.api` | Admin CRUD for DP registrations |
 
 ---
@@ -106,7 +107,7 @@ Consumer-side Pull DP            |
      |<-- artifact stream ------------------------------------------------|
      |--- PUT artifact -------> Consumer S3 (key = transferProcessId)
      |                           |
-     |-- POST /api/v1/dataflows/complete --> Consumer CP
+     |-- POST /api/v1/transfers/{id}/dataflow/completed --> Consumer CP
      |                           |
 Consumer CP → COMPLETED          |
 ```
@@ -156,7 +157,7 @@ Consumer CP                  Provider CP               Provider-side Push DP
      |                            |  Downloads artifact         |
      |                            |  Uploads to consumer S3 --->|-- Consumer S3
      |                            |                             |
-     |<-- POST /api/v1/dataflows/complete ← Provider CP <-------|
+     |<-- POST /api/v1/transfers/{id}/dataflow/completed ← Provider CP <-------|
      |                            |                             |
 Both CPs → COMPLETED             |                             |
 ```
@@ -204,17 +205,53 @@ Suspend is safe and allowed when:
 
 ## DPS API Endpoints (on each DP)
 
+### Canonical lifecycle endpoints
+
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/dataflows/start` | Begin a data transfer (async) |
-| `POST` | `/dataflows/prepare` | Prepare without transferring (part of DPS spec; not invoked by the built-in CP) |
-| `DELETE` | `/dataflows/{id}` | Terminate/abort a data flow |
+| `POST` | `/dataflows/prepare` | Prepare resources before start (DPS spec; not called by the built-in CP for HTTP-PULL or HTTP-PUSH) |
+| `POST` or `DELETE` | `/dataflows/{id}/terminate` | Terminate/abort a data flow |
+| `POST` | `/dataflows/{id}/suspend` | Suspend an active transfer |
+| `POST` | `/dataflows/{id}/resume` | Resume a suspended transfer |
+| `GET` | `/dataflows/{id}/status` | Query the current state of a data flow |
 | `GET` | `/actuator/health` | Health check |
 | `GET` | `/api/v1/audit` | List audit events (paginated, filterable) |
 | `GET` | `/api/v1/audit/{id}` | Fetch a single audit event by ID |
 | `GET` | `/api/v1/audit/types` | List all supported audit event types |
 
+### Compatibility aliases (retained for backward compatibility)
+
+| Method | Path | Delegates to |
+|---|---|---|
+| `POST` | `/dataflows/terminate/{id}` | `POST /dataflows/{id}/terminate` |
+| `POST` | `/dataflows/suspend/{id}` | `POST /dataflows/{id}/suspend` |
+
 All endpoints require the `X-Api-Key` header except `/actuator/health`.
+
+---
+
+## CP Callback Endpoints (on the CP)
+
+The Data Plane sends these callbacks to the Control Plane after each lifecycle event.
+
+### Canonical per-transfer endpoints (preferred)
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/v1/transfers/{processId}/dataflow/prepared` | DP reports resources prepared |
+| `POST` | `/api/v1/transfers/{processId}/dataflow/started` | DP reports transfer started |
+| `POST` | `/api/v1/transfers/{processId}/dataflow/completed` | DP reports transfer completed |
+| `POST` | `/api/v1/transfers/{processId}/dataflow/errored` | DP reports transfer failed |
+
+### Legacy endpoints (preserved for backward compatibility)
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/api/v1/dataflows/complete` | Legacy completion callback (body carries `processId`) |
+| `POST` | `/api/v1/dataflows/error` | Legacy error callback (body carries `processId`) |
+
+All callback endpoints require the `X-Api-Key` header with the DP's registered API key.
 
 ---
 
@@ -296,11 +333,11 @@ The CP publishes to `audit_events` whenever a DP registers or deregisters:
 | Event type | When |
 |---|---|
 | `DATAFLOW_STARTED` | `POST /dataflows/start` received and persisted |
-| `DATAFLOW_PREPARE_REQUESTED` | `POST /dataflows/prepare` received (endpoint available but not called by the built-in CP) |
+| `DATAFLOW_PREPARE_REQUESTED` | `POST /dataflows/prepare` received (endpoint available but not called by the built-in CP for HTTP-PULL or HTTP-PUSH) |
 | `DATAFLOW_COMPLETED` | Transfer completed successfully |
 | `DATAFLOW_FAILED` | Transfer failed (error propagated to CP) |
-| `DATAFLOW_TERMINATED` | Explicit `DELETE /dataflows/{id}` received |
-| `DATAFLOW_SUSPENDED` | `POST /dataflows/suspend/{id}` received |
+| `DATAFLOW_TERMINATED` | `POST /dataflows/{id}/terminate` (or `DELETE`) received |
+| `DATAFLOW_SUSPENDED` | `POST /dataflows/{id}/suspend` received |
 | `DP_REGISTRATION_SUCCESS` | CP registration succeeded at startup |
 | `DP_REGISTRATION_FAILED` | CP registration failed after all retries |
 

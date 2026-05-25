@@ -127,6 +127,10 @@ public class ControlPlaneClient {
 
     private void send(String url, String processId, DataFlowState state,
                       Map<String, String> dataAddress, String errorMessage) {
+        if (url == null || url.isBlank() || url.startsWith("null/")) {
+            log.warn("Skipping {} callback for processId={} — no valid callback URL configured", state, processId);
+            return;
+        }
         DataFlowStatusMessage message = DataFlowStatusMessage.Builder.newInstance()
                 .dataFlowId(UUID.randomUUID().toString())
                 .processId(processId)
