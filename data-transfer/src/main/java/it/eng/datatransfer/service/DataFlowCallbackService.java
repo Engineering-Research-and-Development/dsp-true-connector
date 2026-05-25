@@ -78,7 +78,12 @@ public class DataFlowCallbackService {
             updated = updated.withDataAddress(dataAddressFromMap(dataAddress));
         }
         repository.save(updated);
-        apiService.completeTransfer(processId);
+        try {
+            apiService.completeTransfer(processId);
+        } catch (RuntimeException ex) {
+            repository.save(process);
+            throw ex;
+        }
     }
 
     /**
@@ -93,8 +98,14 @@ public class DataFlowCallbackService {
     public void handleErrored(String processId, String errorMessage) {
         log.info("Handling errored callback for processId={}, error={}", processId, errorMessage);
         var process = findRequired(processId);
-        repository.save(process.withDataFlowState("TERMINATED").withDataFlowErrorMessage(errorMessage));
-        apiService.terminateTransfer(processId);
+        var updated = process.withDataFlowState("TERMINATED").withDataFlowErrorMessage(errorMessage);
+        repository.save(updated);
+        try {
+            apiService.terminateTransfer(processId);
+        } catch (RuntimeException ex) {
+            repository.save(process);
+            throw ex;
+        }
     }
 
     private TransferProcess findRequired(String processId) {

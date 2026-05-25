@@ -124,6 +124,24 @@ class DataFlowCallbackServiceTest {
         verify(apiService).completeTransfer(PROCESS_ID);
     }
 
+    @Test
+    @DisplayName("handleCompleted restores previous process when completion delegation fails")
+    void handleCompletedRestoresPreviousProcessWhenDelegationFails() {
+        when(repository.findById(PROCESS_ID)).thenReturn(Optional.of(TRANSFER_PROCESS));
+        doThrow(new RuntimeException("completion failed")).when(apiService).completeTransfer(PROCESS_ID);
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> service.handleCompleted(PROCESS_ID, null));
+
+        assertEquals("completion failed", exception.getMessage());
+        var inOrder = inOrder(repository, apiService);
+        inOrder.verify(repository).save(argThat(saved -> "COMPLETED".equals(saved.getDataFlowState())));
+        inOrder.verify(apiService).completeTransfer(PROCESS_ID);
+        inOrder.verify(repository).save(argThat(saved -> saved.getDataFlowState() == null
+                && saved.getDataFlowErrorMessage() == null
+                && saved.getState() == TRANSFER_PROCESS.getState()));
+    }
+
     // ── handleErrored ──────────────────────────────────────────────────────────
 
     @Test
@@ -149,6 +167,25 @@ class DataFlowCallbackServiceTest {
 
         verify(repository).save(argThat(saved -> "TERMINATED".equals(saved.getDataFlowState())));
         verify(apiService).terminateTransfer(PROCESS_ID);
+    }
+
+    @Test
+    @DisplayName("handleErrored restores previous process when termination delegation fails")
+    void handleErroredRestoresPreviousProcessWhenDelegationFails() {
+        when(repository.findById(PROCESS_ID)).thenReturn(Optional.of(TRANSFER_PROCESS));
+        doThrow(new RuntimeException("termination failed")).when(apiService).terminateTransfer(PROCESS_ID);
+
+        RuntimeException exception = assertThrows(RuntimeException.class,
+                () -> service.handleErrored(PROCESS_ID, "provider dp failed"));
+
+        assertEquals("termination failed", exception.getMessage());
+        var inOrder = inOrder(repository, apiService);
+        inOrder.verify(repository).save(argThat(saved -> "TERMINATED".equals(saved.getDataFlowState())
+                && "provider dp failed".equals(saved.getDataFlowErrorMessage())));
+        inOrder.verify(apiService).terminateTransfer(PROCESS_ID);
+        inOrder.verify(repository).save(argThat(saved -> saved.getDataFlowState() == null
+                && saved.getDataFlowErrorMessage() == null
+                && saved.getState() == TRANSFER_PROCESS.getState()));
     }
 
     // ── findRequired error handling ────────────────────────────────────────────
