@@ -35,9 +35,12 @@ public class DataFlowService {
     private final DataTransferProtocolRegistry registry;
     private final ControlPlaneClient controlPlaneClient;
     private final DataPlaneAuditEventService auditEventService;
+    private final DataFlowStateMachine stateMachine;
 
     /**
      * Starts a data transfer using the appropriate protocol implementation.
+     * Persists the entity with {@link DataFlowState#STARTING} before delegating to the
+     * protocol, then transitions to {@link DataFlowState#STARTED} on successful initiation.
      *
      * @param dataFlow the data flow request
      * @throws IllegalArgumentException if no protocol supports the transfer type
@@ -48,12 +51,8 @@ public class DataFlowService {
             throw new IllegalStateException("DataFlow with processId " + dataFlow.getProcessId() + " already exists");
         });
 
-        DataTransferProtocol protocol = registry.getProtocol(dataFlow.getTransferType());
-        if (protocol == null) {
-            throw new IllegalArgumentException("No protocol registered for transferType: " + dataFlow.getTransferType());
-        }
-
-        DataFlowEntity entity = toEntity(dataFlow, DataFlowState.STARTED);
+        DataTransferProtocol protocol = requiredProtocol(dataFlow.getTransferType());
+        DataFlowEntity entity = toEntity(dataFlow, DataFlowState.STARTING);
         repository.save(entity);
 
         auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_STARTED,
@@ -61,8 +60,40 @@ public class DataFlowService {
                 "Data flow started", Map.of("dataFlowId", String.valueOf(dataFlow.getDataFlowId())));
 
         protocol.initiateTransfer(dataFlow)
-            .thenAccept(result -> handleCompletion(entity, result))
+            .thenAccept(result -> {
+                updateState(entity, DataFlowState.STARTED);
+                handleCompletion(entity, result);
+            })
             .exceptionally(ex -> { handleError(entity, ex); return null; });
+    }
+
+    /**
+     * Resumes a suspended data transfer.
+     *
+     * @param processId the process ID to resume
+     * @throws IllegalStateException if no flow exists for this processId or the state transition is invalid
+     */
+    public void resume(String processId) {
+        DataFlowEntity entity = findRequired(processId);
+        stateMachine.assertTransition(entity.getState(), DataFlowState.STARTED);
+        requiredProtocol(entity.getTransferType())
+                .resumeTransfer(entity.getId())
+                .thenAccept(result -> updateState(entity, DataFlowState.STARTED))
+                .exceptionally(ex -> {
+                    handleError(entity, ex);
+                    return null;
+                });
+    }
+
+    /**
+     * Returns the current entity for a data flow by process ID.
+     *
+     * @param processId the process ID to look up
+     * @return the data flow entity
+     * @throws IllegalStateException if no flow exists for this processId
+     */
+    public DataFlowEntity status(String processId) {
+        return findRequired(processId);
     }
 
     /**
@@ -72,8 +103,7 @@ public class DataFlowService {
      * @throws IllegalStateException if no flow exists for this processId
      */
     public void terminate(String processId) {
-        DataFlowEntity entity = repository.findByProcessId(processId)
-            .orElseThrow(() -> new IllegalStateException("No DataFlow found for processId: " + processId));
+        DataFlowEntity entity = findRequired(processId);
 
         DataTransferProtocol protocol = registry.getProtocol(entity.getTransferType());
         if (protocol != null) {
@@ -94,8 +124,7 @@ public class DataFlowService {
      * @throws IllegalStateException if no flow exists for this processId
      */
     public void suspend(String processId) {
-        DataFlowEntity entity = repository.findByProcessId(processId)
-            .orElseThrow(() -> new IllegalStateException("No DataFlow found for processId: " + processId));
+        DataFlowEntity entity = findRequired(processId);
 
         DataTransferProtocol protocol = registry.getProtocol(entity.getTransferType());
         if (protocol != null) {
@@ -143,6 +172,19 @@ public class DataFlowService {
     private void updateState(DataFlowEntity entity, DataFlowState state) {
         DataFlowEntity updated = entity.withState(state);
         repository.save(updated);
+    }
+
+    private DataFlowEntity findRequired(String processId) {
+        return repository.findByProcessId(processId)
+                .orElseThrow(() -> new IllegalStateException("No DataFlow found for processId: " + processId));
+    }
+
+    private DataTransferProtocol requiredProtocol(String transferType) {
+        DataTransferProtocol protocol = registry.getProtocol(transferType);
+        if (protocol == null) {
+            throw new IllegalArgumentException("No protocol registered for transferType: " + transferType);
+        }
+        return protocol;
     }
 
     private DataFlowEntity toEntity(DataFlow dataFlow, DataFlowState state) {

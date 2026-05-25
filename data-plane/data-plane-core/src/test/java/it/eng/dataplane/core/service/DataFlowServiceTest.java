@@ -16,7 +16,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.EnumSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -44,11 +46,14 @@ class DataFlowServiceTest {
     @Mock
     private DataTransferProtocol protocol;
 
+    @Mock
+    private DataFlowStateMachine stateMachine;
+
     private DataFlowService service;
 
     @BeforeEach
     void setUp() {
-        service = new DataFlowService(repository, registry, controlPlaneClient, auditEventService);
+        service = new DataFlowService(repository, registry, controlPlaneClient, auditEventService, stateMachine);
     }
 
     /**
@@ -82,7 +87,7 @@ class DataFlowServiceTest {
         DataFlowEntity savedEntity = entityCaptor.getValue();
         assertEquals("test-process-123", savedEntity.getProcessId());
         assertEquals("HttpData-PULL", savedEntity.getTransferType());
-        assertEquals(DataFlowState.STARTED, savedEntity.getState());
+        assertEquals(DataFlowState.STARTING, savedEntity.getState());
     }
 
     /**
@@ -139,5 +144,67 @@ class DataFlowServiceTest {
         
         verify(registry, never()).getProtocol(anyString());
         verify(repository, never()).save(any(DataFlowEntity.class));
+    }
+
+    /**
+     * Verifies that start() persists the entity with STARTING state before the async transfer
+     * completes, ensuring the transition INITIALIZED → STARTING is recorded immediately.
+     */
+    @Test
+    void startPersistsStartingBeforeAsyncCompletion() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-1")
+                .transferType("HttpData-PULL")
+                .build();
+
+        when(repository.findByProcessId("tp-1")).thenReturn(Optional.empty());
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.initiateTransfer(any(DataFlow.class))).thenReturn(new CompletableFuture<>());
+
+        service.start(dataFlow);
+
+        ArgumentCaptor<DataFlowEntity> entityCaptor = ArgumentCaptor.forClass(DataFlowEntity.class);
+        verify(repository).save(entityCaptor.capture());
+        assertEquals(DataFlowState.STARTING, entityCaptor.getValue().getState());
+    }
+
+    /**
+     * Verifies that resume() moves a SUSPENDED flow back to STARTED after successful protocol resumption.
+     */
+    @Test
+    void resumeMovesSuspendedFlowBackToStarted() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-1")
+                .processId("tp-1")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.SUSPENDED)
+                .build();
+
+        when(repository.findByProcessId("tp-1")).thenReturn(Optional.of(entity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.resumeTransfer("df-1")).thenReturn(CompletableFuture.completedFuture(DataFlowResult.success()));
+
+        service.resume("tp-1");
+
+        verify(repository, atLeastOnce()).save(argThat(saved -> saved.getState() == DataFlowState.STARTED));
+    }
+
+    /**
+     * Verifies that the DataFlowState enum contains exactly the canonical DPS state set,
+     * with no extra or missing values.
+     */
+    @Test
+    void dataFlowStateEnumMatchesCanonicalDpsSet() {
+        assertEquals(
+                Set.of(
+                        DataFlowState.INITIALIZED,
+                        DataFlowState.PREPARING,
+                        DataFlowState.PREPARED,
+                        DataFlowState.STARTING,
+                        DataFlowState.STARTED,
+                        DataFlowState.SUSPENDED,
+                        DataFlowState.COMPLETED,
+                        DataFlowState.TERMINATED),
+                EnumSet.allOf(DataFlowState.class));
     }
 }
