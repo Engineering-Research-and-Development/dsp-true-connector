@@ -58,7 +58,7 @@ class DataFlowServiceTest {
 
     /**
      * Verifies that starting a data flow delegates to the correct protocol implementation
-     * and saves the entity to the repository.
+     * and saves STARTING then STARTED to the repository before the async transfer completes.
      */
     @Test
     void startDelegatesToProtocol() {
@@ -78,16 +78,21 @@ class DataFlowServiceTest {
         // When
         service.start(dataFlow);
 
-        // Then
+        // Then: protocol must be called
         verify(protocol, times(1)).initiateTransfer(dataFlow);
-        
+
+        // Then: exactly two synchronous saves — STARTING first, STARTED second
         ArgumentCaptor<DataFlowEntity> entityCaptor = ArgumentCaptor.forClass(DataFlowEntity.class);
-        verify(repository).save(entityCaptor.capture());
-        
-        DataFlowEntity savedEntity = entityCaptor.getValue();
-        assertEquals("test-process-123", savedEntity.getProcessId());
-        assertEquals("HttpData-PULL", savedEntity.getTransferType());
-        assertEquals(DataFlowState.STARTING, savedEntity.getState());
+        verify(repository, times(2)).save(entityCaptor.capture());
+
+        DataFlowEntity firstSave = entityCaptor.getAllValues().get(0);
+        assertEquals("test-process-123", firstSave.getProcessId());
+        assertEquals("HttpData-PULL", firstSave.getTransferType());
+        assertEquals(DataFlowState.STARTING, firstSave.getState());
+
+        DataFlowEntity secondSave = entityCaptor.getAllValues().get(1);
+        assertEquals("test-process-123", secondSave.getProcessId());
+        assertEquals(DataFlowState.STARTED, secondSave.getState());
     }
 
     /**
@@ -147,8 +152,8 @@ class DataFlowServiceTest {
     }
 
     /**
-     * Verifies that start() persists the entity with STARTING state before the async transfer
-     * completes, ensuring the transition INITIALIZED → STARTING is recorded immediately.
+     * Verifies that start() persists the entity with STARTING state before STARTED,
+     * ensuring the transition INITIALIZED → STARTING is recorded as the very first save.
      */
     @Test
     void startPersistsStartingBeforeAsyncCompletion() {
@@ -164,8 +169,84 @@ class DataFlowServiceTest {
         service.start(dataFlow);
 
         ArgumentCaptor<DataFlowEntity> entityCaptor = ArgumentCaptor.forClass(DataFlowEntity.class);
-        verify(repository).save(entityCaptor.capture());
-        assertEquals(DataFlowState.STARTING, entityCaptor.getValue().getState());
+        verify(repository, times(2)).save(entityCaptor.capture());
+        // The first (index 0) save must be STARTING
+        assertEquals(DataFlowState.STARTING, entityCaptor.getAllValues().get(0).getState());
+    }
+
+    /**
+     * Verifies that start() persists STARTED as the second synchronous save, before the
+     * long-running transfer future has completed, so status polling can observe STARTED
+     * during transfer execution.
+     */
+    @Test
+    void startPersistsStartedBeforeTransferCompletion() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-started")
+                .transferType("HttpData-PULL")
+                .build();
+
+        when(repository.findByProcessId("tp-started")).thenReturn(Optional.empty());
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        // Never complete the future — transfer is "in flight"
+        when(protocol.initiateTransfer(any(DataFlow.class))).thenReturn(new CompletableFuture<>());
+
+        service.start(dataFlow);
+
+        ArgumentCaptor<DataFlowEntity> entityCaptor = ArgumentCaptor.forClass(DataFlowEntity.class);
+        verify(repository, times(2)).save(entityCaptor.capture());
+        // The second (index 1) save must be STARTED, before any completion arrives
+        assertEquals(DataFlowState.STARTED, entityCaptor.getAllValues().get(1).getState());
+    }
+
+    /**
+     * Verifies that a successful transfer result transitions the entity from STARTED to COMPLETED.
+     */
+    @Test
+    void startCompletedAfterSuccessfulTransfer() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-complete")
+                .transferType("HttpData-PULL")
+                .build();
+
+        when(repository.findByProcessId("tp-complete")).thenReturn(Optional.empty());
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.initiateTransfer(any(DataFlow.class)))
+                .thenReturn(CompletableFuture.completedFuture(DataFlowResult.success()));
+
+        service.start(dataFlow);
+
+        // STARTING + STARTED + COMPLETED = 3 saves
+        ArgumentCaptor<DataFlowEntity> entityCaptor = ArgumentCaptor.forClass(DataFlowEntity.class);
+        verify(repository, times(3)).save(entityCaptor.capture());
+        assertEquals(DataFlowState.STARTING,  entityCaptor.getAllValues().get(0).getState());
+        assertEquals(DataFlowState.STARTED,   entityCaptor.getAllValues().get(1).getState());
+        assertEquals(DataFlowState.COMPLETED, entityCaptor.getAllValues().get(2).getState());
+    }
+
+    /**
+     * Verifies that a failed transfer future transitions the entity to TERMINATED.
+     */
+    @Test
+    void startTerminatedAfterTransferError() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-error")
+                .transferType("HttpData-PULL")
+                .build();
+
+        when(repository.findByProcessId("tp-error")).thenReturn(Optional.empty());
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.initiateTransfer(any(DataFlow.class)))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("transfer-boom")));
+
+        service.start(dataFlow);
+
+        // STARTING + STARTED + TERMINATED = 3 saves
+        ArgumentCaptor<DataFlowEntity> entityCaptor = ArgumentCaptor.forClass(DataFlowEntity.class);
+        verify(repository, times(3)).save(entityCaptor.capture());
+        assertEquals(DataFlowState.STARTING,    entityCaptor.getAllValues().get(0).getState());
+        assertEquals(DataFlowState.STARTED,     entityCaptor.getAllValues().get(1).getState());
+        assertEquals(DataFlowState.TERMINATED,  entityCaptor.getAllValues().get(2).getState());
     }
 
     /**

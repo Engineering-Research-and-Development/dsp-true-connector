@@ -59,12 +59,13 @@ public class DataFlowService {
                 dataFlow.getProcessId(), dataFlow.getTransferType(),
                 "Data flow started", Map.of("dataFlowId", String.valueOf(dataFlow.getDataFlowId())));
 
+        stateMachine.assertTransition(entity.getState(), DataFlowState.STARTED);
+        DataFlowEntity startedEntity = entity.withState(DataFlowState.STARTED);
+        repository.save(startedEntity);
+
         protocol.initiateTransfer(dataFlow)
-            .thenAccept(result -> {
-                updateState(entity, DataFlowState.STARTED);
-                handleCompletion(entity, result);
-            })
-            .exceptionally(ex -> { handleError(entity, ex); return null; });
+            .thenAccept(result -> handleCompletion(startedEntity, result))
+            .exceptionally(ex -> { handleError(startedEntity, ex); return null; });
     }
 
     /**
