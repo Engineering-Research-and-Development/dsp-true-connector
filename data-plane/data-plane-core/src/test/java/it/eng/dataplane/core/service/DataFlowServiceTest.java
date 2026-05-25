@@ -6,6 +6,7 @@ import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.dataplane.api.spi.DataTransferProtocol;
 import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.dataplane.core.model.DataFlowEntity;
+import it.eng.dataplane.core.model.DataPlaneAuditEventType;
 import it.eng.dataplane.core.registry.DataTransferProtocolRegistry;
 import it.eng.dataplane.core.repository.DataFlowRepository;
 import it.eng.dataplane.core.service.DataPlaneAuditEventService;
@@ -23,6 +24,7 @@ import java.util.concurrent.CompletableFuture;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -209,7 +211,16 @@ class DataFlowServiceTest {
                 .transferType("HttpData-PULL")
                 .build();
 
-        when(repository.findByProcessId("tp-complete")).thenReturn(Optional.empty());
+        DataFlowEntity startedEntity = DataFlowEntity.Builder.newInstance()
+                .processId("tp-complete")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        // First call: duplicate check; second call: reload inside handleCompletion
+        when(repository.findByProcessId("tp-complete"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(startedEntity));
         when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
         when(protocol.initiateTransfer(any(DataFlow.class)))
                 .thenReturn(CompletableFuture.completedFuture(DataFlowResult.success()));
@@ -234,7 +245,16 @@ class DataFlowServiceTest {
                 .transferType("HttpData-PULL")
                 .build();
 
-        when(repository.findByProcessId("tp-error")).thenReturn(Optional.empty());
+        DataFlowEntity startedEntity = DataFlowEntity.Builder.newInstance()
+                .processId("tp-error")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        // First call: duplicate check; second call: reload inside handleError
+        when(repository.findByProcessId("tp-error"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(startedEntity));
         when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
         when(protocol.initiateTransfer(any(DataFlow.class)))
                 .thenReturn(CompletableFuture.failedFuture(new RuntimeException("transfer-boom")));
@@ -268,7 +288,7 @@ class DataFlowServiceTest {
 
         service.resume("tp-1");
 
-        verify(stateMachine).assertTransition(DataFlowState.SUSPENDED, DataFlowState.STARTED);
+        verify(stateMachine, atLeastOnce()).assertTransition(DataFlowState.SUSPENDED, DataFlowState.STARTED);
         verify(repository, atLeastOnce()).save(argThat(saved -> saved.getState() == DataFlowState.STARTED));
     }
 
@@ -378,5 +398,93 @@ class DataFlowServiceTest {
                         DataFlowState.COMPLETED,
                         DataFlowState.TERMINATED),
                 EnumSet.allOf(DataFlowState.class));
+    }
+
+    /**
+     * Verifies that the async completion callback reloads a fresh entity from the repository
+     * rather than operating on the stale captured instance, so a concurrent state change
+     * (e.g. the entity is already TERMINATED) prevents a lost-update overwrite.
+     */
+    @Test
+    void asyncCompletionUsesReloadedEntityAndValidatesTransition() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-stale")
+                .transferType("HttpData-PULL")
+                .build();
+
+        // Simulate: by the time the completion fires the entity was already TERMINATED
+        DataFlowEntity terminatedEntity = DataFlowEntity.Builder.newInstance()
+                .processId("tp-stale")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.TERMINATED)
+                .build();
+
+        // First call: duplicate check; second+ call: reload inside handleCompletion / handleError
+        when(repository.findByProcessId("tp-stale"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(terminatedEntity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.initiateTransfer(any(DataFlow.class)))
+                .thenReturn(CompletableFuture.completedFuture(DataFlowResult.success()));
+        lenient().doThrow(new IllegalStateException("TERMINATED -> COMPLETED not allowed"))
+                .when(stateMachine).assertTransition(DataFlowState.TERMINATED, DataFlowState.COMPLETED);
+        // handleError fallback also hits assertTransition(TERMINATED, TERMINATED)
+        lenient().doThrow(new IllegalStateException("TERMINATED -> TERMINATED not allowed"))
+                .when(stateMachine).assertTransition(DataFlowState.TERMINATED, DataFlowState.TERMINATED);
+
+        // Must not propagate any exception to the caller
+        assertDoesNotThrow(() -> service.start(dataFlow));
+
+        // COMPLETED must never be persisted — stale overwrite is prevented
+        verify(repository, never()).save(argThat(saved -> saved.getState() == DataFlowState.COMPLETED));
+    }
+
+    /**
+     * Verifies that terminate() does not emit the audit event until after the async protocol
+     * callback has completed and the state has been persisted.
+     * When the future is never completed, no audit event must be recorded.
+     */
+    @Test
+    void terminateAuditLoggedOnlyAfterAsyncStatePersistedWhenProtocolPresent() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-audit")
+                .processId("tp-audit")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-audit")).thenReturn(Optional.of(entity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        // Future that never completes — simulates an in-flight protocol call
+        when(protocol.terminateTransfer(any())).thenReturn(new CompletableFuture<>());
+
+        service.terminate("tp-audit");
+
+        // No audit event must have been emitted before the callback fires
+        verify(auditEventService, never()).saveEvent(
+                eq(DataPlaneAuditEventType.DATAFLOW_TERMINATED), any(), any(), any(), any());
+    }
+
+    /**
+     * Verifies that suspend() does not emit the audit event until after the async protocol
+     * callback has completed and the state has been persisted.
+     */
+    @Test
+    void suspendAuditLoggedOnlyAfterAsyncStatePersistedWhenProtocolPresent() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-suspend-audit")
+                .processId("tp-suspend-audit")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-suspend-audit")).thenReturn(Optional.of(entity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.suspendTransfer(any())).thenReturn(new CompletableFuture<>());
+
+        service.suspend("tp-suspend-audit");
+
+        verify(auditEventService, never()).saveEvent(
+                eq(DataPlaneAuditEventType.DATAFLOW_SUSPENDED), any(), any(), any(), any());
     }
 }

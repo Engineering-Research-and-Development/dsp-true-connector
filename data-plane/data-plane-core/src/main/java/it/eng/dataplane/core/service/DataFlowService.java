@@ -63,9 +63,10 @@ public class DataFlowService {
         DataFlowEntity startedEntity = entity.withState(DataFlowState.STARTED);
         repository.save(startedEntity);
 
+        String processId = dataFlow.getProcessId();
         protocol.initiateTransfer(dataFlow)
-            .thenAccept(result -> handleCompletion(startedEntity, result))
-            .exceptionally(ex -> { handleError(startedEntity, ex); return null; });
+            .thenAccept(result -> handleCompletion(processId, result))
+            .exceptionally(ex -> { handleError(processId, ex); return null; });
     }
 
     /**
@@ -81,13 +82,13 @@ public class DataFlowService {
                 .resumeTransfer(entity.getId())
                 .thenAccept(result -> {
                     if (result.isSuccess()) {
-                        updateState(entity, DataFlowState.STARTED);
+                        updateState(processId, DataFlowState.STARTED);
                     } else {
-                        handleError(entity, new RuntimeException(result.getErrorMessage()));
+                        handleError(processId, new RuntimeException(result.getErrorMessage()));
                     }
                 })
                 .exceptionally(ex -> {
-                    handleError(entity, ex);
+                    handleError(processId, ex);
                     return null;
                 });
     }
@@ -112,17 +113,22 @@ public class DataFlowService {
     public void terminate(String processId) {
         DataFlowEntity entity = findRequired(processId);
         stateMachine.assertTransition(entity.getState(), DataFlowState.TERMINATED);
+        String transferType = entity.getTransferType();
 
-        DataTransferProtocol protocol = registry.getProtocol(entity.getTransferType());
+        DataTransferProtocol protocol = registry.getProtocol(transferType);
         if (protocol != null) {
             protocol.terminateTransfer(entity.getId())
-                .thenAccept(result -> updateState(entity, DataFlowState.TERMINATED))
-                .exceptionally(ex -> { handleError(entity, ex); return null; });
+                .thenAccept(result -> {
+                    updateState(processId, DataFlowState.TERMINATED);
+                    auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_TERMINATED,
+                            processId, transferType, "Data flow terminated", null);
+                })
+                .exceptionally(ex -> { handleError(processId, ex); return null; });
         } else {
-            updateState(entity, DataFlowState.TERMINATED);
+            updateState(processId, DataFlowState.TERMINATED);
+            auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_TERMINATED,
+                    processId, transferType, "Data flow terminated", null);
         }
-        auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_TERMINATED,
-                processId, entity.getTransferType(), "Data flow terminated", null);
     }
 
     /**
@@ -134,53 +140,64 @@ public class DataFlowService {
     public void suspend(String processId) {
         DataFlowEntity entity = findRequired(processId);
         stateMachine.assertTransition(entity.getState(), DataFlowState.SUSPENDED);
+        String transferType = entity.getTransferType();
 
-        DataTransferProtocol protocol = registry.getProtocol(entity.getTransferType());
+        DataTransferProtocol protocol = registry.getProtocol(transferType);
         if (protocol != null) {
             protocol.suspendTransfer(entity.getId())
-                .thenAccept(result -> updateState(entity, DataFlowState.SUSPENDED))
-                .exceptionally(ex -> { handleError(entity, ex); return null; });
+                .thenAccept(result -> {
+                    updateState(processId, DataFlowState.SUSPENDED);
+                    auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_SUSPENDED,
+                            processId, transferType, "Data flow suspended", null);
+                })
+                .exceptionally(ex -> { handleError(processId, ex); return null; });
         } else {
-            updateState(entity, DataFlowState.SUSPENDED);
+            updateState(processId, DataFlowState.SUSPENDED);
+            auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_SUSPENDED,
+                    processId, transferType, "Data flow suspended", null);
         }
-        auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_SUSPENDED,
-                processId, entity.getTransferType(), "Data flow suspended", null);
     }
 
-    private void handleCompletion(DataFlowEntity entity, DataFlowResult result) {
+    private void handleCompletion(String processId, DataFlowResult result) {
         if (result.isSuccess()) {
-            updateState(entity, DataFlowState.COMPLETED);
+            DataFlowEntity fresh = findRequired(processId);
+            stateMachine.assertTransition(fresh.getState(), DataFlowState.COMPLETED);
+            DataFlowEntity completed = fresh.withState(DataFlowState.COMPLETED);
+            repository.save(completed);
             auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_COMPLETED,
-                    entity.getProcessId(), entity.getTransferType(), "Data flow completed", null);
+                    processId, completed.getTransferType(), "Data flow completed", null);
             CompletableFuture.runAsync(() ->
-                controlPlaneClient.sendStatus(entity.getCallbackAddress(), entity.getProcessId(),
+                controlPlaneClient.sendStatus(completed.getCallbackAddress(), processId,
                     DataFlowState.COMPLETED, null, null),
                 VIRTUAL_THREAD_EXECUTOR);
         } else {
-            handleError(entity, new RuntimeException(result.getErrorMessage()));
+            handleError(processId, new RuntimeException(result.getErrorMessage()));
         }
     }
 
-    private void handleError(DataFlowEntity entity, Throwable ex) {
-        log.error("DataFlow {} failed: {}", entity.getId(), ex.getMessage(), ex);
+    private void handleError(String processId, Throwable ex) {
+        log.error("DataFlow processId={} failed: {}", processId, ex.getMessage(), ex);
         try {
-            DataFlowEntity failed = entity.withError(ex.getMessage(), DataFlowState.TERMINATED);
+            DataFlowEntity fresh = findRequired(processId);
+            stateMachine.assertTransition(fresh.getState(), DataFlowState.TERMINATED);
+            DataFlowEntity failed = fresh.withError(ex.getMessage(), DataFlowState.TERMINATED);
             repository.save(failed);
+            auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_FAILED,
+                    processId, failed.getTransferType(), "Data flow failed",
+                    Map.of("error", ex.getMessage() != null ? ex.getMessage() : "unknown"));
+            CompletableFuture.runAsync(() ->
+                controlPlaneClient.sendStatus(failed.getCallbackAddress(), processId,
+                    DataFlowState.TERMINATED, null, ex.getMessage()),
+                VIRTUAL_THREAD_EXECUTOR);
         } catch (Exception saveEx) {
-            log.error("Failed to persist TERMINATED state for DataFlow {}: {}", entity.getId(), saveEx.getMessage());
+            log.error("Failed to persist TERMINATED state for DataFlow processId={}: {}", processId, saveEx.getMessage());
         }
-        auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_FAILED,
-                entity.getProcessId(), entity.getTransferType(), "Data flow failed",
-                Map.of("error", ex.getMessage() != null ? ex.getMessage() : "unknown"));
-        CompletableFuture.runAsync(() ->
-            controlPlaneClient.sendStatus(entity.getCallbackAddress(), entity.getProcessId(),
-                DataFlowState.TERMINATED, null, ex.getMessage()),
-            VIRTUAL_THREAD_EXECUTOR);
     }
 
-    private void updateState(DataFlowEntity entity, DataFlowState state) {
-        DataFlowEntity updated = entity.withState(state);
-        repository.save(updated);
+    private void updateState(String processId, DataFlowState state) {
+        DataFlowEntity fresh = findRequired(processId);
+        stateMachine.assertTransition(fresh.getState(), state);
+        repository.save(fresh.withState(state));
     }
 
     private DataFlowEntity findRequired(String processId) {
