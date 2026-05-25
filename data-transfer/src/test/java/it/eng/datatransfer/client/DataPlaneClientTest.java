@@ -131,7 +131,7 @@ public class DataPlaneClientTest {
     }
 
     @Test
-    @DisplayName("terminateSendsPostToDataPlane - verifies POST method and canonical URL contains processId/terminate")
+    @DisplayName("terminateSendsDeleteToDataPlane - verifies DELETE method and canonical URL contains processId/terminate")
     public void terminateSendsDeleteToDataPlane() throws IOException {
         DataPlaneRegistration dp = registrationWithApiKey("http://dp:9090", "secret-key");
         when(mockRouter.selectDataPlane("HttpData-PULL")).thenReturn(Optional.of(dp));
@@ -143,7 +143,7 @@ public class DataPlaneClientTest {
         ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
         verify(mockHttpClient).newCall(captor.capture());
         Request captured = captor.getValue();
-        assertEquals("POST", captured.method());
+        assertEquals("DELETE", captured.method());
         assertTrue(captured.url().toString().contains("/dataflows/proc-term-1/terminate"));
     }
 

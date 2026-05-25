@@ -103,13 +103,16 @@ public class DataFlowController {
     /**
      * Terminates an active data transfer.
      *
-     * <p>Canonical path: {@code POST /dataflows/{processId}/terminate}.
-     * Legacy alias {@code POST /dataflows/terminate/{processId}} is preserved for backward compatibility.</p>
+     * <p>Canonical path: {@code /dataflows/{processId}/terminate}.
+     * The canonical route accepts both {@code POST} and {@code DELETE} during migration,
+     * while the legacy alias {@code POST /dataflows/terminate/{processId}} is preserved for
+     * backward compatibility.</p>
      *
      * @param processId the transfer process ID to terminate
      * @return 200 OK on success, 404 NOT FOUND if processId not found
      */
-    @PostMapping({"/{processId}/terminate", "/terminate/{processId}"})
+    @RequestMapping(path = {"/{processId}/terminate", "/terminate/{processId}"},
+            method = {RequestMethod.POST, RequestMethod.DELETE})
     public ResponseEntity<Void> terminateDataFlow(@PathVariable String processId) {
         log.info("Received terminate request for processId={}", processId);
         

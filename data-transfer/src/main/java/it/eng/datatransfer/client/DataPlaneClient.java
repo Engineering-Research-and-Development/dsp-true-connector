@@ -87,7 +87,7 @@ public class DataPlaneClient {
     /**
      * Sends a termination request for the given process to the selected Data Plane.
      *
-     * <p>POSTs to {@code {dpEndpoint}/dataflows/{processId}/terminate} (canonical DSP path).</p>
+     * <p>DELETEs {@code {dpEndpoint}/dataflows/{processId}/terminate} using the canonical path.</p>
      *
      * @param processId    the transfer process ID to terminate
      * @param transferType the transfer type used to select the target Data Plane
@@ -98,7 +98,7 @@ public class DataPlaneClient {
         DataPlaneRegistration dp = selectOrThrow(transferType);
         String url = dp.getEndpoint() + "/dataflows/" + processId + "/terminate";
         log.info("Sending terminate request for process '{}' to '{}'", processId, url);
-        post(url, null, dp.getApiKey());
+        delete(url, dp);
     }
 
     /**
@@ -171,6 +171,25 @@ public class DataPlaneClient {
             return objectMapper.readValue(responseBody, responseType);
         } catch (IOException e) {
             log.error("Failed to send POST to {}: {}", url, e.getMessage());
+            throw new DataPlaneClientException("Failed to send message to data plane at " + url, e);
+        }
+    }
+
+    private void delete(String url, DataPlaneRegistration dp) {
+        Request.Builder builder = new Request.Builder()
+                .url(url)
+                .delete();
+        if (dp.getApiKey() != null) {
+            builder.addHeader(X_API_KEY, dp.getApiKey());
+        }
+        Request request = builder.build();
+        try (Response response = okHttpClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                throw new DataPlaneClientException("Data Plane returned HTTP " + response.code() + " for " + url);
+            }
+            log.debug("DELETE {} -> {}", url, response.code());
+        } catch (IOException e) {
+            log.error("Failed to send DELETE to {}: {}", url, e.getMessage());
             throw new DataPlaneClientException("Failed to send message to data plane at " + url, e);
         }
     }
