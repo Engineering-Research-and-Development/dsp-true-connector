@@ -16,15 +16,15 @@ public interface DataTransferProtocol {
     /**
      * Prepares resources for a data transfer before the DSP protocol messages are exchanged.
      *
-     * <p>For HTTP-PULL (provider side): generates a pre-signed GET URL for the artifact
-     * and returns it as {@code dataAddress.presignedUrl}.</p>
+     * <p>The DPS {@code prepare} endpoint exists for protocol families that need resource
+     * allocation before start. The current built-in HTTP-PULL and HTTP-PUSH flows remain
+     * <em>start-driven</em> in TRUE Connector: the provider CP generates pull presigned URLs
+     * directly via {@code S3ClientService} during {@code startTransfer}, and the consumer CP
+     * creates temporary push credentials directly via {@code TemporaryBucketUserService}
+     * during {@code requestTransfer}. Neither built-in protocol uses this method.</p>
      *
-     * <p>For HTTP-PUSH (consumer side): creates a temporary IAM user for the consumer bucket
-     * and returns the credentials in {@code dataAddress} so the Control Plane can embed them
-     * in the outgoing {@code TransferRequestMessage}.</p>
-     *
-     * <p>Default implementation returns an empty response. Override in protocol implementations
-     * that need resource allocation before the transfer starts.</p>
+     * <p>Default implementation returns an empty response. Override only in protocol families
+     * that genuinely require pre-allocation before the start phase.</p>
      *
      * @param message the prepare message from the Control Plane
      * @return the prepare response carrying protocol-specific addressing data

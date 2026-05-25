@@ -5,6 +5,7 @@ import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.api.spi.DataTransferProtocol;
+import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
@@ -49,6 +50,7 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     private final Executor transferExecutor;
     @Qualifier("dataPlaneHttpClient")
     private final HttpClient httpClient;
+    private final ControlPlaneClient controlPlaneClient;
 
     /**
      * Request timeout (30 minutes) used for all artifact downloads.
@@ -135,7 +137,8 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
      * Initiates an HTTP-PUSH data transfer for the given data flow.
      * Generates a presigned GET URL for the provider artifact, downloads the artifact,
      * and pushes it to the consumer's S3 bucket using credentials from the data address.
-     * On success, the temporary consumer credentials are deleted.
+     * Notifies the Control Plane via explicit {@code sendStarted}, {@code sendCompleted},
+     * or {@code sendErrored} callbacks so the CP can drive DSP state transitions directly.
      *
      * @param dataFlow the data flow to initiate; its dataAddress must contain consumer S3 credentials
      * @return future with the result of the transfer
@@ -151,7 +154,19 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
             );
         }
 
-        return pushArtifactToConsumer(dataFlow);
+        // Notify CP that the DP has started processing — provider CP can now update DSP state
+        controlPlaneClient.sendStarted(dataFlow.getCallbackAddress(), dataFlow.getProcessId(), dataAddress);
+
+        // Run the transfer asynchronously, then notify CP of outcome
+        return pushArtifactToConsumer(dataFlow)
+                .thenApply(result -> {
+                    if (result.isSuccess()) {
+                        controlPlaneClient.sendCompleted(dataFlow.getCallbackAddress(), dataFlow.getProcessId(), dataAddress);
+                    } else {
+                        controlPlaneClient.sendErrored(dataFlow.getCallbackAddress(), dataFlow.getProcessId(), result.getErrorMessage());
+                    }
+                    return result;
+                });
     }
 
     /**

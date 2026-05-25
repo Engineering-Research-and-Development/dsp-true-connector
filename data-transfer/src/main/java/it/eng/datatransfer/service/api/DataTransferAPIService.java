@@ -159,8 +159,10 @@ public class DataTransferAPIService {
         DataAddress dataAddressForMessage = null;
         boolean isHttpPush = "HttpData-PUSH".equals(dataTransferRequest.getFormat());
         if (isHttpPush) {
-            // Create temporary S3 user directly in the CP — no push DP is registered on the consumer side.
-            // The push DP is a provider-side component; it receives these credentials via DataFlowStartMessage.
+            // HTTP-PUSH only: consumer CP creates temporary S3 credentials directly and embeds them in
+            // the TransferRequestMessage dataAddress so the provider DP can push to the consumer bucket.
+            // HTTP-PULL intentionally omits the dataAddress — the provider CP generates the presigned
+            // GET URL directly during startTransfer and sends it in the TransferStartMessage instead.
             try {
                 String bucketName = tenantBucketResolver.resolveBucketName(transferProcessInitialized.getTenantId());
                 String objectKey = transferProcessInitialized.getId();

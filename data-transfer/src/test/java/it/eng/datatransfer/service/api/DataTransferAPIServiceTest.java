@@ -959,6 +959,40 @@ class DataTransferAPIServiceTest {
         assertTrue(hasTerminated, "Transfer process should be saved in TERMINATED state");
     }
 
+    @Test
+    @DisplayName("Request transfer (HTTP-PULL consumer) - does not include push dataAddress in TransferRequestMessage")
+    public void requestTransfer_doesNotIncludePushDataAddressForHttpPull() {
+        // HTTP-PULL: consumer CP should NOT create temp S3 credentials or send dataAddress to provider
+        DataTransferRequest httpPullRequest = new DataTransferRequest(
+                DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
+                DataTransferFormat.HTTP_PULL.format(),
+                null);
+
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
+                .thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(apiResponse.getData()).thenReturn(
+                TransferSerializer.serializeProtocol(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER);
+        when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
+
+        apiService.requestTransfer(httpPullRequest);
+
+        // HTTP-PULL must NOT create any temporary S3 credentials — that is push-only
+        verify(temporaryBucketUserService, never()).createTemporaryUser(anyString(), anyString(), anyString());
+
+        // Verify the outgoing TransferRequestMessage does not carry a push dataAddress
+        verify(okHttpRestClient).sendRequestProtocol(
+                anyString(),
+                argThat(body -> !body.toString().contains("\"dataAddress\"")
+                        && !body.toString().contains("bucketName")
+                        && !body.toString().contains("accessKey")),
+                anyString());
+    }
 
     private static Stream<Arguments> tck_supportedStates() {
         return Stream.of(

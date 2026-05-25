@@ -3,6 +3,7 @@ package it.eng.dataplane.httppull;
 import com.sun.net.httpserver.HttpServer;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
+import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.dataplane.s3.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
@@ -27,7 +28,11 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -42,6 +47,8 @@ class HttpPullTransferProtocolTest {
     private S3Properties s3Properties;
     @Mock
     private TenantBucketResolver tenantBucketResolver;
+    @Mock
+    private ControlPlaneClient controlPlaneClient;
 
     private HttpPullTransferProtocol protocol;
     private HttpServer testHttpServer;
@@ -62,7 +69,8 @@ class HttpPullTransferProtocolTest {
             s3Properties,
             tenantBucketResolver,
             syncExecutor,
-            testHttpClient
+            testHttpClient,
+            controlPlaneClient
         );
     }
 
@@ -93,6 +101,8 @@ class HttpPullTransferProtocolTest {
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getErrorMessage()).contains("endpoint");
+        // No CP callbacks when validation fails before transfer starts
+        verify(controlPlaneClient, never()).sendStarted(any(), any(), any());
     }
 
     @Test
@@ -109,6 +119,8 @@ class HttpPullTransferProtocolTest {
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getErrorMessage()).contains("endpoint");
+        // No CP callbacks when validation fails before transfer starts
+        verify(controlPlaneClient, never()).sendStarted(any(), any(), any());
     }
 
     @Test
@@ -157,6 +169,7 @@ class HttpPullTransferProtocolTest {
                 .processId("tp-404")
                 .transferType("HttpData-PULL")
                 .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
                 .dataAddress(Map.of("endpoint", url))
                 .build();
 
@@ -164,6 +177,8 @@ class HttpPullTransferProtocolTest {
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getErrorMessage()).contains("404");
+        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-404"), anyMap());
+        verify(controlPlaneClient).sendErrored(eq("http://cp:8080"), eq("tp-404"), anyString());
     }
 
     @Test
@@ -198,6 +213,7 @@ class HttpPullTransferProtocolTest {
                 .processId("tp-auth-1")
                 .transferType("HttpData-PULL")
                 .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
                 .dataAddress(Map.of(
                         "endpoint", presignedUrl,
                         IConstants.AUTH_TYPE, "Bearer",
@@ -210,5 +226,86 @@ class HttpPullTransferProtocolTest {
 
         assertThat(result.isSuccess()).isTrue();
         assertThat(receivedAuthHeader.get()).isEqualTo("Bearer test-token-abc");
+        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-auth-1"), anyMap());
+        verify(controlPlaneClient).sendCompleted(eq("http://cp:8080"), eq("tp-auth-1"), anyMap());
+    }
+
+    @Test
+    @DisplayName("initiateTransfer sends sendStarted then sendCompleted callbacks on successful transfer")
+    void initiateTransfer_sendsStartedThenCompletedCallbacks() throws Exception {
+        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        testHttpServer.createContext("/artifact", exchange -> {
+            byte[] body = "artifact-content".getBytes();
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+        });
+        testHttpServer.start();
+
+        int port = testHttpServer.getAddress().getPort();
+        String presignedUrl = "http://localhost:" + port + "/artifact";
+
+        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("test-bucket");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getAccessKey()).thenReturn("access-key");
+        when(s3Properties.getSecretKey()).thenReturn("secret-key");
+        when(s3ClientService.uploadFile(any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture("etag-ok"));
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-1")
+                .transferType("HttpData-PULL")
+                .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
+                .dataAddress(Map.of("endpoint", presignedUrl))
+                .build();
+
+        protocol.initiateTransfer(dataFlow).join();
+
+        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-1"), anyMap());
+        verify(controlPlaneClient).sendCompleted(eq("http://cp:8080"), eq("tp-1"), anyMap());
+        verify(controlPlaneClient, never()).sendErrored(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("initiateTransfer sends sendStarted then sendErrored callbacks on upload failure")
+    void initiateTransfer_sendsStartedThenErroredCallbacksOnFailure() throws Exception {
+        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        testHttpServer.createContext("/artifact", exchange -> {
+            byte[] body = "artifact-content".getBytes();
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+        });
+        testHttpServer.start();
+
+        int port = testHttpServer.getAddress().getPort();
+        String presignedUrl = "http://localhost:" + port + "/artifact";
+
+        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("test-bucket");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getAccessKey()).thenReturn("access-key");
+        when(s3Properties.getSecretKey()).thenReturn("secret-key");
+        when(s3ClientService.uploadFile(any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("S3 upload failed")));
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-fail-1")
+                .transferType("HttpData-PULL")
+                .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
+                .dataAddress(Map.of("endpoint", presignedUrl))
+                .build();
+
+        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
+
+        assertThat(result.isSuccess()).isFalse();
+        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-fail-1"), anyMap());
+        verify(controlPlaneClient).sendErrored(eq("http://cp:8080"), eq("tp-fail-1"), anyString());
+        verify(controlPlaneClient, never()).sendCompleted(any(), any(), any());
     }
 }

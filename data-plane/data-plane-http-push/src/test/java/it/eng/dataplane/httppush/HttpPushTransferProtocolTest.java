@@ -3,6 +3,7 @@ package it.eng.dataplane.httppush;
 import com.sun.net.httpserver.HttpServer;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
+import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
@@ -27,6 +28,7 @@ import java.util.concurrent.Executor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -49,6 +51,8 @@ class HttpPushTransferProtocolTest {
     private TenantBucketResolver tenantBucketResolver;
     @Mock
     private S3Properties s3Properties;
+    @Mock
+    private ControlPlaneClient controlPlaneClient;
 
     private HttpPushTransferProtocol protocol;
     private HttpServer testHttpServer;
@@ -70,7 +74,8 @@ class HttpPushTransferProtocolTest {
             temporaryBucketUserService,
             tenantBucketResolver,
             syncExecutor,
-            testHttpClient
+            testHttpClient,
+            controlPlaneClient
         );
     }
 
@@ -100,6 +105,8 @@ class HttpPushTransferProtocolTest {
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getErrorMessage()).contains("bucketName");
+        // No CP callbacks when validation fails before transfer starts
+        verify(controlPlaneClient, never()).sendStarted(any(), any(), any());
     }
 
     @Test
@@ -115,6 +122,8 @@ class HttpPushTransferProtocolTest {
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getErrorMessage()).contains("bucketName");
+        // No CP callbacks when validation fails before transfer starts
+        verify(controlPlaneClient, never()).sendStarted(any(), any(), any());
     }
 
     @Test
@@ -170,6 +179,7 @@ class HttpPushTransferProtocolTest {
                 .processId("tp-403")
                 .transferType("HttpData-PUSH")
                 .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
                 .datasetId("dataset-403")
                 .dataAddress(dataAddress)
                 .build();
@@ -178,10 +188,12 @@ class HttpPushTransferProtocolTest {
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getErrorMessage()).contains("403");
+        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-403"), anyMap());
+        verify(controlPlaneClient).sendErrored(eq("http://cp:8080"), eq("tp-403"), anyString());
     }
 
     @Test
-    @DisplayName("initiateTransfer pushes artifact to consumer S3 and cleans up temporary credentials")
+    @DisplayName("initiateTransfer pushes artifact to consumer S3 and sends started/completed callbacks")
     void initiateTransfer_successfulPushToConsumerS3() throws Exception {
         // Serve dummy artifact content from a local HTTP server
         testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
@@ -215,6 +227,7 @@ class HttpPushTransferProtocolTest {
             .processId("tp-3")
             .transferType("HttpData-PUSH")
             .tenantId("tenant-1")
+            .callbackAddress("http://cp:8080")
             .datasetId("dataset-1")
             .dataAddress(dataAddress)
             .build();
@@ -222,11 +235,14 @@ class HttpPushTransferProtocolTest {
         DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
 
         assertThat(result.isSuccess()).isTrue();
+        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-3"), anyMap());
+        verify(controlPlaneClient).sendCompleted(eq("http://cp:8080"), eq("tp-3"), anyMap());
+        verify(controlPlaneClient, never()).sendErrored(any(), any(), any());
         verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
     }
 
     @Test
-    @DisplayName("initiateTransfer uses processId as S3 objectKey when objectKey is absent from dataAddress")
+    @DisplayName("initiateTransfer sends started/completed callbacks and uses processId as S3 objectKey when objectKey is absent from dataAddress")
     void initiateTransfer_usesProcessIdAsObjectKeyFallback() throws Exception {
         testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
         testHttpServer.createContext("/artifact", exchange -> {
@@ -257,6 +273,7 @@ class HttpPushTransferProtocolTest {
             .processId("tp-4")
             .transferType("HttpData-PUSH")
             .tenantId("tenant-1")
+            .callbackAddress("http://cp:8080")
             .datasetId("dataset-1")
             .dataAddress(dataAddress)
             .build();
@@ -271,6 +288,8 @@ class HttpPushTransferProtocolTest {
         assertThat(s3PropsCaptor.getValue()).containsEntry(S3Utils.OBJECT_KEY, "tp-4");
         // Cleanup of temporary credentials is handled by the consumer CP, not the provider-side push DP
         verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
+        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-4"), anyMap());
+        verify(controlPlaneClient).sendCompleted(eq("http://cp:8080"), eq("tp-4"), anyMap());
     }
 
     @Test
@@ -306,6 +325,7 @@ class HttpPushTransferProtocolTest {
             .processId("tp-5")
             .transferType("HttpData-PUSH")
             .tenantId("tenant-1")
+            .callbackAddress("http://cp:8080")
             .datasetId("dataset-1")
             .dataAddress(dataAddress)
             .build();
@@ -317,5 +337,52 @@ class HttpPushTransferProtocolTest {
         // Cleanup of temporary credentials is the consumer CP's responsibility,
         // not the provider-side push DP — even when upload fails.
         verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
+        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-5"), anyMap());
+        verify(controlPlaneClient).sendErrored(eq("http://cp:8080"), eq("tp-5"), anyString());
+        verify(controlPlaneClient, never()).sendCompleted(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("initiateTransfer sends sendStarted then sendCompleted callbacks on successful push transfer")
+    void initiateTransfer_sendsStartedThenCompletedCallbacks() throws Exception {
+        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        testHttpServer.createContext("/artifact", exchange -> {
+            byte[] body = "artifact-content".getBytes();
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+        });
+        testHttpServer.start();
+
+        int port = testHttpServer.getAddress().getPort();
+        String presignedUrl = "http://localhost:" + port + "/artifact";
+
+        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
+        when(s3ClientService.generateGetPresignedUrl(eq("provider-bucket"), anyString(), any(Duration.class)))
+            .thenReturn(presignedUrl);
+        when(s3ClientService.uploadFile(any(), any(), any(), any()))
+            .thenReturn(CompletableFuture.completedFuture("etag-ok"));
+
+        Map<String, String> dataAddress = new HashMap<>();
+        dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
+        dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
+        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
+        dataAddress.put(S3Utils.REGION, "us-east-1");
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-1")
+                .transferType("HttpData-PUSH")
+                .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
+                .datasetId("dataset-1")
+                .dataAddress(dataAddress)
+                .build();
+
+        protocol.initiateTransfer(dataFlow).join();
+
+        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-1"), anyMap());
+        verify(controlPlaneClient).sendCompleted(eq("http://cp:8080"), eq("tp-1"), anyMap());
+        verify(controlPlaneClient, never()).sendErrored(any(), any(), any());
     }
 }
