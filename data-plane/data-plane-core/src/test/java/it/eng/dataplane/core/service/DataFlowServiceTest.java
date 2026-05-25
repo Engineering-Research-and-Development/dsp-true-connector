@@ -4,7 +4,6 @@ import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.dataplane.api.spi.DataTransferProtocol;
-import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.dataplane.core.model.DataFlowEntity;
 import it.eng.dataplane.core.model.DataPlaneAuditEventType;
 import it.eng.dataplane.core.registry.DataTransferProtocolRegistry;
@@ -40,9 +39,6 @@ class DataFlowServiceTest {
     private DataTransferProtocolRegistry registry;
 
     @Mock
-    private ControlPlaneClient controlPlaneClient;
-
-    @Mock
     private DataPlaneAuditEventService auditEventService;
 
     @Mock
@@ -55,7 +51,7 @@ class DataFlowServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DataFlowService(repository, registry, controlPlaneClient, auditEventService, stateMachine);
+        service = new DataFlowService(repository, registry, auditEventService, stateMachine);
     }
 
     /**

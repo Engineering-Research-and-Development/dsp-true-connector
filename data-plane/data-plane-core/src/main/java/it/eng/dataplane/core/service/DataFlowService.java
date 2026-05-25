@@ -4,7 +4,6 @@ import it.eng.dataplane.api.spi.DataTransferProtocol;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.api.model.DataFlowState;
-import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.dataplane.core.model.DataFlowEntity;
 import it.eng.dataplane.core.model.DataPlaneAuditEventType;
 import it.eng.dataplane.core.registry.DataTransferProtocolRegistry;
@@ -16,8 +15,6 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 /**
  * Core service for managing data flow lifecycle on the Data Plane.
@@ -28,12 +25,8 @@ import java.util.concurrent.Executors;
 @RequiredArgsConstructor
 public class DataFlowService {
 
-    private static final Executor VIRTUAL_THREAD_EXECUTOR =
-        Executors.newVirtualThreadPerTaskExecutor();
-
     private final DataFlowRepository repository;
     private final DataTransferProtocolRegistry registry;
-    private final ControlPlaneClient controlPlaneClient;
     private final DataPlaneAuditEventService auditEventService;
     private final DataFlowStateMachine stateMachine;
 
@@ -168,10 +161,6 @@ public class DataFlowService {
             repository.save(completed);
             auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_COMPLETED,
                     processId, completed.getTransferType(), "Data flow completed", null);
-            CompletableFuture.runAsync(() ->
-                controlPlaneClient.sendStatus(completed.getCallbackAddress(), processId,
-                    DataFlowState.COMPLETED, null, null),
-                VIRTUAL_THREAD_EXECUTOR);
         } else {
             handleError(processId, new RuntimeException(result.getErrorMessage()));
         }
@@ -187,10 +176,6 @@ public class DataFlowService {
             auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_FAILED,
                     processId, failed.getTransferType(), "Data flow failed",
                     Map.of("error", ex.getMessage() != null ? ex.getMessage() : "unknown"));
-            CompletableFuture.runAsync(() ->
-                controlPlaneClient.sendStatus(failed.getCallbackAddress(), processId,
-                    DataFlowState.TERMINATED, null, ex.getMessage()),
-                VIRTUAL_THREAD_EXECUTOR);
         } catch (Exception saveEx) {
             log.error("Failed to persist TERMINATED state for DataFlow processId={}: {}", processId, saveEx.getMessage());
         }
