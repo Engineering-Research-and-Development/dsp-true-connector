@@ -217,8 +217,8 @@ public class DataTransferAPIService {
                 try {
                     dataAddressForMessage = mapper.treeToValue(dataTransferRequest.getDataAddress(), DataAddress.class);
                 } catch (Exception e) {
-                    log.warn("Could not deserialize dataAddress from {} request for process {}: {}",
-                            dataTransferRequest.getFormat(), transferProcessInitialized.getId(), e.getMessage());
+                    throw new DataTransferAPIException("Invalid dataAddress for "
+                            + dataTransferRequest.getFormat() + " transfer request", e);
                 }
             }
         }
@@ -377,6 +377,12 @@ public class DataTransferAPIService {
                 }
                 // Capture the selected DP endpoint for persistence (restart-safe sticky routing).
                 assignedEndpoint = dataPlaneClient.getStickyEndpoint(transferProcess.getId()).orElse(null);
+                if (dataAddress == null) {
+                    cleanupPreparedDataPlaneSession(transferProcess.getId(), transferProcess.getFormat(),
+                            transportProfile, assignedEndpoint,
+                            "gRPC prepare returned no dataAddress");
+                    throw new DataTransferAPIException("gRPC prepare returned no dataAddress");
+                }
             } else if ("HttpData-PULL".equals(transferProcess.getFormat())) {
                 Artifact artifact = artifactTransferService.findArtifact(transferProcess);
                 String artifactURL = switch (artifact.getArtifactType()) {
@@ -507,17 +513,9 @@ public class DataTransferAPIService {
             transferProcessRepository.save(rollback);
             // Best-effort: if a gRPC DP session was prepared, terminate it so resources are not leaked.
             if (transportProfile != null) {
-                if (assignedEndpoint != null) {
-                    dataPlaneClient.restoreStickyAssignment(transferProcessStarted.getId(), assignedEndpoint);
-                }
-                try {
-                    dataPlaneClient.terminate(transferProcessStarted.getId(),
-                            transferProcessStarted.getFormat(), transportProfile);
-                } catch (Exception e) {
-                    log.warn("Best-effort DP terminate failed for rolled-back gRPC process {}: {}",
-                            transferProcessStarted.getId(), e.getMessage());
-                }
-                dataPlaneClient.clearStickyAssignment(transferProcessStarted.getId());
+                cleanupPreparedDataPlaneSession(transferProcessStarted.getId(), transferProcessStarted.getFormat(),
+                        transportProfile, assignedEndpoint,
+                        "Best-effort DP terminate failed for rolled-back gRPC process");
             }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
                     "Transfer process start failed",
@@ -555,6 +553,22 @@ public class DataTransferAPIService {
             builder.endpointType(endpointType);
         }
         return builder.build();
+    }
+
+    private void cleanupPreparedDataPlaneSession(String processId,
+                                                 String transferType,
+                                                 String transportProfile,
+                                                 String assignedEndpoint,
+                                                 String failurePrefix) {
+        if (assignedEndpoint != null) {
+            dataPlaneClient.restoreStickyAssignment(processId, assignedEndpoint);
+        }
+        try {
+            dataPlaneClient.terminate(processId, transferType, transportProfile);
+        } catch (Exception e) {
+            log.warn("{} {}: {}", failurePrefix, processId, e.getMessage());
+        }
+        dataPlaneClient.clearStickyAssignment(processId);
     }
 
     /**

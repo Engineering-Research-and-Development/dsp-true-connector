@@ -38,6 +38,7 @@ For HTTP-PUSH the flow is different — see the [HTTP-PUSH Transfer Flow](#http-
 | `data-plane-core` | Shared runtime: registration, routing, CP client | Library JAR |
 | `data-plane-http-pull` | HTTP-PULL standalone service (default port 9090) | Spring Boot fat JAR |
 | `data-plane-http-push` | HTTP-PUSH standalone service (default port 9091) | Spring Boot fat JAR |
+| `data-plane-grpc` | gRPC streaming standalone service (REST 9094, gRPC 9095) | Spring Boot fat JAR |
 
 ### Control Plane additions (`data-transfer` module)
 
@@ -173,6 +174,47 @@ Key points:
 - Temporary credentials are cleaned up by `TemporaryBucketUserService.deleteTemporaryUser()`
   after transfer completion or termination.
 
+### gRPC streaming
+
+The streaming gRPC slice splits responsibilities across both dataplanes:
+
+- **Provider-side gRPC DP** handles DPS `prepare`, allocates a session, and exposes a gRPC
+  chunk stream backed by `SourceReader` (`S3SourceReader` first).
+- **Consumer-side gRPC DP** handles DPS `start`, connects to the provider gRPC endpoint, and
+  writes chunks through `SinkWriter` (`S3SinkWriter` first).
+
+```text
+Consumer CP                  Provider CP                Provider gRPC DP
+     |                            |                            |
+     |--- TransferRequestMsg ---->|                            |
+     |    format=stream:grpc      |                            |
+     |                            | [provider admin start]     |
+     |                            |-- POST /dataflows/prepare->|
+     |                            |<-- {host,port,sessionId} --|
+     |<-- TransferStartMessage ---|                            |
+     |    dataAddress = gRPC meta |                            |
+     |
+     | [consumer admin download]
+     v
+Consumer gRPC DP -----------------------------------------------------------> Provider gRPC DP
+POST /dataflows/start                                                       gRPC Stream(sessionId)
+     |                                                                             |
+     |--------------------------- streamed chunks -------------------------------->|
+     |--- write to consumer S3 (key = transferProcessId)
+     |--- POST /api/v1/transfers/{id}/dataflow/completed|errored --> Consumer CP
+```
+
+Key points:
+- Built-in HTTP-PULL and HTTP-PUSH still do not call DPS `prepare`; built-in `stream:grpc` does.
+- The provider CP persists both `transportProfile=stream:grpc` and `assignedDataplaneEndpoint`
+  so later terminate/suspend calls reach the same prepared DP instance.
+- Provider-side source hints such as `sourceType` and `finite` are passed from the original
+  `TransferRequestMessage.dataAddress` into `DataFlowPrepareMessage.dataAddress`.
+- If the consumer peer rejects `TransferStartMessage`, the provider CP rolls the transfer back
+  to `REQUESTED` and best-effort terminates the prepared gRPC session to avoid leaks.
+- Finite streams complete on EOF; unexpected EOF on a non-finite stream is surfaced through the
+  DPS `errored` callback instead of leaving the data flow stuck in `STARTED`.
+
 ### viewData
 
 After a transfer reaches `COMPLETED` and `isDownloaded = true`, the consumer can call
@@ -210,7 +252,7 @@ Suspend is safe and allowed when:
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/dataflows/start` | Begin a data transfer (async) |
-| `POST` | `/dataflows/prepare` | Prepare resources before start (DPS spec; not called by the built-in CP for HTTP-PULL or HTTP-PUSH) |
+| `POST` | `/dataflows/prepare` | Prepare resources before start (used by the built-in CP for `stream:grpc`; not called for HTTP-PULL or HTTP-PUSH) |
 | `POST` or `DELETE` | `/dataflows/{id}/terminate` | Terminate/abort a data flow |
 | `POST` | `/dataflows/{id}/suspend` | Suspend an active transfer |
 | `POST` | `/dataflows/{id}/resume` | Resume a suspended transfer |

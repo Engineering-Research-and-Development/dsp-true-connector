@@ -270,6 +270,75 @@ services:
       # Provider's bucket; presigned GET URLs for artifact are consumed within Docker network
       - S3_BUCKETNAME=dsp-true-connector-b
 
+  ### data-plane-grpc-a (consumer streaming DP — registers with connector-a)
+  ### Used for: downloadData on the consumer side for stream:grpc transfers
+  ### Started only when --profile grpc is passed to docker compose
+  data-plane-grpc-a:
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-grpc:test
+    container_name: data-plane-grpc-a
+    profiles: ["grpc"]
+    networks:
+      - network-a
+    ports:
+      - "9094:9094"
+      - "9095:9095"
+    depends_on:
+      minio:
+        condition: service_healthy
+      connector-a:
+        condition: service_started
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-a:27017/data-plane-grpc-a
+      - DATAPLANE_ID=dp-grpc-a
+      - DATAPLANE_ENDPOINT=http://data-plane-grpc-a:9094
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-a:8080
+      - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}
+      - DATAPLANE_AUTH_TYPE=API_KEY
+      - DATAPLANE_API_KEY=${DP_GRPC_API_KEY:-changeme}
+      - SERVER_PORT=9094
+      - GRPC_SERVER_HOST=data-plane-grpc-a
+      - GRPC_SERVER_PORT=9095
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESSKEY=minioadmin
+      - S3_SECRETKEY=minioadmin
+      - S3_REGION=us-east-1
+      - S3_BUCKETNAME=dsp-true-connector-a
+
+  ### data-plane-grpc-b (provider streaming DP — registers with connector-b)
+  ### Used for: startTransfer prepare on the provider side and gRPC source streaming to consumer DP
+  ### Started only when --profile grpc is passed to docker compose
+  data-plane-grpc-b:
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-grpc:test
+    container_name: data-plane-grpc-b
+    profiles: ["grpc"]
+    networks:
+      - network-a
+      - network-b
+    ports:
+      - "9096:9094"
+      - "9097:9095"
+    depends_on:
+      minio:
+        condition: service_healthy
+      connector-b:
+        condition: service_started
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-b:27017/data-plane-grpc-b
+      - DATAPLANE_ID=dp-grpc-b
+      - DATAPLANE_ENDPOINT=http://data-plane-grpc-b:9094
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-b:8080
+      - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}
+      - DATAPLANE_AUTH_TYPE=API_KEY
+      - DATAPLANE_API_KEY=${DP_GRPC_API_KEY:-changeme}
+      - SERVER_PORT=9094
+      - GRPC_SERVER_HOST=data-plane-grpc-b
+      - GRPC_SERVER_PORT=9095
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESSKEY=minioadmin
+      - S3_SECRETKEY=minioadmin
+      - S3_REGION=us-east-1
+      - S3_BUCKETNAME=dsp-true-connector-b
+
 networks:
   network-a: { }
   network-b: { }

@@ -1507,4 +1507,60 @@ class DataTransferAPIServiceTest {
                 anyString());
         verify(temporaryBucketUserService, never()).createTemporaryUser(anyString(), anyString(), anyString());
     }
+
+    @Test
+    @DisplayName("requestTransfer - gRPC with invalid dataAddress fails explicitly")
+    public void requestTransfer_grpc_withInvalidDataAddress_failsExplicitly() throws Exception {
+        TransferProcess grpcInitialized = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .datasetId(DataTransferMockObjectUtil.DATASET_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.INITIALIZED)
+                .build();
+
+        DataTransferRequest grpcRequest = new DataTransferRequest(
+                grpcInitialized.getId(),
+                TransportProfile.STREAM_GRPC,
+                new ObjectMapper().readTree("{\"endpointProperties\":\"not-an-array\"}"));
+
+        when(transferProcessRepository.findById(grpcInitialized.getId()))
+                .thenReturn(Optional.of(grpcInitialized));
+        when(transportProfileResolver.resolve(TransportProfile.STREAM_GRPC)).thenReturn(TransportProfile.STREAM_GRPC);
+
+        assertThrows(DataTransferAPIException.class, () -> apiService.requestTransfer(grpcRequest));
+
+        verify(okHttpRestClient, never()).sendRequestProtocol(anyString(), any(JsonNode.class), anyString());
+    }
+
+    @Test
+    @DisplayName("startTransfer - provider gRPC: missing prepare dataAddress fails and cleans prepared session")
+    public void startTransfer_grpc_provider_missingPrepareDataAddress_failsAndCleansPreparedSession() {
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC));
+        when(transportProfileResolver.resolve(TransportProfile.STREAM_GRPC)).thenReturn(TransportProfile.STREAM_GRPC);
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq(TransportProfile.STREAM_GRPC), eq(TransportProfile.STREAM_GRPC)))
+                .thenReturn(DataFlowPrepareResponse.Builder.newInstance()
+                        .processId(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId())
+                        .build());
+        when(dataPlaneClient.getStickyEndpoint(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId()))
+                .thenReturn(Optional.of("http://dp-grpc:9090"));
+
+        assertThrows(DataTransferAPIException.class,
+                () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId()));
+
+        verify(dataPlaneClient).restoreStickyAssignment(
+                DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId(),
+                "http://dp-grpc:9090");
+        verify(dataPlaneClient).terminate(
+                DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId(),
+                TransportProfile.STREAM_GRPC,
+                TransportProfile.STREAM_GRPC);
+        verify(dataPlaneClient).clearStickyAssignment(
+                DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId());
+        verify(okHttpRestClient, never()).sendRequestProtocol(anyString(), any(JsonNode.class), anyString());
+        verify(transferProcessRepository, never()).save(any(TransferProcess.class));
+    }
 }

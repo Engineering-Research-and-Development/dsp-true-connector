@@ -74,6 +74,15 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-data-plane-http-push:test
 
+      - name: Build and push data-plane-grpc Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./data-plane/data-plane-grpc
+          file: ./data-plane/data-plane-grpc/Dockerfile
+          no-cache: true
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-data-plane-grpc:test
+
   negotiation-api-without-counteroffer-tests:
     needs: build-and-push-image
     runs-on: ubuntu-latest

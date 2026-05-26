@@ -14,7 +14,7 @@ services independently and scale them as needed.
 |---|---|
 | **Control Plane (CP)** | The main connector application that manages negotiations and transfer lifecycle |
 | **Data Plane (DP)** | A lightweight service responsible for the actual data transfer |
-| **Transfer type** | Protocol used for data movement — `HttpData-PULL` or `HttpData-PUSH` |
+| **Transfer type** | Protocol used for data movement — `HttpData-PULL`, `HttpData-PUSH`, or `stream:grpc` |
 | **DP Registration** | A CP record describing where a DP lives and what transfer types it supports |
 
 ---
@@ -27,8 +27,9 @@ The connector ships two ready-made Data Plane images:
 |---|---|---|
 | `data-plane-http-pull` | `HttpData-PULL` | 9090 |
 | `data-plane-http-push` | `HttpData-PUSH` | 9091 |
+| `data-plane-grpc` | `stream:grpc` | REST 9094, gRPC 9095 |
 
-Both are included in the Docker Compose file at `ci/docker/docker-compose.yml`.
+All three are wired in `ci/docker/docker-compose.yml`; the gRPC pair is started with `--profile grpc`.
 
 ### Minimum required configuration (each DP)
 
@@ -89,6 +90,25 @@ Leave `s3.endpoint` blank when using AWS S3 (the SDK resolves the correct endpoi
 
 > **Note**: Temporary push credentials are automatically cleaned up after the transfer
 > completes or is terminated.
+
+### gRPC streaming — provider prepares, consumer streams
+
+1. **Consumer admin** calls *Request transfer* with `format=stream:grpc`.
+   Optional source hints such as `sourceType=s3` and `finite=true|false` can be passed
+   in the request `dataAddress`.
+2. **Provider admin** calls *Start transfer*.
+   The provider CP calls DPS `POST /dataflows/prepare` on the provider gRPC DP, which allocates
+   a stream session and returns gRPC endpoint metadata (`host`, `port`, `sessionId`, `mode`).
+3. The provider CP sends a standard `TransferStartMessage` to the consumer, embedding those
+   transport details inside `dataAddress`.
+4. **Consumer admin** calls *Download data*.
+   The consumer CP routes `POST /dataflows/start` to the consumer gRPC DP, which opens the gRPC
+   stream and writes received chunks into the consumer bucket.
+5. Finite streams notify `COMPLETED` on EOF. Non-finite streams stay `STARTED` until explicitly
+   terminated; if the provider unexpectedly closes a non-finite stream, the DP reports `errored`.
+
+The provider-side prepared session is sticky-routed to one DP instance and is cleaned up on
+rollback or termination.
 
 ### Viewing downloaded data
 
@@ -263,6 +283,9 @@ See `doc/data-plane-signaling-technical.md` for the full message schemas.
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | Transfer stays in `REQUESTED` | No DP registered for that transfer type | Register a DP via admin API |
+| `stream:grpc` stays in `REQUESTED` after *Start transfer* | No gRPC DP registered on the provider side or `prepare` failed | Check `/api/v1/dataplanes`, provider DP logs, and gRPC DP registration |
+| `stream:grpc` reaches `STARTED` but *Download data* fails immediately | Consumer received incomplete gRPC `dataAddress` metadata | Verify provider `prepare` response contains `host`, `port`, and `sessionId` |
+| Non-finite gRPC stream ends and transfer moves to error | Provider closed a stream that was advertised as non-finite | Check provider source implementation and DP logs; non-finite EOF is treated as an error |
 | DP logs "CP registration failed" on startup | CP not reachable or wrong endpoint | Check `dataplane.control-plane-admin-endpoint` |
 | CP rejects DP callbacks with HTTP 401 | API key mismatch | Verify `dataplane.api-key` matches the key stored in `DataPlaneRegistration` on the CP |
 | Transfer stuck in `STARTED` after push | DP completed but CP callback failed | Check DP logs; verify the CP callback URL (`dataplane.control-plane-admin-endpoint`) is reachable from the DP container |
