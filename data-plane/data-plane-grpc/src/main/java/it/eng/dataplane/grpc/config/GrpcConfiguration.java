@@ -33,6 +33,10 @@ public class GrpcConfiguration {
     /**
      * Starts the provider-side gRPC server.
      *
+     * <p>Shutdown is managed exclusively via Spring's bean destroy method ({@code shutdownNow}).
+     * No manual JVM shutdown hook is registered; Spring's own shutdown hook closes the
+     * application context, which in turn calls the destroy method.</p>
+     *
      * @param dataStreamService data-stream service implementation
      * @param grpcProperties gRPC server properties
      * @return started gRPC server
@@ -45,7 +49,6 @@ public class GrpcConfiguration {
                 .build()
                 .start();
         log.info("gRPC server started on port {}", grpcProperties.getPort());
-        Runtime.getRuntime().addShutdownHook(new Thread(server::shutdownNow));
         return server;
     }
 }

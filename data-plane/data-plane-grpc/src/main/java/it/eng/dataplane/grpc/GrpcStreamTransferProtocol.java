@@ -321,6 +321,8 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
                     if (finite) {
                         sendCompletedSafely(dataFlow.getCallbackAddress(), processId, dataAddress);
                         future.complete(DataFlowResult.success());
+                    } else {
+                        handleStreamError(dataFlow, "server closed non-finite stream unexpectedly", future);
                     }
                 } else {
                     handleStreamError(dataFlow, writeResult.getErrorMessage(), future);

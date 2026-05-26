@@ -27,9 +27,14 @@ public class GrpcSessionRegistry {
      * {@code /dataflows/prepare}), the prior entry is evicted from {@code bySessionId} before
      * the new session is stored, preventing orphaned session objects.</p>
      *
+     * <p>The method is {@code synchronized} to make the dual-map update atomic: a concurrent
+     * {@link #findByProcessId(String)} call will see either the old state or the new state,
+     * never a partial view where {@code processToSessionId} has been updated but
+     * {@code bySessionId} has not yet been populated.</p>
+     *
      * @param session the session to register
      */
-    public void register(GrpcStreamSession session) {
+    public synchronized void register(GrpcStreamSession session) {
         String priorSessionId = processToSessionId.put(session.getProcessId(), session.getSessionId());
         if (priorSessionId != null && !priorSessionId.equals(session.getSessionId())) {
             bySessionId.remove(priorSessionId);
@@ -53,10 +58,14 @@ public class GrpcSessionRegistry {
     /**
      * Returns the session for the given transfer process identifier.
      *
+     * <p>Synchronized to ensure a consistent read across both maps: the caller sees either
+     * the fully registered session or nothing, never a partial state where the session ID
+     * mapping is visible but the session object has not yet been inserted.</p>
+     *
      * @param processId transfer process ID
      * @return matching session, or empty if not found
      */
-    public Optional<GrpcStreamSession> findByProcessId(String processId) {
+    public synchronized Optional<GrpcStreamSession> findByProcessId(String processId) {
         String sessionId = processToSessionId.get(processId);
         if (sessionId == null) {
             return Optional.empty();
@@ -68,9 +77,12 @@ public class GrpcSessionRegistry {
      * Removes the session associated with the given transfer process identifier.
      * No-op if the process has no registered session.
      *
+     * <p>Synchronized to keep removal atomic with {@link #register(GrpcStreamSession)} so that
+     * concurrent prepare retries and stream terminations cannot leave orphaned entries.</p>
+     *
      * @param processId transfer process ID
      */
-    public void removeByProcessId(String processId) {
+    public synchronized void removeByProcessId(String processId) {
         String sessionId = processToSessionId.remove(processId);
         if (sessionId != null) {
             bySessionId.remove(sessionId);

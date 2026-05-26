@@ -483,6 +483,54 @@ class GrpcStreamTransferProtocolTest {
         }
     }
 
+    @Test
+    @DisplayName("initiateTransfer() treats server-initiated EOF on a non-finite stream as an error")
+    void initiateTransfer_nonFiniteStream_serverEof_treatsAsError() throws Exception {
+        String serverName = InProcessServerBuilder.generateName();
+        Server server = InProcessServerBuilder.forName(serverName)
+                .addService(new EofChunkService(List.of("chunk-1".getBytes(StandardCharsets.UTF_8))))
+                .build()
+                .start();
+        ManagedChannel channel = InProcessChannelBuilder.forName(serverName).build();
+        TestSinkWriter sinkWriter = new TestSinkWriter();
+
+        when(channelFactory.create("grpc-host", 9094)).thenReturn(channel);
+        when(sinkWriterRegistry.getWriter("s3")).thenReturn(Optional.of(sinkWriter));
+        when(s3Properties.getBucketName()).thenReturn("bucket-a");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getAccessKey()).thenReturn("access-key");
+        when(s3Properties.getSecretKey()).thenReturn("secret-key");
+
+        Map<String, String> dataAddress = Map.of(
+                "host", "grpc-host",
+                "port", "9094",
+                "sessionId", "sess-nonfinite-eof",
+                "mode", "non-finite"
+        );
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .dataFlowId("df-nonfinite-eof-1")
+                .processId("tp-nonfinite-eof")
+                .datasetId("ds-nonfinite-eof")
+                .transferType("stream:grpc")
+                .callbackAddress("http://cp:8080")
+                .dataAddress(dataAddress)
+                .build();
+
+        try {
+            DataFlowResult result = protocol.initiateTransfer(dataFlow).get(5, TimeUnit.SECONDS);
+
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.getErrorMessage()).contains("non-finite");
+            verify(controlPlaneClient).sendStarted("http://cp:8080", "tp-nonfinite-eof", dataAddress);
+            verify(controlPlaneClient).sendErrored("http://cp:8080", "tp-nonfinite-eof", result.getErrorMessage());
+            verify(controlPlaneClient, never()).sendCompleted("http://cp:8080", "tp-nonfinite-eof", dataAddress);
+        } finally {
+            channel.shutdownNow();
+            server.shutdownNow();
+        }
+    }
+
     /**
      * Finite in-process gRPC service used by initiateTransfer tests.
      */
@@ -544,6 +592,29 @@ class GrpcStreamTransferProtocolTest {
             responseObserver.onError(Status.NOT_FOUND
                     .withDescription("No session found for sessionId: " + request.getSessionId())
                     .asRuntimeException());
+        }
+    }
+
+    /**
+     * In-process gRPC service that sends chunks then calls {@code onCompleted()},
+     * simulating a server-initiated EOF on a stream declared as non-finite by the consumer.
+     */
+    private static final class EofChunkService extends DataStreamGrpc.DataStreamImplBase {
+
+        private final List<byte[]> chunks;
+
+        private EofChunkService(List<byte[]> chunks) {
+            this.chunks = chunks;
+        }
+
+        @Override
+        public void stream(StreamRequest request, StreamObserver<DataChunk> responseObserver) {
+            for (byte[] chunk : chunks) {
+                responseObserver.onNext(DataChunk.newBuilder()
+                        .setPayload(ByteString.copyFrom(chunk))
+                        .build());
+            }
+            responseObserver.onCompleted();
         }
     }
 }

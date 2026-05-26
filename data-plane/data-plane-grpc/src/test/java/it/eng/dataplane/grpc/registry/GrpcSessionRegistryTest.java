@@ -120,6 +120,43 @@ class GrpcSessionRegistryTest {
         assertThat(registry.size()).isEqualTo(1);
     }
 
+    @Test
+    @DisplayName("register() concurrent same-processId registrations leave no orphaned session entries")
+    void register_concurrentSameProcessId_noOrphanedEntries() throws Exception {
+        int threadCount = 50;
+        java.util.concurrent.CountDownLatch startLatch = new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.CountDownLatch doneLatch = new java.util.concurrent.CountDownLatch(threadCount);
+        java.util.List<Throwable> errors = new java.util.ArrayList<>();
+
+        for (int i = 0; i < threadCount; i++) {
+            int idx = i;
+            Thread thread = new Thread(() -> {
+                try {
+                    startLatch.await();
+                    GrpcStreamSession session = buildSession("session-concurrent-" + idx, "process-concurrent", true);
+                    registry.register(session);
+                } catch (InterruptedException exception) {
+                    Thread.currentThread().interrupt();
+                } catch (Exception exception) {
+                    errors.add(exception);
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+            thread.start();
+        }
+
+        startLatch.countDown();
+        assertThat(doneLatch.await(5, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+        assertThat(errors).isEmpty();
+
+        // Exactly one session must survive; processId must resolve to a real bySessionId entry.
+        assertThat(registry.size()).isEqualTo(1);
+        Optional<GrpcStreamSession> found = registry.findByProcessId("process-concurrent");
+        assertThat(found).isPresent();
+        assertThat(registry.findBySessionId(found.get().getSessionId())).isPresent();
+    }
+
     private GrpcStreamSession buildSession(String sessionId, String processId, boolean finite) {
         return GrpcStreamSession.Builder.newInstance()
                 .sessionId(sessionId)
