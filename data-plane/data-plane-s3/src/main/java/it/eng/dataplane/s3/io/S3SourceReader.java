@@ -3,6 +3,7 @@ package it.eng.dataplane.s3.io;
 import it.eng.dataplane.api.io.SourceContext;
 import it.eng.dataplane.api.io.SourceOpenResult;
 import it.eng.dataplane.api.io.SourceReader;
+import it.eng.tools.exception.S3ServerException;
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.S3ClientRequest;
@@ -60,10 +61,11 @@ public class S3SourceReader implements SourceReader {
     /**
      * Opens an S3 object for reading.
      *
-     * <p>S3 SDK errors are caught and returned as {@link SourceOpenResult#failure(String)} so
-     * callers never need to handle checked exceptions from this method. Missing required context
-     * properties are still reported as {@link IllegalArgumentException} because they indicate a
-     * programming error, not a recoverable runtime failure.</p>
+     * <p>S3 SDK errors and credential-lookup failures are caught and returned as
+     * {@link SourceOpenResult#failure(String)} so callers never need to handle unchecked exceptions
+     * from this method. Missing required context properties are still reported as
+     * {@link IllegalArgumentException} because they indicate a programming error, not a recoverable
+     * runtime failure.</p>
      *
      * @param context source context containing bucket and object details
      * @return opened S3 source result; never {@code null}
@@ -92,7 +94,7 @@ public class S3SourceReader implements SourceReader {
                     response.contentLength(),
                     true
             );
-        } catch (SdkException e) {
+        } catch (S3ServerException | SdkException e) {
             log.error("Failed to open S3 object s3://{}/{}: {}", bucketName, objectKey, e.getMessage());
             return SourceOpenResult.failure("S3 error opening s3://" + bucketName + "/" + objectKey + ": " + e.getMessage());
         }

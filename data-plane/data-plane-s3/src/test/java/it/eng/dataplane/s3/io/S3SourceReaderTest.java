@@ -2,6 +2,7 @@ package it.eng.dataplane.s3.io;
 
 import it.eng.dataplane.api.io.SourceContext;
 import it.eng.dataplane.api.io.SourceOpenResult;
+import it.eng.tools.exception.S3ServerException;
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
@@ -105,6 +106,22 @@ class S3SourceReaderTest {
         assertThatThrownBy(() -> sourceReader.open(context))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("objectKey");
+    }
+
+    @Test
+    @DisplayName("open returns failure result when getBucketCredentials throws S3ServerException")
+    void open_whenBucketCredentialsThrowsS3ServerException_returnsFailureResult() {
+        SourceContext context = SourceContext.Builder.newInstance()
+                .properties(Map.of("bucketName", "bucket-a", "objectKey", "object-1"))
+                .build();
+
+        when(bucketCredentialsService.getBucketCredentials("bucket-a"))
+                .thenThrow(new S3ServerException("Bucket credentials not found for bucket: bucket-a"));
+
+        SourceOpenResult result = sourceReader.open(context);
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("bucket-a").contains("object-1");
     }
 
     @Test
