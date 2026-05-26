@@ -1,14 +1,34 @@
 package it.eng.dataplane.grpc;
 
+import com.google.protobuf.ByteString;
+import io.grpc.ManagedChannel;
+import io.grpc.Server;
+import io.grpc.Status;
+import io.grpc.stub.StreamObserver;
+import io.grpc.inprocess.InProcessChannelBuilder;
+import io.grpc.inprocess.InProcessServerBuilder;
+import it.eng.dataplane.api.io.SinkContext;
+import it.eng.dataplane.api.io.SinkWriteResult;
+import it.eng.dataplane.api.io.SinkWriter;
 import it.eng.dataplane.api.io.SourceReader;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
+import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
+import it.eng.dataplane.core.client.ControlPlaneClient;
+import it.eng.dataplane.core.registry.SinkWriterRegistry;
+import it.eng.dataplane.core.registry.SourceReaderRegistry;
+import it.eng.dataplane.grpc.client.GrpcChannelFactory;
 import it.eng.dataplane.grpc.config.GrpcProperties;
 import it.eng.dataplane.grpc.model.GrpcSessionState;
 import it.eng.dataplane.grpc.model.GrpcStreamSession;
+import it.eng.dataplane.grpc.proto.DataChunk;
+import it.eng.dataplane.grpc.proto.DataStreamGrpc;
+import it.eng.dataplane.grpc.proto.StreamRequest;
 import it.eng.dataplane.grpc.registry.GrpcSessionRegistry;
-import it.eng.dataplane.core.registry.SourceReaderRegistry;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.util.S3Utils;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,12 +37,22 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,15 +67,39 @@ class GrpcStreamTransferProtocolTest {
     @Mock
     private SourceReaderRegistry sourceReaderRegistry;
     @Mock
+    private SinkWriterRegistry sinkWriterRegistry;
+    @Mock
     private GrpcProperties grpcProperties;
     @Mock
     private SourceReader s3SourceReader;
+    @Mock
+    private ControlPlaneClient controlPlaneClient;
+    @Mock
+    private GrpcChannelFactory channelFactory;
+    @Mock
+    private S3Properties s3Properties;
 
+    private ExecutorService transferExecutor;
     private GrpcStreamTransferProtocol protocol;
 
     @BeforeEach
     void setUp() {
-        protocol = new GrpcStreamTransferProtocol(sessionRegistry, sourceReaderRegistry, grpcProperties);
+        transferExecutor = Executors.newSingleThreadExecutor();
+        protocol = new GrpcStreamTransferProtocol(
+                sessionRegistry,
+                sourceReaderRegistry,
+                grpcProperties,
+                sinkWriterRegistry,
+                controlPlaneClient,
+                channelFactory,
+                s3Properties,
+                transferExecutor
+        );
+    }
+
+    @AfterEach
+    void tearDown() {
+        transferExecutor.shutdownNow();
     }
 
     @Test
@@ -185,16 +239,311 @@ class GrpcStreamTransferProtocolTest {
     }
 
     @Test
-    @DisplayName("initiateTransfer() returns failure since streaming is not yet implemented")
-    void initiateTransfer_returnsFailure() {
-        it.eng.dataplane.api.model.DataFlow dataFlow = it.eng.dataplane.api.model.DataFlow.Builder.newInstance()
-                .processId("tp-start-1")
+    @DisplayName("initiateTransfer() writes finite stream to sink and sends completed callback")
+    void initiateTransfer_finiteStream_writesToSinkAndCallsSendCompleted() throws Exception {
+        String serverName = InProcessServerBuilder.generateName();
+        Server server = InProcessServerBuilder.forName(serverName)
+                .addService(new FiniteChunkService(List.of("hello ".getBytes(StandardCharsets.UTF_8),
+                        "world".getBytes(StandardCharsets.UTF_8))))
+                .build()
+                .start();
+        ManagedChannel channel = InProcessChannelBuilder.forName(serverName).build();
+        TestSinkWriter sinkWriter = new TestSinkWriter();
+
+        when(channelFactory.create("grpc-host", 9094)).thenReturn(channel);
+        when(sinkWriterRegistry.getWriter("s3")).thenReturn(Optional.of(sinkWriter));
+        when(s3Properties.getBucketName()).thenReturn("bucket-a");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getAccessKey()).thenReturn("access-key");
+        when(s3Properties.getSecretKey()).thenReturn("secret-key");
+
+        Map<String, String> dataAddress = Map.of(
+                "host", "grpc-host",
+                "port", "9094",
+                "sessionId", "sess-1",
+                "mode", "finite"
+        );
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .dataFlowId("df-finite-1")
+                .processId("tp-1")
+                .datasetId("ds-1")
+                .transferType("stream:grpc")
+                .callbackAddress("http://cp:8080")
+                .dataAddress(dataAddress)
+                .build();
+
+        try {
+            DataFlowResult result = protocol.initiateTransfer(dataFlow).get(5, TimeUnit.SECONDS);
+
+            assertThat(result.isSuccess()).isTrue();
+            assertThat(sinkWriter.getReceivedText()).isEqualTo("hello world");
+            assertThat(sinkWriter.getLastContext().getProperties()).containsEntry(S3Utils.BUCKET_NAME, "bucket-a");
+            assertThat(sinkWriter.getLastContext().getProperties()).containsEntry(S3Utils.OBJECT_KEY, "tp-1");
+            verify(controlPlaneClient).sendStarted("http://cp:8080", "tp-1", dataAddress);
+            verify(controlPlaneClient).sendCompleted("http://cp:8080", "tp-1", dataAddress);
+            verify(controlPlaneClient, never()).sendErrored("http://cp:8080", "tp-1", "transfer terminated");
+        } finally {
+            channel.shutdownNow();
+            server.shutdownNow();
+        }
+    }
+
+    @Test
+    @DisplayName("initiateTransfer() keeps non-finite stream open until terminateTransfer is called")
+    void initiateTransfer_nonFiniteStream_doesNotCompleteUntilTerminated() throws Exception {
+        String serverName = InProcessServerBuilder.generateName();
+        BlockingChunkService service = new BlockingChunkService("event-1".getBytes(StandardCharsets.UTF_8));
+        Server server = InProcessServerBuilder.forName(serverName)
+                .addService(service)
+                .build()
+                .start();
+        ManagedChannel channel = InProcessChannelBuilder.forName(serverName).build();
+        TestSinkWriter sinkWriter = new TestSinkWriter();
+
+        when(channelFactory.create("grpc-host", 9094)).thenReturn(channel);
+        when(sinkWriterRegistry.getWriter("s3")).thenReturn(Optional.of(sinkWriter));
+        when(s3Properties.getBucketName()).thenReturn("bucket-a");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getAccessKey()).thenReturn("access-key");
+        when(s3Properties.getSecretKey()).thenReturn("secret-key");
+
+        Map<String, String> dataAddress = Map.of(
+                "host", "grpc-host",
+                "port", "9094",
+                "sessionId", "sess-nonfinite",
+                "mode", "non-finite"
+        );
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .dataFlowId("df-nonfinite-1")
+                .processId("tp-2")
+                .datasetId("ds-2")
+                .transferType("stream:grpc")
+                .callbackAddress("http://cp:8080")
+                .dataAddress(dataAddress)
+                .build();
+
+        try {
+            CompletableFuture<DataFlowResult> future = protocol.initiateTransfer(dataFlow);
+            assertThat(sinkWriter.awaitFirstRead()).isTrue();
+            assertThat(future).isNotDone();
+
+            DataFlowResult terminateResult = protocol.terminateTransfer("df-nonfinite-1").get(5, TimeUnit.SECONDS);
+            assertThat(terminateResult.isSuccess()).isTrue();
+
+            DataFlowResult result = future.get(5, TimeUnit.SECONDS);
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.getErrorMessage()).isEqualTo("transfer terminated");
+            assertThat(channel.isShutdown()).isTrue();
+            verify(controlPlaneClient).sendStarted("http://cp:8080", "tp-2", dataAddress);
+            verify(controlPlaneClient, never()).sendCompleted("http://cp:8080", "tp-2", dataAddress);
+            verify(controlPlaneClient, never()).sendErrored("http://cp:8080", "tp-2", "transfer terminated");
+        } finally {
+            service.release();
+            channel.shutdownNow();
+            server.shutdownNow();
+        }
+    }
+
+    @Test
+    @DisplayName("initiateTransfer() fails immediately when data address is missing")
+    void initiateTransfer_missingDataAddress_failsImmediately() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .dataFlowId("df-missing-1")
+                .processId("tp-3")
                 .transferType("stream:grpc")
                 .build();
 
         DataFlowResult result = protocol.initiateTransfer(dataFlow).join();
 
         assertThat(result.isSuccess()).isFalse();
-        assertThat(result.getErrorMessage()).isNotBlank();
+        assertThat(result.getErrorMessage()).isEqualTo("dataAddress is required for stream:grpc");
+    }
+
+    @Test
+    @DisplayName("initiateTransfer() fails immediately when required transport metadata is missing")
+    void initiateTransfer_missingTransportMetadata_failsImmediately() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .dataFlowId("df-missing-2")
+                .processId("tp-4")
+                .transferType("stream:grpc")
+                .dataAddress(Map.of("port", "9094", "sessionId", "sess-1"))
+                .build();
+
+        DataFlowResult result = protocol.initiateTransfer(dataFlow).join();
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("Missing transport metadata");
+    }
+
+    @Test
+    @DisplayName("initiateTransfer() fails immediately when port is invalid")
+    void initiateTransfer_invalidPort_failsImmediately() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .dataFlowId("df-invalid-port")
+                .processId("tp-5")
+                .transferType("stream:grpc")
+                .dataAddress(Map.of("host", "grpc-host", "port", "invalid", "sessionId", "sess-1"))
+                .build();
+
+        DataFlowResult result = protocol.initiateTransfer(dataFlow).join();
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).isEqualTo("Invalid port value: invalid");
+    }
+
+    @Test
+    @DisplayName("initiateTransfer() returns failure and sends errored callback when provider rejects the session")
+    void initiateTransfer_unknownProviderSession_returnsFailure() throws Exception {
+        String serverName = InProcessServerBuilder.generateName();
+        Server server = InProcessServerBuilder.forName(serverName)
+                .addService(new MissingSessionService())
+                .build()
+                .start();
+        ManagedChannel channel = InProcessChannelBuilder.forName(serverName).build();
+        TestSinkWriter sinkWriter = new TestSinkWriter();
+
+        when(channelFactory.create("grpc-host", 9094)).thenReturn(channel);
+        when(sinkWriterRegistry.getWriter("s3")).thenReturn(Optional.of(sinkWriter));
+        when(s3Properties.getBucketName()).thenReturn("bucket-a");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getAccessKey()).thenReturn("access-key");
+        when(s3Properties.getSecretKey()).thenReturn("secret-key");
+
+        Map<String, String> dataAddress = Map.of(
+                "host", "grpc-host",
+                "port", "9094",
+                "sessionId", "missing-session",
+                "mode", "finite"
+        );
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .dataFlowId("df-missing-session")
+                .processId("tp-6")
+                .transferType("stream:grpc")
+                .callbackAddress("http://cp:8080")
+                .dataAddress(dataAddress)
+                .build();
+
+        try {
+            DataFlowResult result = protocol.initiateTransfer(dataFlow).get(5, TimeUnit.SECONDS);
+
+            assertThat(result.isSuccess()).isFalse();
+            assertThat(result.getErrorMessage()).contains("NOT_FOUND");
+            verify(controlPlaneClient).sendErrored("http://cp:8080", "tp-6", result.getErrorMessage());
+            verify(controlPlaneClient, never()).sendCompleted("http://cp:8080", "tp-6", dataAddress);
+        } finally {
+            channel.shutdownNow();
+            server.shutdownNow();
+        }
+    }
+
+    /**
+     * Test sink writer that captures streamed bytes.
+     */
+    private static final class TestSinkWriter implements SinkWriter {
+
+        private final java.util.concurrent.CountDownLatch firstReadLatch = new java.util.concurrent.CountDownLatch(1);
+        private byte[] received = new byte[0];
+        private SinkContext lastContext;
+
+        @Override
+        public String getSinkType() {
+            return "s3";
+        }
+
+        @Override
+        public SinkWriteResult write(InputStream data, SinkContext context) {
+            this.lastContext = context;
+            try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
+                byte[] buffer = new byte[4];
+                int bytesRead;
+                while ((bytesRead = data.read(buffer)) != -1) {
+                    firstReadLatch.countDown();
+                    outputStream.write(buffer, 0, bytesRead);
+                }
+                received = outputStream.toByteArray();
+                return SinkWriteResult.success("etag-123");
+            } catch (IOException exception) {
+                return SinkWriteResult.failure(exception.getMessage());
+            }
+        }
+
+        private boolean awaitFirstRead() throws InterruptedException {
+            return firstReadLatch.await(5, TimeUnit.SECONDS);
+        }
+
+        private String getReceivedText() {
+            return new String(received, StandardCharsets.UTF_8);
+        }
+
+        private SinkContext getLastContext() {
+            return lastContext;
+        }
+    }
+
+    /**
+     * Finite in-process gRPC service used by initiateTransfer tests.
+     */
+    private static final class FiniteChunkService extends DataStreamGrpc.DataStreamImplBase {
+
+        private final List<byte[]> chunks;
+
+        private FiniteChunkService(List<byte[]> chunks) {
+            this.chunks = chunks;
+        }
+
+        @Override
+        public void stream(StreamRequest request, StreamObserver<DataChunk> responseObserver) {
+            for (byte[] chunk : chunks) {
+                responseObserver.onNext(DataChunk.newBuilder()
+                        .setPayload(ByteString.copyFrom(chunk))
+                        .build());
+            }
+            responseObserver.onCompleted();
+        }
+    }
+
+    /**
+     * Non-finite in-process gRPC service used by terminateTransfer tests.
+     */
+    private static final class BlockingChunkService extends DataStreamGrpc.DataStreamImplBase {
+
+        private final byte[] firstChunk;
+        private final java.util.concurrent.CountDownLatch releaseLatch = new java.util.concurrent.CountDownLatch(1);
+
+        private BlockingChunkService(byte[] firstChunk) {
+            this.firstChunk = firstChunk;
+        }
+
+        @Override
+        public void stream(StreamRequest request, StreamObserver<DataChunk> responseObserver) {
+            responseObserver.onNext(DataChunk.newBuilder()
+                    .setPayload(ByteString.copyFrom(firstChunk))
+                    .build());
+            try {
+                releaseLatch.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        private void release() {
+            releaseLatch.countDown();
+        }
+    }
+
+    /**
+     * In-process gRPC service that always returns NOT_FOUND.
+     */
+    private static final class MissingSessionService extends DataStreamGrpc.DataStreamImplBase {
+
+        @Override
+        public void stream(StreamRequest request, StreamObserver<DataChunk> responseObserver) {
+            responseObserver.onError(Status.NOT_FOUND
+                    .withDescription("No session found for sessionId: " + request.getSessionId())
+                    .asRuntimeException());
+        }
     }
 }

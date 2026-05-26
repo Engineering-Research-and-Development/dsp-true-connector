@@ -2,22 +2,41 @@ package it.eng.dataplane.grpc;
 
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
+import it.eng.dataplane.api.io.SinkContext;
+import it.eng.dataplane.api.io.SinkWriteResult;
+import it.eng.dataplane.api.io.SinkWriter;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.api.spi.DataTransferProtocol;
+import it.eng.dataplane.core.client.ControlPlaneClient;
+import it.eng.dataplane.core.registry.SinkWriterRegistry;
 import it.eng.dataplane.core.registry.SourceReaderRegistry;
+import it.eng.dataplane.grpc.client.GrpcChannelFactory;
 import it.eng.dataplane.grpc.config.GrpcProperties;
+import it.eng.dataplane.grpc.io.GrpcChunkInputStream;
 import it.eng.dataplane.grpc.model.GrpcSessionState;
 import it.eng.dataplane.grpc.model.GrpcStreamSession;
+import it.eng.dataplane.grpc.proto.DataChunk;
+import it.eng.dataplane.grpc.proto.DataStreamGrpc;
+import it.eng.dataplane.grpc.proto.StreamRequest;
 import it.eng.dataplane.grpc.registry.GrpcSessionRegistry;
-import lombok.RequiredArgsConstructor;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.util.S3Utils;
+import io.grpc.ManagedChannel;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
 
 /**
  * gRPC-streaming transfer protocol implementation.
@@ -32,7 +51,6 @@ import java.util.concurrent.CompletableFuture;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class GrpcStreamTransferProtocol implements DataTransferProtocol {
 
     /** Protocol identifier used for routing and registration. */
@@ -52,6 +70,45 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
     private final GrpcSessionRegistry sessionRegistry;
     private final SourceReaderRegistry sourceReaderRegistry;
     private final GrpcProperties grpcProperties;
+    private final SinkWriterRegistry sinkWriterRegistry;
+    private final ControlPlaneClient controlPlaneClient;
+    private final GrpcChannelFactory channelFactory;
+    private final S3Properties s3Properties;
+    private final Executor transferExecutor;
+
+    private final ConcurrentHashMap<String, ManagedChannel> activeChannels = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, CompletableFuture<DataFlowResult>> activeTransfers = new ConcurrentHashMap<>();
+
+    /**
+     * Creates the gRPC transfer protocol.
+     *
+     * @param sessionRegistry session registry
+     * @param sourceReaderRegistry source reader registry
+     * @param grpcProperties gRPC server properties
+     * @param sinkWriterRegistry sink writer registry
+     * @param controlPlaneClient control-plane callback client
+     * @param channelFactory managed-channel factory
+     * @param s3Properties S3 configuration for sink writes
+     * @param transferExecutor async executor
+     */
+    @SuppressWarnings("checkstyle:ParameterNumber")
+    public GrpcStreamTransferProtocol(GrpcSessionRegistry sessionRegistry,
+                                      SourceReaderRegistry sourceReaderRegistry,
+                                      GrpcProperties grpcProperties,
+                                      SinkWriterRegistry sinkWriterRegistry,
+                                      ControlPlaneClient controlPlaneClient,
+                                      GrpcChannelFactory channelFactory,
+                                      S3Properties s3Properties,
+                                      @Qualifier("transferExecutor") Executor transferExecutor) {
+        this.sessionRegistry = sessionRegistry;
+        this.sourceReaderRegistry = sourceReaderRegistry;
+        this.grpcProperties = grpcProperties;
+        this.sinkWriterRegistry = sinkWriterRegistry;
+        this.controlPlaneClient = controlPlaneClient;
+        this.channelFactory = channelFactory;
+        this.s3Properties = s3Properties;
+        this.transferExecutor = transferExecutor;
+    }
 
     /**
      * Returns the unique protocol identifier for this transport.
@@ -129,17 +186,60 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
     /**
      * Initiates a gRPC streaming transfer.
      *
-     * <p>Provider-side streaming is not yet implemented; returns a failure result.
-     * This will be implemented in a later task.</p>
+     * <p>Acts as the consumer-side start flow: connects to the provider gRPC endpoint,
+     * streams bytes into the configured sink, and emits DPS lifecycle callbacks.</p>
      *
      * @param dataFlow the data flow to initiate
-     * @return future with a failure result
+     * @return future with the transfer result
      */
     @Override
     public CompletableFuture<DataFlowResult> initiateTransfer(DataFlow dataFlow) {
-        log.warn("gRPC stream transfer initiation not yet implemented for processId={}", dataFlow.getProcessId());
-        return CompletableFuture.completedFuture(
-                DataFlowResult.failure("gRPC stream transfer initiation not yet implemented"));
+        Map<String, String> dataAddress = dataFlow.getDataAddress();
+        if (dataAddress == null) {
+            return CompletableFuture.completedFuture(DataFlowResult.failure("dataAddress is required for stream:grpc"));
+        }
+
+        String host = dataAddress.get(HOST_KEY);
+        String portValue = dataAddress.get(PORT_KEY);
+        String sessionId = dataAddress.get(SESSION_ID_KEY);
+        String mode = dataAddress.getOrDefault(MODE_KEY, MODE_FINITE);
+        if (isBlank(host) || isBlank(portValue) || isBlank(sessionId)) {
+            return CompletableFuture.completedFuture(DataFlowResult.failure(
+                    "Missing transport metadata: host, port, sessionId required for stream:grpc"));
+        }
+
+        int port;
+        try {
+            port = Integer.parseInt(portValue);
+        } catch (NumberFormatException exception) {
+            return CompletableFuture.completedFuture(DataFlowResult.failure("Invalid port value: " + portValue));
+        }
+
+        Optional<SinkWriter> sinkWriterOptional = sinkWriterRegistry.getWriter(DEFAULT_SOURCE_TYPE);
+        if (sinkWriterOptional.isEmpty()) {
+            return CompletableFuture.completedFuture(DataFlowResult.failure(
+                    "No SinkWriter available for type: " + DEFAULT_SOURCE_TYPE));
+        }
+
+        boolean finite = !MODE_NON_FINITE.equals(mode);
+        String processId = dataFlow.getProcessId();
+        String dataFlowId = dataFlow.getDataFlowId();
+        CompletableFuture<DataFlowResult> future = new CompletableFuture<>();
+        activeTransfers.put(dataFlowId, future);
+
+        transferExecutor.execute(() -> executeTransfer(
+                dataFlow,
+                dataAddress,
+                host,
+                port,
+                sessionId,
+                finite,
+                processId,
+                dataFlowId,
+                sinkWriterOptional.get(),
+                future
+        ));
+        return future;
     }
 
     /**
@@ -180,8 +280,110 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
      */
     @Override
     public CompletableFuture<DataFlowResult> terminateTransfer(String dataFlowId) {
-        log.info("Terminating stream:grpc transfer processId={}", dataFlowId);
+        log.info("Terminating stream:grpc transfer dataFlowId={}", dataFlowId);
         sessionRegistry.removeByProcessId(dataFlowId);
+        ManagedChannel channel = activeChannels.remove(dataFlowId);
+        if (channel != null) {
+            channel.shutdownNow();
+        }
+        CompletableFuture<DataFlowResult> pending = activeTransfers.remove(dataFlowId);
+        if (pending != null && !pending.isDone()) {
+            pending.complete(DataFlowResult.failure("transfer terminated"));
+        }
         return CompletableFuture.completedFuture(DataFlowResult.success());
+    }
+
+    private void executeTransfer(DataFlow dataFlow,
+                                 Map<String, String> dataAddress,
+                                 String host,
+                                 int port,
+                                 String sessionId,
+                                 boolean finite,
+                                 String processId,
+                                 String dataFlowId,
+                                 SinkWriter sinkWriter,
+                                 CompletableFuture<DataFlowResult> future) {
+        ManagedChannel channel = channelFactory.create(host, port);
+        activeChannels.put(dataFlowId, channel);
+        try {
+            DataStreamGrpc.DataStreamBlockingStub stub = DataStreamGrpc.newBlockingStub(channel);
+            StreamRequest request = StreamRequest.newBuilder().setSessionId(sessionId).build();
+            Iterator<DataChunk> chunks = stub.stream(request);
+
+            sendStartedSafely(dataFlow.getCallbackAddress(), processId, dataAddress);
+            log.info("Starting gRPC consumer stream sessionId={} processId={} finite={}",
+                    sessionId, processId, finite);
+
+            SinkContext sinkContext = buildSinkContext(dataFlow);
+            try (GrpcChunkInputStream grpcStream = new GrpcChunkInputStream(chunks)) {
+                SinkWriteResult writeResult = sinkWriter.write(grpcStream, sinkContext);
+                if (writeResult.isSuccess()) {
+                    if (finite) {
+                        sendCompletedSafely(dataFlow.getCallbackAddress(), processId, dataAddress);
+                        future.complete(DataFlowResult.success());
+                    }
+                } else {
+                    handleStreamError(dataFlow, writeResult.getErrorMessage(), future);
+                }
+            } catch (IOException exception) {
+                handleStreamError(dataFlow, exception.getMessage(), future);
+            }
+        } catch (RuntimeException exception) {
+            handleStreamError(dataFlow, exception.getMessage(), future);
+        } finally {
+            activeChannels.remove(dataFlowId);
+            activeTransfers.remove(dataFlowId);
+            channel.shutdownNow();
+        }
+    }
+
+    private void sendStartedSafely(String callbackAddress, String processId, Map<String, String> dataAddress) {
+        try {
+            controlPlaneClient.sendStarted(callbackAddress, processId, dataAddress);
+        } catch (RuntimeException exception) {
+            log.warn("Failed to send started callback for processId={}: {}", processId, exception.getMessage());
+        }
+    }
+
+    private void sendCompletedSafely(String callbackAddress, String processId, Map<String, String> dataAddress) {
+        try {
+            controlPlaneClient.sendCompleted(callbackAddress, processId, dataAddress);
+        } catch (RuntimeException exception) {
+            log.warn("Failed to send completed callback for processId={}: {}", processId, exception.getMessage());
+        }
+    }
+
+    private void handleStreamError(DataFlow dataFlow,
+                                   String errorMessage,
+                                   CompletableFuture<DataFlowResult> future) {
+        if (future.isDone()) {
+            return;
+        }
+        String message = isBlank(errorMessage) ? "gRPC stream transfer failed" : errorMessage;
+        log.error("gRPC stream error for processId={}: {}", dataFlow.getProcessId(), message);
+        try {
+            controlPlaneClient.sendErrored(dataFlow.getCallbackAddress(), dataFlow.getProcessId(), message);
+        } catch (RuntimeException exception) {
+            log.warn("Failed to send errored callback for processId={}: {}",
+                    dataFlow.getProcessId(), exception.getMessage());
+        }
+        future.complete(DataFlowResult.failure(message));
+    }
+
+    private SinkContext buildSinkContext(DataFlow dataFlow) {
+        Map<String, String> sinkProperties = new HashMap<>();
+        sinkProperties.put(S3Utils.BUCKET_NAME, s3Properties.getBucketName());
+        sinkProperties.put(S3Utils.OBJECT_KEY, dataFlow.getProcessId());
+        sinkProperties.put(S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint());
+        sinkProperties.put(S3Utils.REGION, s3Properties.getRegion());
+        sinkProperties.put(S3Utils.ACCESS_KEY, s3Properties.getAccessKey());
+        sinkProperties.put(S3Utils.SECRET_KEY, s3Properties.getSecretKey());
+        return SinkContext.Builder.newInstance()
+                .properties(sinkProperties)
+                .build();
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }
