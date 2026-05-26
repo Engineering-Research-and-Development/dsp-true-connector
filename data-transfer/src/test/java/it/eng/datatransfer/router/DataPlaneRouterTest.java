@@ -142,4 +142,27 @@ public class DataPlaneRouterTest {
         assertThrows(IllegalStateException.class,
                 () -> router.selectDataPlane("stream:grpc", "proc-3", "stream:grpc"));
     }
+
+    @Test
+    @DisplayName("clearStickyAssignment - removes sticky entry so next call re-selects freely")
+    public void clearStickyAssignmentRemovesStickyEntry() {
+        DataPlaneRegistration reg1 = buildRegistration("http://dp1:9090");
+        DataPlaneRegistration reg2 = buildRegistration("http://dp2:9090");
+        when(registrationService.findByTransferType("HttpData-PULL")).thenReturn(List.of(reg1, reg2));
+
+        Optional<DataPlaneRegistration> first = router.selectDataPlane("HttpData-PULL", "proc-clr", null);
+        assertTrue(first.isPresent());
+        String pinnedEndpoint = first.get().getEndpoint();
+
+        Optional<DataPlaneRegistration> sticky = router.selectDataPlane("HttpData-PULL", "proc-clr", null);
+        assertEquals(pinnedEndpoint, sticky.get().getEndpoint(), "should be pinned before clear");
+
+        router.clearStickyAssignment("proc-clr");
+
+        // Counter is at index 1 after first selection, so next free pick returns the other DP
+        Optional<DataPlaneRegistration> afterClear = router.selectDataPlane("HttpData-PULL", "proc-clr", null);
+        assertTrue(afterClear.isPresent());
+        assertNotEquals(pinnedEndpoint, afterClear.get().getEndpoint(),
+                "after clearing sticky, round-robin should re-select a different DP");
+    }
 }

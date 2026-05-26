@@ -13,6 +13,7 @@ import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.rest.protocol.DataTransferCallback;
 import it.eng.datatransfer.serializer.TransferSerializer;
+import it.eng.datatransfer.service.TransportProfileResolver;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
@@ -64,6 +65,7 @@ public class DataTransferAPIService {
     private final TenantBucketResolver tenantBucketResolver;
     private final TemporaryBucketUserService temporaryBucketUserService;
     private final S3Properties s3Properties;
+    private final TransportProfileResolver transportProfileResolver;
 
     /**
      * Creates a new {@code DataTransferAPIService}.
@@ -80,6 +82,7 @@ public class DataTransferAPIService {
      * @param tenantBucketResolver       resolves the effective bucket name for the current tenant
      * @param temporaryBucketUserService service for creating and cleaning up temporary S3 users
      * @param s3Properties               S3 configuration (region, external endpoint)
+     * @param transportProfileResolver   resolves the internal transport profile from a transfer format
      */
     public DataTransferAPIService(TransferProcessRepository transferProcessRepository,
                                   OkHttpRestClient okHttpRestClient,
@@ -92,7 +95,8 @@ public class DataTransferAPIService {
                                   S3ClientService s3ClientService,
                                   TenantBucketResolver tenantBucketResolver,
                                   TemporaryBucketUserService temporaryBucketUserService,
-                                  S3Properties s3Properties) {
+                                  S3Properties s3Properties,
+                                  TransportProfileResolver transportProfileResolver) {
         super();
         this.transferProcessRepository = transferProcessRepository;
         this.okHttpRestClient = okHttpRestClient;
@@ -106,6 +110,7 @@ public class DataTransferAPIService {
         this.tenantBucketResolver = tenantBucketResolver;
         this.temporaryBucketUserService = temporaryBucketUserService;
         this.s3Properties = s3Properties;
+        this.transportProfileResolver = transportProfileResolver;
     }
 
     /**
@@ -503,6 +508,7 @@ public class DataTransferAPIService {
             }
             transferProcessRepository.save(transferProcessCompleted);
             log.info("Transfer process {} saved", transferProcessCompleted.getId());
+            dataPlaneClient.clearStickyAssignment(transferProcess.getId());
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED,
                     "Transfer process completed successfully",
                     auditMap("transferProcess", transferProcessCompleted,
@@ -573,6 +579,10 @@ public class DataTransferAPIService {
             TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
+            if (transferProcess.getTransportProfile() != null) {
+                dataPlaneClient.suspend(transferProcess.getId(), transferProcess.getFormat(),
+                        transferProcess.getTransportProfile());
+            }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
                     "Transfer process suspended successfully",
                     auditMap("transferProcess", transferProcess,
@@ -634,6 +644,11 @@ public class DataTransferAPIService {
             TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
+            if (transferProcess.getTransportProfile() != null) {
+                dataPlaneClient.terminate(transferProcess.getId(), transferProcess.getFormat(),
+                        transferProcess.getTransportProfile());
+            }
+            dataPlaneClient.clearStickyAssignment(transferProcess.getId());
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED,
                     "Transfer process terminated successfully",
                     auditMap("transferProcess", transferProcess,
@@ -686,11 +701,18 @@ public class DataTransferAPIService {
         }
 
         // Mark download as in progress and persist so the frontend spinner can react.
+        // Resolve and persist the transport profile so that sticky lifecycle calls
+        // (terminate, suspend) can reach the same Data Plane instance later.
         // The @Version field provides optimistic locking: a concurrent request that also
         // passed the isDownloadInProgress check above will fail here with OptimisticLockingFailureException.
+        String transportProfile = transportProfileResolver.resolve(transferProcess.getFormat());
+        TransferProcess withFlags = transferProcess.withIsDownloadInProgress(true);
+        if (transportProfile != null) {
+            withFlags = withFlags.withTransportProfile(transportProfile);
+        }
         TransferProcess transferProcessDownloading;
         try {
-            transferProcessDownloading = transferProcessRepository.save(transferProcess.withIsDownloadInProgress(true));
+            transferProcessDownloading = transferProcessRepository.save(withFlags);
         } catch (OptimisticLockingFailureException e) {
             log.error("Download aborted, Transfer Process {} is already in progress (concurrent request)", transferProcessId);
             throw new DataTransferAPIException("Download aborted, Transfer Process " + transferProcessId + " is already in progress");
@@ -722,7 +744,11 @@ public class DataTransferAPIService {
                     .agreementId(transferProcessDownloading.getAgreementId())
                     .datasetId(transferProcessDownloading.getDatasetId())
                     .build();
-            dataPlaneClient.start(startMessage);
+            if (transportProfile != null) {
+                dataPlaneClient.start(startMessage, transportProfile);
+            } else {
+                dataPlaneClient.start(startMessage);
+            }
         } catch (Exception e) {
             transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
             return CompletableFuture.failedFuture(e);

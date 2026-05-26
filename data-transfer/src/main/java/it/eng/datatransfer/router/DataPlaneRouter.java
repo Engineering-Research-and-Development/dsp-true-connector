@@ -127,6 +127,22 @@ public class DataPlaneRouter {
         return Optional.of(selected);
     }
 
+    /**
+     * Clears the sticky Data Plane assignment for the given process.
+     *
+     * <p>Call this when a transfer reaches a terminal state (COMPLETED or TERMINATED)
+     * so that the in-memory sticky routing entry is released and memory is not leaked.</p>
+     *
+     * @param processId the transfer process ID whose sticky assignment should be cleared;
+     *                  {@code null} is silently ignored
+     */
+    public void clearStickyAssignment(String processId) {
+        if (processId != null) {
+            stickyMap.remove(processId);
+            log.debug("Cleared sticky Data Plane assignment for process '{}'", processId);
+        }
+    }
+
     private List<DataPlaneRegistration> findCandidates(String transferType, String transportProfile) {
         List<DataPlaneRegistration> all = registrationService.findByTransferType(transferType);
         if (transportProfile == null) {

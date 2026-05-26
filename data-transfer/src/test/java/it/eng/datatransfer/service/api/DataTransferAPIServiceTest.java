@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
 import it.eng.datatransfer.client.DataPlaneClient;
 import it.eng.datatransfer.exceptions.DataPlaneClientException;
+import it.eng.datatransfer.service.TransportProfileResolver;
+import it.eng.datatransfer.model.TransportProfile;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.model.DataTransferFormat;
@@ -81,6 +83,8 @@ class DataTransferAPIServiceTest {
     private TemporaryBucketUserService temporaryBucketUserService;
     @Mock
     private S3Properties s3Properties;
+    @Mock
+    private TransportProfileResolver transportProfileResolver;
     @Mock
     private Pageable pageable;
 
@@ -1001,5 +1005,124 @@ class DataTransferAPIServiceTest {
                 Arguments.of("SUSPENDED", "suspendTransfer"),
                 Arguments.of("TERMINATED", "terminateTransfer")
         );
+    }
+
+    @Test
+    @DisplayName("Download data with gRPC profile - persists profile on TP and uses profile-aware start")
+    public void downloadData_withGrpcProfile_persistsProfileAndUsesProfileAwareStart() {
+        TransferProcess grpcProcess = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .datasetId(DataTransferMockObjectUtil.DATASET_ID)
+                .isDownloaded(false)
+                .isDownloadInProgress(false)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.STARTED)
+                .format(TransportProfile.STREAM_GRPC)
+                .build();
+
+        when(transferProcessRepository.findById(grpcProcess.getId())).thenReturn(Optional.of(grpcProcess));
+        when(transportProfileResolver.resolve(TransportProfile.STREAM_GRPC)).thenReturn(TransportProfile.STREAM_GRPC);
+        when(usageControlProperties.usageControlEnabled()).thenReturn(false);
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+
+        assertDoesNotThrow(() -> apiService.downloadData(grpcProcess.getId()));
+
+        verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
+        TransferProcess saved = argCaptorTransferProcess.getValue();
+        assertEquals(TransportProfile.STREAM_GRPC, saved.getTransportProfile(),
+                "transport profile must be persisted on the TransferProcess before the DP start call");
+        assertTrue(saved.isDownloadInProgress());
+
+        verify(dataPlaneClient).start(any(DataFlowStartMessage.class), eq(TransportProfile.STREAM_GRPC));
+        verify(dataPlaneClient, never()).start(any(DataFlowStartMessage.class));
+    }
+
+    @Test
+    @DisplayName("Terminate transfer - with grpc profile calls profile-aware DP terminate then cleans up sticky")
+    public void terminateTransfer_withTransportProfile_callsProfileAwareTerminateAndCleanup() {
+        TransferProcess startedGrpc = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.STARTED)
+                .format(TransportProfile.STREAM_GRPC)
+                .transportProfile(TransportProfile.STREAM_GRPC)
+                .build();
+
+        when(transferProcessRepository.findById(startedGrpc.getId())).thenReturn(Optional.of(startedGrpc));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(), any(), any())).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+
+        apiService.terminateTransfer(startedGrpc.getId());
+
+        verify(dataPlaneClient).terminate(startedGrpc.getId(), TransportProfile.STREAM_GRPC, TransportProfile.STREAM_GRPC);
+        verify(dataPlaneClient).clearStickyAssignment(startedGrpc.getId());
+    }
+
+    @Test
+    @DisplayName("Terminate transfer - without transport profile skips DP terminate but cleans up sticky")
+    public void terminateTransfer_withoutTransportProfile_skipsDpTerminateButCleansSticky() {
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(), any(), any())).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+
+        apiService.terminateTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+
+        verify(dataPlaneClient, never()).terminate(anyString(), anyString(), anyString());
+        verify(dataPlaneClient).clearStickyAssignment(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+    }
+
+    @Test
+    @DisplayName("Complete transfer - cleans up sticky assignment after reaching terminal COMPLETED state")
+    public void completeTransfer_cleansUpStickyAssignment() {
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(), any(), any())).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+
+        apiService.completeTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+
+        verify(dataPlaneClient).clearStickyAssignment(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+    }
+
+    @Test
+    @DisplayName("Suspend transfer - with grpc profile calls profile-aware DP suspend")
+    public void suspendTransfer_withTransportProfile_callsProfileAwareSuspend() {
+        TransferProcess startedGrpc = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.STARTED)
+                .format(TransportProfile.STREAM_GRPC)
+                .transportProfile(TransportProfile.STREAM_GRPC)
+                .build();
+
+        when(transferProcessRepository.findById(startedGrpc.getId())).thenReturn(Optional.of(startedGrpc));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(), any(), any())).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+
+        apiService.suspendTransfer(startedGrpc.getId());
+
+        verify(dataPlaneClient).suspend(startedGrpc.getId(), TransportProfile.STREAM_GRPC, TransportProfile.STREAM_GRPC);
     }
 }
