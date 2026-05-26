@@ -165,4 +165,55 @@ public class DataPlaneRouterTest {
         assertNotEquals(pinnedEndpoint, afterClear.get().getEndpoint(),
                 "after clearing sticky, round-robin should re-select a different DP");
     }
+
+    @Test
+    @DisplayName("getStickyEndpoint - returns empty before any assignment, present after selectDataPlane")
+    public void getStickyEndpoint_returnsPresentAfterSelect() {
+        DataPlaneRegistration reg1 = buildRegistration("http://dp1:9090");
+        when(registrationService.findByTransferType("HttpData-PULL")).thenReturn(List.of(reg1));
+
+        assertTrue(router.getStickyEndpoint("proc-get").isEmpty(), "no entry before select");
+
+        router.selectDataPlane("HttpData-PULL", "proc-get", null);
+
+        Optional<String> endpoint = router.getStickyEndpoint("proc-get");
+        assertTrue(endpoint.isPresent());
+        assertEquals("http://dp1:9090", endpoint.get());
+    }
+
+    @Test
+    @DisplayName("restoreStickyAssignment - seeds sticky map so subsequent selectDataPlane is pinned")
+    public void restoreStickyAssignment_seedsSticky() {
+        DataPlaneRegistration reg1 = buildRegistration("http://dp1:9090");
+        DataPlaneRegistration reg2 = buildRegistration("http://dp2:9090");
+        when(registrationService.findByTransferType("HttpData-PULL")).thenReturn(List.of(reg1, reg2));
+
+        // Restore a sticky entry as if loaded from persisted TransferProcess.assignedDataplaneEndpoint
+        router.restoreStickyAssignment("proc-restore", "http://dp2:9090");
+
+        Optional<DataPlaneRegistration> result = router.selectDataPlane("HttpData-PULL", "proc-restore", null);
+        assertTrue(result.isPresent());
+        assertEquals("http://dp2:9090", result.get().getEndpoint(),
+                "restored sticky should pin to the persisted endpoint");
+    }
+
+    @Test
+    @DisplayName("restoreStickyAssignment - does not overwrite an existing live sticky entry")
+    public void restoreStickyAssignment_doesNotOverwriteExisting() {
+        DataPlaneRegistration reg1 = buildRegistration("http://dp1:9090");
+        DataPlaneRegistration reg2 = buildRegistration("http://dp2:9090");
+        when(registrationService.findByTransferType("HttpData-PULL")).thenReturn(List.of(reg1, reg2));
+
+        // Live select pins to one DP
+        router.selectDataPlane("HttpData-PULL", "proc-nooverwrite", null);
+        Optional<String> live = router.getStickyEndpoint("proc-nooverwrite");
+        assertTrue(live.isPresent());
+
+        // restoreStickyAssignment must not overwrite the live pin
+        String otherEndpoint = live.get().equals("http://dp1:9090") ? "http://dp2:9090" : "http://dp1:9090";
+        router.restoreStickyAssignment("proc-nooverwrite", otherEndpoint);
+
+        assertEquals(live.get(), router.getStickyEndpoint("proc-nooverwrite").orElseThrow(),
+                "existing live sticky must not be overwritten by restore");
+    }
 }

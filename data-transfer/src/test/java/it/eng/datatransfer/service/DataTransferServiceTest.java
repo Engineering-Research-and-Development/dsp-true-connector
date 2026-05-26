@@ -13,10 +13,12 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
+import it.eng.datatransfer.router.DataPlaneRouter;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
@@ -60,6 +62,8 @@ public class DataTransferServiceTest {
     private DataTransferProperties transferProperties;
     @Mock
     private TemporaryBucketUserService temporaryBucketUserService;
+    @Mock
+    private DataPlaneRouter dataPlaneRouter;
 
     @InjectMocks
     private DataTransferService service;
@@ -432,6 +436,45 @@ public class DataTransferServiceTest {
                 DataTransferMockObjectUtil.CONSUMER_PID, null);
 
         verify(temporaryBucketUserService).deleteTemporaryUser(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH.getId());
+    }
+
+    @Test
+    @DisplayName("completeDataTransfer preserves transportProfile on the completed process")
+    public void completeDataTransfer_preservesTransportProfile() {
+        TransferProcess startedWithProfile = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .datasetId(DataTransferMockObjectUtil.DATASET_ID)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.STARTED)
+                .format(DataTransferFormat.HTTP_PULL.name())
+                .transportProfile("stream:grpc")
+                .build();
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(), any()))
+                .thenReturn(Optional.of(startedWithProfile));
+
+        service.completeDataTransfer(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE,
+                null, DataTransferMockObjectUtil.PROVIDER_PID);
+
+        verify(transferProcessRepository).save(argTransferProcess.capture());
+        assertEquals("stream:grpc", argTransferProcess.getValue().getTransportProfile(),
+                "transportProfile must be preserved on the completed TransferProcess");
+    }
+
+    @Test
+    @DisplayName("completeDataTransfer clears sticky assignment for the completed process")
+    public void completeDataTransfer_clearsStickyAssignment() {
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(), any()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        service.completeDataTransfer(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE,
+                null, DataTransferMockObjectUtil.PROVIDER_PID);
+
+        verify(dataPlaneRouter).clearStickyAssignment(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
     }
 
     @Test

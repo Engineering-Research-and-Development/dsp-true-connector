@@ -13,11 +13,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
-import java.io.IOException;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,7 +55,7 @@ class S3SourceReaderTest {
 
     @Test
     @DisplayName("open returns a finite source result for a valid S3 context")
-    void open_withValidContext_returnsOpenResult() throws IOException {
+    void open_withValidContext_returnsOpenResult() {
         SourceContext context = SourceContext.Builder.newInstance()
                 .properties(Map.of("bucketName", "bucket-a", "objectKey", "object-1"))
                 .build();
@@ -105,5 +105,30 @@ class S3SourceReaderTest {
         assertThatThrownBy(() -> sourceReader.open(context))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("objectKey");
+    }
+
+    @Test
+    @DisplayName("open returns failure result when S3 SDK throws an exception")
+    void open_whenSdkThrows_returnsFailureResult() {
+        SourceContext context = SourceContext.Builder.newInstance()
+                .properties(Map.of("bucketName", "bucket-a", "objectKey", "object-1"))
+                .build();
+        BucketCredentialsEntity credentials = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName("bucket-a")
+                .accessKey("access-key")
+                .secretKey("secret-key")
+                .build();
+
+        when(bucketCredentialsService.getBucketCredentials("bucket-a")).thenReturn(credentials);
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        when(s3ClientProvider.s3Client(any())).thenReturn(s3Client);
+        when(s3Client.getObject(any(GetObjectRequest.class)))
+                .thenThrow(SdkException.create("connection refused", null));
+
+        SourceOpenResult result = sourceReader.open(context);
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("bucket-a").contains("object-1");
     }
 }

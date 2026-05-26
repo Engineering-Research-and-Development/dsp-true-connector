@@ -1,7 +1,5 @@
 package it.eng.dataplane.api.io;
 
-import java.io.IOException;
-
 /**
  * Opens data from a source backend as a readable stream.
  */
@@ -17,9 +15,13 @@ public interface SourceReader {
     /**
      * Opens the source represented by the given context.
      *
+     * <p>All outcomes — including I/O and configuration errors — are returned as a
+     * {@link SourceOpenResult} so callers (e.g. gRPC transfer logic) can handle them
+     * uniformly without catching checked exceptions. Precondition violations (missing
+     * required context properties) may still propagate as unchecked exceptions.</p>
+     *
      * @param context source context
-     * @return opened source result
-     * @throws IOException if the source cannot be opened
+     * @return opened source result; never {@code null}
      */
-    SourceOpenResult open(SourceContext context) throws IOException;
+    SourceOpenResult open(SourceContext context);
 }

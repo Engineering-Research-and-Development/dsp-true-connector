@@ -1,5 +1,7 @@
 package it.eng.dataplane.core.registry;
 
+import it.eng.dataplane.api.io.SourceContext;
+import it.eng.dataplane.api.io.SourceOpenResult;
 import it.eng.dataplane.api.io.SourceReader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -11,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 /**
@@ -51,5 +54,26 @@ class SourceReaderRegistryTest {
 
         assertThat(emptyRegistry.getReader("s3"))
                 .isEmpty();
+    }
+
+    @Test
+    @DisplayName("constructor throws with actionable message when two readers share the same source type")
+    void constructor_withDuplicateType_throwsWithDiagnostics() {
+        SourceReader duplicate = new SourceReader() {
+            @Override
+            public String getSourceType() {
+                return "s3";
+            }
+
+            @Override
+            public SourceOpenResult open(SourceContext context) {
+                return SourceOpenResult.failure("not used");
+            }
+        };
+
+        assertThatThrownBy(() -> new SourceReaderRegistry(List.of(s3SourceReader, duplicate)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("s3")
+                .hasMessageContaining(s3SourceReader.getClass().getName());
     }
 }

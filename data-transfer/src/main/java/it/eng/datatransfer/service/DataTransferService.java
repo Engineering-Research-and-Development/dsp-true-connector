@@ -6,6 +6,7 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
+import it.eng.datatransfer.router.DataPlaneRouter;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
@@ -23,9 +24,10 @@ public class DataTransferService extends AbstractDataTransferService {
                                AuditEventPublisher publisher,
                                OkHttpRestClient okHttpRestClient,
                                DataTransferProperties transferProperties,
-                               TemporaryBucketUserService temporaryBucketUserService) {
+                               TemporaryBucketUserService temporaryBucketUserService,
+                               DataPlaneRouter dataPlaneRouter) {
         super(transferProcessRepository, publisher, okHttpRestClient, transferRequestMessageRepository, transferProperties,
-                temporaryBucketUserService);
+                temporaryBucketUserService, dataPlaneRouter);
     }
 
     /**

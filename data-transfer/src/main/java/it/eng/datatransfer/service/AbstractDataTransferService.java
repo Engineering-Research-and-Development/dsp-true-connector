@@ -12,6 +12,7 @@ import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
+import it.eng.datatransfer.router.DataPlaneRouter;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
@@ -40,19 +41,22 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
     private final TransferRequestMessageRepository transferRequestMessageRepository;
     private final DataTransferProperties transferProperties;
     private final TemporaryBucketUserService temporaryBucketUserService;
+    private final DataPlaneRouter dataPlaneRouter;
 
     protected AbstractDataTransferService(TransferProcessRepository transferProcessRepository,
                                           AuditEventPublisher publisher,
                                           OkHttpRestClient okHttpRestClient,
                                           TransferRequestMessageRepository transferRequestMessageRepository,
                                           DataTransferProperties transferProperties,
-                                          TemporaryBucketUserService temporaryBucketUserService) {
+                                          TemporaryBucketUserService temporaryBucketUserService,
+                                          DataPlaneRouter dataPlaneRouter) {
         this.transferProcessRepository = transferProcessRepository;
         this.publisher = publisher;
         this.okHttpRestClient = okHttpRestClient;
         this.transferRequestMessageRepository = transferRequestMessageRepository;
         this.transferProperties = transferProperties;
         this.temporaryBucketUserService = temporaryBucketUserService;
+        this.dataPlaneRouter = dataPlaneRouter;
     }
 
     /**
@@ -309,6 +313,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .role(transferProcessStarted.getRole())
                 .datasetId(transferProcessStarted.getDatasetId())
                 .tenantId(transferProcessStarted.getTenantId())
+                .transportProfile(transferProcessStarted.getTransportProfile())
                 .created(transferProcessStarted.getCreated())
                 .createdBy(transferProcessStarted.getCreatedBy())
                 .modified(transferProcessStarted.getModified())
@@ -317,6 +322,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .build();
 
         saveTransferProcess(transferProcessCompleted);
+        dataPlaneRouter.clearStickyAssignment(transferProcessCompleted.getId());
         if (IConstants.ROLE_CONSUMER.equals(transferProcessCompleted.getRole())
                 && DataTransferFormat.HTTP_PUSH.format().equals(transferProcessCompleted.getFormat())) {
             try {

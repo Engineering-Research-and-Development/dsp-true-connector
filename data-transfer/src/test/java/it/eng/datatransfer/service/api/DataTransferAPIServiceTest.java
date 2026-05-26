@@ -38,6 +38,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -52,6 +53,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.isA;
 
 @ExtendWith(MockitoExtension.class)
@@ -1190,5 +1192,107 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).save(any(TransferProcess.class));
         // audit event MUST fire even on DP failure
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
+    }
+
+    @Test
+    @DisplayName("downloadData - with transport profile persists assignedDataplaneEndpoint after DP start")
+    public void downloadData_withProfile_persistsAssignedEndpoint() {
+        TransferProcess grpcProcess = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .datasetId(DataTransferMockObjectUtil.DATASET_ID)
+                .isDownloaded(false)
+                .isDownloadInProgress(false)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.STARTED)
+                .format(TransportProfile.STREAM_GRPC)
+                .build();
+
+        when(transferProcessRepository.findById(grpcProcess.getId())).thenReturn(Optional.of(grpcProcess));
+        when(transportProfileResolver.resolve(TransportProfile.STREAM_GRPC)).thenReturn(TransportProfile.STREAM_GRPC);
+        when(usageControlProperties.usageControlEnabled()).thenReturn(false);
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+
+        // After start(), the router has stored a sticky entry; simulate that here
+        when(dataPlaneClient.getStickyEndpoint(grpcProcess.getId()))
+                .thenReturn(Optional.of("http://dp-grpc:9090"));
+
+        assertDoesNotThrow(() -> apiService.downloadData(grpcProcess.getId()));
+
+        // Should have called save() twice: once for isDownloadInProgress, once for assignedDataplaneEndpoint
+        verify(transferProcessRepository, times(2)).save(argCaptorTransferProcess.capture());
+        List<TransferProcess> savedValues = argCaptorTransferProcess.getAllValues();
+        boolean endpointPersisted = savedValues.stream()
+                .anyMatch(tp -> "http://dp-grpc:9090".equals(tp.getAssignedDataplaneEndpoint()));
+        assertTrue(endpointPersisted, "assignedDataplaneEndpoint must be persisted after start with transport profile");
+    }
+
+    @Test
+    @DisplayName("terminateTransfer - with persisted assignedDataplaneEndpoint restores sticky before DP call")
+    public void terminateTransfer_withPersistedEndpoint_restoresStickyBeforeTerminate() {
+        TransferProcess startedGrpc = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.STARTED)
+                .format(TransportProfile.STREAM_GRPC)
+                .transportProfile(TransportProfile.STREAM_GRPC)
+                .assignedDataplaneEndpoint("http://dp-grpc:9090")
+                .build();
+
+        when(transferProcessRepository.findById(startedGrpc.getId())).thenReturn(Optional.of(startedGrpc));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(), any(), any())).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+
+        apiService.terminateTransfer(startedGrpc.getId());
+
+        // Sticky must be restored from the persisted endpoint before the DP terminate call
+        InOrder inOrder = inOrder(dataPlaneClient);
+        inOrder.verify(dataPlaneClient).restoreStickyAssignment(startedGrpc.getId(), "http://dp-grpc:9090");
+        inOrder.verify(dataPlaneClient).terminate(startedGrpc.getId(), TransportProfile.STREAM_GRPC, TransportProfile.STREAM_GRPC);
+        inOrder.verify(dataPlaneClient).clearStickyAssignment(startedGrpc.getId());
+    }
+
+    @Test
+    @DisplayName("suspendTransfer - with persisted assignedDataplaneEndpoint restores sticky before DP call")
+    public void suspendTransfer_withPersistedEndpoint_restoresStickyBeforeSuspend() {
+        TransferProcess startedGrpc = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.STARTED)
+                .format(TransportProfile.STREAM_GRPC)
+                .transportProfile(TransportProfile.STREAM_GRPC)
+                .assignedDataplaneEndpoint("http://dp-grpc:9090")
+                .build();
+
+        when(transferProcessRepository.findById(startedGrpc.getId())).thenReturn(Optional.of(startedGrpc));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(), any(), any())).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        apiService.suspendTransfer(startedGrpc.getId());
+
+        // Sticky must be restored before the DP suspend call
+        InOrder inOrder = inOrder(dataPlaneClient);
+        inOrder.verify(dataPlaneClient).restoreStickyAssignment(startedGrpc.getId(), "http://dp-grpc:9090");
+        inOrder.verify(dataPlaneClient).suspend(startedGrpc.getId(), TransportProfile.STREAM_GRPC, TransportProfile.STREAM_GRPC);
     }
 }

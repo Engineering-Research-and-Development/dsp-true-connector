@@ -130,6 +130,15 @@ public class TransferProcess extends AbstractTransferMessage {
     private String transportProfile;
 
     /**
+     * Endpoint of the Data Plane instance selected for this transfer process.
+     * Persisted so that sticky routing survives a CP restart: on resume, terminate, or suspend,
+     * the CP can re-seed the in-memory sticky map from this field and reach the correct instance.
+     * Not included in protocol JSON.
+     */
+    @JsonIgnore
+    private String assignedDataplaneEndpoint;
+
+    /**
      * Tenant this transfer process belongs to. Null for super-admin scope.
      */
     @JsonIgnore
@@ -241,6 +250,17 @@ public class TransferProcess extends AbstractTransferMessage {
          */
         public Builder transportProfile(String transportProfile) {
             message.transportProfile = transportProfile;
+            return this;
+        }
+
+        /**
+         * Sets the endpoint of the Data Plane instance selected for this process.
+         *
+         * @param assignedDataplaneEndpoint the Data Plane base URL, or {@code null}
+         * @return this builder
+         */
+        public Builder assignedDataplaneEndpoint(String assignedDataplaneEndpoint) {
+            message.assignedDataplaneEndpoint = assignedDataplaneEndpoint;
             return this;
         }
 
@@ -356,6 +376,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
                 .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
@@ -392,6 +413,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
                 .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
@@ -428,6 +450,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
                 .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
@@ -464,6 +487,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
                 .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)
@@ -499,6 +523,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
                 .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)
@@ -534,6 +559,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .dataFlowState(dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
                 .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)
@@ -569,6 +595,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(dataFlowErrorMessage)
                 .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)
@@ -604,6 +631,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
                 .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)
@@ -639,6 +667,44 @@ public class TransferProcess extends AbstractTransferMessage {
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
                 .transportProfile(transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified assigned Data Plane endpoint.
+     * All other fields remain unchanged.
+     *
+     * @param assignedDataplaneEndpoint the base URL of the selected Data Plane (e.g. {@code "http://dp:9090"}),
+     *                                  or {@code null} when no DP has been assigned yet
+     * @return new TransferProcess instance with updated assignedDataplaneEndpoint
+     */
+    public TransferProcess withAssignedDataplaneEndpoint(String assignedDataplaneEndpoint) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(assignedDataplaneEndpoint)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)

@@ -8,18 +8,19 @@ import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.BucketCredentialsService;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 
-import java.io.IOException;
-
 /**
  * S3-backed {@link SourceReader} implementation.
  */
+@Slf4j
 @Component
 public class S3SourceReader implements SourceReader {
 
@@ -59,33 +60,42 @@ public class S3SourceReader implements SourceReader {
     /**
      * Opens an S3 object for reading.
      *
+     * <p>S3 SDK errors are caught and returned as {@link SourceOpenResult#failure(String)} so
+     * callers never need to handle checked exceptions from this method. Missing required context
+     * properties are still reported as {@link IllegalArgumentException} because they indicate a
+     * programming error, not a recoverable runtime failure.</p>
+     *
      * @param context source context containing bucket and object details
-     * @return opened S3 source result
-     * @throws IOException never thrown directly but kept for API compatibility
+     * @return opened S3 source result; never {@code null}
      */
     @Override
-    public SourceOpenResult open(SourceContext context) throws IOException {
+    public SourceOpenResult open(SourceContext context) {
         String bucketName = requireProperty(context, BUCKET_NAME);
         String objectKey = requireProperty(context, OBJECT_KEY);
-        BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
-        S3ClientRequest clientRequest = S3ClientRequest.from(
-                s3Properties.getRegion(),
-                s3Properties.getEndpoint(),
-                bucketCredentials
-        );
-        S3Client s3Client = s3ClientProvider.s3Client(clientRequest);
-        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                .bucket(bucketName)
-                .key(objectKey)
-                .build();
-        ResponseInputStream<GetObjectResponse> responseInputStream = s3Client.getObject(getObjectRequest);
-        GetObjectResponse response = responseInputStream.response();
-        return SourceOpenResult.success(
-                responseInputStream,
-                response.contentType(),
-                response.contentLength(),
-                true
-        );
+        try {
+            BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
+            S3ClientRequest clientRequest = S3ClientRequest.from(
+                    s3Properties.getRegion(),
+                    s3Properties.getEndpoint(),
+                    bucketCredentials
+            );
+            S3Client s3Client = s3ClientProvider.s3Client(clientRequest);
+            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(objectKey)
+                    .build();
+            ResponseInputStream<GetObjectResponse> responseInputStream = s3Client.getObject(getObjectRequest);
+            GetObjectResponse response = responseInputStream.response();
+            return SourceOpenResult.success(
+                    responseInputStream,
+                    response.contentType(),
+                    response.contentLength(),
+                    true
+            );
+        } catch (SdkException e) {
+            log.error("Failed to open S3 object s3://{}/{}: {}", bucketName, objectKey, e.getMessage());
+            return SourceOpenResult.failure("S3 error opening s3://" + bucketName + "/" + objectKey + ": " + e.getMessage());
+        }
     }
 
     private String requireProperty(SourceContext context, String key) {

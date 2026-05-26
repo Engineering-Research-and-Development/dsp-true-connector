@@ -252,6 +252,34 @@ public class DataPlaneClient {
         router.clearStickyAssignment(processId);
     }
 
+    /**
+     * Returns the in-memory sticky endpoint for the given process, if any.
+     *
+     * <p>Use this immediately after a {@code start} call to read back the selected endpoint
+     * so it can be persisted in the {@code TransferProcess} for restart-safe routing.</p>
+     *
+     * @param processId the transfer process ID
+     * @return the pinned Data Plane endpoint, or {@link java.util.Optional#empty()} if none
+     */
+    public java.util.Optional<String> getStickyEndpoint(String processId) {
+        return router.getStickyEndpoint(processId);
+    }
+
+    /**
+     * Restores a persisted sticky assignment from durable storage into the in-memory map.
+     *
+     * <p>Call this at the start of any lifecycle operation (terminate, suspend, resume) when the
+     * {@code TransferProcess} carries a persisted {@code assignedDataplaneEndpoint} but the
+     * in-memory map was cleared by a CP restart. Re-seeding the map ensures the next routing
+     * call reaches the original Data Plane instance.</p>
+     *
+     * @param processId the transfer process ID
+     * @param endpoint  the Data Plane base URL to restore
+     */
+    public void restoreStickyAssignment(String processId, String endpoint) {
+        router.restoreStickyAssignment(processId, endpoint);
+    }
+
     private DataPlaneRegistration selectOrThrow(String transferType) {
         return router.selectDataPlane(transferType)
                 .orElseThrow(() -> new IllegalStateException(

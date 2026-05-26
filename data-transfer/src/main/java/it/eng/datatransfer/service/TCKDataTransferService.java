@@ -9,6 +9,7 @@ import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.rest.protocol.DataTransferCallback;
+import it.eng.datatransfer.router.DataPlaneRouter;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.tools.client.rest.OkHttpRestClient;
@@ -51,9 +52,10 @@ public class TCKDataTransferService extends AbstractDataTransferService {
                                   OkHttpRestClient okHttpRestClient,
                                   CredentialUtils credentialUtils,
                                   DataTransferProperties dataTransferProperties,
-                                  TemporaryBucketUserService temporaryBucketUserService) {
+                                  TemporaryBucketUserService temporaryBucketUserService,
+                                  DataPlaneRouter dataPlaneRouter) {
         super(transferProcessRepository, auditEventPublisher, okHttpRestClient, transferRequestMessageRepository,
-                dataTransferProperties, temporaryBucketUserService);
+                dataTransferProperties, temporaryBucketUserService, dataPlaneRouter);
         this.dataTransferAPIService = dataTransferAPIService;
         this.auditEventPublisher = auditEventPublisher;
         this.okHttpRestClient = okHttpRestClient;

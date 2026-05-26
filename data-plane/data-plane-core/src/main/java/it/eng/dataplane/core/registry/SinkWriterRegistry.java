@@ -22,11 +22,22 @@ public class SinkWriterRegistry {
     /**
      * Constructs the registry from all {@link SinkWriter} beans in the application context.
      *
+     * <p>Throws {@link IllegalArgumentException} if two beans report the same sink type, naming
+     * the conflicting implementations so the misconfiguration is immediately actionable.</p>
+     *
      * @param writers available sink writers
+     * @throws IllegalArgumentException if duplicate sink types are detected
      */
     public SinkWriterRegistry(List<SinkWriter> writers) {
         this.writers = writers.stream()
-                .collect(Collectors.toMap(SinkWriter::getSinkType, Function.identity()));
+                .collect(Collectors.toMap(
+                        SinkWriter::getSinkType,
+                        Function.identity(),
+                        (a, b) -> {
+                            throw new IllegalArgumentException(
+                                    "Duplicate SinkWriter for type '" + a.getSinkType() + "': "
+                                            + a.getClass().getName() + " vs " + b.getClass().getName());
+                        }));
         log.info("Registered sink writers: {}", this.writers.keySet());
     }
 

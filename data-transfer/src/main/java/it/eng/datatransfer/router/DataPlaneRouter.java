@@ -143,6 +143,42 @@ public class DataPlaneRouter {
         }
     }
 
+    /**
+     * Returns the currently pinned Data Plane endpoint for the given process, if any.
+     *
+     * <p>Use this after a successful {@link #selectDataPlane(String, String, String)} call to
+     * read back the endpoint that was stored, so it can be persisted in the
+     * {@code TransferProcess} for durable restart-safe routing.</p>
+     *
+     * @param processId the transfer process ID; {@code null} always returns empty
+     * @return the pinned endpoint, or {@link java.util.Optional#empty()} if none
+     */
+    public java.util.Optional<String> getStickyEndpoint(String processId) {
+        if (processId == null) {
+            return java.util.Optional.empty();
+        }
+        return java.util.Optional.ofNullable(stickyMap.get(processId));
+    }
+
+    /**
+     * Restores a previously persisted sticky assignment from durable storage into the in-memory map.
+     *
+     * <p>Call this at the start of any lifecycle operation (terminate, suspend, resume) when the
+     * in-memory sticky map may be empty due to a CP restart but the {@code TransferProcess}
+     * already carries a persisted {@code assignedDataplaneEndpoint}. This re-seeds the map so
+     * that subsequent {@link #selectDataPlane(String, String, String)} calls reach the same DP
+     * instance as the original start call.</p>
+     *
+     * @param processId the transfer process ID; {@code null} is silently ignored
+     * @param endpoint  the Data Plane base URL to restore; {@code null} is silently ignored
+     */
+    public void restoreStickyAssignment(String processId, String endpoint) {
+        if (processId != null && endpoint != null) {
+            stickyMap.putIfAbsent(processId, endpoint);
+            log.debug("Restored sticky Data Plane assignment '{}' for process '{}'", endpoint, processId);
+        }
+    }
+
     private List<DataPlaneRegistration> findCandidates(String transferType, String transportProfile) {
         List<DataPlaneRegistration> all = registrationService.findByTransferType(transferType);
         if (transportProfile == null) {

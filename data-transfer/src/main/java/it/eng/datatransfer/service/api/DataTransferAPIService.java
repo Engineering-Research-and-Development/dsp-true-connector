@@ -580,6 +580,12 @@ public class DataTransferAPIService {
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
             if (transferProcess.getTransportProfile() != null) {
+                // Restore sticky from persisted endpoint so the DP call reaches the right instance
+                // even after a CP restart that cleared the in-memory stickyMap.
+                if (transferProcess.getAssignedDataplaneEndpoint() != null) {
+                    dataPlaneClient.restoreStickyAssignment(transferProcess.getId(),
+                            transferProcess.getAssignedDataplaneEndpoint());
+                }
                 // CP is already SUSPENDED. A DP failure must be surfaced explicitly so the caller
                 // knows CP/DP are inconsistent, while still publishing the audit trail.
                 try {
@@ -660,6 +666,12 @@ public class DataTransferAPIService {
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
             if (transferProcess.getTransportProfile() != null) {
+                // Restore sticky from persisted endpoint so the DP call reaches the right instance
+                // even after a CP restart that cleared the in-memory stickyMap.
+                if (transferProcess.getAssignedDataplaneEndpoint() != null) {
+                    dataPlaneClient.restoreStickyAssignment(transferProcess.getId(),
+                            transferProcess.getAssignedDataplaneEndpoint());
+                }
                 // Best-effort: CP is already TERMINATED. A DP failure must not prevent sticky cleanup.
                 try {
                     dataPlaneClient.terminate(transferProcess.getId(), transferProcess.getFormat(),
@@ -767,6 +779,11 @@ public class DataTransferAPIService {
                     .build();
             if (transportProfile != null) {
                 dataPlaneClient.start(startMessage, transportProfile);
+                // Persist the selected DP endpoint so sticky routing survives a CP restart.
+                dataPlaneClient.getStickyEndpoint(transferProcessDownloading.getId()).ifPresent(endpoint -> {
+                    TransferProcess withEndpoint = transferProcessDownloading.withAssignedDataplaneEndpoint(endpoint);
+                    transferProcessRepository.save(withEndpoint);
+                });
             } else {
                 dataPlaneClient.start(startMessage);
             }
