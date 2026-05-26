@@ -478,6 +478,18 @@ public class DataTransferServiceTest {
     }
 
     @Test
+    @DisplayName("terminateDataTransfer clears sticky assignment for the terminated process")
+    public void terminateDataTransfer_clearsStickyAssignment() {
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(), any()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        service.terminateDataTransfer(DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE,
+                null, DataTransferMockObjectUtil.PROVIDER_PID);
+
+        verify(dataPlaneRouter).clearStickyAssignment(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+    }
+
+    @Test
     @DisplayName("HTTP-PUSH consumer termination cleans up temporary IAM credentials")
     public void terminateDataTransfer_httpPush_consumer_deletesTemporaryUser() {
         when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))

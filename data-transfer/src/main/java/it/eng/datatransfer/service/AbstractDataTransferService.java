@@ -368,6 +368,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
 
         TransferProcess transferProcessTerminated = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
         saveTransferProcess(transferProcessTerminated);
+        dataPlaneRouter.clearStickyAssignment(transferProcessTerminated.getId());
         if (IConstants.ROLE_CONSUMER.equals(transferProcessTerminated.getRole())
                 && DataTransferFormat.HTTP_PUSH.format().equals(transferProcessTerminated.getFormat())) {
             try {
