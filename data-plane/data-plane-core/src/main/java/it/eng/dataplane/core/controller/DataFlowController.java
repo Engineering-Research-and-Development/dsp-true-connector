@@ -66,7 +66,8 @@ public class DataFlowController {
      * messages are exchanged between connectors.</p>
      *
      * @param message the DataFlowPrepareMessage from the Control Plane
-     * @return 200 OK with {@link DataFlowPrepareResponse} containing protocol-specific addressing data
+     * @return 200 OK with {@link DataFlowPrepareResponse} containing protocol-specific addressing data,
+     *         or 400 BAD REQUEST if the protocol rejects the request (e.g. unknown sourceType)
      */
     @PostMapping("/prepare")
     public ResponseEntity<DataFlowPrepareResponse> prepareDataFlow(@RequestBody DataFlowPrepareMessage message) {
@@ -86,13 +87,18 @@ public class DataFlowController {
             }
         }
         DataFlowPrepareResponse response;
-        if (protocol != null) {
-            response = protocol.prepare(message);
-        } else {
-            log.warn("No protocol registered; returning empty prepare response for processId={}", message.getProcessId());
-            response = DataFlowPrepareResponse.Builder.newInstance()
-                    .processId(message.getProcessId())
-                    .build();
+        try {
+            if (protocol != null) {
+                response = protocol.prepare(message);
+            } else {
+                log.warn("No protocol registered; returning empty prepare response for processId={}", message.getProcessId());
+                response = DataFlowPrepareResponse.Builder.newInstance()
+                        .processId(message.getProcessId())
+                        .build();
+            }
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid prepare request for processId={}: {}", message.getProcessId(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         }
         auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_PREPARE_REQUESTED,
                 message.getProcessId(), transferType,

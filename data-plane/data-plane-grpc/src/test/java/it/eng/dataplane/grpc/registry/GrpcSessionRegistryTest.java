@@ -86,6 +86,26 @@ class GrpcSessionRegistryTest {
     }
 
     @Test
+    @DisplayName("register() with same processId evicts the prior session from bySessionId")
+    void register_sameProcessId_evictsPriorSessionFromBySessionId() {
+        GrpcStreamSession firstSession = buildSession("session-old", "process-retry", true);
+        registry.register(firstSession);
+
+        GrpcStreamSession secondSession = buildSession("session-new", "process-retry", true);
+        registry.register(secondSession);
+
+        // The old sessionId entry must be gone from the bySessionId index.
+        assertThat(registry.findBySessionId("session-old")).isEmpty();
+        // The new session must be reachable by both indexes.
+        assertThat(registry.findBySessionId("session-new")).isPresent();
+        assertThat(registry.findByProcessId("process-retry"))
+                .isPresent()
+                .hasValueSatisfying(s -> assertThat(s.getSessionId()).isEqualTo("session-new"));
+        // Only one session total — no leaked entry.
+        assertThat(registry.size()).isEqualTo(1);
+    }
+
+    @Test
     @DisplayName("size() returns number of registered sessions")
     void size_reflectsRegisteredCount() {
         assertThat(registry.size()).isZero();

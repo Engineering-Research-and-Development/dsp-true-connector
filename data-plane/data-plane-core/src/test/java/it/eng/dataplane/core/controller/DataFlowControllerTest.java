@@ -149,6 +149,19 @@ class DataFlowControllerTest {
     }
 
     @Test
+    @DisplayName("prepareDataFlow returns 400 BAD_REQUEST when protocol.prepare throws IllegalArgumentException")
+    void prepareDataFlow_returns400OnIllegalArgumentFromProtocol() {
+        when(protocolRegistry.getProtocol("stream:grpc")).thenReturn(protocol);
+        doThrow(new IllegalArgumentException("No SourceReader available for sourceType: unknown"))
+                .when(protocol).prepare(any());
+
+        ResponseEntity<DataFlowPrepareResponse> response = controller.prepareDataFlow(
+                buildPrepareMessage("proc-err", Map.of("transferType", "stream:grpc")));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+    }
+
+    @Test
     @DisplayName("prepareDataFlow handles null dataAddress without NPE")
     void prepareDataFlow_handlesNullDataAddress() {
         DataFlowPrepareResponse expected = DataFlowPrepareResponse.Builder.newInstance()

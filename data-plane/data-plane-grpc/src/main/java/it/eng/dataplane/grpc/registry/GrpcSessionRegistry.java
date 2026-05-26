@@ -23,11 +23,20 @@ public class GrpcSessionRegistry {
     /**
      * Registers a newly prepared session.
      *
+     * <p>If a session is already registered for the same {@code processId} (e.g. a CP retry of
+     * {@code /dataflows/prepare}), the prior entry is evicted from {@code bySessionId} before
+     * the new session is stored, preventing orphaned session objects.</p>
+     *
      * @param session the session to register
      */
     public void register(GrpcStreamSession session) {
+        String priorSessionId = processToSessionId.put(session.getProcessId(), session.getSessionId());
+        if (priorSessionId != null && !priorSessionId.equals(session.getSessionId())) {
+            bySessionId.remove(priorSessionId);
+            log.debug("Evicted prior gRPC session sessionId={} for processId={} (re-prepare)",
+                    priorSessionId, session.getProcessId());
+        }
         bySessionId.put(session.getSessionId(), session);
-        processToSessionId.put(session.getProcessId(), session.getSessionId());
         log.debug("Registered gRPC session sessionId={} processId={}", session.getSessionId(), session.getProcessId());
     }
 
