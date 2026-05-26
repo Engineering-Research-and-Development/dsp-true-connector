@@ -97,6 +97,9 @@ public class S3SourceReader implements SourceReader {
         } catch (S3ServerException | SdkException e) {
             log.error("Failed to open S3 object s3://{}/{}: {}", bucketName, objectKey, e.getMessage());
             return SourceOpenResult.failure("S3 error opening s3://" + bucketName + "/" + objectKey + ": " + e.getMessage());
+        } catch (RuntimeException e) {
+            log.error("Unexpected error opening S3 object s3://{}/{}: {}", bucketName, objectKey, e.getMessage());
+            return SourceOpenResult.failure("Unexpected error opening s3://" + bucketName + "/" + objectKey + ": " + e.getMessage());
         }
     }
 

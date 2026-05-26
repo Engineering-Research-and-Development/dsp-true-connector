@@ -125,6 +125,22 @@ class S3SourceReaderTest {
     }
 
     @Test
+    @DisplayName("open returns failure result when getBucketCredentials throws an unexpected RuntimeException")
+    void open_whenBucketCredentialsThrowsRuntimeException_returnsFailureResult() {
+        SourceContext context = SourceContext.Builder.newInstance()
+                .properties(Map.of("bucketName", "bucket-a", "objectKey", "object-1"))
+                .build();
+
+        when(bucketCredentialsService.getBucketCredentials("bucket-a"))
+                .thenThrow(new RuntimeException("repository connection lost"));
+
+        SourceOpenResult result = sourceReader.open(context);
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("bucket-a").contains("object-1");
+    }
+
+    @Test
     @DisplayName("open returns failure result when S3 SDK throws an exception")
     void open_whenSdkThrows_returnsFailureResult() {
         SourceContext context = SourceContext.Builder.newInstance()
