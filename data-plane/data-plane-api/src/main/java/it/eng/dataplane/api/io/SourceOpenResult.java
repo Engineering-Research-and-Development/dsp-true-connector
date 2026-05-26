@@ -2,13 +2,18 @@ package it.eng.dataplane.api.io;
 
 import lombok.Getter;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 /**
  * Result of opening a source stream.
+ *
+ * <p>Implements {@link AutoCloseable} so callers can use try-with-resources to ensure the
+ * underlying stream is always released. Closing a failure result (which has no stream) is a safe
+ * no-op.
  */
 @Getter
-public class SourceOpenResult {
+public class SourceOpenResult implements AutoCloseable {
 
     private boolean success;
     private InputStream stream;
@@ -50,5 +55,20 @@ public class SourceOpenResult {
         result.success = false;
         result.errorMessage = errorMessage;
         return result;
+    }
+
+    /**
+     * Closes the underlying stream if one is present.
+     *
+     * <p>Safe to call on failure results or when the stream is {@code null} — the method
+     * does nothing in those cases.
+     *
+     * @throws IOException if the underlying stream throws on close
+     */
+    @Override
+    public void close() throws IOException {
+        if (stream != null) {
+            stream.close();
+        }
     }
 }
