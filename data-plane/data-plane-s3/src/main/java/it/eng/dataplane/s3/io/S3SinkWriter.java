@@ -57,6 +57,10 @@ public class S3SinkWriter implements SinkWriter {
         if (StringUtils.isBlank(bucketName)) {
             return SinkWriteResult.failure("bucketName is required");
         }
+        String objectKey = properties.get(S3Utils.OBJECT_KEY);
+        if (StringUtils.isBlank(objectKey)) {
+            return SinkWriteResult.failure("objectKey is required");
+        }
         try {
             String etag = s3ClientService.uploadFile(
                     data,

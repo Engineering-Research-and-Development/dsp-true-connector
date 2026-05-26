@@ -86,6 +86,25 @@ class S3SinkWriterTest {
     }
 
     @Test
+    @DisplayName("write returns failure when objectKey is missing")
+    void write_withMissingObjectKey_returnsFailure() {
+        InputStream data = new ByteArrayInputStream("payload".getBytes());
+        SinkContext context = SinkContext.Builder.newInstance()
+                .properties(Map.of(
+                        S3Utils.BUCKET_NAME, "bucket-a",
+                        S3Utils.ACCESS_KEY, "access-key",
+                        S3Utils.SECRET_KEY, "secret-key",
+                        S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000",
+                        S3Utils.REGION, "us-east-1"))
+                .build();
+
+        SinkWriteResult result = sinkWriter.write(data, context);
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("objectKey");
+    }
+
+    @Test
     @DisplayName("write extracts cause message when upload future fails with a wrapped exception")
     void write_whenUploadFutureFailsWithWrappedException_extractsCauseMessage() {
         InputStream data = new ByteArrayInputStream("payload".getBytes());
