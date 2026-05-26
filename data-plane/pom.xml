@@ -21,5 +21,6 @@
         <module>data-plane-s3</module>
         <module>data-plane-http-pull</module>
         <module>data-plane-http-push</module>
+        <module>data-plane-grpc</module>
     </modules>
 </project>
