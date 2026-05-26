@@ -5,6 +5,7 @@ import it.eng.dataplane.api.io.SinkWriteResult;
 import it.eng.dataplane.api.io.SinkWriter;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,7 @@ import java.util.concurrent.CompletionException;
 /**
  * S3-backed {@link SinkWriter} implementation.
  */
+@Slf4j
 @Component
 public class S3SinkWriter implements SinkWriter {
 
@@ -55,10 +57,12 @@ public class S3SinkWriter implements SinkWriter {
         Map<String, String> properties = context.getProperties();
         String bucketName = properties.get(S3Utils.BUCKET_NAME);
         if (StringUtils.isBlank(bucketName)) {
+            log.error("S3 sink write failed: bucketName is required");
             return SinkWriteResult.failure("bucketName is required");
         }
         String objectKey = properties.get(S3Utils.OBJECT_KEY);
         if (StringUtils.isBlank(objectKey)) {
+            log.error("S3 sink write failed: objectKey is required (bucketName={})", bucketName);
             return SinkWriteResult.failure("objectKey is required");
         }
         try {
@@ -70,7 +74,9 @@ public class S3SinkWriter implements SinkWriter {
             ).join();
             return SinkWriteResult.success(etag);
         } catch (RuntimeException exception) {
-            return SinkWriteResult.failure(extractErrorMessage(exception));
+            String errorMessage = extractErrorMessage(exception);
+            log.error("S3 sink write failed for s3://{}/{}: {}", bucketName, objectKey, errorMessage);
+            return SinkWriteResult.failure(errorMessage);
         }
     }
 
