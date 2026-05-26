@@ -676,4 +676,42 @@ public class DataTransferServiceTest {
         assertEquals(eventType, eventTypeCaptor.getValue());
         assertNotNull(argCaptorAuditEventDetails.getValue());
     }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Task 5 – CP gRPC orchestration
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("startDataTransfer - consumer gRPC with automaticTransfer enabled fires AutoTransferDownloadEvent")
+    public void startDataTransfer_grpc_consumer_autoDownloadFires() {
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER_GRPC));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(transferProperties.isAutomaticTransfer()).thenReturn(true);
+
+        service.startDataTransfer(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE,
+                DataTransferMockObjectUtil.CONSUMER_PID, null);
+
+        // AutoTransferDownloadEvent must be published for stream:grpc consumer start
+        verify(publisher).publishEvent((Object) argThat(evt ->
+                evt instanceof it.eng.datatransfer.event.AutoTransferDownloadEvent));
+    }
+
+    @Test
+    @DisplayName("startDataTransfer - consumer gRPC with automaticTransfer disabled does NOT fire AutoTransferDownloadEvent")
+    public void startDataTransfer_grpc_consumer_autoDownloadNotFiredWhenDisabled() {
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER_GRPC));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(transferProperties.isAutomaticTransfer()).thenReturn(false);
+
+        service.startDataTransfer(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE,
+                DataTransferMockObjectUtil.CONSUMER_PID, null);
+
+        // No AutoTransferDownloadEvent when automatic transfer is disabled
+        verify(publisher, never()).publishEvent((Object) argThat(evt ->
+                evt instanceof it.eng.datatransfer.event.AutoTransferDownloadEvent));
+    }
 }

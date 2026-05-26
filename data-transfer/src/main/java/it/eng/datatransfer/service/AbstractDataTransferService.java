@@ -276,7 +276,8 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
         // Automatic download trigger
         if (transferProcessStarted.getRole().equals(IConstants.ROLE_CONSUMER)
                 && transferProperties.isAutomaticTransfer()
-                && DataTransferFormat.HTTP_PULL.format().equals(transferProcessStarted.getFormat())) {
+                && (DataTransferFormat.HTTP_PULL.format().equals(transferProcessStarted.getFormat())
+                        || TransportProfile.STREAM_GRPC.equals(transferProcessStarted.getFormat()))) {
             publisher.publishEvent(new AutoTransferDownloadEvent(transferProcessStarted.getId()));
         }
         return transferProcessStarted;

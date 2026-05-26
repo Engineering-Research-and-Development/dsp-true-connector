@@ -90,6 +90,20 @@ public class DataTransferMockObjectUtil {
             .format(DataTransferFormat.HTTP_PULL.format())
             .build();
 
+    /** Provider transfer process in REQUESTED state with {@code stream:grpc} format. */
+    public static final TransferProcess TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .datasetId(DATASET_ID)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
+            .state(TransferState.REQUESTED)
+            .format(TransportProfile.STREAM_GRPC)
+            .build();
+
     public static final TransferProcess TRANSFER_PROCESS_REQUESTED_CONSUMER = TransferProcess.Builder.newInstance()
             .consumerPid(CONSUMER_PID)
             .providerPid(PROVIDER_PID)
@@ -99,6 +113,19 @@ public class DataTransferMockObjectUtil {
             .role(IConstants.ROLE_CONSUMER)
             .tenantId(TENANT_ID)
             .state(TransferState.REQUESTED)
+            .build();
+
+    /** Consumer-side transfer process in REQUESTED state with {@code stream:grpc} format, used for consumer auto-download tests. */
+    public static final TransferProcess TRANSFER_PROCESS_REQUESTED_CONSUMER_GRPC = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_CONSUMER)
+            .tenantId(TENANT_ID)
+            .state(TransferState.REQUESTED)
+            .format(TransportProfile.STREAM_GRPC)
             .build();
 
     public static final TransferProcess TRANSFER_PROCESS_STARTED = TransferProcess.Builder.newInstance()
