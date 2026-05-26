@@ -580,8 +580,23 @@ public class DataTransferAPIService {
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
             if (transferProcess.getTransportProfile() != null) {
-                dataPlaneClient.suspend(transferProcess.getId(), transferProcess.getFormat(),
-                        transferProcess.getTransportProfile());
+                // CP is already SUSPENDED. A DP failure must be surfaced explicitly so the caller
+                // knows CP/DP are inconsistent, while still publishing the audit trail.
+                try {
+                    dataPlaneClient.suspend(transferProcess.getId(), transferProcess.getFormat(),
+                            transferProcess.getTransportProfile());
+                } catch (Exception e) {
+                    log.error("DP suspend call failed for process {}: {}", transferProcess.getId(), e.getMessage());
+                    publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
+                            "Transfer process suspension DP call failed",
+                            auditMap("transferProcess", transferProcess,
+                                    "role", IConstants.ROLE_API,
+                                    "consumerPid", transferProcess.getConsumerPid(),
+                                    "providerPid", transferProcess.getProviderPid(),
+                                    "errorMessage", e.getMessage()));
+                    throw new DataTransferAPIException(
+                            "DP suspend call failed for process " + transferProcess.getId() + ": " + e.getMessage());
+                }
             }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
                     "Transfer process suspended successfully",
@@ -645,8 +660,14 @@ public class DataTransferAPIService {
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
             if (transferProcess.getTransportProfile() != null) {
-                dataPlaneClient.terminate(transferProcess.getId(), transferProcess.getFormat(),
-                        transferProcess.getTransportProfile());
+                // Best-effort: CP is already TERMINATED. A DP failure must not prevent sticky cleanup.
+                try {
+                    dataPlaneClient.terminate(transferProcess.getId(), transferProcess.getFormat(),
+                            transferProcess.getTransportProfile());
+                } catch (Exception e) {
+                    log.warn("DP terminate call failed for process {} (best-effort); sticky cleanup will still run: {}",
+                            transferProcess.getId(), e.getMessage());
+                }
             }
             dataPlaneClient.clearStickyAssignment(transferProcess.getId());
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED,

@@ -1125,4 +1125,70 @@ class DataTransferAPIServiceTest {
 
         verify(dataPlaneClient).suspend(startedGrpc.getId(), TransportProfile.STREAM_GRPC, TransportProfile.STREAM_GRPC);
     }
+
+    @Test
+    @DisplayName("Terminate transfer - DP terminate throws; sticky cleanup still runs and audit still fires")
+    public void terminateTransfer_dpTerminateThrows_stickyCleanupRunsAndAuditFires() {
+        TransferProcess startedGrpc = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.STARTED)
+                .format(TransportProfile.STREAM_GRPC)
+                .transportProfile(TransportProfile.STREAM_GRPC)
+                .build();
+
+        when(transferProcessRepository.findById(startedGrpc.getId())).thenReturn(Optional.of(startedGrpc));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(), any(), any())).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        doThrow(new DataPlaneClientException("DP unreachable"))
+                .when(dataPlaneClient).terminate(startedGrpc.getId(), TransportProfile.STREAM_GRPC, TransportProfile.STREAM_GRPC);
+
+        // must not propagate — DP terminate is best-effort after CP is already TERMINATED
+        JsonNode result = apiService.terminateTransfer(startedGrpc.getId());
+
+        assertNotNull(result);
+        verify(dataPlaneClient).terminate(startedGrpc.getId(), TransportProfile.STREAM_GRPC, TransportProfile.STREAM_GRPC);
+        // sticky assignment MUST be cleared even if DP terminate threw
+        verify(dataPlaneClient).clearStickyAssignment(startedGrpc.getId());
+        // audit event MUST fire
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, null);
+    }
+
+    @Test
+    @DisplayName("Suspend transfer - DP suspend throws; DataTransferAPIException raised and audit fires")
+    public void suspendTransfer_dpSuspendThrows_throwsDataTransferAPIExceptionAndAuditFires() {
+        TransferProcess startedGrpc = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.STARTED)
+                .format(TransportProfile.STREAM_GRPC)
+                .transportProfile(TransportProfile.STREAM_GRPC)
+                .build();
+
+        when(transferProcessRepository.findById(startedGrpc.getId())).thenReturn(Optional.of(startedGrpc));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(), any(), any())).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        doThrow(new DataPlaneClientException("DP unreachable"))
+                .when(dataPlaneClient).suspend(startedGrpc.getId(), TransportProfile.STREAM_GRPC, TransportProfile.STREAM_GRPC);
+
+        // DP suspend failure must be surfaced as DataTransferAPIException
+        assertThrows(DataTransferAPIException.class, () -> apiService.suspendTransfer(startedGrpc.getId()));
+
+        // CP state was persisted SUSPENDED before the DP call
+        verify(transferProcessRepository).save(any(TransferProcess.class));
+        // audit event MUST fire even on DP failure
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
+    }
 }
