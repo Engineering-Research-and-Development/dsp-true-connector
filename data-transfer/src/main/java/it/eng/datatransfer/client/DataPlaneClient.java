@@ -85,6 +85,50 @@ public class DataPlaneClient {
     }
 
     /**
+     * Sends a {@link DataFlowStartMessage} to the selected Data Plane using profile-aware sticky routing.
+     *
+     * <p>The target Data Plane is selected using {@link DataPlaneRouter#selectDataPlane(String, String, String)}
+     * with the message's {@code processId} as the sticky key and the given {@code transportProfile}.
+     * The message is POSTed to {@code {dpEndpoint}/dataflows/start}.</p>
+     *
+     * @param startMessage     the start message to forward
+     * @param transportProfile the required transport profile (e.g. {@code "stream:grpc"}),
+     *                         or {@code null} for profile-independent selection
+     * @throws IllegalStateException if the router throws because no Data Plane supports the profile
+     */
+    public void start(DataFlowStartMessage startMessage, String transportProfile) {
+        DataPlaneRegistration dp = selectOrThrow(startMessage.getTransferType(),
+                startMessage.getProcessId(), transportProfile);
+        String url = dp.getEndpoint() + "/dataflows/start";
+        log.info("Sending DataFlowStartMessage (profile='{}') to '{}'", transportProfile, url);
+        post(url, startMessage, dp.getApiKey());
+    }
+
+    /**
+     * Sends a {@link DataFlowPrepareMessage} to the selected Data Plane using profile-aware sticky routing
+     * and returns the {@link DataFlowPrepareResponse}.
+     *
+     * <p>The target Data Plane is selected using {@link DataPlaneRouter#selectDataPlane(String, String, String)}
+     * with the message's {@code processId} as the sticky key and the given {@code transportProfile}.
+     * The message is POSTed to {@code {dpEndpoint}/dataflows/prepare}.</p>
+     *
+     * @param prepareMessage   the prepare message to forward
+     * @param transferType     the transfer type used for Data Plane selection
+     * @param transportProfile the required transport profile (e.g. {@code "stream:grpc"}),
+     *                         or {@code null} for profile-independent selection
+     * @return the response from the Data Plane with protocol-specific addressing data
+     * @throws IllegalStateException if the router throws because no Data Plane supports the profile
+     */
+    public DataFlowPrepareResponse prepare(DataFlowPrepareMessage prepareMessage,
+                                           String transferType,
+                                           String transportProfile) {
+        DataPlaneRegistration dp = selectOrThrow(transferType, prepareMessage.getProcessId(), transportProfile);
+        String url = dp.getEndpoint() + "/dataflows/prepare";
+        log.info("Sending DataFlowPrepareMessage (profile='{}') to '{}'", transportProfile, url);
+        return postForResponse(url, prepareMessage, dp.getApiKey(), DataFlowPrepareResponse.class);
+    }
+
+    /**
      * Sends a termination request for the given process to the selected Data Plane.
      *
      * <p>DELETEs {@code {dpEndpoint}/dataflows/{processId}/terminate} using the canonical path.</p>
@@ -137,6 +181,12 @@ public class DataPlaneClient {
 
     private DataPlaneRegistration selectOrThrow(String transferType) {
         return router.selectDataPlane(transferType)
+                .orElseThrow(() -> new IllegalStateException(
+                        "No Data Plane registered for transfer type: " + transferType));
+    }
+
+    private DataPlaneRegistration selectOrThrow(String transferType, String processId, String transportProfile) {
+        return router.selectDataPlane(transferType, processId, transportProfile)
                 .orElseThrow(() -> new IllegalStateException(
                         "No Data Plane registered for transfer type: " + transferType));
     }

@@ -53,6 +53,7 @@ public class DataPlaneRegistrationService {
                             .id(idToUse)
                             .endpoint(registration.getEndpoint())
                             .supportedTransferTypes(registration.getSupportedTransferTypes())
+                            .transportProfiles(registration.getTransportProfiles())
                             .apiKey(registration.getApiKey())
                             .build();
                     DataPlaneRegistration saved = repository.save(updated);

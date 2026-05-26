@@ -15,6 +15,8 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 public class DataPlaneRouterTest {
@@ -29,6 +31,14 @@ public class DataPlaneRouterTest {
         return DataPlaneRegistration.Builder.newInstance()
                 .endpoint(endpoint)
                 .supportedTransferTypes(Set.of("HttpData-PULL"))
+                .build();
+    }
+
+    private DataPlaneRegistration buildRegistrationWithProfile(String endpoint, Set<String> profiles) {
+        return DataPlaneRegistration.Builder.newInstance()
+                .endpoint(endpoint)
+                .supportedTransferTypes(Set.of("HttpData-PULL"))
+                .transportProfiles(profiles)
                 .build();
     }
 
@@ -67,5 +77,69 @@ public class DataPlaneRouterTest {
         assertTrue(first.isPresent());
         assertTrue(second.isPresent());
         assertNotEquals(first.get().getEndpoint(), second.get().getEndpoint());
+    }
+
+    @Test
+    @DisplayName("selectDataPlaneByProfile - only DP advertising the profile is returned")
+    public void selectDataPlaneByProfileFiltersOnProfile() {
+        DataPlaneRegistration grpcDp = buildRegistrationWithProfile("http://dp-grpc:9090", Set.of("stream:grpc"));
+        DataPlaneRegistration httpDp = buildRegistration("http://dp-http:9090");
+        when(registrationService.findByTransferType("HttpData-PULL")).thenReturn(List.of(httpDp, grpcDp));
+
+        Optional<DataPlaneRegistration> result = router.selectDataPlane("HttpData-PULL", "proc-1", "stream:grpc");
+
+        assertTrue(result.isPresent());
+        assertEquals("http://dp-grpc:9090", result.get().getEndpoint());
+    }
+
+    @Test
+    @DisplayName("selectDataPlane sticky - same processId always returns the same DP")
+    public void selectDataPlaneStickyByProcessId() {
+        DataPlaneRegistration reg1 = buildRegistration("http://dp1:9090");
+        DataPlaneRegistration reg2 = buildRegistration("http://dp2:9090");
+        when(registrationService.findByTransferType("HttpData-PULL")).thenReturn(List.of(reg1, reg2));
+
+        Optional<DataPlaneRegistration> first = router.selectDataPlane("HttpData-PULL", "proc-sticky", null);
+        Optional<DataPlaneRegistration> second = router.selectDataPlane("HttpData-PULL", "proc-sticky", null);
+
+        assertTrue(first.isPresent());
+        assertTrue(second.isPresent());
+        assertEquals(first.get().getEndpoint(), second.get().getEndpoint(),
+                "sticky routing must return the same DP for repeated calls with the same processId");
+    }
+
+    @Test
+    @DisplayName("selectDataPlane different processIds - may land on different DPs")
+    public void selectDataPlaneDifferentProcessIdsCanReturnDifferentDps() {
+        DataPlaneRegistration reg1 = buildRegistration("http://dp1:9090");
+        DataPlaneRegistration reg2 = buildRegistration("http://dp2:9090");
+        when(registrationService.findByTransferType("HttpData-PULL")).thenReturn(List.of(reg1, reg2));
+
+        Optional<DataPlaneRegistration> first = router.selectDataPlane("HttpData-PULL", "proc-A", null);
+        Optional<DataPlaneRegistration> second = router.selectDataPlane("HttpData-PULL", "proc-B", null);
+
+        assertTrue(first.isPresent());
+        assertTrue(second.isPresent());
+        // With two DPs and two different processIds, round-robin should assign different ones
+        assertNotEquals(first.get().getEndpoint(), second.get().getEndpoint());
+    }
+
+    @Test
+    @DisplayName("selectDataPlane - throws IllegalStateException when no DP supports requested profile")
+    public void selectDataPlaneThrowsWhenNoProfileMatch() {
+        DataPlaneRegistration httpDp = buildRegistration("http://dp-http:9090");
+        when(registrationService.findByTransferType("HttpData-PULL")).thenReturn(List.of(httpDp));
+
+        assertThrows(IllegalStateException.class,
+                () -> router.selectDataPlane("HttpData-PULL", "proc-2", "stream:grpc"));
+    }
+
+    @Test
+    @DisplayName("selectDataPlane - throws when profile requested but no DPs registered at all")
+    public void selectDataPlaneThrowsWhenNoDpsAndProfileRequested() {
+        when(registrationService.findByTransferType("stream:grpc")).thenReturn(List.of());
+
+        assertThrows(IllegalStateException.class,
+                () -> router.selectDataPlane("stream:grpc", "proc-3", "stream:grpc"));
     }
 }

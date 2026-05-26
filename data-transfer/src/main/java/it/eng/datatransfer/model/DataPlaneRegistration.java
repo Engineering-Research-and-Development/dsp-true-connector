@@ -45,6 +45,12 @@ public class DataPlaneRegistration {
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String apiKey;
 
+    /**
+     * Optional set of transport profile identifiers this Data Plane advertises
+     * (e.g. {@code "stream:grpc"}). Absent for standard HTTP-PULL/PUSH planes.
+     */
+    private Set<String> transportProfiles;
+
     private Instant lastHeartbeat;
 
     private Instant registeredAt;
@@ -123,6 +129,17 @@ public class DataPlaneRegistration {
          */
         public Builder apiKey(String apiKey) {
             registration.apiKey = apiKey;
+            return this;
+        }
+
+        /**
+         * Sets the optional transport profiles this Data Plane advertises.
+         *
+         * @param transportProfiles set of transport profile identifiers (e.g. {@code "stream:grpc"})
+         * @return this builder
+         */
+        public Builder transportProfiles(Set<String> transportProfiles) {
+            registration.transportProfiles = transportProfiles;
             return this;
         }
 

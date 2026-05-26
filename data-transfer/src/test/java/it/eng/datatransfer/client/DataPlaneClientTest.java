@@ -219,4 +219,70 @@ public class DataPlaneClientTest {
         assertEquals("POST", captured.method());
         assertTrue(captured.url().toString().contains("/dataflows/proc-res-1/resume"));
     }
+
+    @Test
+    @DisplayName("startWithTransportProfile - routes start to DP advertising that profile")
+    public void startWithTransportProfileRoutesToProfileDp() throws IOException {
+        DataPlaneRegistration dp = DataPlaneRegistration.Builder.newInstance()
+                .endpoint("http://dp-grpc:9090")
+                .supportedTransferTypes(Set.of("stream:grpc"))
+                .transportProfiles(Set.of("stream:grpc"))
+                .build();
+        when(mockRouter.selectDataPlane("stream:grpc", "proc-grpc", "stream:grpc")).thenReturn(Optional.of(dp));
+        Call mockCall = stubCall(200);
+        when(mockHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+
+        DataFlowStartMessage msg = DataFlowStartMessage.Builder.newInstance()
+                .processId("proc-grpc")
+                .transferType("stream:grpc")
+                .build();
+
+        client.start(msg, "stream:grpc");
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(mockHttpClient).newCall(captor.capture());
+        assertTrue(captor.getValue().url().toString().contains("/dataflows/start"));
+        assertTrue(captor.getValue().url().toString().startsWith("http://dp-grpc:9090"));
+    }
+
+    @Test
+    @DisplayName("startWithTransportProfile - propagates IllegalStateException when router throws on missing profile")
+    public void startWithTransportProfilePropagatesExceptionOnMissingProfile() {
+        when(mockRouter.selectDataPlane("stream:grpc", "proc-miss", "stream:grpc"))
+                .thenThrow(new IllegalStateException(
+                        "No Data Plane registered for transfer type 'stream:grpc' and transport profile 'stream:grpc'"));
+
+        DataFlowStartMessage msg = DataFlowStartMessage.Builder.newInstance()
+                .processId("proc-miss")
+                .transferType("stream:grpc")
+                .build();
+
+        assertThrows(IllegalStateException.class, () -> client.start(msg, "stream:grpc"));
+        verifyNoInteractions(mockHttpClient);
+    }
+
+    @Test
+    @DisplayName("prepareWithTransportProfile - routes prepare to DP advertising that profile")
+    public void prepareWithTransportProfileRoutesToProfileDp() throws IOException {
+        DataPlaneRegistration dp = DataPlaneRegistration.Builder.newInstance()
+                .endpoint("http://dp-grpc:9090")
+                .supportedTransferTypes(Set.of("stream:grpc"))
+                .transportProfiles(Set.of("stream:grpc"))
+                .build();
+        when(mockRouter.selectDataPlane("stream:grpc", "proc-prep-grpc", "stream:grpc")).thenReturn(Optional.of(dp));
+        String responseBody = "{\"processId\":\"proc-prep-grpc\",\"dataAddress\":{}}";
+        Call mockCall = stubCallWithBody(200, responseBody);
+        when(mockHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+
+        DataFlowPrepareMessage msg = DataFlowPrepareMessage.Builder.newInstance()
+                .processId("proc-prep-grpc")
+                .build();
+
+        client.prepare(msg, "stream:grpc", "stream:grpc");
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(mockHttpClient).newCall(captor.capture());
+        assertTrue(captor.getValue().url().toString().contains("/dataflows/prepare"));
+        assertTrue(captor.getValue().url().toString().startsWith("http://dp-grpc:9090"));
+    }
 }

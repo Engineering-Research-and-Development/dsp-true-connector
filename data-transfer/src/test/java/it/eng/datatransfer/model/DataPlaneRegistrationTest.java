@@ -59,4 +59,30 @@ public class DataPlaneRegistrationTest {
         assertThrows(ValidationException.class, () ->
                 DataPlaneRegistration.Builder.newInstance().build());
     }
+
+    @Test
+    @DisplayName("Build with transport profiles - profiles are stored and accessible")
+    public void buildWithTransportProfilesSucceeds() {
+        DataPlaneRegistration reg = DataPlaneRegistration.Builder.newInstance()
+                .endpoint("http://dp.example.com")
+                .supportedTransferTypes(Set.of("stream:grpc"))
+                .transportProfiles(Set.of("stream:grpc"))
+                .build();
+
+        assertNotNull(reg);
+        assertNotNull(reg.getTransportProfiles());
+        assertTrue(reg.getTransportProfiles().contains("stream:grpc"));
+    }
+
+    @Test
+    @DisplayName("Build without transport profiles - field is null and registration is still valid")
+    public void buildWithoutTransportProfilesSucceeds() {
+        DataPlaneRegistration reg = DataPlaneRegistration.Builder.newInstance()
+                .endpoint("http://dp.example.com")
+                .supportedTransferTypes(Set.of("HttpData-PULL"))
+                .build();
+
+        assertNotNull(reg);
+        assertNull(reg.getTransportProfiles());
+    }
 }

@@ -123,6 +123,13 @@ public class TransferProcess extends AbstractTransferMessage {
     private String dataFlowErrorMessage;
 
     /**
+     * Internal transport profile chosen for this transfer process (e.g. {@code "stream:grpc"}).
+     * Not included in protocol JSON — used only for internal Data Plane routing.
+     */
+    @JsonIgnore
+    private String transportProfile;
+
+    /**
      * Tenant this transfer process belongs to. Null for super-admin scope.
      */
     @JsonIgnore
@@ -223,6 +230,17 @@ public class TransferProcess extends AbstractTransferMessage {
 
         public Builder tenantId(String tenantId) {
             message.tenantId = tenantId;
+            return this;
+        }
+
+        /**
+         * Sets the internal transport profile for Data Plane routing.
+         *
+         * @param transportProfile the transport profile (e.g. {@code "stream:grpc"}), or {@code null} for standard HTTP
+         * @return this builder
+         */
+        public Builder transportProfile(String transportProfile) {
+            message.transportProfile = transportProfile;
             return this;
         }
 
@@ -337,6 +355,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .tenantId(this.tenantId)
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
@@ -372,6 +391,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .tenantId(this.tenantId)
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
@@ -407,6 +427,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .tenantId(this.tenantId)
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
@@ -442,6 +463,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .tenantId(this.tenantId)
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)
@@ -476,6 +498,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .tenantId(this.tenantId)
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)
@@ -510,6 +533,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .tenantId(this.tenantId)
                 .dataFlowState(dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)
@@ -544,6 +568,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .tenantId(this.tenantId)
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)
@@ -578,6 +603,42 @@ public class TransferProcess extends AbstractTransferMessage {
                 .tenantId(this.tenantId)
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified transport profile.
+     * All other fields remain unchanged.
+     *
+     * @param transportProfile the internal transport profile (e.g. {@code "stream:grpc"}), or {@code null}
+     * @return new TransferProcess instance with updated transportProfile
+     */
+    public TransferProcess withTransportProfile(String transportProfile) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(transportProfile)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)
