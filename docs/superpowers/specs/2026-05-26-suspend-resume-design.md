@@ -120,29 +120,30 @@ This keeps the rule local and explicit: the initiator is the only side allowed t
 2. `DataTransferAPIService.startTransfer(...)` checks `suspendedBy` when the current state is `SUSPENDED`; if the local role is not the recorded initiator, the request is rejected and the transfer stays suspended.
 3. DSP state handling remains unchanged at the public API level.
 4. When the peer receives the resulting `TransferStartMessage`, `AbstractDataTransferService.startDataTransfer(...)` applies the symmetric rule: for a `SUSPENDED` transfer, it only accepts the message when the local role is **not** `suspendedBy`, because the peer sender must be the recorded initiator.
-5. When the actual local data movement is about to begin, the control plane reuses the existing access material already stored on the suspended transfer:
+5. Once the `STARTED` transition succeeds, the control plane automatically kicks off the local dataplane work; there is no separate manual download step in the suspend/resume flow.
+6. For that automatic dataplane kickoff, the control plane reuses the existing access material already stored on the suspended transfer:
    - HTTP-PULL reuses the existing presigned URL already present in the transfer's data address
    - HTTP-PUSH reuses the existing destination credentials already present in the transfer's data address
    - no fresh presigned URL or new push credentials are minted as part of resume
-6. The control plane then chooses:
+7. The control plane then chooses:
    - `dataPlaneClient.start(...)` for a fresh execution
    - `dataPlaneClient.resume(...)` when the dataplane mirror shows a resumable suspended flow
-7. The dataplane resumes from checkpoint state if the saved multipart upload is still valid.
-8. Existing dataplane callbacks (`started`, `completed`, `errored`) remain the only dataplane-to-control-plane callbacks used in this iteration.
+8. The dataplane resumes from checkpoint state if the saved multipart upload is still valid.
+9. Existing dataplane callbacks (`started`, `completed`, `errored`) remain the only dataplane-to-control-plane callbacks used in this iteration.
 
 ### Where the start-vs-resume decision happens
 
-The choice is **not** made by adding a new public resume endpoint or a new `resume=true` flag to `startTransfer(...)`. It is made at the moment the control plane is about to hand local execution over to the dataplane.
+The choice is **not** made by adding a new public resume endpoint or a new `resume=true` flag to `startTransfer(...)`. It is made in the existing automatic control-plane execution handoff that runs immediately after the transfer successfully reaches `STARTED`.
 
-- **HTTP-PULL:** the decision happens in the consumer-side `DataTransferAPIService.downloadData(...)` path, whether that method is reached manually from the existing download endpoint or automatically via `AutoTransferDownloadEvent`
-- **HTTP-PUSH:** the decision happens in the provider-side start-then-download chain in `AutomaticDataTransferService.processStart(...)`, which calls `processDownload(...)`, which then ends up in the same `DataTransferAPIService.downloadData(...)` dataplane handoff
+- **HTTP-PULL:** the decision happens in the consumer-side automatic handoff triggered after `AbstractDataTransferService.startDataTransfer(...)` successfully persists `STARTED` and publishes `AutoTransferDownloadEvent`
+- **HTTP-PUSH:** the decision happens in the provider-side automatic start-then-download chain in `AutomaticDataTransferService.processStart(...)`, which calls `processDownload(...)`, which then ends up in the `DataTransferAPIService.downloadData(...)` dataplane handoff after `STARTED` has succeeded
 
 At that handoff point, the control plane inspects the suspended transfer and decides whether to call:
 
 - `dataPlaneClient.start(...)` for a fresh local execution
 - `dataPlaneClient.resume(...)` for a suspended local execution that is allowed to continue
 
-That keeps `startTransfer(...)` as the public contract while making the start-vs-resume choice an internal control-plane execution detail right before dataplane invocation.
+That keeps `startTransfer(...)` as the public contract while making the start-vs-resume choice an internal automatic control-plane execution detail right before dataplane invocation.
 
 ## Java 21 Considerations
 
