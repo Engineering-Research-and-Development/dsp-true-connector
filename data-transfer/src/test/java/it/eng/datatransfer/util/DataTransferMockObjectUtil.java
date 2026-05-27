@@ -205,6 +205,40 @@ public class DataTransferMockObjectUtil {
             .format(DataTransferFormat.HTTP_PUSH.format())
             .build();
 
+    /**
+     * Consumer-provided S3 credentials stored as flat endpoint properties in the provider-side HTTP-PUSH TP.
+     * These are translated to {@code sink.*} keys when the provider CP builds the DataFlowStartMessage.
+     */
+    public static final DataAddress DATA_ADDRESS_HTTP_PUSH_CONSUMER_CREDENTIALS = DataAddress.Builder.newInstance()
+            .endpoint(ENDPOINT_URL)
+            .endpointType(ENDPOINT_TYPE)
+            .endpointProperties(List.of(
+                    EndpointProperty.Builder.newInstance().name("bucketName").value("consumer-push-bucket").build(),
+                    EndpointProperty.Builder.newInstance().name("objectKey").value("tp-push-obj").build(),
+                    EndpointProperty.Builder.newInstance().name("accessKey").value("consumer-temp-access").build(),
+                    EndpointProperty.Builder.newInstance().name("secretKey").value("consumer-temp-secret").build(),
+                    EndpointProperty.Builder.newInstance().name("region").value("eu-central-1").build(),
+                    EndpointProperty.Builder.newInstance().name("endpointOverride").value("http://consumer-minio:9000").build()
+            ))
+            .build();
+
+    /** Provider transfer process in STARTED state with HTTP-PUSH format and consumer flat credentials in dataAddress. */
+    public static final TransferProcess TRANSFER_PROCESS_STARTED_PROVIDER_HTTP_PUSH = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS_HTTP_PUSH_CONSUMER_CREDENTIALS)
+            .datasetId(DATASET_ID)
+            .isDownloaded(false)
+            .isDownloadInProgress(false)
+            .dataId(null)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
+            .state(TransferState.STARTED)
+            .format(DataTransferFormat.HTTP_PUSH.format())
+            .build();
+
     public static final TransferProcess TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED = TransferProcess.Builder.newInstance()
             .consumerPid(CONSUMER_PID)
             .providerPid(PROVIDER_PID)

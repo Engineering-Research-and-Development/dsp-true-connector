@@ -1,6 +1,9 @@
 package it.eng.dataplane.httppush;
 
 import com.sun.net.httpserver.HttpServer;
+import it.eng.dataplane.api.DataPlaneConstants;
+import it.eng.dataplane.api.message.DataFlowPrepareMessage;
+import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.core.client.ControlPlaneClient;
@@ -8,7 +11,6 @@ import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.util.S3Utils;
-import it.eng.dataplane.s3.service.TenantBucketResolver;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -48,8 +50,6 @@ class HttpPushTransferProtocolTest {
     @Mock
     private TemporaryBucketUserService temporaryBucketUserService;
     @Mock
-    private TenantBucketResolver tenantBucketResolver;
-    @Mock
     private S3Properties s3Properties;
     @Mock
     private ControlPlaneClient controlPlaneClient;
@@ -72,7 +72,6 @@ class HttpPushTransferProtocolTest {
             s3ClientService,
             s3Properties,
             temporaryBucketUserService,
-            tenantBucketResolver,
             syncExecutor,
             testHttpClient,
             controlPlaneClient
@@ -93,7 +92,26 @@ class HttpPushTransferProtocolTest {
     }
 
     @Test
-    @DisplayName("initiateTransfer returns failure when dataAddress is empty (no bucketName)")
+    @DisplayName("prepare uses sink metadata view mode to return a presigned URL for the stored processId object")
+    void prepareViewModeUsesSinkMetadata() {
+        when(s3Properties.getBucketName()).thenReturn("consumer-bucket");
+        when(s3ClientService.generateGetPresignedUrl("consumer-bucket", "tp-view", Duration.ofDays(7L)))
+                .thenReturn("https://example.com/pushed");
+
+        DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
+                .processId("tp-view")
+                .datasetId("dataset-1")
+                .metadata(Map.of("sink", Map.of("mode", "VIEW")))
+                .build();
+
+        DataFlowPrepareResponse response = protocol.prepare(message);
+
+        assertThat(response.getDataAddress()).containsEntry("presignedUrl", "https://example.com/pushed");
+        verify(s3ClientService).generateGetPresignedUrl("consumer-bucket", "tp-view", Duration.ofDays(7L));
+    }
+
+    @Test
+    @DisplayName("initiateTransfer returns failure when dataAddress is empty (no sink.bucketName)")
     void initiateTransfer_failsWhenDataAddressEmpty() throws Exception {
         DataFlow dataFlow = DataFlow.Builder.newInstance()
             .processId("tp-1")
@@ -165,15 +183,16 @@ class HttpPushTransferProtocolTest {
         int port = testHttpServer.getAddress().getPort();
         String presignedUrl = "http://localhost:" + port + "/artifact-403";
 
-        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
         when(s3ClientService.generateGetPresignedUrl(eq("provider-bucket"), anyString(), any(Duration.class)))
             .thenReturn(presignedUrl);
 
         Map<String, String> dataAddress = new HashMap<>();
-        dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
-        dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
-        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
-        dataAddress.put(S3Utils.REGION, "us-east-1");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_BUCKET_NAME, "provider-bucket");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_OBJECT_KEY, "dataset-403");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "consumer-bucket");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, "consumer-access");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, "plain-secret");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, "us-east-1");
 
         DataFlow dataFlow = DataFlow.Builder.newInstance()
                 .processId("tp-403")
@@ -193,7 +212,7 @@ class HttpPushTransferProtocolTest {
     }
 
     @Test
-    @DisplayName("initiateTransfer pushes artifact to consumer S3 and sends started/completed callbacks")
+    @DisplayName("initiateTransfer pushes artifact to consumer S3 using CP-provided source and sink properties")
     void initiateTransfer_successfulPushToConsumerS3() throws Exception {
         // Serve dummy artifact content from a local HTTP server
         testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
@@ -209,19 +228,20 @@ class HttpPushTransferProtocolTest {
         int port = testHttpServer.getAddress().getPort();
         String presignedUrl = "http://localhost:" + port + "/artifact";
 
-        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
         when(s3ClientService.generateGetPresignedUrl(eq("provider-bucket"), anyString(), any(Duration.class)))
             .thenReturn(presignedUrl);
         when(s3ClientService.uploadFile(any(), any(), any(), any()))
             .thenReturn(CompletableFuture.completedFuture("etag-xyz"));
 
         Map<String, String> dataAddress = new HashMap<>();
-        dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
-        dataAddress.put(S3Utils.OBJECT_KEY, "tp-obj-key");
-        dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
-        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
-        dataAddress.put(S3Utils.ENDPOINT_OVERRIDE, "http://consumer-minio:9000");
-        dataAddress.put(S3Utils.REGION, "us-east-1");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_BUCKET_NAME, "provider-bucket");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_OBJECT_KEY, "dataset-1");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "consumer-bucket");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, "tp-obj-key");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, "consumer-access");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, "plain-secret");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE, "http://consumer-minio:9000");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, "us-east-1");
 
         DataFlow dataFlow = DataFlow.Builder.newInstance()
             .processId("tp-3")
@@ -242,7 +262,62 @@ class HttpPushTransferProtocolTest {
     }
 
     @Test
-    @DisplayName("initiateTransfer sends started/completed callbacks and uses processId as S3 objectKey when objectKey is absent from dataAddress")
+    @DisplayName("initiateTransfer uses CP-provided source properties for provider presigned URL (no DP-local bucket resolution)")
+    void initiateTransfer_usesCPProvidedSourcePropertiesForPresignedUrl() throws Exception {
+        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        testHttpServer.createContext("/artifact", exchange -> {
+            byte[] body = "artifact-content".getBytes();
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+        });
+        testHttpServer.start();
+
+        int port = testHttpServer.getAddress().getPort();
+        String presignedUrl = "http://localhost:" + port + "/artifact";
+
+        when(s3ClientService.generateGetPresignedUrl("cp-provider-bucket", "dataset-1", Duration.ofDays(1L)))
+                .thenReturn(presignedUrl);
+        when(s3ClientService.uploadFile(any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture("etag-push"));
+
+        Map<String, String> dataAddress = new HashMap<>();
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_BUCKET_NAME, "cp-provider-bucket");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_OBJECT_KEY, "dataset-1");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "cp-consumer-bucket");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, "tp-obj");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, "consumer-access");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, "consumer-secret");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, "eu-west-1");
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-source-test")
+                .transferType("HttpData-PUSH")
+                .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
+                .datasetId("dataset-1")
+                .dataAddress(dataAddress)
+                .build();
+
+        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
+
+        assertThat(result.isSuccess()).isTrue();
+        // Verify CP-provided source bucket was used for presigned URL generation
+        verify(s3ClientService).generateGetPresignedUrl("cp-provider-bucket", "dataset-1", Duration.ofDays(1L));
+        // Verify consumer sink properties were used for upload
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, String>> s3PropsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(s3ClientService).uploadFile(any(), s3PropsCaptor.capture(), any(), any());
+        assertThat(s3PropsCaptor.getValue())
+                .containsEntry(S3Utils.BUCKET_NAME, "cp-consumer-bucket")
+                .containsEntry(S3Utils.OBJECT_KEY, "tp-obj")
+                .containsEntry(S3Utils.ACCESS_KEY, "consumer-access")
+                .containsEntry(S3Utils.SECRET_KEY, "consumer-secret");
+    }
+
+    @Test
+    @DisplayName("initiateTransfer sends started/completed callbacks and uses sink.objectKey from dataAddress; falls back to processId when absent")
     void initiateTransfer_usesProcessIdAsObjectKeyFallback() throws Exception {
         testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
         testHttpServer.createContext("/artifact", exchange -> {
@@ -257,17 +332,19 @@ class HttpPushTransferProtocolTest {
         int port = testHttpServer.getAddress().getPort();
         String presignedUrl = "http://localhost:" + port + "/artifact";
 
-        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
         when(s3ClientService.generateGetPresignedUrl(anyString(), anyString(), any(Duration.class)))
             .thenReturn(presignedUrl);
         when(s3ClientService.uploadFile(any(), any(), any(), any()))
             .thenReturn(CompletableFuture.completedFuture("etag-xyz"));
 
         Map<String, String> dataAddress = new HashMap<>();
-        dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
-        dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
-        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
-        dataAddress.put(S3Utils.REGION, "us-east-1");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_BUCKET_NAME, "provider-bucket");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_OBJECT_KEY, "dataset-1");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "consumer-bucket");
+        // intentionally omit SINK_OBJECT_KEY to test fallback to processId
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, "consumer-access");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, "plain-secret");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, "us-east-1");
 
         DataFlow dataFlow = DataFlow.Builder.newInstance()
             .processId("tp-4")
@@ -308,7 +385,6 @@ class HttpPushTransferProtocolTest {
         int port = testHttpServer.getAddress().getPort();
         String presignedUrl = "http://localhost:" + port + "/artifact";
 
-        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
         when(s3ClientService.generateGetPresignedUrl(anyString(), anyString(), any(Duration.class)))
             .thenReturn(presignedUrl);
         // Simulate upload failure
@@ -316,10 +392,12 @@ class HttpPushTransferProtocolTest {
             .thenReturn(CompletableFuture.failedFuture(new RuntimeException("S3 auth failure")));
 
         Map<String, String> dataAddress = new HashMap<>();
-        dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
-        dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
-        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
-        dataAddress.put(S3Utils.REGION, "us-east-1");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_BUCKET_NAME, "provider-bucket");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_OBJECT_KEY, "dataset-1");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "consumer-bucket");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, "consumer-access");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, "plain-secret");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, "us-east-1");
 
         DataFlow dataFlow = DataFlow.Builder.newInstance()
             .processId("tp-5")
@@ -358,17 +436,18 @@ class HttpPushTransferProtocolTest {
         int port = testHttpServer.getAddress().getPort();
         String presignedUrl = "http://localhost:" + port + "/artifact";
 
-        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
         when(s3ClientService.generateGetPresignedUrl(eq("provider-bucket"), anyString(), any(Duration.class)))
             .thenReturn(presignedUrl);
         when(s3ClientService.uploadFile(any(), any(), any(), any()))
             .thenReturn(CompletableFuture.completedFuture("etag-ok"));
 
         Map<String, String> dataAddress = new HashMap<>();
-        dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
-        dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
-        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
-        dataAddress.put(S3Utils.REGION, "us-east-1");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_BUCKET_NAME, "provider-bucket");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_OBJECT_KEY, "dataset-1");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "consumer-bucket");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, "consumer-access");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, "plain-secret");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, "us-east-1");
 
         DataFlow dataFlow = DataFlow.Builder.newInstance()
                 .processId("tp-1")

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dataplane.api.DataPlaneConstants;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
@@ -23,7 +24,9 @@ import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.BucketCredentialsService;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.util.S3Utils;
@@ -45,9 +48,12 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -64,6 +70,7 @@ public class DataTransferAPIService {
     private final ArtifactTransferService artifactTransferService;
     private final DataPlaneClient dataPlaneClient;
     private final S3ClientService s3ClientService;
+    private final BucketCredentialsService bucketCredentialsService;
     private final TenantBucketResolver tenantBucketResolver;
     private final TemporaryBucketUserService temporaryBucketUserService;
     private final S3Properties s3Properties;
@@ -81,6 +88,7 @@ public class DataTransferAPIService {
      * @param artifactTransferService    artifact lookup service
      * @param dataPlaneClient            DPS client for forwarding data-flow messages
      * @param s3ClientService            S3 client for presigned URL generation
+     * @param bucketCredentialsService   service for resolving decrypted per-bucket S3 credentials
      * @param tenantBucketResolver       resolves the effective bucket name for the current tenant
      * @param temporaryBucketUserService service for creating and cleaning up temporary S3 users
      * @param s3Properties               S3 configuration (region, external endpoint)
@@ -95,6 +103,7 @@ public class DataTransferAPIService {
                                   ArtifactTransferService artifactTransferService,
                                   DataPlaneClient dataPlaneClient,
                                   S3ClientService s3ClientService,
+                                  BucketCredentialsService bucketCredentialsService,
                                   TenantBucketResolver tenantBucketResolver,
                                   TemporaryBucketUserService temporaryBucketUserService,
                                   S3Properties s3Properties,
@@ -109,6 +118,7 @@ public class DataTransferAPIService {
         this.artifactTransferService = artifactTransferService;
         this.dataPlaneClient = dataPlaneClient;
         this.s3ClientService = s3ClientService;
+        this.bucketCredentialsService = bucketCredentialsService;
         this.tenantBucketResolver = tenantBucketResolver;
         this.temporaryBucketUserService = temporaryBucketUserService;
         this.s3Properties = s3Properties;
@@ -358,22 +368,23 @@ public class DataTransferAPIService {
             if (transportProfile != null) {
                 // gRPC (or other profile-based transport): call DPS prepare so the provider DP
                 // opens a session and returns the endpoint metadata the consumer needs.
-                // Forward any stored request-side dataAddress properties (e.g. sourceType, finite)
-                // as hints to the DP so it can configure the source correctly.
-                Map<String, String> sourceHints = toDataAddressMap(transferProcess.getDataAddress());
-                DataFlowPrepareMessage prepareMessage = DataFlowPrepareMessage.Builder.newInstance()
+                // Forward any stored request-side source hints (e.g. sourceType, finite)
+                // in the structured prepare metadata so the DP can configure the source correctly.
+                DataFlowPrepareMessage prepareMessage = applyCommonDataPlaneFields(DataFlowPrepareMessage.Builder.newInstance(),
+                                transferProcess, transportProfile)
                         .processId(transferProcess.getId())
                         .agreementId(transferProcess.getAgreementId())
                         .datasetId(transferProcess.getDatasetId())
                         .callbackAddress(dataTransferProperties.dataPlaneFeedbackAddress())
-                        .dataAddress(sourceHints)
+                        .metadata(buildPrepareMetadata(transferProcess.getTenantId(),
+                                transferProcess.getDatasetId(), transferProcess.getDataAddress()))
                         .build();
                 DataFlowPrepareResponse prepareResponse = dataPlaneClient.prepare(prepareMessage,
                         transferProcess.getFormat(), transportProfile);
                 // The prepared address (gRPC endpoint metadata) becomes the DataAddress in the
                 // TransferStartMessage so the consumer receives the session details it needs.
                 if (prepareResponse != null && prepareResponse.getDataAddress() != null) {
-                    dataAddress = prepareResponseToDataAddress(prepareResponse.getDataAddress());
+                    dataAddress = prepareResponseToDataAddress(prepareResponse.getDataAddress(), transportProfile);
                 }
                 // Capture the selected DP endpoint for persistence (restart-safe sticky routing).
                 assignedEndpoint = dataPlaneClient.getStickyEndpoint(transferProcess.getId()).orElse(null);
@@ -392,7 +403,10 @@ public class DataTransferAPIService {
                         // consumer-side component that downloads from this URL.
                         try {
                             String bucketName = tenantBucketResolver.resolveBucketName(transferProcess.getTenantId());
-                            yield s3ClientService.generateGetPresignedUrl(bucketName, transferProcess.getDatasetId(), Duration.ofDays(7L));
+                            yield s3ClientService.generateGetPresignedUrl(
+                                    bucketName,
+                                    transferProcess.getDatasetId(),
+                                    Duration.ofDays(7L));
                         } catch (Exception e) {
                             throw new DataTransferAPIException("The requested artifact is currently not available. Please try again later.");
                         }
@@ -537,22 +551,79 @@ public class DataTransferAPIService {
      * top-level fields so that standard DSP consumers can locate them.</p>
      *
      * @param responseMap the flat address map from the DP prepare response; must not be {@code null}
+     * @param transferType the transport profile that produced the response
      * @return a {@link DataAddress} carrying the DP-returned addressing metadata
      */
-    private DataAddress prepareResponseToDataAddress(Map<String, String> responseMap) {
+    private DataAddress prepareResponseToDataAddress(Map<String, String> responseMap, String transferType) {
         List<EndpointProperty> props = responseMap.entrySet().stream()
                 .map(e -> EndpointProperty.Builder.newInstance().name(e.getKey()).value(e.getValue()).build())
                 .toList();
         DataAddress.Builder builder = DataAddress.Builder.newInstance().endpointProperties(props);
-        String endpoint = responseMap.get("endpoint");
+        String endpoint = responseMap.get(DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT);
         if (endpoint != null) {
             builder.endpoint(endpoint);
         }
-        String endpointType = responseMap.get("endpointType");
-        if (endpointType != null) {
-            builder.endpointType(endpointType);
-        }
+        builder.endpointType(StringUtils.defaultIfBlank(
+                responseMap.get(DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT_TYPE),
+                defaultStartMessageEndpointType(transferType)));
         return builder.build();
+    }
+
+    /**
+     * Builds structured prepare-time metadata for DPS prepare calls.
+     *
+     * @param tenantId the tenant that owns the provider bucket
+     * @param objectKey the source object key selected by the control plane
+     * @param sourceDataAddress request-side source hints to place under the source section
+     * @return structured prepare metadata
+     */
+    private Map<String, Object> buildPrepareMetadata(String tenantId,
+                                                     String objectKey,
+                                                     DataAddress sourceDataAddress) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        Map<String, Object> sourceSection = new LinkedHashMap<>(toStructuredSourceMetadata(sourceDataAddress));
+        sourceSection.put(DataPlaneConstants.METADATA_SECTION_S3,
+                buildControlPlaneS3Metadata(tenantId, objectKey));
+        if (!sourceSection.isEmpty()) {
+            metadata.put(DataPlaneConstants.METADATA_SECTION_SOURCE, sourceSection);
+        }
+        return Map.copyOf(metadata);
+    }
+
+    private DataFlowPrepareMessage.Builder applyCommonDataPlaneFields(DataFlowPrepareMessage.Builder builder,
+                                                                      TransferProcess transferProcess,
+                                                                      String transferType) {
+        return builder.messageId(UUID.randomUUID().toString())
+                .participantId(resolveLocalParticipantId(transferProcess))
+                .counterPartyId(resolveRemoteParticipantId(transferProcess))
+                .dataspaceContext(DataPlaneConstants.DSPACE_2025_01_CONTEXT)
+                .claims(Map.of())
+                .transferType(transferType);
+    }
+
+    private DataFlowStartMessage.Builder applyCommonDataPlaneFields(DataFlowStartMessage.Builder builder,
+                                                                    TransferProcess transferProcess,
+                                                                    String transferType) {
+        return builder.messageId(UUID.randomUUID().toString())
+                .participantId(resolveLocalParticipantId(transferProcess))
+                .counterPartyId(resolveRemoteParticipantId(transferProcess))
+                .dataspaceContext(DataPlaneConstants.DSPACE_2025_01_CONTEXT)
+                .claims(Map.of())
+                .transferType(transferType);
+    }
+
+    private String resolveLocalParticipantId(TransferProcess transferProcess) {
+        if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
+            return transferProcess.getProviderPid();
+        }
+        return transferProcess.getConsumerPid();
+    }
+
+    private String resolveRemoteParticipantId(TransferProcess transferProcess) {
+        if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
+            return transferProcess.getConsumerPid();
+        }
+        return transferProcess.getProviderPid();
     }
 
     private void cleanupPreparedDataPlaneSession(String processId,
@@ -879,11 +950,11 @@ public class DataTransferAPIService {
             // providerCallbackAddress() would include the tenant path which the admin
             // DataFlowCallbackController does not have, causing a 404.
             String callbackAddress = dataTransferProperties.dataPlaneFeedbackAddress();
-            DataFlowStartMessage startMessage = DataFlowStartMessage.Builder.newInstance()
+            DataFlowStartMessage startMessage = applyCommonDataPlaneFields(DataFlowStartMessage.Builder.newInstance(),
+                            transferProcessDownloading, transferProcessDownloading.getFormat())
                     .processId(transferProcessDownloading.getId())
-                    .transferType(transferProcessDownloading.getFormat())
                     .callbackAddress(callbackAddress)
-                    .dataAddress(toDataAddressMap(transferProcessDownloading.getDataAddress()))
+                    .dataAddress(buildStartMessageDataAddress(transferProcessDownloading))
                     .agreementId(transferProcessDownloading.getAgreementId())
                     .datasetId(transferProcessDownloading.getDatasetId())
                     .build();
@@ -1047,27 +1118,268 @@ public class DataTransferAPIService {
     }
 
     /**
-     * Converts a {@link DataAddress} model object to a flat string map suitable for
-     * {@link DataFlowStartMessage}.
+     * Builds the DPS data address for the {@code DataFlowStartMessage} sent during
+     * {@code downloadData()}. Dispatches to the HTTP-PUSH provider path when the transfer
+     * process uses the {@code HttpData-PUSH} format; otherwise falls back to the standard
+     * {@link #toStartMessageDataAddress} path.
+     *
+     * @param transferProcess the transfer process whose download is starting
+     * @return schema-aligned data address for the start message
+     */
+    private it.eng.dataplane.api.message.DataAddress buildStartMessageDataAddress(TransferProcess transferProcess) {
+        if (DataTransferFormat.HTTP_PUSH.format().equals(transferProcess.getFormat())) {
+            return buildHttpPushProviderStartDataAddress(transferProcess);
+        }
+        return toStartMessageDataAddress(transferProcess.getDataAddress(),
+                transferProcess.getFormat(),
+                transferProcess.getTenantId(),
+                transferProcess.getId());
+    }
+
+    /**
+     * Builds the DPS data address for an HTTP-PUSH provider start message.
+     *
+     * <ul>
+     *   <li>{@code source.*} properties contain the provider's own S3 bucket credentials
+     *       (resolved via {@link TenantBucketResolver} + {@link BucketCredentialsService}).</li>
+     *   <li>{@code sink.*} properties contain the consumer's temporary IAM credentials,
+     *       translated from the flat keys ({@code bucketName}, {@code accessKey}, …) that
+     *       the consumer CP placed in the transfer process {@code dataAddress}.</li>
+     * </ul>
+     *
+     * @param transferProcess the provider-side HTTP-PUSH transfer process
+     * @return schema-aligned data address containing {@code source.*} and {@code sink.*} properties
+     */
+    private it.eng.dataplane.api.message.DataAddress buildHttpPushProviderStartDataAddress(
+            TransferProcess transferProcess) {
+        List<it.eng.dataplane.api.message.EndpointProperty> endpointProperties = new ArrayList<>();
+        // source.* = provider's own bucket (the artifact origin, read by the provider DP)
+        endpointProperties.addAll(buildStartSourceEndpointProperties(
+                transferProcess.getTenantId(), transferProcess.getDatasetId()));
+        // sink.* = consumer's temporary credentials (the upload destination)
+        endpointProperties.addAll(translateConsumerFlatToSinkProperties(
+                transferProcess.getDataAddress() == null ? null
+                        : transferProcess.getDataAddress().getEndpointProperties()));
+        String endpointType = defaultStartMessageEndpointType(transferProcess.getFormat());
+        return it.eng.dataplane.api.message.DataAddress.Builder.newInstance()
+                .endpointType(endpointType)
+                .endpointProperties(endpointProperties)
+                .build();
+    }
+
+    /**
+     * Converts a list of {@link EndpointProperty} objects from the consumer's flat S3 keys
+     * ({@code bucketName}, {@code objectKey}, {@code accessKey}, {@code secretKey},
+     * {@code region}, {@code endpointOverride}) to their {@code sink.*} counterparts.
+     *
+     * @param consumerProperties the flat endpoint properties from the consumer TP dataAddress; may be {@code null}
+     * @return list of {@code sink.*} endpoint properties; empty when input is {@code null} or empty
+     */
+    private List<it.eng.dataplane.api.message.EndpointProperty> translateConsumerFlatToSinkProperties(
+            List<EndpointProperty> consumerProperties) {
+        if (consumerProperties == null || consumerProperties.isEmpty()) {
+            return List.of();
+        }
+        Map<String, String> flatToSink = Map.of(
+                S3Utils.BUCKET_NAME, DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME,
+                S3Utils.OBJECT_KEY, DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY,
+                S3Utils.ACCESS_KEY, DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY,
+                S3Utils.SECRET_KEY, DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY,
+                S3Utils.REGION, DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION,
+                S3Utils.ENDPOINT_OVERRIDE, DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE
+        );
+        List<it.eng.dataplane.api.message.EndpointProperty> result = new ArrayList<>();
+        for (EndpointProperty property : consumerProperties) {
+            if (property == null || StringUtils.isBlank(property.getName())) {
+                continue;
+            }
+            String sinkKey = flatToSink.get(property.getName());
+            if (sinkKey != null && property.getValue() != null) {
+                result.add(it.eng.dataplane.api.message.EndpointProperty.Builder.newInstance()
+                        .name(sinkKey)
+                        .value(property.getValue())
+                        .build());
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Converts a DSP {@link DataAddress} into a schema-aligned DPS data address.
      *
      * @param dataAddress the data address to convert; may be {@code null}
-     * @return a mutable map of address properties, or {@code null} when input is {@code null}
+     * @param transferType the transfer type associated with the start message
+     * @param tenantId the tenant that owns the sink bucket
+     * @param sinkObjectKey the sink object key chosen by the control plane
+     * @return schema-aligned data address, or {@code null} when input is {@code null}
      */
-    private Map<String, String> toDataAddressMap(DataAddress dataAddress) {
-        if (dataAddress == null) {
-            return null;
+    private it.eng.dataplane.api.message.DataAddress toStartMessageDataAddress(DataAddress dataAddress,
+                                                                               String transferType,
+                                                                               String tenantId,
+                                                                               String sinkObjectKey) {
+        List<it.eng.dataplane.api.message.EndpointProperty> endpointProperties =
+                new ArrayList<>(buildStartSinkEndpointProperties(tenantId, sinkObjectKey));
+        if (dataAddress != null && dataAddress.getEndpointProperties() != null) {
+            endpointProperties.addAll(0, dataAddress.getEndpointProperties().stream()
+                    .map(property -> it.eng.dataplane.api.message.EndpointProperty.Builder.newInstance()
+                            .name(property.getName())
+                            .value(property.getValue())
+                            .build())
+                    .toList());
         }
-        Map<String, String> map = new HashMap<>();
-        if (dataAddress.getEndpoint() != null) {
-            map.put("endpoint", dataAddress.getEndpoint());
+        String endpointType = StringUtils.defaultIfBlank(dataAddress == null ? null : dataAddress.getEndpointType(),
+                defaultStartMessageEndpointType(transferType));
+        return it.eng.dataplane.api.message.DataAddress.Builder.newInstance()
+                .endpoint(dataAddress == null ? null : dataAddress.getEndpoint())
+                .endpointType(endpointType)
+                .endpointProperties(endpointProperties)
+                .build();
+    }
+
+    private Map<String, Object> toStructuredSourceMetadata(DataAddress sourceDataAddress) {
+        if (sourceDataAddress == null || sourceDataAddress.getEndpointProperties() == null) {
+            return Map.of();
         }
-        if (dataAddress.getEndpointType() != null) {
-            map.put("endpointType", dataAddress.getEndpointType());
+        Map<String, Object> sourceSection = new java.util.LinkedHashMap<>();
+        for (EndpointProperty property : sourceDataAddress.getEndpointProperties()) {
+            if (property == null || StringUtils.isBlank(property.getName()) || property.getValue() == null) {
+                continue;
+            }
+            if (!isS3MetadataField(property.getName())) {
+                sourceSection.put(property.getName(), property.getValue());
+            }
         }
-        if (dataAddress.getEndpointProperties() != null) {
-            dataAddress.getEndpointProperties()
-                    .forEach(p -> map.put(p.getName(), p.getValue()));
+        return sourceSection.isEmpty() ? Map.of() : Map.copyOf(sourceSection);
+    }
+
+    private List<it.eng.dataplane.api.message.EndpointProperty> buildStartSinkEndpointProperties(String tenantId,
+                                                                                                  String objectKey) {
+        Map<String, String> sinkProperties = buildScopedSinkS3Properties(tenantId, objectKey);
+        return sinkProperties.entrySet().stream()
+                .map(entry -> it.eng.dataplane.api.message.EndpointProperty.Builder.newInstance()
+                        .name(entry.getKey())
+                        .value(entry.getValue())
+                        .build())
+                .toList();
+    }
+
+    /**
+     * Builds a list of {@code source.*} endpoint properties for the provider's own S3 bucket.
+     * Mirrors {@link #buildStartSinkEndpointProperties} but uses {@link DataPlaneConstants#DATA_ADDRESS_PROPERTY_SOURCE_BUCKET_NAME}
+     * and related SOURCE constants.
+     *
+     * @param tenantId  the tenant that owns the source bucket
+     * @param objectKey the source object key (dataset ID for HTTP-PUSH provider)
+     * @return list of {@code source.*} endpoint properties
+     */
+    private List<it.eng.dataplane.api.message.EndpointProperty> buildStartSourceEndpointProperties(String tenantId,
+                                                                                                   String objectKey) {
+        Map<String, String> s3PropertiesMap = buildControlPlaneS3Properties(tenantId, objectKey);
+        Map<String, String> sourceProperties = new LinkedHashMap<>();
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_BUCKET_NAME,
+                s3PropertiesMap.get(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_OBJECT_KEY,
+                s3PropertiesMap.get(DataPlaneConstants.METADATA_S3_OBJECT_KEY));
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_REGION,
+                s3PropertiesMap.get(DataPlaneConstants.METADATA_S3_REGION));
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_ACCESS_KEY,
+                s3PropertiesMap.get(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_SECRET_KEY,
+                s3PropertiesMap.get(DataPlaneConstants.METADATA_S3_SECRET_KEY));
+        String endpointOverride = s3PropertiesMap.get(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE);
+        if (endpointOverride != null) {
+            sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_ENDPOINT_OVERRIDE, endpointOverride);
         }
-        return map;
+        return sourceProperties.entrySet().stream()
+                .map(entry -> it.eng.dataplane.api.message.EndpointProperty.Builder.newInstance()
+                        .name(entry.getKey())
+                        .value(entry.getValue())
+                        .build())
+                .toList();
+    }
+
+    private Map<String, Object> buildControlPlaneS3Metadata(String tenantId, String objectKey) {
+        Map<String, String> s3PropertiesMap = buildControlPlaneS3Properties(tenantId, objectKey);
+        Map<String, Object> s3Metadata = new LinkedHashMap<>();
+        s3PropertiesMap.forEach(s3Metadata::put);
+        return Map.copyOf(s3Metadata);
+    }
+
+    private Map<String, String> buildScopedSinkS3Properties(String tenantId, String objectKey) {
+        Map<String, String> s3PropertiesMap = buildControlPlaneS3Properties(tenantId, objectKey);
+        Map<String, String> sinkProperties = new LinkedHashMap<>();
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME,
+                s3PropertiesMap.get(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY,
+                s3PropertiesMap.get(DataPlaneConstants.METADATA_S3_OBJECT_KEY));
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION,
+                s3PropertiesMap.get(DataPlaneConstants.METADATA_S3_REGION));
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY,
+                s3PropertiesMap.get(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY,
+                s3PropertiesMap.get(DataPlaneConstants.METADATA_S3_SECRET_KEY));
+        String endpointOverride = s3PropertiesMap.get(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE);
+        if (endpointOverride != null) {
+            sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE, endpointOverride);
+        }
+        return Map.copyOf(sinkProperties);
+    }
+
+    private Map<String, String> buildControlPlaneS3Properties(String tenantId, String objectKey) {
+        String bucketName = tenantBucketResolver.resolveBucketName(tenantId);
+        BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
+        String region = requireControlPlaneS3Configuration("region", s3Properties.getRegion());
+        String accessKey = requireControlPlaneS3Credential(bucketName, "accessKey",
+                bucketCredentials == null ? null : bucketCredentials.getAccessKey());
+        String secretKey = requireControlPlaneS3Credential(bucketName, "secretKey",
+                bucketCredentials == null ? null : bucketCredentials.getSecretKey());
+
+        Map<String, String> s3Metadata = new LinkedHashMap<>();
+        s3Metadata.put(DataPlaneConstants.METADATA_S3_BUCKET_NAME, bucketName);
+        s3Metadata.put(DataPlaneConstants.METADATA_S3_OBJECT_KEY, objectKey);
+        s3Metadata.put(DataPlaneConstants.METADATA_S3_REGION, region);
+        s3Metadata.put(DataPlaneConstants.METADATA_S3_ACCESS_KEY, accessKey);
+        s3Metadata.put(DataPlaneConstants.METADATA_S3_SECRET_KEY, secretKey);
+        if (StringUtils.isNotBlank(s3Properties.getEndpoint())) {
+            s3Metadata.put(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, s3Properties.getEndpoint());
+        }
+        return Map.copyOf(s3Metadata);
+    }
+
+    private String requireControlPlaneS3Configuration(String propertyName, String propertyValue) {
+        if (StringUtils.isBlank(propertyValue)) {
+            throw new DataTransferAPIException("Missing required control plane S3 configuration: " + propertyName);
+        }
+        return propertyValue;
+    }
+
+    private String requireControlPlaneS3Credential(String bucketName, String credentialName, String credentialValue) {
+        if (StringUtils.isBlank(credentialValue)) {
+            throw new DataTransferAPIException("Missing required control plane S3 credentials for bucket "
+                    + bucketName + ": " + credentialName);
+        }
+        return credentialValue;
+    }
+
+    private boolean isS3MetadataField(String fieldName) {
+        return DataPlaneConstants.METADATA_S3_BUCKET_NAME.equals(fieldName)
+                || DataPlaneConstants.METADATA_S3_OBJECT_KEY.equals(fieldName)
+                || DataPlaneConstants.METADATA_S3_REGION.equals(fieldName)
+                || DataPlaneConstants.METADATA_S3_ACCESS_KEY.equals(fieldName)
+                || DataPlaneConstants.METADATA_S3_SECRET_KEY.equals(fieldName)
+                || DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE.equals(fieldName);
+    }
+
+    private String defaultStartMessageEndpointType(String transferType) {
+        if (TransportProfile.STREAM_GRPC.equals(transferType)) {
+            return "grpc";
+        }
+        if (TransportProfile.STREAM_KAFKA.equals(transferType)) {
+            return "kafka";
+        }
+        if (DataTransferFormat.HTTP_PUSH.format().equals(transferType)) {
+            return "s3";
+        }
+        return "generic";
     }
 }

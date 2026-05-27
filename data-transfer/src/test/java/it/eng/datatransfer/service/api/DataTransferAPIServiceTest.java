@@ -2,8 +2,10 @@ package it.eng.datatransfer.service.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dataplane.api.DataPlaneConstants;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
-import it.eng.dataplane.api.message.DataFlowPrepareResponse;import it.eng.dataplane.api.message.DataFlowStartMessage;
+import it.eng.dataplane.api.message.DataFlowPrepareResponse;
+import it.eng.dataplane.api.message.DataFlowStartMessage;
 import it.eng.datatransfer.client.DataPlaneClient;
 import it.eng.datatransfer.exceptions.DataPlaneClientException;
 import it.eng.datatransfer.service.TransportProfileResolver;
@@ -13,6 +15,7 @@ import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.model.DataAddress;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.DataTransferRequest;
+import it.eng.datatransfer.model.EndpointProperty;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
@@ -24,8 +27,10 @@ import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.TemporaryBucketUser;
 import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.BucketCredentialsService;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
@@ -35,6 +40,7 @@ import it.eng.tools.util.CredentialUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -83,6 +89,8 @@ class DataTransferAPIServiceTest {
     @Mock
     private S3ClientService s3ClientService;
     @Mock
+    private BucketCredentialsService bucketCredentialsService;
+    @Mock
     private TenantBucketResolver tenantBucketResolver;
     @Mock
     private TemporaryBucketUserService temporaryBucketUserService;
@@ -108,6 +116,19 @@ class DataTransferAPIServiceTest {
     private final DataTransferRequest dataTransferRequest = new DataTransferRequest(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED.getId(),
             DataTransferFormat.HTTP_PULL.name(),
             null);
+
+    @BeforeEach
+    void setUpS3AccessDefaults() {
+        lenient().when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID)).thenReturn("test-bucket");
+        lenient().when(bucketCredentialsService.getBucketCredentials(anyString())).thenAnswer(invocation -> BucketCredentialsEntity.Builder
+                .newInstance()
+                .bucketName(invocation.getArgument(0))
+                .accessKey("default-access-key")
+                .secretKey("default-secret-key")
+                .build());
+        lenient().when(s3Properties.getRegion()).thenReturn("us-east-1");
+        lenient().when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+    }
 
     @Test
     @DisplayName("Find transfer process by id - ignores other filters")
@@ -584,10 +605,20 @@ class DataTransferAPIServiceTest {
         // Completion is driven by the DataFlowCallbackController callback, not here.
         when(transferProcessRepository.save(any(TransferProcess.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID)).thenReturn("consumer-bucket");
+        when(bucketCredentialsService.getBucketCredentials("consumer-bucket")).thenReturn(BucketCredentialsEntity.Builder
+                .newInstance()
+                .bucketName("consumer-bucket")
+                .accessKey("consumer-access-key")
+                .secretKey("consumer-secret-key")
+                .build());
+        when(s3Properties.getRegion()).thenReturn("eu-central-1");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
 
         assertDoesNotThrow(() -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        verify(dataPlaneClient).start(any(DataFlowStartMessage.class));
+        ArgumentCaptor<DataFlowStartMessage> startCaptor = ArgumentCaptor.forClass(DataFlowStartMessage.class);
+        verify(dataPlaneClient).start(startCaptor.capture());
         // Exactly one save: to mark isDownloadInProgress=true
         verify(transferProcessRepository, times(1)).save(argCaptorTransferProcess.capture());
 
@@ -596,8 +627,106 @@ class DataTransferAPIServiceTest {
         assertTrue(processWithInProgressFlag.isDownloadInProgress());
         assertEquals(DataTransferFormat.HTTP_PULL.name(), processWithInProgressFlag.getFormat());
 
+        Map<String, String> endpointProperties = toEndpointPropertyMap(startCaptor.getValue().getDataAddress().getEndpointProperties());
+        assertEquals(DataTransferMockObjectUtil.ENDPOINT_URL, startCaptor.getValue().getDataAddress().getEndpoint());
+        assertEquals(DataTransferMockObjectUtil.ENDPOINT_TYPE, startCaptor.getValue().getDataAddress().getEndpointType());
+        assertEquals("TOKEN-ABCDEFG", endpointProperties.get("authorization"));
+        assertEquals("consumer-bucket", endpointProperties.get("sink.bucketName"));
+        assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), endpointProperties.get("sink.objectKey"));
+        assertEquals("eu-central-1", endpointProperties.get("sink.region"));
+        assertEquals("consumer-access-key", endpointProperties.get("sink.accessKey"));
+        assertEquals("consumer-secret-key", endpointProperties.get("sink.secretKey"));
+        assertEquals("http://minio:9000", endpointProperties.get("sink.endpointOverride"));
+
         // completeTransfer() must NOT be called — completion is driven by the DP callback
         verify(okHttpRestClient, never()).sendRequestProtocol(contains("/transfers/"), any(JsonNode.class), anyString());
+    }
+
+    @Test
+    @DisplayName("Download data - HTTP-PUSH provider - sends source.* (provider bucket) and sink.* (consumer credentials) in start message")
+    public void downloadData_httpPushProvider_sendsSourceAndSinkPropertiesInStartMessage() {
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_PROVIDER_HTTP_PUSH.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_PROVIDER_HTTP_PUSH));
+
+        GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
+        when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+        when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+                .thenReturn(TransferSerializer.serializePlain(internalResponse));
+
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID)).thenReturn("provider-bucket");
+        when(bucketCredentialsService.getBucketCredentials("provider-bucket")).thenReturn(BucketCredentialsEntity.Builder
+                .newInstance()
+                .bucketName("provider-bucket")
+                .accessKey("provider-access-key")
+                .secretKey("provider-secret-key")
+                .build());
+        when(s3Properties.getRegion()).thenReturn("eu-central-1");
+        when(s3Properties.getEndpoint()).thenReturn("http://provider-minio:9000");
+
+        assertDoesNotThrow(() -> apiService.downloadData(
+                DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_PROVIDER_HTTP_PUSH.getId()));
+
+        ArgumentCaptor<DataFlowStartMessage> startCaptor = ArgumentCaptor.forClass(DataFlowStartMessage.class);
+        verify(dataPlaneClient).start(startCaptor.capture());
+
+        Map<String, String> endpointProperties = toEndpointPropertyMap(startCaptor.getValue().getDataAddress().getEndpointProperties());
+
+        // source.* = provider's bucket (read-side for push)
+        assertEquals("provider-bucket", endpointProperties.get("source.bucketName"));
+        assertEquals(DataTransferMockObjectUtil.DATASET_ID, endpointProperties.get("source.objectKey"));
+        assertEquals("eu-central-1", endpointProperties.get("source.region"));
+        assertEquals("provider-access-key", endpointProperties.get("source.accessKey"));
+        assertEquals("provider-secret-key", endpointProperties.get("source.secretKey"));
+        assertEquals("http://provider-minio:9000", endpointProperties.get("source.endpointOverride"));
+
+        // sink.* = consumer's credentials (write-side for push, translated from flat keys)
+        assertEquals("consumer-push-bucket", endpointProperties.get("sink.bucketName"));
+        assertEquals("tp-push-obj", endpointProperties.get("sink.objectKey"));
+        assertEquals("consumer-temp-access", endpointProperties.get("sink.accessKey"));
+        assertEquals("consumer-temp-secret", endpointProperties.get("sink.secretKey"));
+        assertEquals("eu-central-1", endpointProperties.get("sink.region"));
+        assertEquals("http://consumer-minio:9000", endpointProperties.get("sink.endpointOverride"));
+
+        // Flat consumer keys must NOT be included (they are translated to sink.* only)
+        assertFalse(endpointProperties.containsKey("bucketName"));
+        assertFalse(endpointProperties.containsKey("accessKey"));
+        assertFalse(endpointProperties.containsKey("secretKey"));
+
+        // completeTransfer() must NOT be called — completion is driven by the DP callback
+        verify(okHttpRestClient, never()).sendRequestProtocol(contains("/transfers/"), any(JsonNode.class), anyString());
+    }
+
+    @Test
+    @DisplayName("Download data - fail - missing S3 region returns clear API exception")
+    public void downloadData_fail_missingS3Region_returnsClearApiException() {
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
+        when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+        when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+                .thenReturn(TransferSerializer.serializePlain(internalResponse));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID)).thenReturn("consumer-bucket");
+        when(bucketCredentialsService.getBucketCredentials("consumer-bucket")).thenReturn(BucketCredentialsEntity.Builder
+                .newInstance()
+                .bucketName("consumer-bucket")
+                .accessKey("consumer-access-key")
+                .secretKey("consumer-secret-key")
+                .build());
+        when(s3Properties.getRegion()).thenReturn(null);
+
+        CompletableFuture<Void> future = apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+
+        assertTrue(future.isCompletedExceptionally());
+        ExecutionException ex = assertThrows(ExecutionException.class, future::get);
+        assertInstanceOf(DataTransferAPIException.class, ex.getCause());
+        assertEquals("Missing required control plane S3 configuration: region", ex.getCause().getMessage());
+        verify(dataPlaneClient, never()).start(any(DataFlowStartMessage.class));
+        verify(transferProcessRepository, times(2)).save(any(TransferProcess.class));
     }
 
     @Test
@@ -880,6 +1009,14 @@ class DataTransferAPIServiceTest {
         assertNotNull(argCaptorAuditEventDetails.getValue());
     }
 
+    private Map<String, String> toEndpointPropertyMap(List<it.eng.dataplane.api.message.EndpointProperty> endpointProperties) {
+        if (endpointProperties == null) {
+            return Map.of();
+        }
+        return endpointProperties.stream()
+                .collect(HashMap::new, (map, property) -> map.put(property.getName(), property.getValue()), HashMap::putAll);
+    }
+
     @Test
     @DisplayName("Request transfer (HTTP-PUSH consumer) - creates temp S3 user directly in CP and sends TransferRequestMessage")
     public void requestTransfer_sendsDataFlowPrepareMessageToDataPlane() {
@@ -1036,6 +1173,15 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.save(any(TransferProcess.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+        when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID)).thenReturn("consumer-bucket");
+        when(bucketCredentialsService.getBucketCredentials("consumer-bucket")).thenReturn(BucketCredentialsEntity.Builder
+                .newInstance()
+                .bucketName("consumer-bucket")
+                .accessKey("consumer-access-key")
+                .secretKey("consumer-secret-key")
+                .build());
+        when(s3Properties.getRegion()).thenReturn("eu-central-1");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
 
         assertDoesNotThrow(() -> apiService.downloadData(grpcProcess.getId()));
 
@@ -1045,8 +1191,24 @@ class DataTransferAPIServiceTest {
                 "transport profile must be persisted on the TransferProcess before the DP start call");
         assertTrue(saved.isDownloadInProgress());
 
-        verify(dataPlaneClient).start(any(DataFlowStartMessage.class), eq(TransportProfile.STREAM_GRPC));
+        ArgumentCaptor<DataFlowStartMessage> startCaptor = ArgumentCaptor.forClass(DataFlowStartMessage.class);
+        verify(dataPlaneClient).start(startCaptor.capture(), eq(TransportProfile.STREAM_GRPC));
         verify(dataPlaneClient, never()).start(any(DataFlowStartMessage.class));
+        assertNotNull(startCaptor.getValue().getMessageId());
+        assertEquals(grpcProcess.getConsumerPid(), startCaptor.getValue().getParticipantId());
+        assertEquals(grpcProcess.getProviderPid(), startCaptor.getValue().getCounterPartyId());
+        assertEquals(DataPlaneConstants.DSPACE_2025_01_CONTEXT, startCaptor.getValue().getDataspaceContext());
+        assertNotNull(startCaptor.getValue().getClaims());
+        assertNotNull(startCaptor.getValue().getDataAddress());
+        assertEquals("DataAddress", startCaptor.getValue().getDataAddress().getType());
+        Map<String, String> endpointProperties = toEndpointPropertyMap(startCaptor.getValue().getDataAddress().getEndpointProperties());
+        assertEquals("TOKEN-ABCDEFG", endpointProperties.get("authorization"));
+        assertEquals("consumer-bucket", endpointProperties.get("sink.bucketName"));
+        assertEquals(grpcProcess.getId(), endpointProperties.get("sink.objectKey"));
+        assertEquals("eu-central-1", endpointProperties.get("sink.region"));
+        assertEquals("consumer-access-key", endpointProperties.get("sink.accessKey"));
+        assertEquals("consumer-secret-key", endpointProperties.get("sink.secretKey"));
+        assertEquals("http://minio:9000", endpointProperties.get("sink.endpointOverride"));
     }
 
     @Test
@@ -1306,17 +1468,47 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("startTransfer - provider gRPC calls prepare, sends prepared address in TransferStartMessage, persists profile + endpoint")
     public void startTransfer_grpc_provider_callsPrepare_sendsGrpcAddressAndPersistsProfile() {
-        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId()))
-                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC));
+        DataAddress requestDataAddress = DataAddress.Builder.newInstance()
+                .endpointProperties(List.of(
+                        EndpointProperty.Builder.newInstance().name("sourceType").value("S3").build(),
+                        EndpointProperty.Builder.newInstance().name("finite").value("false").build(),
+                        EndpointProperty.Builder.newInstance().name(DataPlaneConstants.METADATA_S3_BUCKET_NAME).value("source-bucket").build(),
+                        EndpointProperty.Builder.newInstance().name(DataPlaneConstants.METADATA_S3_OBJECT_KEY).value("source-object").build(),
+                        EndpointProperty.Builder.newInstance().name(DataPlaneConstants.METADATA_S3_REGION).value("eu-west-1").build()))
+                .build();
+        TransferProcess requestedGrpc = TransferProcess.Builder.newInstance()
+                .id("tp-provider-grpc")
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .datasetId(DataTransferMockObjectUtil.DATASET_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .format(TransportProfile.STREAM_GRPC)
+                .state(TransferState.REQUESTED)
+                .dataAddress(requestDataAddress)
+                .build();
+        when(transferProcessRepository.findById(requestedGrpc.getId()))
+                .thenReturn(Optional.of(requestedGrpc));
         when(transportProfileResolver.resolve(TransportProfile.STREAM_GRPC)).thenReturn(TransportProfile.STREAM_GRPC);
+        when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID)).thenReturn("provider-bucket");
+        when(bucketCredentialsService.getBucketCredentials("provider-bucket")).thenReturn(BucketCredentialsEntity.Builder
+                .newInstance()
+                .bucketName("provider-bucket")
+                .accessKey("provider-access-key")
+                .secretKey("provider-secret-key")
+                .build());
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
 
         DataFlowPrepareResponse prepareResponse = DataFlowPrepareResponse.Builder.newInstance()
-                .processId(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId())
+                .processId(requestedGrpc.getId())
                 .dataAddress(Map.of("endpoint", "grpc://dp-grpc:5050", "sessionId", "sess-123"))
                 .build();
         when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq(TransportProfile.STREAM_GRPC), eq(TransportProfile.STREAM_GRPC)))
                 .thenReturn(prepareResponse);
-        when(dataPlaneClient.getStickyEndpoint(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId()))
+        when(dataPlaneClient.getStickyEndpoint(requestedGrpc.getId()))
                 .thenReturn(Optional.of("http://dp-grpc:9090"));
 
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
@@ -1325,11 +1517,29 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.save(any(TransferProcess.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId());
+        apiService.startTransfer(requestedGrpc.getId());
 
-        // Must have called prepare with the gRPC profile
-        verify(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class),
+        ArgumentCaptor<DataFlowPrepareMessage> prepareCaptor = ArgumentCaptor.forClass(DataFlowPrepareMessage.class);
+        verify(dataPlaneClient).prepare(prepareCaptor.capture(),
                 eq(TransportProfile.STREAM_GRPC), eq(TransportProfile.STREAM_GRPC));
+        assertEquals(TransportProfile.STREAM_GRPC, prepareCaptor.getValue().getTransferType());
+        assertFalse(prepareCaptor.getValue().getMetadata().containsKey(DataPlaneConstants.METADATA_FIELD_TRANSFER_TYPE));
+        assertNotNull(prepareCaptor.getValue().getMessageId());
+        assertEquals(requestedGrpc.getProviderPid(), prepareCaptor.getValue().getParticipantId());
+        assertEquals(requestedGrpc.getConsumerPid(), prepareCaptor.getValue().getCounterPartyId());
+        assertEquals(DataPlaneConstants.DSPACE_2025_01_CONTEXT, prepareCaptor.getValue().getDataspaceContext());
+        assertNotNull(prepareCaptor.getValue().getClaims());
+        assertEquals(Map.of(
+                        DataPlaneConstants.METADATA_FIELD_SOURCE_TYPE, "S3",
+                        DataPlaneConstants.METADATA_FIELD_FINITE, "false",
+                        DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                DataPlaneConstants.METADATA_S3_BUCKET_NAME, "provider-bucket",
+                                DataPlaneConstants.METADATA_S3_OBJECT_KEY, DataTransferMockObjectUtil.DATASET_ID,
+                                DataPlaneConstants.METADATA_S3_REGION, "us-east-1",
+                                DataPlaneConstants.METADATA_S3_ACCESS_KEY, "provider-access-key",
+                                DataPlaneConstants.METADATA_S3_SECRET_KEY, "provider-secret-key",
+                                DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://minio:9000")),
+                prepareCaptor.getValue().getMetadata().get(DataPlaneConstants.METADATA_SECTION_SOURCE));
 
         // TP saved as STARTED must carry transportProfile and assignedDataplaneEndpoint
         verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
@@ -1562,5 +1772,45 @@ class DataTransferAPIServiceTest {
                 DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId());
         verify(okHttpRestClient, never()).sendRequestProtocol(anyString(), any(JsonNode.class), anyString());
         verify(transferProcessRepository, never()).save(any(TransferProcess.class));
+    }
+
+    @ParameterizedTest
+    @MethodSource("missingControlPlaneS3CredentialFields")
+    @DisplayName("startTransfer - provider gRPC missing CP-owned S3 credential fails explicitly")
+    public void startTransfer_grpc_provider_missingControlPlaneS3Credential_failsExplicitly(String missingField,
+                                                                                             BucketCredentialsEntity bucketCredentials,
+                                                                                             String expectedMessage) {
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC));
+        when(transportProfileResolver.resolve(TransportProfile.STREAM_GRPC)).thenReturn(TransportProfile.STREAM_GRPC);
+        when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID)).thenReturn("provider-bucket");
+        when(bucketCredentialsService.getBucketCredentials("provider-bucket")).thenReturn(bucketCredentials);
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+
+        DataTransferAPIException exception = assertThrows(DataTransferAPIException.class,
+                () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId()));
+
+        assertEquals(expectedMessage, exception.getMessage(), "unexpected message for missing " + missingField);
+        verify(dataPlaneClient, never()).prepare(any(DataFlowPrepareMessage.class), anyString(), anyString());
+        verify(okHttpRestClient, never()).sendRequestProtocol(anyString(), any(JsonNode.class), anyString());
+        verify(transferProcessRepository, never()).save(any(TransferProcess.class));
+    }
+
+    private static Stream<Arguments> missingControlPlaneS3CredentialFields() {
+        return Stream.of(
+                Arguments.of("access key",
+                        BucketCredentialsEntity.Builder.newInstance()
+                                .bucketName("provider-bucket")
+                                .accessKey(null)
+                                .secretKey("provider-secret-key")
+                                .build(),
+                        "Missing required control plane S3 credentials for bucket provider-bucket: accessKey"),
+                Arguments.of("secret key",
+                        BucketCredentialsEntity.Builder.newInstance()
+                                .bucketName("provider-bucket")
+                                .accessKey("provider-access-key")
+                                .secretKey(null)
+                                .build(),
+                        "Missing required control plane S3 credentials for bucket provider-bucket: secretKey"));
     }
 }

@@ -1,6 +1,8 @@
 package it.eng.dataplane.httppull;
 
+import it.eng.dataplane.api.DataPlaneConstants;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
+import it.eng.dataplane.api.message.DataFlowPrepareMetadata;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
@@ -9,7 +11,6 @@ import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.dataplane.s3.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
-import it.eng.dataplane.s3.service.TenantBucketResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -40,7 +41,6 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
 
     private final S3ClientService s3ClientService;
     private final S3Properties s3Properties;
-    private final TenantBucketResolver tenantBucketResolver;
     @Qualifier("transferExecutor")
     private final Executor transferExecutor;
     @Qualifier("dataPlaneHttpClient")
@@ -55,8 +55,6 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
      */
     private static final int REQUEST_TIMEOUT_MS = 1_800_000; // 30 minutes
 
-    /** Data address key indicating the calling mode (VIEW for consumer viewData). */
-    static final String MODE_KEY = "mode";
     /** Mode value for consumer viewData requests — returns a pre-signed URL for the stored file. */
     static final String MODE_VIEW = "VIEW";
     /** Data address key carrying the pre-signed URL in the prepare response. */
@@ -86,9 +84,12 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
     @Override
     public DataFlowPrepareResponse prepare(DataFlowPrepareMessage message) {
         String bucketName = s3Properties.getBucketName();
-        String mode = message.getDataAddress() != null
-                ? message.getDataAddress().getOrDefault(MODE_KEY, "")
-                : "";
+        String mode = DataFlowPrepareMetadata.from(message)
+                .getSinkSection()
+                .getString(DataPlaneConstants.METADATA_FIELD_MODE);
+        if (mode == null) {
+            mode = "";
+        }
 
         String objectKey;
         if (MODE_VIEW.equals(mode)) {
@@ -131,6 +132,12 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
         if (dataAddress == null || !dataAddress.containsKey("endpoint")) {
             return CompletableFuture.completedFuture(
                 DataFlowResult.failure("dataAddress.endpoint (presigned URL) is required for HttpData-PULL")
+            );
+        }
+        if (!dataAddress.containsKey(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME)) {
+            return CompletableFuture.completedFuture(
+                DataFlowResult.failure("dataAddress." + DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME
+                        + " is required for HttpData-PULL")
             );
         }
         
@@ -195,7 +202,7 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
     }
 
     /**
-     * Downloads data from presigned URL and uploads to S3.
+     * Downloads data from presigned URL and uploads to S3 using sink properties from the data address.
      * Uses {@link java.net.http.HttpClient} which negotiates HTTP/2 on TLS connections
      * and falls back to HTTP/1.1 for plain HTTP (e.g. development MinIO without TLS).
      *
@@ -204,12 +211,11 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
      * @return future with transfer result
      */
     private CompletableFuture<DataFlowResult> downloadAndUploadToS3(DataFlow dataFlow, String presignedUrl) {
-        // Resolve bucket in async context — must pass tenantId explicitly
-        String bucketName = tenantBucketResolver.resolveBucketName(dataFlow.getTenantId());
-        String objectKey = dataFlow.getProcessId();
+        // Read sink properties from CP-provided data address — no local bucket resolution needed
+        Map<String, String> dataAddress = dataFlow.getDataAddress();
+        Map<String, String> destinationS3Properties = buildSinkS3Properties(dataAddress, dataFlow.getProcessId());
 
         // Extract auth from data address before entering the async lambda
-        Map<String, String> dataAddress = dataFlow.getDataAddress();
         String authType = dataAddress.get(IConstants.AUTH_TYPE);
         String token = dataAddress.get(IConstants.AUTHORIZATION);
         String authorization = (StringUtils.isNotBlank(authType) && StringUtils.isNotBlank(token))
@@ -242,8 +248,6 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
                 String contentType = response.headers().firstValue(HttpHeaders.CONTENT_TYPE).orElse(null);
                 String contentDisposition = response.headers().firstValue(HttpHeaders.CONTENT_DISPOSITION).orElse(null);
 
-                Map<String, String> destinationS3Properties = buildS3Properties(bucketName, objectKey);
-
                 // uploadFile is non-blocking and returns a CompletableFuture<String>.
                 // Returning it here produces a CompletableFuture<CompletableFuture<String>>,
                 // which we'll flatten with thenCompose.
@@ -265,6 +269,8 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
         }, transferExecutor)
         .thenCompose(uploadFuture -> uploadFuture)
         .thenApply(etag -> {
+            String bucketName = destinationS3Properties.get(it.eng.tools.s3.util.S3Utils.BUCKET_NAME);
+            String objectKey = destinationS3Properties.get(it.eng.tools.s3.util.S3Utils.OBJECT_KEY);
             log.info("Successfully uploaded to S3 bucket {} with key {}", bucketName, objectKey);
             return DataFlowResult.success();
         })
@@ -275,20 +281,32 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
     }
 
     /**
-     * Builds S3 properties map for upload.
+     * Builds S3 properties map for upload from CP-provided {@code sink.*} entries in the data address.
+     * Falls back to {@code processId} when {@code sink.objectKey} is absent.
      *
-     * @param bucketName the target S3 bucket
-     * @param objectKey the target object key
-     * @return S3 properties map
+     * @param dataAddress the flat data address map from the DataFlow
+     * @param processId   transfer process ID used as object key fallback
+     * @return S3 properties map ready for {@link S3ClientService#uploadFile}
      */
-    private Map<String, String> buildS3Properties(String bucketName, String objectKey) {
+    private Map<String, String> buildSinkS3Properties(Map<String, String> dataAddress, String processId) {
         Map<String, String> props = new HashMap<>();
+        props.put(it.eng.tools.s3.util.S3Utils.BUCKET_NAME,
+                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME));
+        String objectKey = dataAddress.getOrDefault(
+                DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, processId);
         props.put(it.eng.tools.s3.util.S3Utils.OBJECT_KEY, objectKey);
-        props.put(it.eng.tools.s3.util.S3Utils.BUCKET_NAME, bucketName);
-        props.put(it.eng.tools.s3.util.S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint());
-        props.put(it.eng.tools.s3.util.S3Utils.REGION, s3Properties.getRegion());
-        props.put(it.eng.tools.s3.util.S3Utils.ACCESS_KEY, s3Properties.getAccessKey());
-        props.put(it.eng.tools.s3.util.S3Utils.SECRET_KEY, s3Properties.getSecretKey());
+        props.put(it.eng.tools.s3.util.S3Utils.ACCESS_KEY,
+                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY));
+        props.put(it.eng.tools.s3.util.S3Utils.SECRET_KEY,
+                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY));
+        String region = dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION);
+        if (StringUtils.isNotBlank(region)) {
+            props.put(it.eng.tools.s3.util.S3Utils.REGION, region);
+        }
+        String endpointOverride = dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE);
+        if (StringUtils.isNotBlank(endpointOverride)) {
+            props.put(it.eng.tools.s3.util.S3Utils.ENDPOINT_OVERRIDE, endpointOverride);
+        }
         return props;
     }
 

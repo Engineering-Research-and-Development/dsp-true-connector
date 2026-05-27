@@ -1,6 +1,8 @@
 package it.eng.dataplane.httppush;
 
+import it.eng.dataplane.api.DataPlaneConstants;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
+import it.eng.dataplane.api.message.DataFlowPrepareMetadata;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
@@ -10,7 +12,6 @@ import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.util.S3Utils;
-import it.eng.dataplane.s3.service.TenantBucketResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -45,7 +46,6 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     private final S3ClientService s3ClientService;
     private final S3Properties s3Properties;
     private final TemporaryBucketUserService temporaryBucketUserService;
-    private final TenantBucketResolver tenantBucketResolver;
     @Qualifier("transferExecutor")
     private final Executor transferExecutor;
     @Qualifier("dataPlaneHttpClient")
@@ -69,8 +69,6 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
         return "HttpData-PUSH";
     }
 
-    /** Data address key indicating the calling mode (VIEW for consumer viewData). */
-    private static final String MODE_KEY = "mode";
     /** Mode value for consumer viewData requests — returns a pre-signed URL for the pushed file. */
     private static final String MODE_VIEW = "VIEW";
     /** Data address key carrying the pre-signed URL in the prepare response. */
@@ -98,8 +96,10 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
         String processId = message.getProcessId();
         String bucketName = s3Properties.getBucketName();
 
-        Map<String, String> incoming = message.getDataAddress();
-        if (incoming != null && MODE_VIEW.equals(incoming.get(MODE_KEY))) {
+        String mode = DataFlowPrepareMetadata.from(message)
+                .getSinkSection()
+                .getString(DataPlaneConstants.METADATA_FIELD_MODE);
+        if (MODE_VIEW.equals(mode)) {
             log.info("Preparing viewData presigned URL for processId={} in bucket={}", processId, bucketName);
             String presignedUrl = s3ClientService.generateGetPresignedUrl(bucketName, processId, Duration.ofDays(7L));
             log.debug("Generated presigned URL for pushed file, objectKey='{}'", processId);
@@ -148,9 +148,16 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
         log.info("Initiating HTTP-PUSH transfer for data flow {}", dataFlow.getDataFlowId());
 
         Map<String, String> dataAddress = dataFlow.getDataAddress();
-        if (dataAddress == null || !dataAddress.containsKey(S3Utils.BUCKET_NAME)) {
+        if (dataAddress == null || !dataAddress.containsKey(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME)) {
             return CompletableFuture.completedFuture(
-                DataFlowResult.failure("dataAddress.bucketName is required for HttpData-PUSH")
+                DataFlowResult.failure("dataAddress." + DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME
+                        + " (consumer bucketName) is required for HttpData-PUSH")
+            );
+        }
+        if (!dataAddress.containsKey(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_BUCKET_NAME)) {
+            return CompletableFuture.completedFuture(
+                DataFlowResult.failure("dataAddress." + DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_BUCKET_NAME
+                        + " (provider bucketName) is required for HttpData-PUSH")
             );
         }
 
@@ -214,21 +221,24 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     }
 
     /**
-     * Performs the actual push: generates a presigned provider URL, streams the artifact,
-     * and uploads to the consumer bucket. Uses {@link java.net.http.HttpClient} which
-     * negotiates HTTP/2 on TLS connections and falls back to HTTP/1.1 for plain HTTP.
+     * Performs the actual push: reads source bucket from CP-provided {@code source.*} data address
+     * properties to generate a presigned provider URL, streams the artifact, and uploads to the
+     * consumer bucket using CP-provided {@code sink.*} properties. Uses
+     * {@link java.net.http.HttpClient} which negotiates HTTP/2 on TLS connections and falls back
+     * to HTTP/1.1 for plain HTTP.
      *
      * @param dataFlow the data flow with provider and consumer metadata
      * @return future with transfer result
      */
     private CompletableFuture<DataFlowResult> pushArtifactToConsumer(DataFlow dataFlow) {
-        // Resolve provider bucket and generate presigned URL before entering async lambda
-        String providerBucket = tenantBucketResolver.resolveBucketName(dataFlow.getTenantId());
-        String datasetId = dataFlow.getDatasetId();
-        String presignedUrl = s3ClientService.generateGetPresignedUrl(providerBucket, datasetId, Duration.ofDays(1L));
-
-        // Build consumer S3 properties, decrypting secretKey stored encrypted in MongoDB
+        // Read provider (source) bucket and object key from CP-provided data address
         Map<String, String> dataAddress = dataFlow.getDataAddress();
+        String sourceBucket = dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_BUCKET_NAME);
+        String sourceObjectKey = dataAddress.getOrDefault(
+                DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_OBJECT_KEY, dataFlow.getDatasetId());
+        String presignedUrl = s3ClientService.generateGetPresignedUrl(sourceBucket, sourceObjectKey, Duration.ofDays(1L));
+
+        // Build consumer S3 properties from CP-provided sink.* properties
         Map<String, String> consumerS3Properties = buildConsumerS3Properties(dataAddress, dataFlow.getProcessId());
 
         return CompletableFuture.supplyAsync(() -> {
@@ -287,35 +297,35 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     }
 
     /**
-     * Builds the consumer S3 properties map from the data address.
-     * The secretKey is passed as plain text — the consumer CP creates the temporary IAM user
-     * and places the unencrypted secretKey into the {@code DataFlowStartMessage.dataAddress}
-     * that it sends to the provider CP, which forwards it to this DP unchanged.
+     * Builds the consumer S3 properties map from CP-provided {@code sink.*} entries in the data address.
+     * Falls back to {@code processId} when {@code sink.objectKey} is absent.
+     * The secretKey arrives as plain text from the consumer CP via the DataFlowStartMessage.
      *
-     * @param dataAddress the data address map from the DataFlow
+     * @param dataAddress the flat data address map from the DataFlow
      * @param processId   the transfer process ID used as object key fallback
      * @return map of S3 properties ready for use by S3ClientService
      */
     private Map<String, String> buildConsumerS3Properties(Map<String, String> dataAddress, String processId) {
         Map<String, String> props = new HashMap<>();
-        props.put(S3Utils.BUCKET_NAME, dataAddress.get(S3Utils.BUCKET_NAME));
+        props.put(S3Utils.BUCKET_NAME, dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME));
 
-        String objectKey = dataAddress.getOrDefault(S3Utils.OBJECT_KEY, processId);
+        String objectKey = dataAddress.getOrDefault(
+                DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, processId);
         props.put(S3Utils.OBJECT_KEY, objectKey);
 
-        props.put(S3Utils.ACCESS_KEY, dataAddress.get(S3Utils.ACCESS_KEY));
+        props.put(S3Utils.ACCESS_KEY, dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY));
 
         // The secretKey arrives as plain text — set directly without decryption.
         // The consumer CP creates the temp user, places the plain secretKey in the DataFlowStartMessage
-        // dataAddress, and the provider CP forwards it here without encrypting.
-        props.put(S3Utils.SECRET_KEY, dataAddress.get(S3Utils.SECRET_KEY));
+        // dataAddress under sink.secretKey, and the provider CP forwards it here without encrypting.
+        props.put(S3Utils.SECRET_KEY, dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY));
 
-        String endpointOverride = dataAddress.get(S3Utils.ENDPOINT_OVERRIDE);
+        String endpointOverride = dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE);
         if (StringUtils.isNotBlank(endpointOverride)) {
             props.put(S3Utils.ENDPOINT_OVERRIDE, endpointOverride);
         }
 
-        String region = dataAddress.get(S3Utils.REGION);
+        String region = dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION);
         if (StringUtils.isNotBlank(region)) {
             props.put(S3Utils.REGION, region);
         }
