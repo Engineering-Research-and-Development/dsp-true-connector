@@ -46,7 +46,7 @@ The design therefore needs to translate the earlier multipart-resume ideas into 
 | Suspend completion signal | Dataplane suspend endpoint must only return success after checkpoint is durable and new multipart work is quiesced |
 | Resume authority | Reuse the existing `consumer` / `provider` role values to persist who initiated suspend, and allow resume only from that side while the transfer is `SUSPENDED` |
 | Resume fallback when saved upload is gone | Clear checkpoint state and restart from byte 0 inside the dataplane |
-| Source endpoint reuse | Never trust stale source URLs from checkpoint state; obtain fresh source data from the normal control-plane start flow |
+| Resume access material | Reuse the existing presigned URL or push credentials already stored on the suspended transfer; if they are no longer valid, terminate instead of minting fresh ones |
 | Java platform usage | Java 21 standard features are available; virtual threads are allowed where they simplify blocking orchestration, but preview features are out of scope |
 
 ## Architecture Overview
@@ -120,11 +120,15 @@ This keeps the rule local and explicit: the initiator is the only side allowed t
 2. `DataTransferAPIService.startTransfer(...)` checks `suspendedBy` when the current state is `SUSPENDED`; if the local role is not the recorded initiator, the request is rejected and the transfer stays suspended.
 3. DSP state handling remains unchanged at the public API level.
 4. When the peer receives the resulting `TransferStartMessage`, `AbstractDataTransferService.startDataTransfer(...)` applies the symmetric rule: for a `SUSPENDED` transfer, it only accepts the message when the local role is **not** `suspendedBy`, because the peer sender must be the recorded initiator.
-5. When the actual local data movement is about to begin, the control plane chooses:
+5. When the actual local data movement is about to begin, the control plane reuses the existing access material already stored on the suspended transfer:
+   - HTTP-PULL reuses the existing presigned URL already present in the transfer's data address
+   - HTTP-PUSH reuses the existing destination credentials already present in the transfer's data address
+   - no fresh presigned URL or new push credentials are minted as part of resume
+6. The control plane then chooses:
    - `dataPlaneClient.start(...)` for a fresh execution
    - `dataPlaneClient.resume(...)` when the dataplane mirror shows a resumable suspended flow
-6. The dataplane resumes from checkpoint state if the saved multipart upload is still valid.
-7. Existing dataplane callbacks (`started`, `completed`, `errored`) remain the only dataplane-to-control-plane callbacks used in this iteration.
+7. The dataplane resumes from checkpoint state if the saved multipart upload is still valid.
+8. Existing dataplane callbacks (`started`, `completed`, `errored`) remain the only dataplane-to-control-plane callbacks used in this iteration.
 
 ### Where the start-vs-resume decision happens
 
@@ -174,15 +178,25 @@ Create a dataplane-owned MongoDB entity named `DataFlowCheckpoint` in `data-plan
 
 ### Multipart resume rules
 
-The checkpoint tracks only **destination multipart-upload progress**. It must not store or replay stale source URLs.
+The checkpoint tracks only **destination multipart-upload progress**. It does not own source access material.
 
 On resume:
 
-1. the control plane provides fresh source transfer inputs through the normal `startTransfer(...)` / `downloadData(...)` flow
+1. the control plane reuses the existing access material already persisted on the suspended transfer
 2. the dataplane loads `DataFlowCheckpoint`
 3. the dataplane checks whether `uploadId` is still valid
 4. if valid, multipart upload continues from the saved checkpoint
 5. if invalid or expired, the dataplane clears multipart state and restarts from byte 0
+
+### Access material validity
+
+Resume must not mint fresh access material.
+
+- For HTTP-PULL, reuse the existing presigned URL already stored on the suspended transfer
+- For HTTP-PUSH, reuse the existing destination credentials already stored on the suspended transfer
+- If the existing HTTP-PULL URL is expired or the existing HTTP-PUSH credentials are no longer valid, the transfer becomes terminal
+
+That terminal failure is surfaced through the normal control-plane termination path so the connector sends a `TransferTerminationMessage` instead of refreshing the access material and trying again.
 
 ### Cursor correctness
 
@@ -230,8 +244,9 @@ Resume failure handling is split into three cases:
 | Case | Behavior |
 | --- | --- |
 | Resume requested by the non-initiator | Reject the request and keep the transfer `SUSPENDED` |
+| Existing HTTP-PULL presigned URL or HTTP-PUSH credentials are invalid/expired | Do not refresh them; terminate the transfer via the normal `TransferTerminationMessage` path |
 | Valid checkpoint and live `uploadId` | Continue the multipart upload |
-| Checkpoint exists but `uploadId` is missing/expired | Clear multipart state and restart from byte 0 |
+| Checkpoint exists but `uploadId` is missing/expired while the existing access material is still valid | Clear multipart state and restart from byte 0 |
 | Unrecoverable transfer error | Let dataplane emit the existing `errored` callback so control plane follows its normal termination path |
 
 ### Cleanup rules
@@ -282,6 +297,8 @@ Resumption after restart remains an explicit operator/user action through the ex
 
 - suspend while transfer is in flight
 - resume from saved checkpoint
+- resume reuses existing access material instead of minting a new presigned URL or new push credentials
+- invalid existing access material terminates the transfer
 - restart from byte 0 when saved multipart upload is gone
 - checkpoint cleanup on completion and termination
 
@@ -322,7 +339,12 @@ Add at least these end-to-end scenarios:
 4. **Expired multipart upload fallback**
    - checkpoint exists
    - saved `uploadId` is no longer valid
+   - existing access material is still valid
    - resumed transfer restarts cleanly from byte 0 and completes correctly
+5. **Expired access material is terminal**
+   - suspended HTTP-PULL transfer uses an expired presigned URL, or suspended HTTP-PUSH transfer uses invalid destination credentials
+   - resume does not mint a replacement URL or credentials
+   - transfer terminates through the normal termination-message path
 
 ### Verification command
 
