@@ -228,11 +228,11 @@ public class S3ClientServiceImpl implements S3ClientService {
         }
         BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
 
-        String externalEndpoint = resolveExternalEndpoint(bucketName);
-        boolean isAws = isAwsEndpoint(externalEndpoint);
+        String endpoint = resolvePresignedEndpoint(bucketName);
+        boolean isAws = isAwsEndpoint(endpoint);
 
         log.debug("Generating presigned URL - AWS mode: {}, endpoint: {}, bucket: {}, key: {}",
-                isAws, externalEndpoint, bucketName, objectKey);
+                isAws, endpoint, bucketName, objectKey);
 
         S3Presigner.Builder presignerBuilder = S3Presigner.builder()
                 .credentialsProvider(StaticCredentialsProvider.create(
@@ -245,7 +245,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                     .build());
         } else {
             presignerBuilder
-                    .endpointOverride(URI.create(externalEndpoint))
+                    .endpointOverride(URI.create(endpoint))
                     .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
                             .pathStyleAccessEnabled(true)
                             .build());
@@ -290,19 +290,18 @@ public class S3ClientServiceImpl implements S3ClientService {
         }
     }
 
-    private String resolveExternalEndpoint(String bucketName) {
+    private String resolvePresignedEndpoint(String bucketName) {
         String externalEndpoint = s3Properties.getExternalPresignedEndpoint();
         if (externalEndpoint != null && !externalEndpoint.isBlank()) {
             return externalEndpoint;
         }
-        // No explicit external endpoint — check if s3.endpoint is a custom (MinIO) endpoint
+
         String s3Endpoint = s3Properties.getEndpoint();
         if (s3Endpoint != null && !s3Endpoint.isBlank() && !isAwsEndpoint(s3Endpoint)) {
-            // MinIO/custom S3: presigned URLs embedded with the same endpoint consumers must use
             log.debug("Using s3.endpoint as presigned URL base: {}", s3Endpoint);
             return s3Endpoint;
         }
-        // AWS mode: derive virtual-hosted-style endpoint from region and bucket name
+
         String region = s3Properties.getRegion();
         if (region == null || region.isBlank()) {
             throw new IllegalStateException("S3 region must be configured when externalPresignedEndpoint is blank");

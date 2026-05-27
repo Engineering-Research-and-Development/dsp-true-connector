@@ -944,4 +944,5 @@ public class S3ClientServiceImplTest {
 
         assertDoesNotThrow(() -> s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofMinutes(5)));
     }
+
 }
