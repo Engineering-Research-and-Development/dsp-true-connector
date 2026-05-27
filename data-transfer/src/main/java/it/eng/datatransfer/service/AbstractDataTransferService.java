@@ -241,13 +241,17 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
 
         stateTransitionCheck(transferProcessRequested, TransferState.STARTED);
 
+        DataAddress finalDataAddress = transferStartMessage.getDataAddress() != null
+                ? transferStartMessage.getDataAddress()
+                : transferProcessRequested.getDataAddress();
+
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
                 .id(transferProcessRequested.getId())
                 .agreementId(transferProcessRequested.getAgreementId())
                 .consumerPid(transferProcessRequested.getConsumerPid())
                 .providerPid(transferProcessRequested.getProviderPid())
                 .callbackAddress(transferProcessRequested.getCallbackAddress())
-                .dataAddress(transferStartMessage.getDataAddress())
+                .dataAddress(finalDataAddress)
                 .format(transferProcessRequested.getFormat())
                 .state(TransferState.STARTED)
                 .role(transferProcessRequested.getRole())
@@ -277,7 +281,8 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
         if (transferProcessStarted.getRole().equals(IConstants.ROLE_CONSUMER)
                 && transferProperties.isAutomaticTransfer()
                 && (DataTransferFormat.HTTP_PULL.format().equals(transferProcessStarted.getFormat())
-                        || TransportProfile.STREAM_GRPC.equals(transferProcessStarted.getFormat()))) {
+                        || TransportProfile.STREAM_GRPC.equals(transferProcessStarted.getFormat())
+                        || TransportProfile.STREAM_KAFKA.equals(transferProcessStarted.getFormat()))) {
             publisher.publishEvent(new AutoTransferDownloadEvent(transferProcessStarted.getId()));
         }
         return transferProcessStarted;

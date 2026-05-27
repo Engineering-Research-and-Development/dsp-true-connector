@@ -83,6 +83,15 @@ jobs:
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-data-plane-grpc:test
 
+      - name: Build and push data-plane-kafka Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: ./data-plane/data-plane-kafka
+          file: ./data-plane/data-plane-kafka/Dockerfile
+          no-cache: true
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-data-plane-kafka:test
+
   negotiation-api-without-counteroffer-tests:
     needs: build-and-push-image
     runs-on: ubuntu-latest
@@ -318,6 +327,175 @@ jobs:
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile push logs
 
       - name: Stop docker container datatransfer-api-http-push-tests
+        if: always()
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
+
+  datatransfer-api-stream-grpc-tests:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v6
+
+      - name: Run docker container for datatransfer-api-stream-grpc-tests
+        env:
+          MINIO_EXTERNAL_URL: http://localhost:9000
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile grpc up -d
+
+      - name: Wait for connectors to be healthy
+        run: |
+          echo "Waiting for connector-a (port 8080) and connector-b (port 8090)..."
+          for i in $(seq 1 36); do
+            A=$(curl -sf http://localhost:8080/actuator/health -o /dev/null && echo ok || echo fail)
+            B=$(curl -sf http://localhost:8090/actuator/health -o /dev/null && echo ok || echo fail)
+            if [ "$A" = "ok" ] && [ "$B" = "ok" ]; then
+              echo "Both connectors healthy after $((i * 10)) seconds"
+              break
+            fi
+            echo "Attempt $i/36 — connector-a=$A connector-b=$B — waiting 10s..."
+            sleep 10
+          done
+          curl -sf http://localhost:8080/actuator/health || (echo "connector-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-a && exit 1)
+          curl -sf http://localhost:8090/actuator/health || (echo "connector-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-b && exit 1)
+
+      - name: Wait for gRPC data plane containers to be healthy
+        run: |
+          echo "Waiting for gRPC DPs (ports 9094 and 9096) to be healthy..."
+          for i in $(seq 1 18); do
+            PA=$(curl -sf http://localhost:9094/actuator/health -o /dev/null && echo ok || echo fail)
+            PB=$(curl -sf http://localhost:9096/actuator/health -o /dev/null && echo ok || echo fail)
+            if [ "$PA" = "ok" ] && [ "$PB" = "ok" ]; then
+              echo "Both gRPC DPs healthy after $((i * 10)) seconds"
+              break
+            fi
+            echo "Attempt $i/18 — grpc-a=$PA grpc-b=$PB — waiting 10s..."
+            sleep 10
+          done
+          curl -sf http://localhost:9094/actuator/health || (echo "data-plane-grpc-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs data-plane-grpc-a && exit 1)
+          curl -sf http://localhost:9096/actuator/health || (echo "data-plane-grpc-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs data-plane-grpc-b && exit 1)
+
+      - name: Wait for data planes to register with connectors
+        run: |
+          echo "Waiting for gRPC DPs to register (need ≥1 per connector)..."
+          for i in $(seq 1 30); do
+            A=$(curl -sf -u admin@mail.com:password http://localhost:8080/api/v1/dataplanes 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])) if d.get('success') else 0)" 2>/dev/null || echo 0)
+            B=$(curl -sf -u admin@mail.com:password http://localhost:8090/api/v1/dataplanes 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])) if d.get('success') else 0)" 2>/dev/null || echo 0)
+            if [ "$A" -ge 1 ] && [ "$B" -ge 1 ]; then
+              echo "gRPC DPs registered: connector-a=$A, connector-b=$B after $((i * 5)) seconds"
+              break
+            fi
+            echo "Attempt $i/30 — connector-a DPs=$A, connector-b DPs=$B — waiting 5s..."
+            sleep 5
+          done
+          A=$(curl -sf -u admin@mail.com:password http://localhost:8080/api/v1/dataplanes | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])))")
+          B=$(curl -sf -u admin@mail.com:password http://localhost:8090/api/v1/dataplanes | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])))")
+          [ "$A" -ge 1 ] || (echo "connector-a has $A gRPC DPs registered" && exit 1)
+          [ "$B" -ge 1 ] || (echo "connector-b has $B gRPC DPs registered" && exit 1)
+
+      - name: Check if the container is up and running
+        run: docker ps -a
+
+      - name: Run Newman datatransfer-api-stream-grpc-tests
+        run: npx --yes newman run ./ci/docker/test-cases/datatransfer-api-stream-grpc-tests/datatransfer-api-stream-grpc-tests.json
+
+      - name: Dump docker datatransfer-api-stream-grpc-tests
+        if: failure()
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile grpc logs
+
+      - name: Stop docker container datatransfer-api-stream-grpc-tests
+        if: always()
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
+
+  datatransfer-api-stream-kafka-tests:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v6
+
+      - name: Run docker container for datatransfer-api-stream-kafka-tests
+        env:
+          MINIO_EXTERNAL_URL: http://localhost:9000
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile kafka up -d
+
+      - name: Wait for connectors to be healthy
+        run: |
+          echo "Waiting for connector-a (port 8080) and connector-b (port 8090)..."
+          for i in $(seq 1 36); do
+            A=$(curl -sf http://localhost:8080/actuator/health -o /dev/null && echo ok || echo fail)
+            B=$(curl -sf http://localhost:8090/actuator/health -o /dev/null && echo ok || echo fail)
+            if [ "$A" = "ok" ] && [ "$B" = "ok" ]; then
+              echo "Both connectors healthy after $((i * 10)) seconds"
+              break
+            fi
+            echo "Attempt $i/36 — connector-a=$A connector-b=$B — waiting 10s..."
+            sleep 10
+          done
+          curl -sf http://localhost:8080/actuator/health || (echo "connector-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-a && exit 1)
+          curl -sf http://localhost:8090/actuator/health || (echo "connector-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-b && exit 1)
+
+      - name: Wait for Kafka broker to be healthy
+        run: |
+          echo "Waiting for kafka-broker health..."
+          for i in $(seq 1 24); do
+            STATUS=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}starting{{end}}' kafka-broker 2>/dev/null || echo starting)
+            if [ "$STATUS" = "healthy" ]; then
+              echo "Kafka broker healthy after $((i * 5)) seconds"
+              break
+            fi
+            echo "Attempt $i/24 — kafka-broker=$STATUS — waiting 5s..."
+            sleep 5
+          done
+          STATUS=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}starting{{end}}' kafka-broker 2>/dev/null || echo starting)
+          [ "$STATUS" = "healthy" ] || (echo "kafka-broker unhealthy: $STATUS" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile kafka logs kafka-broker && exit 1)
+
+      - name: Wait for Kafka data plane containers to be healthy
+        run: |
+          echo "Waiting for Kafka DPs (ports 9098 and 9099) to be healthy..."
+          for i in $(seq 1 18); do
+            PA=$(curl -sf http://localhost:9098/actuator/health -o /dev/null && echo ok || echo fail)
+            PB=$(curl -sf http://localhost:9099/actuator/health -o /dev/null && echo ok || echo fail)
+            if [ "$PA" = "ok" ] && [ "$PB" = "ok" ]; then
+              echo "Both Kafka DPs healthy after $((i * 10)) seconds"
+              break
+            fi
+            echo "Attempt $i/18 — kafka-a=$PA kafka-b=$PB — waiting 10s..."
+            sleep 10
+          done
+          curl -sf http://localhost:9098/actuator/health || (echo "data-plane-kafka-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile kafka logs data-plane-kafka-a && exit 1)
+          curl -sf http://localhost:9099/actuator/health || (echo "data-plane-kafka-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile kafka logs data-plane-kafka-b && exit 1)
+
+      - name: Wait for data planes to register with connectors
+        run: |
+          echo "Waiting for Kafka DPs to register (need ≥1 per connector)..."
+          for i in $(seq 1 30); do
+            A=$(curl -sf -u admin@mail.com:password http://localhost:8080/api/v1/dataplanes 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])) if d.get('success') else 0)" 2>/dev/null || echo 0)
+            B=$(curl -sf -u admin@mail.com:password http://localhost:8090/api/v1/dataplanes 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])) if d.get('success') else 0)" 2>/dev/null || echo 0)
+            if [ "$A" -ge 1 ] && [ "$B" -ge 1 ]; then
+              echo "Kafka DPs registered: connector-a=$A, connector-b=$B after $((i * 5)) seconds"
+              break
+            fi
+            echo "Attempt $i/30 — connector-a DPs=$A, connector-b DPs=$B — waiting 5s..."
+            sleep 5
+          done
+          A=$(curl -sf -u admin@mail.com:password http://localhost:8080/api/v1/dataplanes | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])))")
+          B=$(curl -sf -u admin@mail.com:password http://localhost:8090/api/v1/dataplanes | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',[])))")
+          [ "$A" -ge 1 ] || (echo "connector-a has $A Kafka DPs registered" && exit 1)
+          [ "$B" -ge 1 ] || (echo "connector-b has $B Kafka DPs registered" && exit 1)
+
+      - name: Check if the container is up and running
+        run: docker ps -a
+
+      - name: Run Newman datatransfer-api-stream-kafka-tests
+        run: npx --yes newman run ./ci/docker/test-cases/datatransfer-api-stream-kafka-tests/datatransfer-api-stream-kafka-tests.json
+
+      - name: Dump docker datatransfer-api-stream-kafka-tests
+        if: failure()
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile kafka logs
+
+      - name: Stop docker container datatransfer-api-stream-kafka-tests
         if: always()
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
 

@@ -39,6 +39,7 @@ For HTTP-PUSH the flow is different — see the [HTTP-PUSH Transfer Flow](#http-
 | `data-plane-http-pull` | HTTP-PULL standalone service (default port 9090) | Spring Boot fat JAR |
 | `data-plane-http-push` | HTTP-PUSH standalone service (default port 9091) | Spring Boot fat JAR |
 | `data-plane-grpc` | gRPC streaming standalone service (REST 9094, gRPC 9095) | Spring Boot fat JAR |
+| `data-plane-kafka` | Kafka-backed streaming standalone service (REST 9098) | Spring Boot fat JAR |
 
 ### Control Plane additions (`data-transfer` module)
 
@@ -46,8 +47,8 @@ For HTTP-PUSH the flow is different — see the [HTTP-PUSH Transfer Flow](#http-
 |---|---|---|
 | `DataPlaneRegistration` | `it.eng.datatransfer.model` | Persisted DP registration record (MongoDB) |
 | `DataPlaneRegistrationService` | `it.eng.datatransfer.service` | CRUD + routing lookup |
-| `DataPlaneRouter` | `it.eng.datatransfer.router` | Selects DP by transfer type (round-robin) |
-| `DataPlaneClient` | `it.eng.datatransfer.client` | CP → DP HTTP calls (`start`, `terminate`, `suspend`, `resume`) |
+| `DataPlaneRouter` | `it.eng.datatransfer.router` | Selects DP by transfer type and transport profile (sticky for prepared streaming sessions) |
+| `DataPlaneClient` | `it.eng.datatransfer.client` | CP → DP HTTP calls (`prepare`, `start`, `terminate`, `suspend`, `resume`) |
 | `DataFlowCallbackController` | `it.eng.datatransfer.rest.api` | Receives canonical and legacy DP callbacks |
 | `DataFlowCallbackService` | `it.eng.datatransfer.service` | Centralizes DP callback handling; persists internal DP state before triggering DSP transitions |
 | `DataPlaneRegistrationController` | `it.eng.datatransfer.rest.api` | Admin CRUD for DP registrations |
@@ -215,6 +216,52 @@ Key points:
 - Finite streams complete on EOF; unexpected EOF on a non-finite stream is surfaced through the
   DPS `errored` callback instead of leaving the data flow stuck in `STARTED`.
 
+### Kafka streaming
+
+The Kafka streaming slice uses the same CP orchestration pattern as gRPC, but the wire transport is
+broker-backed instead of direct point-to-point:
+
+- **Provider-side Kafka DP** handles DPS `prepare`, allocates a Kafka topic and transport metadata,
+  and asynchronously publishes the provider source stream into Kafka.
+- **Consumer-side Kafka DP** handles DPS `start`, subscribes to the prepared topic, and writes
+  consumed records through `SinkWriter` (`S3SinkWriter` first).
+
+```text
+Consumer CP                  Provider CP                 Provider Kafka DP
+     |                            |                              |
+     |--- TransferRequestMsg ---->|                              |
+     |    format=stream:kafka     |                              |
+     |                            | [provider admin start]       |
+     |                            |-- POST /dataflows/prepare -->|
+     |                            |<-- {bootstrapServers,topic,groupId,mode}
+     |<-- TransferStartMessage ---|                              |
+     |    dataAddress = Kafka meta|                              |
+     |
+     | [consumer admin download]
+     v
+Consumer Kafka DP -----------------------------------------------> Kafka broker/topic
+POST /dataflows/start                                              publish / consume
+     |                                                                  |
+     |--------------------------- consumed records ----------------------|
+     |--- write to consumer S3 (key = transferProcessId)
+     |--- POST /api/v1/transfers/{id}/dataflow/completed|errored --> Consumer CP
+```
+
+Key points:
+
+- The provider DP returns `endpointType=kafka` with `bootstrapServers`, `topic`, `groupId`, and
+  `mode` in `dataAddress.endpointProperties`.
+- Topic names are normalized into Kafka-safe identifiers by replacing unsupported characters from
+  the transfer ID (for example `urn:uuid:...` becomes `stream-topic-urn_uuid_...`).
+- The current built-in implementation is **finite S3-backed streaming**: the provider publishes an
+  EOF marker after the source stream is exhausted, and the consumer completes when that marker is
+  received.
+- `suspend` and `resume` currently return a failure result for `stream:kafka`; operationally, use
+  terminate and recreate the transfer instead.
+- Kafka transport metadata is prepared on the provider DP and then consumed only after the consumer
+  admin explicitly triggers `downloadData()`, matching the current TRUE Connector admin-driven
+  transfer model.
+
 ### viewData
 
 After a transfer reaches `COMPLETED` and `isDownloaded = true`, the consumer can call
@@ -252,7 +299,7 @@ Suspend is safe and allowed when:
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/dataflows/start` | Begin a data transfer (async) |
-| `POST` | `/dataflows/prepare` | Prepare resources before start (used by the built-in CP for `stream:grpc`; not called for HTTP-PULL or HTTP-PUSH) |
+| `POST` | `/dataflows/prepare` | Prepare resources before start (used by the built-in CP for `stream:grpc` and `stream:kafka`; not called for HTTP-PULL or HTTP-PUSH) |
 | `POST` or `DELETE` | `/dataflows/{id}/terminate` | Terminate/abort a data flow |
 | `POST` | `/dataflows/{id}/suspend` | Suspend an active transfer |
 | `POST` | `/dataflows/{id}/resume` | Resume a suspended transfer |

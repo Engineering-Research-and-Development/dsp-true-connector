@@ -19,6 +19,8 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Registers this Data Plane with the Control Plane at startup and deregisters on shutdown.
@@ -107,6 +109,12 @@ public class ControlPlaneRegistrationBean implements ApplicationListener<Applica
         payload.put("id", properties.getId());
         payload.put("endpoint", properties.getEndpoint());
         payload.put("supportedTransferTypes", registry.getSupportedProtocols());
+        Set<String> transportProfiles = registry.getSupportedProtocols().stream()
+                .filter(protocol -> protocol != null && protocol.startsWith("stream:"))
+                .collect(Collectors.toSet());
+        if (!transportProfiles.isEmpty()) {
+            payload.put("transportProfiles", transportProfiles);
+        }
         if (properties.getApiKey() != null && !properties.getApiKey().isBlank()) {
             payload.put("apiKey", properties.getApiKey());
         }

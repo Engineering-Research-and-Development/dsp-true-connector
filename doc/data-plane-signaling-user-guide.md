@@ -14,22 +14,26 @@ services independently and scale them as needed.
 |---|---|
 | **Control Plane (CP)** | The main connector application that manages negotiations and transfer lifecycle |
 | **Data Plane (DP)** | A lightweight service responsible for the actual data transfer |
-| **Transfer type** | Protocol used for data movement — `HttpData-PULL`, `HttpData-PUSH`, or `stream:grpc` |
+| **Transfer type** | Protocol used for data movement — `HttpData-PULL`, `HttpData-PUSH`, `stream:grpc`, or `stream:kafka` |
 | **DP Registration** | A CP record describing where a DP lives and what transfer types it supports |
 
 ---
 
 ## Deployment
 
-The connector ships two ready-made Data Plane images:
+The connector ships four ready-made Data Plane images:
 
 | Image | Transfer type | Default port |
 |---|---|---|
 | `data-plane-http-pull` | `HttpData-PULL` | 9090 |
 | `data-plane-http-push` | `HttpData-PUSH` | 9091 |
 | `data-plane-grpc` | `stream:grpc` | REST 9094, gRPC 9095 |
+| `data-plane-kafka` | `stream:kafka` | REST 9098 |
 
-All three are wired in `ci/docker/docker-compose.yml`; the gRPC pair is started with `--profile grpc`.
+All four are wired in `ci/docker/docker-compose.yml`:
+
+- `--profile grpc` starts the consumer/provider gRPC dataplanes
+- `--profile kafka` starts the consumer/provider Kafka dataplanes plus the shared Kafka broker
 
 ### Minimum required configuration (each DP)
 
@@ -59,6 +63,25 @@ s3.externalPresignedEndpoint=http://172.17.0.1:9000
 ```
 
 Leave `s3.endpoint` blank when using AWS S3 (the SDK resolves the correct endpoint automatically).
+
+### Additional configuration for the Kafka DP
+
+The Kafka dataplane still uses S3-backed `SourceReader` / `SinkWriter`, but the transport itself is
+broker-backed:
+
+```properties
+server.port=9098
+dataplane.endpoint=http://dp-kafka:9098
+
+# Kafka broker used by both provider and consumer Kafka dataplanes
+dataplane.kafka.bootstrap-servers=kafka-broker:9092
+
+# Prefix used when the provider DP allocates transport topics
+dataplane.kafka.topic-prefix=stream-topic-
+```
+
+In the local compose stack the consumer Kafka DP is exposed on host port `9098` and the provider
+Kafka DP on host port `9099` (container port `9098` in both cases).
 
 ---
 
@@ -109,6 +132,30 @@ Leave `s3.endpoint` blank when using AWS S3 (the SDK resolves the correct endpoi
 
 The provider-side prepared session is sticky-routed to one DP instance and is cleaned up on
 rollback or termination.
+
+### Kafka streaming — provider prepares topic, consumer drains broker
+
+1. **Consumer admin** calls *Request transfer* with `format=stream:kafka`.
+   The current built-in scenario is an S3-backed finite stream, even though the transport metadata
+   still carries a `mode` field.
+2. **Provider admin** calls *Start transfer*.
+   The provider CP calls DPS `POST /dataflows/prepare` on the provider Kafka DP, which allocates
+   transport metadata (`bootstrapServers`, `topic`, `groupId`, `mode`) and starts publishing the
+   provider source stream into that topic.
+3. The provider CP sends a standard `TransferStartMessage` to the consumer, embedding those Kafka
+   transport details inside `dataAddress`.
+4. **Consumer admin** calls *Download data*.
+   The consumer CP routes `POST /dataflows/start` to the consumer Kafka DP, which subscribes to the
+   prepared topic and writes consumed records into the consumer bucket.
+5. Finite transfers complete when the consumer sees the EOF marker published by the provider DP.
+   `viewData` then returns a normal presigned URL for the stored consumer-side artifact.
+
+Current implementation notes:
+
+- Topic names are normalized from transfer IDs into Kafka-safe names such as
+  `stream-topic-urn_uuid_...`.
+- Suspend and resume are **not** implemented for `stream:kafka` yet; terminate and re-request the
+  transfer instead.
 
 ### Viewing downloaded data
 
@@ -285,6 +332,9 @@ See `doc/data-plane-signaling-technical.md` for the full message schemas.
 | Transfer stays in `REQUESTED` | No DP registered for that transfer type | Register a DP via admin API |
 | `stream:grpc` stays in `REQUESTED` after *Start transfer* | No gRPC DP registered on the provider side or `prepare` failed | Check `/api/v1/dataplanes`, provider DP logs, and gRPC DP registration |
 | `stream:grpc` reaches `STARTED` but *Download data* fails immediately | Consumer received incomplete gRPC `dataAddress` metadata | Verify provider `prepare` response contains `host`, `port`, and `sessionId` |
+| `stream:kafka` stays in `REQUESTED` after *Start transfer* | No Kafka DP registered on the provider side or the broker-backed `prepare` call failed | Check `/api/v1/dataplanes`, provider DP logs, Kafka broker health, and Kafka DP registration |
+| `stream:kafka` reaches `STARTED` but *Download data* fails immediately | Consumer received incomplete Kafka `dataAddress` metadata | Verify provider `prepare` response contains `bootstrapServers`, `topic`, and `groupId` |
+| `stream:kafka` start fails with topic creation errors | Transfer ID was mapped to an invalid topic name or the broker is unavailable | Check provider Kafka DP logs for `Failed to create Kafka topic` and verify Kafka broker health |
 | Non-finite gRPC stream ends and transfer moves to error | Provider closed a stream that was advertised as non-finite | Check provider source implementation and DP logs; non-finite EOF is treated as an error |
 | DP logs "CP registration failed" on startup | CP not reachable or wrong endpoint | Check `dataplane.control-plane-admin-endpoint` |
 | CP rejects DP callbacks with HTTP 401 | API key mismatch | Verify `dataplane.api-key` matches the key stored in `DataPlaneRegistration` on the CP |

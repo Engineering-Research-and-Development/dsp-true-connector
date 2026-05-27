@@ -339,9 +339,100 @@ services:
       - S3_REGION=us-east-1
       - S3_BUCKETNAME=dsp-true-connector-b
 
+  kafka-broker:
+    image: apache/kafka:3.9.0
+    container_name: kafka-broker
+    profiles: ["kafka"]
+    networks:
+      - network-kafka
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_LISTENERS=PLAINTEXT://kafka-broker:9092,CONTROLLER://kafka-broker:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka-broker:9092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka-broker:9093
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CONTROLLER_LISTENER_NAME=CONTROLLER
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_LOG_DIRS=/tmp/kraft-combined-logs
+    healthcheck:
+      test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-broker:9092 --list >/dev/null 2>&1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+
+  data-plane-kafka-a:
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-kafka:test
+    container_name: data-plane-kafka-a
+    profiles: ["kafka"]
+    networks:
+      - network-a
+      - network-kafka
+    ports:
+      - "9098:9098"
+    depends_on:
+      kafka-broker:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      connector-a:
+        condition: service_started
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-a:27017/data-plane-kafka-a
+      - DATAPLANE_ID=dp-kafka-a
+      - DATAPLANE_ENDPOINT=http://data-plane-kafka-a:9098
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-a:8080
+      - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}
+      - DATAPLANE_AUTH_TYPE=API_KEY
+      - DATAPLANE_API_KEY=${DP_KAFKA_API_KEY:-changeme}
+      - SERVER_PORT=9098
+      - DATAPLANE_KAFKA_BOOTSTRAP_SERVERS=kafka-broker:9092
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESSKEY=minioadmin
+      - S3_SECRETKEY=minioadmin
+      - S3_REGION=us-east-1
+      - S3_BUCKETNAME=dsp-true-connector-a
+
+  data-plane-kafka-b:
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-kafka:test
+    container_name: data-plane-kafka-b
+    profiles: ["kafka"]
+    networks:
+      - network-b
+      - network-kafka
+    ports:
+      - "9099:9098"
+    depends_on:
+      kafka-broker:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      connector-b:
+        condition: service_started
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-b:27017/data-plane-kafka-b
+      - DATAPLANE_ID=dp-kafka-b
+      - DATAPLANE_ENDPOINT=http://data-plane-kafka-b:9098
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-b:8080
+      - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}
+      - DATAPLANE_AUTH_TYPE=API_KEY
+      - DATAPLANE_API_KEY=${DP_KAFKA_API_KEY:-changeme}
+      - SERVER_PORT=9098
+      - DATAPLANE_KAFKA_BOOTSTRAP_SERVERS=kafka-broker:9092
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESSKEY=minioadmin
+      - S3_SECRETKEY=minioadmin
+      - S3_REGION=us-east-1
+      - S3_BUCKETNAME=dsp-true-connector-b
+
 networks:
   network-a: { }
   network-b: { }
+  network-kafka: { }
 
 volumes:
   minio_data: { }

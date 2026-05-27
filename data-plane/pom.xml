@@ -22,5 +22,6 @@
         <module>data-plane-http-pull</module>
         <module>data-plane-http-push</module>
         <module>data-plane-grpc</module>
+        <module>data-plane-kafka</module>
     </modules>
 </project>

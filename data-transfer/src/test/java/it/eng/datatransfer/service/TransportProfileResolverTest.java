@@ -18,6 +18,13 @@ public class TransportProfileResolverTest {
     }
 
     @Test
+    @DisplayName("resolve returns STREAM_KAFKA profile for stream:kafka transfer type")
+    public void resolveReturnsKafkaForKafkaTransferType() {
+        String profile = resolver.resolve("stream:kafka");
+        assertEquals("stream:kafka", profile);
+    }
+
+    @Test
     @DisplayName("resolve returns null for HttpData-PULL transfer type")
     public void resolveReturnsNullForHttpPull() {
         assertNull(resolver.resolve("HttpData-PULL"));

@@ -18,6 +18,7 @@ public class TransportProfileResolver {
      * Resolves the transport profile for the given transfer type.
      *
      * <p>Returns {@link TransportProfile#STREAM_GRPC} when the transfer type is {@code stream:grpc}.
+     * Returns {@link TransportProfile#STREAM_KAFKA} when the transfer type is {@code stream:kafka}.
      * Returns {@code null} for all other transfer types, including HTTP-PULL and HTTP-PUSH.</p>
      *
      * @param transferType the transfer type identifier (e.g. {@code "stream:grpc"}, {@code "HttpData-PULL"})
@@ -26,6 +27,9 @@ public class TransportProfileResolver {
     public String resolve(String transferType) {
         if (TransportProfile.STREAM_GRPC.equals(transferType)) {
             return TransportProfile.STREAM_GRPC;
+        }
+        if (TransportProfile.STREAM_KAFKA.equals(transferType)) {
+            return TransportProfile.STREAM_KAFKA;
         }
         return null;
     }

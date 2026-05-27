@@ -14,6 +14,12 @@ public final class TransportProfile {
      */
     public static final String STREAM_GRPC = "stream:grpc";
 
+    /**
+     * Kafka streaming transport profile.
+     * Data Planes that implement Kafka-backed streaming advertise this profile at registration.
+     */
+    public static final String STREAM_KAFKA = "stream:kafka";
+
     private TransportProfile() {
     }
 }

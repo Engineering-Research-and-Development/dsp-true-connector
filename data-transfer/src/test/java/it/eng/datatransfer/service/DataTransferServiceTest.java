@@ -289,6 +289,58 @@ public class DataTransferServiceTest {
     }
 
     @Test
+    @DisplayName("StartDataTransfer from REQUESTED - consumer callback preserves existing HTTP-PUSH dataAddress when start message has none")
+    public void startDataTransfer_fromRequested_consumer_httpPushPreservesExistingDataAddress() {
+        DataAddress pushDataAddress = DataAddress.Builder.newInstance()
+                .endpointProperties(List.of(
+                        EndpointProperty.Builder.newInstance().name("bucketName").value("consumer-bucket").build(),
+                        EndpointProperty.Builder.newInstance().name("objectKey").value("tp-1").build(),
+                        EndpointProperty.Builder.newInstance().name("accessKey").value("access").build(),
+                        EndpointProperty.Builder.newInstance().name("secretKey").value("secret").build()))
+                .build();
+
+        TransferProcess requestedConsumerPush = TransferProcess.Builder.newInstance()
+                .id(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER.getId())
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(pushDataAddress)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .format(DataTransferFormat.HTTP_PUSH.format())
+                .state(TransferState.REQUESTED)
+                .role(IConstants.ROLE_CONSUMER)
+                .datasetId(DataTransferMockObjectUtil.DATASET_ID)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .modified(DataTransferMockObjectUtil.MODIFIED)
+                .build();
+
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+                .thenReturn(Optional.of(requestedConsumerPush));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        TransferProcess transferProcessStarted = service.startDataTransfer(
+                DataTransferMockObjectUtil.TRANSFER_START_MESSAGE,
+                DataTransferMockObjectUtil.CONSUMER_PID,
+                null);
+
+        assertEquals(TransferState.STARTED, transferProcessStarted.getState());
+        assertNotNull(transferProcessStarted.getDataAddress());
+        assertEquals("consumer-bucket", transferProcessStarted.getDataAddress().getEndpointProperties().stream()
+                .filter(p -> "bucketName".equals(p.getName()))
+                .findFirst()
+                .map(EndpointProperty::getValue)
+                .orElse(null));
+        verify(transferProcessRepository).save(argTransferProcess.capture());
+        assertNotNull(argTransferProcess.getValue().getDataAddress());
+        assertEquals("consumer-bucket", argTransferProcess.getValue().getDataAddress().getEndpointProperties().stream()
+                .filter(p -> "bucketName".equals(p.getName()))
+                .findFirst()
+                .map(EndpointProperty::getValue)
+                .orElse(null));
+    }
+
+    @Test
     @DisplayName("StartDataTransfer from SUSPENDED - provider")
     public void startDataTransfer_fromSuspended_provider() {
         when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
@@ -712,6 +764,36 @@ public class DataTransferServiceTest {
 
         // No AutoTransferDownloadEvent when automatic transfer is disabled
         verify(publisher, never()).publishEvent((Object) argThat(evt ->
+                evt instanceof it.eng.datatransfer.event.AutoTransferDownloadEvent));
+    }
+
+    @Test
+    @DisplayName("startDataTransfer - consumer Kafka with automaticTransfer enabled fires AutoTransferDownloadEvent")
+    public void startDataTransfer_kafka_consumer_autoDownloadFires() {
+        TransferProcess requestedConsumerKafka = TransferProcess.Builder.newInstance()
+                .id(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER.getId())
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .format("stream:kafka")
+                .state(TransferState.REQUESTED)
+                .role(IConstants.ROLE_CONSUMER)
+                .datasetId(DataTransferMockObjectUtil.DATASET_ID)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .modified(DataTransferMockObjectUtil.MODIFIED)
+                .build();
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+                .thenReturn(Optional.of(requestedConsumerKafka));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(transferProperties.isAutomaticTransfer()).thenReturn(true);
+
+        service.startDataTransfer(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE,
+                DataTransferMockObjectUtil.CONSUMER_PID, null);
+
+        verify(publisher).publishEvent((Object) argThat(evt ->
                 evt instanceof it.eng.datatransfer.event.AutoTransferDownloadEvent));
     }
 }
