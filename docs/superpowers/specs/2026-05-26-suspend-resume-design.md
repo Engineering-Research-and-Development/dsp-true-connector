@@ -132,12 +132,17 @@ This keeps the rule local and explicit: the initiator is the only side allowed t
 
 ### Where the start-vs-resume decision happens
 
-The start-vs-resume decision belongs in the existing control-plane execution trigger, not in the public API surface:
+The choice is **not** made by adding a new public resume endpoint or a new `resume=true` flag to `startTransfer(...)`. It is made at the moment the control plane is about to hand local execution over to the dataplane.
 
-- consumer HTTP-PULL auto/manual download path
-- provider HTTP-PUSH start-then-download path
+- **HTTP-PULL:** the decision happens in the consumer-side `DataTransferAPIService.downloadData(...)` path, whether that method is reached manually from the existing download endpoint or automatically via `AutoTransferDownloadEvent`
+- **HTTP-PUSH:** the decision happens in the provider-side start-then-download chain in `AutomaticDataTransferService.processStart(...)`, which calls `processDownload(...)`, which then ends up in the same `DataTransferAPIService.downloadData(...)` dataplane handoff
 
-That keeps `startTransfer(...)` as the public contract while letting the implementation switch between dataplane `start(...)` and `resume(...)` internally.
+At that handoff point, the control plane inspects the suspended transfer and decides whether to call:
+
+- `dataPlaneClient.start(...)` for a fresh local execution
+- `dataPlaneClient.resume(...)` for a suspended local execution that is allowed to continue
+
+That keeps `startTransfer(...)` as the public contract while making the start-vs-resume choice an internal control-plane execution detail right before dataplane invocation.
 
 ## Java 21 Considerations
 
