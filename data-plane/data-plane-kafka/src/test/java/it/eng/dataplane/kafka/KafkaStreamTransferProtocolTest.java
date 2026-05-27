@@ -31,16 +31,19 @@ import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
@@ -228,6 +231,69 @@ class KafkaStreamTransferProtocolTest {
             assertFalse(resultFuture.isDone());
             verify(controlPlaneClient, never()).sendCompleted(eq("http://control-plane/callback"),
                     eq("tp-non-finite-kafka-run"), anyMap());
+        } finally {
+            sinkWriter.release();
+            executorService.shutdownNow();
+        }
+    }
+
+    @Test
+    @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    @DisplayName("interrupted non-finite publisher shutdown does not escape as uncaught async failure")
+    void interruptedNonFinitePublisherShutdownDoesNotEscapeAsUncaughtAsyncFailure() throws Exception {
+        KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
+        BlockingSinkWriter sinkWriter = new BlockingSinkWriter();
+        ControlPlaneClient controlPlaneClient = Mockito.mock(ControlPlaneClient.class);
+        BlockingQueue<Throwable> uncaughtFailures = new LinkedBlockingQueue<>();
+        ExecutorService executorService = Executors.newCachedThreadPool(runnable -> {
+            Thread thread = new Thread(runnable);
+            thread.setUncaughtExceptionHandler((ignoredThread, throwable) -> uncaughtFailures.add(throwable));
+            return thread;
+        });
+        S3Properties s3Properties = new S3Properties();
+        s3Properties.setBucketName("bucket-a");
+        s3Properties.setRegion("us-east-1");
+        s3Properties.setEndpoint("http://minio:9000");
+        s3Properties.setAccessKey("access-key");
+        s3Properties.setSecretKey("secret-key");
+
+        try {
+            ReflectionTestUtils.setField(protocol, "bootstrapServers", EMBEDDED_KAFKA.getBrokersAsString());
+            ReflectionTestUtils.setField(protocol, "topicPrefix", "stream-topic-");
+            ReflectionTestUtils.setField(protocol, "groupIdPrefix", "stream-group-");
+            ReflectionTestUtils.setField(protocol, "sourceReaderRegistry",
+                    new SourceReaderRegistry(java.util.List.of(new NonFiniteSourceReader("live"))));
+            ReflectionTestUtils.setField(protocol, "sinkWriterRegistry",
+                    new SinkWriterRegistry(java.util.List.of(sinkWriter)));
+            ReflectionTestUtils.setField(protocol, "controlPlaneClient", controlPlaneClient);
+            ReflectionTestUtils.setField(protocol, "transferExecutor", executorService);
+            ReflectionTestUtils.setField(protocol, "s3Properties", s3Properties);
+
+            DataFlowPrepareResponse prepareResponse = protocol.prepare(DataFlowPrepareMessage.Builder.newInstance()
+                    .processId("tp-non-finite-kafka-interrupt")
+                    .datasetId("dataset-6")
+                    .callbackAddress("http://control-plane/callback")
+                    .dataAddress(Map.of("sourceType", "s3", "finite", "false"))
+                    .build());
+
+            DataFlow dataFlow = DataFlow.Builder.newInstance()
+                    .dataFlowId("df-non-finite-kafka-interrupt")
+                    .processId("tp-non-finite-kafka-interrupt")
+                    .datasetId("dataset-6")
+                    .callbackAddress("http://control-plane/callback")
+                    .transferType(KafkaStreamTransferProtocol.PROTOCOL_ID)
+                    .dataAddress(prepareResponse.getDataAddress())
+                    .build();
+
+            protocol.initiateTransfer(dataFlow);
+
+            assertTrue(sinkWriter.awaitStarted(10, TimeUnit.SECONDS));
+            Thread.sleep(500);
+            executorService.shutdownNow();
+            assertTrue(executorService.awaitTermination(10, TimeUnit.SECONDS));
+
+            Throwable failure = uncaughtFailures.poll(1, TimeUnit.SECONDS);
+            assertNull(failure, () -> "Unexpected uncaught async failure: " + failure);
         } finally {
             sinkWriter.release();
             executorService.shutdownNow();

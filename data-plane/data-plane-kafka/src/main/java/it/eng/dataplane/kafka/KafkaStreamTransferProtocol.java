@@ -40,6 +40,7 @@ import org.springframework.stereotype.Component;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -48,6 +49,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Iterator;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
@@ -266,8 +268,28 @@ public class KafkaStreamTransferProtocol implements DataTransferProtocol {
             producer.send(eofRecord).get();
             producer.flush();
         } catch (Exception exception) {
+            if (isInterruptedCancellation(exception)) {
+                Thread.currentThread().interrupt();
+                return;
+            }
             throw new IllegalStateException("Failed to publish Kafka stream for process " + processId, exception);
         }
+    }
+
+    private boolean isInterruptedCancellation(Throwable throwable) {
+        if (Thread.currentThread().isInterrupted()) {
+            return true;
+        }
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof InterruptedException
+                    || current instanceof InterruptedIOException
+                    || current instanceof CancellationException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private void consumeTopicIntoSink(DataFlow dataFlow,
