@@ -61,7 +61,7 @@ The design therefore needs to translate the earlier multipart-resume ideas into 
   - `startTransfer(...)` as the public resume action
 - Owns peer-to-peer DSP protocol messages (`TransferStartMessage`, `TransferSuspensionMessage`, `TransferCompletionMessage`, `TransferTerminationMessage`)
 - Tracks dataplane lifecycle mirror state in `TransferProcess.dataFlowState`
-- Tracks resume ownership in `TransferProcess.suspendInitiatedBy`, which stores one of the existing role values already used by `TransferProcess.role`
+- Tracks resume ownership in `TransferProcess.suspendedBy`, which stores one of the existing role values already used by `TransferProcess.role`
 - Keeps `isDownloadInProgress` as a local execution/UX flag, not as the source of resume truth
 
 **Dataplane**
@@ -75,7 +75,7 @@ The design therefore needs to translate the earlier multipart-resume ideas into 
 
 | Area | Responsibility in this design |
 | --- | --- |
-| `data-transfer` | Route suspend to dataplane pause; keep public resume via `startTransfer(...)`; persist and enforce `suspendInitiatedBy` using the existing role values; decide `dataPlaneClient.start(...)` vs `dataPlaneClient.resume(...)` during actual download kickoff |
+| `data-transfer` | Route suspend to dataplane pause; keep public resume via `startTransfer(...)`; persist and enforce `suspendedBy` using the existing role values; decide `dataPlaneClient.start(...)` vs `dataPlaneClient.resume(...)` during actual download kickoff |
 | `data-plane/data-plane-core` | Persist resumable dataplane session/checkpoint records and enforce lifecycle semantics |
 | `data-plane/data-plane-http-pull` | Implement true suspend/resume for consumer-side pull transfers |
 | `data-plane/data-plane-http-push` | Implement true suspend/resume for provider-side push transfers |
@@ -87,19 +87,19 @@ The design keeps DSP transfer state and dataplane execution state related but di
 
 - `TransferProcess.state` remains the DSP lifecycle (`REQUESTED`, `STARTED`, `SUSPENDED`, `COMPLETED`, `TERMINATED`)
 - `TransferProcess.dataFlowState` remains the control-plane mirror of dataplane execution (`STARTED`, `SUSPENDED`, `COMPLETED`, `TERMINATED`)
-- `TransferProcess.suspendInitiatedBy` records which existing DSP role value (`consumer` or `provider`) initiated the current suspension
+- `TransferProcess.suspendedBy` records which existing DSP role value (`consumer` or `provider`) initiated the current suspension
 
 ### Resume authority
 
 Resume ownership is tracked explicitly on `TransferProcess`.
 
 - No new role type or enum is introduced; the design reuses the same `consumer` / `provider` values already stored in `TransferProcess.role`
-- On the connector that initiates suspend via `DataTransferAPIService.suspendTransfer(...)`, set `suspendInitiatedBy = transferProcess.role`
+- On the connector that initiates suspend via `DataTransferAPIService.suspendTransfer(...)`, set `suspendedBy = transferProcess.role`
 - On the peer connector that receives the protocol suspension in `AbstractDataTransferService.suspendDataTransfer(...)`, set the same logical initiator role without changing the DSP message schema:
   - if local role is `consumer`, the initiator was `provider`
   - if local role is `provider`, the initiator was `consumer`
-- `suspendInitiatedBy` stays populated while the transfer remains `SUSPENDED`
-- Clear `suspendInitiatedBy` after a successful resume transition back to `STARTED`, and on terminal transitions
+- `suspendedBy` stays populated while the transfer remains `SUSPENDED`
+- Clear `suspendedBy` after a successful resume transition back to `STARTED`, and on terminal transitions
 
 This keeps the rule local and explicit: the initiator is the only side allowed to emit the resume-start action, while the other side may only receive it.
 
@@ -109,7 +109,7 @@ This keeps the rule local and explicit: the initiator is the only side allowed t
 2. The control plane no longer rejects the request just because `isDownloadInProgress=true`.
 3. The control plane identifies the active dataplane flow and calls `dataPlaneClient.suspend(...)`.
 4. The dataplane pauses the running transfer, flushes checkpoint state, and only then returns success.
-5. The control plane records `suspendInitiatedBy` for the current suspension and updates its local dataplane mirror state to `SUSPENDED`.
+5. The control plane records `suspendedBy` for the current suspension and updates its local dataplane mirror state to `SUSPENDED`.
 6. The control plane sends the normal DSP `TransferSuspensionMessage` to the peer.
 7. On the receiving side, `AbstractDataTransferService.suspendDataTransfer(...)` persists the same logical initiator role on its local `TransferProcess`.
 8. Once the peer accepts, both sides remain aligned on `TransferProcess.state = SUSPENDED` and on who is allowed to resume.
@@ -117,9 +117,9 @@ This keeps the rule local and explicit: the initiator is the only side allowed t
 ### Resume flow
 
 1. A user resumes the transfer through the existing control-plane `startTransfer(...)` path.
-2. `DataTransferAPIService.startTransfer(...)` checks `suspendInitiatedBy` when the current state is `SUSPENDED`; if the local role is not the recorded initiator, the request is rejected and the transfer stays suspended.
+2. `DataTransferAPIService.startTransfer(...)` checks `suspendedBy` when the current state is `SUSPENDED`; if the local role is not the recorded initiator, the request is rejected and the transfer stays suspended.
 3. DSP state handling remains unchanged at the public API level.
-4. When the peer receives the resulting `TransferStartMessage`, `AbstractDataTransferService.startDataTransfer(...)` applies the symmetric rule: for a `SUSPENDED` transfer, it only accepts the message when the local role is **not** `suspendInitiatedBy`, because the peer sender must be the recorded initiator.
+4. When the peer receives the resulting `TransferStartMessage`, `AbstractDataTransferService.startDataTransfer(...)` applies the symmetric rule: for a `SUSPENDED` transfer, it only accepts the message when the local role is **not** `suspendedBy`, because the peer sender must be the recorded initiator.
 5. When the actual local data movement is about to begin, the control plane chooses:
    - `dataPlaneClient.start(...)` for a fresh execution
    - `dataPlaneClient.resume(...)` when the dataplane mirror shows a resumable suspended flow
@@ -294,8 +294,8 @@ Resumption after restart remains an explicit operator/user action through the ex
 **`data-transfer`**
 
 - suspend while `isDownloadInProgress=true` now routes to dataplane pause instead of being rejected
-- `DataTransferAPIService.startTransfer(...)` rejects resume attempts when local role is not `suspendInitiatedBy`
-- `AbstractDataTransferService.startDataTransfer(...)` rejects incoming resume attempts when local role equals `suspendInitiatedBy`
+- `DataTransferAPIService.startTransfer(...)` rejects resume attempts when local role is not `suspendedBy`
+- `AbstractDataTransferService.startDataTransfer(...)` rejects incoming resume attempts when local role equals `suspendedBy`
 - `DataTransferAPIService.suspendTransfer(...)` and `AbstractDataTransferService.suspendDataTransfer(...)` persist the same logical initiator role on both connectors
 - resume via public `startTransfer(...)` ultimately chooses dataplane `resume(...)` when the dataplane mirror is `SUSPENDED`
 - fresh transfers still choose dataplane `start(...)`
