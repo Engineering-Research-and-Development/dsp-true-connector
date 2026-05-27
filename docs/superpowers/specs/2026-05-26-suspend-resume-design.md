@@ -13,6 +13,7 @@ The feature we want is still the same:
 1. keep the existing public control-plane behavior where a suspended transfer is resumed through `startTransfer(...)`
 2. support true mid-flight suspend/resume for HTTP-PULL and HTTP-PUSH
 3. resume from saved multipart state instead of re-downloading everything from byte 0
+4. allow resume only from the same party that initiated the current suspension
 
 The design therefore needs to translate the earlier multipart-resume ideas into the current dataplane architecture instead of reintroducing them into the control plane.
 
@@ -24,6 +25,7 @@ The design therefore needs to translate the earlier multipart-resume ideas into 
 - Add real dataplane suspend/resume underneath that contract for HTTP-PULL and HTTP-PUSH
 - Persist enough multipart-upload state to resume safely after intentional suspension
 - Avoid data corruption, skipped bytes, or false-success resumes
+- Enforce that only the party who initiated suspend may resume the transfer
 - Keep control-plane and dataplane responsibilities clearly separated
 
 ## Non-goals
@@ -42,8 +44,10 @@ The design therefore needs to translate the earlier multipart-resume ideas into 
 | Where checkpoint state lives | Dataplane-owned persistence, not `data-transfer` |
 | Multipart implementation ownership | `s3-support` owns multipart upload/resume mechanics; dataplane owns checkpoint/session lifecycle |
 | Suspend completion signal | Dataplane suspend endpoint must only return success after checkpoint is durable and new multipart work is quiesced |
+| Resume authority | Persist the suspend initiator on `TransferProcess` and allow resume only from that role while the transfer is `SUSPENDED` |
 | Resume fallback when saved upload is gone | Clear checkpoint state and restart from byte 0 inside the dataplane |
 | Source endpoint reuse | Never trust stale source URLs from checkpoint state; obtain fresh source data from the normal control-plane start flow |
+| Java platform usage | Java 21 standard features are available; virtual threads are allowed where they simplify blocking orchestration, but preview features are out of scope |
 
 ## Architecture Overview
 
@@ -57,6 +61,7 @@ The design therefore needs to translate the earlier multipart-resume ideas into 
   - `startTransfer(...)` as the public resume action
 - Owns peer-to-peer DSP protocol messages (`TransferStartMessage`, `TransferSuspensionMessage`, `TransferCompletionMessage`, `TransferTerminationMessage`)
 - Tracks dataplane lifecycle mirror state in `TransferProcess.dataFlowState`
+- Tracks resume ownership in `TransferProcess.suspendInitiatorRole`
 - Keeps `isDownloadInProgress` as a local execution/UX flag, not as the source of resume truth
 
 **Dataplane**
@@ -70,7 +75,7 @@ The design therefore needs to translate the earlier multipart-resume ideas into 
 
 | Area | Responsibility in this design |
 | --- | --- |
-| `data-transfer` | Route suspend to dataplane pause; keep public resume via `startTransfer(...)`; decide `dataPlaneClient.start(...)` vs `dataPlaneClient.resume(...)` during actual download kickoff |
+| `data-transfer` | Route suspend to dataplane pause; keep public resume via `startTransfer(...)`; persist and enforce `suspendInitiatorRole`; decide `dataPlaneClient.start(...)` vs `dataPlaneClient.resume(...)` during actual download kickoff |
 | `data-plane/data-plane-core` | Persist resumable dataplane session/checkpoint records and enforce lifecycle semantics |
 | `data-plane/data-plane-http-pull` | Implement true suspend/resume for consumer-side pull transfers |
 | `data-plane/data-plane-http-push` | Implement true suspend/resume for provider-side push transfers |
@@ -82,6 +87,20 @@ The design keeps DSP transfer state and dataplane execution state related but di
 
 - `TransferProcess.state` remains the DSP lifecycle (`REQUESTED`, `STARTED`, `SUSPENDED`, `COMPLETED`, `TERMINATED`)
 - `TransferProcess.dataFlowState` remains the control-plane mirror of dataplane execution (`STARTED`, `SUSPENDED`, `COMPLETED`, `TERMINATED`)
+- `TransferProcess.suspendInitiatorRole` records which DSP role (`consumer` or `provider`) initiated the current suspension
+
+### Resume authority
+
+Resume ownership is tracked explicitly on `TransferProcess`.
+
+- On the connector that initiates suspend via `DataTransferAPIService.suspendTransfer(...)`, set `suspendInitiatorRole = transferProcess.role`
+- On the peer connector that receives the protocol suspension in `AbstractDataTransferService.suspendDataTransfer(...)`, set the same logical initiator role without changing the DSP message schema:
+  - if local role is `consumer`, the initiator was `provider`
+  - if local role is `provider`, the initiator was `consumer`
+- `suspendInitiatorRole` stays populated while the transfer remains `SUSPENDED`
+- Clear `suspendInitiatorRole` after a successful resume transition back to `STARTED`, and on terminal transitions
+
+This keeps the rule local and explicit: the initiator is the only side allowed to emit the resume-start action, while the other side may only receive it.
 
 ### Suspend flow
 
@@ -89,19 +108,22 @@ The design keeps DSP transfer state and dataplane execution state related but di
 2. The control plane no longer rejects the request just because `isDownloadInProgress=true`.
 3. The control plane identifies the active dataplane flow and calls `dataPlaneClient.suspend(...)`.
 4. The dataplane pauses the running transfer, flushes checkpoint state, and only then returns success.
-5. The control plane updates its local dataplane mirror state to `SUSPENDED`.
+5. The control plane records `suspendInitiatorRole` for the current suspension and updates its local dataplane mirror state to `SUSPENDED`.
 6. The control plane sends the normal DSP `TransferSuspensionMessage` to the peer.
-7. Once the peer accepts, the local `TransferProcess.state` becomes `SUSPENDED`.
+7. On the receiving side, `AbstractDataTransferService.suspendDataTransfer(...)` persists the same logical initiator role on its local `TransferProcess`.
+8. Once the peer accepts, both sides remain aligned on `TransferProcess.state = SUSPENDED` and on who is allowed to resume.
 
 ### Resume flow
 
 1. A user resumes the transfer through the existing control-plane `startTransfer(...)` path.
-2. DSP state handling remains unchanged at the public API level.
-3. When the actual local data movement is about to begin, the control plane chooses:
+2. `DataTransferAPIService.startTransfer(...)` checks `suspendInitiatorRole` when the current state is `SUSPENDED`; if the local role is not the recorded initiator, the request is rejected and the transfer stays suspended.
+3. DSP state handling remains unchanged at the public API level.
+4. When the peer receives the resulting `TransferStartMessage`, `AbstractDataTransferService.startDataTransfer(...)` applies the symmetric rule: for a `SUSPENDED` transfer, it only accepts the message when the local role is **not** `suspendInitiatorRole`, because the peer sender must be the recorded initiator.
+5. When the actual local data movement is about to begin, the control plane chooses:
    - `dataPlaneClient.start(...)` for a fresh execution
    - `dataPlaneClient.resume(...)` when the dataplane mirror shows a resumable suspended flow
-4. The dataplane resumes from checkpoint state if the saved multipart upload is still valid.
-5. Existing dataplane callbacks (`started`, `completed`, `errored`) remain the only dataplane-to-control-plane callbacks used in this iteration.
+6. The dataplane resumes from checkpoint state if the saved multipart upload is still valid.
+7. Existing dataplane callbacks (`started`, `completed`, `errored`) remain the only dataplane-to-control-plane callbacks used in this iteration.
 
 ### Where the start-vs-resume decision happens
 
@@ -111,6 +133,17 @@ The start-vs-resume decision belongs in the existing control-plane execution tri
 - provider HTTP-PUSH start-then-download path
 
 That keeps `startTransfer(...)` as the public contract while letting the implementation switch between dataplane `start(...)` and `resume(...)` internally.
+
+## Java 21 Considerations
+
+The repository root now builds with Java 21, so the implementation may use Java 21 **standard** features where they simplify the work.
+
+- Virtual threads are allowed for blocking orchestration paths if they make the suspend/resume implementation easier to reason about
+- This is most relevant for blocking HTTP/S3 coordination code, retry/rollback orchestration, or places where the current design would otherwise need dedicated platform-thread pools just to wait on blocking I/O
+- Virtual threads are optional, not mandatory: use them only where they simplify control flow or cancellation semantics
+- Preview features are out of scope for this iteration; no `--enable-preview` changes should be introduced as part of this work
+
+This keeps the implementation free to use Java 21 concurrency improvements without turning the suspend/resume feature into a broader platform-modernization task.
 
 ## Checkpoint and Persistence Model
 
@@ -195,6 +228,7 @@ Resume failure handling is split into three cases:
 
 | Case | Behavior |
 | --- | --- |
+| Resume requested by the non-initiator | Reject the request and keep the transfer `SUSPENDED` |
 | Valid checkpoint and live `uploadId` | Continue the multipart upload |
 | Checkpoint exists but `uploadId` is missing/expired | Clear multipart state and restart from byte 0 |
 | Unrecoverable transfer error | Let dataplane emit the existing `errored` callback so control plane follows its normal termination path |
@@ -259,6 +293,9 @@ Resumption after restart remains an explicit operator/user action through the ex
 **`data-transfer`**
 
 - suspend while `isDownloadInProgress=true` now routes to dataplane pause instead of being rejected
+- `DataTransferAPIService.startTransfer(...)` rejects resume attempts when local role is not `suspendInitiatorRole`
+- `AbstractDataTransferService.startDataTransfer(...)` rejects incoming resume attempts when local role equals `suspendInitiatorRole`
+- `DataTransferAPIService.suspendTransfer(...)` and `AbstractDataTransferService.suspendDataTransfer(...)` persist the same logical initiator role on both connectors
 - resume via public `startTransfer(...)` ultimately chooses dataplane `resume(...)` when the dataplane mirror is `SUSPENDED`
 - fresh transfers still choose dataplane `start(...)`
 
