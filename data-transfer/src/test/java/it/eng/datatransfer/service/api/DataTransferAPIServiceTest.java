@@ -744,6 +744,39 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
+    @DisplayName("suspendTransfer surfaces original DSP error even when rollback resume and divergence save both fail")
+    public void suspendTransfer_originalExceptionSurfacedWhenRollbackResumeAndDivergenceSaveBothFail() {
+        TransferProcess started = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED
+                .withIsDownloadInProgress(false)
+                .withDataFlowState("STARTED");
+
+        DataTransferAPIException originalSuspensionError = new DataTransferAPIException("peer rejected suspension");
+
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(false);
+        when(apiResponse.getMessage()).thenReturn(originalSuspensionError.getMessage());
+        when(transferProcessRepository.findById(started.getId()))
+                .thenReturn(Optional.of(started));
+        doThrow(new DataPlaneClientException("dataplane resume failed"))
+                .when(dataPlaneClient).resume(started.getId(), started.getFormat());
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenThrow(new RuntimeException("divergence save failed"));
+
+        DataTransferAPIException thrown = assertThrows(DataTransferAPIException.class,
+                () -> apiService.suspendTransfer(started.getId()));
+
+        assertEquals(originalSuspensionError.getMessage(), thrown.getMessage(),
+                "original DSP suspension error must be surfaced even when divergence save also fails");
+
+        verify(dataPlaneClient).suspend(started.getId(), started.getFormat());
+        verify(dataPlaneClient).resume(started.getId(), started.getFormat());
+        verify(transferProcessRepository).save(any(TransferProcess.class));
+
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
+    }
+
+    @Test
     @DisplayName("Terminate transfer process success")
     public void terminateTransfer_success_requestedState() {
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");

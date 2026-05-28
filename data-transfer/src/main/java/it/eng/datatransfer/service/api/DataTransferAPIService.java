@@ -610,7 +610,11 @@ public class DataTransferAPIService {
                         .withSuspendedBy(null)
                         .withDataFlowErrorMessage(
                                 "manual intervention required: local dataplane suspend succeeded but rollback resume failed");
-                transferProcessRepository.save(divergence);
+                try {
+                    transferProcessRepository.save(divergence);
+                } catch (RuntimeException saveEx) {
+                    log.error("Failed to persist divergence state for transfer {} — manual intervention required", transferProcessId, saveEx);
+                }
             }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
                     "Transfer process suspension failed",
