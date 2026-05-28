@@ -352,6 +352,70 @@ public class CatalogDataPlaneFormatSyncServiceTest {
         assertNull(secondSavedPullDistribution.getVersion());
     }
 
+    @Test
+    @DisplayName("reconcileCatalogDistributions deletes shared distributions after all references are replaced")
+    void reconcileCatalogDistributionsDeletesSharedDistributionsAfterAllReferencesAreReplaced() {
+        when(dataPlaneRegistrationService.findAll()).thenReturn(List.of(
+                buildRegistration("http://dataplane-1", Set.of("HttpData-PULL", "HttpData-PUSH"), Set.of("profile-a"))
+        ));
+
+        Distribution sharedPullDistribution = withIdentity(
+                CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PULL",
+                        OLDER_TIMESTAMP, OLDER_TIMESTAMP, "shared-title"),
+                "distribution-shared-pull", 7L);
+        Dataset firstDataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
+                new LinkedHashSet<>(List.of(
+                        sharedPullDistribution,
+                        withIdentity(CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "UNSUPPORTED",
+                                NEWER_TIMESTAMP, NEWER_TIMESTAMP, "first-template-title"),
+                                "distribution-first-stale", 9L)
+                )));
+        Dataset secondDataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
+                new LinkedHashSet<>(List.of(
+                        sharedPullDistribution,
+                        withIdentity(CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "UNSUPPORTED",
+                                NEWER_TIMESTAMP, NEWER_TIMESTAMP, "second-template-title"),
+                                "distribution-second-stale", 11L)
+                )));
+        Dataset firstReconciledDataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
+                new LinkedHashSet<>(Set.of(
+                        withIdentity(CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PULL",
+                                NEWER_TIMESTAMP, NEWER_TIMESTAMP, "first-template-title"),
+                                "distribution-first-new-pull", 1L),
+                        withIdentity(CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PUSH",
+                                NEWER_TIMESTAMP, NEWER_TIMESTAMP, "first-template-title"),
+                                "distribution-first-new-push", 1L)
+                )));
+        Dataset secondReconciledDataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
+                new LinkedHashSet<>(Set.of(
+                        withIdentity(CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PULL",
+                                NEWER_TIMESTAMP, NEWER_TIMESTAMP, "second-template-title"),
+                                "distribution-second-new-pull", 1L),
+                        withIdentity(CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PUSH",
+                                NEWER_TIMESTAMP, NEWER_TIMESTAMP, "second-template-title"),
+                                "distribution-second-new-push", 1L)
+                )));
+        when(datasetRepository.findAll()).thenReturn(
+                List.of(firstDataset, secondDataset),
+                List.of(firstReconciledDataset, secondReconciledDataset)
+        );
+        when(distributionRepository.saveAll(any())).thenAnswer(invocation ->
+                toDistributionList(invocation.getArgument(0)));
+        when(datasetRepository.save(any(Dataset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.reconcileCatalogDistributions();
+
+        ArgumentCaptor<Iterable<String>> deletedIdsCaptor = ArgumentCaptor.forClass(Iterable.class);
+        verify(distributionRepository, times(3)).deleteAllById(deletedIdsCaptor.capture());
+
+        List<List<String>> deletedIdsPerCall = deletedIdsCaptor.getAllValues().stream()
+                .map(this::toStringList)
+                .toList();
+        assertEquals(List.of("distribution-first-stale"), deletedIdsPerCall.get(0));
+        assertEquals(List.of("distribution-second-stale"), deletedIdsPerCall.get(1));
+        assertEquals(List.of("distribution-shared-pull"), deletedIdsPerCall.get(2));
+    }
+
     private DataPlaneRegistration buildRegistration(String endpoint, Set<String> supportedTransferTypes,
                                                     Set<String> transportProfiles) {
         return DataPlaneRegistration.Builder.newInstance()

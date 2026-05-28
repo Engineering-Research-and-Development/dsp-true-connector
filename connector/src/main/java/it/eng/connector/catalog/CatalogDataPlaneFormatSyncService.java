@@ -81,6 +81,13 @@ public class CatalogDataPlaneFormatSyncService {
                 deletedDistributionCount += result.staleDistributionIds().size();
             }
         }
+        if (tenantId == null && !sharedDistributionIds.isEmpty()) {
+            List<String> orphanedSharedDistributionIds = resolveOrphanedSharedDistributionIds(sharedDistributionIds);
+            if (!orphanedSharedDistributionIds.isEmpty()) {
+                distributionRepository.deleteAllById(orphanedSharedDistributionIds);
+                deletedDistributionCount += orphanedSharedDistributionIds.size();
+            }
+        }
 
         if (tenantId == null) {
             log.info("Reconciled {} datasets, {} active formats and {} stale distributions",
@@ -248,6 +255,21 @@ public class CatalogDataPlaneFormatSyncService {
         return distribution != null
                 && distribution.getId() != null
                 && sharedDistributionIds.contains(distribution.getId());
+    }
+
+    private List<String> resolveOrphanedSharedDistributionIds(Set<String> sharedDistributionIds) {
+        Set<String> referencedDistributionIds = datasetRepository.findAll().stream()
+                .filter(Objects::nonNull)
+                .map(Dataset::getDistribution)
+                .filter(Objects::nonNull)
+                .flatMap(Set::stream)
+                .filter(Objects::nonNull)
+                .map(Distribution::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return sharedDistributionIds.stream()
+                .filter(id -> !referencedDistributionIds.contains(id))
+                .toList();
     }
 
     private <T> Set<T> safeSet(Set<T> values) {
