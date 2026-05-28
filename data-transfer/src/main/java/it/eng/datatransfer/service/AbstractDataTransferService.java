@@ -235,6 +235,25 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
             throw new TransferProcessInvalidStateException(errorMessage, transferProcessRequested.getConsumerPid(), transferProcessRequested.getProviderPid());
         }
 
+        if (TransferState.SUSPENDED.equals(transferProcessRequested.getState())
+                && StringUtils.equals(transferProcessRequested.getRole(), transferProcessRequested.getSuspendedBy())) {
+            // The local side initiated the suspension; only that side may resume via the admin API.
+            // The peer cannot force a resume through the DSP start message.
+            String errorMessage = "Resume rejected: the local side initiated the suspension of transfer "
+                    + transferProcessRequested.getId() + "; only the suspend initiator may send the resume start";
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR,
+                    "Transfer process resume rejected — not the suspend initiator",
+                    Map.of("transferProcess", transferProcessRequested,
+                            "currentState", transferProcessRequested.getState(),
+                            "newState", TransferState.STARTED,
+                            "consumerPid", transferProcessRequested.getConsumerPid(),
+                            "providerPid", transferProcessRequested.getProviderPid(),
+                            "role", IConstants.ROLE_PROTOCOL,
+                            "errorMessage", errorMessage));
+            throw new TransferProcessInvalidStateException(errorMessage,
+                    transferProcessRequested.getConsumerPid(), transferProcessRequested.getProviderPid());
+        }
+
         stateTransitionCheck(transferProcessRequested, TransferState.STARTED);
 
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
@@ -247,6 +266,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .format(transferProcessRequested.getFormat())
                 .state(TransferState.STARTED)
                 .role(transferProcessRequested.getRole())
+                .suspendedBy(null)
                 .datasetId(transferProcessRequested.getDatasetId())
                 .retryCount(transferProcessRequested.getRetryCount())
                 .tenantId(transferProcessRequested.getTenantId())
@@ -405,7 +425,10 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
 
         stateTransitionCheck(transferProcess, TransferState.SUSPENDED);
         log.info("Acting as consumer, suspend the transfer process");
-        TransferProcess transferProcessSuspended = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
+        String initiatorRole = IConstants.ROLE_CONSUMER.equals(transferProcess.getRole())
+                ? IConstants.ROLE_PROVIDER : IConstants.ROLE_CONSUMER;
+        TransferProcess transferProcessSuspended = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED)
+                .withSuspendedBy(initiatorRole);
         publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
                 .oldTransferProcess(transferProcess)
                 .newTransferProcess(transferProcessSuspended)

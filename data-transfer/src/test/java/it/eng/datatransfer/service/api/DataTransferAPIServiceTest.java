@@ -36,6 +36,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -467,16 +468,23 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
-    @DisplayName("Suspend transfer process failed - download in progress")
+    @DisplayName("Suspend transfer process - download in progress no longer blocks suspension")
     public void suspendTransfer_failedDownloadInProgress() {
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
 
-        assertThrows(DataTransferAPIException.class,
-                () -> apiService.suspendTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING.getId()));
+        apiService.suspendTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING.getId());
 
-        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
-        verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
+        verify(dataPlaneClient).suspend(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING.getId(),
+                DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING.getFormat());
+        verify(transferProcessRepository).save(any(TransferProcess.class));
+
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
     }
 
     @Test
@@ -492,7 +500,114 @@ class DataTransferAPIServiceTest {
         assertThrows(DataTransferAPIException.class, () -> apiService.suspendTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
         verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(transferProcessRepository, times(1)).save(any(TransferProcess.class));
+
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
+    }
+
+    @Test
+    @DisplayName("startTransfer rejects resume when local role is not the suspend initiator")
+    public void startTransfer_rejectsResumeForNonInitiator() {
+        // SUSPENDED_CONSUMER: role=PROVIDER, suspendedBy=CONSUMER → PROVIDER ≠ CONSUMER → local is not initiator → reject
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_CONSUMER.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_CONSUMER));
+
+        assertThrows(DataTransferAPIException.class,
+                () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_CONSUMER.getId()));
+
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
+        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, null);
+    }
+
+    @Test
+    @DisplayName("suspendTransfer pauses dataplane first and persists local initiator role in suspended TP")
+    public void suspendTransfer_pausesDataplaneFirst() {
+        TransferProcess started = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED
+                .withIsDownloadInProgress(true)
+                .withDataFlowState("STARTED");
+
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.findById(started.getId()))
+                .thenReturn(Optional.of(started));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        apiService.suspendTransfer(started.getId());
+
+        // Dataplane must be paused BEFORE the DSP suspension message is sent
+        InOrder inOrder = inOrder(dataPlaneClient, okHttpRestClient);
+        inOrder.verify(dataPlaneClient).suspend(started.getId(), started.getFormat());
+        inOrder.verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+
+        // Saved TP must carry the local role as the initiator and show dataflow suspended
+        verify(transferProcessRepository).save(argThat(tp ->
+                TransferState.SUSPENDED.equals(tp.getState())
+                        && "SUSPENDED".equals(tp.getDataFlowState())
+                        && !tp.isDownloadInProgress()
+                        && IConstants.ROLE_PROVIDER.equals(tp.getSuspendedBy())));
+
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
+    }
+
+    @Test
+    @DisplayName("suspendTransfer resumes dataplane and restores STARTED when outbound DSP suspension fails")
+    public void suspendTransfer_rollsBackLocalPauseWhenPeerSuspensionFails() {
+        TransferProcess started = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED
+                .withIsDownloadInProgress(true)
+                .withDataFlowState("STARTED");
+
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(false);
+        when(apiResponse.getMessage()).thenReturn("peer rejected");
+        when(transferProcessRepository.findById(started.getId()))
+                .thenReturn(Optional.of(started));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        assertThrows(DataTransferAPIException.class, () -> apiService.suspendTransfer(started.getId()));
+
+        verify(dataPlaneClient).suspend(started.getId(), started.getFormat());
+        verify(dataPlaneClient).resume(started.getId(), started.getFormat());
+        verify(transferProcessRepository).save(argThat(tp ->
+                TransferState.STARTED.equals(tp.getState())
+                        && "STARTED".equals(tp.getDataFlowState())
+                        && tp.isDownloadInProgress()
+                        && tp.getSuspendedBy() == null));
+
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
+    }
+
+    @Test
+    @DisplayName("suspendTransfer records manual-intervention divergence when rollback dataplane resume also fails")
+    public void suspendTransfer_recordsManualInterventionWhenRollbackResumeFails() {
+        TransferProcess started = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED
+                .withIsDownloadInProgress(true)
+                .withDataFlowState("STARTED");
+
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(false);
+        when(apiResponse.getMessage()).thenReturn("peer rejected");
+        when(transferProcessRepository.findById(started.getId()))
+                .thenReturn(Optional.of(started));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+        doThrow(new DataPlaneClientException("dataplane resume failed"))
+                .when(dataPlaneClient).resume(started.getId(), started.getFormat());
+
+        assertThrows(DataTransferAPIException.class, () -> apiService.suspendTransfer(started.getId()));
+
+        verify(dataPlaneClient).suspend(started.getId(), started.getFormat());
+        verify(dataPlaneClient).resume(started.getId(), started.getFormat());
+        verify(transferProcessRepository).save(argThat(tp ->
+                TransferState.STARTED.equals(tp.getState())
+                        && "SUSPENDED".equals(tp.getDataFlowState())
+                        && StringUtils.contains(tp.getDataFlowErrorMessage(), "manual intervention")
+                        && tp.getSuspendedBy() == null));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
     }
