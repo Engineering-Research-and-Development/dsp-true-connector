@@ -3,6 +3,8 @@ package it.eng.datatransfer.client;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
+import it.eng.dataplane.api.message.DataFlowStatusMessage;
+import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.datatransfer.router.DataPlaneRouter;
 import okhttp3.*;
@@ -218,5 +220,48 @@ public class DataPlaneClientTest {
         Request captured = captor.getValue();
         assertEquals("POST", captured.method());
         assertTrue(captured.url().toString().contains("/dataflows/proc-res-1/resume"));
+    }
+
+    @Test
+    @DisplayName("statusSendsGetToDataPlane - verifies GET method, URL contains processId/status, and X-Api-Key is forwarded")
+    public void statusSendsGetToDataPlane() throws IOException {
+        DataPlaneRegistration dp = registrationWithApiKey("http://dp:9090", "secret-key");
+        when(mockRouter.selectDataPlane("HttpData-PULL")).thenReturn(Optional.of(dp));
+        String statusBody = "{\"processId\":\"proc-stat-1\",\"state\":\"SUSPENDED\",\"resumable\":true}";
+        Call mockCall = stubCallWithBody(200, statusBody);
+        when(mockHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+
+        DataFlowStatusMessage result = client.status("proc-stat-1", "HttpData-PULL");
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(mockHttpClient).newCall(captor.capture());
+        Request captured = captor.getValue();
+        assertEquals("GET", captured.method());
+        assertTrue(captured.url().toString().contains("/dataflows/proc-stat-1/status"));
+        assertEquals("secret-key", captured.header("X-Api-Key"));
+        assertNotNull(result);
+        assertEquals(DataFlowState.SUSPENDED, result.getState());
+        assertTrue(Boolean.TRUE.equals(result.getResumable()));
+    }
+
+    @Test
+    @DisplayName("statusThrowsWhenNoDataPlaneRegistered - router returns empty, expect IllegalStateException")
+    public void statusThrowsWhenNoDataPlaneRegistered() {
+        when(mockRouter.selectDataPlane("HttpData-PULL")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalStateException.class, () -> client.status("proc-stat-2", "HttpData-PULL"));
+        verifyNoInteractions(mockHttpClient);
+    }
+
+    @Test
+    @DisplayName("statusThrowsDataPlaneClientExceptionOnIOFailure - IOException wrapped in DataPlaneClientException")
+    public void statusThrowsDataPlaneClientExceptionOnIOFailure() throws IOException {
+        DataPlaneRegistration dp = registrationNoApiKey("http://dp:9090");
+        when(mockRouter.selectDataPlane("HttpData-PULL")).thenReturn(Optional.of(dp));
+        Call mockCall = mock(Call.class);
+        when(mockCall.execute()).thenThrow(new IOException("Connection refused"));
+        when(mockHttpClient.newCall(any(Request.class))).thenReturn(mockCall);
+
+        assertThrows(DataPlaneClientException.class, () -> client.status("proc-stat-3", "HttpData-PULL"));
     }
 }

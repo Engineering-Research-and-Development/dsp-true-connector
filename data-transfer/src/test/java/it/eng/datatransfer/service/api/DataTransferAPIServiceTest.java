@@ -2,6 +2,8 @@ package it.eng.datatransfer.service.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
+import it.eng.dataplane.api.message.DataFlowStatusMessage;
+import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.datatransfer.client.DataPlaneClient;
 import it.eng.datatransfer.exceptions.DataPlaneClientException;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
@@ -966,6 +968,29 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
+    @DisplayName("downloadData calls dataplane resume when local dataplane mirror is suspended")
+    void downloadData_callsResumeWhenMirrorIsSuspended() {
+        // TP is in STARTED state (control-plane) but the dataFlowState mirror says SUSPENDED.
+        // This happens e.g. when the consumer receives a fresh DSP start but the dataplane
+        // was previously paused for this process (post-crash or mid-flight suspension).
+        TransferProcess started = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED
+                .withDataFlowState("SUSPENDED")
+                .withSuspendedBy(IConstants.ROLE_CONSUMER);
+        when(transferProcessRepository.findById(started.getId())).thenReturn(Optional.of(started));
+        when(usageControlProperties.usageControlEnabled()).thenReturn(false);
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertDoesNotThrow(() -> apiService.downloadData(started.getId()));
+
+        // Must call resume, NOT start
+        verify(dataPlaneClient).resume(started.getId(), started.getFormat());
+        verify(dataPlaneClient, never()).start(any(DataFlowStartMessage.class));
+        // Exactly one save: to mark isDownloadInProgress=true
+        verify(transferProcessRepository, times(1)).save(any(TransferProcess.class));
+    }
+
+    @Test
     @DisplayName("Download data - fail - Data Plane call throws")
     public void downloadData_transferFail() {
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
@@ -1077,10 +1102,19 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
-    @DisplayName("Reset stale isDownloadInProgress flags on startup")
-    public void resetStaleDownloadingFlags_resetsStaleRecords() {
-        List<TransferProcess> staleProcesses = List.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING);
-        when(transferProcessRepository.findAllByIsDownloadInProgressTrue()).thenReturn(staleProcesses);
+    @DisplayName("startup recovery converts resumable stale download to SUSPENDED and sends outbound suspension callback")
+    void resetStaleDownloadingFlags_marksResumableTransferSuspended() {
+        TransferProcess stale = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING;
+        DataFlowStatusMessage status = DataFlowStatusMessage.Builder.newInstance()
+                .processId(stale.getId())
+                .state(DataFlowState.SUSPENDED)
+                .resumable(true)
+                .build();
+        when(transferProcessRepository.findAllByIsDownloadInProgressTrue()).thenReturn(List.of(stale));
+        when(dataPlaneClient.status(stale.getId(), stale.getFormat())).thenReturn(status);
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
+                .thenReturn(GenericApiResponse.success(null, "ok"));
         when(transferProcessRepository.save(any(TransferProcess.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -1089,8 +1123,59 @@ class DataTransferAPIServiceTest {
 
         verify(transferProcessRepository).findAllByIsDownloadInProgressTrue();
         verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
-        TransferProcess savedProcess = argCaptorTransferProcess.getValue();
-        assertFalse(savedProcess.isDownloadInProgress());
+        TransferProcess saved = argCaptorTransferProcess.getValue();
+        assertEquals(TransferState.SUSPENDED, saved.getState());
+        assertFalse(saved.isDownloadInProgress());
+        assertEquals("SUSPENDED", saved.getDataFlowState());
+        assertEquals(stale.getRole(), saved.getSuspendedBy());
+        // Outbound suspension callback must be sent to the peer
+        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+    }
+
+    @Test
+    @DisplayName("startup recovery terminates stale transfer when dataplane reports not resumable")
+    void resetStaleDownloadingFlags_terminatesUnrecoverableTransfer() {
+        TransferProcess stale = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING;
+        DataFlowStatusMessage status = DataFlowStatusMessage.Builder.newInstance()
+                .processId(stale.getId())
+                .state(DataFlowState.TERMINATED)
+                .resumable(false)
+                .build();
+        when(transferProcessRepository.findAllByIsDownloadInProgressTrue()).thenReturn(List.of(stale));
+        when(dataPlaneClient.status(stale.getId(), stale.getFormat())).thenReturn(status);
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
+                .thenReturn(GenericApiResponse.success(null, "ok"));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        apiService.resetStaleDownloadingFlags();
+
+        verify(transferProcessRepository).findAllByIsDownloadInProgressTrue();
+        verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
+        TransferProcess saved = argCaptorTransferProcess.getValue();
+        assertEquals(TransferState.TERMINATED, saved.getState());
+        assertFalse(saved.isDownloadInProgress());
+        assertEquals("TERMINATED", saved.getDataFlowState());
+        assertNull(saved.getSuspendedBy());
+        assertTrue(StringUtils.contains(saved.getDataFlowErrorMessage(), "unrecoverable error"));
+        // Outbound termination callback must be sent to the peer
+        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+    }
+
+    @Test
+    @DisplayName("startup recovery skips reconciliation when dataplane status call fails and logs the error")
+    void resetStaleDownloadingFlags_skipsOnDataplaneStatusFailure() {
+        TransferProcess stale = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING;
+        when(transferProcessRepository.findAllByIsDownloadInProgressTrue()).thenReturn(List.of(stale));
+        when(dataPlaneClient.status(stale.getId(), stale.getFormat()))
+                .thenThrow(new it.eng.datatransfer.exceptions.DataPlaneClientException("DP unreachable"));
+
+        // Must not throw — errors are caught per-TP and logged
+        assertDoesNotThrow(() -> apiService.resetStaleDownloadingFlags());
+
+        verify(transferProcessRepository).findAllByIsDownloadInProgressTrue();
+        verify(transferProcessRepository, never()).save(any(TransferProcess.class));
     }
 
     @Test
