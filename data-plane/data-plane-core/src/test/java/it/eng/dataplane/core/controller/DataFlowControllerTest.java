@@ -280,4 +280,40 @@ class DataFlowControllerTest {
         assertNotNull(response.getBody());
         assertTrue(response.getBody().getResumable());
     }
+
+    @Test
+    @DisplayName("statusDataFlow returns resumable=false for COMPLETED flow even when checkpoint exists")
+    void status_resumableFalseWhenCompleted() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("entity-id-2")
+                .processId("proc-complete")
+                .state(DataFlowState.COMPLETED)
+                .build();
+        when(dataFlowService.status("proc-complete")).thenReturn(entity);
+
+        ResponseEntity<DataFlowStatusMessage> response = controller.statusDataFlow("proc-complete");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertFalse(response.getBody().getResumable());
+        verify(checkpointService, never()).hasResumableCheckpoint(any());
+    }
+
+    @Test
+    @DisplayName("statusDataFlow returns resumable=false for TERMINATED flow even when checkpoint exists")
+    void status_resumableFalseWhenTerminated() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("entity-id-3")
+                .processId("proc-terminated")
+                .state(DataFlowState.TERMINATED)
+                .build();
+        when(dataFlowService.status("proc-terminated")).thenReturn(entity);
+
+        ResponseEntity<DataFlowStatusMessage> response = controller.statusDataFlow("proc-terminated");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertFalse(response.getBody().getResumable());
+        verify(checkpointService, never()).hasResumableCheckpoint(any());
+    }
 }
