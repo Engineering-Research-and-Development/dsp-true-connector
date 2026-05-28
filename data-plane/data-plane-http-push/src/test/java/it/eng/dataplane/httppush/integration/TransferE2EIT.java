@@ -1,11 +1,24 @@
 package it.eng.dataplane.httppush.integration;
 
+import it.eng.dataplane.api.model.DataFlowState;
+import it.eng.dataplane.core.model.DataFlowCheckpoint;
+import it.eng.dataplane.core.model.DataFlowEntity;
+import it.eng.dataplane.core.repository.DataFlowCheckpointRepository;
+import it.eng.dataplane.core.repository.DataFlowRepository;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.AbortMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.CreateMultipartUploadRequest;
+import software.amazon.awssdk.services.s3.model.CreateMultipartUploadResponse;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -38,6 +51,12 @@ class TransferE2EIT extends BaseHttpPushIT {
     private static final String TRANSFER_TYPE_PUSH = "HttpData-PUSH";
     private static final String E2E_SOURCE_KEY = "urn:uuid:e2e-push-source-dataset";
     private static final String E2E_SOURCE_CONTENT = "Hello from HTTP-PUSH E2E test";
+
+    @Autowired
+    private DataFlowRepository dataFlowRepository;
+
+    @Autowired
+    private DataFlowCheckpointRepository dataFlowCheckpointRepository;
 
     /**
      * Uploads the source artifact to the provider's MinIO bucket before any e2e test runs.
@@ -113,5 +132,85 @@ class TransferE2EIT extends BaseHttpPushIT {
         String actualContent = downloadContentFromMinIO(processId);
         assertEquals(E2E_SOURCE_CONTENT, actualContent,
                 "Pushed file content must match the source artifact");
+    }
+
+    @Test
+    @DisplayName("E2E (resume from checkpoint): suspended transfer is resumed and artifact is fully pushed")
+    void resumeTransfer_fromInjectedCheckpoint_fileIsPushedWithMatchingContent() throws Exception {
+        String processId = newId();
+        String entityId = UUID.randomUUID().toString();
+
+        // Step 1: create temp MinIO user and provision consumer credentials (reused on resume)
+        Map<String, String> credentials = createTempUserAndPolicy(processId, TEST_BUCKET_NAME, processId);
+
+        // Step 2: create a real MinIO multipart upload to get a valid uploadId
+        // (the resume logic will continue this upload from part 0 since confirmedBytes=0 and completedParts=[])
+        String uploadId;
+        try (S3Client s3 = buildAdminS3Client()) {
+            CreateMultipartUploadResponse mpu = s3.createMultipartUpload(
+                    CreateMultipartUploadRequest.builder()
+                            .bucket(TEST_BUCKET_NAME)
+                            .key(processId)
+                            .build());
+            uploadId = mpu.uploadId();
+        }
+
+        // Step 3: inject a SUSPENDED DataFlowEntity into MongoDB
+        Instant now = Instant.now();
+        DataFlowEntity suspendedEntity = DataFlowEntity.Builder.newInstance()
+                .id(entityId)
+                .processId(processId)
+                .transferType(TRANSFER_TYPE_PUSH)
+                .datasetId(E2E_SOURCE_KEY)
+                .callbackAddress(wireMock.baseUrl() + "/callback")
+                .state(DataFlowState.SUSPENDED)
+                .dataAddress(credentials)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        dataFlowRepository.save(suspendedEntity);
+
+        // Step 4: inject a DataFlowCheckpoint with the uploadId and confirmedBytes=0
+        // (simulates a transfer that was paused before any part completed)
+        DataFlowCheckpoint checkpoint = DataFlowCheckpoint.Builder.newInstance()
+                .processId(processId)
+                .dataFlowId(entityId)
+                .transferType(TRANSFER_TYPE_PUSH)
+                .uploadId(uploadId)
+                .destinationBucket(TEST_BUCKET_NAME)
+                .destinationObjectKey(processId)
+                .completedParts(List.of())
+                .partSizes(Map.of())
+                .partETags(Map.of())
+                .confirmedBytes(0L)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        dataFlowCheckpointRepository.save(checkpoint);
+
+        // Step 5: abort the dangling multipart upload after the test (if resume does not complete it)
+        // The resume endpoint will re-use or abort it internally; if it fails, clean up manually.
+        try {
+            // Step 5: call the resume endpoint — DP should re-download the artifact and push it
+            mockMvc.perform(withApiKey(post("/dataflows/{id}/resume", processId)))
+                    .andExpect(status().isOk());
+
+            // Step 6: wait for async push to complete, then verify
+            awaitObjectExists(processId, 20);
+            String actualContent = downloadContentFromMinIO(processId);
+            assertEquals(E2E_SOURCE_CONTENT, actualContent,
+                    "Resumed push content must match the source artifact");
+        } finally {
+            // Best-effort cleanup of any leftover multipart upload
+            try (S3Client s3 = buildAdminS3Client()) {
+                s3.abortMultipartUpload(AbortMultipartUploadRequest.builder()
+                        .bucket(TEST_BUCKET_NAME)
+                        .key(processId)
+                        .uploadId(uploadId)
+                        .build());
+            } catch (Exception ignored) {
+                // Already completed or aborted by the protocol
+            }
+        }
     }
 }
