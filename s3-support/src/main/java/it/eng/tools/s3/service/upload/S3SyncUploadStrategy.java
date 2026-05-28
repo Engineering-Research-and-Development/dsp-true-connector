@@ -89,7 +89,8 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
 
                 while (true) {
                     if (resumable.suspendRequested().get()) {
-                        buildPauseException(uploadId, allCompletedParts, partSizeByNumber);
+                        throw buildPauseException(uploadId, allCompletedParts, partSizeByNumber,
+                                resumable.confirmedBytes());
                     }
 
                     int totalRead = readFully(inputStream, buffer);
@@ -103,7 +104,8 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
                     allCompletedParts.add(part);
 
                     partSizeByNumber.put(partNumber, (long) totalRead);
-                    long contiguous = calculateContiguous(partSizeByNumber);
+                    long contiguous = Math.max(resumable.confirmedBytes(),
+                            calculateContiguous(partSizeByNumber));
                     callback.onPartCompleted(partNumber, part.eTag(), totalRead, contiguous);
 
                     partNumber++;
@@ -147,22 +149,31 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
     }
 
     /**
-     * Builds and throws an {@link UploadPausedException} with the current checkpoint state.
+     * Builds an {@link UploadPausedException} with the current checkpoint state.
      *
-     * @param uploadId         the current multipart upload ID
-     * @param completedParts   the parts completed so far
-     * @param partSizeByNumber map of part number to size in bytes
+     * <p>Callers must {@code throw} the returned exception to halt the upload:
+     * <pre>
+     *     throw buildPauseException(uploadId, completedParts, partSizeByNumber, confirmedBytesFloor);
+     * </pre>
+     *
+     * @param uploadId             the current multipart upload ID
+     * @param completedParts       the parts completed so far
+     * @param partSizeByNumber     map of part number to size in bytes
+     * @param confirmedBytesFloor  the previously confirmed contiguous byte count; used as a
+     *                             floor so the reported value never decreases during a resume
+     * @return the constructed {@link UploadPausedException}; never {@code null}
      */
-    private void buildPauseException(String uploadId,
+    private UploadPausedException buildPauseException(String uploadId,
                                      List<CompletedPart> completedParts,
-                                     Map<Integer, Long> partSizeByNumber) {
+                                     Map<Integer, Long> partSizeByNumber,
+                                     long confirmedBytesFloor) {
         List<Long> sizes = new ArrayList<>();
         for (CompletedPart cp : completedParts) {
             sizes.add(partSizeByNumber.getOrDefault(cp.partNumber(), 0L));
         }
-        long contiguous = calculateContiguous(partSizeByNumber);
+        long contiguous = Math.max(confirmedBytesFloor, calculateContiguous(partSizeByNumber));
         log.info("Upload paused (SYNC) for uploadId: {}, confirmed bytes: {}", uploadId, contiguous);
-        throw new UploadPausedException("Upload paused on request", uploadId, completedParts, sizes, contiguous);
+        return new UploadPausedException("Upload paused on request", uploadId, completedParts, sizes, contiguous);
     }
 
     /**

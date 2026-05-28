@@ -58,7 +58,7 @@ public class S3SyncUploadStrategyTest {
     @BeforeEach
     void setUp() {
         lenient().when(s3Properties.getChunkSize()).thenReturn(10 * 1024 * 1024);
-        when(s3ClientProvider.s3Client(any(S3ClientRequest.class))).thenReturn(s3Client);
+        lenient().when(s3ClientProvider.s3Client(any(S3ClientRequest.class))).thenReturn(s3Client);
     }
 
     @Test
@@ -328,6 +328,73 @@ public class S3SyncUploadStrategyTest {
                 "No parts should be completed when suspended before any part was uploaded");
         assertEquals(0L, pex.getConfirmedBytes(),
                 "Confirmed bytes must be 0 when no parts were uploaded before suspension");
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when completedParts and partSizes sizes differ")
+    void resumableUploadRequest_rejectsInconsistentPartListsAndPartSizes() {
+        // completedParts has 1 entry but partSizes is empty → mismatch
+        assertThrows(IllegalArgumentException.class, () ->
+                new ResumableUploadRequest(
+                        UPLOAD_ID,
+                        List.of(CompletedPart.builder().partNumber(1).eTag(ETAG).build()),
+                        List.of(),      // wrong size
+                        0L,
+                        new AtomicBoolean(false),
+                        UploadCheckpointCallback.noop()),
+                "Constructor must reject completedParts/partSizes size mismatch");
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when confirmedBytes is non-zero with empty completedParts")
+    void resumableUploadRequest_rejectsNonZeroConfirmedBytesWithNoParts() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new ResumableUploadRequest(
+                        null,
+                        List.of(),
+                        List.of(),
+                        1L,             // non-zero with no parts
+                        new AtomicBoolean(false),
+                        UploadCheckpointCallback.noop()),
+                "Constructor must reject confirmedBytes > 0 when completedParts is empty");
+    }
+
+    @Test
+    @DisplayName("confirmedBytes acts as floor: callback reports at least confirmedBytes on resume")
+    void syncUpload_confirmedBytesUsedAsFloorWhenResuming() {
+        // Arrange: resume a previous upload that had 2 × 100-byte parts already confirmed.
+        int chunkSize = 100;
+        when(s3Properties.getChunkSize()).thenReturn(chunkSize);
+
+        // One new part of 100 bytes to upload
+        byte[] newData = new byte[chunkSize];
+        InputStream inputStream = new ByteArrayInputStream(newData);
+
+        String existingUploadId = "resume-sync-upload";
+        CompletedPart existingPart1 = CompletedPart.builder().partNumber(1).eTag("etag-1").build();
+        CompletedPart existingPart2 = CompletedPart.builder().partNumber(2).eTag("etag-2").build();
+        long previousConfirmedBytes = 2L * chunkSize; // 200 bytes confirmed from previous session
+
+        UploadCheckpointCallback callback = mock(UploadCheckpointCallback.class);
+        ResumableUploadRequest resumable = new ResumableUploadRequest(
+                existingUploadId,
+                List.of(existingPart1, existingPart2),
+                List.of((long) chunkSize, (long) chunkSize),
+                previousConfirmedBytes,
+                new AtomicBoolean(false),
+                callback);
+
+        when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+                .thenReturn(UploadPartResponse.builder().eTag("etag-3").build());
+        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(ETAG).build());
+
+        // Act
+        syncUploadStrategy.uploadFile(
+                inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION, resumable).join();
+
+        // Assert — new part 3 completed; contiguous = 3 × chunkSize (≥ floor of 200)
+        verify(callback).onPartCompleted(3, "etag-3", chunkSize, 3L * chunkSize);
     }
 
     @Test

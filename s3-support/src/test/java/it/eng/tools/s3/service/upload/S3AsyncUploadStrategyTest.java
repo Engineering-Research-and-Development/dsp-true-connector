@@ -61,7 +61,7 @@ public class S3AsyncUploadStrategyTest {
     @BeforeEach
     void setUp() {
         lenient().when(s3Properties.getChunkSize()).thenReturn(10 * 1024 * 1024);
-        when(s3ClientProvider.s3AsyncClient(any(S3ClientRequest.class))).thenReturn(s3AsyncClient);
+        lenient().when(s3ClientProvider.s3AsyncClient(any(S3ClientRequest.class))).thenReturn(s3AsyncClient);
     }
 
     @Test
@@ -349,6 +349,85 @@ public class S3AsyncUploadStrategyTest {
 
         assertEquals(ETAG, result.join());
         verify(s3AsyncClient, times(2)).uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class));
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when completedParts and partSizes sizes differ")
+    void resumableUploadRequest_rejectsInconsistentPartListsAndPartSizes() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new ResumableUploadRequest(
+                        UPLOAD_ID,
+                        List.of(CompletedPart.builder().partNumber(1).eTag(ETAG).build()),
+                        List.of(),      // wrong size
+                        0L,
+                        new AtomicBoolean(false),
+                        UploadCheckpointCallback.noop()),
+                "Constructor must reject completedParts/partSizes size mismatch");
+    }
+
+    @Test
+    @DisplayName("Should throw IllegalArgumentException when confirmedBytes is non-zero with empty completedParts")
+    void resumableUploadRequest_rejectsNonZeroConfirmedBytesWithNoParts() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new ResumableUploadRequest(
+                        null,
+                        List.of(),
+                        List.of(),
+                        1L,
+                        new AtomicBoolean(false),
+                        UploadCheckpointCallback.noop()),
+                "Constructor must reject confirmedBytes > 0 when completedParts is empty");
+    }
+
+    @Test
+    @DisplayName("confirmedBytes acts as floor: callback reports at least confirmedBytes on resume")
+    void asyncUpload_confirmedBytesUsedAsFloorWhenResuming() {
+        // Arrange: resume with 2 × 100-byte parts already confirmed.
+        int chunkSize = 100;
+        when(s3Properties.getChunkSize()).thenReturn(chunkSize);
+
+        byte[] newData = new byte[chunkSize]; // one new part
+        InputStream inputStream = new ByteArrayInputStream(newData);
+
+        String existingUploadId = "resume-async-upload";
+        CompletedPart existingPart1 = CompletedPart.builder().partNumber(1).eTag("etag-1").build();
+        CompletedPart existingPart2 = CompletedPart.builder().partNumber(2).eTag("etag-2").build();
+        long previousConfirmedBytes = 2L * chunkSize;
+
+        List<Long> observedContiguous = new ArrayList<>();
+        UploadCheckpointCallback callback = new UploadCheckpointCallback() {
+            @Override
+            public void onMultipartCreated(String uploadId) { }
+
+            @Override
+            public void onPartCompleted(int partNumber, String eTag, long partSize, long contiguousConfirmedBytes) {
+                observedContiguous.add(contiguousConfirmedBytes);
+            }
+        };
+
+        ResumableUploadRequest resumable = new ResumableUploadRequest(
+                existingUploadId,
+                List.of(existingPart1, existingPart2),
+                List.of((long) chunkSize, (long) chunkSize),
+                previousConfirmedBytes,
+                new AtomicBoolean(false),
+                callback);
+
+        when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        UploadPartResponse.builder().eTag("etag-3").build()));
+        when(s3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        CompleteMultipartUploadResponse.builder().eTag(ETAG).build()));
+
+        // Act
+        asyncUploadStrategy.uploadFile(
+                inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION, resumable).join();
+
+        // Assert — after new part 3 completes contiguous = 3 × chunkSize (≥ floor of 200)
+        assertEquals(1, observedContiguous.size(), "Exactly one new part was uploaded");
+        assertEquals(3L * chunkSize, observedContiguous.get(0),
+                "Contiguous bytes after resuming and uploading part 3 must reflect all 3 parts");
     }
 
     @Test
