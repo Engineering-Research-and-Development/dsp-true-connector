@@ -82,6 +82,33 @@ The design therefore needs to translate the earlier multipart-resume ideas into 
 | `data-plane/data-plane-http-push` | Implement true suspend/resume for provider-side push transfers |
 | `s3-support` | Provide checkpoint-aware multipart upload/resume primitives shared by both dataplane protocols |
 
+### Cross-branch repository scope
+
+Implementation scope also includes porting the relevant repository-level changes already prepared on `feature/suspend-resume-transfers`, but adapting them to the current branch rather than copying them blindly.
+
+| Area | Required outcome |
+| --- | --- |
+| `.github/skills/update-changelog/SKILL.md` | Add the new `update-changelog` skill from `feature/suspend-resume-transfers` |
+| `.github/skills/github-actions-ci-cd-best-practices/SKILL.md` | Sync the updated CI/CD skill content from `feature/suspend-resume-transfers`, including the expanded TRUE Connector Newman/E2E guidance |
+| `.github/instructions/github-actions-ci-cd-best-practices.instructions.md` | Sync the matching instruction update so workflow guidance and the skill stay aligned |
+| `.github/workflows/build.yml`, `develop.yml`, `release.yml`, `security.yml` | Port the relevant workflow changes from `feature/suspend-resume-transfers`, but reconcile them against this branch's current behavior and repository state instead of treating the other branch as authoritative line-for-line |
+
+The workflow port must be **adapted** to this branch:
+
+- keep this branch's Java 21 reality in mind instead of mechanically copying any older workflow runtime settings from the reference branch
+- preserve the suspend/resume behavior defined in this spec
+- preserve this branch's current architectural direction and only copy the workflow ideas that still fit
+
+For GitHub Actions / Newman coverage specifically, the implementation plan must include updating the existing workflow-based API/E2E checks so they reflect the suspend/resume work on this branch. Based on the reference branch, that includes:
+
+- using generated large test data where timing-sensitive suspend/resume coverage depends on transfers lasting long enough
+- updating workflow jobs that exercise transfer flows to cover the suspend/resume and expiry scenarios added on this branch
+- carrying over improved failure diagnostics and cleanup behavior where still relevant
+- carrying over workflow-side verification of presigned URL downloads where still relevant
+- reviewing the workflow set as a whole (`build`, `develop`, `release`, and removal/retention of `security`) with the current branch in mind
+
+This is still design scope only: the implementation should study `feature/suspend-resume-transfers` as the reference, then re-apply the intent of those skill/workflow/test changes on top of the current branch.
+
 ## State and Flow
 
 The design keeps DSP transfer state and dataplane execution state related but distinct.
