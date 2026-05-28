@@ -47,6 +47,7 @@ The design therefore needs to translate the earlier multipart-resume ideas into 
 | Resume authority | Reuse the existing `consumer` / `provider` role values to persist who initiated suspend, and allow resume only from that side while the transfer is `SUSPENDED` |
 | Resume fallback when saved upload is gone | Clear checkpoint state and restart from byte 0 inside the dataplane |
 | Resume access material | Reuse the existing presigned URL or push credentials already stored on the suspended transfer; if they are no longer valid, terminate instead of minting fresh ones |
+| Startup crash recovery | Crash-interrupted local executions reconcile to `SUSPENDED` when resumable; otherwise they transition to `TERMINATED` with reason `unrecoverable error, start a new data transfer` |
 | Java platform usage | Java 21 standard features are available; virtual threads are allowed where they simplify blocking orchestration, but preview features are out of scope |
 
 ## Architecture Overview
@@ -280,13 +281,53 @@ It must no longer be used as the reason to reject a suspend request.
 
 ### Startup behavior
 
-This iteration stays conservative on crash recovery:
+Startup no longer just clears stale in-progress flags.
 
-- keep the existing control-plane startup reset for stale `isDownloadInProgress=true`
-- keep dataplane checkpoints if they still exist
-- do not auto-resume transfers on startup
+Any transfer found on startup with stale local execution markers (for example `isDownloadInProgress=true`) is treated as a crash-interrupted local execution.
 
-Resumption after restart remains an explicit operator/user action through the existing flow.
+For those crash-interrupted transfers:
+
+1. load the local dataplane checkpoint/session state
+2. verify whether the existing access material is still valid
+3. if the transfer is resumable, reconcile it to `SUSPENDED`
+4. if the transfer is not resumable, reconcile it to `TERMINATED`
+
+### Startup reconciliation to `SUSPENDED`
+
+If a crash-interrupted transfer still has:
+
+- a usable checkpoint/session
+- valid existing access material
+
+then startup recovery should:
+
+- clear `isDownloadInProgress`
+- move the local `TransferProcess` from `STARTED` to `SUSPENDED`
+- set `suspendedBy` to the local role performing the recovery suspend
+- send the normal `TransferSuspensionMessage` so the peer converges to `SUSPENDED`
+
+This keeps the post-crash path operator-friendly: the transfer does not silently stay stuck in `STARTED`, and it does not auto-resume. It becomes an explicit suspended transfer that the operator can restart through the normal resume flow.
+
+### Startup reconciliation to `TERMINATED`
+
+If a crash-interrupted transfer cannot be resumed because:
+
+- no usable checkpoint/session exists
+- the existing HTTP-PULL presigned URL is expired
+- the existing HTTP-PUSH credentials are invalid
+- or another unrecoverable restart condition is detected
+
+then startup recovery should:
+
+- clear `isDownloadInProgress`
+- move the transfer to `TERMINATED`
+- send the normal `TransferTerminationMessage`
+- include an explicit reason such as: `unrecoverable error, start a new data transfer`
+
+There is still no auto-resume on startup. After restart, transfers are either:
+
+- safely recoverable and therefore operator-resumable via `SUSPENDED`
+- or terminal and clearly terminated with a reason that tells the operator to create a new transfer
 
 ## Testing and Verification
 
@@ -320,6 +361,8 @@ Resumption after restart remains an explicit operator/user action through the ex
 - `DataTransferAPIService.startTransfer(...)` rejects resume attempts when local role is not `suspendedBy`
 - `AbstractDataTransferService.startDataTransfer(...)` rejects incoming resume attempts when local role equals `suspendedBy`
 - `DataTransferAPIService.suspendTransfer(...)` and `AbstractDataTransferService.suspendDataTransfer(...)` persist the same logical initiator role on both connectors
+- startup recovery converts crash-interrupted resumable local executions to `SUSPENDED`
+- startup recovery converts non-resumable crash-interrupted local executions to `TERMINATED` with reason `unrecoverable error, start a new data transfer`
 - resume via public `startTransfer(...)` ultimately chooses dataplane `resume(...)` when the dataplane mirror is `SUSPENDED`
 - fresh transfers still choose dataplane `start(...)`
 
@@ -351,6 +394,15 @@ Add at least these end-to-end scenarios:
    - suspended HTTP-PULL transfer uses an expired presigned URL, or suspended HTTP-PUSH transfer uses invalid destination credentials
    - resume does not mint a replacement URL or credentials
    - transfer terminates through the normal termination-message path
+6. **Crash recovery to suspended**
+   - a transfer was locally in progress during crash
+   - startup finds usable checkpoint/session plus still-valid existing access material
+   - startup moves the transfer to `SUSPENDED`
+   - operator can later resume it through the normal flow
+7. **Crash recovery to terminated**
+   - a transfer was locally in progress during crash
+   - startup finds missing checkpoint/session or invalid existing access material
+   - startup terminates the transfer with reason `unrecoverable error, start a new data transfer`
 
 ### Verification command
 
