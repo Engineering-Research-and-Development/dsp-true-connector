@@ -4,6 +4,7 @@ import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferStartMessage;
 import it.eng.datatransfer.model.TransferState;
+import it.eng.datatransfer.model.TransferSuspensionMessage;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
@@ -84,5 +85,37 @@ public class AbstractDataTransferServiceTest {
                 () -> service.startDataTransfer(message, suspended.getConsumerPid(), null));
 
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
+    }
+
+    @Test
+    @DisplayName("suspendDataTransfer persists mirrored remote initiator role as suspendedBy")
+    public void suspendDataTransfer_persistsMirroredRemoteInitiatorRole() {
+        // Test scenario: local role=PROVIDER → suspendedBy should be CONSUMER (opposite side)
+        TransferProcess started = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED;
+        // TRANSFER_PROCESS_STARTED has role=ROLE_PROVIDER
+        assertEquals("provider", started.getRole());
+
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(
+                started.getConsumerPid(), started.getProviderPid()))
+                .thenReturn(Optional.of(started));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        TransferSuspensionMessage suspensionMessage = TransferSuspensionMessage.Builder.newInstance()
+                .consumerPid(started.getConsumerPid())
+                .providerPid(started.getProviderPid())
+                .code("123")
+                .build();
+
+        TransferProcess suspended = service.suspendDataTransfer(
+                suspensionMessage, started.getConsumerPid(), started.getProviderPid());
+
+        assertEquals(TransferState.SUSPENDED, suspended.getState());
+        // When local role is PROVIDER, suspendedBy must be the opposite (CONSUMER)
+        assertEquals("consumer", suspended.getSuspendedBy());
+
+        verify(transferProcessRepository).save(argThat(tp ->
+                TransferState.SUSPENDED.equals(tp.getState())
+                        && "consumer".equals(tp.getSuspendedBy())));
     }
 }

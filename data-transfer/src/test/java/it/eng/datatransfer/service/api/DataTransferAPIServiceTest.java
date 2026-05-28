@@ -553,7 +553,7 @@ class DataTransferAPIServiceTest {
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, null);
     }
 
-
+    @Test
     public void suspendTransfer_pausesDataplaneFirst() {
         TransferProcess started = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED
                 .withIsDownloadInProgress(true)
