@@ -190,9 +190,12 @@ public class CatalogService {
         String tenantId = TenantContextHolder.getTenantId();
         if (tenantId != null) {
             return repository.findByIdAndTenantId(id, tenantId)
+                    .map(this::refreshCatalogDistributions)
                     .orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id" + id + " not found"));
         }
-        return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id" + id + " not found"));
+        return repository.findById(id)
+                .map(this::refreshCatalogDistributions)
+                .orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id" + id + " not found"));
     }
 
     /**

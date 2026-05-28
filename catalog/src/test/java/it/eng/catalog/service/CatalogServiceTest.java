@@ -160,10 +160,25 @@ public class CatalogServiceTest {
     @Test
     @DisplayName("Get catalog by ID successfully")
     public void getCatalogById_success() {
-        when(repository.findByIdAndTenantId(anyString(), anyString())).thenReturn(Optional.of(catalog));
-        Catalog retrievedCatalog = service.getCatalogById(catalog.getId());
+        Distribution datasetDistribution = CatalogMockObjectUtil.createNewDistribution(TENANT_ID, null,
+                CatalogMockObjectUtil.ISSUED, CatalogMockObjectUtil.MODIFIED, "template-title");
+        Distribution staleCatalogDistribution = CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PUSH",
+                CatalogMockObjectUtil.ISSUED, CatalogMockObjectUtil.MODIFIED, "stale-title");
+        Dataset dataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
+                new HashSet<>(Collections.singleton(datasetDistribution)));
+        Catalog staleCatalog = CatalogMockObjectUtil.createNewCatalog(TENANT_ID, new HashSet<>(Collections.singleton(dataset)));
+        staleCatalog.getDistribution().clear();
+        staleCatalog.getDistribution().add(staleCatalogDistribution);
+
+        when(repository.findByIdAndTenantId(anyString(), anyString())).thenReturn(Optional.of(staleCatalog));
+        Catalog retrievedCatalog = service.getCatalogById(staleCatalog.getId());
+
         assertNotNull(retrievedCatalog);
-        verify(repository).findByIdAndTenantId(catalog.getId(), TENANT_ID);
+        assertEquals(1, retrievedCatalog.getDistribution().size());
+        assertNull(retrievedCatalog.getDistribution().stream().findFirst().orElseThrow().getFormat());
+        assertTrue(retrievedCatalog.getDistribution().stream()
+                .noneMatch(distribution -> "HttpData-PUSH".equals(distribution.getFormat())));
+        verify(repository).findByIdAndTenantId(staleCatalog.getId(), TENANT_ID);
     }
 
     @Test
