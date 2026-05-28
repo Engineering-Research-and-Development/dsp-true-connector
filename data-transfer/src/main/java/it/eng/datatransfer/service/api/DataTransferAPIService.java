@@ -22,6 +22,7 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.Artifact;
+import it.eng.tools.model.ArtifactType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
@@ -396,40 +397,44 @@ public class DataTransferAPIService {
                 }
             } else if ("HttpData-PULL".equals(transferProcess.getFormat())) {
                 Artifact artifact = artifactTransferService.findArtifact(transferProcess);
-                String artifactURL = switch (artifact.getArtifactType()) {
-                    case FILE -> {
-                        // Generate presigned download URL directly using the connector's own S3 client.
-                        // No pull Data Plane is registered at the provider side; the pull DP is a
-                        // consumer-side component that downloads from this URL.
-                        try {
-                            String bucketName = tenantBucketResolver.resolveBucketName(transferProcess.getTenantId());
-                            yield s3ClientService.generateGetPresignedUrl(
-                                    bucketName,
-                                    transferProcess.getDatasetId(),
-                                    Duration.ofDays(7L));
-                        } catch (Exception e) {
-                            throw new DataTransferAPIException("The requested artifact is currently not available. Please try again later.");
-                        }
+                if (artifact.getArtifactType() == ArtifactType.FILE) {
+                    // FILE: delegate presigned URL generation to the provider Data Plane so the DP
+                    // can use its own S3 credentials and presigning infrastructure.
+                    DataFlowPrepareMessage prepareMsg = applyCommonDataPlaneFields(
+                                    DataFlowPrepareMessage.Builder.newInstance(), transferProcess, "HttpData-PULL")
+                            .processId(transferProcess.getId())
+                            .agreementId(transferProcess.getAgreementId())
+                            .datasetId(transferProcess.getDatasetId())
+                            .callbackAddress(dataTransferProperties.dataPlaneFeedbackAddress())
+                            .metadata(buildPrepareMetadata(transferProcess.getTenantId(),
+                                    transferProcess.getDatasetId(), transferProcess.getDataAddress()))
+                            .build();
+                    DataFlowPrepareResponse prepareResponse = dataPlaneClient.prepare(prepareMsg, "HttpData-PULL");
+                    if (prepareResponse == null || prepareResponse.getDataAddress() == null) {
+                        throw new DataTransferAPIException("HTTP-PULL DP prepare returned no dataAddress");
                     }
-                    case EXTERNAL -> {
-                        String transactionId = Base64.encodeBase64URLSafeString((transferProcess.getConsumerPid() + "|" + transferProcess.getProviderPid()).getBytes(StandardCharsets.UTF_8));
-                        yield DataTransferCallback.getValidCallback(dataTransferProperties.providerCallbackAddress()) + "/artifacts/" + transactionId;
-                    }
-                };
-
-                EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
-                        .name("https://w3id.org/edc/v0.0.1/ns/endpoint")
-                        .value(artifactURL)
-                        .build();
-                EndpointProperty endpointTypeProperty = EndpointProperty.Builder.newInstance()
-                        .name("https://w3id.org/edc/v0.0.1/ns/endpointType")
-                        .value("https://w3id.org/idsa/v4.1/HTTP")
-                        .build();
-                dataAddress = DataAddress.Builder.newInstance()
-                        .endpoint(artifactURL)
-                        .endpointProperties(List.of(endpointProperty, endpointTypeProperty))
-                        .endpointType("https://w3id.org/idsa/v4.1/HTTP")
-                        .build();
+                    dataAddress = prepareResponseToDataAddress(prepareResponse.getDataAddress(), "HttpData-PULL");
+                } else {
+                    // EXTERNAL: CP generates the callback URL directly
+                    String transactionId = Base64.encodeBase64URLSafeString(
+                            (transferProcess.getConsumerPid() + "|" + transferProcess.getProviderPid())
+                                    .getBytes(StandardCharsets.UTF_8));
+                    String artifactURL = DataTransferCallback.getValidCallback(dataTransferProperties.providerCallbackAddress())
+                            + "/artifacts/" + transactionId;
+                    EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
+                            .name("https://w3id.org/edc/v0.0.1/ns/endpoint")
+                            .value(artifactURL)
+                            .build();
+                    EndpointProperty endpointTypeProperty = EndpointProperty.Builder.newInstance()
+                            .name("https://w3id.org/edc/v0.0.1/ns/endpointType")
+                            .value("https://w3id.org/idsa/v4.1/HTTP")
+                            .build();
+                    dataAddress = DataAddress.Builder.newInstance()
+                            .endpoint(artifactURL)
+                            .endpointProperties(List.of(endpointProperty, endpointTypeProperty))
+                            .endpointType("https://w3id.org/idsa/v4.1/HTTP")
+                            .build();
+                }
             }
         }
 
@@ -437,15 +442,12 @@ public class DataTransferAPIService {
             throw new DataTransferAPIException("Cannot resolve callback address for unknown role: " + transferProcess.getRole());
         }
 
-        // For gRPC the prepared address (DP-returned endpoint metadata) must win over any stored
-        // request-side source hints, because the consumer needs the session details, not the
-        // original source configuration. For HTTP the existing precedence is preserved.
-        DataAddress finalDataAddress;
-        if (transportProfile != null && dataAddress != null) {
-            finalDataAddress = dataAddress;
-        } else {
-            finalDataAddress = (transferProcess.getDataAddress() == null) ? dataAddress : transferProcess.getDataAddress();
-        }
+        // Any address set explicitly by a protocol-specific prepare step (gRPC, HTTP-PULL DP prepare,
+        // EXTERNAL URL generation) must win over the stored request-side DataAddress, because the
+        // consumer needs the session endpoint, presigned URL, or artifact URL — not the original
+        // source configuration. For other cases (e.g. regular HTTP-PUSH) dataAddress stays null
+        // and we fall back to the stored DataAddress.
+        DataAddress finalDataAddress = dataAddress != null ? dataAddress : transferProcess.getDataAddress();
 
         TransferStartMessage transferStartMessage = TransferStartMessage.Builder.newInstance()
                 .consumerPid(transferProcess.getConsumerPid())

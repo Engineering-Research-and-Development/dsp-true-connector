@@ -26,7 +26,8 @@ import java.util.stream.Collectors;
  *
  * <p>The {@code dataAddress} map carries protocol-specific details:
  * <ul>
- *   <li>HTTP-PULL (provider): {@code presignedUrl} with the pre-signed GET URL for the artifact.</li>
+ *   <li>HTTP-PULL (provider): {@code endpoint} with the pre-signed GET URL for the artifact,
+ *       plus {@code endpointType} set to {@code https://w3id.org/idsa/v4.1/HTTP}.</li>
  *   <li>HTTP-PULL (consumer viewData): {@code presignedUrl} with the pre-signed GET URL for the stored file.</li>
  *   <li>HTTP-PUSH (consumer): S3 credential fields ({@code bucketName}, {@code region}, {@code objectKey},
  *       {@code accessKey}, {@code secretKey}) and optionally {@code endpointOverride}.</li>

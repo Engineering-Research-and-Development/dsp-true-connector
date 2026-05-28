@@ -321,24 +321,60 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
-    @DisplayName("Start transfer process success - provider HTTP-PULL generates presigned URL via S3")
-    public void startTransfer_success_providerHttpPull_generatesPresignedUrlFromS3() {
-        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
-        when(apiResponse.isSuccess()).thenReturn(true);
+    @DisplayName("startTransfer - provider HTTP-PULL delegates presigned URL generation to data plane (FILE artifact)")
+    public void startTransfer_providerHttpPull_delegatesPrepareToDataPlane_fileArtifact() {
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL));
         when(artifactTransferService.findArtifact(any())).thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
         when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID)).thenReturn("provider-bucket");
-        when(s3ClientService.generateGetPresignedUrl(eq("provider-bucket"), eq(DataTransferMockObjectUtil.DATASET_ID), any()))
+        lenient().when(bucketCredentialsService.getBucketCredentials("provider-bucket")).thenReturn(
+                BucketCredentialsEntity.Builder.newInstance()
+                        .bucketName("provider-bucket")
+                        .accessKey("provider-access-key")
+                        .secretKey("provider-secret-key")
+                        .build());
+        lenient().when(s3Properties.getRegion()).thenReturn("us-east-1");
+        lenient().when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        lenient().when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+
+        DataFlowPrepareResponse dpResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId())
+                .dataAddress(Map.of(
+                        DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT, "https://minio.example.com/presigned/artifact",
+                        DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT_TYPE, "https://w3id.org/idsa/v4.1/HTTP"))
+                .build();
+        lenient().when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL")))
+                .thenReturn(dpResponse);
+        // lenient stub for old S3 code path — replaced by DP prepare after production change
+        lenient().when(s3ClientService.generateGetPresignedUrl(any(), any(), any()))
                 .thenReturn("https://minio.example.com/presigned/artifact");
+
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.save(any(TransferProcess.class))).thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED);
 
         apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId());
 
-        verify(s3ClientService).generateGetPresignedUrl(eq("provider-bucket"), eq(DataTransferMockObjectUtil.DATASET_ID), any());
-        verify(dataPlaneClient, never()).prepare(any(), any());
-        verify(transferProcessRepository).save(any(TransferProcess.class));
+        // After production change: CP must delegate to DP, not call S3 directly
+        ArgumentCaptor<DataFlowPrepareMessage> prepareCaptor = ArgumentCaptor.forClass(DataFlowPrepareMessage.class);
+        verify(dataPlaneClient).prepare(prepareCaptor.capture(), eq("HttpData-PULL"));
+        verify(s3ClientService, never()).generateGetPresignedUrl(any(), any(), any());
+
+        // Prepare message must include source.s3 metadata with CP-resolved bucket and dataset as objectKey
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sourceSection = (Map<String, Object>)
+                prepareCaptor.getValue().getMetadata().get(DataPlaneConstants.METADATA_SECTION_SOURCE);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> s3Section = (Map<String, Object>) sourceSection.get(DataPlaneConstants.METADATA_SECTION_S3);
+        assertEquals("provider-bucket", s3Section.get(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        assertEquals(DataTransferMockObjectUtil.DATASET_ID, s3Section.get(DataPlaneConstants.METADATA_S3_OBJECT_KEY));
+
+        // TransferStartMessage sent to peer must carry the DP-returned presigned URL
+        verify(okHttpRestClient).sendRequestProtocol(
+                anyString(),
+                argThat(body -> body.toString().contains("https://minio.example.com/presigned/artifact")),
+                anyString());
     }
 
     @Test
@@ -1812,5 +1848,159 @@ class DataTransferAPIServiceTest {
                                 .secretKey(null)
                                 .build(),
                         "Missing required control plane S3 credentials for bucket provider-bucket: secretKey"));
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Task 7 – Kafka CP bucket/credential alignment
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("startTransfer - provider Kafka: prepare metadata carries provider tenant S3 credentials and prepared Kafka address is sent to consumer")
+    public void startTransfer_kafka_provider_callsPrepare_sendsKafkaAddressAndPropagatesProviderS3Credentials() {
+        DataAddress requestDataAddress = DataAddress.Builder.newInstance()
+                .endpointProperties(List.of(
+                        EndpointProperty.Builder.newInstance().name("sourceType").value("S3").build(),
+                        EndpointProperty.Builder.newInstance().name("finite").value("false").build()))
+                .build();
+        TransferProcess requestedKafka = TransferProcess.Builder.newInstance()
+                .id("tp-provider-kafka")
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .datasetId(DataTransferMockObjectUtil.DATASET_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .format(TransportProfile.STREAM_KAFKA)
+                .state(TransferState.REQUESTED)
+                .dataAddress(requestDataAddress)
+                .build();
+
+        when(transferProcessRepository.findById(requestedKafka.getId()))
+                .thenReturn(Optional.of(requestedKafka));
+        when(transportProfileResolver.resolve(TransportProfile.STREAM_KAFKA)).thenReturn(TransportProfile.STREAM_KAFKA);
+        when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID)).thenReturn("provider-bucket");
+        when(bucketCredentialsService.getBucketCredentials("provider-bucket")).thenReturn(BucketCredentialsEntity.Builder
+                .newInstance()
+                .bucketName("provider-bucket")
+                .accessKey("provider-access-key")
+                .secretKey("provider-secret-key")
+                .build());
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+
+        DataFlowPrepareResponse prepareResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId(requestedKafka.getId())
+                .dataAddress(Map.of("endpoint", "kafka://broker:9092", "topic", "data-transfer-topic"))
+                .build();
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq(TransportProfile.STREAM_KAFKA), eq(TransportProfile.STREAM_KAFKA)))
+                .thenReturn(prepareResponse);
+        when(dataPlaneClient.getStickyEndpoint(requestedKafka.getId()))
+                .thenReturn(Optional.of("http://dp-kafka:9090"));
+
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        apiService.startTransfer(requestedKafka.getId());
+
+        ArgumentCaptor<DataFlowPrepareMessage> prepareCaptor = ArgumentCaptor.forClass(DataFlowPrepareMessage.class);
+        verify(dataPlaneClient).prepare(prepareCaptor.capture(),
+                eq(TransportProfile.STREAM_KAFKA), eq(TransportProfile.STREAM_KAFKA));
+        assertEquals(TransportProfile.STREAM_KAFKA, prepareCaptor.getValue().getTransferType());
+        assertNotNull(prepareCaptor.getValue().getMessageId());
+        assertEquals(requestedKafka.getProviderPid(), prepareCaptor.getValue().getParticipantId());
+        assertEquals(requestedKafka.getConsumerPid(), prepareCaptor.getValue().getCounterPartyId());
+        assertEquals(DataPlaneConstants.DSPACE_2025_01_CONTEXT, prepareCaptor.getValue().getDataspaceContext());
+
+        // prepare metadata must carry provider S3 source credentials under source.s3
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sourceSection = (Map<String, Object>) prepareCaptor.getValue().getMetadata()
+                .get(DataPlaneConstants.METADATA_SECTION_SOURCE);
+        assertNotNull(sourceSection, "prepare metadata must contain a 'source' section");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> s3Section = (Map<String, Object>) sourceSection.get(DataPlaneConstants.METADATA_SECTION_S3);
+        assertNotNull(s3Section, "source section must contain an 's3' sub-section");
+        assertEquals("provider-bucket", s3Section.get(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        assertEquals(DataTransferMockObjectUtil.DATASET_ID, s3Section.get(DataPlaneConstants.METADATA_S3_OBJECT_KEY));
+        assertEquals("us-east-1", s3Section.get(DataPlaneConstants.METADATA_S3_REGION));
+        assertEquals("provider-access-key", s3Section.get(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        assertEquals("provider-secret-key", s3Section.get(DataPlaneConstants.METADATA_S3_SECRET_KEY));
+        assertEquals("http://minio:9000", s3Section.get(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+
+        // TP saved as STARTED must carry the Kafka transportProfile
+        verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
+        TransferProcess saved = argCaptorTransferProcess.getValue();
+        assertEquals(TransferState.STARTED, saved.getState());
+        assertEquals(TransportProfile.STREAM_KAFKA, saved.getTransportProfile(),
+                "transportProfile must be persisted on the STARTED provider TP");
+        assertEquals("http://dp-kafka:9090", saved.getAssignedDataplaneEndpoint(),
+                "assignedDataplaneEndpoint must be persisted after prepare");
+
+        // TransferStartMessage sent to peer must carry the prepared Kafka address
+        verify(okHttpRestClient).sendRequestProtocol(
+                anyString(),
+                argThat(body -> body.toString().contains("kafka://broker:9092")),
+                anyString());
+    }
+
+    @Test
+    @DisplayName("downloadData - Kafka consumer - sends consumer tenant bucket credentials as sink.* in start message")
+    public void downloadData_kafka_consumer_sendsConsumerBucketCredentialsAsSinkPropertiesInStartMessage() {
+        TransferProcess kafkaConsumerProcess = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .datasetId(DataTransferMockObjectUtil.DATASET_ID)
+                .isDownloaded(false)
+                .isDownloadInProgress(false)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.STARTED)
+                .format(TransportProfile.STREAM_KAFKA)
+                .build();
+
+        when(transferProcessRepository.findById(kafkaConsumerProcess.getId()))
+                .thenReturn(Optional.of(kafkaConsumerProcess));
+        when(transportProfileResolver.resolve(TransportProfile.STREAM_KAFKA)).thenReturn(TransportProfile.STREAM_KAFKA);
+        when(usageControlProperties.usageControlEnabled()).thenReturn(false);
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+        when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID)).thenReturn("consumer-kafka-bucket");
+        when(bucketCredentialsService.getBucketCredentials("consumer-kafka-bucket")).thenReturn(BucketCredentialsEntity.Builder
+                .newInstance()
+                .bucketName("consumer-kafka-bucket")
+                .accessKey("kafka-consumer-access-key")
+                .secretKey("kafka-consumer-secret-key")
+                .build());
+        when(s3Properties.getRegion()).thenReturn("eu-central-1");
+        when(s3Properties.getEndpoint()).thenReturn("http://kafka-minio:9000");
+
+        assertDoesNotThrow(() -> apiService.downloadData(kafkaConsumerProcess.getId()));
+
+        verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
+        TransferProcess saved = argCaptorTransferProcess.getValue();
+        assertEquals(TransportProfile.STREAM_KAFKA, saved.getTransportProfile(),
+                "Kafka transport profile must be persisted on the TransferProcess before the DP start call");
+        assertTrue(saved.isDownloadInProgress());
+
+        ArgumentCaptor<DataFlowStartMessage> startCaptor = ArgumentCaptor.forClass(DataFlowStartMessage.class);
+        verify(dataPlaneClient).start(startCaptor.capture(), eq(TransportProfile.STREAM_KAFKA));
+        verify(dataPlaneClient, never()).start(any(DataFlowStartMessage.class));
+
+        // start message must carry consumer bucket credentials as sink.* properties
+        Map<String, String> endpointProperties = toEndpointPropertyMap(
+                startCaptor.getValue().getDataAddress().getEndpointProperties());
+        assertEquals("consumer-kafka-bucket", endpointProperties.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME));
+        assertEquals(kafkaConsumerProcess.getId(), endpointProperties.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY));
+        assertEquals("eu-central-1", endpointProperties.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION));
+        assertEquals("kafka-consumer-access-key", endpointProperties.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY));
+        assertEquals("kafka-consumer-secret-key", endpointProperties.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY));
+        assertEquals("http://kafka-minio:9000", endpointProperties.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE));
     }
 }

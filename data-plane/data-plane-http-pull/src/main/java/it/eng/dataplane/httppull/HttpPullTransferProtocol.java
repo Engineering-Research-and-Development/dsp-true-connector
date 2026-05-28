@@ -3,6 +3,7 @@ package it.eng.dataplane.httppull;
 import it.eng.dataplane.api.DataPlaneConstants;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
 import it.eng.dataplane.api.message.DataFlowPrepareMetadata;
+import it.eng.dataplane.api.message.DataFlowPrepareMetadataSection;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
@@ -70,43 +71,54 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
      * the response {@code dataAddress}.
      *
      * <ul>
-     *   <li>If {@code dataAddress.mode == VIEW}: the consumer Control Plane is requesting a URL
-     *       so the API caller can download a previously stored file. The object key is
-     *       {@code message.processId} (the transfer process ID used as key when storing).</li>
-     *   <li>Otherwise (provider side): generates a URL for the artifact identified by
-     *       {@code message.datasetId}. This URL is embedded in the DSP {@code TransferStartMessage}
-     *       that the provider sends to the consumer.</li>
+     *   <li>If {@code metadata.sink.mode == VIEW}: the consumer Control Plane is requesting a URL
+     *       so the API caller can download a previously stored file. The bucket comes from
+     *       local {@code s3Properties}; the object key is {@code message.processId}
+     *       (the transfer process ID used as key when storing). Returns {@code presignedUrl}.</li>
+     *   <li>Otherwise (provider side): the Control Plane provides the bucket name and object key
+     *       via {@code metadata.source.s3.bucketName} and {@code metadata.source.s3.objectKey}.
+     *       Falls back to local {@code s3Properties.bucketName} / {@code message.datasetId} when
+     *       the metadata fields are absent. Returns {@code endpoint} and {@code endpointType}
+     *       so the CP's {@code prepareResponseToDataAddress()} helper can embed them in the
+     *       {@code TransferStartMessage} sent to the consumer.</li>
      * </ul>
      *
      * @param message the prepare message from the Control Plane
-     * @return response containing {@code dataAddress.presignedUrl}
+     * @return response containing {@code dataAddress.presignedUrl} (VIEW) or
+     *         {@code dataAddress.endpoint} (provider)
      */
     @Override
     public DataFlowPrepareResponse prepare(DataFlowPrepareMessage message) {
-        String bucketName = s3Properties.getBucketName();
-        String mode = DataFlowPrepareMetadata.from(message)
-                .getSinkSection()
-                .getString(DataPlaneConstants.METADATA_FIELD_MODE);
+        DataFlowPrepareMetadata meta = DataFlowPrepareMetadata.from(message);
+        String mode = meta.getSinkSection().getString(DataPlaneConstants.METADATA_FIELD_MODE);
         if (mode == null) {
             mode = "";
         }
 
-        String objectKey;
+        Map<String, String> dataAddress = new HashMap<>();
+
         if (MODE_VIEW.equals(mode)) {
             // Consumer viewData: the file was stored with processId as the object key
-            objectKey = message.getProcessId();
+            String bucketName = s3Properties.getBucketName();
+            String objectKey = message.getProcessId();
             log.info("Preparing viewData presigned URL for processId={} in bucket={}", objectKey, bucketName);
+            String presignedUrl = s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
+            log.debug("Generated viewData presigned URL for objectKey='{}'", objectKey);
+            dataAddress.put(PRESIGNED_URL_KEY, presignedUrl);
         } else {
-            // Provider side: object key is the dataset ID
-            objectKey = message.getDatasetId();
-            log.info("Preparing provider presigned URL for datasetId={} in bucket={}", objectKey, bucketName);
+            // Provider side: CP provides the bucket and object key via source.s3 metadata
+            DataFlowPrepareMetadataSection s3Section = meta.getSourceSection()
+                    .getSection(DataPlaneConstants.METADATA_SECTION_S3);
+            String metaBucket = s3Section.getString(DataPlaneConstants.METADATA_S3_BUCKET_NAME);
+            String metaObjectKey = s3Section.getString(DataPlaneConstants.METADATA_S3_OBJECT_KEY);
+            String bucketName = StringUtils.isNotBlank(metaBucket) ? metaBucket : s3Properties.getBucketName();
+            String objectKey = StringUtils.isNotBlank(metaObjectKey) ? metaObjectKey : message.getDatasetId();
+            log.info("Preparing provider presigned URL for objectKey={} in bucket={}", objectKey, bucketName);
+            String presignedUrl = s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
+            log.debug("Generated provider presigned URL for objectKey='{}'", objectKey);
+            dataAddress.put(DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT, presignedUrl);
+            dataAddress.put(DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT_TYPE, "https://w3id.org/idsa/v4.1/HTTP");
         }
-
-        String presignedUrl = s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
-        log.debug("Generated presigned URL for mode='{}', objectKey='{}'", mode, objectKey);
-
-        Map<String, String> dataAddress = new HashMap<>();
-        dataAddress.put(PRESIGNED_URL_KEY, presignedUrl);
 
         return DataFlowPrepareResponse.Builder.newInstance()
                 .processId(message.getProcessId())

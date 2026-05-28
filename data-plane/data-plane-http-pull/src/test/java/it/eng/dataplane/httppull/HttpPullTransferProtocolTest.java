@@ -393,4 +393,49 @@ class HttpPullTransferProtocolTest {
         verify(controlPlaneClient).sendErrored(eq("http://cp:8080"), eq("tp-fail-1"), anyString());
         verify(controlPlaneClient, never()).sendCompleted(any(), any(), any());
     }
+
+    @Test
+    @DisplayName("prepare provider-side reads bucketName and objectKey from metadata.source.s3 and returns endpoint key")
+    void prepare_providerSide_usesCpProvidedS3SourceMetadata_returnsEndpointPresignedUrl() {
+        when(s3ClientService.generateGetPresignedUrl("cp-provided-bucket", "dataset-123", Duration.ofDays(7L)))
+                .thenReturn("https://minio.example.com/presigned/artifact");
+
+        DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
+                .processId("tp-provider-1")
+                .datasetId("dataset-123")
+                .metadata(Map.of(
+                        DataPlaneConstants.METADATA_SECTION_SOURCE, Map.of(
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "cp-provided-bucket",
+                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "dataset-123"))))
+                .build();
+
+        DataFlowPrepareResponse response = protocol.prepare(message);
+
+        assertThat(response.getDataAddress()).containsKey(DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT);
+        assertThat(response.getDataAddress().get(DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT))
+                .isEqualTo("https://minio.example.com/presigned/artifact");
+        verify(s3ClientService).generateGetPresignedUrl("cp-provided-bucket", "dataset-123", Duration.ofDays(7L));
+        verify(s3Properties, never()).getBucketName();
+    }
+
+    @Test
+    @DisplayName("initiateTransfer returns failure when sink.bucketName is missing — no CP callback")
+    void initiateTransfer_returnFailureWhenSinkBucketNameMissing() throws Exception {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+            .processId("tp-no-bucket")
+            .transferType("HttpData-PULL")
+            .dataAddress(Map.of(
+                    "endpoint", "http://example.com/artifact"
+            ))
+            .build();
+
+        CompletableFuture<DataFlowResult> resultFuture = protocol.initiateTransfer(dataFlow);
+        DataFlowResult result = resultFuture.get();
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("sink.bucketName");
+        // No CP callbacks when validation fails before transfer starts
+        verify(controlPlaneClient, never()).sendStarted(any(), any(), any());
+    }
 }
