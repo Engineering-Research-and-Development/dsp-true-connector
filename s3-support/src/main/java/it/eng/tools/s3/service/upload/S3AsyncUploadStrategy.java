@@ -153,7 +153,8 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
 
                 while (true) {
                     if (resumable.suspendRequested().get()) {
-                        buildPauseException(uploadId, partFutures, existingParts, partSizeByNumber);
+                        throw buildPauseException(uploadId, partFutures, existingParts,
+                                partSizeByNumber, resumable.confirmedBytes());
                     }
 
                     int totalRead = readFully(inputStream, buffer);
@@ -171,7 +172,8 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
                             .thenApply(part -> {
                                 synchronized (partSizeByNumber) {
                                     partSizeByNumber.put(currentPartNumber, currentPartSize);
-                                    long contiguous = calculateContiguous(partSizeByNumber);
+                                    long contiguous = Math.max(resumable.confirmedBytes(),
+                                            calculateContiguous(partSizeByNumber));
                                     callback.onPartCompleted(currentPartNumber, part.eTag(), currentPartSize, contiguous);
                                 }
                                 return part;
@@ -203,17 +205,27 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
     }
 
     /**
-     * Builds and throws an {@link UploadPausedException} from the current in-flight state.
+     * Builds an {@link UploadPausedException} from the current in-flight state.
      *
-     * @param uploadId         the current multipart upload ID
-     * @param partFutures      futures for the current run's parts
-     * @param existingParts    parts carried over from a previous run
-     * @param partSizeByNumber map of partNumber to size in bytes
+     * <p>Callers must {@code throw} the returned exception to halt the upload:
+     * <pre>
+     *     throw buildPauseException(uploadId, partFutures, existingParts,
+     *                               partSizeByNumber, confirmedBytesFloor);
+     * </pre>
+     *
+     * @param uploadId             the current multipart upload ID
+     * @param partFutures          futures for the current run's parts
+     * @param existingParts        parts carried over from a previous run
+     * @param partSizeByNumber     map of partNumber to size in bytes
+     * @param confirmedBytesFloor  the previously confirmed contiguous byte count; used as a
+     *                             floor so the reported value never decreases during a resume
+     * @return the constructed {@link UploadPausedException}; never {@code null}
      */
-    private void buildPauseException(String uploadId,
+    private UploadPausedException buildPauseException(String uploadId,
                                      List<CompletableFuture<CompletedPart>> partFutures,
                                      List<CompletedPart> existingParts,
-                                     Map<Integer, Long> partSizeByNumber) {
+                                     Map<Integer, Long> partSizeByNumber,
+                                     long confirmedBytesFloor) {
         synchronized (partSizeByNumber) {
             List<CompletedPart> confirmedParts = new ArrayList<>(existingParts);
             partFutures.stream()
@@ -225,9 +237,9 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
             for (CompletedPart cp : confirmedParts) {
                 sizes.add(partSizeByNumber.getOrDefault(cp.partNumber(), 0L));
             }
-            long contiguous = calculateContiguous(partSizeByNumber);
+            long contiguous = Math.max(confirmedBytesFloor, calculateContiguous(partSizeByNumber));
             log.info("Upload paused (ASYNC) for uploadId: {}, confirmed bytes: {}", uploadId, contiguous);
-            throw new UploadPausedException("Upload paused on request", uploadId, confirmedParts, sizes, contiguous);
+            return new UploadPausedException("Upload paused on request", uploadId, confirmedParts, sizes, contiguous);
         }
     }
 
