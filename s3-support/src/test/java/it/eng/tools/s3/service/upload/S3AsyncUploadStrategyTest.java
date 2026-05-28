@@ -224,8 +224,8 @@ public class S3AsyncUploadStrategyTest {
     }
 
     @Test
-    @DisplayName("Should use AsyncRequestBody.fromInputStream (not fromBytes) to avoid extra memory copy")
-    void uploadFile_UsesFromInputStream_NotFromBytes() {
+    @DisplayName("Should use AsyncRequestBody.fromBytes to build each part request body")
+    void uploadFile_UsesFromBytes() {
         // Arrange — small content ensures exactly one part
         InputStream inputStream = new ByteArrayInputStream("part-data".getBytes());
 
@@ -252,7 +252,7 @@ public class S3AsyncUploadStrategyTest {
         List<AsyncRequestBody> capturedBodies = bodyCaptor.getAllValues();
         assertEquals(1, capturedBodies.size(), "Expected exactly one uploadPart call for small content");
         capturedBodies.forEach(body -> assertTrue(body.contentLength().isPresent(),
-                "AsyncRequestBody should have a known content length when created via fromInputStream"));
+                "AsyncRequestBody should have a known content length when created via fromBytes"));
     }
 
     @Test
@@ -349,6 +349,69 @@ public class S3AsyncUploadStrategyTest {
 
         assertEquals(ETAG, result.join());
         verify(s3AsyncClient, times(2)).uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class));
+    }
+
+    @Test
+    @DisplayName("Should reuse existing uploadId and not call createMultipartUpload")
+    void asyncUpload_reusesExistingUploadId() {
+        // Arrange
+        String existingUploadId = "existing-async-upload";
+        InputStream inputStream = new ByteArrayInputStream("test content".getBytes());
+
+        ResumableUploadRequest resumable = new ResumableUploadRequest(
+                existingUploadId,
+                List.of(),
+                List.of(),
+                0L,
+                new AtomicBoolean(false),
+                UploadCheckpointCallback.noop());
+
+        lenient().when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        UploadPartResponse.builder().eTag(ETAG).build()));
+
+        ArgumentCaptor<CompleteMultipartUploadRequest> completeCaptor =
+                ArgumentCaptor.forClass(CompleteMultipartUploadRequest.class);
+        when(s3AsyncClient.completeMultipartUpload(completeCaptor.capture()))
+                .thenReturn(CompletableFuture.completedFuture(
+                        CompleteMultipartUploadResponse.builder().eTag(ETAG).build()));
+
+        // Act
+        CompletableFuture<String> result = asyncUploadStrategy.uploadFile(
+                inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION, resumable);
+
+        // Assert
+        assertEquals(ETAG, result.join());
+        verify(s3AsyncClient, never()).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+        assertEquals(existingUploadId, completeCaptor.getValue().uploadId());
+    }
+
+    @Test
+    @DisplayName("Should surface UploadPausedException when suspendRequested becomes true")
+    void asyncUpload_throwsUploadPausedExceptionWhenSuspendRequested() {
+        // Arrange — suspend flag set before the first loop iteration
+        InputStream inputStream = new ByteArrayInputStream("data".getBytes());
+        AtomicBoolean suspendRequested = new AtomicBoolean(true);
+
+        ResumableUploadRequest resumable = new ResumableUploadRequest(
+                null, List.of(), List.of(), 0L, suspendRequested, UploadCheckpointCallback.noop());
+
+        when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        CreateMultipartUploadResponse.builder().uploadId(UPLOAD_ID).build()));
+
+        // Act
+        CompletableFuture<String> result = asyncUploadStrategy.uploadFile(
+                inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION, resumable);
+
+        // Assert — UploadPausedException is surfaced via CompletionException
+        CompletionException ce = assertThrows(CompletionException.class, result::join);
+        assertInstanceOf(UploadPausedException.class, ce.getCause());
+        UploadPausedException pex = (UploadPausedException) ce.getCause();
+        assertEquals(UPLOAD_ID, pex.getUploadId(),
+                "Exception must carry the uploadId from the multipart upload");
+        assertTrue(pex.getCompletedParts().isEmpty(),
+                "No parts should be completed when suspended before any part was uploaded");
     }
 
     @Test

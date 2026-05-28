@@ -8,6 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -243,6 +244,90 @@ public class S3SyncUploadStrategyTest {
         assertEquals(OBJECT_KEY, captured.key());
         assertEquals(CONTENT_TYPE, captured.contentType());
         assertEquals(CONTENT_DISPOSITION, captured.contentDisposition());
+    }
+
+    @Test
+    @DisplayName("Should call onMultipartCreated with the fresh uploadId on a new upload")
+    void syncUpload_callsOnMultipartCreatedWithFreshUploadId() {
+        // Arrange
+        InputStream inputStream = new ByteArrayInputStream("data".getBytes());
+        UploadCheckpointCallback callback = mock(UploadCheckpointCallback.class);
+        ResumableUploadRequest resumable = new ResumableUploadRequest(
+                null, List.of(), List.of(), 0L, new AtomicBoolean(false), callback);
+
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CreateMultipartUploadResponse.builder().uploadId(UPLOAD_ID).build());
+        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(RequestBody.class)))
+                .thenReturn(UploadPartResponse.builder().eTag(ETAG).build());
+        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(ETAG).build());
+
+        // Act
+        syncUploadStrategy.uploadFile(
+                inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION, resumable).join();
+
+        // Assert
+        verify(callback).onMultipartCreated(UPLOAD_ID);
+    }
+
+    @Test
+    @DisplayName("Should call onPartCompleted per part with contiguous confirmed bytes")
+    void syncUpload_callsOnPartCompletedWithContiguousBytes() {
+        // Arrange — 3 chunks of 100 bytes each (chunkSize = 100)
+        int chunkSize = 100;
+        when(s3Properties.getChunkSize()).thenReturn(chunkSize);
+        byte[] data = new byte[3 * chunkSize]; // 300 bytes → 3 parts
+        InputStream inputStream = new ByteArrayInputStream(data);
+
+        UploadCheckpointCallback callback = mock(UploadCheckpointCallback.class);
+        ResumableUploadRequest resumable = new ResumableUploadRequest(
+                null, List.of(), List.of(), 0L, new AtomicBoolean(false), callback);
+
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CreateMultipartUploadResponse.builder().uploadId(UPLOAD_ID).build());
+        when(s3Client.uploadPart(any(UploadPartRequest.class), any(RequestBody.class)))
+                .thenReturn(UploadPartResponse.builder().eTag(ETAG).build());
+        when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(ETAG).build());
+
+        // Act
+        syncUploadStrategy.uploadFile(
+                inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION, resumable).join();
+
+        // Assert — three parts completed in order; contiguous bytes grow by chunkSize each time
+        InOrder inOrder = inOrder(callback);
+        inOrder.verify(callback).onMultipartCreated(UPLOAD_ID);
+        inOrder.verify(callback).onPartCompleted(1, ETAG, chunkSize, (long) chunkSize);
+        inOrder.verify(callback).onPartCompleted(2, ETAG, chunkSize, (long) (2 * chunkSize));
+        inOrder.verify(callback).onPartCompleted(3, ETAG, chunkSize, (long) (3 * chunkSize));
+    }
+
+    @Test
+    @DisplayName("Should throw UploadPausedException carrying checkpoint state when suspendRequested is true")
+    void syncUpload_throwsUploadPausedExceptionWhenSuspendRequested() {
+        // Arrange — suspend flag is set before the first loop iteration
+        InputStream inputStream = new ByteArrayInputStream("data".getBytes());
+        AtomicBoolean suspendRequested = new AtomicBoolean(true);
+        ResumableUploadRequest resumable = new ResumableUploadRequest(
+                null, List.of(), List.of(), 0L, suspendRequested, UploadCheckpointCallback.noop());
+
+        when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CreateMultipartUploadResponse.builder().uploadId(UPLOAD_ID).build());
+
+        // Act
+        CompletableFuture<String> result = syncUploadStrategy.uploadFile(
+                inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION, resumable);
+
+        // Assert — UploadPausedException is surfaced via CompletionException
+        CompletionException ce = assertThrows(CompletionException.class, result::join);
+        assertInstanceOf(UploadPausedException.class, ce.getCause());
+        UploadPausedException pex = (UploadPausedException) ce.getCause();
+        assertEquals(UPLOAD_ID, pex.getUploadId(),
+                "Exception must carry the uploadId from the just-created multipart upload");
+        assertTrue(pex.getCompletedParts().isEmpty(),
+                "No parts should be completed when suspended before any part was uploaded");
+        assertEquals(0L, pex.getConfirmedBytes(),
+                "Confirmed bytes must be 0 when no parts were uploaded before suspension");
     }
 
     @Test
