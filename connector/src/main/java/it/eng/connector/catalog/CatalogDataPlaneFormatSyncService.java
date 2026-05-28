@@ -52,7 +52,8 @@ public class CatalogDataPlaneFormatSyncService {
      * Reconciles dataset distributions and refreshes catalog distribution references.
      */
     public void reconcileCatalogDistributions() {
-        reconcileDatasets(datasetRepository.findAll(), resolveSupportedFormats(), null);
+        List<Dataset> datasets = datasetRepository.findAll();
+        reconcileDatasets(datasets, resolveSupportedFormats(), resolveSharedDistributionIds(datasets), null);
     }
 
     /**
@@ -61,11 +62,13 @@ public class CatalogDataPlaneFormatSyncService {
      * @param tenantId the tenant identifier whose datasets should be reconciled
      */
     public void reconcileTenant(String tenantId) {
-        reconcileDatasets(datasetRepository.findAllByTenantId(tenantId), resolveSupportedFormats(), tenantId);
+        List<Dataset> tenantDatasets = datasetRepository.findAllByTenantId(tenantId);
+        Set<String> sharedDistributionIds = resolveSharedDistributionIds(datasetRepository.findAll());
+        reconcileDatasets(tenantDatasets, resolveSupportedFormats(), sharedDistributionIds, tenantId);
     }
 
-    private void reconcileDatasets(List<Dataset> datasets, Set<String> supportedFormats, String tenantId) {
-        Set<String> sharedDistributionIds = resolveSharedDistributionIds(datasets);
+    private void reconcileDatasets(List<Dataset> datasets, Set<String> supportedFormats,
+                                   Set<String> sharedDistributionIds, String tenantId) {
         int deletedDistributionCount = 0;
         for (Dataset dataset : datasets) {
             DatasetReconciliation result = reconcileDataset(dataset, supportedFormats, sharedDistributionIds);
@@ -128,6 +131,7 @@ public class CatalogDataPlaneFormatSyncService {
                 .map(Distribution::getId)
                 .filter(Objects::nonNull)
                 .filter(id -> !reconciledIds.contains(id))
+                .filter(id -> !sharedDistributionIds.contains(id))
                 .toList();
 
         return new DatasetReconciliation(copyDataset(dataset, reconciledDistributions),
@@ -151,6 +155,7 @@ public class CatalogDataPlaneFormatSyncService {
                 .map(Distribution::getId)
                 .filter(Objects::nonNull)
                 .filter(id -> !Objects.equals(id, normalizedDistribution.getId()))
+                .filter(id -> !sharedDistributionIds.contains(id))
                 .toList();
         Set<Distribution> normalizedDistributions = new LinkedHashSet<>(Set.of(normalizedDistribution));
         return new DatasetReconciliation(copyDataset(dataset, normalizedDistributions),

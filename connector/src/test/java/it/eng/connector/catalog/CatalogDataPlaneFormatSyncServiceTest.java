@@ -221,12 +221,57 @@ public class CatalogDataPlaneFormatSyncServiceTest {
         service.reconcileTenant(TENANT_ID);
 
         verify(datasetRepository).findAllByTenantId(TENANT_ID);
-        verify(datasetRepository, never()).findAll();
+        verify(datasetRepository).findAll();
         verify(datasetRepository).save(argThat(dataset ->
                 Objects.equals("dataset-tenant", dataset.getId())
                         && extractFormats(dataset.getDistribution()).equals(Set.of("HttpData-PULL", "HttpData-PUSH"))));
         verify(distributionRepository).deleteAllById(argThat(ids ->
                 containsString(ids, "distribution-tenant-stale")));
+    }
+
+    @Test
+    @DisplayName("reconcileTenant clones globally shared distributions without deleting cross-tenant references")
+    void reconcileTenantClonesGloballySharedDistributionsWithoutDeletingCrossTenantReferences() {
+        when(dataPlaneRegistrationService.findAll()).thenReturn(List.of(
+                buildRegistration("http://dataplane-1", Set.of("HttpData-PULL", "HttpData-PUSH"), Set.of("profile-a"))
+        ));
+
+        Distribution sharedPullDistribution = withIdentity(
+                CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PULL",
+                        OLDER_TIMESTAMP, OLDER_TIMESTAMP, "shared-title"),
+                "distribution-shared-pull", 7L);
+        Dataset tenantDataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
+                new LinkedHashSet<>(List.of(
+                        sharedPullDistribution,
+                        withIdentity(CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "UNSUPPORTED",
+                                NEWER_TIMESTAMP, NEWER_TIMESTAMP, "tenant-template-title"),
+                                "distribution-tenant-stale", 9L)
+                )));
+        Dataset otherTenantDataset = CatalogMockObjectUtil.createNewDataset("tenant-b",
+                new LinkedHashSet<>(Set.of(sharedPullDistribution)));
+        when(datasetRepository.findAllByTenantId(TENANT_ID)).thenReturn(List.of(tenantDataset));
+        when(datasetRepository.findAll()).thenReturn(List.of(tenantDataset, otherTenantDataset));
+        when(distributionRepository.saveAll(any())).thenAnswer(invocation ->
+                toDistributionList(invocation.getArgument(0)));
+        when(datasetRepository.save(any(Dataset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.reconcileTenant(TENANT_ID);
+
+        ArgumentCaptor<Dataset> savedDatasetCaptor = ArgumentCaptor.forClass(Dataset.class);
+        ArgumentCaptor<Iterable<String>> deletedIdsCaptor = ArgumentCaptor.forClass(Iterable.class);
+
+        verify(datasetRepository).findAllByTenantId(TENANT_ID);
+        verify(datasetRepository).findAll();
+        verify(datasetRepository).save(savedDatasetCaptor.capture());
+        verify(distributionRepository).deleteAllById(deletedIdsCaptor.capture());
+
+        Distribution savedPullDistribution = findDistributionByFormat(
+                new ArrayList<>(savedDatasetCaptor.getValue().getDistribution()), "HttpData-PULL");
+        assertNotEquals("distribution-shared-pull", savedPullDistribution.getId());
+        assertNull(savedPullDistribution.getVersion());
+
+        List<String> deletedIds = toStringList(deletedIdsCaptor.getValue());
+        assertEquals(List.of("distribution-tenant-stale"), deletedIds);
     }
 
     @Test
