@@ -30,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -133,6 +134,21 @@ public class CatalogDataPlaneFormatSyncServiceTest {
 
         List<String> deletedIds = toStringList(deletedIdsCaptor.getValue());
         assertEquals(List.of("distribution-stale"), deletedIds);
+    }
+
+    @Test
+    @DisplayName("reconcileCatalogDistributions is a no-op when no dataplane formats are registered")
+    void reconcileCatalogDistributionsDoesNothingWhenNoDataplaneFormatsAreRegistered() {
+        when(dataPlaneRegistrationService.findAll()).thenReturn(List.of());
+
+        service.reconcileCatalogDistributions();
+
+        verify(datasetRepository, never()).findAll();
+        verify(distributionRepository, never()).saveAll(any());
+        verify(datasetRepository, never()).saveAll(any());
+        verify(catalogRepository, never()).findAll();
+        verify(catalogRepository, never()).saveAll(any());
+        verify(distributionRepository, never()).deleteAllById(any());
     }
 
     private DataPlaneRegistration buildRegistration(String endpoint, Set<String> supportedTransferTypes,

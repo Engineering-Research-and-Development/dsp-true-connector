@@ -55,6 +55,11 @@ public class CatalogDataPlaneFormatSyncService {
      */
     public void reconcileCatalogDistributions() {
         Set<String> supportedFormats = resolveSupportedFormats();
+        if (supportedFormats.isEmpty()) {
+            log.info("Skipping catalog/dataplane format reconciliation because no dataplane formats are registered");
+            return;
+        }
+
         List<Dataset> datasets = datasetRepository.findAll();
         Map<String, Distribution> reconciledDistributionsById = new LinkedHashMap<>();
         Set<String> staleDistributionIds = new LinkedHashSet<>();
