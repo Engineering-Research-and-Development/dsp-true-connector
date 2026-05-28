@@ -17,11 +17,13 @@ import software.amazon.awssdk.services.s3.model.*;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -347,6 +349,78 @@ public class S3AsyncUploadStrategyTest {
 
         assertEquals(ETAG, result.join());
         verify(s3AsyncClient, times(2)).uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class));
+    }
+
+    @Test
+    @DisplayName("Callback reports contiguous confirmed bytes even when async parts complete out of order")
+    void asyncUpload_reportsContiguousBytesForOutOfOrderCompletion() throws InterruptedException {
+        // Arrange — 3 parts of 100 bytes each so we can control completion order
+        int chunkSize = 100;
+        when(s3Properties.getChunkSize()).thenReturn(chunkSize);
+        byte[] data = new byte[3 * chunkSize];
+        InputStream inputStream = new ByteArrayInputStream(data);
+
+        when(s3AsyncClient.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        CreateMultipartUploadResponse.builder().uploadId(UPLOAD_ID).build()));
+
+        // Promises for each of the 3 parts, indexed 0..2 (partNumber 1..3)
+        @SuppressWarnings("unchecked")
+        CompletableFuture<UploadPartResponse>[] partPromises = new CompletableFuture[3];
+        for (int i = 0; i < 3; i++) {
+            partPromises[i] = new CompletableFuture<>();
+        }
+
+        CountDownLatch allPartsSubmitted = new CountDownLatch(3);
+        AtomicInteger callIdx = new AtomicInteger(0);
+        when(s3AsyncClient.uploadPart(any(UploadPartRequest.class), any(AsyncRequestBody.class)))
+                .thenAnswer(inv -> {
+                    int idx = callIdx.getAndIncrement();
+                    allPartsSubmitted.countDown();
+                    return partPromises[idx];
+                });
+
+        when(s3AsyncClient.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(
+                        CompleteMultipartUploadResponse.builder().eTag(ETAG).build()));
+
+        List<Long> observedContiguous = new ArrayList<>();
+        UploadCheckpointCallback callback = new UploadCheckpointCallback() {
+            @Override
+            public void onMultipartCreated(String uploadId) { }
+
+            @Override
+            public void onPartCompleted(int partNumber, String eTag, long partSize, long contiguousConfirmedBytes) {
+                observedContiguous.add(contiguousConfirmedBytes);
+            }
+        };
+
+        ResumableUploadRequest resumable = new ResumableUploadRequest(
+                null, List.of(), List.of(), 0L,
+                new AtomicBoolean(false), callback);
+
+        // Act
+        CompletableFuture<String> uploadFuture = asyncUploadStrategy.uploadFile(
+                inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION, resumable);
+
+        // Wait for all 3 parts to be submitted before resolving any
+        assertTrue(allPartsSubmitted.await(10, TimeUnit.SECONDS), "All 3 parts must be submitted");
+
+        // Complete out of order: part 3, then part 1, then part 2
+        partPromises[2].complete(UploadPartResponse.builder().eTag("etag-3").build());
+        partPromises[0].complete(UploadPartResponse.builder().eTag("etag-1").build());
+        partPromises[1].complete(UploadPartResponse.builder().eTag("etag-2").build());
+
+        assertEquals(ETAG, uploadFuture.join());
+
+        // Assert contiguous confirmed bytes reported correctly:
+        // After part 3 completes: part 1 missing → contiguous = 0
+        // After part 1 completes: part 2 missing → contiguous = chunkSize (100)
+        // After part 2 completes: all done → contiguous = 3 * chunkSize (300)
+        assertEquals(3, observedContiguous.size(), "Callback must be called once per part");
+        assertEquals(0L, observedContiguous.get(0), "After part 3: no contiguous bytes from start");
+        assertEquals((long) chunkSize, observedContiguous.get(1), "After part 1: contiguous = 1 chunk");
+        assertEquals((long) (3 * chunkSize), observedContiguous.get(2), "After part 2: contiguous = 3 chunks");
     }
 }
 
