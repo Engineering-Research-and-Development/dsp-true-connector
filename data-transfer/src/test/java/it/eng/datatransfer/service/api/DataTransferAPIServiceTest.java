@@ -540,7 +540,7 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
-    @DisplayName("startTransfer resumes HTTP-PULL transfer: reuses stored dataAddress and skips presigned URL generation")
+    @DisplayName("startTransfer resumes HTTP-PULL transfer: calls dataplane resume, reuses stored dataAddress, skips presigned URL, saves STARTED/STARTED")
     public void startTransfer_resumeAllowedForInitiator_reusesStoredDataAddressNoPresignedUrl() {
         // SUSPENDED_PROVIDER_HTTP_PULL: role=PROVIDER, suspendedBy=PROVIDER → initiator match → resume allowed
         TransferProcess suspended = DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER_HTTP_PULL;
@@ -557,9 +557,10 @@ class DataTransferAPIServiceTest {
         // Must NOT generate a fresh presigned URL on resume — the stored dataAddress must be reused
         verify(s3ClientService, never()).generateGetPresignedUrl(any(), any(), any());
 
-        // Saved TP must carry the stored dataAddress endpoint unchanged
+        // Saved TP must carry state=STARTED, dataFlowState="STARTED", and the stored dataAddress
         verify(transferProcessRepository).save(argThat(tp ->
                 TransferState.STARTED.equals(tp.getState())
+                        && "STARTED".equals(tp.getDataFlowState())
                         && tp.getDataAddress() != null
                         && DataTransferMockObjectUtil.ENDPOINT_URL.equals(tp.getDataAddress().getEndpoint())));
 
@@ -568,6 +569,9 @@ class DataTransferAPIServiceTest {
                 anyString(),
                 argThat(body -> body.toString().contains(DataTransferMockObjectUtil.ENDPOINT_URL)),
                 anyString());
+
+        // Must call dataplane resume after the peer accepts the start
+        verify(dataPlaneClient).resume(suspended.getId(), suspended.getFormat());
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, null);
     }

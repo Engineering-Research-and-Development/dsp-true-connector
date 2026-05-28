@@ -395,6 +395,7 @@ public class DataTransferAPIService {
                 .dataId(transferProcess.getDataId())
                 .format(transferProcess.getFormat())
                 .state(TransferState.STARTED)
+                .dataFlowState(resuming ? "STARTED" : null)
                 .role(transferProcess.getRole())
                 .suspendedBy(null)
                 .datasetId(transferProcess.getDatasetId())
@@ -414,6 +415,10 @@ public class DataTransferAPIService {
                         credentialUtils.getConnectorCredentials());
         log.info("Response received {}", response);
         if (response.isSuccess()) {
+            if (resuming) {
+                dataPlaneClient.resume(transferProcess.getId(), transferProcess.getFormat());
+                log.info("Transfer process {} dataplane resumed after successful peer start", transferProcess.getId());
+            }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
                     "Transfer process started successfully",
                     auditMap("transferProcess", transferProcessStarted,
