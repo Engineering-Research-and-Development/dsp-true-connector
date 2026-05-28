@@ -62,6 +62,7 @@ public class AbstractDataTransferServiceTest {
         TransferProcess started = service.startDataTransfer(message, suspended.getConsumerPid(), null);
 
         assertEquals(TransferState.STARTED, started.getState());
+        assertEquals("SUSPENDED", started.getDataFlowState());
         assertNull(started.getSuspendedBy());
     }
 
