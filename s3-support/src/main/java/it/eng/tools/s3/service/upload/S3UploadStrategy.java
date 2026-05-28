@@ -19,8 +19,9 @@ public interface S3UploadStrategy {
      * The {@link UploadCheckpointCallback} is notified on upload creation and
      * on each successfully uploaded part. If
      * {@link ResumableUploadRequest#suspendRequested()} becomes {@code true}
-     * mid-upload, the strategy throws {@link UploadPausedException} with the
-     * current checkpoint state.
+     * mid-upload, the returned future completes exceptionally with a
+     * {@link java.util.concurrent.CompletionException} whose cause is
+     * {@link UploadPausedException} carrying the current checkpoint state.
      *
      * @param inputStream              the input stream to upload
      * @param s3ClientRequest          the S3 client request configuration
@@ -31,8 +32,10 @@ public interface S3UploadStrategy {
      * @param resumableUploadRequest   the resumable upload context; use
      *                                 {@link ResumableUploadRequest#noOp()} for a
      *                                 fresh upload without suspend/checkpoint support
-     * @return a CompletableFuture with the ETag of the completed upload
-     * @throws UploadPausedException if suspend is requested before the upload completes
+     * @return a CompletableFuture with the ETag of the completed upload; if suspend is
+     *         requested before completion, the future completes exceptionally with a
+     *         {@link java.util.concurrent.CompletionException} whose cause is
+     *         {@link UploadPausedException}
      */
     CompletableFuture<String> uploadFile(InputStream inputStream,
                                          S3ClientRequest s3ClientRequest,
@@ -66,4 +69,3 @@ public interface S3UploadStrategy {
                 contentType, contentDisposition, ResumableUploadRequest.noOp());
     }
 }
-
