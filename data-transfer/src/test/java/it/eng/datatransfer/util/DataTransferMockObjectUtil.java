@@ -214,6 +214,25 @@ public class DataTransferMockObjectUtil {
             .suspendedBy(IConstants.ROLE_CONSUMER)
             .build();
 
+    /**
+     * Provider transfer process in SUSPENDED state with HTTP-PULL format, suspended by the provider
+     * (i.e. local role == suspendedBy). Used to test that resume is allowed and reuses the stored
+     * dataAddress without generating a fresh presigned URL.
+     */
+    public static final TransferProcess TRANSFER_PROCESS_SUSPENDED_PROVIDER_HTTP_PULL = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .datasetId(DATASET_ID)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
+            .state(TransferState.SUSPENDED)
+            .format(DataTransferFormat.HTTP_PULL.format())
+            .suspendedBy(IConstants.ROLE_PROVIDER)
+            .build();
+
     public static final TransferProcess TRANSFER_PROCESS_TERMINATED = TransferProcess.Builder.newInstance()
             .consumerPid(CONSUMER_PID)
             .providerPid(PROVIDER_PID)

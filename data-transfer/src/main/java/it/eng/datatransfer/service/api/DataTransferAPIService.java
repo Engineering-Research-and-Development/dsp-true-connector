@@ -596,7 +596,7 @@ public class DataTransferAPIService {
                 dataPlaneClient.resume(transferProcess.getId(), transferProcess.getFormat());
                 TransferProcess resumed = transferProcess.copyWithNewTransferState(TransferState.STARTED)
                         .withDataFlowState("STARTED")
-                        .withIsDownloadInProgress(true)
+                        .withIsDownloadInProgress(transferProcess.isDownloadInProgress())
                         .withSuspendedBy(null)
                         .withDataFlowErrorMessage(null);
                 transferProcessRepository.save(resumed);

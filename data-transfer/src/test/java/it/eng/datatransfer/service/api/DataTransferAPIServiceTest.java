@@ -521,7 +521,39 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
-    @DisplayName("suspendTransfer pauses dataplane first and persists local initiator role in suspended TP")
+    @DisplayName("startTransfer resumes HTTP-PULL transfer: reuses stored dataAddress and skips presigned URL generation")
+    public void startTransfer_resumeAllowedForInitiator_reusesStoredDataAddressNoPresignedUrl() {
+        // SUSPENDED_PROVIDER_HTTP_PULL: role=PROVIDER, suspendedBy=PROVIDER → initiator match → resume allowed
+        TransferProcess suspended = DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER_HTTP_PULL;
+        when(transferProcessRepository.findById(suspended.getId()))
+                .thenReturn(Optional.of(suspended));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        apiService.startTransfer(suspended.getId());
+
+        // Must NOT generate a fresh presigned URL on resume — the stored dataAddress must be reused
+        verify(s3ClientService, never()).generateGetPresignedUrl(any(), any(), any());
+
+        // Saved TP must carry the stored dataAddress endpoint unchanged
+        verify(transferProcessRepository).save(argThat(tp ->
+                TransferState.STARTED.equals(tp.getState())
+                        && tp.getDataAddress() != null
+                        && DataTransferMockObjectUtil.ENDPOINT_URL.equals(tp.getDataAddress().getEndpoint())));
+
+        // Outbound TransferStartMessage must embed the stored dataAddress endpoint
+        verify(okHttpRestClient).sendRequestProtocol(
+                anyString(),
+                argThat(body -> body.toString().contains(DataTransferMockObjectUtil.ENDPOINT_URL)),
+                anyString());
+
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, null);
+    }
+
+
     public void suspendTransfer_pausesDataplaneFirst() {
         TransferProcess started = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED
                 .withIsDownloadInProgress(true)
@@ -576,6 +608,37 @@ class DataTransferAPIServiceTest {
                 TransferState.STARTED.equals(tp.getState())
                         && "STARTED".equals(tp.getDataFlowState())
                         && tp.isDownloadInProgress()
+                        && tp.getSuspendedBy() == null));
+
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
+    }
+
+    @Test
+    @DisplayName("suspendTransfer rollback restores original isDownloadInProgress=false when process was not downloading")
+    public void suspendTransfer_rollsBackLocalPauseWhenPeerSuspensionFails_notDownloading() {
+        // Process was not actively downloading when suspend was called (isDownloadInProgress=false)
+        TransferProcess started = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED
+                .withIsDownloadInProgress(false)
+                .withDataFlowState("STARTED");
+
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(false);
+        when(apiResponse.getMessage()).thenReturn("peer rejected");
+        when(transferProcessRepository.findById(started.getId()))
+                .thenReturn(Optional.of(started));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        assertThrows(DataTransferAPIException.class, () -> apiService.suspendTransfer(started.getId()));
+
+        verify(dataPlaneClient).suspend(started.getId(), started.getFormat());
+        verify(dataPlaneClient).resume(started.getId(), started.getFormat());
+        // Rollback must restore the ORIGINAL isDownloadInProgress value (false), not hardcode true
+        verify(transferProcessRepository).save(argThat(tp ->
+                TransferState.STARTED.equals(tp.getState())
+                        && "STARTED".equals(tp.getDataFlowState())
+                        && !tp.isDownloadInProgress()
                         && tp.getSuspendedBy() == null));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
