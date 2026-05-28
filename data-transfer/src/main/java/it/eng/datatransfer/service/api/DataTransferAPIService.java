@@ -439,6 +439,7 @@ public class DataTransferAPIService {
                     .dataId(transferProcessStarted.getDataId())
                     .format(transferProcessStarted.getFormat())
                     .state(rollbackState)
+                    .dataFlowState(resuming ? transferProcess.getDataFlowState() : null)
                     .role(transferProcessStarted.getRole())
                     .suspendedBy(resuming ? transferProcess.getSuspendedBy() : null)
                     .datasetId(transferProcessStarted.getDatasetId())

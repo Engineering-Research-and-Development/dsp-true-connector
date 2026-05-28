@@ -573,6 +573,55 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
+    @DisplayName("startTransfer resume rollback preserves dataFlowState=SUSPENDED and suspendedBy when peer rejects start")
+    public void startTransfer_resumeRollback_preservesDataFlowStateAndSuspendedBy() {
+        // Given: a SUSPENDED TP with dataFlowState="SUSPENDED" and suspendedBy=PROVIDER (local is initiator)
+        TransferProcess suspended = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.SUSPENDED)
+                .dataFlowState("SUSPENDED")
+                .suspendedBy(IConstants.ROLE_PROVIDER)
+                .build();
+
+        when(transferProcessRepository.findById(suspended.getId()))
+                .thenReturn(Optional.of(suspended));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
+                .thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(false);
+        when(apiResponse.getMessage()).thenReturn("peer rejected");
+        // Both save() calls return the TP passed to them so the rollback builder has a consistent version
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        assertThrows(DataTransferAPIException.class, () -> apiService.startTransfer(suspended.getId()));
+
+        // save() must be called twice: once pre-save as STARTED, once for the SUSPENDED rollback
+        verify(transferProcessRepository, times(2)).save(argCaptorTransferProcess.capture());
+        List<TransferProcess> saves = argCaptorTransferProcess.getAllValues();
+        TransferProcess firstSave = saves.get(0);
+        TransferProcess rollbackSave = saves.get(1);
+
+        // First save must pre-save as STARTED
+        assertEquals(TransferState.STARTED, firstSave.getState());
+
+        // Rollback must restore SUSPENDED with dataFlowState and suspendedBy intact
+        assertEquals(TransferState.SUSPENDED, rollbackSave.getState());
+        assertEquals("SUSPENDED", rollbackSave.getDataFlowState(),
+                "rollback must restore dataFlowState to SUSPENDED, not drop it to null");
+        assertEquals(IConstants.ROLE_PROVIDER, rollbackSave.getSuspendedBy(),
+                "rollback must preserve suspendedBy from the original SUSPENDED record");
+
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, null);
+    }
+
+    @Test
     public void suspendTransfer_pausesDataplaneFirst() {
         TransferProcess started = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED
                 .withIsDownloadInProgress(true)
