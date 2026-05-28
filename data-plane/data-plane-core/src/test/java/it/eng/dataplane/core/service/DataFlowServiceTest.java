@@ -273,11 +273,11 @@ class DataFlowServiceTest {
     }
 
     /**
-     * Verifies that resume() moves a SUSPENDED flow back to STARTED after successful protocol resumption,
-     * and that the state machine transition is validated before invoking the protocol.
+     * Verifies that resume() drives a SUSPENDED flow all the way to COMPLETED when the
+     * protocol future resolves with success, with proper registry and checkpoint cleanup.
      */
     @Test
-    void resumeMovesSuspendedFlowBackToStarted() {
+    void resumeCompletesFlowWhenProtocolSucceeds() {
         DataFlowEntity suspendedEntity = DataFlowEntity.Builder.newInstance()
                 .id("df-1")
                 .processId("tp-1")
@@ -297,8 +297,38 @@ class DataFlowServiceTest {
 
         verify(stateMachine, atLeastOnce()).assertTransition(DataFlowState.SUSPENDED, DataFlowState.STARTED);
         verify(repository, atLeastOnce()).save(argThat(saved -> saved.getState() == DataFlowState.STARTED));
-        verify(auditEventService).saveEvent(DataPlaneAuditEventType.DATAFLOW_RESUMED,
-                "tp-1", "HttpData-PULL", "Data flow resumed", null);
+        verify(repository).save(argThat(saved -> saved.getState() == DataFlowState.COMPLETED));
+        verify(executionRegistry).remove("tp-1");
+        verify(checkpointService).deleteByProcessId("tp-1");
+        verify(auditEventService).saveEvent(DataPlaneAuditEventType.DATAFLOW_COMPLETED,
+                "tp-1", "HttpData-PULL", "Data flow completed", null);
+    }
+
+    /**
+     * Verifies that resume() does not transition the entity when the protocol returns a paused result,
+     * and that no completion or error callbacks are triggered.
+     */
+    @Test
+    void resumeIgnoresPausedResultWithoutStateTransition() {
+        DataFlowEntity suspendedEntity = DataFlowEntity.Builder.newInstance()
+                .id("df-paused")
+                .processId("tp-paused")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.SUSPENDED)
+                .build();
+
+        when(repository.findByProcessId("tp-paused")).thenReturn(Optional.of(suspendedEntity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.resumeTransfer("df-paused"))
+                .thenReturn(CompletableFuture.completedFuture(DataFlowResult.paused()));
+
+        service.resume("tp-paused");
+
+        // Only the STARTED pre-save must have happened — no COMPLETED or TERMINATED
+        verify(repository).save(argThat(saved -> saved.getState() == DataFlowState.STARTED));
+        verify(repository, never()).save(argThat(saved -> saved.getState() == DataFlowState.COMPLETED));
+        verify(repository, never()).save(argThat(saved -> saved.getState() == DataFlowState.TERMINATED));
+        verify(checkpointService, never()).deleteByProcessId(any());
     }
 
     /**

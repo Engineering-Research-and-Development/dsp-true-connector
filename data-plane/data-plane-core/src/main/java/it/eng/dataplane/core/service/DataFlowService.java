@@ -83,18 +83,14 @@ public class DataFlowService {
                 .resumeTransfer(entity.getId());
         executionRegistry.register(processId, new FutureDataFlowExecutionHandle(processId, future));
         future.thenAccept(result -> {
-                    if (result.isSuccess()) {
-                        DataFlowEntity fresh = findRequired(processId);
-                        if (fresh.getState() != DataFlowState.STARTED) {
-                            log.debug("DataFlow processId={} is already {}; ignoring late resume callback",
-                                    processId, fresh.getState());
-                            return;
-                        }
-                        auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_RESUMED,
-                                processId, entity.getTransferType(), "Data flow resumed", null);
-                    } else {
-                        handleError(processId, new RuntimeException(result.getErrorMessage()));
+                    if (result.isPaused()) {
+                        // Upload was paused again during the resumed transfer.
+                        // DataFlowService.suspend() has already set the entity to SUSPENDED; nothing to do here.
+                        log.debug("DataFlow processId={} was paused during resumed transfer; no completion transition",
+                                processId);
+                        return;
                     }
+                    handleCompletion(processId, result);
                 })
                 .exceptionally(ex -> {
                     handleError(processId, ex);

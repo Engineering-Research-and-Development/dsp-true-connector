@@ -13,6 +13,7 @@ import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.service.upload.ResumableUploadRequest;
+import it.eng.tools.s3.service.upload.UploadPausedException;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.dataplane.s3.service.TenantBucketResolver;
 import org.junit.jupiter.api.AfterEach;
@@ -308,9 +309,77 @@ class HttpPushTransferProtocolTest {
     @Test
     @DisplayName("terminateTransfer returns success without throwing")
     void terminateTransfer_returnsSuccess() throws Exception {
+        when(dataFlowRepository.findById("df-1")).thenReturn(Optional.empty());
+
         DataFlowResult result = protocol.terminateTransfer("df-1").get();
 
         assertThat(result.isSuccess()).isTrue();
+    }
+
+    @Test
+    @DisplayName("terminateTransfer resolves processId from entity to remove the correct suspend flag")
+    void terminateTransfer_removesActiveSuspendFlagByProcessId() throws Exception {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-term")
+                .processId("tp-term")
+                .state(DataFlowState.STARTED)
+                .build();
+        when(dataFlowRepository.findById("df-term")).thenReturn(Optional.of(entity));
+
+        DataFlowResult result = protocol.terminateTransfer("df-term").get();
+
+        assertThat(result.isSuccess()).isTrue();
+        // The entity lookup must use the dataFlowId, not the processId
+        verify(dataFlowRepository).findById("df-term");
+    }
+
+    @Test
+    @DisplayName("initiateTransfer does not call sendCompleted when upload is paused (UploadPausedException)")
+    void initiateTransfer_doesNotSendCompletedOnPause() throws Exception {
+        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        testHttpServer.createContext("/artifact-pause", exchange -> {
+            byte[] body = "artifact-content".getBytes();
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+        });
+        testHttpServer.start();
+        int port = testHttpServer.getAddress().getPort();
+
+        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
+        when(s3ClientService.generateGetPresignedUrl(anyString(), anyString(), any(Duration.class)))
+                .thenReturn("http://localhost:" + port + "/artifact-pause");
+
+        UploadPausedException pauseEx = new UploadPausedException("paused", "upload-id-pause",
+                List.of(), List.of(), 0L);
+        when(s3ClientService.uploadFile(any(), any(), any(), any(), any(ResumableUploadRequest.class)))
+                .thenReturn(CompletableFuture.failedFuture(pauseEx));
+
+        Map<String, String> dataAddress = new HashMap<>();
+        dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
+        dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
+        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
+        dataAddress.put(S3Utils.REGION, "us-east-1");
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-pause")
+                .transferType("HttpData-PUSH")
+                .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
+                .datasetId("dataset-pause")
+                .dataAddress(dataAddress)
+                .build();
+
+        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
+
+        // The pause path must return a paused result, never a success
+        assertThat(result.isPaused()).isTrue();
+        assertThat(result.isSuccess()).isFalse();
+        // sendCompleted MUST NOT be called — a pause is not a completion
+        verify(controlPlaneClient, never()).sendCompleted(any(), any(), any());
+        // sendErrored MUST NOT be called — a pause is not an error
+        verify(controlPlaneClient, never()).sendErrored(any(), any(), any());
     }
 
     @Test

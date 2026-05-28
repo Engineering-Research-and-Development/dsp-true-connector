@@ -202,6 +202,13 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
         // Run the transfer asynchronously, then notify CP of outcome
         return pushArtifactAsync(dataFlow, suspendFlag, null, List.of(), List.of(), 0L)
                 .thenApply(result -> {
+                    if (result.isPaused()) {
+                        // Upload paused cleanly — no CP callback. The outer future is cancelled by
+                        // DataFlowService.suspend() before or around the same time this runs, so
+                        // this guard ensures sendCompleted is never sent even in the rare race
+                        // where the thenApply executes before the cancel propagates.
+                        return result;
+                    }
                     if (result.isSuccess()) {
                         controlPlaneClient.sendCompleted(dataFlow.getCallbackAddress(), dataFlow.getProcessId(), dataAddress);
                     } else {
@@ -290,6 +297,11 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
         return pushArtifactAsync(dataFlow, suspendFlag,
                 checkpoint.getUploadId(), previousParts, previousSizes, checkpoint.getConfirmedBytes())
                 .thenApply(result -> {
+                    if (result.isPaused()) {
+                        // Upload paused again during the resumed transfer.
+                        // Checkpoint is preserved in MongoDB for the next resume; no CP callback.
+                        return result;
+                    }
                     if (result.isSuccess()) {
                         checkpointService.deleteByProcessId(processId);
                         controlPlaneClient.sendCompleted(entity.getCallbackAddress(), processId, dataAddress);
@@ -327,13 +339,15 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
      * Temporary IAM credentials created by the consumer CP for HTTP-PUSH transfers are cleaned up
      * by the consumer CP when it receives the termination event, not by this provider-side DP.
      *
-     * @param processId the DPS transfer process ID
+     * @param dataFlowId the entity ID ({@code DataFlowEntity.getId()}) of the flow to terminate
      * @return future with success result
      */
     @Override
-    public CompletableFuture<DataFlowResult> terminateTransfer(String processId) {
-        log.info("Terminating HttpData-PUSH transfer for processId={}", processId);
-        activeSuspendFlags.remove(processId);
+    public CompletableFuture<DataFlowResult> terminateTransfer(String dataFlowId) {
+        log.info("Terminating HttpData-PUSH transfer for dataFlowId={}", dataFlowId);
+        // dataFlowId is entity.getId(); resolve the processId to remove the correct flag entry
+        dataFlowRepository.findById(dataFlowId).ifPresent(entity ->
+                activeSuspendFlags.remove(entity.getProcessId()));
         return CompletableFuture.completedFuture(DataFlowResult.success());
     }
 
@@ -437,12 +451,10 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
                 Throwable cause = throwable instanceof CompletionException ce ? ce.getCause() : throwable;
                 if (cause instanceof UploadPausedException) {
                     // Upload paused cleanly. Checkpoint saved by whenComplete above.
-                    // Return success so that if (unlikely) the thenApply CP-callback stage
-                    // still runs, it does not incorrectly call sendErrored. In practice the
-                    // outer future is already cancelled at this point so the thenApply will
-                    // not execute.
+                    // Return paused so that initiateTransfer/resumeTransfer thenApply
+                    // handlers skip the CP callback entirely.
                     log.info("HTTP-PUSH upload paused for processId={}", processId);
-                    return DataFlowResult.success();
+                    return DataFlowResult.paused();
                 }
                 log.error("HTTP-PUSH transfer failed for processId={}", processId, throwable);
                 return DataFlowResult.failure(cause.getMessage() != null ? cause.getMessage() : throwable.getMessage());
