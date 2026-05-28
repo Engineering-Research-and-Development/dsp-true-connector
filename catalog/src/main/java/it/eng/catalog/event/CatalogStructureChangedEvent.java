@@ -3,10 +3,17 @@ package it.eng.catalog.event;
 /**
  * Event published when catalog-visible dataset or distribution structure changes.
  *
- * @param reason        the reason that triggered the reconcile request
- * @param fullReconcile whether a full catalog reconcile is requested
+ * @param scope  the reconcile scope requested by the event
+ * @param reason the reason that triggered the reconcile request
  */
-public record CatalogStructureChangedEvent(String reason, boolean fullReconcile) {
+public record CatalogStructureChangedEvent(Scope scope, String reason) {
+
+    /**
+     * The supported catalog reconcile scopes.
+     */
+    public enum Scope {
+        FULL_RECONCILE
+    }
 
     /**
      * Creates an event requesting a full catalog reconcile.
@@ -15,6 +22,6 @@ public record CatalogStructureChangedEvent(String reason, boolean fullReconcile)
      * @return the full-reconcile event
      */
     public static CatalogStructureChangedEvent fullReconcile(String reason) {
-        return new CatalogStructureChangedEvent(reason, true);
+        return new CatalogStructureChangedEvent(Scope.FULL_RECONCILE, reason);
     }
 }

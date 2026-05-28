@@ -1,5 +1,6 @@
 package it.eng.datatransfer.service;
 
+import it.eng.datatransfer.event.DataPlaneRegistrationChangedEvent;
 import it.eng.datatransfer.exceptions.DataPlaneNotFoundException;
 import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.datatransfer.repository.DataPlaneRegistrationRepository;
@@ -8,19 +9,19 @@ import it.eng.tools.service.AuditEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -35,6 +36,9 @@ public class DataPlaneRegistrationServiceTest {
 
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
+
+    @Captor
+    private ArgumentCaptor<DataPlaneRegistrationChangedEvent> dataPlaneRegistrationChangedEventCaptor;
 
     @InjectMocks
     private DataPlaneRegistrationService service;
@@ -63,10 +67,8 @@ public class DataPlaneRegistrationServiceTest {
         assertEquals(reg.getEndpoint(), result.getEndpoint());
         verify(repository).save(reg);
         verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATAPLANE_REGISTERED), any(String.class), any());
-        verify(applicationEventPublisher).publishEvent((Object) argThat(event ->
-                hasProperty(event, "changeType", "REGISTERED")
-                        && hasProperty(event, "dataplaneId", reg.getId())
-                        && hasProperty(event, "endpoint", reg.getEndpoint())));
+        assertPublishedRegistrationChangedEvent(DataPlaneRegistrationChangedEvent.ChangeType.REGISTERED,
+                reg.getId(), reg.getEndpoint());
     }
 
     @Test
@@ -83,10 +85,8 @@ public class DataPlaneRegistrationServiceTest {
         assertEquals(incoming.getId(), result.getId());
         verify(repository).deleteById(existing.getId());
         verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATAPLANE_REGISTRATION_UPDATED), any(String.class), any());
-        verify(applicationEventPublisher).publishEvent((Object) argThat(event ->
-                hasProperty(event, "changeType", "REGISTERED")
-                        && hasProperty(event, "dataplaneId", incoming.getId())
-                        && hasProperty(event, "endpoint", incoming.getEndpoint())));
+        assertPublishedRegistrationChangedEvent(DataPlaneRegistrationChangedEvent.ChangeType.REGISTERED,
+                incoming.getId(), incoming.getEndpoint());
     }
 
     @Test
@@ -115,10 +115,8 @@ public class DataPlaneRegistrationServiceTest {
 
         verify(repository).deleteById(id);
         verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATAPLANE_DEREGISTERED), any(String.class), any());
-        verify(applicationEventPublisher).publishEvent((Object) argThat(event ->
-                hasProperty(event, "changeType", "DEREGISTERED")
-                        && hasProperty(event, "dataplaneId", reg.getId())
-                        && hasProperty(event, "endpoint", reg.getEndpoint())));
+        assertPublishedRegistrationChangedEvent(DataPlaneRegistrationChangedEvent.ChangeType.DEREGISTERED,
+                reg.getId(), reg.getEndpoint());
     }
 
     @Test
@@ -148,13 +146,13 @@ public class DataPlaneRegistrationServiceTest {
         verify(repository).findAll();
     }
 
-    private boolean hasProperty(Object target, String accessorName, String expectedValue) {
-        try {
-            Method accessor = target.getClass().getMethod(accessorName);
-            Object actualValue = accessor.invoke(target);
-            return expectedValue.equals(String.valueOf(actualValue));
-        } catch (ReflectiveOperationException e) {
-            return false;
-        }
+    private void assertPublishedRegistrationChangedEvent(DataPlaneRegistrationChangedEvent.ChangeType expectedChangeType,
+                                                         String expectedDataplaneId,
+                                                         String expectedEndpoint) {
+        verify(applicationEventPublisher).publishEvent(dataPlaneRegistrationChangedEventCaptor.capture());
+        DataPlaneRegistrationChangedEvent event = dataPlaneRegistrationChangedEventCaptor.getValue();
+        assertEquals(expectedChangeType, event.changeType());
+        assertEquals(expectedDataplaneId, event.dataplaneId());
+        assertEquals(expectedEndpoint, event.endpoint());
     }
 }

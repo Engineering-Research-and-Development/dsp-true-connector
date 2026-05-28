@@ -3,24 +3,25 @@ package it.eng.catalog.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
 
+import it.eng.catalog.event.CatalogStructureChangedEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.lang.reflect.Method;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Distribution;
 import it.eng.catalog.repository.DistributionRepository;
@@ -40,6 +41,9 @@ public class DistributionServiceTest {
 
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
+
+    @Captor
+    private ArgumentCaptor<CatalogStructureChangedEvent> catalogStructureChangedEventCaptor;
 
     @InjectMocks
     private DistributionService distributionService;
@@ -96,7 +100,7 @@ public class DistributionServiceTest {
         assertEquals(distribution.getId(), result.getId());
         verify(repository).save(distribution);
         verify(catalogService).updateCatalogDistributionAfterSave(distribution);
-        verify(applicationEventPublisher).publishEvent((Object) argThat(event -> hasReason(event, "distribution-saved")));
+        assertPublishedCatalogStructureChangedEvent("distribution-saved");
     }
 
     @Test
@@ -109,7 +113,7 @@ public class DistributionServiceTest {
         verify(repository).findByIdAndTenantId(distribution.getId(), TENANT_ID);
         verify(repository).deleteById(distribution.getId());
         verify(catalogService).updateCatalogDistributionAfterDelete(distribution);
-        verify(applicationEventPublisher).publishEvent((Object) argThat(event -> hasReason(event, "distribution-deleted")));
+        assertPublishedCatalogStructureChangedEvent("distribution-deleted");
     }
 
     @Test
@@ -135,18 +139,13 @@ public class DistributionServiceTest {
         assertEquals(distribution.getId(), result.getId());
         verify(repository).findByIdAndTenantId(distribution.getId(), TENANT_ID);
         verify(repository).save(any(Distribution.class));
-        verify(applicationEventPublisher).publishEvent((Object) argThat(event -> hasReason(event, "distribution-updated")));
+        assertPublishedCatalogStructureChangedEvent("distribution-updated");
     }
 
-    private boolean hasReason(Object target, String expectedReason) {
-        try {
-            Method fullReconcileAccessor = target.getClass().getMethod("fullReconcile");
-            Method reasonAccessor = target.getClass().getMethod("reason");
-            Object fullReconcile = fullReconcileAccessor.invoke(target);
-            Object reason = reasonAccessor.invoke(target);
-            return Boolean.TRUE.equals(fullReconcile) && expectedReason.equals(reason);
-        } catch (ReflectiveOperationException e) {
-            return false;
-        }
+    private void assertPublishedCatalogStructureChangedEvent(String expectedReason) {
+        verify(applicationEventPublisher).publishEvent(catalogStructureChangedEventCaptor.capture());
+        CatalogStructureChangedEvent event = catalogStructureChangedEventCaptor.getValue();
+        assertEquals(CatalogStructureChangedEvent.Scope.FULL_RECONCILE, event.scope());
+        assertEquals(expectedReason, event.reason());
     }
 }

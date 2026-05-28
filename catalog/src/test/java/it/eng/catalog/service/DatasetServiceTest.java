@@ -1,5 +1,6 @@
 package it.eng.catalog.service;
 
+import it.eng.catalog.event.CatalogStructureChangedEvent;
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.exceptions.InternalServerErrorAPIException;
@@ -25,7 +26,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -65,6 +65,9 @@ public class DatasetServiceTest {
 
     @Captor
     private ArgumentCaptor<Dataset> argCaptorDataset;
+
+    @Captor
+    private ArgumentCaptor<CatalogStructureChangedEvent> catalogStructureChangedEventCaptor;
 
     @InjectMocks
     private DatasetService datasetService;
@@ -197,7 +200,7 @@ public class DatasetServiceTest {
         assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getId(), argCaptorDataset.getValue().getArtifact().getId());
         assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), argCaptorDataset.getValue().getArtifact().getValue());
         assertEquals(CatalogMockObjectUtil.DATASET.getId(), argCaptorDataset.getValue().getId());
-        verify(applicationEventPublisher).publishEvent((Object) argThat(event -> hasReason(event, "dataset-saved")));
+        assertPublishedCatalogStructureChangedEvent("dataset-saved");
 
     }
 
@@ -235,7 +238,7 @@ public class DatasetServiceTest {
         assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getId(), argCaptorDataset.getValue().getArtifact().getId());
         assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), argCaptorDataset.getValue().getArtifact().getValue());
         assertEquals(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), argCaptorDataset.getValue().getId());
-        verify(applicationEventPublisher).publishEvent((Object) argThat(event -> hasReason(event, "dataset-updated")));
+        assertPublishedCatalogStructureChangedEvent("dataset-updated");
     }
 
     @Test
@@ -250,7 +253,7 @@ public class DatasetServiceTest {
         verify(artifactService).deleteArtifact(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getArtifact());
         verify(repository).deleteById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
         verify(catalogService).updateCatalogDatasetAfterDelete(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
-        verify(applicationEventPublisher).publishEvent((Object) argThat(event -> hasReason(event, "dataset-deleted")));
+        assertPublishedCatalogStructureChangedEvent("dataset-deleted");
     }
 
     @Test
@@ -265,15 +268,10 @@ public class DatasetServiceTest {
         verify(catalogService, never()).updateCatalogDatasetAfterDelete(any(Dataset.class));
     }
 
-    private boolean hasReason(Object target, String expectedReason) {
-        try {
-            Method fullReconcileAccessor = target.getClass().getMethod("fullReconcile");
-            Method reasonAccessor = target.getClass().getMethod("reason");
-            Object fullReconcile = fullReconcileAccessor.invoke(target);
-            Object reason = reasonAccessor.invoke(target);
-            return Boolean.TRUE.equals(fullReconcile) && expectedReason.equals(reason);
-        } catch (ReflectiveOperationException e) {
-            return false;
-        }
+    private void assertPublishedCatalogStructureChangedEvent(String expectedReason) {
+        verify(applicationEventPublisher).publishEvent(catalogStructureChangedEventCaptor.capture());
+        CatalogStructureChangedEvent event = catalogStructureChangedEventCaptor.getValue();
+        assertEquals(CatalogStructureChangedEvent.Scope.FULL_RECONCILE, event.scope());
+        assertEquals(expectedReason, event.reason());
     }
 }
