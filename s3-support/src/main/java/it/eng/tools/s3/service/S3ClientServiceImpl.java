@@ -5,6 +5,7 @@ import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.model.S3UploadMode;
 import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.upload.ResumableUploadRequest;
 import it.eng.tools.s3.service.upload.S3UploadStrategy;
 import it.eng.tools.s3.service.upload.S3UploadStrategyFactory;
 import it.eng.tools.s3.util.S3Utils;
@@ -83,29 +84,52 @@ public class S3ClientServiceImpl implements S3ClientService {
                                                 String contentType,
                                                 String contentDisposition) {
 
-        BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
-                    .bucketName(destinationS3Properties.get(S3Utils.BUCKET_NAME))
-                    .accessKey(destinationS3Properties.get(S3Utils.ACCESS_KEY))
-                    .secretKey(destinationS3Properties.get(S3Utils.SECRET_KEY))
-                    .build();
-
+        S3UploadMode uploadMode = getUploadMode();
+        S3ClientRequest s3ClientRequest = buildS3ClientRequest(destinationS3Properties);
         String bucketName = destinationS3Properties.get(S3Utils.BUCKET_NAME);
         String objectKey = destinationS3Properties.get(S3Utils.OBJECT_KEY);
 
-        // Determine upload mode from configuration
-        S3UploadMode uploadMode = getUploadMode();
-
         log.info("Uploading file {} to bucket {} using {} mode", objectKey, bucketName, uploadMode);
 
-        S3ClientRequest s3ClientRequest = S3ClientRequest.from(
+        S3UploadStrategy strategy = uploadStrategyFactory.getStrategy(uploadMode);
+        return strategy.uploadFile(inputStream, s3ClientRequest, bucketName, objectKey, contentType, contentDisposition);
+    }
+
+    @Override
+    public CompletableFuture<String> uploadFile(InputStream inputStream,
+                                                Map<String, String> destinationS3Properties,
+                                                String contentType,
+                                                String contentDisposition,
+                                                ResumableUploadRequest resumableUploadRequest) {
+
+        S3UploadMode uploadMode = getUploadMode();
+        S3ClientRequest s3ClientRequest = buildS3ClientRequest(destinationS3Properties);
+        String bucketName = destinationS3Properties.get(S3Utils.BUCKET_NAME);
+        String objectKey = destinationS3Properties.get(S3Utils.OBJECT_KEY);
+
+        log.info("Uploading file {} to bucket {} using {} mode (resumable)", objectKey, bucketName, uploadMode);
+
+        S3UploadStrategy strategy = uploadStrategyFactory.getStrategy(uploadMode);
+        return strategy.uploadFile(inputStream, s3ClientRequest, bucketName, objectKey,
+                contentType, contentDisposition, resumableUploadRequest);
+    }
+
+    /**
+     * Builds an {@link S3ClientRequest} from the given destination properties map.
+     *
+     * @param destinationS3Properties map containing region, endpoint override, and credentials
+     * @return the configured S3ClientRequest
+     */
+    private S3ClientRequest buildS3ClientRequest(Map<String, String> destinationS3Properties) {
+        BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName(destinationS3Properties.get(S3Utils.BUCKET_NAME))
+                .accessKey(destinationS3Properties.get(S3Utils.ACCESS_KEY))
+                .secretKey(destinationS3Properties.get(S3Utils.SECRET_KEY))
+                .build();
+        return S3ClientRequest.from(
                 destinationS3Properties.get(S3Utils.REGION),
                 destinationS3Properties.get(S3Utils.ENDPOINT_OVERRIDE),
                 bucketCredentials);
-
-        // Get appropriate strategy from factory based on upload mode
-        S3UploadStrategy strategy = uploadStrategyFactory.getStrategy(uploadMode);
-
-        return strategy.uploadFile(inputStream, s3ClientRequest, bucketName, objectKey, contentType, contentDisposition);
     }
 
     /**

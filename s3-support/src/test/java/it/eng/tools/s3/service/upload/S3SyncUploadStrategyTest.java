@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -242,6 +243,39 @@ public class S3SyncUploadStrategyTest {
         assertEquals(OBJECT_KEY, captured.key());
         assertEquals(CONTENT_TYPE, captured.contentType());
         assertEquals(CONTENT_DISPOSITION, captured.contentDisposition());
+    }
+
+    @Test
+    @DisplayName("Should reuse existing uploadId instead of creating a new multipart upload")
+    void syncUpload_reusesExistingUploadId() {
+        // Arrange
+        String existingUploadId = "existing-upload";
+        InputStream inputStream = new ByteArrayInputStream("test content".getBytes());
+
+        ResumableUploadRequest resumable = new ResumableUploadRequest(
+                existingUploadId,
+                List.of(),
+                List.of(),
+                0L,
+                new AtomicBoolean(false),
+                UploadCheckpointCallback.noop());
+
+        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(RequestBody.class)))
+                .thenReturn(UploadPartResponse.builder().eTag(ETAG).build());
+
+        ArgumentCaptor<CompleteMultipartUploadRequest> completeCaptor =
+                ArgumentCaptor.forClass(CompleteMultipartUploadRequest.class);
+        when(s3Client.completeMultipartUpload(completeCaptor.capture()))
+                .thenReturn(CompleteMultipartUploadResponse.builder().eTag(ETAG).build());
+
+        // Act
+        CompletableFuture<String> result = syncUploadStrategy.uploadFile(
+                inputStream, s3ClientRequest, BUCKET_NAME, OBJECT_KEY, CONTENT_TYPE, CONTENT_DISPOSITION, resumable);
+
+        // Assert
+        assertEquals(ETAG, result.join());
+        verify(s3Client, never()).createMultipartUpload(any(CreateMultipartUploadRequest.class));
+        assertEquals(existingUploadId, completeCaptor.getValue().uploadId());
     }
 }
 
