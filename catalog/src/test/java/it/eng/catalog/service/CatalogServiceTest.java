@@ -117,6 +117,29 @@ public class CatalogServiceTest {
     }
 
     @Test
+    @DisplayName("Get catalog for API refreshes top-level distributions from datasets")
+    public void getCatalogForApi_refreshesTopLevelDistributionsFromDatasets() {
+        Distribution datasetDistribution = CatalogMockObjectUtil.createNewDistribution(TENANT_ID, null,
+                CatalogMockObjectUtil.ISSUED, CatalogMockObjectUtil.MODIFIED, "template-title");
+        Distribution staleCatalogDistribution = CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PUSH",
+                CatalogMockObjectUtil.ISSUED, CatalogMockObjectUtil.MODIFIED, "stale-title");
+        Dataset dataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
+                new HashSet<>(Collections.singleton(datasetDistribution)));
+        Catalog staleCatalog = CatalogMockObjectUtil.createNewCatalog(TENANT_ID, new HashSet<>(Collections.singleton(dataset)));
+        staleCatalog.getDistribution().clear();
+        staleCatalog.getDistribution().add(staleCatalogDistribution);
+
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(staleCatalog));
+
+        Catalog retrievedCatalog = service.getCatalogForApi();
+
+        assertEquals(1, retrievedCatalog.getDistribution().size());
+        assertNull(retrievedCatalog.getDistribution().stream().findFirst().orElseThrow().getFormat());
+        assertTrue(retrievedCatalog.getDistribution().stream()
+                .noneMatch(distribution -> "HttpData-PUSH".equals(distribution.getFormat())));
+    }
+
+    @Test
     @DisplayName("Get catalog check if uploading dataset is removed")
     public void getCatalog_checkIfUploadingDatasetIsRemoved() {
         assertFalse(catalog.getDataset().isEmpty());

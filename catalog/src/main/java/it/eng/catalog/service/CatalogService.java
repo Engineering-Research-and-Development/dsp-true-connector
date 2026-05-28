@@ -145,7 +145,7 @@ public class CatalogService {
         if (allCatalogs.isEmpty()) {
             throw new ResourceNotFoundAPIException("Catalog not found");
         } else {
-            return allCatalogs.get(0);
+            return refreshCatalogDistributions(allCatalogs.get(0));
         }
     }
 
