@@ -1,10 +1,12 @@
 package it.eng.dataplane.httppull.integration;
 
+import it.eng.dataplane.api.DataPlaneConstants;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -22,9 +24,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <ol>
  *   <li>A source artifact is uploaded to the consumer MinIO bucket using admin credentials.</li>
  *   <li>{@code /dataflows/prepare} is called with the artifact's {@code datasetId} to obtain
- *       a presigned GET URL (provider-side prepare, no VIEW mode).</li>
+ *       a schema-aligned HTTP data address (provider-side prepare, no VIEW mode).</li>
  *   <li>{@code /dataflows/start} is called with a new {@code processId} and the presigned URL
- *       in {@code dataAddress.endpoint}.</li>
+ *       plus consumer sink properties in a schema-aligned {@code DataAddress}.</li>
  *   <li>The test polls MinIO until the object keyed by {@code processId} appears, then asserts
  *       the content matches the original source.</li>
  * </ol>
@@ -64,15 +66,27 @@ class TransferE2EIT extends BaseHttpPullIT {
         @SuppressWarnings("unchecked")
         Map<String, String> prepareDataAddress = (Map<String, String>) prepareResponse.get("dataAddress");
         assertNotNull(prepareDataAddress, "prepare response must include dataAddress");
-        String presignedUrl = prepareDataAddress.get("presignedUrl");
-        assertNotNull(presignedUrl, "prepare must return a presignedUrl");
+        String endpoint = prepareDataAddress.get(DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT);
+        assertNotNull(endpoint, "prepare must return an endpoint");
+        String endpointType = prepareDataAddress.get(DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT_TYPE);
+        assertNotNull(endpointType, "prepare must return an endpointType");
 
         // Step 2: start — DP downloads from the presigned URL and uploads to consumer bucket
         String processId = newId();
         Map<String, Object> startBody = Map.of(
                 "processId", processId,
                 "transferType", TRANSFER_TYPE_PULL,
-                "dataAddress", Map.of("endpoint", presignedUrl)
+                "dataAddress", Map.of(
+                        "endpoint", endpoint,
+                        "endpointType", endpointType,
+                        "endpointProperties", List.of(
+                                Map.of("name", DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "value", TEST_BUCKET_NAME),
+                                Map.of("name", DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, "value", processId),
+                                Map.of("name", DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, "value", "us-east-1"),
+                                Map.of("name", DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, "value", minIOContainer.getUserName()),
+                                Map.of("name", DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, "value", minIOContainer.getPassword()),
+                                Map.of("name", DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE, "value", minIOContainer.getS3URL())
+                        ))
         );
         mockMvc.perform(withApiKey(post("/dataflows/start"))
                 .contentType(MediaType.APPLICATION_JSON)

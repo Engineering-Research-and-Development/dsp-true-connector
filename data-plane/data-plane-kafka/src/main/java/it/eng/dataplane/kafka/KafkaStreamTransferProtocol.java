@@ -1,6 +1,9 @@
 package it.eng.dataplane.kafka;
 
+import it.eng.dataplane.api.DataPlaneConstants;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
+import it.eng.dataplane.api.message.DataFlowPrepareMetadata;
+import it.eng.dataplane.api.message.DataFlowPrepareMetadataSection;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.io.SinkContext;
 import it.eng.dataplane.api.io.SinkWriteResult;
@@ -14,8 +17,8 @@ import it.eng.dataplane.api.spi.DataTransferProtocol;
 import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.dataplane.core.registry.SinkWriterRegistry;
 import it.eng.dataplane.core.registry.SourceReaderRegistry;
-import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.util.S3Utils;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -58,6 +61,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Kafka-backed transfer protocol implementation.
  */
+@Slf4j
 @Component
 public class KafkaStreamTransferProtocol implements DataTransferProtocol {
 
@@ -72,7 +76,6 @@ public class KafkaStreamTransferProtocol implements DataTransferProtocol {
     static final String TOPIC_KEY = "topic";
     static final String GROUP_ID_KEY = "groupId";
     static final String MODE_KEY = "mode";
-    static final String FINITE_KEY = "finite";
     static final String MODE_FINITE = "finite";
     static final String MODE_NON_FINITE = "non-finite";
     private static final String TERMINATED_MESSAGE = "transfer terminated";
@@ -101,9 +104,6 @@ public class KafkaStreamTransferProtocol implements DataTransferProtocol {
     private ControlPlaneClient controlPlaneClient;
 
     @Autowired
-    private S3Properties s3Properties;
-
-    @Autowired
     @Qualifier("transferExecutor")
     private Executor transferExecutor;
 
@@ -127,8 +127,8 @@ public class KafkaStreamTransferProtocol implements DataTransferProtocol {
      */
     @Override
     public DataFlowPrepareResponse prepare(DataFlowPrepareMessage message) {
-        Map<String, String> requestDataAddress = message.getDataAddress() == null ? Map.of() : message.getDataAddress();
-        boolean finite = !"false".equalsIgnoreCase(requestDataAddress.get(FINITE_KEY));
+        DataFlowPrepareMetadataSection sourceSection = DataFlowPrepareMetadata.from(message).getSourceSection();
+        boolean finite = !"false".equalsIgnoreCase(sourceSection.getString(DataPlaneConstants.METADATA_FIELD_FINITE));
         String topic = topicPrefix + toKafkaTopicSegment(message.getProcessId());
         String groupId = groupIdPrefix + message.getProcessId();
 
@@ -141,7 +141,7 @@ public class KafkaStreamTransferProtocol implements DataTransferProtocol {
 
         if (sourceReaderRegistry != null) {
             createTopic(topic);
-            runAsync(() -> publishSourceStream(message, requestDataAddress, topic));
+            runAsync(() -> publishSourceStream(message, sourceSection, topic));
         }
 
         return DataFlowPrepareResponse.Builder.newInstance()
@@ -224,12 +224,19 @@ public class KafkaStreamTransferProtocol implements DataTransferProtocol {
         return CompletableFuture.completedFuture(DataFlowResult.success());
     }
 
-    private void publishSourceStream(DataFlowPrepareMessage message, Map<String, String> dataAddress, String topic) {
-        String sourceType = dataAddress.getOrDefault("sourceType", DEFAULT_SOURCE_TYPE);
-        SourceReader sourceReader = sourceReaderRegistry.getReader(sourceType)
-                .orElseThrow(() -> new IllegalArgumentException("No SourceReader available for sourceType: " + sourceType));
+    private void publishSourceStream(DataFlowPrepareMessage message,
+                                     DataFlowPrepareMetadataSection sourceSection,
+                                     String topic) {
+        String sourceType = sourceSection.getString(DataPlaneConstants.METADATA_FIELD_SOURCE_TYPE);
+        if (isBlank(sourceType)) {
+            sourceType = DEFAULT_SOURCE_TYPE;
+        }
+        final String resolvedSourceType = sourceType;
+        SourceReader sourceReader = sourceReaderRegistry.getReader(resolvedSourceType)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No SourceReader available for sourceType: " + resolvedSourceType));
         SourceContext sourceContext = SourceContext.Builder.newInstance()
-                .properties(buildSourceProperties(message.getDatasetId()))
+                .properties(buildSourceProperties(sourceSection, message.getDatasetId()))
                 .build();
 
         try (SourceOpenResult sourceOpenResult = sourceReader.open(sourceContext)) {
@@ -347,38 +354,54 @@ public class KafkaStreamTransferProtocol implements DataTransferProtocol {
         }
     }
 
-    private Map<String, String> buildSourceProperties(String datasetId) {
-        if (s3Properties == null) {
-            return Map.of(S3Utils.OBJECT_KEY, datasetId);
-        }
-        return Map.of(
-                S3Utils.BUCKET_NAME, s3Properties.getBucketName(),
-                S3Utils.OBJECT_KEY, datasetId
-        );
+    private Map<String, String> buildSourceProperties(DataFlowPrepareMetadataSection sourceSection,
+                                                      String fallbackObjectKey) {
+        DataFlowPrepareMetadataSection s3Section = sourceSection.getSection(DataPlaneConstants.METADATA_SECTION_S3);
+        Map<String, String> props = new LinkedHashMap<>();
+        putIfPresent(props, S3Utils.BUCKET_NAME, s3Section.getString(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        String objectKey = s3Section.getString(DataPlaneConstants.METADATA_S3_OBJECT_KEY);
+        props.put(S3Utils.OBJECT_KEY, objectKey != null ? objectKey : fallbackObjectKey);
+        putIfPresent(props, S3Utils.REGION, s3Section.getString(DataPlaneConstants.METADATA_S3_REGION));
+        putIfPresent(props, S3Utils.ACCESS_KEY, s3Section.getString(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        putIfPresent(props, S3Utils.SECRET_KEY, s3Section.getString(DataPlaneConstants.METADATA_S3_SECRET_KEY));
+        putIfPresent(props, S3Utils.ENDPOINT_OVERRIDE,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+        return props;
     }
 
     private SinkContext buildSinkContext(DataFlow dataFlow) {
-        if (s3Properties == null) {
-            return SinkContext.Builder.newInstance()
-                    .properties(Map.of(S3Utils.OBJECT_KEY, dataFlow.getProcessId()))
-                    .build();
-        }
-
+        Map<String, String> dataAddress = dataFlow.getDataAddress();
         Map<String, String> sinkProperties = new LinkedHashMap<>();
-        sinkProperties.put(S3Utils.BUCKET_NAME, s3Properties.getBucketName());
-        sinkProperties.put(S3Utils.OBJECT_KEY, dataFlow.getProcessId());
-        sinkProperties.put(S3Utils.REGION, s3Properties.getRegion());
-        sinkProperties.put(S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint());
-        sinkProperties.put(S3Utils.ACCESS_KEY, s3Properties.getAccessKey());
-        sinkProperties.put(S3Utils.SECRET_KEY, s3Properties.getSecretKey());
+        putIfPresent(sinkProperties, S3Utils.BUCKET_NAME,
+                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME));
+        String objectKey = dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY);
+        sinkProperties.put(S3Utils.OBJECT_KEY, objectKey != null ? objectKey : dataFlow.getProcessId());
+        putIfPresent(sinkProperties, S3Utils.REGION,
+                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION));
+        putIfPresent(sinkProperties, S3Utils.ENDPOINT_OVERRIDE,
+                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE));
+        putIfPresent(sinkProperties, S3Utils.ACCESS_KEY,
+                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY));
+        putIfPresent(sinkProperties, S3Utils.SECRET_KEY,
+                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY));
         return SinkContext.Builder.newInstance()
                 .properties(sinkProperties)
                 .build();
     }
 
+    private void putIfPresent(Map<String, String> map, String key, String value) {
+        if (value != null) {
+            map.put(key, value);
+        }
+    }
+
     private void sendCompletedSafely(String callbackAddress, String processId, Map<String, String> dataAddress) {
         if (controlPlaneClient != null) {
-            controlPlaneClient.sendCompleted(callbackAddress, processId, dataAddress);
+            try {
+                controlPlaneClient.sendCompleted(callbackAddress, processId, dataAddress);
+            } catch (RuntimeException exception) {
+                log.warn("Failed to send completed callback for processId={}: {}", processId, exception.getMessage());
+            }
         }
     }
 

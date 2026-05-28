@@ -16,7 +16,6 @@ import it.eng.dataplane.grpc.proto.DataChunk;
 import it.eng.dataplane.grpc.proto.DataStreamGrpc;
 import it.eng.dataplane.grpc.proto.StreamRequest;
 import it.eng.dataplane.grpc.registry.GrpcSessionRegistry;
-import it.eng.tools.s3.properties.S3Properties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,6 +25,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -58,13 +58,13 @@ class DataStreamServiceTest {
                 .datasetId("dataset-1")
                 .tenantId("tenant-1")
                 .finite(true)
+                .sourceProperties(Map.of("bucketName", "bucket-a", "objectKey", "dataset-1"))
                 .state(GrpcSessionState.PREPARED)
                 .build());
         RecordingSourceReader sourceReader = new RecordingSourceReader("hello world");
         DataStreamService service = new DataStreamService(
                 sessionRegistry,
-                new SourceReaderRegistry(List.of(sourceReader)),
-                s3Properties("bucket-a")
+                new SourceReaderRegistry(List.of(sourceReader))
         );
 
         DataStreamGrpc.DataStreamBlockingStub stub = startStub(service);
@@ -82,8 +82,7 @@ class DataStreamServiceTest {
     void stream_missingSession_returnsNotFound() throws Exception {
         DataStreamService service = new DataStreamService(
                 new GrpcSessionRegistry(),
-                new SourceReaderRegistry(List.of(new RecordingSourceReader("unused"))),
-                s3Properties("bucket-a")
+                new SourceReaderRegistry(List.of(new RecordingSourceReader("unused")))
         );
 
         DataStreamGrpc.DataStreamBlockingStub stub = startStub(service);
@@ -109,8 +108,7 @@ class DataStreamServiceTest {
                 .build());
         DataStreamService service = new DataStreamService(
                 sessionRegistry,
-                new SourceReaderRegistry(List.of(new FailingSourceReader("cannot open source"))),
-                s3Properties("bucket-a")
+                new SourceReaderRegistry(List.of(new FailingSourceReader("cannot open source")))
         );
 
         DataStreamGrpc.DataStreamBlockingStub stub = startStub(service);
@@ -123,6 +121,72 @@ class DataStreamServiceTest {
                     assertThat(statusException.getStatus().getCode()).isEqualTo(Status.Code.INTERNAL);
                     assertThat(statusException.getStatus().getDescription()).contains("cannot open source");
                 });
+    }
+
+    @Test
+    @DisplayName("stream uses source properties from session rather than from S3Properties")
+    void stream_usesSessionSourceProperties() throws Exception {
+        GrpcSessionRegistry sessionRegistry = new GrpcSessionRegistry();
+        Map<String, String> sessionSourceProps = Map.of(
+                "bucketName", "session-bucket",
+                "objectKey", "session-object-key",
+                "region", "eu-central-1"
+        );
+        sessionRegistry.register(GrpcStreamSession.Builder.newInstance()
+                .sessionId("sess-src-props")
+                .processId("tp-src-props")
+                .datasetId("dataset-unused")
+                .tenantId("tenant-1")
+                .finite(true)
+                .sourceProperties(sessionSourceProps)
+                .state(GrpcSessionState.PREPARED)
+                .build());
+        RecordingSourceReader sourceReader = new RecordingSourceReader("ok");
+        DataStreamService service = new DataStreamService(
+                sessionRegistry,
+                new SourceReaderRegistry(List.of(sourceReader))
+        );
+
+        DataStreamGrpc.DataStreamBlockingStub stub = startStub(service);
+        Iterator<DataChunk> iterator = stub.stream(StreamRequest.newBuilder().setSessionId("sess-src-props").build());
+        readPayload(iterator);
+
+        assertThat(sourceReader.getLastContext().getProperties())
+                .containsEntry("bucketName", "session-bucket")
+                .containsEntry("objectKey", "session-object-key")
+                .doesNotContainEntry("datasetId", "dataset-unused");
+        assertThat(sourceReader.getLastContext().getProperties().get("bucketName"))
+                .isEqualTo("session-bucket")
+                .isNotEqualTo("other-bucket");
+    }
+
+    @Test
+    @DisplayName("stream resolves the correct source reader from session sourceType")
+    void stream_resolvesSourceReaderFromSessionSourceType() throws Exception {
+        GrpcSessionRegistry sessionRegistry = new GrpcSessionRegistry();
+        sessionRegistry.register(GrpcStreamSession.Builder.newInstance()
+                .sessionId("sess-custom-type")
+                .processId("tp-custom-type")
+                .datasetId("dataset-custom")
+                .tenantId("tenant-1")
+                .finite(true)
+                .sourceType("custom-reader")
+                .sourceProperties(Map.of("objectKey", "dataset-custom"))
+                .state(GrpcSessionState.PREPARED)
+                .build());
+        
+        CustomRecordingSourceReader customReader = new CustomRecordingSourceReader("custom data");
+        DataStreamService service = new DataStreamService(
+                sessionRegistry,
+                new SourceReaderRegistry(List.of(customReader))
+        );
+
+        DataStreamGrpc.DataStreamBlockingStub stub = startStub(service);
+        Iterator<DataChunk> iterator = stub.stream(StreamRequest.newBuilder().setSessionId("sess-custom-type").build());
+        byte[] bytes = readPayload(iterator);
+
+        assertThat(new String(bytes, StandardCharsets.UTF_8)).isEqualTo("custom data");
+        assertThat(customReader.getLastContext().getProperties()).containsEntry("objectKey", "dataset-custom");
     }
 
     private DataStreamGrpc.DataStreamBlockingStub startStub(DataStreamService service) throws Exception {
@@ -150,12 +214,6 @@ class DataStreamServiceTest {
             offset += chunk.length;
         }
         return payload;
-    }
-
-    private S3Properties s3Properties(String bucketName) {
-        S3Properties properties = new S3Properties();
-        properties.setBucketName(bucketName);
-        return properties;
     }
 
     /**
@@ -212,4 +270,40 @@ class DataStreamServiceTest {
             return SourceOpenResult.failure(errorMessage);
         }
     }
+
+    /**
+     * Custom source reader that returns a fixed payload and records the source context.
+     */
+    private static final class CustomRecordingSourceReader implements SourceReader {
+
+        private final byte[] payload;
+        private SourceContext lastContext;
+        private final String sourceType;
+
+        private CustomRecordingSourceReader(String payload) {
+            this.payload = payload.getBytes(StandardCharsets.UTF_8);
+            this.sourceType = "custom-reader";
+        }
+
+        @Override
+        public String getSourceType() {
+            return sourceType;
+        }
+
+        @Override
+        public SourceOpenResult open(SourceContext context) {
+            this.lastContext = context;
+            return SourceOpenResult.success(
+                    new ByteArrayInputStream(payload),
+                    "application/octet-stream",
+                    (long) payload.length,
+                    true
+            );
+        }
+
+        private SourceContext getLastContext() {
+            return lastContext;
+        }
+    }
 }
+

@@ -1,6 +1,7 @@
 package it.eng.dataplane.core.controller;
 
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
+import it.eng.dataplane.api.message.DataFlowPrepareMetadata;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
 import it.eng.dataplane.api.message.DataFlowStatusMessage;
@@ -72,13 +73,14 @@ public class DataFlowController {
     @PostMapping("/prepare")
     public ResponseEntity<DataFlowPrepareResponse> prepareDataFlow(@RequestBody DataFlowPrepareMessage message) {
         log.info("Received prepare request for processId={}", message.getProcessId());
-        String transferType = message.getDataAddress() != null
-                ? message.getDataAddress().getOrDefault("transferType", "")
-                : "";
+        String transferType = DataFlowPrepareMetadata.from(message).getTransferType();
+        if (transferType == null) {
+            transferType = "";
+        }
         var protocol = protocolRegistry.getProtocol(transferType);
         if (protocol == null) {
             // Each DP container hosts exactly one protocol — fall back to it when the
-            // Control Plane does not embed transferType in the prepare message dataAddress.
+            // Control Plane does not embed transferType in the prepare message metadata.
             var supported = protocolRegistry.getSupportedProtocols();
             if (!supported.isEmpty()) {
                 String fallback = supported.iterator().next();
@@ -211,7 +213,7 @@ public class DataFlowController {
             .agreementId(message.getAgreementId())
             .datasetId(message.getDatasetId())
             .callbackAddress(message.getCallbackAddress())
-            .dataAddress(message.getDataAddress())
+            .dataAddress(message.getDataAddress() == null ? null : message.getDataAddress().toPropertyMap())
             .participantId(message.getParticipantId())
             .counterPartyId(message.getCounterPartyId())
             .build();

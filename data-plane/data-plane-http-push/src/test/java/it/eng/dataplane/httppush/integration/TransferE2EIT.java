@@ -1,10 +1,13 @@
 package it.eng.dataplane.httppush.integration;
 
+import it.eng.dataplane.api.DataPlaneConstants;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
+import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -74,7 +77,7 @@ class TransferE2EIT extends BaseHttpPushIT {
                 "processId", processId,
                 "transferType", TRANSFER_TYPE_PUSH,
                 "datasetId", E2E_SOURCE_KEY,
-                "dataAddress", dataAddress
+                "dataAddress", toStartDataAddress(processId, dataAddress)
         );
         mockMvc.perform(withApiKey(post("/dataflows/start"))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -101,7 +104,7 @@ class TransferE2EIT extends BaseHttpPushIT {
                 "processId", processId,
                 "transferType", TRANSFER_TYPE_PUSH,
                 "datasetId", E2E_SOURCE_KEY,
-                "dataAddress", credentials
+                "dataAddress", toStartDataAddress(processId, credentials)
         );
         mockMvc.perform(withApiKey(post("/dataflows/start"))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -113,5 +116,42 @@ class TransferE2EIT extends BaseHttpPushIT {
         String actualContent = downloadContentFromMinIO(processId);
         assertEquals(E2E_SOURCE_CONTENT, actualContent,
                 "Pushed file content must match the source artifact");
+    }
+
+    /**
+     * Converts flat prepare/direct-temp-user credentials into the schema-aligned start {@code DataAddress}.
+     *
+     * @param processId the transfer process ID
+     * @param sinkDataAddress flat sink credential map from prepare or helper
+     * @return JSON-ready schema-aligned data address map
+     */
+    private Map<String, Object> toStartDataAddress(String processId, Map<String, String> sinkDataAddress) {
+        Map<String, String> sourceProperties = new LinkedHashMap<>();
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_BUCKET_NAME, TEST_BUCKET_NAME);
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_OBJECT_KEY, E2E_SOURCE_KEY);
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_REGION, "us-east-1");
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_ACCESS_KEY, minIOContainer.getUserName());
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_SECRET_KEY, minIOContainer.getPassword());
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_ENDPOINT_OVERRIDE, minIOContainer.getS3URL());
+
+        Map<String, String> sinkProperties = new LinkedHashMap<>();
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, sinkDataAddress.get("bucketName"));
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY,
+                sinkDataAddress.getOrDefault("objectKey", processId));
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, sinkDataAddress.get("region"));
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, sinkDataAddress.get("accessKey"));
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, sinkDataAddress.get("secretKey"));
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE,
+                sinkDataAddress.get("endpointOverride"));
+
+        List<Map<String, String>> endpointProperties = java.util.stream.Stream
+                .concat(sourceProperties.entrySet().stream(), sinkProperties.entrySet().stream())
+                .map(entry -> Map.of("name", entry.getKey(), "value", entry.getValue()))
+                .toList();
+
+        return Map.of(
+                "endpointType", "https://w3id.org/idsa/v4.1/HTTP",
+                "endpointProperties", endpointProperties
+        );
     }
 }

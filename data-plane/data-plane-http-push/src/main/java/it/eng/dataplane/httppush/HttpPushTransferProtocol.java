@@ -1,6 +1,8 @@
 package it.eng.dataplane.httppush;
 
 import it.eng.dataplane.api.DataPlaneConstants;
+import it.eng.dataplane.api.io.SourceContext;
+import it.eng.dataplane.api.io.SourceOpenResult;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
 import it.eng.dataplane.api.message.DataFlowPrepareMetadata;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
@@ -8,6 +10,7 @@ import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.api.spi.DataTransferProtocol;
 import it.eng.dataplane.core.client.ControlPlaneClient;
+import it.eng.dataplane.s3.io.S3SourceReader;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
@@ -16,15 +19,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -33,10 +31,9 @@ import java.util.concurrent.Executor;
 
 /**
  * HTTP-PUSH transfer protocol implementation.
- * Acting as the provider side: downloads the artifact from its own presigned URL,
- * then pushes the data to the consumer's S3 bucket using the credentials provided
- * in the DataFlow's dataAddress. After a successful transfer the temporary consumer
- * IAM credentials are cleaned up.
+ * Acting as the provider side: opens the source artifact using CP-provided {@code source.*}
+ * credentials via {@link S3SourceReader}, then pushes the data to the consumer's S3 bucket
+ * using CP-provided {@code sink.*} credentials from the DataFlow's dataAddress.
  */
 @Component
 @Slf4j
@@ -46,18 +43,10 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     private final S3ClientService s3ClientService;
     private final S3Properties s3Properties;
     private final TemporaryBucketUserService temporaryBucketUserService;
+    private final S3SourceReader s3SourceReader;
     @Qualifier("transferExecutor")
     private final Executor transferExecutor;
-    @Qualifier("dataPlaneHttpClient")
-    private final HttpClient httpClient;
     private final ControlPlaneClient controlPlaneClient;
-
-    /**
-     * Request timeout (30 minutes) used for all artifact downloads.
-     * java.net.http.HttpClient requires the timeout to be set before sending,
-     * so a generous fallback is applied to all requests regardless of file size.
-     */
-    private static final int REQUEST_TIMEOUT_MS = 1_800_000; // 30 minutes
 
     /**
      * Returns the unique identifier for this transfer protocol.
@@ -135,12 +124,13 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
 
     /**
      * Initiates an HTTP-PUSH data transfer for the given data flow.
-     * Generates a presigned GET URL for the provider artifact, downloads the artifact,
-     * and pushes it to the consumer's S3 bucket using credentials from the data address.
+     * Opens the provider artifact using CP-provided {@code source.*} credentials via
+     * {@link S3SourceReader} and pushes it to the consumer's S3 bucket using the
+     * CP-provided {@code sink.*} credentials from the data address.
      * Notifies the Control Plane via explicit {@code sendStarted}, {@code sendCompleted},
      * or {@code sendErrored} callbacks so the CP can drive DSP state transitions directly.
      *
-     * @param dataFlow the data flow to initiate; its dataAddress must contain consumer S3 credentials
+     * @param dataFlow the data flow to initiate; its dataAddress must contain both source and consumer S3 credentials
      * @return future with the result of the transfer
      */
     @Override
@@ -221,68 +211,57 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     }
 
     /**
-     * Performs the actual push: reads source bucket from CP-provided {@code source.*} data address
-     * properties to generate a presigned provider URL, streams the artifact, and uploads to the
-     * consumer bucket using CP-provided {@code sink.*} properties. Uses
-     * {@link java.net.http.HttpClient} which negotiates HTTP/2 on TLS connections and falls back
-     * to HTTP/1.1 for plain HTTP.
+     * Performs the actual push: opens the provider source artifact using CP-provided
+     * {@code source.*} credentials via {@link S3SourceReader}, then streams the artifact
+     * to the consumer bucket using CP-provided {@code sink.*} properties.
+     *
+     * <p>Using {@link S3SourceReader} ensures the DP uses only the credentials supplied by the
+     * CP in the {@link DataFlow#getDataAddress()} map — no DP-local MongoDB bucket credentials
+     * are consulted for the source read.</p>
      *
      * @param dataFlow the data flow with provider and consumer metadata
      * @return future with transfer result
      */
     private CompletableFuture<DataFlowResult> pushArtifactToConsumer(DataFlow dataFlow) {
-        // Read provider (source) bucket and object key from CP-provided data address
         Map<String, String> dataAddress = dataFlow.getDataAddress();
-        String sourceBucket = dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_BUCKET_NAME);
-        String sourceObjectKey = dataAddress.getOrDefault(
-                DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_OBJECT_KEY, dataFlow.getDatasetId());
-        String presignedUrl = s3ClientService.generateGetPresignedUrl(sourceBucket, sourceObjectKey, Duration.ofDays(1L));
+
+        // Open provider source using CP-provided source.* credentials directly
+        SourceContext sourceContext = buildSourceContext(dataAddress, dataFlow.getDatasetId());
+        SourceOpenResult sourceResult;
+        try {
+            sourceResult = s3SourceReader.open(sourceContext);
+        } catch (RuntimeException e) {
+            log.error("Failed to open provider source for data flow {} due to synchronous open failure: {}",
+                    dataFlow.getDataFlowId(), e.getMessage());
+            return CompletableFuture.completedFuture(
+                    DataFlowResult.failure("Failed to open provider artifact: " + e.getMessage()));
+        }
+        if (!sourceResult.isSuccess()) {
+            log.error("Failed to open provider source for data flow {}: {}",
+                    dataFlow.getDataFlowId(), sourceResult.getErrorMessage());
+            return CompletableFuture.completedFuture(
+                    DataFlowResult.failure("Failed to open provider artifact: " + sourceResult.getErrorMessage()));
+        }
 
         // Build consumer S3 properties from CP-provided sink.* properties
         Map<String, String> consumerS3Properties = buildConsumerS3Properties(dataAddress, dataFlow.getProcessId());
+        InputStream artifactStream = sourceResult.getStream();
 
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(presignedUrl))
-                        .GET()
-                        .timeout(Duration.ofMillis(REQUEST_TIMEOUT_MS))
-                        .build();
-
-                log.debug("Sending GET request to provider artifact: {}", presignedUrl);
-                HttpResponse<InputStream> response = httpClient.send(
-                        request, HttpResponse.BodyHandlers.ofInputStream());
-
-                int statusCode = response.statusCode();
-                if (statusCode != 200) {
-                    closeQuietly(response.body());
-                    throw new RuntimeException("Failed to get provider artifact. HTTP response code: " + statusCode);
+        return CompletableFuture.supplyAsync(() ->
+            {
+                try {
+                    return s3ClientService.uploadFile(
+                            artifactStream,
+                            consumerS3Properties,
+                            sourceResult.getContentType(),
+                            null
+                    ).whenComplete((etag, ex) -> closeQuietly(artifactStream));
+                } catch (RuntimeException exception) {
+                    closeQuietly(artifactStream);
+                    throw exception;
                 }
-
-                log.info("HTTP response code: {}", statusCode);
-                response.headers().firstValueAsLong("content-length").ifPresent(len ->
-                        log.debug("Content-Length: {} bytes", len));
-
-                String contentType = response.headers().firstValue(HttpHeaders.CONTENT_TYPE).orElse(null);
-                String contentDisposition = response.headers().firstValue(HttpHeaders.CONTENT_DISPOSITION).orElse(null);
-
-                // uploadFile is non-blocking. The response body InputStream is closed after
-                // the upload future completes on all paths.
-                return s3ClientService.uploadFile(
-                        response.body(),
-                        consumerS3Properties,
-                        contentType,
-                        contentDisposition
-                ).whenComplete((etag, ex) -> closeQuietly(response.body()));
-            } catch (IOException e) {
-                log.error("Failed to download provider artifact from presigned URL: {}", presignedUrl, e);
-                throw new RuntimeException(e.getMessage());
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.error("Download interrupted from presigned URL: {}", presignedUrl, e);
-                throw new RuntimeException("Transfer interrupted: " + e.getMessage());
-            }
-        }, transferExecutor)
+            },
+        transferExecutor)
         .thenCompose(uploadFuture -> uploadFuture)
         .handle((etag, throwable) -> {
             if (throwable != null) {
@@ -294,6 +273,33 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
             log.info("Successfully pushed to consumer S3 bucket {} with key {}", consumerBucket, objectKey);
             return DataFlowResult.success();
         });
+    }
+
+    /**
+     * Builds a {@link SourceContext} from CP-provided {@code source.*} entries in the data address.
+     * Falls back to {@code datasetId} when {@code source.objectKey} is absent.
+     *
+     * @param dataAddress the flat data address map from the DataFlow
+     * @param datasetId   dataset ID used as object key fallback
+     * @return source context ready for {@link S3SourceReader#open(SourceContext)}
+     */
+    private SourceContext buildSourceContext(Map<String, String> dataAddress, String datasetId) {
+        Map<String, String> props = new HashMap<>();
+        props.put(S3Utils.BUCKET_NAME, dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_BUCKET_NAME));
+        String objectKey = dataAddress.getOrDefault(
+                DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_OBJECT_KEY, datasetId);
+        props.put(S3Utils.OBJECT_KEY, objectKey);
+        props.put(S3Utils.ACCESS_KEY, dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_ACCESS_KEY));
+        props.put(S3Utils.SECRET_KEY, dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_SECRET_KEY));
+        String region = dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_REGION);
+        if (StringUtils.isNotBlank(region)) {
+            props.put(S3Utils.REGION, region);
+        }
+        String endpointOverride = dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_ENDPOINT_OVERRIDE);
+        if (StringUtils.isNotBlank(endpointOverride)) {
+            props.put(S3Utils.ENDPOINT_OVERRIDE, endpointOverride);
+        }
+        return SourceContext.Builder.newInstance().properties(props).build();
     }
 
     /**

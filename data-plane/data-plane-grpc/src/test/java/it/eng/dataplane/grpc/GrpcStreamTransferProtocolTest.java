@@ -7,6 +7,7 @@ import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
+import it.eng.dataplane.api.DataPlaneConstants;
 import it.eng.dataplane.api.io.SinkContext;
 import it.eng.dataplane.api.io.SinkWriteResult;
 import it.eng.dataplane.api.io.SinkWriter;
@@ -26,7 +27,6 @@ import it.eng.dataplane.grpc.proto.DataChunk;
 import it.eng.dataplane.grpc.proto.DataStreamGrpc;
 import it.eng.dataplane.grpc.proto.StreamRequest;
 import it.eng.dataplane.grpc.registry.GrpcSessionRegistry;
-import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.util.S3Utils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -76,8 +76,6 @@ class GrpcStreamTransferProtocolTest {
     private ControlPlaneClient controlPlaneClient;
     @Mock
     private GrpcChannelFactory channelFactory;
-    @Mock
-    private S3Properties s3Properties;
 
     private ExecutorService transferExecutor;
     private GrpcStreamTransferProtocol protocol;
@@ -92,7 +90,6 @@ class GrpcStreamTransferProtocolTest {
                 sinkWriterRegistry,
                 controlPlaneClient,
                 channelFactory,
-                s3Properties,
                 transferExecutor
         );
     }
@@ -112,7 +109,7 @@ class GrpcStreamTransferProtocolTest {
         DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
                 .processId("tp-finite-1")
                 .datasetId("ds-1")
-                .dataAddress(Map.of("sourceType", "s3"))
+                .metadata(Map.of("source", Map.of("sourceType", "s3")))
                 .build();
 
         DataFlowPrepareResponse response = protocol.prepare(message);
@@ -136,7 +133,7 @@ class GrpcStreamTransferProtocolTest {
         DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
                 .processId("tp-nonfinite-1")
                 .datasetId("ds-2")
-                .dataAddress(Map.of("sourceType", "s3", "finite", "false"))
+                .metadata(Map.of("source", Map.of("sourceType", "s3", "finite", "false")))
                 .build();
 
         DataFlowPrepareResponse response = protocol.prepare(message);
@@ -154,7 +151,7 @@ class GrpcStreamTransferProtocolTest {
         DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
                 .processId("tp-reg-1")
                 .datasetId("ds-3")
-                .dataAddress(Map.of("sourceType", "s3"))
+                .metadata(Map.of("source", Map.of("sourceType", "s3")))
                 .build();
 
         protocol.prepare(message);
@@ -179,7 +176,7 @@ class GrpcStreamTransferProtocolTest {
         DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
                 .processId("tp-nf-2")
                 .datasetId("ds-4")
-                .dataAddress(Map.of("sourceType", "s3", "finite", "false"))
+                .metadata(Map.of("source", Map.of("sourceType", "s3", "finite", "false")))
                 .build();
 
         protocol.prepare(message);
@@ -190,6 +187,40 @@ class GrpcStreamTransferProtocolTest {
     }
 
     @Test
+    @DisplayName("prepare() stores CP-provided source.s3 properties in the registered session")
+    void prepare_storesNestedSourceS3PropertiesInRegisteredSession() {
+        when(grpcProperties.getHost()).thenReturn("localhost");
+        when(grpcProperties.getPort()).thenReturn(9094);
+        when(sourceReaderRegistry.getReader("s3")).thenReturn(Optional.of(s3SourceReader));
+
+        DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
+                .processId("tp-grpc-source-s3")
+                .datasetId("ds-source-s3")
+                .metadata(Map.of("source", Map.of(
+                        "sourceType", "s3",
+                        "s3", Map.of(
+                                "bucketName", "cp-source-bucket",
+                                "objectKey", "cp-source-object",
+                                "region", "eu-west-1",
+                                "accessKey", "cp-access-key",
+                                "secretKey", "cp-secret-key",
+                                "endpointOverride", "http://minio:9000"))))
+                .build();
+
+        protocol.prepare(message);
+
+        ArgumentCaptor<GrpcStreamSession> captor = ArgumentCaptor.forClass(GrpcStreamSession.class);
+        verify(sessionRegistry).register(captor.capture());
+        assertThat(captor.getValue().getSourceProperties())
+                .containsEntry(S3Utils.BUCKET_NAME, "cp-source-bucket")
+                .containsEntry(S3Utils.OBJECT_KEY, "cp-source-object")
+                .containsEntry(S3Utils.REGION, "eu-west-1")
+                .containsEntry(S3Utils.ACCESS_KEY, "cp-access-key")
+                .containsEntry(S3Utils.SECRET_KEY, "cp-secret-key")
+                .containsEntry(S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000");
+    }
+
+    @Test
     @DisplayName("prepare() with unknown sourceType throws IllegalArgumentException")
     void prepare_unknownSourceType_throwsIllegalArgument() {
         when(sourceReaderRegistry.getReader("unknown")).thenReturn(Optional.empty());
@@ -197,7 +228,7 @@ class GrpcStreamTransferProtocolTest {
         DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
                 .processId("tp-bad-1")
                 .datasetId("ds-5")
-                .dataAddress(Map.of("sourceType", "unknown"))
+                .metadata(Map.of("source", Map.of("sourceType", "unknown")))
                 .build();
 
         assertThatThrownBy(() -> protocol.prepare(message))
@@ -252,18 +283,15 @@ class GrpcStreamTransferProtocolTest {
 
         when(channelFactory.create("grpc-host", 9094)).thenReturn(channel);
         when(sinkWriterRegistry.getWriter("s3")).thenReturn(Optional.of(sinkWriter));
-        when(s3Properties.getBucketName()).thenReturn("bucket-a");
-        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
-        when(s3Properties.getRegion()).thenReturn("us-east-1");
-        when(s3Properties.getAccessKey()).thenReturn("access-key");
-        when(s3Properties.getSecretKey()).thenReturn("secret-key");
 
-        Map<String, String> dataAddress = Map.of(
+        Map<String, String> dataAddress = new java.util.HashMap<>(Map.of(
                 "host", "grpc-host",
                 "port", "9094",
                 "sessionId", "sess-1",
                 "mode", "finite"
-        );
+        ));
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "bucket-a");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, "tp-1");
         DataFlow dataFlow = DataFlow.Builder.newInstance()
                 .dataFlowId("df-finite-1")
                 .processId("tp-1")
@@ -303,11 +331,6 @@ class GrpcStreamTransferProtocolTest {
 
         when(channelFactory.create("grpc-host", 9094)).thenReturn(channel);
         when(sinkWriterRegistry.getWriter("s3")).thenReturn(Optional.of(sinkWriter));
-        when(s3Properties.getBucketName()).thenReturn("bucket-a");
-        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
-        when(s3Properties.getRegion()).thenReturn("us-east-1");
-        when(s3Properties.getAccessKey()).thenReturn("access-key");
-        when(s3Properties.getSecretKey()).thenReturn("secret-key");
 
         Map<String, String> dataAddress = Map.of(
                 "host", "grpc-host",
@@ -406,11 +429,6 @@ class GrpcStreamTransferProtocolTest {
 
         when(channelFactory.create("grpc-host", 9094)).thenReturn(channel);
         when(sinkWriterRegistry.getWriter("s3")).thenReturn(Optional.of(sinkWriter));
-        when(s3Properties.getBucketName()).thenReturn("bucket-a");
-        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
-        when(s3Properties.getRegion()).thenReturn("us-east-1");
-        when(s3Properties.getAccessKey()).thenReturn("access-key");
-        when(s3Properties.getSecretKey()).thenReturn("secret-key");
 
         Map<String, String> dataAddress = Map.of(
                 "host", "grpc-host",
@@ -433,6 +451,91 @@ class GrpcStreamTransferProtocolTest {
             assertThat(result.getErrorMessage()).contains("NOT_FOUND");
             verify(controlPlaneClient).sendErrored("http://cp:8080", "tp-6", result.getErrorMessage());
             verify(controlPlaneClient, never()).sendCompleted("http://cp:8080", "tp-6", dataAddress);
+        } finally {
+            channel.shutdownNow();
+            server.shutdownNow();
+        }
+    }
+
+    @Test
+    @DisplayName("prepare() persists CP-provided source S3 properties into the registered session")
+    void prepare_persistsCpProvidedSourceS3PropertiesInSession() {
+        when(grpcProperties.getHost()).thenReturn("localhost");
+        when(grpcProperties.getPort()).thenReturn(9094);
+        when(sourceReaderRegistry.getReader("s3")).thenReturn(Optional.of(s3SourceReader));
+
+        DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
+                .processId("tp-source-s3-1")
+                .datasetId("ds-src-1")
+                .metadata(Map.of("source", Map.of(
+                        "sourceType", "s3",
+                        "s3", Map.of(
+                                "bucketName", "cp-source-bucket",
+                                "region", "eu-west-1",
+                                "accessKey", "cp-access",
+                                "secretKey", "cp-secret",
+                                "endpointOverride", "http://cp-minio:9000")
+                )))
+                .build();
+
+        protocol.prepare(message);
+
+        ArgumentCaptor<GrpcStreamSession> captor = ArgumentCaptor.forClass(GrpcStreamSession.class);
+        verify(sessionRegistry).register(captor.capture());
+        Map<String, String> sourceProps = captor.getValue().getSourceProperties();
+        assertThat(sourceProps).containsEntry(S3Utils.BUCKET_NAME, "cp-source-bucket");
+        assertThat(sourceProps).containsEntry(S3Utils.OBJECT_KEY, "ds-src-1");
+        assertThat(sourceProps).containsEntry(S3Utils.REGION, "eu-west-1");
+        assertThat(sourceProps).containsEntry(S3Utils.ACCESS_KEY, "cp-access");
+        assertThat(sourceProps).containsEntry(S3Utils.SECRET_KEY, "cp-secret");
+        assertThat(sourceProps).containsEntry(S3Utils.ENDPOINT_OVERRIDE, "http://cp-minio:9000");
+    }
+
+    @Test
+    @DisplayName("initiateTransfer() builds sink context from CP-provided sink.* properties in dataAddress")
+    void initiateTransfer_usesCpProvidedSinkPropertiesFromDataAddress() throws Exception {
+        String serverName = InProcessServerBuilder.generateName();
+        Server server = InProcessServerBuilder.forName(serverName)
+                .addService(new FiniteChunkService(List.of("data".getBytes(StandardCharsets.UTF_8))))
+                .build()
+                .start();
+        ManagedChannel channel = InProcessChannelBuilder.forName(serverName).build();
+        TestSinkWriter sinkWriter = new TestSinkWriter();
+
+        when(channelFactory.create("grpc-host", 9094)).thenReturn(channel);
+        when(sinkWriterRegistry.getWriter("s3")).thenReturn(Optional.of(sinkWriter));
+
+        Map<String, String> dataAddress = new java.util.HashMap<>();
+        dataAddress.put("host", "grpc-host");
+        dataAddress.put("port", "9094");
+        dataAddress.put("sessionId", "sess-sink-cp");
+        dataAddress.put("mode", "finite");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "cp-sink-bucket");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, "cp-sink-key");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, "us-west-2");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, "cp-sink-access");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, "cp-sink-secret");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE, "http://cp-minio:9000");
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .dataFlowId("df-sink-cp-1")
+                .processId("tp-sink-cp")
+                .datasetId("ds-sink-cp")
+                .transferType("stream:grpc")
+                .callbackAddress("http://cp:8080")
+                .dataAddress(dataAddress)
+                .build();
+
+        try {
+            DataFlowResult result = protocol.initiateTransfer(dataFlow).get(5, TimeUnit.SECONDS);
+            assertThat(result.isSuccess()).isTrue();
+            Map<String, String> sinkProps = sinkWriter.getLastContext().getProperties();
+            assertThat(sinkProps).containsEntry(S3Utils.BUCKET_NAME, "cp-sink-bucket");
+            assertThat(sinkProps).containsEntry(S3Utils.OBJECT_KEY, "cp-sink-key");
+            assertThat(sinkProps).containsEntry(S3Utils.REGION, "us-west-2");
+            assertThat(sinkProps).containsEntry(S3Utils.ACCESS_KEY, "cp-sink-access");
+            assertThat(sinkProps).containsEntry(S3Utils.SECRET_KEY, "cp-sink-secret");
+            assertThat(sinkProps).containsEntry(S3Utils.ENDPOINT_OVERRIDE, "http://cp-minio:9000");
         } finally {
             channel.shutdownNow();
             server.shutdownNow();
@@ -496,11 +599,6 @@ class GrpcStreamTransferProtocolTest {
 
         when(channelFactory.create("grpc-host", 9094)).thenReturn(channel);
         when(sinkWriterRegistry.getWriter("s3")).thenReturn(Optional.of(sinkWriter));
-        when(s3Properties.getBucketName()).thenReturn("bucket-a");
-        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
-        when(s3Properties.getRegion()).thenReturn("us-east-1");
-        when(s3Properties.getAccessKey()).thenReturn("access-key");
-        when(s3Properties.getSecretKey()).thenReturn("secret-key");
 
         Map<String, String> dataAddress = Map.of(
                 "host", "grpc-host",

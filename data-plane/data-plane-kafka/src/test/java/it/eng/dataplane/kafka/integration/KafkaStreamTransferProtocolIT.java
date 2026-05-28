@@ -14,7 +14,6 @@ import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.dataplane.core.registry.SinkWriterRegistry;
 import it.eng.dataplane.core.registry.SourceReaderRegistry;
 import it.eng.dataplane.kafka.KafkaStreamTransferProtocol;
-import it.eng.tools.s3.properties.S3Properties;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -62,12 +61,6 @@ class KafkaStreamTransferProtocolIT {
         KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
         IntegrationRecordingSinkWriter sinkWriter = new IntegrationRecordingSinkWriter();
         ControlPlaneClient controlPlaneClient = Mockito.mock(ControlPlaneClient.class);
-        S3Properties s3Properties = new S3Properties();
-        s3Properties.setBucketName("bucket-a");
-        s3Properties.setRegion("us-east-1");
-        s3Properties.setEndpoint("http://minio:9000");
-        s3Properties.setAccessKey("access-key");
-        s3Properties.setSecretKey("secret-key");
 
         ReflectionTestUtils.setField(protocol, "bootstrapServers", EMBEDDED_KAFKA.getBrokersAsString());
         ReflectionTestUtils.setField(protocol, "topicPrefix", "stream-topic-");
@@ -78,13 +71,12 @@ class KafkaStreamTransferProtocolIT {
                 new SinkWriterRegistry(java.util.List.of(sinkWriter)));
         ReflectionTestUtils.setField(protocol, "controlPlaneClient", controlPlaneClient);
         ReflectionTestUtils.setField(protocol, "transferExecutor", (Executor) Runnable::run);
-        ReflectionTestUtils.setField(protocol, "s3Properties", s3Properties);
 
         DataFlowPrepareResponse prepareResponse = protocol.prepare(DataFlowPrepareMessage.Builder.newInstance()
                 .processId("tp-finite-kafka-it")
                 .datasetId("dataset-it-1")
                 .callbackAddress("http://control-plane/callback")
-                .dataAddress(Map.of("sourceType", "s3"))
+                .metadata(Map.of("source", Map.of("sourceType", "s3")))
                 .build());
 
         DataFlow dataFlow = DataFlow.Builder.newInstance()

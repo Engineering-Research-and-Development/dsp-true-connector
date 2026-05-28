@@ -48,8 +48,11 @@ public class S3SinkWriter implements SinkWriter {
     /**
      * Writes the provided stream to S3.
      *
+     * <p>Required context properties: {@code bucketName}, {@code objectKey}, {@code accessKey},
+     * {@code secretKey}, {@code region}. The {@code endpointOverride} property is optional.</p>
+     *
      * @param data data stream to upload
-     * @param context sink context with S3 properties
+     * @param context sink context with all S3 connection properties
      * @return sink write result containing the uploaded object identifier
      */
     @Override
@@ -64,6 +67,21 @@ public class S3SinkWriter implements SinkWriter {
         if (StringUtils.isBlank(objectKey)) {
             log.error("S3 sink write failed: objectKey is required (bucketName={})", bucketName);
             return SinkWriteResult.failure("objectKey is required");
+        }
+        String accessKey = properties.get(S3Utils.ACCESS_KEY);
+        if (StringUtils.isBlank(accessKey)) {
+            log.error("S3 sink write failed: accessKey is required (bucketName={}, objectKey={})", bucketName, objectKey);
+            return SinkWriteResult.failure("accessKey is required");
+        }
+        String secretKey = properties.get(S3Utils.SECRET_KEY);
+        if (StringUtils.isBlank(secretKey)) {
+            log.error("S3 sink write failed: secretKey is required (bucketName={}, objectKey={})", bucketName, objectKey);
+            return SinkWriteResult.failure("secretKey is required");
+        }
+        String region = properties.get(S3Utils.REGION);
+        if (StringUtils.isBlank(region)) {
+            log.error("S3 sink write failed: region is required (bucketName={}, objectKey={})", bucketName, objectKey);
+            return SinkWriteResult.failure("region is required");
         }
         try {
             String etag = s3ClientService.uploadFile(

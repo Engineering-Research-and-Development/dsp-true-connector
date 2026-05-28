@@ -2,11 +2,8 @@ package it.eng.dataplane.s3.io;
 
 import it.eng.dataplane.api.io.SourceContext;
 import it.eng.dataplane.api.io.SourceOpenResult;
-import it.eng.tools.exception.S3ServerException;
 import it.eng.tools.s3.configuration.S3ClientProvider;
-import it.eng.tools.s3.model.BucketCredentialsEntity;
-import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.service.BucketCredentialsService;
+import it.eng.tools.s3.util.S3Utils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,10 +32,6 @@ class S3SourceReaderTest {
     @Mock
     private S3ClientProvider s3ClientProvider;
     @Mock
-    private BucketCredentialsService bucketCredentialsService;
-    @Mock
-    private S3Properties s3Properties;
-    @Mock
     private S3Client s3Client;
     @Mock
     private ResponseInputStream<GetObjectResponse> responseInputStream;
@@ -47,6 +40,17 @@ class S3SourceReaderTest {
 
     @InjectMocks
     private S3SourceReader sourceReader;
+
+    private static Map<String, String> fullProperties() {
+        return Map.of(
+                S3Utils.BUCKET_NAME, "bucket-a",
+                S3Utils.OBJECT_KEY, "object-1",
+                S3Utils.ACCESS_KEY, "access-key",
+                S3Utils.SECRET_KEY, "secret-key",
+                S3Utils.REGION, "us-east-1",
+                S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000"
+        );
+    }
 
     @Test
     @DisplayName("getSourceType returns s3")
@@ -58,17 +62,9 @@ class S3SourceReaderTest {
     @DisplayName("open returns a finite source result for a valid S3 context")
     void open_withValidContext_returnsOpenResult() {
         SourceContext context = SourceContext.Builder.newInstance()
-                .properties(Map.of("bucketName", "bucket-a", "objectKey", "object-1"))
-                .build();
-        BucketCredentialsEntity credentials = BucketCredentialsEntity.Builder.newInstance()
-                .bucketName("bucket-a")
-                .accessKey("access-key")
-                .secretKey("secret-key")
+                .properties(fullProperties())
                 .build();
 
-        when(bucketCredentialsService.getBucketCredentials("bucket-a")).thenReturn(credentials);
-        when(s3Properties.getRegion()).thenReturn("us-east-1");
-        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
         when(s3ClientProvider.s3Client(any())).thenReturn(s3Client);
         when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(responseInputStream);
         when(responseInputStream.response()).thenReturn(getObjectResponse);
@@ -88,7 +84,11 @@ class S3SourceReaderTest {
     @DisplayName("open throws when bucketName is missing")
     void open_withMissingBucketName_throwsException() {
         SourceContext context = SourceContext.Builder.newInstance()
-                .properties(Map.of("objectKey", "object-1"))
+                .properties(Map.of(
+                        S3Utils.OBJECT_KEY, "object-1",
+                        S3Utils.ACCESS_KEY, "access-key",
+                        S3Utils.SECRET_KEY, "secret-key",
+                        S3Utils.REGION, "us-east-1"))
                 .build();
 
         assertThatThrownBy(() -> sourceReader.open(context))
@@ -100,7 +100,11 @@ class S3SourceReaderTest {
     @DisplayName("open throws when objectKey is missing")
     void open_withMissingObjectKey_throwsException() {
         SourceContext context = SourceContext.Builder.newInstance()
-                .properties(Map.of("bucketName", "bucket-a"))
+                .properties(Map.of(
+                        S3Utils.BUCKET_NAME, "bucket-a",
+                        S3Utils.ACCESS_KEY, "access-key",
+                        S3Utils.SECRET_KEY, "secret-key",
+                        S3Utils.REGION, "us-east-1"))
                 .build();
 
         assertThatThrownBy(() -> sourceReader.open(context))
@@ -109,52 +113,60 @@ class S3SourceReaderTest {
     }
 
     @Test
-    @DisplayName("open returns failure result when getBucketCredentials throws S3ServerException")
-    void open_whenBucketCredentialsThrowsS3ServerException_returnsFailureResult() {
+    @DisplayName("open throws when accessKey is missing")
+    void open_withMissingAccessKey_throwsException() {
         SourceContext context = SourceContext.Builder.newInstance()
-                .properties(Map.of("bucketName", "bucket-a", "objectKey", "object-1"))
+                .properties(Map.of(
+                        S3Utils.BUCKET_NAME, "bucket-a",
+                        S3Utils.OBJECT_KEY, "object-1",
+                        S3Utils.SECRET_KEY, "secret-key",
+                        S3Utils.REGION, "us-east-1"))
                 .build();
 
-        when(bucketCredentialsService.getBucketCredentials("bucket-a"))
-                .thenThrow(new S3ServerException("Bucket credentials not found for bucket: bucket-a"));
-
-        SourceOpenResult result = sourceReader.open(context);
-
-        assertThat(result.isSuccess()).isFalse();
-        assertThat(result.getErrorMessage()).contains("bucket-a").contains("object-1");
+        assertThatThrownBy(() -> sourceReader.open(context))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("accessKey");
     }
 
     @Test
-    @DisplayName("open returns failure result when getBucketCredentials throws an unexpected RuntimeException")
-    void open_whenBucketCredentialsThrowsRuntimeException_returnsFailureResult() {
+    @DisplayName("open throws when secretKey is missing")
+    void open_withMissingSecretKey_throwsException() {
         SourceContext context = SourceContext.Builder.newInstance()
-                .properties(Map.of("bucketName", "bucket-a", "objectKey", "object-1"))
+                .properties(Map.of(
+                        S3Utils.BUCKET_NAME, "bucket-a",
+                        S3Utils.OBJECT_KEY, "object-1",
+                        S3Utils.ACCESS_KEY, "access-key",
+                        S3Utils.REGION, "us-east-1"))
                 .build();
 
-        when(bucketCredentialsService.getBucketCredentials("bucket-a"))
-                .thenThrow(new RuntimeException("repository connection lost"));
+        assertThatThrownBy(() -> sourceReader.open(context))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("secretKey");
+    }
 
-        SourceOpenResult result = sourceReader.open(context);
+    @Test
+    @DisplayName("open throws when region is missing")
+    void open_withMissingRegion_throwsException() {
+        SourceContext context = SourceContext.Builder.newInstance()
+                .properties(Map.of(
+                        S3Utils.BUCKET_NAME, "bucket-a",
+                        S3Utils.OBJECT_KEY, "object-1",
+                        S3Utils.ACCESS_KEY, "access-key",
+                        S3Utils.SECRET_KEY, "secret-key"))
+                .build();
 
-        assertThat(result.isSuccess()).isFalse();
-        assertThat(result.getErrorMessage()).contains("bucket-a").contains("object-1");
+        assertThatThrownBy(() -> sourceReader.open(context))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("region");
     }
 
     @Test
     @DisplayName("open returns failure result when S3 SDK throws an exception")
     void open_whenSdkThrows_returnsFailureResult() {
         SourceContext context = SourceContext.Builder.newInstance()
-                .properties(Map.of("bucketName", "bucket-a", "objectKey", "object-1"))
-                .build();
-        BucketCredentialsEntity credentials = BucketCredentialsEntity.Builder.newInstance()
-                .bucketName("bucket-a")
-                .accessKey("access-key")
-                .secretKey("secret-key")
+                .properties(fullProperties())
                 .build();
 
-        when(bucketCredentialsService.getBucketCredentials("bucket-a")).thenReturn(credentials);
-        when(s3Properties.getRegion()).thenReturn("us-east-1");
-        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
         when(s3ClientProvider.s3Client(any())).thenReturn(s3Client);
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenThrow(SdkException.create("connection refused", null));

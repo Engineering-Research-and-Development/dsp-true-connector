@@ -12,18 +12,19 @@ import it.eng.dataplane.grpc.proto.DataChunk;
 import it.eng.dataplane.grpc.proto.DataStreamGrpc;
 import it.eng.dataplane.grpc.proto.StreamRequest;
 import it.eng.dataplane.grpc.registry.GrpcSessionRegistry;
-import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.util.S3Utils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
 /**
  * Provider-side gRPC service that streams artifact bytes to a consumer.
+ *
+ * <p>Source access properties (bucket, region, credentials) are read from the
+ * {@link GrpcStreamSession} persisted during the DPS {@code prepare} phase.
+ * The service no longer relies on local {@code s3.bucketName} configuration.</p>
  */
 @Slf4j
 @Component
@@ -34,21 +35,17 @@ public class DataStreamService extends DataStreamGrpc.DataStreamImplBase {
 
     private final GrpcSessionRegistry sessionRegistry;
     private final SourceReaderRegistry sourceReaderRegistry;
-    private final S3Properties s3Properties;
 
     /**
      * Creates the data-stream service.
      *
      * @param sessionRegistry session registry
      * @param sourceReaderRegistry source reader registry
-     * @param s3Properties S3 configuration
      */
     public DataStreamService(GrpcSessionRegistry sessionRegistry,
-                             SourceReaderRegistry sourceReaderRegistry,
-                             S3Properties s3Properties) {
+                             SourceReaderRegistry sourceReaderRegistry) {
         this.sessionRegistry = sessionRegistry;
         this.sourceReaderRegistry = sourceReaderRegistry;
-        this.s3Properties = s3Properties;
     }
 
     /**
@@ -70,15 +67,16 @@ public class DataStreamService extends DataStreamGrpc.DataStreamImplBase {
             return;
         }
 
-        Optional<SourceReader> readerOptional = sourceReaderRegistry.getReader(SOURCE_TYPE_S3);
+        GrpcStreamSession session = sessionOptional.get();
+        String sourceType = session.getSourceType() != null ? session.getSourceType() : SOURCE_TYPE_S3;
+        Optional<SourceReader> readerOptional = sourceReaderRegistry.getReader(sourceType);
         if (readerOptional.isEmpty()) {
             responseObserver.onError(Status.INTERNAL
-                    .withDescription("No SourceReader for type: " + SOURCE_TYPE_S3)
+                    .withDescription("No SourceReader for type: " + sourceType)
                     .asRuntimeException());
             return;
         }
 
-        GrpcStreamSession session = sessionOptional.get();
         SourceContext sourceContext = SourceContext.Builder.newInstance()
                 .properties(buildSourceProperties(session))
                 .build();
@@ -113,9 +111,6 @@ public class DataStreamService extends DataStreamGrpc.DataStreamImplBase {
     }
 
     private Map<String, String> buildSourceProperties(GrpcStreamSession session) {
-        Map<String, String> properties = new HashMap<>();
-        properties.put(S3Utils.BUCKET_NAME, s3Properties.getBucketName());
-        properties.put(S3Utils.OBJECT_KEY, session.getDatasetId());
-        return properties;
+        return session.getSourceProperties();
     }
 }

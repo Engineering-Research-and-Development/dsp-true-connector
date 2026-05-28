@@ -104,6 +104,7 @@ public class DataTransferMockObjectUtil {
             .format(TransportProfile.STREAM_GRPC)
             .build();
 
+    /** Provider transfer process in REQUESTED state with {@code stream:kafka} format. */
     public static final TransferProcess TRANSFER_PROCESS_REQUESTED_CONSUMER = TransferProcess.Builder.newInstance()
             .consumerPid(CONSUMER_PID)
             .providerPid(PROVIDER_PID)
@@ -268,7 +269,7 @@ public class DataTransferMockObjectUtil {
             .dataAddress(DATA_ADDRESS)
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
-            .role(IConstants.ROLE_PROVIDER)
+            .role(IConstants.ROLE_CONSUMER)
             .tenantId(TENANT_ID)
             .state(TransferState.SUSPENDED)
             .build();

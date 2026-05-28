@@ -11,6 +11,7 @@ import it.eng.dataplane.s3.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.s3.util.S3Utils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -395,9 +396,17 @@ class HttpPullTransferProtocolTest {
     }
 
     @Test
-    @DisplayName("prepare provider-side reads bucketName and objectKey from metadata.source.s3 and returns endpoint key")
-    void prepare_providerSide_usesCpProvidedS3SourceMetadata_returnsEndpointPresignedUrl() {
-        when(s3ClientService.generateGetPresignedUrl("cp-provided-bucket", "dataset-123", Duration.ofDays(7L)))
+    @DisplayName("prepare provider-side uses CP-provided source S3 properties to generate endpoint presigned URL")
+    void prepare_providerSide_usesCpProvidedS3SourceProperties_returnsEndpointPresignedUrl() {
+        Map<String, String> sourceProperties = Map.of(
+                S3Utils.BUCKET_NAME, "cp-provided-bucket",
+                S3Utils.OBJECT_KEY, "dataset-123",
+                S3Utils.REGION, "us-east-1",
+                S3Utils.ACCESS_KEY, "provider-access",
+                S3Utils.SECRET_KEY, "provider-secret",
+                S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000"
+        );
+        when(s3ClientService.generateGetPresignedUrl(sourceProperties, Duration.ofDays(7L)))
                 .thenReturn("https://minio.example.com/presigned/artifact");
 
         DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
@@ -407,7 +416,11 @@ class HttpPullTransferProtocolTest {
                         DataPlaneConstants.METADATA_SECTION_SOURCE, Map.of(
                                 DataPlaneConstants.METADATA_SECTION_S3, Map.of(
                                         DataPlaneConstants.METADATA_S3_BUCKET_NAME, "cp-provided-bucket",
-                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "dataset-123"))))
+                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "dataset-123",
+                                        DataPlaneConstants.METADATA_S3_REGION, "us-east-1",
+                                        DataPlaneConstants.METADATA_S3_ACCESS_KEY, "provider-access",
+                                        DataPlaneConstants.METADATA_S3_SECRET_KEY, "provider-secret",
+                                        DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://minio:9000"))))
                 .build();
 
         DataFlowPrepareResponse response = protocol.prepare(message);
@@ -415,7 +428,7 @@ class HttpPullTransferProtocolTest {
         assertThat(response.getDataAddress()).containsKey(DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT);
         assertThat(response.getDataAddress().get(DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT))
                 .isEqualTo("https://minio.example.com/presigned/artifact");
-        verify(s3ClientService).generateGetPresignedUrl("cp-provided-bucket", "dataset-123", Duration.ofDays(7L));
+        verify(s3ClientService).generateGetPresignedUrl(sourceProperties, Duration.ofDays(7L));
         verify(s3Properties, never()).getBucketName();
     }
 

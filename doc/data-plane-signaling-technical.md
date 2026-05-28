@@ -69,7 +69,7 @@ POST /api/v1/dataplanes
 ```
 
 `ControlPlaneRegistrationBean` (in `data-plane-core`) performs this call with exponential-backoff
-retry (5 attempts, base delay 2 s, max 60 s). If `dataplane.control-plane-admin-endpoint` is blank,
+retry (5 attempts, base delay 2 s, max 16 s). If `dataplane.control-plane-admin-endpoint` is blank,
 registration is skipped (useful for development without a CP).
 
 The CP stores the registration in MongoDB collection `data_plane_registrations`.
@@ -132,15 +132,16 @@ uploads it directly to the **consumer's S3 bucket** using temporary credentials.
 Consumer CP                  Provider CP               Provider-side Push DP
      |                            |                             |
      |  [consumer admin calls requestTransfer()]                |
-     |  Consumer CP creates temp MinIO/IAM user                 |
-     |  with PUT-only access to consumer's bucket               |
+     |  Consumer CP resolves tenant bucket via TenantBucketResolver,
+     |  creates temp MinIO/IAM user with PUT-only access to     |
+     |  consumer's bucket (TemporaryBucketUserService)          |
      |                            |                             |
      |---- TransferRequestMsg --->|                             |
      |     dataAddress = {        |                             |
      |       bucketName,          |                             |
      |       objectKey (=transferProcessId),                    |
      |       accessKey, secretKey (temp),                       |
-     |       endpointOverride     |                             |
+     |       endpointOverride (=s3.endpoint, internal)          |
      |     }                      |                             |
      |                            |                             |
      |            [provider admin calls startTransfer()]        |
@@ -150,14 +151,18 @@ Consumer CP                  Provider CP               Provider-side Push DP
      |            [provider admin calls downloadData()]         |
      |                            |-- POST /dataflows/start --->|
      |                            |   DataFlowStartMessage:     |
-     |                            |   - dataAddress = consumer  |
-     |                            |     S3 credentials          |
-     |                            |   - datasetId (artifact key)|
+     |                            |   dataAddress contains      |
+     |                            |   source.* (provider S3     |
+     |                            |   credentials, CP-resolved) |
+     |                            |   sink.* (consumer temp     |
+     |                            |   credentials, forwarded)   |
      |                            |                             |
-     |                            |  Push DP generates presigned|
-     |                            |  GET URL for provider S3    |
-     |                            |  Downloads artifact         |
-     |                            |  Uploads to consumer S3 --->|-- Consumer S3
+     |                            |  Push DP opens provider S3  |
+     |                            |  via S3SourceReader using   |
+     |                            |  source.* from dataAddress  |
+     |                            |  Streams artifact directly  |
+     |                            |  to consumer S3 using       |
+     |                            |  sink.* credentials     --->|-- Consumer S3
      |                            |                             |
      |<-- POST /api/v1/transfers/{id}/dataflow/completed ← Provider CP <-------|
      |                            |                             |
@@ -165,11 +170,22 @@ Both CPs → COMPLETED             |                             |
 ```
 
 Key points:
-- Temporary credentials are created per-transfer by `TemporaryBucketUserService`. They grant
-  only `s3:PutObject` on the exact `objectKey = transferProcessId`.
+- The consumer CP resolves the tenant bucket via `TenantBucketResolver` and creates temporary
+  credentials via `TemporaryBucketUserService` directly — no consumer-side push DP call is made
+  for the built-in flow. The temp user grants only `s3:PutObject` on the exact
+  `objectKey = transferProcessId`.
+- The CP embeds the internal S3 endpoint (`s3.endpoint`) as `endpointOverride` in the consumer
+  dataAddress so the provider DP can reach MinIO from within the Docker network.
+  `s3.externalPresignedEndpoint` is **not** used here — it is only for presigned URLs delivered
+  to external consumers.
 - `POST /dataflows/start` is sent to the **provider's** registered push DP only when the provider
   admin triggers the push (e.g. via `GET /api/v1/transfers/{id}/download`). It is **not** sent
   automatically on `startTransfer()`.
+- `DataFlowStartMessage.dataAddress` carries both `source.*` properties (provider's own S3
+  credentials, resolved by the CP from per-bucket credentials and `TenantBucketResolver`) and
+  `sink.*` properties (the consumer's temporary credentials forwarded from the
+  `TransferRequestMessage`). The push DP uses `S3SourceReader` with these `source.*` entries to
+  open the provider artifact — it does **not** generate a presigned GET URL for the provider side.
 - The pushed artifact is stored in the **consumer's S3 bucket** with `objectKey = transferProcessId`.
 - After COMPLETED, the consumer can retrieve a presigned URL via `viewData`.
 - Temporary credentials are cleaned up by `TemporaryBucketUserService.deleteTemporaryUser()`
@@ -209,8 +225,12 @@ Key points:
 - Built-in HTTP-PULL and HTTP-PUSH still do not call DPS `prepare`; built-in `stream:grpc` does.
 - The provider CP persists both `transportProfile=stream:grpc` and `assignedDataplaneEndpoint`
   so later terminate/suspend calls reach the same prepared DP instance.
-- Provider-side source hints such as `sourceType` and `finite` are passed from the original
-  `TransferRequestMessage.dataAddress` into `DataFlowPrepareMessage.dataAddress`.
+- Provider-side source hints such as `sourceType` and `finite` from the original
+  `TransferRequestMessage.dataAddress` are forwarded in `DataFlowPrepareMessage.metadata`
+  under the `source` section. The CP also adds the resolved S3 access details (bucket name,
+  credentials, region, and internal endpoint) as a nested `source.s3` map within that same
+  metadata section. `DataFlowPrepareMessage` does **not** carry a top-level `dataAddress`
+  field; attempting to set one is rejected at build time.
 - If the consumer peer rejects `TransferStartMessage`, the provider CP rolls the transfer back
   to `REQUESTED` and best-effort terminates the prepared gRPC session to avoid leaks.
 - Finite streams complete on EOF; unexpected EOF on a non-finite stream is surfaced through the
@@ -373,13 +393,13 @@ terminate, audit). See `doc/security.md` for truststore configuration details.
 
 ### java.net.http.HttpClient — artifact downloads
 
-`HttpPullTransferProtocol` and `HttpPushTransferProtocol` use the JDK's built-in
-`java.net.http.HttpClient` for actual artifact downloads (presigned URL → S3 upload). This client:
+`HttpPullTransferProtocol` uses the JDK's built-in `java.net.http.HttpClient` for actual artifact
+downloads from provider-presigned URLs. This client:
 
 - **Negotiates HTTP/2** via ALPN on TLS connections (AWS S3, production MinIO with TLS) and
   **falls back to HTTP/1.1** transparently for plain HTTP (development MinIO without TLS).
 - Is a **Spring `@Bean`** (`dataPlaneHttpClient`) defined in `DataPlaneHttpClientConfiguration`
-  and injected into both protocol classes — thread-safe, shared across all concurrent transfers.
+  and injected into the pull protocol — thread-safe and shared across concurrent transfers.
 - **Mirrors the SSL posture of the connector's `OkHttpClientConfiguration`** (in `tools`):
   `server.ssl.enabled=false` → trust-all `SSLContext` (development only);
   `server.ssl.enabled=true` → `SSLContext` from the `connector` SSL bundle (custom keystore +
@@ -391,6 +411,51 @@ terminate, audit). See `doc/security.md` for truststore configuration details.
   called, because `java.net.http.HttpClient` does not allow changing the timeout mid-flight).
 - No `AtomicReference` wrapper is needed — the response `InputStream` is closed in a
   `whenComplete` handler attached to the upload future.
+
+`HttpPushTransferProtocol` does **not** use `java.net.http.HttpClient` for provider artifact reads.
+It uses `S3SourceReader` (AWS SDK based) with CP-supplied `source.*` credentials from
+`DataFlowStartMessage.dataAddress`.
+
+---
+
+## CP and DP Responsibilities for S3
+
+### Control Plane (authoritative)
+
+| Responsibility | How |
+|---|---|
+| Tenant bucket selection | `TenantBucketResolver.resolveBucketName(tenantId)` — checks `Tenant.bucketName`, falls back to `s3.bucketName` |
+| Bucket and credential provisioning at startup | `InitialDataLoader` calls `S3BucketProvisionService.ensureBucketCredentials()` per tenant |
+| Per-bucket S3 credentials | Stored encrypted in MongoDB `bucket_credentials`; loaded via `BucketCredentialsService` |
+| Temporary push credentials | `TemporaryBucketUserService.createTemporaryUser()` — creates a scoped IAM user with `s3:PutObject` only |
+| Presigned GET URL generation for HTTP-PULL | `S3ClientService.generateGetPresignedUrl()` directly, no DP call |
+| Source credentials in CP↔DP messages | CP embeds `source.*` S3 properties (bucket, key, region, accessKey, secretKey, endpointOverride) in `DataFlowStartMessage.dataAddress` |
+| Prepare metadata for streaming DPs | CP builds `metadata.source.s3` in `DataFlowPrepareMessage.metadata`; never via a top-level `dataAddress` on prepare |
+
+### Data Plane
+
+| Responsibility | How |
+|---|---|
+| Artifact read for push | `S3SourceReader` with `source.*` credentials supplied by the CP in `DataFlowStartMessage.dataAddress` |
+| Artifact write to consumer | `S3ClientService.uploadFile()` with `sink.*` credentials supplied by the CP |
+| Bucket provisioning at startup | **None** — `DataPlaneS3StartupBean.ensureBucketCredentials()` is a deliberate no-op |
+| Consumer-side prepare (push DP, optional direct DPS path) | If the push DP's `prepare()` endpoint is invoked directly, it creates a temporary IAM user using local `s3.accessKey`/`s3.secretKey`/`s3.bucketName`; the current implementation prefers `s3.externalPresignedEndpoint` for returned `endpointOverride`, falling back to `s3.endpoint` when the external value is blank |
+| viewData presigned URL (built-in flow) | Generated directly by the CP through `S3ClientService.generateGetPresignedUrl()`; no DP call is made |
+
+### Internal vs external S3 endpoints
+
+Two distinct endpoint values exist in the S3 configuration:
+
+| Property | Value | Used for |
+|---|---|---|
+| `s3.endpoint` | Container-reachable URL, e.g. `http://minio:9000` | CP↔DP messages (`endpointOverride`); DP-to-S3 direct access within Docker network |
+| `s3.externalPresignedEndpoint` | Host-accessible URL, e.g. `http://172.17.0.1:9000` | Presigned GET URLs embedded in `TransferStartMessage.dataAddress` for external consumers |
+
+The CP always uses `s3.endpoint` when building `endpointOverride` values for DP messages so
+that the receiving DP can reach MinIO over the internal Docker network. The
+`s3.externalPresignedEndpoint` is **only** for presigned URLs handed to external consumers
+(HTTP-PULL, viewData). Both properties are blank when using AWS S3 (the SDK resolves the
+correct endpoint automatically).
 
 ---
 
@@ -446,16 +511,28 @@ The CP publishes to `audit_events` whenever a DP registers or deregisters:
 
 ### S3 properties required by the push DP
 
-The push DP needs S3 access to the provider's bucket to generate presigned GET URLs:
+The push DP's local S3 config is relevant only for its own optional direct-DPS `prepare()` flow.
+In the built-in TRUE Connector flow, the consumer CP creates temporary IAM users directly during
+`requestTransfer()`, and the consumer CP generates `viewData` presigned URLs directly through
+`S3ClientService`. The provider-side push DP's artifact access does **not** depend on local S3
+config — it receives provider S3 credentials from the CP in `DataFlowStartMessage.dataAddress`
+(`source.*` properties) and uses `S3SourceReader` to read the artifact directly.
 
 | Property | Description |
 |---|---|
-| `s3.endpoint` | S3/MinIO endpoint (blank = AWS) |
-| `s3.accessKey` | Admin access key |
+| `s3.endpoint` | S3/MinIO endpoint (blank = AWS). In the push DP's optional direct `prepare()` path, this is the fallback `endpointOverride` when `s3.externalPresignedEndpoint` is blank. |
+| `s3.accessKey` | Admin access key (used for IAM user management) |
 | `s3.secretKey` | Admin secret key |
 | `s3.region` | S3 region |
-| `s3.bucketName` | Default bucket name |
-| `s3.externalPresignedEndpoint` | Public-facing endpoint for presigned URLs (MinIO behind NAT) |
+| `s3.bucketName` | Default bucket name (fallback when no per-tenant bucket is configured) |
+| `s3.externalPresignedEndpoint` | Public-facing endpoint embedded in presigned URLs for **external consumers** (e.g. MinIO behind Docker NAT). Not used for DP-to-DP server-side transfers. |
+
+> **MinIO vs AWS (push DP local config)**: In the push DP's optional direct `prepare()` path,
+> the current implementation prefers `s3.externalPresignedEndpoint` for returned
+> `endpointOverride`, falling back to the internal `s3.endpoint` (for example
+> `http://minio:9000`) when the external value is blank. In the built-in TRUE Connector flow,
+> the consumer CP handles temp-user creation directly and embeds its own `s3.endpoint` into the
+> credentials it forwards to the provider DP. Leave both properties blank when using AWS S3.
 
 ---
 

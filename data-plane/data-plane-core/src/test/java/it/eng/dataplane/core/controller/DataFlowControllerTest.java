@@ -1,10 +1,14 @@
 package it.eng.dataplane.core.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dataplane.api.DataPlaneConstants;
+import it.eng.dataplane.api.message.DataAddress;
+import it.eng.dataplane.api.message.EndpointProperty;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
 import it.eng.dataplane.api.message.DataFlowStatusMessage;
+import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.dataplane.api.spi.DataTransferProtocol;
 import it.eng.dataplane.core.model.DataFlowEntity;
@@ -14,12 +18,14 @@ import it.eng.dataplane.core.service.DataPlaneAuditEventService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -60,10 +66,11 @@ class DataFlowControllerTest {
                 .build();
     }
 
-    private DataFlowPrepareMessage buildPrepareMessage(String processId, Map<String, String> dataAddress) {
+    private DataFlowPrepareMessage buildPrepareMessage(String processId, Map<String, Object> metadata) {
         return DataFlowPrepareMessage.Builder.newInstance()
                 .processId(processId)
-                .dataAddress(dataAddress)
+                .transferType(metadata == null ? null : (String) metadata.get(DataPlaneConstants.METADATA_FIELD_TRANSFER_TYPE))
+                .metadata(metadata)
                 .build();
     }
 
@@ -98,10 +105,39 @@ class DataFlowControllerTest {
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
 
+    @Test
+    @DisplayName("startDataFlow converts schema-aligned dataAddress into internal flat map")
+    void startDataFlow_convertsDataAddressToInternalMap() {
+        DataAddress dataAddress = DataAddress.Builder.newInstance()
+                .endpointType("grpc")
+                .endpoint("grpc://dp-grpc:5050")
+                .endpointProperties(List.of(
+                        EndpointProperty.Builder.newInstance().name("sessionId").value("sess-123").build(),
+                        EndpointProperty.Builder.newInstance().name("mode").value("non-finite").build()))
+                .build();
+        DataFlowStartMessage message = DataFlowStartMessage.Builder.newInstance()
+                .processId("proc-grpc")
+                .transferType("stream:grpc")
+                .callbackAddress("http://cp:8080/callback")
+                .dataAddress(dataAddress)
+                .build();
+
+        ResponseEntity<Void> response = controller.startDataFlow(message);
+
+        ArgumentCaptor<DataFlow> dataFlowCaptor = ArgumentCaptor.forClass(DataFlow.class);
+        verify(dataFlowService).start(dataFlowCaptor.capture());
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(Map.of(
+                "endpoint", "grpc://dp-grpc:5050",
+                "endpointType", "grpc",
+                "sessionId", "sess-123",
+                "mode", "non-finite"), dataFlowCaptor.getValue().getDataAddress());
+    }
+
     // ─── prepareDataFlow ─────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("prepareDataFlow delegates to protocol matched by transferType in dataAddress")
+    @DisplayName("prepareDataFlow delegates to protocol matched by transferType in metadata")
     void prepareDataFlow_delegatesToProtocol() {
         DataFlowPrepareResponse expected = DataFlowPrepareResponse.Builder.newInstance()
                 .processId("proc-1")
@@ -117,7 +153,7 @@ class DataFlowControllerTest {
     }
 
     @Test
-    @DisplayName("prepareDataFlow falls back to single registered protocol when transferType absent")
+    @DisplayName("prepareDataFlow falls back to single registered protocol when transferType absent from metadata")
     void prepareDataFlow_fallsBackToSingleProtocol() {
         DataFlowPrepareResponse expected = DataFlowPrepareResponse.Builder.newInstance()
                 .processId("proc-2")
@@ -162,8 +198,8 @@ class DataFlowControllerTest {
     }
 
     @Test
-    @DisplayName("prepareDataFlow handles null dataAddress without NPE")
-    void prepareDataFlow_handlesNullDataAddress() {
+    @DisplayName("prepareDataFlow handles null metadata without NPE")
+    void prepareDataFlow_handlesNullMetadata() {
         DataFlowPrepareResponse expected = DataFlowPrepareResponse.Builder.newInstance()
                 .processId("proc-4")
                 .build();

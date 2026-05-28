@@ -13,7 +13,6 @@ import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.dataplane.core.registry.SinkWriterRegistry;
 import it.eng.dataplane.core.registry.SourceReaderRegistry;
-import it.eng.tools.s3.properties.S3Properties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
@@ -46,9 +45,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+
+import it.eng.dataplane.api.DataPlaneConstants;
+import it.eng.tools.s3.util.S3Utils;
 
 /**
  * Unit tests for {@link KafkaStreamTransferProtocol}.
@@ -77,7 +80,7 @@ class KafkaStreamTransferProtocolTest {
         DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
                 .processId("tp-finite-kafka")
                 .datasetId("dataset-1")
-                .dataAddress(Map.of("sourceType", "s3"))
+                .metadata(Map.of("source", Map.of("sourceType", "s3")))
                 .build();
 
         DataFlowPrepareResponse response = protocol.prepare(message);
@@ -102,7 +105,7 @@ class KafkaStreamTransferProtocolTest {
         DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
                 .processId("tp-non-finite-kafka")
                 .datasetId("dataset-2")
-                .dataAddress(Map.of("sourceType", "s3", "finite", "false"))
+                .metadata(Map.of("source", Map.of("sourceType", "s3", "finite", "false")))
                 .build();
 
         DataFlowPrepareResponse response = protocol.prepare(message);
@@ -121,7 +124,7 @@ class KafkaStreamTransferProtocolTest {
         DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
                 .processId("urn:uuid:abc45798-1434-4932-8baf-ab7fd66ac4d5")
                 .datasetId("dataset-urn")
-                .dataAddress(Map.of("sourceType", "s3"))
+                .metadata(Map.of("source", Map.of("sourceType", "s3")))
                 .build();
 
         DataFlowPrepareResponse response = protocol.prepare(message);
@@ -138,12 +141,6 @@ class KafkaStreamTransferProtocolTest {
         RecordingSinkWriter sinkWriter = new RecordingSinkWriter();
         ControlPlaneClient controlPlaneClient = Mockito.mock(ControlPlaneClient.class);
         Executor transferExecutor = Runnable::run;
-        S3Properties s3Properties = new S3Properties();
-        s3Properties.setBucketName("bucket-a");
-        s3Properties.setRegion("us-east-1");
-        s3Properties.setEndpoint("http://minio:9000");
-        s3Properties.setAccessKey("access-key");
-        s3Properties.setSecretKey("secret-key");
 
         ReflectionTestUtils.setField(protocol, "bootstrapServers", EMBEDDED_KAFKA.getBrokersAsString());
         ReflectionTestUtils.setField(protocol, "topicPrefix", "stream-topic-");
@@ -154,13 +151,12 @@ class KafkaStreamTransferProtocolTest {
                 new SinkWriterRegistry(java.util.List.of(sinkWriter)));
         ReflectionTestUtils.setField(protocol, "controlPlaneClient", controlPlaneClient);
         ReflectionTestUtils.setField(protocol, "transferExecutor", transferExecutor);
-        ReflectionTestUtils.setField(protocol, "s3Properties", s3Properties);
 
         DataFlowPrepareResponse prepareResponse = protocol.prepare(DataFlowPrepareMessage.Builder.newInstance()
                 .processId("tp-finite-kafka-run")
                 .datasetId("dataset-3")
                 .callbackAddress("http://control-plane/callback")
-                .dataAddress(Map.of("sourceType", "s3"))
+                .metadata(Map.of("source", Map.of("sourceType", "s3")))
                 .build());
 
         DataFlow dataFlow = DataFlow.Builder.newInstance()
@@ -189,12 +185,6 @@ class KafkaStreamTransferProtocolTest {
         BlockingSinkWriter sinkWriter = new BlockingSinkWriter();
         ControlPlaneClient controlPlaneClient = Mockito.mock(ControlPlaneClient.class);
         ExecutorService executorService = Executors.newCachedThreadPool();
-        S3Properties s3Properties = new S3Properties();
-        s3Properties.setBucketName("bucket-a");
-        s3Properties.setRegion("us-east-1");
-        s3Properties.setEndpoint("http://minio:9000");
-        s3Properties.setAccessKey("access-key");
-        s3Properties.setSecretKey("secret-key");
 
         try {
             ReflectionTestUtils.setField(protocol, "bootstrapServers", EMBEDDED_KAFKA.getBrokersAsString());
@@ -206,13 +196,12 @@ class KafkaStreamTransferProtocolTest {
                     new SinkWriterRegistry(java.util.List.of(sinkWriter)));
             ReflectionTestUtils.setField(protocol, "controlPlaneClient", controlPlaneClient);
             ReflectionTestUtils.setField(protocol, "transferExecutor", executorService);
-            ReflectionTestUtils.setField(protocol, "s3Properties", s3Properties);
 
             DataFlowPrepareResponse prepareResponse = protocol.prepare(DataFlowPrepareMessage.Builder.newInstance()
                     .processId("tp-non-finite-kafka-run")
                     .datasetId("dataset-4")
                     .callbackAddress("http://control-plane/callback")
-                    .dataAddress(Map.of("sourceType", "s3", "finite", "false"))
+                    .metadata(Map.of("source", Map.of("sourceType", "s3", "finite", "false")))
                     .build());
 
             DataFlow dataFlow = DataFlow.Builder.newInstance()
@@ -250,12 +239,6 @@ class KafkaStreamTransferProtocolTest {
             thread.setUncaughtExceptionHandler((ignoredThread, throwable) -> uncaughtFailures.add(throwable));
             return thread;
         });
-        S3Properties s3Properties = new S3Properties();
-        s3Properties.setBucketName("bucket-a");
-        s3Properties.setRegion("us-east-1");
-        s3Properties.setEndpoint("http://minio:9000");
-        s3Properties.setAccessKey("access-key");
-        s3Properties.setSecretKey("secret-key");
 
         try {
             ReflectionTestUtils.setField(protocol, "bootstrapServers", EMBEDDED_KAFKA.getBrokersAsString());
@@ -267,13 +250,12 @@ class KafkaStreamTransferProtocolTest {
                     new SinkWriterRegistry(java.util.List.of(sinkWriter)));
             ReflectionTestUtils.setField(protocol, "controlPlaneClient", controlPlaneClient);
             ReflectionTestUtils.setField(protocol, "transferExecutor", executorService);
-            ReflectionTestUtils.setField(protocol, "s3Properties", s3Properties);
 
             DataFlowPrepareResponse prepareResponse = protocol.prepare(DataFlowPrepareMessage.Builder.newInstance()
                     .processId("tp-non-finite-kafka-interrupt")
                     .datasetId("dataset-6")
                     .callbackAddress("http://control-plane/callback")
-                    .dataAddress(Map.of("sourceType", "s3", "finite", "false"))
+                    .metadata(Map.of("source", Map.of("sourceType", "s3", "finite", "false")))
                     .build());
 
             DataFlow dataFlow = DataFlow.Builder.newInstance()
@@ -308,12 +290,6 @@ class KafkaStreamTransferProtocolTest {
         TerminableSinkWriter sinkWriter = new TerminableSinkWriter();
         ControlPlaneClient controlPlaneClient = Mockito.mock(ControlPlaneClient.class);
         ExecutorService executorService = Executors.newCachedThreadPool();
-        S3Properties s3Properties = new S3Properties();
-        s3Properties.setBucketName("bucket-a");
-        s3Properties.setRegion("us-east-1");
-        s3Properties.setEndpoint("http://minio:9000");
-        s3Properties.setAccessKey("access-key");
-        s3Properties.setSecretKey("secret-key");
 
         try {
             ReflectionTestUtils.setField(protocol, "bootstrapServers", EMBEDDED_KAFKA.getBrokersAsString());
@@ -325,13 +301,12 @@ class KafkaStreamTransferProtocolTest {
                     new SinkWriterRegistry(java.util.List.of(sinkWriter)));
             ReflectionTestUtils.setField(protocol, "controlPlaneClient", controlPlaneClient);
             ReflectionTestUtils.setField(protocol, "transferExecutor", executorService);
-            ReflectionTestUtils.setField(protocol, "s3Properties", s3Properties);
 
             DataFlowPrepareResponse prepareResponse = protocol.prepare(DataFlowPrepareMessage.Builder.newInstance()
                     .processId("tp-non-finite-kafka-terminate")
                     .datasetId("dataset-5")
                     .callbackAddress("http://control-plane/callback")
-                    .dataAddress(Map.of("sourceType", "s3", "finite", "false"))
+                    .metadata(Map.of("source", Map.of("sourceType", "s3", "finite", "false")))
                     .build());
 
             DataFlow dataFlow = DataFlow.Builder.newInstance()
@@ -359,6 +334,113 @@ class KafkaStreamTransferProtocolTest {
         } finally {
             executorService.shutdownNow();
         }
+    }
+
+    @Test
+    @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    @DisplayName("prepare uses CP-provided source bucket from metadata when publishing to Kafka")
+    void prepare_usesSourceBucketFromPrepareMetadata() throws Exception {
+        KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
+        ContextCapturingSinkWriter sinkWriter = new ContextCapturingSinkWriter();
+        ContextCapturingSourceReader sourceReader = new ContextCapturingSourceReader("payload");
+        ControlPlaneClient controlPlaneClient = Mockito.mock(ControlPlaneClient.class);
+        Executor transferExecutor = Runnable::run;
+
+        ReflectionTestUtils.setField(protocol, "bootstrapServers", EMBEDDED_KAFKA.getBrokersAsString());
+        ReflectionTestUtils.setField(protocol, "topicPrefix", "stream-topic-");
+        ReflectionTestUtils.setField(protocol, "groupIdPrefix", "stream-group-");
+        ReflectionTestUtils.setField(protocol, "sourceReaderRegistry",
+                new SourceReaderRegistry(java.util.List.of(sourceReader)));
+        ReflectionTestUtils.setField(protocol, "sinkWriterRegistry",
+                new SinkWriterRegistry(java.util.List.of(sinkWriter)));
+        ReflectionTestUtils.setField(protocol, "controlPlaneClient", controlPlaneClient);
+        ReflectionTestUtils.setField(protocol, "transferExecutor", transferExecutor);
+
+        DataFlowPrepareResponse prepareResponse = protocol.prepare(DataFlowPrepareMessage.Builder.newInstance()
+                .processId("tp-source-meta-kafka")
+                .datasetId("dataset-meta")
+                .callbackAddress("http://cp/callback")
+                .metadata(Map.of("source", Map.of(
+                        "sourceType", "s3",
+                        "s3", Map.of(
+                                "bucketName", "cp-source-bucket",
+                                "region", "eu-west-2",
+                                "accessKey", "cp-src-key",
+                                "secretKey", "cp-src-secret")
+                )))
+                .build());
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .dataFlowId("df-source-meta-kafka")
+                .processId("tp-source-meta-kafka")
+                .datasetId("dataset-meta")
+                .callbackAddress("http://cp/callback")
+                .transferType(KafkaStreamTransferProtocol.PROTOCOL_ID)
+                .dataAddress(prepareResponse.getDataAddress())
+                .build();
+
+        protocol.initiateTransfer(dataFlow).get(30, TimeUnit.SECONDS);
+
+        SourceContext capturedSourceContext = sourceReader.getCapturedContext();
+        assertNotNull(capturedSourceContext);
+        assertEquals("cp-source-bucket", capturedSourceContext.getProperties().get(S3Utils.BUCKET_NAME));
+        assertEquals("dataset-meta", capturedSourceContext.getProperties().get(S3Utils.OBJECT_KEY));
+        assertEquals("eu-west-2", capturedSourceContext.getProperties().get(S3Utils.REGION));
+        assertEquals("cp-src-key", capturedSourceContext.getProperties().get(S3Utils.ACCESS_KEY));
+        assertEquals("cp-src-secret", capturedSourceContext.getProperties().get(S3Utils.SECRET_KEY));
+    }
+
+    @Test
+    @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    @DisplayName("initiateTransfer uses CP-provided sink.* properties from dataAddress for sink context")
+    void initiateTransfer_usesCpProvidedSinkPropertiesFromDataAddress() throws Exception {
+        KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
+        ContextCapturingSinkWriter sinkWriter = new ContextCapturingSinkWriter();
+        ControlPlaneClient controlPlaneClient = Mockito.mock(ControlPlaneClient.class);
+        Executor transferExecutor = Runnable::run;
+
+        ReflectionTestUtils.setField(protocol, "bootstrapServers", EMBEDDED_KAFKA.getBrokersAsString());
+        ReflectionTestUtils.setField(protocol, "topicPrefix", "stream-topic-");
+        ReflectionTestUtils.setField(protocol, "groupIdPrefix", "stream-group-");
+        ReflectionTestUtils.setField(protocol, "sourceReaderRegistry",
+                new SourceReaderRegistry(java.util.List.of(new FixedSourceReader("data"))));
+        ReflectionTestUtils.setField(protocol, "sinkWriterRegistry",
+                new SinkWriterRegistry(java.util.List.of(sinkWriter)));
+        ReflectionTestUtils.setField(protocol, "controlPlaneClient", controlPlaneClient);
+        ReflectionTestUtils.setField(protocol, "transferExecutor", transferExecutor);
+
+        DataFlowPrepareResponse prepareResponse = protocol.prepare(DataFlowPrepareMessage.Builder.newInstance()
+                .processId("tp-sink-cp-kafka")
+                .datasetId("dataset-sink-cp")
+                .callbackAddress("http://cp/callback")
+                .metadata(Map.of("source", Map.of("sourceType", "s3")))
+                .build());
+
+        Map<String, String> dataAddress = new java.util.HashMap<>(prepareResponse.getDataAddress());
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "cp-sink-bucket");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, "cp-sink-key");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, "ap-southeast-1");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, "cp-sink-access");
+        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, "cp-sink-secret");
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .dataFlowId("df-sink-cp-kafka")
+                .processId("tp-sink-cp-kafka")
+                .datasetId("dataset-sink-cp")
+                .callbackAddress("http://cp/callback")
+                .transferType(KafkaStreamTransferProtocol.PROTOCOL_ID)
+                .dataAddress(dataAddress)
+                .build();
+
+        protocol.initiateTransfer(dataFlow).get(30, TimeUnit.SECONDS);
+
+        SinkContext capturedSinkContext = sinkWriter.getCapturedContext();
+        assertNotNull(capturedSinkContext);
+        assertEquals("cp-sink-bucket", capturedSinkContext.getProperties().get(S3Utils.BUCKET_NAME));
+        assertEquals("cp-sink-key", capturedSinkContext.getProperties().get(S3Utils.OBJECT_KEY));
+        assertEquals("ap-southeast-1", capturedSinkContext.getProperties().get(S3Utils.REGION));
+        assertEquals("cp-sink-access", capturedSinkContext.getProperties().get(S3Utils.ACCESS_KEY));
+        assertEquals("cp-sink-secret", capturedSinkContext.getProperties().get(S3Utils.SECRET_KEY));
     }
 
     /**
@@ -520,5 +602,110 @@ class KafkaStreamTransferProtocolTest {
         private boolean awaitStarted(long timeout, TimeUnit unit) throws InterruptedException {
             return started.await(timeout, unit);
         }
+    }
+
+    /**
+     * Source reader that records the SourceContext it was opened with.
+     */
+    private static final class ContextCapturingSourceReader implements SourceReader {
+
+        private final byte[] payload;
+        private volatile SourceContext capturedContext;
+
+        private ContextCapturingSourceReader(String payload) {
+            this.payload = payload.getBytes(StandardCharsets.UTF_8);
+        }
+
+        @Override
+        public String getSourceType() {
+            return "s3";
+        }
+
+        @Override
+        public SourceOpenResult open(SourceContext context) {
+            this.capturedContext = context;
+            return SourceOpenResult.success(new ByteArrayInputStream(payload),
+                    "application/octet-stream", (long) payload.length, true);
+        }
+
+        private SourceContext getCapturedContext() {
+            return capturedContext;
+        }
+    }
+
+    /**
+     * Sink writer that records the SinkContext it was invoked with.
+     */
+    private static final class ContextCapturingSinkWriter implements SinkWriter {
+
+        private volatile SinkContext capturedContext;
+
+        @Override
+        public String getSinkType() {
+            return "s3";
+        }
+
+        @Override
+        public SinkWriteResult write(InputStream data, SinkContext context) {
+            this.capturedContext = context;
+            try {
+                data.readAllBytes();
+                return SinkWriteResult.success("ok");
+            } catch (IOException exception) {
+                return SinkWriteResult.failure(exception.getMessage());
+            }
+        }
+
+        private SinkContext getCapturedContext() {
+            return capturedContext;
+        }
+    }
+
+    @Test
+    @Timeout(value = 30, unit = TimeUnit.SECONDS)
+    @DisplayName("thrown sendCompleted callback exception does not fail a successful transfer")
+    void sendCompletedCallbackExceptionDoesNotFailTransfer() throws Exception {
+        KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
+        RecordingSinkWriter sinkWriter = new RecordingSinkWriter();
+        ControlPlaneClient controlPlaneClient = Mockito.mock(ControlPlaneClient.class);
+        Executor transferExecutor = Runnable::run;
+
+        // Mock sendCompleted to throw an exception
+        Mockito.doThrow(new RuntimeException("Callback delivery failed"))
+                .when(controlPlaneClient)
+                .sendCompleted(anyString(), anyString(), anyMap());
+
+        ReflectionTestUtils.setField(protocol, "bootstrapServers", EMBEDDED_KAFKA.getBrokersAsString());
+        ReflectionTestUtils.setField(protocol, "topicPrefix", "stream-topic-");
+        ReflectionTestUtils.setField(protocol, "groupIdPrefix", "stream-group-");
+        ReflectionTestUtils.setField(protocol, "sourceReaderRegistry",
+                new SourceReaderRegistry(java.util.List.of(new FixedSourceReader("payload from callback test"))));
+        ReflectionTestUtils.setField(protocol, "sinkWriterRegistry",
+                new SinkWriterRegistry(java.util.List.of(sinkWriter)));
+        ReflectionTestUtils.setField(protocol, "controlPlaneClient", controlPlaneClient);
+        ReflectionTestUtils.setField(protocol, "transferExecutor", transferExecutor);
+
+        DataFlowPrepareResponse prepareResponse = protocol.prepare(DataFlowPrepareMessage.Builder.newInstance()
+                .processId("tp-callback-exception")
+                .datasetId("dataset-callback-exception")
+                .callbackAddress("http://control-plane/callback")
+                .metadata(Map.of("source", Map.of("sourceType", "s3")))
+                .build());
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .dataFlowId("df-callback-exception")
+                .processId("tp-callback-exception")
+                .datasetId("dataset-callback-exception")
+                .callbackAddress("http://control-plane/callback")
+                .transferType(KafkaStreamTransferProtocol.PROTOCOL_ID)
+                .dataAddress(prepareResponse.getDataAddress())
+                .build();
+
+        CompletableFuture<DataFlowResult> resultFuture = protocol.initiateTransfer(dataFlow);
+        DataFlowResult result = resultFuture.get(30, TimeUnit.SECONDS);
+
+        // Transfer should succeed even though sendCompleted threw an exception
+        assertTrue(result.isSuccess(), "Transfer should succeed despite sendCompleted callback failure");
+        assertEquals("payload from callback test", sinkWriter.getContent());
     }
 }

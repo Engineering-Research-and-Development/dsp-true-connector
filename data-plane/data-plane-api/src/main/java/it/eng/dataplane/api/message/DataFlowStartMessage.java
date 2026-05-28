@@ -15,6 +15,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,8 +44,9 @@ public class DataFlowStartMessage {
     private String agreementId;
     private String datasetId;
     private String callbackAddress;
-    private Map<String, String> dataAddress;
+    private DataAddress dataAddress;
     private Map<String, String> claims;
+    private Map<String, Object> metadata;
 
     /** Builder for {@link DataFlowStartMessage}. */
     @JsonPOJOBuilder(withPrefix = "")
@@ -133,12 +135,20 @@ public class DataFlowStartMessage {
         public Builder callbackAddress(String callbackAddress) { message.callbackAddress = callbackAddress; return this; }
 
         /**
-         * Sets the data address properties.
+         * Sets the schema-aligned data address.
          *
-         * @param dataAddress map of data address properties
+         * @param dataAddress data address object
          * @return this builder
          */
-        public Builder dataAddress(Map<String, String> dataAddress) { message.dataAddress = dataAddress; return this; }
+        public Builder dataAddress(DataAddress dataAddress) { message.dataAddress = dataAddress; return this; }
+
+        /**
+         * Sets schema-aligned metadata.
+         *
+         * @param metadata structured metadata grouped by section
+         * @return this builder
+         */
+        public Builder metadata(Map<String, Object> metadata) { message.metadata = metadata; return this; }
 
         /**
          * Sets the claims.

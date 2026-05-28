@@ -11,7 +11,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 /**
@@ -27,7 +29,7 @@ class TenantBucketResolverTest {
     private TenantBucketResolver resolver;
 
     @Test
-    @DisplayName("resolveBucketName() returns configured bucket name")
+    @DisplayName("resolveBucketName() returns configured fallback bucket name")
     void resolveBucketName_returnsConfiguredBucket() {
         when(s3Properties.getBucketName()).thenReturn("my-bucket");
 
@@ -35,7 +37,7 @@ class TenantBucketResolverTest {
     }
 
     @Test
-    @DisplayName("resolveBucketName(tenantId) ignores tenantId and returns configured bucket name")
+    @DisplayName("resolveBucketName(tenantId) ignores tenantId and returns configured fallback bucket name")
     void resolveBucketName_withTenantId_ignoresTenantAndReturnsBucket() {
         when(s3Properties.getBucketName()).thenReturn("my-bucket");
 
@@ -45,25 +47,33 @@ class TenantBucketResolverTest {
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"   "})
-    @DisplayName("resolveBucketName() throws IllegalStateException when bucket not configured")
+    @DisplayName("resolveBucketName() throws IllegalStateException when fallback bucket not configured")
     void resolveBucketName_throwsWhenBucketBlank(String bucketName) {
         when(s3Properties.getBucketName()).thenReturn(bucketName);
 
-        assertThrows(IllegalStateException.class, resolver::resolveBucketName);
+        IllegalStateException exception = assertThrows(IllegalStateException.class, resolver::resolveBucketName);
+
+        assertTrue(exception.getMessage().contains("fallback"));
+        assertTrue(exception.getMessage().contains("s3.bucketName"));
     }
 
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {"   "})
-    @DisplayName("resolveBucketName(tenantId) throws IllegalStateException when bucket not configured")
+    @DisplayName("resolveBucketName(tenantId) throws IllegalStateException when fallback bucket not configured")
     void resolveBucketName_withTenantId_throwsWhenBucketBlank(String bucketName) {
         when(s3Properties.getBucketName()).thenReturn(bucketName);
 
-        assertThrows(IllegalStateException.class, () -> resolver.resolveBucketName("tenant-1"));
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> resolver.resolveBucketName("tenant-1"));
+
+        assertTrue(exception.getMessage().contains("fallback"));
+        assertTrue(exception.getMessage().contains("s3.bucketName"));
     }
 
     @Test
-    @DisplayName("resolveBucketName() and resolveBucketName(tenantId) return same value")
+    @DisplayName("resolveBucketName() and resolveBucketName(tenantId) return the same fallback value")
     void bothOverloads_returnSameBucketName() {
         when(s3Properties.getBucketName()).thenReturn("shared-bucket");
 

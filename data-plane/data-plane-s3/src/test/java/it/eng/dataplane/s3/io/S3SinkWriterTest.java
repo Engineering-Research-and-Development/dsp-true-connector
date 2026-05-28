@@ -151,4 +151,61 @@ class S3SinkWriterTest {
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getErrorMessage()).contains("upload failed");
     }
+
+    @Test
+    @DisplayName("write returns failure when accessKey is missing")
+    void write_withMissingAccessKey_returnsFailure() {
+        InputStream data = new ByteArrayInputStream("payload".getBytes());
+        SinkContext context = SinkContext.Builder.newInstance()
+                .properties(Map.of(
+                        S3Utils.BUCKET_NAME, "bucket-a",
+                        S3Utils.OBJECT_KEY, "object-1",
+                        S3Utils.SECRET_KEY, "secret-key",
+                        S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000",
+                        S3Utils.REGION, "us-east-1"))
+                .build();
+
+        SinkWriteResult result = sinkWriter.write(data, context);
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("accessKey");
+    }
+
+    @Test
+    @DisplayName("write returns failure when secretKey is missing")
+    void write_withMissingSecretKey_returnsFailure() {
+        InputStream data = new ByteArrayInputStream("payload".getBytes());
+        SinkContext context = SinkContext.Builder.newInstance()
+                .properties(Map.of(
+                        S3Utils.BUCKET_NAME, "bucket-a",
+                        S3Utils.OBJECT_KEY, "object-1",
+                        S3Utils.ACCESS_KEY, "access-key",
+                        S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000",
+                        S3Utils.REGION, "us-east-1"))
+                .build();
+
+        SinkWriteResult result = sinkWriter.write(data, context);
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("secretKey");
+    }
+
+    @Test
+    @DisplayName("write returns failure when region is missing")
+    void write_withMissingRegion_returnsFailure() {
+        InputStream data = new ByteArrayInputStream("payload".getBytes());
+        SinkContext context = SinkContext.Builder.newInstance()
+                .properties(Map.of(
+                        S3Utils.BUCKET_NAME, "bucket-a",
+                        S3Utils.OBJECT_KEY, "object-1",
+                        S3Utils.ACCESS_KEY, "access-key",
+                        S3Utils.SECRET_KEY, "secret-key",
+                        S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000"))
+                .build();
+
+        SinkWriteResult result = sinkWriter.write(data, context);
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("region");
+    }
 }

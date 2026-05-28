@@ -227,17 +227,49 @@ public class S3ClientServiceImpl implements S3ClientService {
             throw new IllegalArgumentException("Object key cannot be null or empty");
         }
         BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
+        String region = s3Properties.getRegion();
+        String endpoint = resolvePresignedEndpoint(bucketName, null, region);
+        return generateGetPresignedUrl(bucketName, objectKey, expiration, bucketCredentials, region, endpoint,
+                s3Properties.getEndpoint());
+    }
 
-        String endpoint = resolvePresignedEndpoint(bucketName);
-        boolean isAws = isAwsEndpoint(endpoint);
+    @Override
+    public String generateGetPresignedUrl(Map<String, String> sourceS3Properties, Duration expiration) {
+        String bucketName = requireProperty(sourceS3Properties, S3Utils.BUCKET_NAME);
+        validateBucketName(bucketName);
+        String objectKey = requireProperty(sourceS3Properties, S3Utils.OBJECT_KEY);
+        String accessKey = requireProperty(sourceS3Properties, S3Utils.ACCESS_KEY);
+        String secretKey = requireProperty(sourceS3Properties, S3Utils.SECRET_KEY);
+        String region = requireProperty(sourceS3Properties, S3Utils.REGION);
+        String endpointOverride = sourceS3Properties.get(S3Utils.ENDPOINT_OVERRIDE);
+
+        BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName(bucketName)
+                .accessKey(accessKey)
+                .secretKey(secretKey)
+                .build();
+
+        String endpoint = resolvePresignedEndpoint(bucketName, endpointOverride, region);
+        return generateGetPresignedUrl(bucketName, objectKey, expiration, bucketCredentials, region, endpoint,
+                endpointOverride);
+    }
+
+    private String generateGetPresignedUrl(String bucketName,
+                                           String objectKey,
+                                           Duration expiration,
+                                           BucketCredentialsEntity bucketCredentials,
+                                           String region,
+                                           String presignedEndpoint,
+                                           String clientEndpointOverride) {
+        boolean isAws = isAwsEndpoint(presignedEndpoint);
 
         log.debug("Generating presigned URL - AWS mode: {}, endpoint: {}, bucket: {}, key: {}",
-                isAws, endpoint, bucketName, objectKey);
+                isAws, presignedEndpoint, bucketName, objectKey);
 
         S3Presigner.Builder presignerBuilder = S3Presigner.builder()
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey())))
-                .region(Region.of(s3Properties.getRegion()));
+                .region(Region.of(region));
 
         if (isAws) {
             presignerBuilder.serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
@@ -245,7 +277,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                     .build());
         } else {
             presignerBuilder
-                    .endpointOverride(URI.create(endpoint))
+                    .endpointOverride(URI.create(presignedEndpoint))
                     .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
                             .pathStyleAccessEnabled(true)
                             .build());
@@ -253,7 +285,7 @@ public class S3ClientServiceImpl implements S3ClientService {
 
         try (S3Presigner presigner = presignerBuilder.build()) {
 
-            S3Client s3Client = getS3Client(bucketName);
+            S3Client s3Client = getS3Client(region, clientEndpointOverride, bucketCredentials);
 
             // First, get the object's metadata
             HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
@@ -291,6 +323,14 @@ public class S3ClientServiceImpl implements S3ClientService {
     }
 
     private String resolvePresignedEndpoint(String bucketName) {
+        return resolvePresignedEndpoint(bucketName, null, s3Properties.getRegion());
+    }
+
+    private String resolvePresignedEndpoint(String bucketName, String endpointOverride, String region) {
+        if (endpointOverride != null && !endpointOverride.isBlank()) {
+            return endpointOverride;
+        }
+
         String externalEndpoint = s3Properties.getExternalPresignedEndpoint();
         if (externalEndpoint != null && !externalEndpoint.isBlank()) {
             return externalEndpoint;
@@ -302,7 +342,6 @@ public class S3ClientServiceImpl implements S3ClientService {
             return s3Endpoint;
         }
 
-        String region = s3Properties.getRegion();
         if (region == null || region.isBlank()) {
             throw new IllegalStateException("S3 region must be configured when externalPresignedEndpoint is blank");
         }
@@ -313,6 +352,19 @@ public class S3ClientServiceImpl implements S3ClientService {
         }
         log.info("Derived externalPresignedEndpoint for AWS: {}", externalEndpoint);
         return externalEndpoint;
+    }
+
+    private S3Client getS3Client(String region, String endpointOverride, BucketCredentialsEntity bucketCredentials) {
+        S3ClientRequest s3ClientRequest = S3ClientRequest.from(region, endpointOverride, bucketCredentials);
+        return s3ClientProvider.s3Client(s3ClientRequest);
+    }
+
+    private String requireProperty(Map<String, String> properties, String key) {
+        String value = properties.get(key);
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(key + " is required");
+        }
+        return value;
     }
 
     @Override

@@ -12,6 +12,7 @@ import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.dataplane.s3.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.util.S3Utils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -114,7 +115,10 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
             String bucketName = StringUtils.isNotBlank(metaBucket) ? metaBucket : s3Properties.getBucketName();
             String objectKey = StringUtils.isNotBlank(metaObjectKey) ? metaObjectKey : message.getDatasetId();
             log.info("Preparing provider presigned URL for objectKey={} in bucket={}", objectKey, bucketName);
-            String presignedUrl = s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
+            Map<String, String> sourceS3Properties = buildSourceS3Properties(s3Section, bucketName, objectKey);
+            String presignedUrl = hasInlineSourceCredentials(sourceS3Properties)
+                    ? s3ClientService.generateGetPresignedUrl(sourceS3Properties, Duration.ofDays(7L))
+                    : s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
             log.debug("Generated provider presigned URL for objectKey='{}'", objectKey);
             dataAddress.put(DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT, presignedUrl);
             dataAddress.put(DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT_TYPE, "https://w3id.org/idsa/v4.1/HTTP");
@@ -302,24 +306,53 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
      */
     private Map<String, String> buildSinkS3Properties(Map<String, String> dataAddress, String processId) {
         Map<String, String> props = new HashMap<>();
-        props.put(it.eng.tools.s3.util.S3Utils.BUCKET_NAME,
+        props.put(S3Utils.BUCKET_NAME,
                 dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME));
         String objectKey = dataAddress.getOrDefault(
                 DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, processId);
-        props.put(it.eng.tools.s3.util.S3Utils.OBJECT_KEY, objectKey);
-        props.put(it.eng.tools.s3.util.S3Utils.ACCESS_KEY,
+        props.put(S3Utils.OBJECT_KEY, objectKey);
+        props.put(S3Utils.ACCESS_KEY,
                 dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY));
-        props.put(it.eng.tools.s3.util.S3Utils.SECRET_KEY,
+        props.put(S3Utils.SECRET_KEY,
                 dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY));
         String region = dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION);
         if (StringUtils.isNotBlank(region)) {
-            props.put(it.eng.tools.s3.util.S3Utils.REGION, region);
+            props.put(S3Utils.REGION, region);
         }
         String endpointOverride = dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE);
         if (StringUtils.isNotBlank(endpointOverride)) {
-            props.put(it.eng.tools.s3.util.S3Utils.ENDPOINT_OVERRIDE, endpointOverride);
+            props.put(S3Utils.ENDPOINT_OVERRIDE, endpointOverride);
         }
         return props;
+    }
+
+    private Map<String, String> buildSourceS3Properties(DataFlowPrepareMetadataSection s3Section,
+                                                         String bucketName,
+                                                         String objectKey) {
+        Map<String, String> sourceS3Properties = new HashMap<>();
+        sourceS3Properties.put(S3Utils.BUCKET_NAME, bucketName);
+        sourceS3Properties.put(S3Utils.OBJECT_KEY, objectKey);
+        putIfNotBlank(sourceS3Properties, S3Utils.REGION,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_REGION));
+        putIfNotBlank(sourceS3Properties, S3Utils.ACCESS_KEY,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        putIfNotBlank(sourceS3Properties, S3Utils.SECRET_KEY,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_SECRET_KEY));
+        putIfNotBlank(sourceS3Properties, S3Utils.ENDPOINT_OVERRIDE,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+        return sourceS3Properties;
+    }
+
+    private boolean hasInlineSourceCredentials(Map<String, String> sourceS3Properties) {
+        return StringUtils.isNotBlank(sourceS3Properties.get(S3Utils.ACCESS_KEY))
+                && StringUtils.isNotBlank(sourceS3Properties.get(S3Utils.SECRET_KEY))
+                && StringUtils.isNotBlank(sourceS3Properties.get(S3Utils.REGION));
+    }
+
+    private void putIfNotBlank(Map<String, String> target, String key, String value) {
+        if (StringUtils.isNotBlank(value)) {
+            target.put(key, value);
+        }
     }
 
     /**

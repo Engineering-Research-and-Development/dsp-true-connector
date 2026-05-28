@@ -66,6 +66,16 @@ public interface S3ClientService {
     String generateGetPresignedUrl(String bucketName, String objectKey, Duration expiration);
 
     /**
+     * Generates a pre-signed URL using explicit S3 properties instead of bucket credentials stored locally.
+     *
+     * @param sourceS3Properties map containing at least {@code bucketName}, {@code objectKey},
+     *                           {@code accessKey}, {@code secretKey}, and {@code region}
+     * @param expiration the expiration time of the URL
+     * @return the pre-signed URL
+     */
+    String generateGetPresignedUrl(Map<String, String> sourceS3Properties, Duration expiration);
+
+    /**
      * Lists all files in the specified bucket.
      *
      * @param bucketName the name of the bucket to list files from

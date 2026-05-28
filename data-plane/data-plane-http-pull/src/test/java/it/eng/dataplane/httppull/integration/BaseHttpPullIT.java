@@ -3,6 +3,7 @@ package it.eng.dataplane.httppull.integration;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import it.eng.dataplane.httppull.TestDataPlaneHttpPullApplication;
+import it.eng.tools.s3.service.S3BucketProvisionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -61,7 +62,8 @@ public class BaseHttpPullIT {
 
     /**
      * Bucket name matching {@code s3.bucketName} in {@code application.properties}.
-     * The bucket is provisioned by {@code DataPlaneS3StartupBean} on {@code ApplicationReadyEvent}.
+     * Integration tests provision bucket credentials explicitly because dataplane startup no longer
+     * owns bucket lifecycle.
      */
     public static final String TEST_BUCKET_NAME = "dsp-true-connector-consumer";
 
@@ -92,6 +94,10 @@ public class BaseHttpPullIT {
     @Autowired
     protected ObjectMapper objectMapper;
 
+    /** Bucket provisioning helper used to seed bucket credentials for integration tests. */
+    @Autowired
+    protected S3BucketProvisionService s3BucketProvisionService;
+
     /**
      * Registers dynamic Spring properties from the running Testcontainers instances.
      *
@@ -110,6 +116,7 @@ public class BaseHttpPullIT {
     @BeforeEach
     void resetWireMock() {
         wireMock.resetAll();
+        s3BucketProvisionService.ensureBucketCredentials(TEST_BUCKET_NAME);
     }
 
     /**
@@ -127,8 +134,8 @@ public class BaseHttpPullIT {
      *
      * <p>Use this from subclass {@code @BeforeAll} methods to pre-populate objects that the
      * application code will reference during the test (e.g. for presigned URL generation).
-     * The bucket is created by {@code DataPlaneS3StartupBean} on startup, so it is guaranteed
-     * to exist by the time {@code @BeforeAll} runs.</p>
+     * The bucket is created idempotently by this helper; credentials are provisioned separately
+     * through {@link S3BucketProvisionService} in {@link #resetWireMock()}.</p>
      *
      * @param key     S3 object key
      * @param content UTF-8 text to store

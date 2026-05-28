@@ -52,7 +52,7 @@ class DataFlowControllerIT extends BaseHttpPullIT {
     void prepareDataFlow_returnsOkWithProcessId() throws Exception {
         Map<String, Object> body = Map.of(
                 "processId", PREPARE_OBJECT_KEY,
-                "dataAddress", Map.of("mode", "VIEW")
+                "metadata", Map.of("sink", Map.of("mode", "VIEW"))
         );
 
         mockMvc.perform(withApiKey(post("/dataflows/prepare"))
@@ -60,6 +60,20 @@ class DataFlowControllerIT extends BaseHttpPullIT {
                 .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.processId").value(PREPARE_OBJECT_KEY));
+    }
+
+    @Test
+    @DisplayName("POST /dataflows/prepare with legacy top-level dataAddress returns 4xx")
+    void prepareDataFlow_withLegacyDataAddress_returnsClientError() throws Exception {
+        Map<String, Object> body = Map.of(
+                "processId", PREPARE_OBJECT_KEY,
+                "dataAddress", Map.of("mode", "VIEW")
+        );
+
+        mockMvc.perform(withApiKey(post("/dataflows/prepare"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().is4xxClientError());
     }
 
     @Test

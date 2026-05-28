@@ -4,7 +4,6 @@ import io.grpc.Server;
 import it.eng.dataplane.core.registry.SourceReaderRegistry;
 import it.eng.dataplane.grpc.registry.GrpcSessionRegistry;
 import it.eng.dataplane.grpc.server.DataStreamService;
-import it.eng.tools.s3.properties.S3Properties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,8 +29,6 @@ class GrpcConfigurationTest {
     @Mock
     private SourceReaderRegistry sourceReaderRegistry;
     @Mock
-    private S3Properties s3Properties;
-    @Mock
     private GrpcProperties grpcProperties;
 
     private DataStreamService dataStreamService;
@@ -39,7 +36,7 @@ class GrpcConfigurationTest {
 
     @BeforeEach
     void setUp() {
-        dataStreamService = new DataStreamService(sessionRegistry, sourceReaderRegistry, s3Properties);
+        dataStreamService = new DataStreamService(sessionRegistry, sourceReaderRegistry);
         configuration = new GrpcConfiguration();
     }
 

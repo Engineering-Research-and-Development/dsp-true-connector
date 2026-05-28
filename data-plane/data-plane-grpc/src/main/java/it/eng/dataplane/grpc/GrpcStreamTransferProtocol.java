@@ -1,6 +1,9 @@
 package it.eng.dataplane.grpc;
 
+import it.eng.dataplane.api.DataPlaneConstants;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
+import it.eng.dataplane.api.message.DataFlowPrepareMetadata;
+import it.eng.dataplane.api.message.DataFlowPrepareMetadataSection;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.io.SinkContext;
 import it.eng.dataplane.api.io.SinkWriteResult;
@@ -20,7 +23,6 @@ import it.eng.dataplane.grpc.proto.DataChunk;
 import it.eng.dataplane.grpc.proto.DataStreamGrpc;
 import it.eng.dataplane.grpc.proto.StreamRequest;
 import it.eng.dataplane.grpc.registry.GrpcSessionRegistry;
-import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.util.S3Utils;
 import io.grpc.ManagedChannel;
 import lombok.extern.slf4j.Slf4j;
@@ -61,8 +63,6 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
     static final String PORT_KEY = "port";
     static final String SESSION_ID_KEY = "sessionId";
     static final String MODE_KEY = "mode";
-    static final String SOURCE_TYPE_KEY = "sourceType";
-    static final String FINITE_KEY = "finite";
     static final String MODE_FINITE = "finite";
     static final String MODE_NON_FINITE = "non-finite";
     static final String DEFAULT_SOURCE_TYPE = "s3";
@@ -73,7 +73,6 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
     private final SinkWriterRegistry sinkWriterRegistry;
     private final ControlPlaneClient controlPlaneClient;
     private final GrpcChannelFactory channelFactory;
-    private final S3Properties s3Properties;
     private final Executor transferExecutor;
 
     private final ConcurrentHashMap<String, ManagedChannel> activeChannels = new ConcurrentHashMap<>();
@@ -88,17 +87,14 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
      * @param sinkWriterRegistry sink writer registry
      * @param controlPlaneClient control-plane callback client
      * @param channelFactory managed-channel factory
-     * @param s3Properties S3 configuration for sink writes
      * @param transferExecutor async executor
      */
-    @SuppressWarnings("checkstyle:ParameterNumber")
     public GrpcStreamTransferProtocol(GrpcSessionRegistry sessionRegistry,
                                       SourceReaderRegistry sourceReaderRegistry,
                                       GrpcProperties grpcProperties,
                                       SinkWriterRegistry sinkWriterRegistry,
                                       ControlPlaneClient controlPlaneClient,
                                       GrpcChannelFactory channelFactory,
-                                      S3Properties s3Properties,
                                       @Qualifier("transferExecutor") Executor transferExecutor) {
         this.sessionRegistry = sessionRegistry;
         this.sourceReaderRegistry = sourceReaderRegistry;
@@ -106,7 +102,6 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
         this.sinkWriterRegistry = sinkWriterRegistry;
         this.controlPlaneClient = controlPlaneClient;
         this.channelFactory = channelFactory;
-        this.s3Properties = s3Properties;
         this.transferExecutor = transferExecutor;
     }
 
@@ -130,6 +125,10 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
      *   <li>Validates that a {@link it.eng.dataplane.api.io.SourceReader} is registered for
      *       that source type.</li>
      *   <li>Determines the session mode from the {@code finite} hint ({@code true} if absent).</li>
+     *   <li>Extracts CP-provided source S3 properties from the {@code source} metadata section
+     *       (bucket, region, credentials, endpoint) and stores them in the session so
+     *       {@link it.eng.dataplane.grpc.server.DataStreamService} can open the source without
+     *       relying on local {@code s3.bucketName} configuration.</li>
      *   <li>Allocates a {@link GrpcStreamSession} with a fresh UUID and stores it in the
      *       {@link GrpcSessionRegistry}.</li>
      *   <li>Returns a {@link DataFlowPrepareResponse} whose {@code dataAddress} carries:
@@ -144,17 +143,17 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
      */
     @Override
     public DataFlowPrepareResponse prepare(DataFlowPrepareMessage message) {
-        Map<String, String> dataAddress = message.getDataAddress() != null
-                ? message.getDataAddress()
-                : Map.of();
-
-        String sourceType = dataAddress.getOrDefault(SOURCE_TYPE_KEY, DEFAULT_SOURCE_TYPE);
+        DataFlowPrepareMetadataSection sourceSection = DataFlowPrepareMetadata.from(message).getSourceSection();
+        String requestedSourceType = sourceSection.getString(DataPlaneConstants.METADATA_FIELD_SOURCE_TYPE);
+        String sourceType = requestedSourceType == null ? DEFAULT_SOURCE_TYPE : requestedSourceType;
         sourceReaderRegistry.getReader(sourceType)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "No SourceReader available for sourceType: " + sourceType));
 
-        boolean finite = !"false".equalsIgnoreCase(dataAddress.get(FINITE_KEY));
+        boolean finite = !"false".equalsIgnoreCase(sourceSection.getString(DataPlaneConstants.METADATA_FIELD_FINITE));
         String mode = finite ? MODE_FINITE : MODE_NON_FINITE;
+
+        Map<String, String> sourceProperties = buildSourcePropertiesFromMetadata(sourceSection, message.getDatasetId());
 
         String sessionId = UUID.randomUUID().toString();
         GrpcStreamSession session = GrpcStreamSession.Builder.newInstance()
@@ -163,6 +162,8 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
                 .datasetId(message.getDatasetId())
                 .finite(finite)
                 .tenantId(message.getParticipantId())
+                .sourceType(sourceType)
+                .sourceProperties(sourceProperties)
                 .state(GrpcSessionState.PREPARED)
                 .build();
         sessionRegistry.register(session);
@@ -275,20 +276,20 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
     /**
      * Terminates a gRPC transfer and releases the associated session.
      *
-     * @param dataFlowId the transfer process ID whose session should be released
+     * @param dataFlowId the data flow ID whose session should be released
      * @return future with a success result
      */
     @Override
     public CompletableFuture<DataFlowResult> terminateTransfer(String dataFlowId) {
         log.info("Terminating stream:grpc transfer dataFlowId={}", dataFlowId);
+        CompletableFuture<DataFlowResult> pending = activeTransfers.remove(dataFlowId);
+        if (pending != null && !pending.isDone()) {
+            pending.complete(DataFlowResult.failure("transfer terminated"));
+        }
         sessionRegistry.removeByProcessId(dataFlowId);
         ManagedChannel channel = activeChannels.remove(dataFlowId);
         if (channel != null) {
             channel.shutdownNow();
-        }
-        CompletableFuture<DataFlowResult> pending = activeTransfers.remove(dataFlowId);
-        if (pending != null && !pending.isDone()) {
-            pending.complete(DataFlowResult.failure("transfer terminated"));
         }
         return CompletableFuture.completedFuture(DataFlowResult.success());
     }
@@ -373,16 +374,48 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
     }
 
     private SinkContext buildSinkContext(DataFlow dataFlow) {
+        Map<String, String> dataAddress = dataFlow.getDataAddress();
         Map<String, String> sinkProperties = new HashMap<>();
-        sinkProperties.put(S3Utils.BUCKET_NAME, s3Properties.getBucketName());
-        sinkProperties.put(S3Utils.OBJECT_KEY, dataFlow.getProcessId());
-        sinkProperties.put(S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint());
-        sinkProperties.put(S3Utils.REGION, s3Properties.getRegion());
-        sinkProperties.put(S3Utils.ACCESS_KEY, s3Properties.getAccessKey());
-        sinkProperties.put(S3Utils.SECRET_KEY, s3Properties.getSecretKey());
+        putIfPresent(sinkProperties, S3Utils.BUCKET_NAME,
+                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME));
+        String objectKey = dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY);
+        sinkProperties.put(S3Utils.OBJECT_KEY, objectKey != null ? objectKey : dataFlow.getProcessId());
+        putIfPresent(sinkProperties, S3Utils.REGION,
+                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION));
+        putIfPresent(sinkProperties, S3Utils.ACCESS_KEY,
+                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY));
+        putIfPresent(sinkProperties, S3Utils.SECRET_KEY,
+                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY));
+        putIfPresent(sinkProperties, S3Utils.ENDPOINT_OVERRIDE,
+                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE));
         return SinkContext.Builder.newInstance()
                 .properties(sinkProperties)
                 .build();
+    }
+
+    private Map<String, String> buildSourcePropertiesFromMetadata(
+            DataFlowPrepareMetadataSection sourceSection, String fallbackObjectKey) {
+        DataFlowPrepareMetadataSection s3Section = sourceSection.getSection(DataPlaneConstants.METADATA_SECTION_S3);
+        Map<String, String> props = new HashMap<>();
+        putIfPresent(props, S3Utils.BUCKET_NAME,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        String objectKey = s3Section.getString(DataPlaneConstants.METADATA_S3_OBJECT_KEY);
+        props.put(S3Utils.OBJECT_KEY, objectKey != null ? objectKey : fallbackObjectKey);
+        putIfPresent(props, S3Utils.REGION,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_REGION));
+        putIfPresent(props, S3Utils.ACCESS_KEY,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        putIfPresent(props, S3Utils.SECRET_KEY,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_SECRET_KEY));
+        putIfPresent(props, S3Utils.ENDPOINT_OVERRIDE,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+        return props;
+    }
+
+    private void putIfPresent(Map<String, String> map, String key, String value) {
+        if (value != null) {
+            map.put(key, value);
+        }
     }
 
     private boolean isBlank(String value) {

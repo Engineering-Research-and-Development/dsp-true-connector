@@ -50,19 +50,33 @@ dataplane.api-key=change-me-in-production
 
 ### Additional configuration for the HTTP-PUSH DP
 
-The push DP needs direct S3 access to generate presigned URLs for the provider's artifact:
+For the **current built-in TRUE Connector flow**, the CP handles the two operator-facing S3 steps
+itself:
+
+1. **Request transfer (`HttpData-PUSH`)** — the consumer CP creates the temporary IAM user directly.
+2. **`viewData` after completion** — the consumer CP generates the presigned GET URL directly.
+
+The provider-side push DP also does **not** use local S3 config to access the provider artifact.
+Instead, the CP resolves the provider's tenant bucket and per-bucket credentials and passes them
+as `source.*` properties in `DataFlowStartMessage.dataAddress`. The push DP reads the artifact
+via `S3SourceReader` with those CP-supplied credentials.
+
+The push DP's local S3 config remains relevant only for its own optional DPS `prepare()` capability
+(including `mode=VIEW`) if that DP endpoint is invoked directly. In that DP-local path, the current
+implementation prefers `s3.externalPresignedEndpoint` for returned `endpointOverride`, falling back
+to `s3.endpoint` when the external value is blank.
 
 ```properties
 s3.endpoint=http://minio:9000
 s3.accessKey=minioadmin
 s3.secretKey=minioadmin
 s3.region=us-east-1
-s3.bucketName=my-provider-bucket
-# Required when MinIO runs behind Docker NAT — use the host-accessible address:
+# Relevant only for the optional consumer-side DPS prepare() path described above.
+s3.bucketName=my-consumer-bucket
+# For MinIO behind Docker NAT: used only in the optional direct DPS prepare(mode=VIEW) path.
+# Leave blank for AWS or when MinIO is directly accessible at s3.endpoint.
 s3.externalPresignedEndpoint=http://172.17.0.1:9000
 ```
-
-Leave `s3.endpoint` blank when using AWS S3 (the SDK resolves the correct endpoint automatically).
 
 ### Additional configuration for the Kafka DP
 
@@ -87,27 +101,45 @@ Kafka DP on host port `9099` (container port `9098` in both cases).
 
 ## How Transfers Work
 
+> **Bucket and credential ownership**: The Control Plane is authoritative for tenant bucket
+> selection and S3 credential provisioning. Bucket creation and per-bucket credential setup
+> happen at CP startup (`InitialDataLoader`) — **DP startup does not provision buckets**. The
+> CP resolves the correct bucket for each tenant and includes the necessary S3 credentials in
+> every CP↔DP message, so DPs do not need independent access to the credential store.
+
 ### HTTP-PULL — consumer fetches the artifact
 
 1. **Consumer** requests a transfer (`HttpData-PULL`).
-2. **Provider admin** calls *Start transfer* — the CP generates a presigned S3 download URL
-   for the artifact **directly via its own S3 client** (no pull DP is registered or needed on
-   the provider side). That URL is sent to the consumer inside `TransferStartMessage`.
+2. **Provider admin** calls *Start transfer* — the CP resolves the tenant bucket via
+   `TenantBucketResolver` and generates a presigned S3 download URL **directly via its own
+   S3 client** (no pull DP is registered or needed on the provider side). That URL is sent
+   to the consumer inside `TransferStartMessage`.
 3. **Consumer admin** calls *Download data* — the consumer-side pull DP downloads the artifact
    from the presigned URL and stores it in the consumer's S3 bucket.
 4. The DP notifies the CP when done; both sides move to `COMPLETED`.
 5. **Consumer admin** can call *View data* to get a fresh presigned URL for the stored artifact.
 
+> **Note (current built-in behavior)**: The provider CP generates the presigned GET URL
+> directly using its own S3 client. A provider-side pull DP is not part of the current
+> built-in HTTP-PULL flow.
+
 ### HTTP-PUSH — provider pushes the artifact to the consumer
 
 1. **Consumer admin** calls *Request transfer* (`HttpData-PUSH`).
-   The CP automatically creates a temporary S3 user with write-only access to the consumer's
-   bucket and includes those credentials in the transfer request to the provider.
-2. **Provider admin** calls *Start transfer* — the CP forwards the consumer's S3 credentials
-   to the provider's transfer process. No data moves yet.
-3. **Provider admin** calls *Push data* (the download endpoint on the provider side) — this
-   triggers the push DP to download the artifact from the provider's S3 bucket and upload it
-   directly to the consumer's S3 bucket using the temporary credentials.
+   The consumer CP resolves the tenant bucket via `TenantBucketResolver`, creates a temporary
+   S3 user with write-only access to that bucket, and includes those credentials in the
+   transfer request to the provider. The CP uses `s3.endpoint` (internal Docker URL) as
+   `endpointOverride` so the provider DP can reach MinIO from within the network.
+2. **Provider admin** calls *Start transfer* — the provider CP adds the provider's own S3
+   credentials (`source.*` properties, resolved from per-bucket credentials) alongside the
+   consumer's temporary credentials (`sink.*` properties) and forwards them to the transfer
+   process. No data moves yet.
+3. **Provider admin** calls *Push data* (the download endpoint on the provider side) — the
+   provider CP routes `POST /dataflows/start` to the push DP with a `DataFlowStartMessage`
+   containing both `source.*` (provider S3, CP-resolved) and `sink.*` (consumer temp
+   credentials). The push DP reads the artifact via `S3SourceReader` using those
+   `source.*` properties and uploads it directly to the consumer's S3 bucket using the
+   `sink.*` credentials.
 4. The DP notifies both CPs when done; both sides move to `COMPLETED`.
 5. **Consumer admin** can call *View data* to get a presigned URL for the received artifact.
 
@@ -120,8 +152,12 @@ Kafka DP on host port `9099` (container port `9098` in both cases).
    Optional source hints such as `sourceType=s3` and `finite=true|false` can be passed
    in the request `dataAddress`.
 2. **Provider admin** calls *Start transfer*.
-   The provider CP calls DPS `POST /dataflows/prepare` on the provider gRPC DP, which allocates
-   a stream session and returns gRPC endpoint metadata (`host`, `port`, `sessionId`, `mode`).
+   The provider CP calls DPS `POST /dataflows/prepare` on the provider gRPC DP. The CP
+   forwards any source hints from the original `dataAddress` along with the resolved S3
+   access details (bucket, credentials, region, internal endpoint) in
+   `DataFlowPrepareMessage.metadata` under the `source` / `source.s3` sections. The DP
+   allocates a stream session and returns gRPC endpoint metadata (`host`, `port`, `sessionId`,
+   `mode`).
 3. The provider CP sends a standard `TransferStartMessage` to the consumer, embedding those
    transport details inside `dataAddress`.
 4. **Consumer admin** calls *Download data*.
@@ -235,6 +271,8 @@ This is separate from the CP's `audit_events` collection because the DP is an in
 
 ---
 
+## Suspend and Resume
+
 A transfer in `STARTED` state can be suspended **before** data movement has started:
 
 ```
@@ -282,8 +320,8 @@ curl -X DELETE http://localhost:8080/api/v1/dataplanes/{id} \
 
 ## Scaling
 
-Each Data Plane is a stateless Spring Boot application. Run multiple instances and register
-each separately:
+HTTP-PULL and HTTP-PUSH dataplanes are stateless Spring Boot applications. Run multiple
+instances and register each separately:
 
 ```bash
 # Register replica 1
@@ -297,7 +335,14 @@ curl -X POST http://localhost:8080/api/v1/dataplanes \
   -d '{"endpoint":"http://dp-pull-2:9090","supportedTransferTypes":["HttpData-PULL"],"apiKey":"..."}'
 ```
 
-Requests are distributed in round-robin order across registered DPs of the same transfer type.
+For these stateless HTTP dataplanes, requests are distributed in round-robin order across
+registered DPs of the same transfer type.
+
+Streaming dataplanes (`stream:grpc`, `stream:kafka`) are different: after `prepare()`, the CP
+sticky-routes the transfer to the same DP instance because that instance holds the in-memory
+prepared session state. Do not assume equal round-robin distribution for an in-progress streaming
+transfer, and avoid terminating the specific DP instance assigned to a prepared or started
+streaming session.
 
 ---
 
@@ -315,6 +360,7 @@ register it the same way using `POST /api/v1/dataplanes`. Your DP must expose:
 
 Your DP should send canonical per-transfer callbacks to the CP after each lifecycle event:
 
+- `POST {callbackBaseAddress}/api/v1/transfers/{processId}/dataflow/prepared` — resources prepared; required for DPs that implement `prepare()`
 - `POST {callbackBaseAddress}/api/v1/transfers/{processId}/dataflow/started` — transfer started
 - `POST {callbackBaseAddress}/api/v1/transfers/{processId}/dataflow/completed` — transfer completed
 - `POST {callbackBaseAddress}/api/v1/transfers/{processId}/dataflow/errored` — transfer failed
@@ -340,5 +386,5 @@ See `doc/data-plane-signaling-technical.md` for the full message schemas.
 | CP rejects DP callbacks with HTTP 401 | API key mismatch | Verify `dataplane.api-key` matches the key stored in `DataPlaneRegistration` on the CP |
 | Transfer stuck in `STARTED` after push | DP completed but CP callback failed | Check DP logs; verify the CP callback URL (`dataplane.control-plane-admin-endpoint`) is reachable from the DP container |
 | `400 Cannot suspend while data transfer is in progress` | `downloadData()` was already called | Suspend is only valid before the actual data movement starts |
-| Push DP generates presigned URL with wrong host | `s3.externalPresignedEndpoint` not set | Set `s3.externalPresignedEndpoint` to the host-accessible MinIO address (e.g. `http://172.17.0.1:9000`) |
+| `viewData` returns a presigned URL with the wrong host | `s3.externalPresignedEndpoint` not set on the consumer CP | Set `s3.externalPresignedEndpoint` to the host-accessible MinIO address (e.g. `http://172.17.0.1:9000`) on the consumer connector; the built-in `viewData` flow is handled by the CP, not the DP |
 | `viewData` returns 400 | Transfer not yet COMPLETED or artifact not downloaded | Ensure the transfer is COMPLETED and `isDownloaded = true` |

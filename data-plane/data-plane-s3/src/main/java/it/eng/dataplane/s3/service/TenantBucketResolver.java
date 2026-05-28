@@ -7,8 +7,9 @@ import org.springframework.stereotype.Service;
 /**
  * Resolves the S3 bucket name for the current Data Plane context.
  *
- * <p>Data Planes do not have multi-tenant bucket isolation; this implementation
- * always returns the globally configured {@code s3.bucketName} property.
+ * <p>This resolver is only a fallback helper for Data Plane code paths that still need
+ * a locally configured bucket. It does not represent tenant-aware bucket authority and
+ * always returns the globally configured {@code s3.bucketName} property when available.
  */
 @Service
 @Slf4j
@@ -26,23 +27,24 @@ public class TenantBucketResolver {
     }
 
     /**
-     * Resolves the S3 bucket name from the global configuration.
+     * Resolves the fallback S3 bucket name from the global configuration.
      *
      * @return the configured bucket name, never {@code null}
-     * @throws IllegalStateException if no bucket is configured
+     * @throws IllegalStateException if no fallback bucket is configured
      */
     public String resolveBucketName() {
         return requireGlobalBucket();
     }
 
     /**
-     * Resolves the S3 bucket name.
-     * The {@code tenantId} parameter is accepted for API compatibility with the
-     * Control Plane version but is not used in Data Plane context.
+     * Resolves the fallback S3 bucket name.
+     *
+     * <p>The {@code tenantId} parameter is accepted for API compatibility but is not used to
+     * select a bucket in the Data Plane.</p>
      *
      * @param tenantId the tenant identifier (ignored in Data Plane context)
      * @return the configured bucket name, never {@code null}
-     * @throws IllegalStateException if no bucket is configured
+     * @throws IllegalStateException if no fallback bucket is configured
      */
     public String resolveBucketName(String tenantId) {
         return requireGlobalBucket();
@@ -52,7 +54,7 @@ public class TenantBucketResolver {
         String bucket = s3Properties.getBucketName();
         if (bucket == null || bucket.isBlank()) {
             throw new IllegalStateException(
-                    "No S3 bucket is configured: s3.bucketName property is blank.");
+                    "No Data Plane fallback bucket is configured: s3.bucketName property is blank.");
         }
         return bucket;
     }
