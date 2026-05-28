@@ -228,9 +228,15 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
         controlPlaneClient.sendStarted(dataFlow.getCallbackAddress(), processId, dataAddress);
 
         // Run the transfer asynchronously, then notify CP of outcome
-        return downloadAndUploadToS3(dataFlow, presignedUrl, 0L, resumable)
+        AtomicBoolean wasPaused = new AtomicBoolean(false);
+        return downloadAndUploadToS3(dataFlow, presignedUrl, 0L, resumable, wasPaused)
                 .thenApply(result -> {
                     activeSuspendFlags.remove(dataFlowId);
+                    if (wasPaused.get()) {
+                        // Upload was stopped cooperatively — checkpoint was saved; no CP completion callback
+                        log.info("HTTP-PULL transfer paused for processId={}", processId);
+                        return DataFlowResult.success();
+                    }
                     if (result.isSuccess()) {
                         controlPlaneClient.sendCompleted(dataFlow.getCallbackAddress(), processId, dataAddress);
                     } else {
@@ -342,9 +348,20 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
                 .callbackAddress(entity.getCallbackAddress())
                 .build();
 
-        return downloadAndUploadToS3(resumeDataFlow, presignedUrl, confirmedBytes, resumable)
+        AtomicBoolean wasPaused = new AtomicBoolean(false);
+        return downloadAndUploadToS3(resumeDataFlow, presignedUrl, confirmedBytes, resumable, wasPaused)
                 .thenApply(result -> {
                     activeSuspendFlags.remove(dataFlowId);
+                    if (wasPaused.get()) {
+                        // Paused again mid-resume — checkpoint was saved; no CP completion callback
+                        log.info("HTTP-PULL resumed transfer paused again for processId={}", processId);
+                        return DataFlowResult.success();
+                    }
+                    if (result.isSuccess()) {
+                        controlPlaneClient.sendCompleted(resumeDataFlow.getCallbackAddress(), processId, dataAddress);
+                    } else {
+                        controlPlaneClient.sendErrored(resumeDataFlow.getCallbackAddress(), processId, result.getErrorMessage());
+                    }
                     return result;
                 });
     }
@@ -379,12 +396,15 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
      * @param presignedUrl the presigned GET URL to download from
      * @param rangeStart   byte offset at which to start the download; 0 for a fresh download
      * @param resumable    the resumable upload context (suspend flag, checkpoint callback, prior parts)
+     * @param wasPaused    set to {@code true} by this method when the upload is stopped cooperatively
+     *                     by an {@link UploadPausedException}; callers use this to skip CP callbacks
      * @return future with transfer result
      */
     private CompletableFuture<DataFlowResult> downloadAndUploadToS3(DataFlow dataFlow,
                                                                      String presignedUrl,
                                                                      long rangeStart,
-                                                                     ResumableUploadRequest resumable) {
+                                                                     ResumableUploadRequest resumable,
+                                                                     AtomicBoolean wasPaused) {
         String bucketName = tenantBucketResolver.resolveBucketName(dataFlow.getTenantId());
         String objectKey = dataFlow.getProcessId();
 
@@ -457,8 +477,9 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
             Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
             if (cause instanceof UploadPausedException) {
                 // Upload was stopped cooperatively due to suspend request; checkpoint was saved
-                // by the callback. Return success so handleCompletion is not called.
+                // by the callback. Signal the caller via wasPaused so it skips CP callbacks.
                 log.info("HTTP-PULL transfer paused for processId={}", dataFlow.getProcessId());
+                wasPaused.set(true);
                 return DataFlowResult.success();
             }
             log.error("HTTP-PULL transfer failed for data flow {}", dataFlow.getDataFlowId(), throwable);

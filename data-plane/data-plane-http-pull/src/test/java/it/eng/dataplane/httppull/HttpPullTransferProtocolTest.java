@@ -254,6 +254,7 @@ class HttpPullTransferProtocolTest {
                 .processId("tp-resume-range")
                 .transferType("HttpData-PULL")
                 .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
                 .dataAddress(Map.of("endpoint", presignedUrl))
                 .build();
 
@@ -279,6 +280,8 @@ class HttpPullTransferProtocolTest {
 
         assertThat(result.isSuccess()).isTrue();
         assertThat(receivedRangeHeader.get()).isEqualTo("bytes=1024-");
+        verify(controlPlaneClient).sendCompleted(eq("http://cp:8080"), eq("tp-resume-range"), anyMap());
+        verify(controlPlaneClient, never()).sendErrored(any(), any(), any());
     }
 
     @Test
@@ -302,6 +305,7 @@ class HttpPullTransferProtocolTest {
                 .processId("tp-resume-zero")
                 .transferType("HttpData-PULL")
                 .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
                 .dataAddress(Map.of("endpoint", presignedUrl))
                 .build();
 
@@ -326,6 +330,8 @@ class HttpPullTransferProtocolTest {
 
         assertThat(result.isSuccess()).isTrue();
         assertThat(receivedRangeHeader.get()).isNull(); // no Range header sent
+        verify(controlPlaneClient).sendCompleted(eq("http://cp:8080"), eq("tp-resume-zero"), anyMap());
+        verify(controlPlaneClient, never()).sendErrored(any(), any(), any());
     }
 
     @Test
@@ -344,6 +350,7 @@ class HttpPullTransferProtocolTest {
                 .processId("tp-resume-403")
                 .transferType("HttpData-PULL")
                 .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
                 .dataAddress(Map.of("endpoint", presignedUrl))
                 .build();
 
@@ -361,6 +368,8 @@ class HttpPullTransferProtocolTest {
 
         assertThat(result.isSuccess()).isFalse();
         assertThat(result.getErrorMessage()).contains("403");
+        verify(controlPlaneClient).sendErrored(eq("http://cp:8080"), eq("tp-resume-403"), anyString());
+        verify(controlPlaneClient, never()).sendCompleted(any(), any(), any());
     }
 
     @Test
@@ -449,6 +458,9 @@ class HttpPullTransferProtocolTest {
 
         // UploadPausedException is translated to success (suspend is not an error)
         assertThat(result.isSuccess()).isTrue();
+        // A paused transfer must NOT trigger CP completion or error callbacks
+        verify(controlPlaneClient, never()).sendCompleted(any(), any(), any());
+        verify(controlPlaneClient, never()).sendErrored(any(), any(), any());
     }
 
     @Test
