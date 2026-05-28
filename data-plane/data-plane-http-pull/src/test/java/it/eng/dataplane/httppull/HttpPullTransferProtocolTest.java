@@ -373,6 +373,55 @@ class HttpPullTransferProtocolTest {
     }
 
     @Test
+    @DisplayName("resumeTransfer paused again skips Control Plane callbacks")
+    void resumeTransferPausedAgainSkipsCallbacks() throws Exception {
+        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        testHttpServer.createContext("/artifact", exchange -> {
+            byte[] body = "content".getBytes();
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+        });
+        testHttpServer.start();
+
+        String presignedUrl = "http://localhost:" + testHttpServer.getAddress().getPort() + "/artifact";
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-resume-paused")
+                .processId("tp-resume-paused")
+                .transferType("HttpData-PULL")
+                .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
+                .dataAddress(Map.of("endpoint", presignedUrl))
+                .build();
+
+        DataFlowCheckpoint checkpoint = DataFlowCheckpoint.Builder.newInstance()
+                .processId("tp-resume-paused")
+                .dataFlowId("df-resume-paused")
+                .transferType("HttpData-PULL")
+                .confirmedBytes(0L)
+                .build();
+
+        when(dataFlowRepository.findById("df-resume-paused")).thenReturn(Optional.of(entity));
+        when(checkpointService.findByProcessId("tp-resume-paused")).thenReturn(Optional.of(checkpoint));
+        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("test-bucket");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getAccessKey()).thenReturn("access-key");
+        when(s3Properties.getSecretKey()).thenReturn("secret-key");
+        when(s3ClientService.uploadFile(any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.failedFuture(
+                        new java.util.concurrent.CompletionException(
+                                new UploadPausedException("paused-again", "upload-id", List.of(), List.of(), 0L))));
+
+        DataFlowResult result = protocol.resumeTransfer("df-resume-paused").get();
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(controlPlaneClient, never()).sendCompleted(any(), any(), any());
+        verify(controlPlaneClient, never()).sendErrored(any(), any(), any());
+    }
+
+    @Test
     @DisplayName("initiateTransfer persists checkpoint and invokes callback on each uploaded part")
     void initiateTransfer_persistsCheckpointOnPartCompleted() throws Exception {
         testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
