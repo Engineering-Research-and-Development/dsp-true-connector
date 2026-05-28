@@ -675,6 +675,45 @@ class DataTransferAPIServiceTest {
                 "rollback must restore original dataFlowState=SUSPENDED");
         assertEquals(IConstants.ROLE_PROVIDER, rollbackSave.getSuspendedBy(),
                 "rollback must preserve suspendedBy from the original SUSPENDED record");
+
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, "Transfer process start failed");
+    }
+
+    @Test
+    @DisplayName("startTransfer reports manual intervention when dataplane resume rollback save also fails")
+    public void startTransfer_resumeRollbackSaveFailure_reportsManualIntervention() {
+        TransferProcess suspended = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.SUSPENDED)
+                .dataFlowState("SUSPENDED")
+                .suspendedBy(IConstants.ROLE_PROVIDER)
+                .build();
+
+        when(transferProcessRepository.findById(suspended.getId()))
+                .thenReturn(Optional.of(suspended));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
+                .thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(inv -> inv.getArgument(0))
+                .thenThrow(new RuntimeException("mongo down"));
+        doThrow(new RuntimeException("dataplane unavailable"))
+                .when(dataPlaneClient).resume(suspended.getId(), suspended.getFormat());
+
+        DataTransferAPIException exception = assertThrows(DataTransferAPIException.class,
+                () -> apiService.startTransfer(suspended.getId()));
+
+        assertTrue(StringUtils.contains(exception.getMessage(), "manual intervention required"));
+        assertFalse(StringUtils.contains(exception.getMessage(), "rolled back to SUSPENDED"));
+        verify(transferProcessRepository, times(2)).save(any(TransferProcess.class));
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, "Transfer process start failed");
     }
 
     @Test

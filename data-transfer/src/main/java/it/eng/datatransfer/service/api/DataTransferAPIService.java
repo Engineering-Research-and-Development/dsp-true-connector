@@ -448,17 +448,31 @@ public class DataTransferAPIService {
                             .lastModifiedBy(transferProcessStarted.getLastModifiedBy())
                             .version(transferProcessStarted.getVersion())
                             .build();
+                    boolean rollbackPersisted = false;
                     try {
                         transferProcessRepository.save(rollback);
+                        rollbackPersisted = true;
                         log.info("Transfer process {} rolled back to SUSPENDED after dataplane resume failure",
                                 transferProcess.getId());
                     } catch (RuntimeException saveEx) {
                         log.error("Failed to persist SUSPENDED rollback for transfer {} — manual intervention required: "
                                 + "TP may be stuck as STARTED with a paused dataplane", transferProcess.getId(), saveEx);
                     }
+                    String resumeFailureMessage = ex.getMessage() != null ? ex.getMessage() : ex.toString();
+                    String operatorMessage = rollbackPersisted
+                            ? "Dataplane resume failed after peer accepted start — transfer rolled back to "
+                            + "SUSPENDED: " + resumeFailureMessage
+                            : "Dataplane resume failed after peer accepted start — rollback to SUSPENDED "
+                            + "also failed; manual intervention required: " + resumeFailureMessage;
+                    publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
+                            "Transfer process start failed",
+                            auditMap("transferProcess", transferProcess,
+                                    "role", IConstants.ROLE_API,
+                                    "consumerPid", transferProcess.getConsumerPid(),
+                                    "providerPid", transferProcess.getProviderPid(),
+                                    "errorMessage", operatorMessage));
                     throw new DataTransferAPIException(
-                            "Dataplane resume failed after peer accepted start — transfer rolled back to SUSPENDED: "
-                                    + ex.getMessage());
+                            operatorMessage);
                 }
             }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
