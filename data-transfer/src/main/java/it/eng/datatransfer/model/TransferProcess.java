@@ -128,6 +128,13 @@ public class TransferProcess extends AbstractTransferMessage {
     @JsonIgnore
     private String tenantId;
 
+    /**
+     * Role that initiated the suspension (consumer or provider).
+     * Stored to enforce that only the initiator can resume.
+     */
+    @JsonIgnore
+    private String suspendedBy;
+
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
@@ -223,6 +230,11 @@ public class TransferProcess extends AbstractTransferMessage {
 
         public Builder tenantId(String tenantId) {
             message.tenantId = tenantId;
+            return this;
+        }
+
+        public Builder suspendedBy(String suspendedBy) {
+            message.suspendedBy = suspendedBy;
             return this;
         }
 
@@ -337,6 +349,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .tenantId(this.tenantId)
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .suspendedBy(this.suspendedBy)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
@@ -372,6 +385,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .tenantId(this.tenantId)
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .suspendedBy(this.suspendedBy)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
@@ -407,6 +421,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .tenantId(this.tenantId)
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .suspendedBy(this.suspendedBy)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
@@ -442,6 +457,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .tenantId(this.tenantId)
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .suspendedBy(this.suspendedBy)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)
@@ -476,6 +492,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .tenantId(this.tenantId)
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .suspendedBy(this.suspendedBy)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)
@@ -510,6 +527,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .tenantId(this.tenantId)
                 .dataFlowState(dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .suspendedBy(this.suspendedBy)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)
@@ -544,6 +562,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .tenantId(this.tenantId)
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(dataFlowErrorMessage)
+                .suspendedBy(this.suspendedBy)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)
@@ -578,6 +597,42 @@ public class TransferProcess extends AbstractTransferMessage {
                 .tenantId(this.tenantId)
                 .dataFlowState(this.dataFlowState)
                 .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .suspendedBy(this.suspendedBy)
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified suspend initiator.
+     * All other fields remain unchanged.
+     *
+     * @param suspendedBy the role that initiated the suspension (consumer or provider)
+     * @return new TransferProcess instance with updated suspendedBy
+     */
+    public TransferProcess withSuspendedBy(String suspendedBy) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .suspendedBy(suspendedBy)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)

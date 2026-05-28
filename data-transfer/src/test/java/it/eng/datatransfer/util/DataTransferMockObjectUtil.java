@@ -210,6 +210,7 @@ public class DataTransferMockObjectUtil {
             .role(IConstants.ROLE_PROVIDER)
             .tenantId(TENANT_ID)
             .state(TransferState.SUSPENDED)
+            .suspendedBy(IConstants.ROLE_CONSUMER)
             .build();
 
     public static final TransferProcess TRANSFER_PROCESS_TERMINATED = TransferProcess.Builder.newInstance()

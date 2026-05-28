@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
+import it.eng.tools.model.IConstants;
 import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -105,6 +106,36 @@ public class TransferProcessTest {
         String sss = TransferSerializer.serializePlain(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER);
         TransferProcess tp = TransferSerializer.deserializePlain(sss, TransferProcess.class);
         assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId(), tp.getId());
+    }
+
+    @Test
+    @DisplayName("copyWithNewTransferState preserves suspendedBy")
+    void copyWithNewTransferState_preservesSuspendedBy() {
+        TransferProcess suspended = TransferProcess.Builder.newInstance()
+                .agreementId("agreement-1")
+                .consumerPid("consumer-1")
+                .providerPid("provider-1")
+                .state(TransferState.SUSPENDED)
+                .role(IConstants.ROLE_CONSUMER)
+                .suspendedBy(IConstants.ROLE_CONSUMER)
+                .build();
+
+        TransferProcess started = suspended.copyWithNewTransferState(TransferState.STARTED);
+
+        assertEquals(IConstants.ROLE_CONSUMER, started.getSuspendedBy());
+        assertEquals(TransferState.STARTED, started.getState());
+    }
+
+    @Test
+    @DisplayName("withSuspendedBy replaces only the suspend initiator")
+    void withSuspendedBy_replacesOnlySuspendInitiator() {
+        TransferProcess suspended = DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_CONSUMER;
+
+        TransferProcess cleared = suspended.withSuspendedBy(null);
+
+        assertEquals(TransferState.SUSPENDED, cleared.getState());
+        assertNull(cleared.getSuspendedBy());
+        assertEquals(suspended.getConsumerPid(), cleared.getConsumerPid());
     }
 
     private void validateJavaObject(TransferProcess javaObj) {
