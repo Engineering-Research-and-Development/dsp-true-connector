@@ -123,24 +123,250 @@ class HttpPullTransferProtocolTest {
         verify(controlPlaneClient, never()).sendStarted(any(), any(), any());
     }
 
-    @Test
-    @DisplayName("suspendTransfer returns failure with 'suspend not supported' message")
-    void suspendTransferReturnsFailure() throws Exception {
-        CompletableFuture<DataFlowResult> resultFuture = protocol.suspendTransfer("df-1");
-        DataFlowResult result = resultFuture.get();
+    @DisplayName("suspendTransfer sets the suspend flag and returns success")
+    void suspendTransferSetsFlagAndReturnsSuccess() throws Exception {
+        // Start a transfer to register a suspend flag
+        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        testHttpServer.createContext("/slow", exchange -> {
+            // Response with content — suspend will be triggered before/during upload
+            byte[] body = "content".getBytes();
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+        });
+        testHttpServer.start();
+        String url = "http://localhost:" + testHttpServer.getAddress().getPort() + "/slow";
 
-        assertThat(result.isSuccess()).isFalse();
-        assertThat(result.getErrorMessage()).contains("suspend not supported");
+        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("test-bucket");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getAccessKey()).thenReturn("access-key");
+        when(s3Properties.getSecretKey()).thenReturn("secret-key");
+        when(s3ClientService.uploadFile(any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture("etag-123"));
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .dataFlowId("df-suspend-1")
+                .processId("tp-suspend-1")
+                .transferType("HttpData-PULL")
+                .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
+                .dataAddress(Map.of("endpoint", url))
+                .build();
+
+        // Start the transfer (registers the flag internally)
+        protocol.initiateTransfer(dataFlow).get();
+
+        // Now test suspendTransfer on a fresh flag (simulating mid-transfer call)
+        CompletableFuture<DataFlowResult> suspendResult = protocol.suspendTransfer("df-suspend-1");
+        assertThat(suspendResult.get().isSuccess()).isTrue();
     }
 
     @Test
-    @DisplayName("resumeTransfer returns failure with 'resume not supported' message")
-    void resumeTransferReturnsFailure() throws Exception {
-        CompletableFuture<DataFlowResult> resultFuture = protocol.resumeTransfer("df-1");
-        DataFlowResult result = resultFuture.get();
+    @DisplayName("suspendTransfer on unknown dataFlowId returns success (tolerant)")
+    void suspendTransferOnUnknownIdReturnsSuccess() throws Exception {
+        CompletableFuture<DataFlowResult> result = protocol.suspendTransfer("unknown-df-id");
+        assertThat(result.get().isSuccess()).isTrue();
+    }
+
+    @Test
+    @DisplayName("resumeTransfer returns failure when entity is not found")
+    void resumeTransferReturnsFailureWhenEntityNotFound() throws Exception {
+        when(dataFlowRepository.findById("df-missing")).thenReturn(Optional.empty());
+
+        CompletableFuture<DataFlowResult> result = protocol.resumeTransfer("df-missing");
+        assertThat(result.get().isSuccess()).isFalse();
+        assertThat(result.get().getErrorMessage()).contains("not found");
+    }
+
+    @Test
+    @DisplayName("resumeTransfer adds Range header when checkpoint has confirmedBytes > 0")
+    void resumeTransferAddsRangeHeaderWhenCheckpointHasOffset() throws Exception {
+        AtomicReference<String> receivedRangeHeader = new AtomicReference<>();
+        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        testHttpServer.createContext("/artifact", exchange -> {
+            receivedRangeHeader.set(exchange.getRequestHeaders().getFirst("Range"));
+            byte[] body = "remaining-content".getBytes();
+            // Return 206 to simulate Range response
+            exchange.sendResponseHeaders(206, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+        });
+        testHttpServer.start();
+
+        String presignedUrl = "http://localhost:" + testHttpServer.getAddress().getPort() + "/artifact";
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-resume-range")
+                .processId("tp-resume-range")
+                .transferType("HttpData-PULL")
+                .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
+                .dataAddress(Map.of("endpoint", presignedUrl))
+                .build();
+
+        DataFlowCheckpoint checkpoint = DataFlowCheckpoint.Builder.newInstance()
+                .processId("tp-resume-range")
+                .dataFlowId("df-resume-range")
+                .transferType("HttpData-PULL")
+                .uploadId("upload-123")
+                .build()
+                .withCompletedPart(1, 1024L, "etag-part1", 1024L); // 1 KB already uploaded
+
+        when(dataFlowRepository.findById("df-resume-range")).thenReturn(Optional.of(entity));
+        when(checkpointService.findByProcessId("tp-resume-range")).thenReturn(Optional.of(checkpoint));
+        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("test-bucket");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getAccessKey()).thenReturn("access-key");
+        when(s3Properties.getSecretKey()).thenReturn("secret-key");
+        when(s3ClientService.uploadFile(any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture("etag-resume-ok"));
+
+        DataFlowResult result = protocol.resumeTransfer("df-resume-range").get();
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(receivedRangeHeader.get()).isEqualTo("bytes=1024-");
+        verify(controlPlaneClient).sendCompleted(eq("http://cp:8080"), eq("tp-resume-range"), anyMap());
+        verify(controlPlaneClient, never()).sendErrored(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("resumeTransfer skips Range header when confirmedBytes is 0")
+    void resumeTransferSkipsRangeHeaderWhenConfirmedBytesIsZero() throws Exception {
+        AtomicReference<String> receivedRangeHeader = new AtomicReference<>("NOT_SET");
+        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        testHttpServer.createContext("/artifact", exchange -> {
+            receivedRangeHeader.set(exchange.getRequestHeaders().getFirst("Range"));
+            byte[] body = "full-content".getBytes();
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+        });
+        testHttpServer.start();
+
+        String presignedUrl = "http://localhost:" + testHttpServer.getAddress().getPort() + "/artifact";
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-resume-zero")
+                .processId("tp-resume-zero")
+                .transferType("HttpData-PULL")
+                .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
+                .dataAddress(Map.of("endpoint", presignedUrl))
+                .build();
+
+        DataFlowCheckpoint checkpoint = DataFlowCheckpoint.Builder.newInstance()
+                .processId("tp-resume-zero")
+                .dataFlowId("df-resume-zero")
+                .transferType("HttpData-PULL")
+                .confirmedBytes(0L)
+                .build();
+
+        when(dataFlowRepository.findById("df-resume-zero")).thenReturn(Optional.of(entity));
+        when(checkpointService.findByProcessId("tp-resume-zero")).thenReturn(Optional.of(checkpoint));
+        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("test-bucket");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getAccessKey()).thenReturn("access-key");
+        when(s3Properties.getSecretKey()).thenReturn("secret-key");
+        when(s3ClientService.uploadFile(any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture("etag-ok"));
+
+        DataFlowResult result = protocol.resumeTransfer("df-resume-zero").get();
+
+        assertThat(result.isSuccess()).isTrue();
+        assertThat(receivedRangeHeader.get()).isNull(); // no Range header sent
+        verify(controlPlaneClient).sendCompleted(eq("http://cp:8080"), eq("tp-resume-zero"), anyMap());
+        verify(controlPlaneClient, never()).sendErrored(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("resumeTransfer returns failure on non-200/206 HTTP response")
+    void resumeTransferReturnsFailureOnBadHttpStatus() throws Exception {
+        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        testHttpServer.createContext("/expired", exchange -> {
+            exchange.sendResponseHeaders(403, -1);
+            exchange.close();
+        });
+        testHttpServer.start();
+
+        String presignedUrl = "http://localhost:" + testHttpServer.getAddress().getPort() + "/expired";
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-resume-403")
+                .processId("tp-resume-403")
+                .transferType("HttpData-PULL")
+                .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
+                .dataAddress(Map.of("endpoint", presignedUrl))
+                .build();
+
+        DataFlowCheckpoint checkpoint = DataFlowCheckpoint.Builder.newInstance()
+                .processId("tp-resume-403")
+                .dataFlowId("df-resume-403")
+                .confirmedBytes(0L)
+                .build();
+
+        when(dataFlowRepository.findById("df-resume-403")).thenReturn(Optional.of(entity));
+        when(checkpointService.findByProcessId("tp-resume-403")).thenReturn(Optional.of(checkpoint));
+        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("test-bucket");
+
+        DataFlowResult result = protocol.resumeTransfer("df-resume-403").get();
 
         assertThat(result.isSuccess()).isFalse();
-        assertThat(result.getErrorMessage()).contains("resume not supported");
+        assertThat(result.getErrorMessage()).contains("403");
+        verify(controlPlaneClient).sendErrored(eq("http://cp:8080"), eq("tp-resume-403"), anyString());
+        verify(controlPlaneClient, never()).sendCompleted(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("resumeTransfer paused again skips Control Plane callbacks")
+    void resumeTransferPausedAgainSkipsCallbacks() throws Exception {
+        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        testHttpServer.createContext("/artifact", exchange -> {
+            byte[] body = "content".getBytes();
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+        });
+        testHttpServer.start();
+        String presignedUrl = "http://localhost:" + testHttpServer.getAddress().getPort() + "/artifact";
+
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-resume-paused")
+                .processId("tp-resume-paused")
+                .transferType("HttpData-PULL")
+                .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
+                .dataAddress(Map.of("endpoint", presignedUrl))
+                .build();
+
+        DataFlowCheckpoint checkpoint = DataFlowCheckpoint.Builder.newInstance()
+                .processId("tp-resume-paused")
+                .dataFlowId("df-resume-paused")
+                .transferType("HttpData-PULL")
+                .confirmedBytes(0L)
+                .build();
+
+        when(dataFlowRepository.findById("df-resume-paused")).thenReturn(Optional.of(entity));
+        when(checkpointService.findByProcessId("tp-resume-paused")).thenReturn(Optional.of(checkpoint));
+        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("test-bucket");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getAccessKey()).thenReturn("access-key");
+        when(s3Properties.getSecretKey()).thenReturn("secret-key");
+        when(s3ClientService.uploadFile(any(), any(), any(), any(), any(ResumableUploadRequest.class)))
+                .thenAnswer(invocation -> CompletableFuture.<String>failedFuture(
+                        new java.util.concurrent.CompletionException(
+                                new UploadPausedException("paused-again", "upload-id", List.of(), List.of(), 0L))));
+
+        DataFlowResult result = protocol.resumeTransfer("df-resume-paused").get();
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(controlPlaneClient, never()).sendCompleted(any(), any(), any());
+        verify(controlPlaneClient, never()).sendErrored(any(), any(), any());
     }
 
     @Test
