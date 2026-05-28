@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -19,6 +20,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -27,7 +29,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -84,17 +88,16 @@ public class CatalogDataPlaneFormatSyncServiceTest {
         when(datasetRepository.findAll()).thenReturn(List.of(dataset));
         when(distributionRepository.saveAll(any())).thenAnswer(invocation ->
                 toDistributionList(invocation.getArgument(0)));
-        when(datasetRepository.saveAll(any())).thenAnswer(invocation ->
-                toDatasetList(invocation.getArgument(0)));
+        when(datasetRepository.save(any(Dataset.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.reconcileCatalogDistributions();
 
         ArgumentCaptor<Iterable<Distribution>> savedDistributionsCaptor = ArgumentCaptor.forClass(Iterable.class);
-        ArgumentCaptor<Iterable<Dataset>> savedDatasetsCaptor = ArgumentCaptor.forClass(Iterable.class);
+        ArgumentCaptor<Dataset> savedDatasetCaptor = ArgumentCaptor.forClass(Dataset.class);
         ArgumentCaptor<Iterable<String>> deletedIdsCaptor = ArgumentCaptor.forClass(Iterable.class);
 
         verify(distributionRepository).saveAll(savedDistributionsCaptor.capture());
-        verify(datasetRepository).saveAll(savedDatasetsCaptor.capture());
+        verify(datasetRepository).save(savedDatasetCaptor.capture());
         verify(distributionRepository).deleteAllById(deletedIdsCaptor.capture());
 
         List<Distribution> savedDistributions = toDistributionList(savedDistributionsCaptor.getValue());
@@ -112,7 +115,7 @@ public class CatalogDataPlaneFormatSyncServiceTest {
         assertEquals("latest-title", reconciledPush.getTitle());
         assertEquals(NEWER_TIMESTAMP, reconciledPush.getModified());
 
-        Dataset savedDataset = toDatasetList(savedDatasetsCaptor.getValue()).get(0);
+        Dataset savedDataset = savedDatasetCaptor.getValue();
         assertEquals(Set.of("HttpData-PULL", "HttpData-PUSH"), extractFormats(savedDataset.getDistribution()));
         List<String> deletedIds = toStringList(deletedIdsCaptor.getValue());
         assertEquals(List.of("distribution-stale"), deletedIds);
@@ -136,18 +139,17 @@ public class CatalogDataPlaneFormatSyncServiceTest {
         when(datasetRepository.findAll()).thenReturn(List.of(dataset));
         when(distributionRepository.saveAll(any())).thenAnswer(invocation ->
                 toDistributionList(invocation.getArgument(0)));
-        when(datasetRepository.saveAll(any())).thenAnswer(invocation ->
-                toDatasetList(invocation.getArgument(0)));
+        when(datasetRepository.save(any(Dataset.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         service.reconcileCatalogDistributions();
 
         ArgumentCaptor<Iterable<Distribution>> savedDistributionsCaptor = ArgumentCaptor.forClass(Iterable.class);
-        ArgumentCaptor<Iterable<Dataset>> savedDatasetsCaptor = ArgumentCaptor.forClass(Iterable.class);
+        ArgumentCaptor<Dataset> savedDatasetCaptor = ArgumentCaptor.forClass(Dataset.class);
         ArgumentCaptor<Iterable<String>> deletedIdsCaptor = ArgumentCaptor.forClass(Iterable.class);
 
         verify(datasetRepository).findAll();
         verify(distributionRepository).saveAll(savedDistributionsCaptor.capture());
-        verify(datasetRepository).saveAll(savedDatasetsCaptor.capture());
+        verify(datasetRepository).save(savedDatasetCaptor.capture());
         verify(distributionRepository).deleteAllById(deletedIdsCaptor.capture());
 
         List<Distribution> savedDistributions = toDistributionList(savedDistributionsCaptor.getValue());
@@ -159,12 +161,75 @@ public class CatalogDataPlaneFormatSyncServiceTest {
         assertEquals(NEWER_TIMESTAMP, savedDistribution.getModified());
         assertNull(savedDistribution.getFormat());
 
-        Dataset savedDataset = toDatasetList(savedDatasetsCaptor.getValue()).get(0);
+        Dataset savedDataset = savedDatasetCaptor.getValue();
         assertEquals(1, savedDataset.getDistribution().size());
         assertNull(savedDataset.getDistribution().stream().findFirst().orElseThrow().getFormat());
 
         List<String> deletedIds = toStringList(deletedIdsCaptor.getValue());
         assertEquals(List.of("distribution-pull"), deletedIds);
+    }
+
+    @Test
+    @DisplayName("reconcileCatalogDistributions persists and deletes per dataset in order")
+    void reconcileCatalogDistributionsPersistsAndDeletesPerDatasetInOrder() {
+        when(dataPlaneRegistrationService.findAll()).thenReturn(List.of(
+                buildRegistration("http://dataplane-1", Set.of("HttpData-PULL", "HttpData-PUSH"), Set.of("profile-a"))
+        ));
+
+        Dataset firstDataset = buildDataset("dataset-1", "distribution-1-pull", "distribution-1-stale",
+                "first-latest-title");
+        Dataset secondDataset = buildDataset("dataset-2", "distribution-2-pull", "distribution-2-stale",
+                "second-latest-title");
+        when(datasetRepository.findAll()).thenReturn(List.of(firstDataset, secondDataset));
+        when(distributionRepository.saveAll(any())).thenAnswer(invocation ->
+                toDistributionList(invocation.getArgument(0)));
+        when(datasetRepository.save(any(Dataset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.reconcileCatalogDistributions();
+
+        InOrder inOrder = inOrder(distributionRepository, datasetRepository);
+        inOrder.verify(distributionRepository).saveAll(argThat(distributions ->
+                containsDistributionId(distributions, "distribution-1-pull")));
+        inOrder.verify(datasetRepository).save(argThat(dataset ->
+                Objects.equals("dataset-1", dataset.getId())));
+        inOrder.verify(distributionRepository).deleteAllById(argThat(ids ->
+                containsString(ids, "distribution-1-stale")));
+        inOrder.verify(distributionRepository).saveAll(argThat(distributions ->
+                containsDistributionId(distributions, "distribution-2-pull")));
+        inOrder.verify(datasetRepository).save(argThat(dataset ->
+                Objects.equals("dataset-2", dataset.getId())));
+        inOrder.verify(distributionRepository).deleteAllById(argThat(ids ->
+                containsString(ids, "distribution-2-stale")));
+    }
+
+    @Test
+    @DisplayName("reconcileCatalogDistributions breaks template ties by distribution id")
+    void reconcileCatalogDistributionsBreaksTemplateTiesByDistributionId() {
+        when(dataPlaneRegistrationService.findAll()).thenReturn(List.of());
+
+        Instant timestamp = Instant.parse("2024-04-22T10:15:30Z");
+        Distribution firstDistribution = withIdentity(
+                CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PULL",
+                        timestamp, timestamp, "first-title"),
+                "distribution-a", 7L);
+        Distribution secondDistribution = withIdentity(
+                CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PUSH",
+                        timestamp, timestamp, "second-title"),
+                "distribution-z", 9L);
+        Dataset dataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
+                new LinkedHashSet<>(List.of(firstDistribution, secondDistribution)));
+        when(datasetRepository.findAll()).thenReturn(List.of(dataset));
+        when(distributionRepository.saveAll(any())).thenAnswer(invocation ->
+                toDistributionList(invocation.getArgument(0)));
+        when(datasetRepository.save(any(Dataset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.reconcileCatalogDistributions();
+
+        ArgumentCaptor<Iterable<Distribution>> savedDistributionsCaptor = ArgumentCaptor.forClass(Iterable.class);
+        verify(distributionRepository).saveAll(savedDistributionsCaptor.capture());
+        Distribution savedDistribution = toDistributionList(savedDistributionsCaptor.getValue()).get(0);
+        assertEquals("distribution-z", savedDistribution.getId());
+        assertEquals("second-title", savedDistribution.getTitle());
     }
 
     private DataPlaneRegistration buildRegistration(String endpoint, Set<String> supportedTransferTypes,
@@ -198,6 +263,49 @@ public class CatalogDataPlaneFormatSyncServiceTest {
                 .filter(distribution -> Objects.equals(format, distribution.getFormat()))
                 .findFirst()
                 .orElseThrow();
+    }
+
+    private Dataset buildDataset(String datasetId, String pullDistributionId, String staleDistributionId, String latestTitle) {
+        Distribution pullDistribution = withIdentity(
+                CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PULL",
+                        OLDER_TIMESTAMP, OLDER_TIMESTAMP, "older-title"),
+                pullDistributionId, 7L);
+        Distribution staleDistribution = withIdentity(
+                CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "UNSUPPORTED",
+                        NEWER_TIMESTAMP, NEWER_TIMESTAMP, latestTitle),
+                staleDistributionId, 9L);
+        return Dataset.Builder.newInstance()
+                .id(datasetId)
+                .keyword(Set.of("keyword"))
+                .theme(Set.of("theme"))
+                .conformsTo("conformsTo")
+                .creator("creator")
+                .description(Set.of(CatalogMockObjectUtil.MULTILANGUAGE))
+                .identifier(datasetId + "-identifier")
+                .issued(OLDER_TIMESTAMP)
+                .modified(NEWER_TIMESTAMP)
+                .title(datasetId + "-title")
+                .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
+                .distribution(new HashSet<>(Set.of(pullDistribution, staleDistribution)))
+                .artifact(CatalogMockObjectUtil.ARTIFACT_FILE)
+                .tenantId(TENANT_ID)
+                .createdBy("creator")
+                .lastModifiedBy("modifier")
+                .version(3L)
+                .build();
+    }
+
+    private boolean containsDistributionId(Iterable<Distribution> distributions, String distributionId) {
+        return toDistributionList(distributions).stream()
+                .map(Distribution::getId)
+                .anyMatch(distributionId::equals);
+    }
+
+    private boolean containsString(Iterable<?> values, String expectedValue) {
+        List<String> result = new ArrayList<>();
+        values.forEach(value -> result.add(String.valueOf(value)));
+        result.sort(String::compareTo);
+        return result.contains(expectedValue);
     }
 
     private Set<String> extractFormats(Set<Distribution> distributions) {

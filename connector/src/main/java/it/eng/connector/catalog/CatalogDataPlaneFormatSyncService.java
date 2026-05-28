@@ -12,6 +12,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -53,41 +54,27 @@ public class CatalogDataPlaneFormatSyncService {
     public void reconcileCatalogDistributions() {
         Set<String> supportedFormats = resolveSupportedFormats();
         List<Dataset> datasets = datasetRepository.findAll();
-        Map<String, Distribution> reconciledDistributionsById = new LinkedHashMap<>();
-        Set<String> staleDistributionIds = new LinkedHashSet<>();
-        Map<String, Dataset> reconciledDatasetsById = new LinkedHashMap<>();
-
+        int deletedDistributionCount = 0;
         for (Dataset dataset : datasets) {
-            Dataset reconciledDataset = reconcileDataset(dataset, supportedFormats, reconciledDistributionsById, staleDistributionIds);
-            reconciledDatasetsById.put(reconciledDataset.getId(), reconciledDataset);
-        }
-
-        if (!reconciledDistributionsById.isEmpty()) {
-            distributionRepository.saveAll(reconciledDistributionsById.values());
-        }
-        if (!reconciledDatasetsById.isEmpty()) {
-            datasetRepository.saveAll(reconciledDatasetsById.values());
-        }
-
-        Set<String> liveDistributionIds = reconciledDistributionsById.keySet();
-        List<String> idsToDelete = staleDistributionIds.stream()
-                .filter(id -> !liveDistributionIds.contains(id))
-                .toList();
-        if (!idsToDelete.isEmpty()) {
-            distributionRepository.deleteAllById(idsToDelete);
+            DatasetReconciliation result = reconcileDataset(dataset, supportedFormats);
+            if (!result.desiredDistributions().isEmpty()) {
+                distributionRepository.saveAll(result.desiredDistributions());
+            }
+            datasetRepository.save(result.dataset());
+            if (!result.staleDistributionIds().isEmpty()) {
+                distributionRepository.deleteAllById(result.staleDistributionIds());
+                deletedDistributionCount += result.staleDistributionIds().size();
+            }
         }
 
         log.info("Reconciled {} datasets, {} active formats and {} stale distributions",
-                reconciledDatasetsById.size(), supportedFormats.size(), idsToDelete.size());
+                datasets.size(), supportedFormats.size(), deletedDistributionCount);
     }
 
-    private Dataset reconcileDataset(Dataset dataset, Set<String> supportedFormats,
-                                     Map<String, Distribution> reconciledDistributionsById,
-                                     Set<String> staleDistributionIds) {
+    private DatasetReconciliation reconcileDataset(Dataset dataset, Set<String> supportedFormats) {
         Set<Distribution> currentDistributions = safeSet(dataset.getDistribution());
         if (supportedFormats.isEmpty()) {
-            return normalizeDatasetToTemplateDistribution(dataset, currentDistributions,
-                    reconciledDistributionsById, staleDistributionIds);
+            return normalizeDatasetToTemplateDistribution(dataset, currentDistributions);
         }
         Map<String, Distribution> distributionsByFormat = currentDistributions.stream()
                 .filter(Objects::nonNull)
@@ -111,41 +98,41 @@ public class CatalogDataPlaneFormatSyncService {
                     supportedFormat,
                     existingDistribution);
             reconciledDistributions.add(distribution);
-            reconciledDistributionsById.put(distribution.getId(), distribution);
         }
 
         Set<String> reconciledIds = reconciledDistributions.stream()
                 .map(Distribution::getId)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-        currentDistributions.stream()
+        List<String> staleDistributionIds = currentDistributions.stream()
                 .map(Distribution::getId)
                 .filter(Objects::nonNull)
                 .filter(id -> !reconciledIds.contains(id))
-                .forEach(staleDistributionIds::add);
+                .toList();
 
-        return copyDataset(dataset, reconciledDistributions);
+        return new DatasetReconciliation(copyDataset(dataset, reconciledDistributions),
+                reconciledDistributions, staleDistributionIds);
     }
 
-    private Dataset normalizeDatasetToTemplateDistribution(Dataset dataset, Set<Distribution> currentDistributions,
-                                                           Map<String, Distribution> reconciledDistributionsById,
-                                                           Set<String> staleDistributionIds) {
+    private DatasetReconciliation normalizeDatasetToTemplateDistribution(Dataset dataset,
+                                                                         Set<Distribution> currentDistributions) {
         Distribution template = currentDistributions.stream()
                 .filter(Objects::nonNull)
                 .max(this::compareByRecency)
                 .orElse(null);
         if (template == null) {
-            return dataset;
+            return new DatasetReconciliation(dataset, Collections.emptySet(), List.of());
         }
 
         Distribution normalizedDistribution = materializeDistribution(template, null, template);
-        reconciledDistributionsById.put(normalizedDistribution.getId(), normalizedDistribution);
-        currentDistributions.stream()
+        List<String> staleDistributionIds = currentDistributions.stream()
                 .map(Distribution::getId)
                 .filter(Objects::nonNull)
                 .filter(id -> !Objects.equals(id, normalizedDistribution.getId()))
-                .forEach(staleDistributionIds::add);
-        return copyDataset(dataset, new LinkedHashSet<>(Set.of(normalizedDistribution)));
+                .toList();
+        Set<Distribution> normalizedDistributions = new LinkedHashSet<>(Set.of(normalizedDistribution));
+        return new DatasetReconciliation(copyDataset(dataset, normalizedDistributions),
+                normalizedDistributions, staleDistributionIds);
     }
 
     private Dataset copyDataset(Dataset dataset, Set<Distribution> distributions) {
@@ -192,7 +179,9 @@ public class CatalogDataPlaneFormatSyncService {
     }
 
     private int compareByRecency(Distribution left, Distribution right) {
-        return recencyOf(left).compareTo(recencyOf(right));
+        return Comparator.comparing(this::recencyOf)
+                .thenComparing(this::stableDistributionId, Comparator.nullsFirst(String::compareTo))
+                .compare(left, right);
     }
 
     private Instant recencyOf(Distribution distribution) {
@@ -208,7 +197,15 @@ public class CatalogDataPlaneFormatSyncService {
         return Instant.MIN;
     }
 
+    private String stableDistributionId(Distribution distribution) {
+        return distribution != null ? distribution.getId() : null;
+    }
+
     private <T> Set<T> safeSet(Set<T> values) {
         return values != null ? values : Collections.emptySet();
+    }
+
+    private record DatasetReconciliation(Dataset dataset, Set<Distribution> desiredDistributions,
+                                         List<String> staleDistributionIds) {
     }
 }
