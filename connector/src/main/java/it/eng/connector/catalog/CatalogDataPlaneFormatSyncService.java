@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Collections;
@@ -53,6 +54,7 @@ public class CatalogDataPlaneFormatSyncService {
     /**
      * Reconciles dataset distributions and refreshes catalog distribution references.
      */
+    @Transactional
     public void reconcileCatalogDistributions() {
         Set<String> supportedFormats = resolveSupportedFormats();
         if (supportedFormats.isEmpty()) {

@@ -16,6 +16,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -149,6 +151,14 @@ public class CatalogDataPlaneFormatSyncServiceTest {
         verify(catalogRepository, never()).findAll();
         verify(catalogRepository, never()).saveAll(any());
         verify(distributionRepository, never()).deleteAllById(any());
+    }
+
+    @Test
+    @DisplayName("reconcileCatalogDistributions is transactional to keep catalog state consistent")
+    void reconcileCatalogDistributionsIsTransactionalToKeepCatalogStateConsistent() throws NoSuchMethodException {
+        assertTrue(CatalogDataPlaneFormatSyncService.class
+                        .getMethod("reconcileCatalogDistributions")
+                        .isAnnotationPresent(Transactional.class));
     }
 
     private DataPlaneRegistration buildRegistration(String endpoint, Set<String> supportedTransferTypes,
