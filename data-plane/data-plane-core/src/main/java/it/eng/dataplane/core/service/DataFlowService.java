@@ -14,7 +14,9 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 /**
  * Core service for managing data flow lifecycle on the Data Plane.
@@ -29,6 +31,8 @@ public class DataFlowService {
     private final DataTransferProtocolRegistry registry;
     private final DataPlaneAuditEventService auditEventService;
     private final DataFlowStateMachine stateMachine;
+    private final DataFlowCheckpointService checkpointService;
+    private final DataFlowExecutionRegistry executionRegistry;
 
     /**
      * Starts a data transfer using the appropriate protocol implementation.
@@ -57,8 +61,9 @@ public class DataFlowService {
         repository.save(startedEntity);
 
         String processId = dataFlow.getProcessId();
-        protocol.initiateTransfer(dataFlow)
-            .thenAccept(result -> handleCompletion(processId, result))
+        CompletableFuture<DataFlowResult> future = protocol.initiateTransfer(dataFlow);
+        executionRegistry.register(processId, new FutureDataFlowExecutionHandle(processId, future));
+        future.thenAccept(result -> handleCompletion(processId, result))
             .exceptionally(ex -> { handleError(processId, ex); return null; });
     }
 
@@ -71,9 +76,10 @@ public class DataFlowService {
     public void resume(String processId) {
         DataFlowEntity entity = findRequired(processId);
         stateMachine.assertTransition(entity.getState(), DataFlowState.STARTED);
-        requiredProtocol(entity.getTransferType())
-                .resumeTransfer(entity.getId())
-                .thenAccept(result -> {
+        CompletableFuture<DataFlowResult> future = requiredProtocol(entity.getTransferType())
+                .resumeTransfer(entity.getId());
+        executionRegistry.register(processId, new FutureDataFlowExecutionHandle(processId, future));
+        future.thenAccept(result -> {
                     if (result.isSuccess()) {
                         updateState(processId, DataFlowState.STARTED);
                         auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_RESUMED,
@@ -114,6 +120,8 @@ public class DataFlowService {
         if (protocol != null) {
             protocol.terminateTransfer(entity.getId())
                 .thenAccept(result -> {
+                    executionRegistry.remove(processId);
+                    checkpointService.deleteByProcessId(processId);
                     updateState(processId, DataFlowState.TERMINATED);
                     auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_TERMINATED,
                             processId, transferType, "Data flow terminated", null);
@@ -121,6 +129,8 @@ public class DataFlowService {
                 .exceptionally(ex -> { handleError(processId, ex); return null; });
         } else {
             updateState(processId, DataFlowState.TERMINATED);
+            executionRegistry.remove(processId);
+            checkpointService.deleteByProcessId(processId);
             auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_TERMINATED,
                     processId, transferType, "Data flow terminated", null);
         }
@@ -129,6 +139,11 @@ public class DataFlowService {
     /**
      * Suspends an active data transfer.
      *
+     * <p>The active execution handle is cancelled and removed from the registry before the
+     * protocol is signalled. This prevents the old running future's completion or error
+     * callbacks from silently flipping the SUSPENDED flow to COMPLETED or TERMINATED after
+     * suspend succeeds.</p>
+     *
      * @param processId the process ID to suspend
      * @throws IllegalStateException if no flow exists for this processId or the state transition is invalid
      */
@@ -136,6 +151,14 @@ public class DataFlowService {
         DataFlowEntity entity = findRequired(processId);
         stateMachine.assertTransition(entity.getState(), DataFlowState.SUSPENDED);
         String transferType = entity.getTransferType();
+
+        // Cancel and deregister the running execution handle before calling the protocol.
+        // This ensures the old future's thenAccept/exceptionally callbacks cannot flip a
+        // suspended flow to COMPLETED or TERMINATED while the protocol handshake is in flight.
+        executionRegistry.find(processId).ifPresent(handle -> {
+            handle.cancel();
+            executionRegistry.remove(processId);
+        });
 
         DataTransferProtocol protocol = registry.getProtocol(transferType);
         if (protocol != null) {
@@ -156,9 +179,15 @@ public class DataFlowService {
     private void handleCompletion(String processId, DataFlowResult result) {
         if (result.isSuccess()) {
             DataFlowEntity fresh = findRequired(processId);
+            if (fresh.getState() == DataFlowState.SUSPENDED) {
+                log.debug("DataFlow processId={} is already SUSPENDED; ignoring late completion callback", processId);
+                return;
+            }
             stateMachine.assertTransition(fresh.getState(), DataFlowState.COMPLETED);
             DataFlowEntity completed = fresh.withState(DataFlowState.COMPLETED);
             repository.save(completed);
+            executionRegistry.remove(processId);
+            checkpointService.deleteByProcessId(processId);
             auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_COMPLETED,
                     processId, completed.getTransferType(), "Data flow completed", null);
         } else {
@@ -167,12 +196,19 @@ public class DataFlowService {
     }
 
     private void handleError(String processId, Throwable ex) {
+        Throwable cause = ex instanceof CompletionException ? ex.getCause() : ex;
+        if (cause instanceof CancellationException) {
+            log.debug("DataFlow processId={} execution was cancelled; ignoring (expected during suspend)", processId);
+            return;
+        }
         log.error("DataFlow processId={} failed: {}", processId, ex.getMessage(), ex);
         try {
             DataFlowEntity fresh = findRequired(processId);
             stateMachine.assertTransition(fresh.getState(), DataFlowState.TERMINATED);
             DataFlowEntity failed = fresh.withError(ex.getMessage(), DataFlowState.TERMINATED);
             repository.save(failed);
+            executionRegistry.remove(processId);
+            checkpointService.deleteByProcessId(processId);
             auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_FAILED,
                     processId, failed.getTransferType(), "Data flow failed",
                     Map.of("error", ex.getMessage() != null ? ex.getMessage() : "unknown"));

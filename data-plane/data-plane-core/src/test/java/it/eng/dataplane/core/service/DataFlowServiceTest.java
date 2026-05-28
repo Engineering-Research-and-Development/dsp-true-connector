@@ -47,11 +47,17 @@ class DataFlowServiceTest {
     @Mock
     private DataFlowStateMachine stateMachine;
 
+    @Mock
+    private DataFlowCheckpointService checkpointService;
+
+    @Mock
+    private DataFlowExecutionRegistry executionRegistry;
+
     private DataFlowService service;
 
     @BeforeEach
     void setUp() {
-        service = new DataFlowService(repository, registry, auditEventService, stateMachine);
+        service = new DataFlowService(repository, registry, auditEventService, stateMachine, checkpointService, executionRegistry);
     }
 
     /**
@@ -484,5 +490,253 @@ class DataFlowServiceTest {
 
         verify(auditEventService, never()).saveEvent(
                 eq(DataPlaneAuditEventType.DATAFLOW_SUSPENDED), any(), any(), any(), any());
+    }
+
+    /**
+     * Verifies that start() registers an execution handle in the registry for the running transfer.
+     */
+    @Test
+    void startRegistersExecutionHandleInRegistry() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-reg-start")
+                .transferType("HttpData-PULL")
+                .build();
+
+        when(repository.findByProcessId("tp-reg-start")).thenReturn(Optional.empty());
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.initiateTransfer(any(DataFlow.class))).thenReturn(new CompletableFuture<>());
+
+        service.start(dataFlow);
+
+        verify(executionRegistry).register(eq("tp-reg-start"), any(DataFlowExecutionHandle.class));
+    }
+
+    /**
+     * Verifies that a successful transfer completion removes the execution handle from the registry
+     * and deletes the checkpoint.
+     */
+    @Test
+    void completionRemovesHandleAndDeletesCheckpoint() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-reg-complete")
+                .transferType("HttpData-PULL")
+                .build();
+
+        DataFlowEntity startedEntity = DataFlowEntity.Builder.newInstance()
+                .processId("tp-reg-complete")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-reg-complete"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(startedEntity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.initiateTransfer(any(DataFlow.class)))
+                .thenReturn(CompletableFuture.completedFuture(DataFlowResult.success()));
+
+        service.start(dataFlow);
+
+        verify(executionRegistry).remove("tp-reg-complete");
+        verify(checkpointService).deleteByProcessId("tp-reg-complete");
+    }
+
+    /**
+     * Verifies that a failed transfer removes the execution handle from the registry
+     * and deletes the checkpoint.
+     */
+    @Test
+    void errorRemovesHandleAndDeletesCheckpoint() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-reg-error")
+                .transferType("HttpData-PULL")
+                .build();
+
+        DataFlowEntity startedEntity = DataFlowEntity.Builder.newInstance()
+                .processId("tp-reg-error")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-reg-error"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(startedEntity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.initiateTransfer(any(DataFlow.class)))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("transfer-failed")));
+
+        service.start(dataFlow);
+
+        verify(executionRegistry).remove("tp-reg-error");
+        verify(checkpointService).deleteByProcessId("tp-reg-error");
+    }
+
+    /**
+     * Verifies that resume() registers an execution handle in the registry for the resumed transfer.
+     */
+    @Test
+    void resumeRegistersExecutionHandleInRegistry() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-reg-resume")
+                .processId("tp-reg-resume")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.SUSPENDED)
+                .build();
+
+        when(repository.findByProcessId("tp-reg-resume")).thenReturn(Optional.of(entity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.resumeTransfer("df-reg-resume")).thenReturn(new CompletableFuture<>());
+
+        service.resume("tp-reg-resume");
+
+        verify(executionRegistry).register(eq("tp-reg-resume"), any(DataFlowExecutionHandle.class));
+    }
+
+    /**
+     * Verifies that terminate() removes the execution handle and deletes the checkpoint
+     * after the protocol callback fires.
+     */
+    @Test
+    void terminateRemovesHandleAndDeletesCheckpoint() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-reg-terminate")
+                .processId("tp-reg-terminate")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        DataFlowEntity terminatedEntity = DataFlowEntity.Builder.newInstance()
+                .id("df-reg-terminate")
+                .processId("tp-reg-terminate")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-reg-terminate"))
+                .thenReturn(Optional.of(entity))
+                .thenReturn(Optional.of(terminatedEntity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.terminateTransfer("df-reg-terminate"))
+                .thenReturn(CompletableFuture.completedFuture(DataFlowResult.success()));
+
+        service.terminate("tp-reg-terminate");
+
+        verify(executionRegistry).remove("tp-reg-terminate");
+        verify(checkpointService).deleteByProcessId("tp-reg-terminate");
+    }
+
+    /**
+     * Verifies that terminate() removes the handle and deletes the checkpoint immediately
+     * when no protocol is registered.
+     */
+    @Test
+    void terminateNoProtocolRemovesHandleAndDeletesCheckpoint() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-reg-terminate-noproto")
+                .processId("tp-terminate-noproto")
+                .transferType("Unknown-Protocol")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-terminate-noproto")).thenReturn(Optional.of(entity));
+        when(registry.getProtocol("Unknown-Protocol")).thenReturn(null);
+
+        service.terminate("tp-terminate-noproto");
+
+        verify(executionRegistry).remove("tp-terminate-noproto");
+        verify(checkpointService).deleteByProcessId("tp-terminate-noproto");
+    }
+
+    /**
+     * Verifies that suspend() cancels and removes the active execution handle from the registry
+     * before delegating to the protocol. This prevents the old running future's callbacks from
+     * flipping a SUSPENDED flow to COMPLETED or TERMINATED after suspend succeeds.
+     */
+    @Test
+    void suspendCancelsAndRemovesExecutionHandle() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-suspend-cancel")
+                .processId("tp-suspend-cancel")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-suspend-cancel")).thenReturn(Optional.of(entity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.suspendTransfer(any())).thenReturn(new CompletableFuture<>());
+
+        DataFlowExecutionHandle handle = mock(DataFlowExecutionHandle.class);
+        when(executionRegistry.find("tp-suspend-cancel")).thenReturn(Optional.of(handle));
+
+        service.suspend("tp-suspend-cancel");
+
+        verify(handle).cancel();
+        verify(executionRegistry).remove("tp-suspend-cancel");
+    }
+
+    /**
+     * Verifies that a suspended flow is not silently completed when the old running future
+     * fires its completion callback after the flow has been marked SUSPENDED. The stale
+     * completion must be discarded: COMPLETED must never be persisted and the checkpoint
+     * must not be deleted.
+     */
+    @Test
+    void suspendedFlowNotCompletedByOldFuture() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-suspended-race")
+                .transferType("HttpData-PULL")
+                .build();
+
+        CompletableFuture<DataFlowResult> future = new CompletableFuture<>();
+
+        DataFlowEntity suspendedEntity = DataFlowEntity.Builder.newInstance()
+                .processId("tp-suspended-race")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.SUSPENDED)
+                .build();
+
+        // First call: duplicate check; subsequent: entity is already SUSPENDED
+        when(repository.findByProcessId("tp-suspended-race"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(suspendedEntity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.initiateTransfer(any(DataFlow.class))).thenReturn(future);
+
+        service.start(dataFlow);
+
+        // Simulate race: old future completes after the flow has been suspended
+        future.complete(DataFlowResult.success());
+
+        // COMPLETED must never be persisted and the checkpoint must remain intact
+        verify(repository, never()).save(argThat(saved -> saved.getState() == DataFlowState.COMPLETED));
+        verify(checkpointService, never()).deleteByProcessId("tp-suspended-race");
+    }
+
+    /**
+     * Verifies that a CancellationException from the old future (caused by the suspend path
+     * calling handle.cancel()) does not flip the suspended flow to TERMINATED or delete
+     * the checkpoint. Cancellation is expected during suspend and must be silently ignored.
+     */
+    @Test
+    void suspendedFlowNotTerminatedByCancellationException() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-cancel-race")
+                .transferType("HttpData-PULL")
+                .build();
+
+        CompletableFuture<DataFlowResult> future = new CompletableFuture<>();
+
+        when(repository.findByProcessId("tp-cancel-race")).thenReturn(Optional.empty());
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.initiateTransfer(any(DataFlow.class))).thenReturn(future);
+
+        service.start(dataFlow);
+
+        // Simulate suspend cancelling the old future
+        future.cancel(true);
+
+        // TERMINATED must never be persisted and the checkpoint must remain intact
+        verify(repository, never()).save(argThat(saved -> saved.getState() == DataFlowState.TERMINATED));
+        verify(checkpointService, never()).deleteByProcessId("tp-cancel-race");
     }
 }
