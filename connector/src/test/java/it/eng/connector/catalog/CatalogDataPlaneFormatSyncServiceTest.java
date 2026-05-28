@@ -33,6 +33,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -256,6 +257,54 @@ public class CatalogDataPlaneFormatSyncServiceTest {
         Distribution savedDistribution = toDistributionList(savedDistributionsCaptor.getValue()).get(0);
         assertEquals("distribution-z", savedDistribution.getId());
         assertEquals("second-title", savedDistribution.getTitle());
+    }
+
+    @Test
+    @DisplayName("reconcileCatalogDistributions clones shared distribution references per dataset")
+    void reconcileCatalogDistributionsClonesSharedDistributionReferencesPerDataset() {
+        when(dataPlaneRegistrationService.findAll()).thenReturn(List.of(
+                buildRegistration("http://dataplane-1", Set.of("HttpData-PULL", "HttpData-PUSH"), Set.of("profile-a"))
+        ));
+
+        Distribution sharedPullDistribution = withIdentity(
+                CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PULL",
+                        OLDER_TIMESTAMP, OLDER_TIMESTAMP, "shared-title"),
+                "distribution-shared-pull", 7L);
+        Dataset firstDataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
+                new LinkedHashSet<>(List.of(
+                        sharedPullDistribution,
+                        withIdentity(CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "UNSUPPORTED",
+                                NEWER_TIMESTAMP, NEWER_TIMESTAMP, "first-template-title"),
+                                "distribution-first-stale", 9L)
+                )));
+        Dataset secondDataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
+                new LinkedHashSet<>(List.of(
+                        sharedPullDistribution,
+                        withIdentity(CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "UNSUPPORTED",
+                                NEWER_TIMESTAMP, NEWER_TIMESTAMP, "second-template-title"),
+                                "distribution-second-stale", 11L)
+                )));
+        when(datasetRepository.findAll()).thenReturn(List.of(firstDataset, secondDataset));
+        when(distributionRepository.saveAll(any())).thenAnswer(invocation ->
+                toDistributionList(invocation.getArgument(0)));
+        when(datasetRepository.save(any(Dataset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.reconcileCatalogDistributions();
+
+        ArgumentCaptor<Dataset> savedDatasetCaptor = ArgumentCaptor.forClass(Dataset.class);
+        verify(datasetRepository, times(2)).save(savedDatasetCaptor.capture());
+
+        List<Dataset> savedDatasets = savedDatasetCaptor.getAllValues();
+        Distribution firstSavedPullDistribution = findDistributionByFormat(
+                new ArrayList<>(savedDatasets.get(0).getDistribution()), "HttpData-PULL");
+        Distribution secondSavedPullDistribution = findDistributionByFormat(
+                new ArrayList<>(savedDatasets.get(1).getDistribution()), "HttpData-PULL");
+
+        assertNotEquals("distribution-shared-pull", firstSavedPullDistribution.getId());
+        assertNotEquals("distribution-shared-pull", secondSavedPullDistribution.getId());
+        assertNotEquals(firstSavedPullDistribution.getId(), secondSavedPullDistribution.getId());
+        assertNull(firstSavedPullDistribution.getVersion());
+        assertNull(secondSavedPullDistribution.getVersion());
     }
 
     private DataPlaneRegistration buildRegistration(String endpoint, Set<String> supportedTransferTypes,

@@ -100,6 +100,10 @@ public class CatalogService {
                 .flatMap(Set::stream)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<DataService> refreshedServices = refreshedDistributions.stream()
+                .map(Distribution::getAccessService)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
         return Catalog.Builder.newInstance()
                 .id(catalog.getId())
                 .keyword(catalog.getKeyword())
@@ -114,7 +118,7 @@ public class CatalogService {
                 .distribution(refreshedDistributions)
                 .hasPolicy(catalog.getHasPolicy())
                 .dataset(catalog.getDataset())
-                .service(catalog.getService())
+                .service(refreshedServices)
                 .participantId(catalog.getParticipantId())
                 .tenantId(catalog.getTenantId())
                 .createdBy(catalog.getCreatedBy())

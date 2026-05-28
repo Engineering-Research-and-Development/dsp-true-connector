@@ -65,9 +65,10 @@ public class CatalogDataPlaneFormatSyncService {
     }
 
     private void reconcileDatasets(List<Dataset> datasets, Set<String> supportedFormats, String tenantId) {
+        Set<String> sharedDistributionIds = resolveSharedDistributionIds(datasets);
         int deletedDistributionCount = 0;
         for (Dataset dataset : datasets) {
-            DatasetReconciliation result = reconcileDataset(dataset, supportedFormats);
+            DatasetReconciliation result = reconcileDataset(dataset, supportedFormats, sharedDistributionIds);
             if (!result.desiredDistributions().isEmpty()) {
                 distributionRepository.saveAll(result.desiredDistributions());
             }
@@ -87,10 +88,11 @@ public class CatalogDataPlaneFormatSyncService {
         }
     }
 
-    private DatasetReconciliation reconcileDataset(Dataset dataset, Set<String> supportedFormats) {
+    private DatasetReconciliation reconcileDataset(Dataset dataset, Set<String> supportedFormats,
+                                                   Set<String> sharedDistributionIds) {
         Set<Distribution> currentDistributions = safeSet(dataset.getDistribution());
         if (supportedFormats.isEmpty()) {
-            return normalizeDatasetToTemplateDistribution(dataset, currentDistributions);
+            return normalizeDatasetToTemplateDistribution(dataset, currentDistributions, sharedDistributionIds);
         }
         Map<String, Distribution> distributionsByFormat = currentDistributions.stream()
                 .filter(Objects::nonNull)
@@ -109,10 +111,12 @@ public class CatalogDataPlaneFormatSyncService {
             if (existingDistribution == null && templateSource == null) {
                 continue;
             }
+            Distribution reusableDistribution = isSharedDistribution(existingDistribution, sharedDistributionIds)
+                    ? null : existingDistribution;
             Distribution distribution = materializeDistribution(
                     templateSource != null ? templateSource : existingDistribution,
                     supportedFormat,
-                    existingDistribution);
+                    reusableDistribution);
             reconciledDistributions.add(distribution);
         }
 
@@ -131,7 +135,8 @@ public class CatalogDataPlaneFormatSyncService {
     }
 
     private DatasetReconciliation normalizeDatasetToTemplateDistribution(Dataset dataset,
-                                                                         Set<Distribution> currentDistributions) {
+                                                                         Set<Distribution> currentDistributions,
+                                                                         Set<String> sharedDistributionIds) {
         Distribution template = currentDistributions.stream()
                 .filter(Objects::nonNull)
                 .max(this::compareByRecency)
@@ -140,7 +145,8 @@ public class CatalogDataPlaneFormatSyncService {
             return new DatasetReconciliation(dataset, Collections.emptySet(), List.of());
         }
 
-        Distribution normalizedDistribution = materializeDistribution(template, null, template);
+        Distribution normalizedDistribution = materializeDistribution(template, null,
+                isSharedDistribution(template, sharedDistributionIds) ? null : template);
         List<String> staleDistributionIds = currentDistributions.stream()
                 .map(Distribution::getId)
                 .filter(Objects::nonNull)
@@ -215,6 +221,28 @@ public class CatalogDataPlaneFormatSyncService {
 
     private String stableDistributionId(Distribution distribution) {
         return distribution != null ? distribution.getId() : null;
+    }
+
+    private Set<String> resolveSharedDistributionIds(List<Dataset> datasets) {
+        return datasets.stream()
+                .filter(Objects::nonNull)
+                .map(Dataset::getDistribution)
+                .filter(Objects::nonNull)
+                .flatMap(Set::stream)
+                .filter(Objects::nonNull)
+                .map(Distribution::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.groupingBy(id -> id, LinkedHashMap::new, Collectors.counting()))
+                .entrySet().stream()
+                .filter(entry -> entry.getValue() > 1)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private boolean isSharedDistribution(Distribution distribution, Set<String> sharedDistributionIds) {
+        return distribution != null
+                && distribution.getId() != null
+                && sharedDistributionIds.contains(distribution.getId());
     }
 
     private <T> Set<T> safeSet(Set<T> values) {
