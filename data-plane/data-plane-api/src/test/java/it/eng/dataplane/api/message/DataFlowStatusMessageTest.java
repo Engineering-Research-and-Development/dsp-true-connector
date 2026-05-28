@@ -63,4 +63,40 @@ class DataFlowStatusMessageTest {
         assertThrows(ValidationException.class, () ->
             DataFlowStatusMessage.Builder.newInstance().build());
     }
+
+    @Test
+    @DisplayName("resumable field defaults to null when not set")
+    void resumable_defaultsToNull() {
+        DataFlowStatusMessage msg = DataFlowStatusMessage.Builder.newInstance()
+            .processId("proc-1")
+            .state(DataFlowState.STARTED)
+            .build();
+        assertNull(msg.getResumable());
+    }
+
+    @Test
+    @DisplayName("resumable=true survives round-trip serialization")
+    void resumable_trueRoundTrip() throws Exception {
+        DataFlowStatusMessage original = DataFlowStatusMessage.Builder.newInstance()
+            .processId("proc-1")
+            .state(DataFlowState.SUSPENDED)
+            .resumable(true)
+            .build();
+        String json = MAPPER.writeValueAsString(original);
+        DataFlowStatusMessage restored = MAPPER.readValue(json, DataFlowStatusMessage.class);
+        assertTrue(restored.getResumable());
+    }
+
+    @Test
+    @DisplayName("resumable=false survives round-trip serialization")
+    void resumable_falseRoundTrip() throws Exception {
+        DataFlowStatusMessage original = DataFlowStatusMessage.Builder.newInstance()
+            .processId("proc-1")
+            .state(DataFlowState.SUSPENDED)
+            .resumable(false)
+            .build();
+        String json = MAPPER.writeValueAsString(original);
+        DataFlowStatusMessage restored = MAPPER.readValue(json, DataFlowStatusMessage.class);
+        assertFalse(restored.getResumable());
+    }
 }
