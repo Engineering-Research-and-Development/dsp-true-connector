@@ -416,8 +416,50 @@ public class DataTransferAPIService {
         log.info("Response received {}", response);
         if (response.isSuccess()) {
             if (resuming) {
-                dataPlaneClient.resume(transferProcess.getId(), transferProcess.getFormat());
-                log.info("Transfer process {} dataplane resumed after successful peer start", transferProcess.getId());
+                try {
+                    dataPlaneClient.resume(transferProcess.getId(), transferProcess.getFormat());
+                    log.info("Transfer process {} dataplane resumed after successful peer start", transferProcess.getId());
+                } catch (RuntimeException ex) {
+                    // Peer accepted the start but local dataplane resume failed.
+                    // Roll back to SUSPENDED so the admin can retry and the TP is not left as
+                    // an apparently healthy STARTED record with a paused dataplane.
+                    log.error("Dataplane resume failed for transfer {} after peer accepted start — rolling back to SUSPENDED",
+                            transferProcess.getId(), ex);
+                    TransferProcess rollback = TransferProcess.Builder.newInstance()
+                            .id(transferProcessStarted.getId())
+                            .agreementId(transferProcessStarted.getAgreementId())
+                            .consumerPid(transferProcessStarted.getConsumerPid())
+                            .providerPid(transferProcessStarted.getProviderPid())
+                            .callbackAddress(transferProcessStarted.getCallbackAddress())
+                            .dataAddress(transferProcess.getDataAddress())
+                            .isDownloaded(transferProcessStarted.isDownloaded())
+                            .dataId(transferProcessStarted.getDataId())
+                            .format(transferProcessStarted.getFormat())
+                            .state(TransferState.SUSPENDED)
+                            .dataFlowState(transferProcess.getDataFlowState())
+                            .role(transferProcessStarted.getRole())
+                            .suspendedBy(transferProcess.getSuspendedBy())
+                            .datasetId(transferProcessStarted.getDatasetId())
+                            .retryCount(transferProcessStarted.getRetryCount())
+                            .tenantId(transferProcessStarted.getTenantId())
+                            .created(transferProcessStarted.getCreated())
+                            .createdBy(transferProcessStarted.getCreatedBy())
+                            .modified(transferProcessStarted.getModified())
+                            .lastModifiedBy(transferProcessStarted.getLastModifiedBy())
+                            .version(transferProcessStarted.getVersion())
+                            .build();
+                    try {
+                        transferProcessRepository.save(rollback);
+                        log.info("Transfer process {} rolled back to SUSPENDED after dataplane resume failure",
+                                transferProcess.getId());
+                    } catch (RuntimeException saveEx) {
+                        log.error("Failed to persist SUSPENDED rollback for transfer {} — manual intervention required: "
+                                + "TP may be stuck as STARTED with a paused dataplane", transferProcess.getId(), saveEx);
+                    }
+                    throw new DataTransferAPIException(
+                            "Dataplane resume failed after peer accepted start — transfer rolled back to SUSPENDED: "
+                                    + ex.getMessage());
+                }
             }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
                     "Transfer process started successfully",
