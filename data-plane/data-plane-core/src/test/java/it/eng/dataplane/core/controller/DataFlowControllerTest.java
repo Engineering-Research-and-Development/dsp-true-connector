@@ -9,6 +9,7 @@ import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.dataplane.api.spi.DataTransferProtocol;
 import it.eng.dataplane.core.model.DataFlowEntity;
 import it.eng.dataplane.core.registry.DataTransferProtocolRegistry;
+import it.eng.dataplane.core.service.DataFlowCheckpointService;
 import it.eng.dataplane.core.service.DataFlowService;
 import it.eng.dataplane.core.service.DataPlaneAuditEventService;
 import org.junit.jupiter.api.DisplayName;
@@ -38,6 +39,9 @@ class DataFlowControllerTest {
 
     @Mock
     private DataTransferProtocolRegistry protocolRegistry;
+
+    @Mock
+    private DataFlowCheckpointService checkpointService;
 
     @Mock
     private DataPlaneAuditEventService auditEventService;
@@ -257,5 +261,23 @@ class DataFlowControllerTest {
         ResponseEntity<DataFlowStatusMessage> response = controller.statusDataFlow("missing");
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("statusDataFlow returns resumable=true when checkpoint service reports resumable")
+    void status_includesResumableFlag() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("entity-id-1")
+                .processId("proc-suspend")
+                .state(DataFlowState.SUSPENDED)
+                .build();
+        when(dataFlowService.status("proc-suspend")).thenReturn(entity);
+        when(checkpointService.hasResumableCheckpoint("proc-suspend")).thenReturn(true);
+
+        ResponseEntity<DataFlowStatusMessage> response = controller.statusDataFlow("proc-suspend");
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNotNull(response.getBody());
+        assertTrue(response.getBody().getResumable());
     }
 }
