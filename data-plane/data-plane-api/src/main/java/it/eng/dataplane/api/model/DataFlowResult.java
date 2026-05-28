@@ -7,6 +7,7 @@ import lombok.Getter;
 public class DataFlowResult {
 
     private boolean success;
+    private boolean paused;
     private String errorMessage;
 
     private DataFlowResult() {}
@@ -19,6 +20,21 @@ public class DataFlowResult {
     public static DataFlowResult success() {
         DataFlowResult result = new DataFlowResult();
         result.success = true;
+        return result;
+    }
+
+    /**
+     * Creates a paused result indicating the upload was suspended cleanly.
+     *
+     * <p>A paused result is neither a success nor a failure: the transfer
+     * is still alive and can be resumed.  No Control Plane completion or
+     * error callback should be sent for a paused result.</p>
+     *
+     * @return paused DataFlowResult
+     */
+    public static DataFlowResult paused() {
+        DataFlowResult result = new DataFlowResult();
+        result.paused = true;
         return result;
     }
 
