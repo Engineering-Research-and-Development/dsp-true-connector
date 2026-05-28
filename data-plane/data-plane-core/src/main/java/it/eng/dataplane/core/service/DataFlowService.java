@@ -70,6 +70,14 @@ public class DataFlowService {
     /**
      * Resumes a suspended data transfer.
      *
+     * <p>The RESUMED audit event is emitted synchronously once the entity transitions back to
+     * STARTED, before the protocol future is registered. This ensures the audit record reflects
+     * the intent to resume regardless of the eventual transfer outcome.</p>
+     *
+     * <p>When the resumed transfer future completes (success or failure), {@link #handleCompletion}
+     * is called, which transitions the entity to COMPLETED or TERMINATED exactly as a freshly
+     * started transfer does.</p>
+     *
      * @param processId the process ID to resume
      * @throws IllegalStateException if no flow exists for this processId or the state transition is invalid
      */
@@ -79,27 +87,15 @@ public class DataFlowService {
         DataFlowEntity startedEntity = entity.withState(DataFlowState.STARTED);
         repository.save(startedEntity);
 
+        // Emit RESUMED synchronously now that the entity is back in STARTED state
+        auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_RESUMED,
+                processId, entity.getTransferType(), "Data flow resumed", null);
+
         CompletableFuture<DataFlowResult> future = requiredProtocol(entity.getTransferType())
                 .resumeTransfer(entity.getId());
         executionRegistry.register(processId, new FutureDataFlowExecutionHandle(processId, future));
-        future.thenAccept(result -> {
-                    if (result.isSuccess()) {
-                        DataFlowEntity fresh = findRequired(processId);
-                        if (fresh.getState() != DataFlowState.STARTED) {
-                            log.debug("DataFlow processId={} is already {}; ignoring late resume callback",
-                                    processId, fresh.getState());
-                            return;
-                        }
-                        auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_RESUMED,
-                                processId, entity.getTransferType(), "Data flow resumed", null);
-                    } else {
-                        handleError(processId, new RuntimeException(result.getErrorMessage()));
-                    }
-                })
-                .exceptionally(ex -> {
-                    handleError(processId, ex);
-                    return null;
-                });
+        future.thenAccept(result -> handleCompletion(processId, result))
+                .exceptionally(ex -> { handleError(processId, ex); return null; });
     }
 
     /**

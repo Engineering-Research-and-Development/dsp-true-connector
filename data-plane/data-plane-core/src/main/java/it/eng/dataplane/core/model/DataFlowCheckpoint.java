@@ -45,7 +45,10 @@ public class DataFlowCheckpoint {
     /** Map of part number to part size in bytes. */
     private Map<Integer, Long> partSizes;
 
-    /** Total bytes confirmed uploaded so far. */
+    /** Map of part number to the ETag returned by S3 for that part. Required for multipart resume. */
+    private Map<Integer, String> partETags;
+
+    /** Total contiguous bytes confirmed uploaded so far (from part 1 through the last uninterrupted part). */
     private long confirmedBytes;
 
     private Instant createdAt;
@@ -65,13 +68,22 @@ public class DataFlowCheckpoint {
     }
 
     /**
-     * Returns a new {@link DataFlowCheckpoint} with the given part appended to the completed list.
+     * Returns a new {@link DataFlowCheckpoint} with the given part appended to the completed list,
+     * along with its ETag for multipart resume and the updated confirmed byte count.
      *
-     * @param partNumber the 1-based part number
-     * @param partSize   the size of the part in bytes
-     * @return updated copy with part appended and {@code confirmedBytes} incremented
+     * <p>The {@code eTag} is required by S3 / MinIO when calling {@code CompleteMultipartUpload}
+     * after a resume. The {@code confirmedBytes} value should be the contiguous byte count
+     * reported by the {@link it.eng.tools.s3.service.upload.UploadCheckpointCallback}; it is
+     * stored directly rather than re-derived from part sizes.</p>
+     *
+     * @param partNumber      the 1-based part number
+     * @param partSize        the size of the part in bytes
+     * @param eTag            the ETag returned by S3 for this part
+     * @param confirmedBytes  total contiguous bytes confirmed from part 1 through the latest
+     *                        uninterrupted sequence at the time this part completed
+     * @return updated copy with part appended
      */
-    public DataFlowCheckpoint withCompletedPart(int partNumber, long partSize) {
+    public DataFlowCheckpoint withCompletedPart(int partNumber, long partSize, String eTag, long confirmedBytes) {
         DataFlowCheckpoint copy = copyOf(this);
         List<Integer> parts = new ArrayList<>(copy.completedParts == null ? List.of() : copy.completedParts);
         parts.add(partNumber);
@@ -79,7 +91,10 @@ public class DataFlowCheckpoint {
         Map<Integer, Long> sizes = new HashMap<>(copy.partSizes == null ? Map.of() : copy.partSizes);
         sizes.put(partNumber, partSize);
         copy.partSizes = Map.copyOf(sizes);
-        copy.confirmedBytes = copy.confirmedBytes + partSize;
+        Map<Integer, String> etags = new HashMap<>(copy.partETags == null ? Map.of() : copy.partETags);
+        etags.put(partNumber, eTag);
+        copy.partETags = Map.copyOf(etags);
+        copy.confirmedBytes = confirmedBytes;
         copy.updatedAt = Instant.now();
         return copy;
     }
@@ -95,6 +110,7 @@ public class DataFlowCheckpoint {
         copy.destinationObjectKey = source.destinationObjectKey;
         copy.completedParts = source.completedParts;
         copy.partSizes = source.partSizes;
+        copy.partETags = source.partETags;
         copy.confirmedBytes = source.confirmedBytes;
         copy.createdAt = source.createdAt;
         copy.updatedAt = source.updatedAt;
@@ -214,6 +230,17 @@ public class DataFlowCheckpoint {
          */
         public Builder partSizes(Map<Integer, Long> partSizes) {
             instance.partSizes = partSizes;
+            return this;
+        }
+
+        /**
+         * Sets the part ETags map used for multipart resume.
+         *
+         * @param partETags map of part number to the ETag returned by S3 for that part
+         * @return this builder
+         */
+        public Builder partETags(Map<Integer, String> partETags) {
+            instance.partETags = partETags;
             return this;
         }
 
