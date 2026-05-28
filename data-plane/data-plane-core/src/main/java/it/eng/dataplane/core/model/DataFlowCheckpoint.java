@@ -45,6 +45,9 @@ public class DataFlowCheckpoint {
     /** Map of part number to part size in bytes. */
     private Map<Integer, Long> partSizes;
 
+    /** Map of part number to the ETag returned by S3 for that part. Required to complete a multipart upload. */
+    private Map<Integer, String> partETags;
+
     /** Total bytes confirmed uploaded so far. */
     private long confirmedBytes;
 
@@ -69,9 +72,11 @@ public class DataFlowCheckpoint {
      *
      * @param partNumber the 1-based part number
      * @param partSize   the size of the part in bytes
+     * @param eTag       the ETag returned by S3 for the completed part; required later to
+     *                   finalize the multipart upload on resume
      * @return updated copy with part appended and {@code confirmedBytes} incremented
      */
-    public DataFlowCheckpoint withCompletedPart(int partNumber, long partSize) {
+    public DataFlowCheckpoint withCompletedPart(int partNumber, long partSize, String eTag) {
         DataFlowCheckpoint copy = copyOf(this);
         List<Integer> parts = new ArrayList<>(copy.completedParts == null ? List.of() : copy.completedParts);
         parts.add(partNumber);
@@ -79,6 +84,9 @@ public class DataFlowCheckpoint {
         Map<Integer, Long> sizes = new HashMap<>(copy.partSizes == null ? Map.of() : copy.partSizes);
         sizes.put(partNumber, partSize);
         copy.partSizes = Map.copyOf(sizes);
+        Map<Integer, String> tags = new HashMap<>(copy.partETags == null ? Map.of() : copy.partETags);
+        tags.put(partNumber, eTag);
+        copy.partETags = Map.copyOf(tags);
         copy.confirmedBytes = copy.confirmedBytes + partSize;
         copy.updatedAt = Instant.now();
         return copy;
@@ -95,6 +103,7 @@ public class DataFlowCheckpoint {
         copy.destinationObjectKey = source.destinationObjectKey;
         copy.completedParts = source.completedParts;
         copy.partSizes = source.partSizes;
+        copy.partETags = source.partETags;
         copy.confirmedBytes = source.confirmedBytes;
         copy.createdAt = source.createdAt;
         copy.updatedAt = source.updatedAt;
@@ -214,6 +223,17 @@ public class DataFlowCheckpoint {
          */
         public Builder partSizes(Map<Integer, Long> partSizes) {
             instance.partSizes = partSizes;
+            return this;
+        }
+
+        /**
+         * Sets the part ETags map.
+         *
+         * @param partETags map of part number to the S3 ETag string for that part
+         * @return this builder
+         */
+        public Builder partETags(Map<Integer, String> partETags) {
+            instance.partETags = partETags;
             return this;
         }
 

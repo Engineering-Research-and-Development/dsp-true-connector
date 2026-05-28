@@ -3,10 +3,16 @@ package it.eng.dataplane.httppush;
 import com.sun.net.httpserver.HttpServer;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
+import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.dataplane.core.client.ControlPlaneClient;
+import it.eng.dataplane.core.model.DataFlowCheckpoint;
+import it.eng.dataplane.core.model.DataFlowEntity;
+import it.eng.dataplane.core.repository.DataFlowRepository;
+import it.eng.dataplane.core.service.DataFlowCheckpointService;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
+import it.eng.tools.s3.service.upload.ResumableUploadRequest;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.dataplane.s3.service.TenantBucketResolver;
 import org.junit.jupiter.api.AfterEach;
@@ -21,8 +27,11 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 
@@ -53,6 +62,10 @@ class HttpPushTransferProtocolTest {
     private S3Properties s3Properties;
     @Mock
     private ControlPlaneClient controlPlaneClient;
+    @Mock
+    private DataFlowCheckpointService checkpointService;
+    @Mock
+    private DataFlowRepository dataFlowRepository;
 
     private HttpPushTransferProtocol protocol;
     private HttpServer testHttpServer;
@@ -75,7 +88,9 @@ class HttpPushTransferProtocolTest {
             tenantBucketResolver,
             syncExecutor,
             testHttpClient,
-            controlPlaneClient
+            controlPlaneClient,
+            checkpointService,
+            dataFlowRepository
         );
     }
 
@@ -127,21 +142,167 @@ class HttpPushTransferProtocolTest {
     }
 
     @Test
-    @DisplayName("suspendTransfer returns failure with 'not supported' message")
-    void suspendTransfer_returnsNotSupported() throws Exception {
+    @DisplayName("suspendTransfer returns success when no active flag exists")
+    void suspendTransfer_returnsSuccessWhenNoActiveFlag() throws Exception {
+        when(dataFlowRepository.findById("df-1")).thenReturn(Optional.empty());
+
         DataFlowResult result = protocol.suspendTransfer("df-1").get();
 
-        assertThat(result.isSuccess()).isFalse();
-        assertThat(result.getErrorMessage()).contains("not supported");
+        assertThat(result.isSuccess()).isTrue();
     }
 
     @Test
-    @DisplayName("resumeTransfer returns failure with 'not supported' message")
-    void resumeTransfer_returnsNotSupported() throws Exception {
+    @DisplayName("suspendTransfer returns success and sets active flag when entity is found")
+    void suspendTransfer_setsActiveFlagWhenEntityFound() throws Exception {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-1")
+                .processId("tp-suspend")
+                .state(DataFlowState.STARTED)
+                .build();
+        when(dataFlowRepository.findById("df-1")).thenReturn(Optional.of(entity));
+
+        DataFlowResult result = protocol.suspendTransfer("df-1").get();
+
+        assertThat(result.isSuccess()).isTrue();
+    }
+
+    @Test
+    @DisplayName("resumeTransfer returns failure when no entity is found")
+    void resumeTransfer_failsWhenNoEntityFound() throws Exception {
+        when(dataFlowRepository.findById("df-1")).thenReturn(Optional.empty());
+
         DataFlowResult result = protocol.resumeTransfer("df-1").get();
 
         assertThat(result.isSuccess()).isFalse();
-        assertThat(result.getErrorMessage()).contains("not supported");
+        assertThat(result.getErrorMessage()).contains("df-1");
+    }
+
+    @Test
+    @DisplayName("resumeTransfer returns failure when no checkpoint exists")
+    void resumeTransfer_failsWhenNoCheckpoint() throws Exception {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-1")
+                .processId("tp-resume")
+                .state(DataFlowState.SUSPENDED)
+                .dataAddress(Map.of(S3Utils.BUCKET_NAME, "consumer-bucket",
+                        S3Utils.ACCESS_KEY, "acc", S3Utils.SECRET_KEY, "sec"))
+                .build();
+        when(dataFlowRepository.findById("df-1")).thenReturn(Optional.of(entity));
+        when(checkpointService.findByProcessId("tp-resume")).thenReturn(Optional.empty());
+
+        DataFlowResult result = protocol.resumeTransfer("df-1").get();
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("checkpoint");
+    }
+
+    @Test
+    @DisplayName("resumeTransfer reuses consumer credentials from entity dataAddress — no new temp user")
+    void resumeTransfer_reusesConsumerCredentials() throws Exception {
+        Map<String, String> dataAddress = new HashMap<>();
+        dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
+        dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
+        dataAddress.put(S3Utils.SECRET_KEY, "consumer-secret");
+        dataAddress.put(S3Utils.OBJECT_KEY, "tp-resume");
+        dataAddress.put(S3Utils.REGION, "us-east-1");
+
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-1")
+                .processId("tp-resume")
+                .datasetId("dataset-1")
+                .transferType("HttpData-PUSH")
+                .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
+                .state(DataFlowState.SUSPENDED)
+                .dataAddress(dataAddress)
+                .build();
+        when(dataFlowRepository.findById("df-1")).thenReturn(Optional.of(entity));
+
+        DataFlowCheckpoint checkpoint = DataFlowCheckpoint.Builder.newInstance()
+                .processId("tp-resume")
+                .dataFlowId("df-1")
+                .uploadId("upload-id-1")
+                .destinationBucket("consumer-bucket")
+                .destinationObjectKey("tp-resume")
+                .completedParts(List.of())
+                .partSizes(Map.of())
+                .partETags(Map.of())
+                .confirmedBytes(0L)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        when(checkpointService.findByProcessId("tp-resume")).thenReturn(Optional.of(checkpoint));
+
+        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        testHttpServer.createContext("/artifact", exchange -> {
+            byte[] body = "artifact-content".getBytes();
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+        });
+        testHttpServer.start();
+        int port = testHttpServer.getAddress().getPort();
+
+        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
+        when(s3ClientService.generateGetPresignedUrl(anyString(), anyString(), any(Duration.class)))
+                .thenReturn("http://localhost:" + port + "/artifact");
+        when(s3ClientService.uploadFile(any(), any(), any(), any(), any(ResumableUploadRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture("etag-resume"));
+
+        DataFlowResult result = protocol.resumeTransfer("df-1").get();
+
+        assertThat(result.isSuccess()).isTrue();
+        // Must NOT create a new temporary IAM user — credentials are reused from dataAddress
+        verify(temporaryBucketUserService, never()).createTemporaryUser(any(), any(), any());
+        verify(controlPlaneClient).sendCompleted(eq("http://cp:8080"), eq("tp-resume"), anyMap());
+        verify(checkpointService).deleteByProcessId("tp-resume");
+    }
+
+    @Test
+    @DisplayName("hasUsableAccessMaterial returns true when dataAddress has bucket, accessKey and secretKey")
+    void hasUsableAccessMaterial_returnsTrueWhenCredentialsPresent() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-check")
+                .transferType("HttpData-PUSH")
+                .dataAddress(Map.of(
+                        S3Utils.BUCKET_NAME, "consumer-bucket",
+                        S3Utils.ACCESS_KEY, "acc",
+                        S3Utils.SECRET_KEY, "sec"
+                ))
+                .build();
+
+        assertThat(protocol.hasUsableAccessMaterial(dataFlow)).isTrue();
+    }
+
+    @Test
+    @DisplayName("hasUsableAccessMaterial returns false when dataAddress is missing secretKey")
+    void hasUsableAccessMaterial_returnsFalseWhenSecretKeyMissing() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-check")
+                .transferType("HttpData-PUSH")
+                .dataAddress(Map.of(
+                        S3Utils.BUCKET_NAME, "consumer-bucket",
+                        S3Utils.ACCESS_KEY, "acc"
+                ))
+                .build();
+
+        assertThat(protocol.hasUsableAccessMaterial(dataFlow)).isFalse();
+    }
+
+    @Test
+    @DisplayName("hasUsableAccessMaterial returns false when dataAddress is missing bucketName")
+    void hasUsableAccessMaterial_returnsFalseWhenBucketNameMissing() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-check")
+                .transferType("HttpData-PUSH")
+                .dataAddress(Map.of(
+                        S3Utils.ACCESS_KEY, "acc",
+                        S3Utils.SECRET_KEY, "sec"
+                ))
+                .build();
+
+        assertThat(protocol.hasUsableAccessMaterial(dataFlow)).isFalse();
     }
 
     @Test
@@ -212,7 +373,7 @@ class HttpPushTransferProtocolTest {
         when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
         when(s3ClientService.generateGetPresignedUrl(eq("provider-bucket"), anyString(), any(Duration.class)))
             .thenReturn(presignedUrl);
-        when(s3ClientService.uploadFile(any(), any(), any(), any()))
+        when(s3ClientService.uploadFile(any(), any(), any(), any(), any(ResumableUploadRequest.class)))
             .thenReturn(CompletableFuture.completedFuture("etag-xyz"));
 
         Map<String, String> dataAddress = new HashMap<>();
@@ -260,7 +421,7 @@ class HttpPushTransferProtocolTest {
         when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
         when(s3ClientService.generateGetPresignedUrl(anyString(), anyString(), any(Duration.class)))
             .thenReturn(presignedUrl);
-        when(s3ClientService.uploadFile(any(), any(), any(), any()))
+        when(s3ClientService.uploadFile(any(), any(), any(), any(), any(ResumableUploadRequest.class)))
             .thenReturn(CompletableFuture.completedFuture("etag-xyz"));
 
         Map<String, String> dataAddress = new HashMap<>();
@@ -284,7 +445,7 @@ class HttpPushTransferProtocolTest {
         // Verify processId was used as the S3 objectKey since it was absent from dataAddress
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, String>> s3PropsCaptor = ArgumentCaptor.forClass(Map.class);
-        verify(s3ClientService).uploadFile(any(), s3PropsCaptor.capture(), any(), any());
+        verify(s3ClientService).uploadFile(any(), s3PropsCaptor.capture(), any(), any(), any(ResumableUploadRequest.class));
         assertThat(s3PropsCaptor.getValue()).containsEntry(S3Utils.OBJECT_KEY, "tp-4");
         // Cleanup of temporary credentials is handled by the consumer CP, not the provider-side push DP
         verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
@@ -312,7 +473,7 @@ class HttpPushTransferProtocolTest {
         when(s3ClientService.generateGetPresignedUrl(anyString(), anyString(), any(Duration.class)))
             .thenReturn(presignedUrl);
         // Simulate upload failure
-        when(s3ClientService.uploadFile(any(), any(), any(), any()))
+        when(s3ClientService.uploadFile(any(), any(), any(), any(), any(ResumableUploadRequest.class)))
             .thenReturn(CompletableFuture.failedFuture(new RuntimeException("S3 auth failure")));
 
         Map<String, String> dataAddress = new HashMap<>();
@@ -361,7 +522,7 @@ class HttpPushTransferProtocolTest {
         when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
         when(s3ClientService.generateGetPresignedUrl(eq("provider-bucket"), anyString(), any(Duration.class)))
             .thenReturn(presignedUrl);
-        when(s3ClientService.uploadFile(any(), any(), any(), any()))
+        when(s3ClientService.uploadFile(any(), any(), any(), any(), any(ResumableUploadRequest.class)))
             .thenReturn(CompletableFuture.completedFuture("etag-ok"));
 
         Map<String, String> dataAddress = new HashMap<>();
@@ -386,3 +547,4 @@ class HttpPushTransferProtocolTest {
         verify(controlPlaneClient, never()).sendErrored(any(), any(), any());
     }
 }
+
