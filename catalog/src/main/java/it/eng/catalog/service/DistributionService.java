@@ -3,8 +3,10 @@ package it.eng.catalog.service;
 
 import java.util.Collection;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import it.eng.catalog.event.CatalogStructureChangedEvent;
 import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Distribution;
@@ -21,10 +23,13 @@ public class DistributionService {
 
     private final DistributionRepository repository;
     private final CatalogService catalogService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
-    public DistributionService(DistributionRepository repository, CatalogService catalogService) {
+    public DistributionService(DistributionRepository repository, CatalogService catalogService,
+                               ApplicationEventPublisher applicationEventPublisher) {
         this.repository = repository;
         this.catalogService = catalogService;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     /**
@@ -77,6 +82,7 @@ public class DistributionService {
 			throw new InternalServerErrorAPIException("Distribution could not be saved");
 		}
         catalogService.updateCatalogDistributionAfterSave(savedDistribution);
+        applicationEventPublisher.publishEvent(CatalogStructureChangedEvent.fullReconcile("distribution-saved"));
         return distribution;
     }
 
@@ -96,6 +102,7 @@ public class DistributionService {
 			throw new InternalServerErrorAPIException("Distribution could not be deleted");
 		}
         catalogService.updateCatalogDistributionAfterDelete(distribution);
+        applicationEventPublisher.publishEvent(CatalogStructureChangedEvent.fullReconcile("distribution-deleted"));
     }
 
     /**
@@ -117,7 +124,7 @@ public class DistributionService {
 			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Dataset could not be updated");
 		}
-
+        applicationEventPublisher.publishEvent(CatalogStructureChangedEvent.fullReconcile("distribution-updated"));
         return storedDistribution;
     }
 }

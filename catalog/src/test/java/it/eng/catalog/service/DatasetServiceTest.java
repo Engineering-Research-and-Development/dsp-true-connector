@@ -23,7 +23,9 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -57,6 +59,9 @@ public class DatasetServiceTest {
 
     @Mock
     private AuditEventPublisher auditEventPublisher;
+
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @Captor
     private ArgumentCaptor<Dataset> argCaptorDataset;
@@ -192,6 +197,7 @@ public class DatasetServiceTest {
         assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getId(), argCaptorDataset.getValue().getArtifact().getId());
         assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), argCaptorDataset.getValue().getArtifact().getValue());
         assertEquals(CatalogMockObjectUtil.DATASET.getId(), argCaptorDataset.getValue().getId());
+        verify(applicationEventPublisher).publishEvent((Object) argThat(event -> hasReason(event, "dataset-saved")));
 
     }
 
@@ -229,6 +235,7 @@ public class DatasetServiceTest {
         assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getId(), argCaptorDataset.getValue().getArtifact().getId());
         assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), argCaptorDataset.getValue().getArtifact().getValue());
         assertEquals(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), argCaptorDataset.getValue().getId());
+        verify(applicationEventPublisher).publishEvent((Object) argThat(event -> hasReason(event, "dataset-updated")));
     }
 
     @Test
@@ -243,6 +250,7 @@ public class DatasetServiceTest {
         verify(artifactService).deleteArtifact(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getArtifact());
         verify(repository).deleteById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
         verify(catalogService).updateCatalogDatasetAfterDelete(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
+        verify(applicationEventPublisher).publishEvent((Object) argThat(event -> hasReason(event, "dataset-deleted")));
     }
 
     @Test
@@ -255,5 +263,17 @@ public class DatasetServiceTest {
         verify(repository).findByIdAndTenantId("1", TENANT_ID);
         verify(repository, never()).deleteById("1");
         verify(catalogService, never()).updateCatalogDatasetAfterDelete(any(Dataset.class));
+    }
+
+    private boolean hasReason(Object target, String expectedReason) {
+        try {
+            Method fullReconcileAccessor = target.getClass().getMethod("fullReconcile");
+            Method reasonAccessor = target.getClass().getMethod("reason");
+            Object fullReconcile = fullReconcileAccessor.invoke(target);
+            Object reason = reasonAccessor.invoke(target);
+            return Boolean.TRUE.equals(fullReconcile) && expectedReason.equals(reason);
+        } catch (ReflectiveOperationException e) {
+            return false;
+        }
     }
 }
