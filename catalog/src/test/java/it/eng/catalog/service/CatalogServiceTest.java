@@ -72,10 +72,13 @@ public class CatalogServiceTest {
     @Test
     @DisplayName("Save catalog successfully")
     public void saveCatalog_success() {
-        when(repository.save(any(Catalog.class))).thenReturn(catalog);
+        when(repository.save(any(Catalog.class))).thenAnswer(invocation -> invocation.getArgument(0));
         Catalog savedCatalog = service.saveCatalog(catalog);
         assertNotNull(savedCatalog);
-        verify(repository).save(catalog);
+        verify(repository).save(argCaptorCatalog.capture());
+        assertEquals(catalog.getDataset().stream().findFirst().orElseThrow().getDistribution(),
+                argCaptorCatalog.getValue().getDistribution());
+        assertEquals(argCaptorCatalog.getValue().getDistribution(), savedCatalog.getDistribution());
     }
 
     @Test
@@ -216,6 +219,54 @@ public class CatalogServiceTest {
     }
 
     @Test
+    @DisplayName("Update catalog normalizes top-level distributions before save")
+    public void updateCatalog_normalizesTopLevelDistributionsBeforeSave() {
+        Distribution existingDatasetDistribution = CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PULL",
+                CatalogMockObjectUtil.ISSUED, CatalogMockObjectUtil.MODIFIED, "existing-title");
+        Dataset existingDataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
+                new HashSet<>(Collections.singleton(existingDatasetDistribution)));
+        Catalog existingCatalog = CatalogMockObjectUtil.createNewCatalog(TENANT_ID,
+                new HashSet<>(Collections.singleton(existingDataset)));
+
+        Distribution updatedDatasetDistribution = CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PUSH",
+                CatalogMockObjectUtil.ISSUED, CatalogMockObjectUtil.MODIFIED, "updated-title");
+        Dataset updatedDataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
+                new HashSet<>(Collections.singleton(updatedDatasetDistribution)));
+        Catalog updatedCatalogData = Catalog.Builder.newInstance()
+                .conformsTo(existingCatalog.getConformsTo())
+                .creator(existingCatalog.getCreator())
+                .description(existingCatalog.getDescription())
+                .identifier(existingCatalog.getIdentifier())
+                .issued(existingCatalog.getIssued())
+                .keyword(existingCatalog.getKeyword())
+                .modified(existingCatalog.getModified())
+                .theme(existingCatalog.getTheme())
+                .title(existingCatalog.getTitle())
+                .participantId(existingCatalog.getParticipantId())
+                .service(existingCatalog.getService())
+                .dataset(new HashSet<>(Collections.singleton(updatedDataset)))
+                .distribution(new HashSet<>(Collections.singleton(
+                        CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "STALE-FORMAT",
+                                CatalogMockObjectUtil.ISSUED, CatalogMockObjectUtil.MODIFIED, "stale-title"))))
+                .build();
+
+        when(repository.findByIdAndTenantId(anyString(), anyString())).thenReturn(Optional.of(existingCatalog));
+        when(repository.save(any(Catalog.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Catalog updatedCatalog = service.updateCatalog(existingCatalog.getId(), updatedCatalogData);
+
+        assertEquals(1, updatedCatalog.getDistribution().size());
+        assertEquals("HttpData-PUSH", updatedCatalog.getDistribution().stream().findFirst().orElseThrow().getFormat());
+        assertTrue(updatedCatalog.getDistribution().stream()
+                .noneMatch(distribution -> "STALE-FORMAT".equals(distribution.getFormat())));
+        verify(repository).save(argCaptorCatalog.capture());
+        assertEquals("HttpData-PUSH", argCaptorCatalog.getValue().getDistribution().stream()
+                .findFirst()
+                .orElseThrow()
+                .getFormat());
+    }
+
+    @Test
     @DisplayName("Update catalog data service after delete successfully")
     public void updateCatalogDataServiceAfterDelete_success() {
 
@@ -226,6 +277,34 @@ public class CatalogServiceTest {
         service.updateCatalogDataServiceAfterDelete(dataService);
 
         verify(repository).save(any(Catalog.class));
+    }
+
+    @Test
+    @DisplayName("Update catalog dataset after save normalizes top-level distributions")
+    public void updateCatalogDatasetAfterSave_normalizesTopLevelDistributions() {
+        Distribution existingDatasetDistribution = CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PULL",
+                CatalogMockObjectUtil.ISSUED, CatalogMockObjectUtil.MODIFIED, "existing-title");
+        Dataset existingDataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
+                new HashSet<>(Collections.singleton(existingDatasetDistribution)));
+        Catalog existingCatalog = CatalogMockObjectUtil.createNewCatalog(TENANT_ID,
+                new HashSet<>(Collections.singleton(existingDataset)));
+
+        Distribution newDatasetDistribution = CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PUSH",
+                CatalogMockObjectUtil.ISSUED, CatalogMockObjectUtil.MODIFIED, "new-title");
+        Dataset newDataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
+                new HashSet<>(Collections.singleton(newDatasetDistribution)));
+
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(existingCatalog));
+        when(repository.save(any(Catalog.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.updateCatalogDatasetAfterSave(newDataset);
+
+        verify(repository).save(argCaptorCatalog.capture());
+        assertEquals(2, argCaptorCatalog.getValue().getDistribution().size());
+        assertTrue(argCaptorCatalog.getValue().getDistribution().stream()
+                .anyMatch(distribution -> "HttpData-PULL".equals(distribution.getFormat())));
+        assertTrue(argCaptorCatalog.getValue().getDistribution().stream()
+                .anyMatch(distribution -> "HttpData-PUSH".equals(distribution.getFormat())));
     }
 
 

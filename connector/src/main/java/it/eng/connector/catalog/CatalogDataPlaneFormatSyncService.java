@@ -52,8 +52,19 @@ public class CatalogDataPlaneFormatSyncService {
      * Reconciles dataset distributions and refreshes catalog distribution references.
      */
     public void reconcileCatalogDistributions() {
-        Set<String> supportedFormats = resolveSupportedFormats();
-        List<Dataset> datasets = datasetRepository.findAll();
+        reconcileDatasets(datasetRepository.findAll(), resolveSupportedFormats(), null);
+    }
+
+    /**
+     * Reconciles dataset distributions for a single tenant.
+     *
+     * @param tenantId the tenant identifier whose datasets should be reconciled
+     */
+    public void reconcileTenant(String tenantId) {
+        reconcileDatasets(datasetRepository.findAllByTenantId(tenantId), resolveSupportedFormats(), tenantId);
+    }
+
+    private void reconcileDatasets(List<Dataset> datasets, Set<String> supportedFormats, String tenantId) {
         int deletedDistributionCount = 0;
         for (Dataset dataset : datasets) {
             DatasetReconciliation result = reconcileDataset(dataset, supportedFormats);
@@ -67,8 +78,13 @@ public class CatalogDataPlaneFormatSyncService {
             }
         }
 
-        log.info("Reconciled {} datasets, {} active formats and {} stale distributions",
-                datasets.size(), supportedFormats.size(), deletedDistributionCount);
+        if (tenantId == null) {
+            log.info("Reconciled {} datasets, {} active formats and {} stale distributions",
+                    datasets.size(), supportedFormats.size(), deletedDistributionCount);
+        } else {
+            log.info("Reconciled {} datasets for tenant {}, {} active formats and {} stale distributions",
+                    datasets.size(), tenantId, supportedFormats.size(), deletedDistributionCount);
+        }
     }
 
     private DatasetReconciliation reconcileDataset(Dataset dataset, Set<String> supportedFormats) {

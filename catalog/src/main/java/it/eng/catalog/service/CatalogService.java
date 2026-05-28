@@ -172,7 +172,7 @@ public class CatalogService {
             if (tenantId != null && catalog.getTenantId() == null) {
                 catalog.injectTenantId(tenantId);
             }
-            storedCatalog = repository.save(catalog);
+            storedCatalog = repository.save(refreshCatalogDistributions(catalog));
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             throw new InternalServerErrorAPIException("Catalog could not be saved");
@@ -216,7 +216,7 @@ public class CatalogService {
     public Catalog updateCatalog(String id, Catalog cat) {
         Catalog existingCatalog = getCatalogByIdForApi(id);
         try {
-            Catalog updatedCatalog = existingCatalog.updateInstance(cat);
+            Catalog updatedCatalog = refreshCatalogDistributions(existingCatalog.updateInstance(cat));
             return repository.save(updatedCatalog);
         } catch (Exception e) {
             log.error(e.getMessage(), e);

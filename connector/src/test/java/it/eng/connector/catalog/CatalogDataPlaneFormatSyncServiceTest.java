@@ -32,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -200,6 +201,31 @@ public class CatalogDataPlaneFormatSyncServiceTest {
                 Objects.equals("dataset-2", dataset.getId())));
         inOrder.verify(distributionRepository).deleteAllById(argThat(ids ->
                 containsString(ids, "distribution-2-stale")));
+    }
+
+    @Test
+    @DisplayName("reconcileTenant scopes dataset reconciliation to the requested tenant")
+    void reconcileTenantScopesDatasetReconciliationToTheRequestedTenant() {
+        when(dataPlaneRegistrationService.findAll()).thenReturn(List.of(
+                buildRegistration("http://dataplane-1", Set.of("HttpData-PULL", "HttpData-PUSH"), Set.of("profile-a"))
+        ));
+
+        Dataset tenantDataset = buildDataset("dataset-tenant", "distribution-tenant-pull", "distribution-tenant-stale",
+                "tenant-latest-title");
+        when(datasetRepository.findAllByTenantId(TENANT_ID)).thenReturn(List.of(tenantDataset));
+        when(distributionRepository.saveAll(any())).thenAnswer(invocation ->
+                toDistributionList(invocation.getArgument(0)));
+        when(datasetRepository.save(any(Dataset.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.reconcileTenant(TENANT_ID);
+
+        verify(datasetRepository).findAllByTenantId(TENANT_ID);
+        verify(datasetRepository, never()).findAll();
+        verify(datasetRepository).save(argThat(dataset ->
+                Objects.equals("dataset-tenant", dataset.getId())
+                        && extractFormats(dataset.getDistribution()).equals(Set.of("HttpData-PULL", "HttpData-PUSH"))));
+        verify(distributionRepository).deleteAllById(argThat(ids ->
+                containsString(ids, "distribution-tenant-stale")));
     }
 
     @Test
