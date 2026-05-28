@@ -1,9 +1,7 @@
 package it.eng.connector.catalog;
 
-import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Distribution;
-import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
@@ -16,7 +14,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -27,12 +24,10 @@ import java.util.Objects;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -52,9 +47,6 @@ public class CatalogDataPlaneFormatSyncServiceTest {
     @Mock
     private DistributionRepository distributionRepository;
 
-    @Mock
-    private CatalogRepository catalogRepository;
-
     @InjectMocks
     private CatalogDataPlaneFormatSyncService service;
 
@@ -72,8 +64,8 @@ public class CatalogDataPlaneFormatSyncServiceTest {
     }
 
     @Test
-    @DisplayName("reconcileCatalogDistributions materializes supported formats and refreshes catalog references")
-    void reconcileCatalogDistributionsMaterializesSupportedFormatsAndRefreshesCatalogReferences() {
+    @DisplayName("reconcileCatalogDistributions materializes supported formats without persisting catalog distributions")
+    void reconcileCatalogDistributionsMaterializesSupportedFormatsWithoutPersistingCatalogDistributions() {
         when(dataPlaneRegistrationService.findAll()).thenReturn(List.of(
                 buildRegistration("http://dataplane-1", Set.of("HttpData-PULL"), Set.of("profile-a")),
                 buildRegistration("http://dataplane-2", Set.of("HttpData-PUSH"), Set.of("profile-b"))
@@ -89,27 +81,20 @@ public class CatalogDataPlaneFormatSyncServiceTest {
                 "distribution-stale", 9L);
         Dataset dataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
                 new HashSet<>(Set.of(pullDistribution, staleDistribution)));
-        Catalog catalog = CatalogMockObjectUtil.createNewCatalog(TENANT_ID, Set.of(dataset));
-
         when(datasetRepository.findAll()).thenReturn(List.of(dataset));
-        when(catalogRepository.findAll()).thenReturn(List.of(catalog));
         when(distributionRepository.saveAll(any())).thenAnswer(invocation ->
                 toDistributionList(invocation.getArgument(0)));
         when(datasetRepository.saveAll(any())).thenAnswer(invocation ->
                 toDatasetList(invocation.getArgument(0)));
-        when(catalogRepository.saveAll(any())).thenAnswer(invocation ->
-                toCatalogList(invocation.getArgument(0)));
 
         service.reconcileCatalogDistributions();
 
         ArgumentCaptor<Iterable<Distribution>> savedDistributionsCaptor = ArgumentCaptor.forClass(Iterable.class);
         ArgumentCaptor<Iterable<Dataset>> savedDatasetsCaptor = ArgumentCaptor.forClass(Iterable.class);
-        ArgumentCaptor<Iterable<Catalog>> savedCatalogsCaptor = ArgumentCaptor.forClass(Iterable.class);
         ArgumentCaptor<Iterable<String>> deletedIdsCaptor = ArgumentCaptor.forClass(Iterable.class);
 
         verify(distributionRepository).saveAll(savedDistributionsCaptor.capture());
         verify(datasetRepository).saveAll(savedDatasetsCaptor.capture());
-        verify(catalogRepository).saveAll(savedCatalogsCaptor.capture());
         verify(distributionRepository).deleteAllById(deletedIdsCaptor.capture());
 
         List<Distribution> savedDistributions = toDistributionList(savedDistributionsCaptor.getValue());
@@ -129,36 +114,57 @@ public class CatalogDataPlaneFormatSyncServiceTest {
 
         Dataset savedDataset = toDatasetList(savedDatasetsCaptor.getValue()).get(0);
         assertEquals(Set.of("HttpData-PULL", "HttpData-PUSH"), extractFormats(savedDataset.getDistribution()));
-
-        Catalog savedCatalog = toCatalogList(savedCatalogsCaptor.getValue()).get(0);
-        assertEquals(Set.of("HttpData-PULL", "HttpData-PUSH"), extractFormats(savedCatalog.getDistribution()));
-        assertFalse(extractFormats(savedCatalog.getDistribution()).contains("UNSUPPORTED"));
-
         List<String> deletedIds = toStringList(deletedIdsCaptor.getValue());
         assertEquals(List.of("distribution-stale"), deletedIds);
     }
 
     @Test
-    @DisplayName("reconcileCatalogDistributions is a no-op when no dataplane formats are registered")
-    void reconcileCatalogDistributionsDoesNothingWhenNoDataplaneFormatsAreRegistered() {
+    @DisplayName("reconcileCatalogDistributions keeps one template distribution when no dataplane formats are registered")
+    void reconcileCatalogDistributionsKeepsOneTemplateDistributionWhenNoDataplaneFormatsAreRegistered() {
         when(dataPlaneRegistrationService.findAll()).thenReturn(List.of());
+
+        Distribution olderDistribution = withIdentity(
+                CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PULL",
+                        OLDER_TIMESTAMP, OLDER_TIMESTAMP, "older-title"),
+                "distribution-pull", 7L);
+        Distribution newerDistribution = withIdentity(
+                CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PUSH",
+                        NEWER_TIMESTAMP, NEWER_TIMESTAMP, "latest-title"),
+                "distribution-push", 9L);
+        Dataset dataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
+                new HashSet<>(Set.of(olderDistribution, newerDistribution)));
+        when(datasetRepository.findAll()).thenReturn(List.of(dataset));
+        when(distributionRepository.saveAll(any())).thenAnswer(invocation ->
+                toDistributionList(invocation.getArgument(0)));
+        when(datasetRepository.saveAll(any())).thenAnswer(invocation ->
+                toDatasetList(invocation.getArgument(0)));
 
         service.reconcileCatalogDistributions();
 
-        verify(datasetRepository, never()).findAll();
-        verify(distributionRepository, never()).saveAll(any());
-        verify(datasetRepository, never()).saveAll(any());
-        verify(catalogRepository, never()).findAll();
-        verify(catalogRepository, never()).saveAll(any());
-        verify(distributionRepository, never()).deleteAllById(any());
-    }
+        ArgumentCaptor<Iterable<Distribution>> savedDistributionsCaptor = ArgumentCaptor.forClass(Iterable.class);
+        ArgumentCaptor<Iterable<Dataset>> savedDatasetsCaptor = ArgumentCaptor.forClass(Iterable.class);
+        ArgumentCaptor<Iterable<String>> deletedIdsCaptor = ArgumentCaptor.forClass(Iterable.class);
 
-    @Test
-    @DisplayName("reconcileCatalogDistributions is transactional to keep catalog state consistent")
-    void reconcileCatalogDistributionsIsTransactionalToKeepCatalogStateConsistent() throws NoSuchMethodException {
-        assertTrue(CatalogDataPlaneFormatSyncService.class
-                        .getMethod("reconcileCatalogDistributions")
-                        .isAnnotationPresent(Transactional.class));
+        verify(datasetRepository).findAll();
+        verify(distributionRepository).saveAll(savedDistributionsCaptor.capture());
+        verify(datasetRepository).saveAll(savedDatasetsCaptor.capture());
+        verify(distributionRepository).deleteAllById(deletedIdsCaptor.capture());
+
+        List<Distribution> savedDistributions = toDistributionList(savedDistributionsCaptor.getValue());
+        assertEquals(1, savedDistributions.size());
+        Distribution savedDistribution = savedDistributions.get(0);
+        assertEquals("distribution-push", savedDistribution.getId());
+        assertEquals(9L, savedDistribution.getVersion());
+        assertEquals("latest-title", savedDistribution.getTitle());
+        assertEquals(NEWER_TIMESTAMP, savedDistribution.getModified());
+        assertNull(savedDistribution.getFormat());
+
+        Dataset savedDataset = toDatasetList(savedDatasetsCaptor.getValue()).get(0);
+        assertEquals(1, savedDataset.getDistribution().size());
+        assertNull(savedDataset.getDistribution().stream().findFirst().orElseThrow().getFormat());
+
+        List<String> deletedIds = toStringList(deletedIdsCaptor.getValue());
+        assertEquals(List.of("distribution-pull"), deletedIds);
     }
 
     private DataPlaneRegistration buildRegistration(String endpoint, Set<String> supportedTransferTypes,
@@ -210,12 +216,6 @@ public class CatalogDataPlaneFormatSyncServiceTest {
     private List<Dataset> toDatasetList(Iterable<Dataset> datasets) {
         List<Dataset> values = new ArrayList<>();
         datasets.forEach(values::add);
-        return values;
-    }
-
-    private List<Catalog> toCatalogList(Iterable<Catalog> catalogs) {
-        List<Catalog> values = new ArrayList<>();
-        catalogs.forEach(values::add);
         return values;
     }
 

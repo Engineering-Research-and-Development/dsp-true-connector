@@ -22,6 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -88,6 +89,31 @@ public class CatalogServiceTest {
         Catalog retrievedCatalog = service.getCatalog();
         assertNotNull(retrievedCatalog);
         verify(repository).findAllByTenantId(TENANT_ID);
+    }
+
+    @Test
+    @DisplayName("Get catalog refreshes top-level distributions from datasets")
+    public void getCatalog_refreshesTopLevelDistributionsFromDatasets() {
+        Distribution datasetDistribution = CatalogMockObjectUtil.createNewDistribution(TENANT_ID, null,
+                CatalogMockObjectUtil.ISSUED, CatalogMockObjectUtil.MODIFIED, "template-title");
+        Distribution staleCatalogDistribution = CatalogMockObjectUtil.createNewDistribution(TENANT_ID, "HttpData-PUSH",
+                CatalogMockObjectUtil.ISSUED, CatalogMockObjectUtil.MODIFIED, "stale-title");
+        Dataset dataset = CatalogMockObjectUtil.createNewDataset(TENANT_ID,
+                new HashSet<>(Collections.singleton(datasetDistribution)));
+        Catalog staleCatalog = CatalogMockObjectUtil.createNewCatalog(TENANT_ID, new HashSet<>(Collections.singleton(dataset)));
+        staleCatalog.getDistribution().clear();
+        staleCatalog.getDistribution().add(staleCatalogDistribution);
+
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(staleCatalog));
+        when(tenantBucketResolver.resolveBucketName()).thenReturn(BUCKET_NAME);
+        when(s3ClientService.listFiles(BUCKET_NAME)).thenReturn(List.of(dataset.getId()));
+
+        Catalog retrievedCatalog = service.getCatalog();
+
+        assertEquals(1, retrievedCatalog.getDistribution().size());
+        assertNull(retrievedCatalog.getDistribution().stream().findFirst().orElseThrow().getFormat());
+        assertTrue(retrievedCatalog.getDistribution().stream()
+                .noneMatch(distribution -> "HttpData-PUSH".equals(distribution.getFormat())));
     }
 
     @Test

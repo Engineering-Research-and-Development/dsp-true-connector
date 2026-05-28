@@ -1,9 +1,7 @@
 package it.eng.connector.catalog;
 
-import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Distribution;
-import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.repository.DistributionRepository;
 import it.eng.datatransfer.model.DataPlaneRegistration;
@@ -12,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.Collections;
@@ -35,7 +32,6 @@ public class CatalogDataPlaneFormatSyncService {
     private final DataPlaneRegistrationService dataPlaneRegistrationService;
     private final DatasetRepository datasetRepository;
     private final DistributionRepository distributionRepository;
-    private final CatalogRepository catalogRepository;
 
     /**
      * Resolves the supported transfer formats from all registered Data Planes.
@@ -54,14 +50,8 @@ public class CatalogDataPlaneFormatSyncService {
     /**
      * Reconciles dataset distributions and refreshes catalog distribution references.
      */
-    @Transactional
     public void reconcileCatalogDistributions() {
         Set<String> supportedFormats = resolveSupportedFormats();
-        if (supportedFormats.isEmpty()) {
-            log.info("Skipping catalog/dataplane format reconciliation because no dataplane formats are registered");
-            return;
-        }
-
         List<Dataset> datasets = datasetRepository.findAll();
         Map<String, Distribution> reconciledDistributionsById = new LinkedHashMap<>();
         Set<String> staleDistributionIds = new LinkedHashSet<>();
@@ -79,14 +69,6 @@ public class CatalogDataPlaneFormatSyncService {
             datasetRepository.saveAll(reconciledDatasetsById.values());
         }
 
-        List<Catalog> catalogs = catalogRepository.findAll();
-        List<Catalog> reconciledCatalogs = catalogs.stream()
-                .map(catalog -> reconcileCatalog(catalog, reconciledDatasetsById))
-                .toList();
-        if (!reconciledCatalogs.isEmpty()) {
-            catalogRepository.saveAll(reconciledCatalogs);
-        }
-
         Set<String> liveDistributionIds = reconciledDistributionsById.keySet();
         List<String> idsToDelete = staleDistributionIds.stream()
                 .filter(id -> !liveDistributionIds.contains(id))
@@ -95,14 +77,18 @@ public class CatalogDataPlaneFormatSyncService {
             distributionRepository.deleteAllById(idsToDelete);
         }
 
-        log.info("Reconciled {} datasets, {} catalogs, {} active formats and {} stale distributions",
-                reconciledDatasetsById.size(), reconciledCatalogs.size(), supportedFormats.size(), idsToDelete.size());
+        log.info("Reconciled {} datasets, {} active formats and {} stale distributions",
+                reconciledDatasetsById.size(), supportedFormats.size(), idsToDelete.size());
     }
 
     private Dataset reconcileDataset(Dataset dataset, Set<String> supportedFormats,
                                      Map<String, Distribution> reconciledDistributionsById,
                                      Set<String> staleDistributionIds) {
         Set<Distribution> currentDistributions = safeSet(dataset.getDistribution());
+        if (supportedFormats.isEmpty()) {
+            return normalizeDatasetToTemplateDistribution(dataset, currentDistributions,
+                    reconciledDistributionsById, staleDistributionIds);
+        }
         Map<String, Distribution> distributionsByFormat = currentDistributions.stream()
                 .filter(Objects::nonNull)
                 .filter(distribution -> StringUtils.isNotBlank(distribution.getFormat()))
@@ -141,38 +127,25 @@ public class CatalogDataPlaneFormatSyncService {
         return copyDataset(dataset, reconciledDistributions);
     }
 
-    private Catalog reconcileCatalog(Catalog catalog, Map<String, Dataset> reconciledDatasetsById) {
-        Set<Dataset> reconciledDatasets = safeSet(catalog.getDataset()).stream()
+    private Dataset normalizeDatasetToTemplateDistribution(Dataset dataset, Set<Distribution> currentDistributions,
+                                                           Map<String, Distribution> reconciledDistributionsById,
+                                                           Set<String> staleDistributionIds) {
+        Distribution template = currentDistributions.stream()
                 .filter(Objects::nonNull)
-                .map(dataset -> reconciledDatasetsById.getOrDefault(dataset.getId(), dataset))
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-        Set<Distribution> catalogDistributions = reconciledDatasets.stream()
-                .map(Dataset::getDistribution)
-                .filter(Objects::nonNull)
-                .flatMap(Set::stream)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+                .max(this::compareByRecency)
+                .orElse(null);
+        if (template == null) {
+            return dataset;
+        }
 
-        return Catalog.Builder.newInstance()
-                .id(catalog.getId())
-                .keyword(catalog.getKeyword())
-                .theme(catalog.getTheme())
-                .conformsTo(catalog.getConformsTo())
-                .creator(catalog.getCreator())
-                .description(catalog.getDescription())
-                .identifier(catalog.getIdentifier())
-                .issued(catalog.getIssued())
-                .modified(catalog.getModified())
-                .title(catalog.getTitle())
-                .distribution(catalogDistributions)
-                .hasPolicy(catalog.getHasPolicy())
-                .dataset(reconciledDatasets)
-                .service(catalog.getService())
-                .participantId(catalog.getParticipantId())
-                .tenantId(catalog.getTenantId())
-                .createdBy(catalog.getCreatedBy())
-                .lastModifiedBy(catalog.getLastModifiedBy())
-                .version(catalog.getVersion())
-                .build();
+        Distribution normalizedDistribution = materializeDistribution(template, null, template);
+        reconciledDistributionsById.put(normalizedDistribution.getId(), normalizedDistribution);
+        currentDistributions.stream()
+                .map(Distribution::getId)
+                .filter(Objects::nonNull)
+                .filter(id -> !Objects.equals(id, normalizedDistribution.getId()))
+                .forEach(staleDistributionIds::add);
+        return copyDataset(dataset, new LinkedHashSet<>(Set.of(normalizedDistribution)));
     }
 
     private Dataset copyDataset(Dataset dataset, Set<Distribution> distributions) {
