@@ -405,6 +405,33 @@ public class CatalogMockObjectUtil {
     }
 
     /**
+     * Creates a new Distribution instance with explicit format and timestamps.
+     *
+     * @param tenantId tenant identifier to inject, or {@code null}
+     * @param format distribution format
+     * @param issued issued timestamp
+     * @param modified modified timestamp
+     * @param title distribution title
+     * @return A new Distribution instance with the requested values.
+     */
+    public static Distribution createNewDistribution(String tenantId, String format, Instant issued,
+                                                     Instant modified, String title) {
+        Distribution distribution = Distribution.Builder.newInstance()
+                .title(title)
+                .description(new HashSet<>(Collections.singletonList(MULTILANGUAGE)))
+                .issued(issued)
+                .modified(modified)
+                .format(format)
+                .hasPolicy(new HashSet<>(Collections.singletonList(createNewOffer())))
+                .accessService(createNewDataService(tenantId))
+                .build();
+        if (tenantId != null) {
+            distribution.injectTenantId(tenantId);
+        }
+        return distribution;
+    }
+
+    /**
      * Creates a new Permission instance.
      *
      * @return A new Permission instance.
@@ -464,6 +491,75 @@ public class CatalogMockObjectUtil {
             dataset.injectTenantId(tenantId);
         }
         return dataset;
+    }
+
+    /**
+     * Creates a new Dataset instance with explicit distributions.
+     *
+     * @param tenantId tenant identifier to inject, or {@code null}
+     * @param distributions dataset distributions
+     * @return A new Dataset instance with the requested distributions.
+     */
+    public static Dataset createNewDataset(String tenantId, Set<Distribution> distributions) {
+        String datasetId = ToolsUtil.generateUniqueId();
+        Dataset dataset = Dataset.Builder.newInstance()
+                .id(datasetId)
+                .conformsTo(CONFORMSTO)
+                .creator(CREATOR)
+                .distribution(distributions)
+                .description(new HashSet<>(Collections.singletonList(createNewMultilanguage())))
+                .issued(ISSUED)
+                .keyword(new HashSet<>(Arrays.asList("keyword1", "keyword2")))
+                .identifier(IDENTIFIER)
+                .modified(MODIFIED)
+                .theme(new HashSet<>(Arrays.asList("white", "blue", "aqua")))
+                .title(TITLE)
+                .hasPolicy(new HashSet<>(Collections.singletonList(createNewOffer())))
+                .artifact(createNewArtifact(datasetId))
+                .build();
+        if (tenantId != null) {
+            dataset.injectTenantId(tenantId);
+        }
+        return dataset;
+    }
+
+    /**
+     * Creates a new Catalog instance with explicit datasets.
+     *
+     * @param tenantId tenant identifier to inject, or {@code null}
+     * @param datasets catalog datasets
+     * @return A new Catalog instance with distributions refreshed from the datasets.
+     */
+    public static Catalog createNewCatalog(String tenantId, Set<Dataset> datasets) {
+        Set<Distribution> distributions = datasets.stream()
+                .map(Dataset::getDistribution)
+                .filter(Objects::nonNull)
+                .flatMap(Set::stream)
+                .collect(Collectors.toCollection(HashSet::new));
+        Set<DataService> services = distributions.stream()
+                .map(Distribution::getAccessService)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(HashSet::new));
+
+        Catalog catalog = Catalog.Builder.newInstance()
+                .conformsTo(CONFORMSTO)
+                .creator(CREATOR)
+                .description(new HashSet<>(Collections.singletonList(createNewMultilanguage())))
+                .identifier(IDENTIFIER)
+                .issued(ISSUED)
+                .keyword(new HashSet<>(Arrays.asList("keyword1", "keyword2")))
+                .modified(MODIFIED)
+                .theme(new HashSet<>(Arrays.asList("white", "blue", "aqua")))
+                .title(TITLE)
+                .participantId("urn:example:DataProviderA")
+                .service(services)
+                .dataset(datasets)
+                .distribution(distributions)
+                .build();
+        if (tenantId != null) {
+            catalog.injectTenantId(tenantId);
+        }
+        return catalog;
     }
 
     /**
