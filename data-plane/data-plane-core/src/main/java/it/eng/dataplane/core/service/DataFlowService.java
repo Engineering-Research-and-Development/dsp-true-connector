@@ -76,12 +76,20 @@ public class DataFlowService {
     public void resume(String processId) {
         DataFlowEntity entity = findRequired(processId);
         stateMachine.assertTransition(entity.getState(), DataFlowState.STARTED);
+        DataFlowEntity startedEntity = entity.withState(DataFlowState.STARTED);
+        repository.save(startedEntity);
+
         CompletableFuture<DataFlowResult> future = requiredProtocol(entity.getTransferType())
                 .resumeTransfer(entity.getId());
         executionRegistry.register(processId, new FutureDataFlowExecutionHandle(processId, future));
         future.thenAccept(result -> {
                     if (result.isSuccess()) {
-                        updateState(processId, DataFlowState.STARTED);
+                        DataFlowEntity fresh = findRequired(processId);
+                        if (fresh.getState() != DataFlowState.STARTED) {
+                            log.debug("DataFlow processId={} is already {}; ignoring late resume callback",
+                                    processId, fresh.getState());
+                            return;
+                        }
                         auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_RESUMED,
                                 processId, entity.getTransferType(), "Data flow resumed", null);
                     } else {
@@ -115,6 +123,7 @@ public class DataFlowService {
         DataFlowEntity entity = findRequired(processId);
         stateMachine.assertTransition(entity.getState(), DataFlowState.TERMINATED);
         String transferType = entity.getTransferType();
+        cancelActiveExecution(processId);
 
         DataTransferProtocol protocol = registry.getProtocol(transferType);
         if (protocol != null) {
@@ -155,10 +164,7 @@ public class DataFlowService {
         // Cancel and deregister the running execution handle before calling the protocol.
         // This ensures the old future's thenAccept/exceptionally callbacks cannot flip a
         // suspended flow to COMPLETED or TERMINATED while the protocol handshake is in flight.
-        executionRegistry.find(processId).ifPresent(handle -> {
-            handle.cancel();
-            executionRegistry.remove(processId);
-        });
+        cancelActiveExecution(processId);
 
         DataTransferProtocol protocol = registry.getProtocol(transferType);
         if (protocol != null) {
@@ -181,6 +187,10 @@ public class DataFlowService {
             DataFlowEntity fresh = findRequired(processId);
             if (fresh.getState() == DataFlowState.SUSPENDED) {
                 log.debug("DataFlow processId={} is already SUSPENDED; ignoring late completion callback", processId);
+                return;
+            }
+            if (fresh.getState() == DataFlowState.TERMINATED) {
+                log.debug("DataFlow processId={} is already TERMINATED; ignoring late completion callback", processId);
                 return;
             }
             stateMachine.assertTransition(fresh.getState(), DataFlowState.COMPLETED);
@@ -221,6 +231,13 @@ public class DataFlowService {
         DataFlowEntity fresh = findRequired(processId);
         stateMachine.assertTransition(fresh.getState(), state);
         repository.save(fresh.withState(state));
+    }
+
+    private void cancelActiveExecution(String processId) {
+        executionRegistry.find(processId).ifPresent(handle -> {
+            handle.cancel();
+            executionRegistry.remove(processId);
+        });
     }
 
     private DataFlowEntity findRequired(String processId) {

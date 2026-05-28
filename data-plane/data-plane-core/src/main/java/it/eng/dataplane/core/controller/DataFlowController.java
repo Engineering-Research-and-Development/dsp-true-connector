@@ -180,13 +180,15 @@ public class DataFlowController {
 
         try {
             DataFlowEntity entity = dataFlowService.status(processId);
+            boolean resumable = !entity.getState().isTerminal()
+                    && checkpointService.hasResumableCheckpoint(processId);
             DataFlowStatusMessage message = DataFlowStatusMessage.Builder.newInstance()
                     .dataFlowId(entity.getId())
                     .processId(entity.getProcessId())
                     .state(entity.getState())
                     .dataAddress(entity.getDataAddress())
                     .errorMessage(entity.getErrorMessage())
-                    .resumable(checkpointService.hasResumableCheckpoint(processId))
+                    .resumable(resumable)
                     .build();
             return ResponseEntity.ok(message);
         } catch (IllegalStateException e) {

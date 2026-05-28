@@ -22,5 +22,14 @@ public enum DataFlowState {
     /** Transfer finished successfully. */
     COMPLETED,
     /** Transfer was stopped due to an error or explicit termination request. */
-    TERMINATED
+    TERMINATED;
+
+    /**
+     * Returns {@code true} if this state is terminal (no further transitions are allowed).
+     *
+     * @return {@code true} for {@link #COMPLETED} and {@link #TERMINATED}
+     */
+    public boolean isTerminal() {
+        return this == COMPLETED || this == TERMINATED;
+    }
 }
