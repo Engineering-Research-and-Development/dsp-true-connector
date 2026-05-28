@@ -873,12 +873,18 @@ public class DataTransferAPIService {
      * When a transfer is SUSPENDED, only the local side that originally requested the suspension
      * may trigger the resume via the admin API. If the peer initiated the suspension, the resume
      * must arrive via the DSP protocol start message instead.
+     * <p>
+     * Legacy records created before the {@code suspendedBy} field was introduced carry
+     * {@code suspendedBy == null}. Those records are treated as unrestricted and may always
+     * be resumed via the admin API.
      *
      * @param transferProcess the transfer process to validate
-     * @throws DataTransferAPIException if the transfer is SUSPENDED and the local role is not the suspend initiator
+     * @throws DataTransferAPIException if the transfer is SUSPENDED, {@code suspendedBy} is non-null,
+     *                                  and the local role is not the suspend initiator
      */
     private void assertResumeInitiator(TransferProcess transferProcess) {
         if (TransferState.SUSPENDED.equals(transferProcess.getState())
+                && transferProcess.getSuspendedBy() != null
                 && !StringUtils.equals(transferProcess.getRole(), transferProcess.getSuspendedBy())) {
             String errorMessage = "Resume rejected: the peer initiated the suspension of transfer "
                     + transferProcess.getId() + "; resume must arrive via the DSP protocol start message";

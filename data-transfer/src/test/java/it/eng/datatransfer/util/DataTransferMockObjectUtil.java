@@ -233,6 +233,22 @@ public class DataTransferMockObjectUtil {
             .suspendedBy(IConstants.ROLE_PROVIDER)
             .build();
 
+    /**
+     * Legacy provider transfer process in SUSPENDED state with {@code suspendedBy == null}.
+     * Simulates records created before the suspendedBy field was introduced; resume must be
+     * allowed without restriction.
+     */
+    public static final TransferProcess TRANSFER_PROCESS_SUSPENDED_LEGACY = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
+            .state(TransferState.SUSPENDED)
+            .build();
+
     public static final TransferProcess TRANSFER_PROCESS_TERMINATED = TransferProcess.Builder.newInstance()
             .consumerPid(CONSUMER_PID)
             .providerPid(PROVIDER_PID)

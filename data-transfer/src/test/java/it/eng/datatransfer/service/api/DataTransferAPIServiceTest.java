@@ -521,6 +521,25 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
+    @DisplayName("startTransfer allows resume of legacy SUSPENDED transfer with suspendedBy == null (no-restriction case)")
+    public void startTransfer_allowsResumeForLegacySuspendedTransfer_nullSuspendedBy() {
+        // SUSPENDED_LEGACY: role=PROVIDER, suspendedBy=null → legacy record, must be resumable without restriction
+        TransferProcess legacy = DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_LEGACY;
+        when(transferProcessRepository.findById(legacy.getId()))
+                .thenReturn(Optional.of(legacy));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        assertDoesNotThrow(() -> apiService.startTransfer(legacy.getId()));
+
+        verify(transferProcessRepository).save(argThat(tp -> TransferState.STARTED.equals(tp.getState())));
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, null);
+    }
+
+    @Test
     @DisplayName("startTransfer resumes HTTP-PULL transfer: reuses stored dataAddress and skips presigned URL generation")
     public void startTransfer_resumeAllowedForInitiator_reusesStoredDataAddressNoPresignedUrl() {
         // SUSPENDED_PROVIDER_HTTP_PULL: role=PROVIDER, suspendedBy=PROVIDER → initiator match → resume allowed
