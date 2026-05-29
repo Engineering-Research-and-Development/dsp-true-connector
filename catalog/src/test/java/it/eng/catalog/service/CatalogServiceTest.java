@@ -105,6 +105,38 @@ public class CatalogServiceTest {
     }
 
     @Test
+    @DisplayName("Save catalog preserves explicit top-level references when dataset is missing")
+    public void saveCatalog_preservesExplicitTopLevelReferencesWhenDatasetIsMissing() {
+        Catalog catalogWithoutDataset = Catalog.Builder.newInstance()
+                .id(catalog.getId())
+                .conformsTo(catalog.getConformsTo())
+                .creator(catalog.getCreator())
+                .description(catalog.getDescription())
+                .identifier(catalog.getIdentifier())
+                .issued(catalog.getIssued())
+                .keyword(catalog.getKeyword())
+                .modified(catalog.getModified())
+                .theme(catalog.getTheme())
+                .title(catalog.getTitle())
+                .participantId(catalog.getParticipantId())
+                .service(catalog.getService())
+                .distribution(catalog.getDistribution())
+                .hasPolicy(catalog.getHasPolicy())
+                .build();
+        when(repository.save(any(Catalog.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Catalog savedCatalog = service.saveCatalog(catalogWithoutDataset);
+
+        assertEquals(catalog.getDistribution(), savedCatalog.getDistribution());
+        assertEquals(catalog.getService(), savedCatalog.getService());
+        assertNull(savedCatalog.getDataset());
+        verify(repository).save(argCaptorCatalog.capture());
+        assertEquals(catalog.getDistribution(), argCaptorCatalog.getValue().getDistribution());
+        assertEquals(catalog.getService(), argCaptorCatalog.getValue().getService());
+        assertNull(argCaptorCatalog.getValue().getDataset());
+    }
+
+    @Test
     @DisplayName("Get catalog successfully")
     public void getCatalog_success() {
         when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
@@ -219,6 +251,34 @@ public class CatalogServiceTest {
         assertEquals(Set.of(dataset.getDistribution().stream().findFirst().orElseThrow().getAccessService()),
                 retrievedCatalog.getService());
         verify(repository).findByIdAndTenantId(staleCatalog.getId(), TENANT_ID);
+    }
+
+    @Test
+    @DisplayName("Get catalog for API preserves explicit top-level references when dataset is missing")
+    public void getCatalogForApi_preservesExplicitTopLevelReferencesWhenDatasetIsMissing() {
+        Catalog catalogWithoutDataset = Catalog.Builder.newInstance()
+                .id(catalog.getId())
+                .conformsTo(catalog.getConformsTo())
+                .creator(catalog.getCreator())
+                .description(catalog.getDescription())
+                .identifier(catalog.getIdentifier())
+                .issued(catalog.getIssued())
+                .keyword(catalog.getKeyword())
+                .modified(catalog.getModified())
+                .theme(catalog.getTheme())
+                .title(catalog.getTitle())
+                .participantId(catalog.getParticipantId())
+                .service(catalog.getService())
+                .distribution(catalog.getDistribution())
+                .hasPolicy(catalog.getHasPolicy())
+                .build();
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalogWithoutDataset));
+
+        Catalog retrievedCatalog = service.getCatalogForApi();
+
+        assertEquals(catalog.getDistribution(), retrievedCatalog.getDistribution());
+        assertEquals(catalog.getService(), retrievedCatalog.getService());
+        assertNull(retrievedCatalog.getDataset());
     }
 
     @Test

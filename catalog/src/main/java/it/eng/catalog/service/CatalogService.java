@@ -93,7 +93,31 @@ public class CatalogService {
     }
 
     private Catalog refreshCatalogDistributions(Catalog catalog) {
-        Set<Distribution> refreshedDistributions = catalog.getDataset().stream()
+        Set<Dataset> datasets = catalog.getDataset();
+        if (datasets == null) {
+            return Catalog.Builder.newInstance()
+                    .id(catalog.getId())
+                    .keyword(catalog.getKeyword())
+                    .theme(catalog.getTheme())
+                    .conformsTo(catalog.getConformsTo())
+                    .creator(catalog.getCreator())
+                    .description(catalog.getDescription())
+                    .identifier(catalog.getIdentifier())
+                    .issued(catalog.getIssued())
+                    .modified(catalog.getModified())
+                    .title(catalog.getTitle())
+                    .distribution(catalog.getDistribution())
+                    .hasPolicy(catalog.getHasPolicy())
+                    .dataset(null)
+                    .service(catalog.getService())
+                    .participantId(catalog.getParticipantId())
+                    .tenantId(catalog.getTenantId())
+                    .createdBy(catalog.getCreatedBy())
+                    .lastModifiedBy(catalog.getLastModifiedBy())
+                    .version(catalog.getVersion())
+                    .build();
+        }
+        Set<Distribution> refreshedDistributions = datasets.stream()
                 .filter(Objects::nonNull)
                 .map(Dataset::getDistribution)
                 .filter(Objects::nonNull)
@@ -117,7 +141,7 @@ public class CatalogService {
                 .title(catalog.getTitle())
                 .distribution(refreshedDistributions)
                 .hasPolicy(catalog.getHasPolicy())
-                .dataset(catalog.getDataset())
+                .dataset(datasets)
                 .service(refreshedServices)
                 .participantId(catalog.getParticipantId())
                 .tenantId(catalog.getTenantId())
