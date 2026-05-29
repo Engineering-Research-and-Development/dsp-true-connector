@@ -74,6 +74,41 @@ registration is skipped (useful for development without a CP).
 
 The CP stores the registration in MongoDB collection `data_plane_registrations`.
 
+Registration side effects on the CP:
+
+- `DataPlaneRegistrationService.register(...)` is idempotent by endpoint. A DP restart updates the
+  existing record instead of creating a duplicate entry.
+- The CP publishes audit events for register, update, deregister, and deregister-not-found cases.
+- The CP also publishes `DataPlaneRegistrationChangedEvent` on register, update, and deregister.
+  `CatalogDataPlaneFormatSyncListener` consumes that event and triggers
+  `CatalogDataPlaneFormatSyncService.reconcileCatalogDistributions()` so dataset distributions remain
+  aligned with the currently registered dataplane formats.
+
+### Catalog / distribution synchronization
+
+Catalog publication remains DSP-compliant on the wire, but the concrete set of advertised transfer
+ formats is an implementation-specific capability derived from the dataplane registry.
+
+Current repository behavior:
+
+- `CatalogDataPlaneFormatSyncService.resolveSupportedFormats()` takes the union of
+  `DataPlaneRegistration.supportedTransferTypes` across all registered DPs.
+- Each dataset is reconciled to keep one distribution per active format.
+- If no dataplane formats are registered, the dataset is normalized to exactly one *template*
+  distribution with `format = null` instead of losing its distribution entirely.
+- Historical shared distribution documents are cloned per dataset before replacement so reconciliation
+  does not leave multiple datasets coupled to the same mutable distribution entity.
+- Dataset and distribution CRUD operations publish `CatalogStructureChangedEvent.fullReconcile(...)`,
+  so admin-side changes are also fed back through the same reconciliation path.
+
+Operational consequence:
+
+- Updating a distribution through the admin API changes the stored template fields
+  (`title`, `description`, `accessService`, policy references, timestamps, and similar metadata).
+- The final advertised `distribution.format` set is still re-materialized from the active dataplane
+  registrations. In other words, **manual distribution edits do not override the runtime capability
+  set advertised by registered dataplanes**.
+
 ---
 
 ## Transfer Flows
@@ -290,6 +325,21 @@ After a transfer reaches `COMPLETED` and `isDownloaded = true`, the consumer can
 The CP generates the presigned URL **directly via `S3ClientService`** using the consumer's
 own S3 bucket (key = `transferProcessId`). No DP call is made — the CP owns the S3 client
 and can generate the URL itself.
+
+### `prepare` usage by transfer type
+
+The upstream DPS spec allows `prepare` and `start`, but TRUE Connector currently uses them
+selectively:
+
+| Transfer type | Uses DPS `prepare`? | Current repository reason |
+|---|---|---|
+| `HttpData-PULL` | No | Provider CP can generate the presigned URL directly and consumer DP can start immediately |
+| `HttpData-PUSH` | No in the built-in CP flow | Consumer CP prepares sink credentials directly; provider DP gets all source/sink details in `start` |
+| `stream:grpc` | Yes | Provider DP must allocate a prepared stream session and return transport metadata before consumer start |
+| `stream:kafka` | Yes | Provider DP must allocate topic and transport metadata before consumer subscription |
+
+This selective use of `prepare` is a **TRUE Connector implementation choice**, not a normative DSP
+or DPS rule.
 
 ### Transfer Lifecycle and Suspend Semantics
 

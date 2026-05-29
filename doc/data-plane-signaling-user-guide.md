@@ -16,6 +16,7 @@ services independently and scale them as needed.
 | **Data Plane (DP)** | A lightweight service responsible for the actual data transfer |
 | **Transfer type** | Protocol used for data movement — `HttpData-PULL`, `HttpData-PUSH`, `stream:grpc`, or `stream:kafka` |
 | **DP Registration** | A CP record describing where a DP lives and what transfer types it supports |
+| **Template distribution** | The admin-side distribution metadata used as the source when the connector re-materializes per-format catalog entries |
 
 ---
 
@@ -106,6 +107,17 @@ Kafka DP on host port `9099` (container port `9098` in both cases).
 > happen at CP startup (`InitialDataLoader`) — **DP startup does not provision buckets**. The
 > CP resolves the correct bucket for each tenant and includes the necessary S3 credentials in
 > every CP↔DP message, so DPs do not need independent access to the credential store.
+
+### Which flows use DPS `prepare`
+
+TRUE Connector does **not** call DPS `prepare` for every transfer type:
+
+| Transfer type | `prepare` used by the built-in CP flow? | Summary |
+|---|---|---|
+| `HttpData-PULL` | No | Provider CP builds the presigned URL directly; consumer pull DP starts on demand |
+| `HttpData-PUSH` | No | Consumer CP creates sink credentials directly; provider push DP receives everything in `start` |
+| `stream:grpc` | Yes | Provider gRPC DP allocates a streaming session before the consumer starts |
+| `stream:kafka` | Yes | Provider Kafka DP allocates topic and broker metadata before the consumer starts |
 
 ### HTTP-PULL — consumer fetches the artifact
 
@@ -207,6 +219,36 @@ for 7 days. No DP call is made.
 
 ---
 
+## How catalog formats follow dataplane registration
+
+The catalog exposed by the connector keeps DSP-compliant `Distribution` objects on the wire, but the
+set of advertised `distribution.format` values is driven by the currently registered dataplanes.
+
+What this means in practice:
+
+1. A DP registers itself with the CP at startup through `/api/v1/dataplanes`.
+2. The CP stores that registration, publishes audit events, and triggers catalog reconciliation.
+3. `CatalogDataPlaneFormatSyncService` computes the union of all registered
+   `supportedTransferTypes`.
+4. For each dataset, the connector keeps one concrete distribution per active format.
+5. If no dataplane formats are registered, the connector keeps one template distribution with
+   `format = null` instead of exposing stale old formats.
+
+### Effect on admin updates
+
+Updating a distribution via `/api/v1/distributions/{id}` edits the template metadata that is reused
+for reconciliation, but it does **not** freeze the final format list forever. After a reconcile, the
+connector re-applies the active dataplane capability set:
+
+- metadata such as title, description, access service, and policy references are preserved from the
+  updated template
+- `distribution.format` entries are re-derived from registered dataplanes
+
+If you want a dataset to advertise `HttpData-PULL`, `HttpData-PUSH`, `stream:grpc`, or
+`stream:kafka`, the corresponding dataplane must be registered.
+
+---
+
 ## Audit Events
 
 Both the Control Plane and each Data Plane record audit events to their respective MongoDB
@@ -232,6 +274,9 @@ curl http://localhost:8080/api/v1/audit/types \
 | `DATAPLANE_REGISTRATION_UPDATED` | DP restarted and re-registered (idempotent update) |
 | `DATAPLANE_DEREGISTERED` | DP removed (`DELETE /api/v1/dataplanes/{id}`) |
 | `DATAPLANE_REGISTRATION_NOT_FOUND` | Delete attempted on unknown registration ID |
+
+These registration changes also trigger catalog distribution reconciliation, so dataset format
+availability follows the active dataplane set automatically.
 
 ### Data Plane audit events
 
