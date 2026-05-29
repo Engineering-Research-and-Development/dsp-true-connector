@@ -42,6 +42,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -472,6 +473,59 @@ class HttpPushTransferProtocolTest {
     }
 
     @Test
+    @DisplayName("initiateTransfer persists contiguous confirmed bytes from checkpoint callbacks")
+    void initiateTransfer_persistsContiguousConfirmedBytesFromCheckpointCallbacks() throws Exception {
+        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
+        testHttpServer.createContext("/artifact", exchange -> {
+            byte[] body = "artifact-content".getBytes();
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(body);
+            }
+        });
+        testHttpServer.start();
+
+        int port = testHttpServer.getAddress().getPort();
+        String presignedUrl = "http://localhost:" + port + "/artifact";
+
+        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
+        when(s3ClientService.generateGetPresignedUrl(eq("provider-bucket"), anyString(), any(Duration.class)))
+                .thenReturn(presignedUrl);
+        when(checkpointService.save(any(DataFlowCheckpoint.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(s3ClientService.uploadFile(any(), any(), any(), any(), any(ResumableUploadRequest.class)))
+                .thenAnswer(invocation -> {
+                    ResumableUploadRequest resumableRequest = invocation.getArgument(4);
+                    resumableRequest.checkpointCallback().onMultipartCreated("upload-id-1");
+                    resumableRequest.checkpointCallback().onPartCompleted(2, "etag-2", 10L, 0L);
+                    return CompletableFuture.completedFuture("etag-ok");
+                });
+
+        Map<String, String> dataAddress = new HashMap<>();
+        dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
+        dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
+        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
+        dataAddress.put(S3Utils.REGION, "us-east-1");
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-contiguous")
+                .transferType("HttpData-PUSH")
+                .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
+                .datasetId("dataset-1")
+                .dataAddress(dataAddress)
+                .build();
+
+        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
+
+        assertThat(result.isSuccess()).isTrue();
+        ArgumentCaptor<DataFlowCheckpoint> checkpointCaptor = ArgumentCaptor.forClass(DataFlowCheckpoint.class);
+        verify(checkpointService, times(2)).save(checkpointCaptor.capture());
+        DataFlowCheckpoint completedPartCheckpoint = checkpointCaptor.getAllValues().get(1);
+        assertThat(completedPartCheckpoint.getCompletedParts()).containsExactly(2);
+        assertThat(completedPartCheckpoint.getConfirmedBytes()).isZero();
+    }
+
+    @Test
     @DisplayName("initiateTransfer sends started/completed callbacks and uses processId as S3 objectKey when objectKey is absent from dataAddress")
     void initiateTransfer_usesProcessIdAsObjectKeyFallback() throws Exception {
         testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
@@ -616,4 +670,3 @@ class HttpPushTransferProtocolTest {
         verify(controlPlaneClient, never()).sendErrored(any(), any(), any());
     }
 }
-

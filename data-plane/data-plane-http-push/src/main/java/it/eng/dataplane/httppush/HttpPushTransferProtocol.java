@@ -508,7 +508,8 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
                     log.warn("onPartCompleted called before onMultipartCreated for processId={}", processId);
                     return;
                 }
-                DataFlowCheckpoint updated = current.withCompletedPart(partNumber, partSize, eTag);
+                DataFlowCheckpoint updated = current.withCompletedPart(
+                        partNumber, partSize, eTag, contiguousConfirmedBytes);
                 DataFlowCheckpoint saved = checkpointService.save(updated);
                 checkpointRef.set(saved);
                 log.debug("Checkpoint updated for processId={}, part={}, confirmedBytes={}",
@@ -686,5 +687,4 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
         }
     }
 }
-
 

@@ -12,7 +12,6 @@ import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.AuditEventPublisher;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
 import org.bson.Document;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -21,13 +20,16 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
 
 import java.io.InputStream;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * InitialDataLoader is responsible for loading initial data into MongoDB and uploading mock data to S3.
@@ -37,6 +39,10 @@ import java.util.Map;
 @Configuration
 public class InitialDataLoader {
 
+    private static final String DEFAULT_MOCK_DATA_RESOURCE = "classpath:ENG-employee.json";
+    private static final String MOCK_DATA_RESOURCE_PROPERTY = "application.mock.data.resource";
+    private static final String DEFAULT_MOCK_DATA_FILENAME = "transfer-data.bin";
+
     private final MongoTemplate mongoTemplate;
     private final Environment environment;
     private final S3ClientService s3ClientService;
@@ -44,10 +50,12 @@ public class InitialDataLoader {
     private final S3Properties s3Properties;
     private final AuditEventPublisher publisher;
     private final TenantRepository tenantRepository;
+    private final ResourceLoader resourceLoader;
 
     public InitialDataLoader(MongoTemplate mongoTemplate, Environment environment, S3ClientService s3ClientService,
                              S3BucketProvisionService s3BucketProvisionService, S3Properties s3Properties,
-                             AuditEventPublisher publisher, TenantRepository tenantRepository) {
+                             AuditEventPublisher publisher, TenantRepository tenantRepository,
+                             ResourceLoader resourceLoader) {
         this.mongoTemplate = mongoTemplate;
         this.environment = environment;
         this.s3ClientService = s3ClientService;
@@ -55,6 +63,7 @@ public class InitialDataLoader {
         this.s3Properties = s3Properties;
         this.publisher = publisher;
         this.tenantRepository = tenantRepository;
+        this.resourceLoader = resourceLoader;
     }
 
     /**
@@ -77,7 +86,7 @@ public class InitialDataLoader {
                 filename = "initial_data-" + activeProfile + ".json";
                 log.debug("Active profile set {}, using {} for populating Mongo", activeProfile, filename);
             }
-            try (InputStream inputStream = new ClassPathResource(filename).getInputStream()) {
+            try (InputStream inputStream = resourceLoader.getResource("classpath:" + filename).getInputStream()) {
                 JsonNode rootNode = mapper.readTree(inputStream);
 
                 rootNode.fields().forEachRemaining(entry -> {
@@ -147,14 +156,20 @@ public class InitialDataLoader {
             // only needed for presigned-URL generation at request time.
             s3BucketProvisionService.ensureBucketCredentials(bucketName);
 
-            ClassPathResource file = new ClassPathResource("ENG-employee.json");
-            if (file.exists()) {
+            String mockDataResourceLocation = environment.getProperty(MOCK_DATA_RESOURCE_PROPERTY,
+                    DEFAULT_MOCK_DATA_RESOURCE);
+            Resource mockDataResource = resourceLoader.getResource(mockDataResourceLocation);
+            if (mockDataResource.exists()) {
                 // from initial_data.json Artifacts.value which is the same as dataset.id
                 String fileKey = "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5";
+                String filename = Objects.requireNonNullElse(mockDataResource.getFilename(), DEFAULT_MOCK_DATA_FILENAME);
                 String contentDisposition = ContentDisposition.attachment()
-                        .filename(file.getFile().getName())
+                        .filename(filename)
                         .build()
                         .toString();
+                String contentType = MediaTypeFactory.getMediaType(filename)
+                        .map(MediaType::toString)
+                        .orElse(MediaType.APPLICATION_OCTET_STREAM_VALUE);
 
                 Map<String, String> destinationS3Properties = Map.of(
                         S3Utils.OBJECT_KEY, fileKey,
@@ -165,12 +180,16 @@ public class InitialDataLoader {
                         S3Utils.SECRET_KEY, s3Properties.getSecretKey()
                 );
 
-                s3ClientService.uploadFile(
-                                FileUtils.openInputStream(file.getFile()),
-                                destinationS3Properties,
-                                MediaType.APPLICATION_JSON_VALUE,
-                                contentDisposition)
-                        .get();
+                try (InputStream inputStream = mockDataResource.getInputStream()) {
+                    s3ClientService.uploadFile(
+                                    inputStream,
+                                    destinationS3Properties,
+                                    contentType,
+                                    contentDisposition)
+                            .get();
+                }
+            } else {
+                log.warn("Mock data resource {} does not exist, skipping S3 mock upload", mockDataResourceLocation);
             }
         } catch (Exception e) {
             log.error("Error while loading mock data to S3", e);

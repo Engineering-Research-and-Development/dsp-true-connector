@@ -428,6 +428,7 @@ public class DataTransferAPIService {
                 .callbackAddress(transferProcess.getCallbackAddress())
                 .dataAddress(transferStartMessage.getDataAddress())
                 .isDownloaded(transferProcess.isDownloaded())
+                .isDownloadInProgress(resuming || transferProcess.isDownloadInProgress())
                 .dataId(transferProcess.getDataId())
                 .format(transferProcess.getFormat())
                 .state(TransferState.STARTED)

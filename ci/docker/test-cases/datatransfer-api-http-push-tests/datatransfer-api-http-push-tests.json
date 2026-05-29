@@ -17,6 +17,7 @@
 							"pm.test(\"Retrieve consumer transfer process id\", function () {\r",
 							"    var jsonData = pm.response.json();\r",
 							"    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][\"@id\"])\r",
+							"    pm.collectionVariables.set(\"provider_transferProcessId\", jsonData[\"data\"][\"@id\"])\r",
 							"});\r",
 							"\r",
 							"pm.test(\"Check if status code is 200\", function () {\r",
@@ -67,10 +68,10 @@
 							"    pm.response.to.have.status(200);\r",
 							"});\r",
 							"\r",
-							"pm.test(\"Retrieve provider transfer process id\", function () {\r",
+							"pm.test(\"Check provider transfer process id\", function () {\r",
 							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"provider_transferProcessId\", \r",
-							"    jsonData[\"response\"][\"data\"][\"content\"][0][\"@id\"])\r",
+							"    pm.expect(jsonData[\"data\"][\"@id\"]).to.eql(pm.collectionVariables.get(\"provider_transferProcessId\"));\r",
+							"    pm.expect(jsonData[\"data\"][\"role\"]).to.eql(\"provider\");\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -88,23 +89,12 @@
 					}
 				],
 				"url": {
-					"raw": "{{PROVIDER_API_TRANSFERS}}?state=REQUESTED&role=provider&datasetId=urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+					"raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}",
 					"host": [
 						"{{PROVIDER_API_TRANSFERS}}"
 					],
-					"query": [
-						{
-							"key": "state",
-							"value": "REQUESTED"
-						},
-						{
-							"key": "role",
-							"value": "provider"
-						},
-						{
-							"key": "datasetId",
-							"value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
-						}
+					"path": [
+						"{{provider_transferProcessId}}"
 					]
 				}
 			},
@@ -119,178 +109,6 @@
 						"exec": [
 							"pm.test(\"Check if status code is 200\", function () {\r",
 							"    pm.response.to.have.status(200);\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "PUT",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/start",
-					"host": [
-						"{{PROVIDER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{provider_transferProcessId}}",
-						"start"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "[C] Suspend transfer",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "PUT",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"body": {
-					"mode": "raw",
-					"raw": "",
-					"options": {
-						"raw": {
-							"language": "json"
-						}
-					}
-				},
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/suspend",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"suspend"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "[C] Download data fail",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 400\", function () {\r",
-							"    pm.response.to.have.status(400);\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"download"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "[C] View data fail",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Status code is 400\", function () {\r",
-							"    pm.response.to.have.status(400);\r",
-							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				}
-			],
-			"request": {
-				"method": "GET",
-				"header": [
-					{
-						"key": "Content-Type",
-						"value": "application/json",
-						"type": "text"
-					}
-				],
-				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
-					"host": [
-						"{{CONSUMER_API_TRANSFERS}}"
-					],
-					"path": [
-						"{{consumer_transferProcessId}}",
-						"view"
-					]
-				}
-			},
-			"response": []
-		},
-		{
-			"name": "[P] Start transfer",
-			"event": [
-				{
-					"listen": "test",
-					"script": {
-						"exec": [
-							"pm.test(\"Check if status code is 200\", function () {\r",
-							"    pm.response.to.have.status(200);\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"presignedURL\", jsonData[\"data\"][\"dataAddress\"][\"endpoint\"])\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -336,8 +154,8 @@
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Status code is 202\", function () {\r",
-							"    pm.response.to.have.status(202);\r",
+							"pm.test(\"Status code is 202\", function () {",
+							"    pm.response.to.have.status(202);",
 							"});"
 						],
 						"type": "text/javascript",
@@ -362,6 +180,176 @@
 					"path": [
 						"{{provider_transferProcessId}}",
 						"download"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[P] Suspend transfer",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/suspend",
+					"host": [
+						"{{PROVIDER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{provider_transferProcessId}}",
+						"suspend"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[P] Push data fail while suspended",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 400\", function () {\r",
+							"    pm.response.to.have.status(400);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/download",
+					"host": [
+						"{{PROVIDER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{provider_transferProcessId}}",
+						"download"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[C] View data fail",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 400\", function () {\r",
+							"    pm.response.to.have.status(400);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"view"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[P] Start transfer after suspend",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Check if status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/start",
+					"host": [
+						"{{PROVIDER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{provider_transferProcessId}}",
+						"start"
 					]
 				}
 			},
@@ -483,9 +471,12 @@
 					"script": {
 						"exec": [
 							"pm.test(\"Check expected response\", ()=> {\r",
-							"    pm.response.to.have.status(200);\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"    pm.response.to.have.status(206);\r",
+							"    var response = pm.response.text();\r",
+							"    var contentRange = pm.response.headers.get('Content-Range') || '';\r",
+							"    pm.expect(contentRange).to.include('/134217728');\r",
+							"    pm.expect(response.startsWith('seed-line-00000000|')).to.eql(true);\r",
+							"    pm.expect(response).to.include('dsp-true-connector-suspend-resume-fixture');\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -499,6 +490,11 @@
 					{
 						"key": "Content-Type",
 						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Range",
+						"value": "bytes=0-1023",
 						"type": "text"
 					}
 				],
@@ -607,9 +603,12 @@
 					"script": {
 						"exec": [
 							"pm.test(\"Check expected response\", ()=> {\r",
-							"    pm.response.to.have.status(200);\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"    pm.response.to.have.status(206);\r",
+							"    var response = pm.response.text();\r",
+							"    var contentRange = pm.response.headers.get('Content-Range') || '';\r",
+							"    pm.expect(contentRange).to.include('/134217728');\r",
+							"    pm.expect(response.startsWith('seed-line-00000000|')).to.eql(true);\r",
+							"    pm.expect(response).to.include('dsp-true-connector-suspend-resume-fixture');\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -623,6 +622,11 @@
 					{
 						"key": "Content-Type",
 						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Range",
+						"value": "bytes=0-1023",
 						"type": "text"
 					}
 				],

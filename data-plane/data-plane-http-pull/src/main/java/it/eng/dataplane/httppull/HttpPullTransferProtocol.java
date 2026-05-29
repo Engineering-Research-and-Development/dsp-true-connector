@@ -6,16 +6,24 @@ import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.api.spi.DataTransferProtocol;
 import it.eng.dataplane.core.client.ControlPlaneClient;
+import it.eng.dataplane.core.model.DataFlowCheckpoint;
+import it.eng.dataplane.core.model.DataFlowEntity;
+import it.eng.dataplane.core.repository.DataFlowRepository;
+import it.eng.dataplane.core.service.DataFlowCheckpointService;
 import it.eng.dataplane.s3.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.dataplane.s3.service.TenantBucketResolver;
+import it.eng.tools.s3.service.upload.ResumableUploadRequest;
+import it.eng.tools.s3.service.upload.UploadCheckpointCallback;
+import it.eng.tools.s3.service.upload.UploadPausedException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
+import software.amazon.awssdk.services.s3.model.CompletedPart;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,14 +32,27 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * HTTP-PULL transfer protocol implementation.
- * Downloads data from a presigned URL and uploads to the consumer's S3 bucket.
+ *
+ * <p>Downloads data from a presigned URL and uploads it to the consumer's S3 bucket using
+ * resumable multipart upload. Suspend and resume are supported: on suspend the running upload
+ * is stopped cooperatively and a {@link DataFlowCheckpoint} is persisted; on resume the
+ * presigned URL is re-opened with an HTTP {@code Range} header to skip already-uploaded bytes
+ * and the multipart upload is continued from the saved checkpoint.</p>
  */
 @Component
 @Slf4j
@@ -46,6 +67,15 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
     @Qualifier("dataPlaneHttpClient")
     private final HttpClient httpClient;
     private final ControlPlaneClient controlPlaneClient;
+    private final DataFlowRepository dataFlowRepository;
+    private final DataFlowCheckpointService checkpointService;
+
+    /**
+     * Per-transfer suspend flags keyed by {@code dataFlowId} (the MongoDB document {@code _id}).
+     * Set to {@code true} when {@link #suspendTransfer(String)} is called; the upload thread
+     * monitors this flag cooperatively and raises {@link UploadPausedException} to stop.
+     */
+    private final ConcurrentMap<String, AtomicBoolean> activeSuspendFlags = new ConcurrentHashMap<>();
 
     /**
      * Request timeout (30 minutes) used for all artifact downloads.
@@ -65,6 +95,27 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
     @Override
     public String getProtocolId() {
         return "HttpData-PULL";
+    }
+
+    /**
+     * Returns {@code true} when the data flow entity carries a usable presigned URL in its
+     * {@code dataAddress.endpoint} field.
+     *
+     * <p>This method is used by {@link it.eng.dataplane.core.startup.DataFlowRecoveryStartupBean}
+     * on DP restart to decide whether a SUSPENDED flow can be resumed without requiring the
+     * Control Plane to re-issue a new URL. A non-blank endpoint is sufficient; URL validity
+     * (expiry, 401/403) is determined lazily when {@link #resumeTransfer(String)} is called.</p>
+     *
+     * @param dataFlow the data flow to inspect
+     * @return {@code true} if {@code dataAddress.endpoint} is present and non-blank
+     */
+    @Override
+    public boolean hasUsableAccessMaterial(DataFlow dataFlow) {
+        Map<String, String> dataAddress = dataFlow.getDataAddress();
+        if (dataAddress == null) {
+            return false;
+        }
+        return StringUtils.isNotBlank(dataAddress.get("endpoint"));
     }
 
     /**
@@ -115,8 +166,12 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
 
     /**
      * Initiates a data transfer for the given data flow.
-     * Downloads data from the presigned URL in dataAddress.endpoint and uploads to S3.
-     * Notifies the Control Plane via explicit {@code sendStarted}, {@code sendCompleted},
+     *
+     * <p>Downloads data from the presigned URL in {@code dataAddress.endpoint} and uploads
+     * it to S3 using a resumable multipart upload. A checkpoint is persisted after each
+     * uploaded part so that the transfer can be resumed if suspended mid-way.
+     *
+     * <p>Notifies the Control Plane via explicit {@code sendStarted}, {@code sendCompleted},
      * or {@code sendErrored} callbacks so the CP can drive DSP state transitions directly.
      *
      * @param dataFlow the data flow to initiate
@@ -125,7 +180,7 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
     @Override
     public CompletableFuture<DataFlowResult> initiateTransfer(DataFlow dataFlow) {
         log.info("Initiating HTTP-PULL transfer for data flow {}", dataFlow.getDataFlowId());
-        
+
         // Extract presigned URL from data address
         Map<String, String> dataAddress = dataFlow.getDataAddress();
         if (dataAddress == null || !dataAddress.containsKey("endpoint")) {
@@ -133,11 +188,44 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
                 DataFlowResult.failure("dataAddress.endpoint (presigned URL) is required for HttpData-PULL")
             );
         }
-        
+
         String presignedUrl = dataAddress.get("endpoint");
+        String dataFlowId = dataFlow.getDataFlowId();
+        String processId = dataFlow.getProcessId();
+        String bucketName = tenantBucketResolver.resolveBucketName(dataFlow.getTenantId());
+
+        // Register a fresh suspend flag for this transfer
+        AtomicBoolean suspendFlag = new AtomicBoolean(false);
+        activeSuspendFlags.put(dataFlowId, suspendFlag);
+
+        // Build the initial empty checkpoint for this transfer
+        DataFlowCheckpoint initialCheckpoint = DataFlowCheckpoint.Builder.newInstance()
+                .processId(processId)
+                .dataFlowId(dataFlowId)
+                .transferType(getProtocolId())
+                .tenantId(dataFlow.getTenantId())
+                .destinationBucket(bucketName)
+                .destinationObjectKey(processId)
+                .createdAt(Instant.now())
+                .updatedAt(Instant.now())
+                .build();
+        checkpointService.save(initialCheckpoint);
+
+        // Mutable reference updated by the checkpoint callback (single upload thread, no contention)
+        AtomicReference<DataFlowCheckpoint> currentCheckpoint = new AtomicReference<>(initialCheckpoint);
+
+        UploadCheckpointCallback checkpointCallback = buildCheckpointCallback(currentCheckpoint, processId, dataFlowId);
+
+        ResumableUploadRequest resumable = new ResumableUploadRequest(
+                null,
+                List.of(),
+                List.of(),
+                0L,
+                suspendFlag,
+                checkpointCallback);
 
         // Notify CP that the DP has started processing — consumer CP can now update DSP state
-        controlPlaneClient.sendStarted(dataFlow.getCallbackAddress(), dataFlow.getProcessId(), dataAddress);
+        controlPlaneClient.sendStarted(dataFlow.getCallbackAddress(), processId, dataAddress);
 
         // Run the transfer asynchronously, then notify CP of outcome
         AtomicBoolean wasPaused = new AtomicBoolean(false);
@@ -217,6 +305,7 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
         }
         String presignedUrl = dataAddress.get("endpoint");
 
+        // Load checkpoint — on first-attempt resume (no checkpoint) we start from scratch
         Optional<DataFlowCheckpoint> checkpointOpt = checkpointService.findByProcessId(processId);
         long confirmedBytes;
         ResumableUploadRequest resumable;
@@ -229,6 +318,7 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
                     processId, confirmedBytes,
                     checkpoint.getCompletedParts() == null ? 0 : checkpoint.getCompletedParts().size());
         } else {
+            // No checkpoint persisted — start from the beginning
             confirmedBytes = 0L;
             AtomicBoolean freshFlag = new AtomicBoolean(false);
             activeSuspendFlags.put(dataFlowId, freshFlag);
@@ -263,6 +353,7 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
                 .thenApply(result -> {
                     activeSuspendFlags.remove(dataFlowId);
                     if (wasPaused.get()) {
+                        // Paused again mid-resume — checkpoint was saved; no CP completion callback
                         log.info("HTTP-PULL resumed transfer paused again for processId={}", processId);
                         return DataFlowResult.success();
                     }
@@ -277,7 +368,9 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
 
     /**
      * Terminates a data transfer.
-     * For HTTP-PULL, this is a no-op since transfers complete immediately.
+     *
+     * <p>Clears the in-memory suspend flag for this transfer (if any). Checkpoint deletion
+     * and state transitions are handled by {@link it.eng.dataplane.core.service.DataFlowService}.
      *
      * @param dataFlowId the ID of the data flow to terminate
      * @return future with success result
@@ -285,14 +378,22 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
     @Override
     public CompletableFuture<DataFlowResult> terminateTransfer(String dataFlowId) {
         log.info("Terminating HttpData-PULL transfer {}", dataFlowId);
+        activeSuspendFlags.remove(dataFlowId);
         return CompletableFuture.completedFuture(DataFlowResult.success());
     }
 
     /**
-     * Downloads data from presigned URL and uploads to S3.
-     * Uses {@link java.net.http.HttpClient} which negotiates HTTP/2 on TLS connections
-     * and falls back to HTTP/1.1 for plain HTTP (e.g. development MinIO without TLS).
+     * Downloads data from a presigned URL and uploads it to S3 as a resumable multipart upload.
      *
+     * <p>When {@code rangeStart > 0}, an HTTP {@code Range: bytes=rangeStart-} header is added
+     * to skip bytes already confirmed in a previous session. The server may respond with
+     * HTTP 200 (full content) or 206 (partial content); both are accepted.</p>
+     *
+     * <p>Uses {@link java.net.http.HttpClient} which negotiates HTTP/2 on TLS connections
+     * and falls back to HTTP/1.1 for plain HTTP (e.g. development MinIO without TLS).</p>
+     *
+     * @param dataFlow     the data flow containing transfer metadata
+     * @param presignedUrl the presigned GET URL to download from
      * @param rangeStart   byte offset at which to start the download; 0 for a fresh download
      * @param resumable    the resumable upload context (suspend flag, checkpoint callback, prior parts)
      * @param wasPaused    set to {@code true} by this method when the upload is stopped cooperatively
@@ -323,7 +424,6 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
                 if (StringUtils.isNotBlank(authorization)) {
                     requestBuilder.header(HttpHeaders.AUTHORIZATION, authorization);
                 }
-
                 // Add Range header to skip already-uploaded bytes on resume
                 if (rangeStart > 0) {
                     requestBuilder.header("Range", "bytes=" + rangeStart + "-");
@@ -335,6 +435,7 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
                         requestBuilder.build(), HttpResponse.BodyHandlers.ofInputStream());
 
                 int statusCode = response.statusCode();
+                // Accept 200 (full content) and 206 (partial content for Range requests)
                 if (statusCode != 200 && statusCode != 206) {
                     closeQuietly(response.body());
                     throw new RuntimeException("Failed to get stream. HTTP response code: " + statusCode);
@@ -375,6 +476,8 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
         .exceptionally(throwable -> {
             Throwable cause = throwable.getCause() != null ? throwable.getCause() : throwable;
             if (cause instanceof UploadPausedException) {
+                // Upload was stopped cooperatively due to suspend request; checkpoint was saved
+                // by the callback. Signal the caller via wasPaused so it skips CP callbacks.
                 log.info("HTTP-PULL transfer paused for processId={}", dataFlow.getProcessId());
                 wasPaused.set(true);
                 return DataFlowResult.success();
@@ -382,6 +485,87 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
             log.error("HTTP-PULL transfer failed for data flow {}", dataFlow.getDataFlowId(), throwable);
             return DataFlowResult.failure(throwable.getMessage());
         });
+    }
+
+    /**
+     * Builds a {@link ResumableUploadRequest} from a persisted {@link DataFlowCheckpoint}.
+     *
+     * <p>Reconstructs the list of {@link CompletedPart} objects (with ETags) required by S3 /
+     * MinIO to complete the multipart upload after resume.</p>
+     *
+     * @param checkpoint the persisted checkpoint
+     * @param dataFlowId the data flow entity ID (used as key for the suspend flag)
+     * @param processId  the transfer process ID (used for logging)
+     * @return a resumable upload request ready to pass to {@link S3ClientService#uploadFile}
+     */
+    private ResumableUploadRequest buildResumableFromCheckpoint(DataFlowCheckpoint checkpoint,
+                                                                String dataFlowId,
+                                                                String processId) {
+        List<Integer> partNumbers = checkpoint.getCompletedParts() != null
+                ? checkpoint.getCompletedParts() : List.of();
+        Map<Integer, Long> sizes = checkpoint.getPartSizes() != null
+                ? checkpoint.getPartSizes() : Map.of();
+        Map<Integer, String> etags = checkpoint.getPartETags() != null
+                ? checkpoint.getPartETags() : Map.of();
+
+        List<CompletedPart> completedParts = new ArrayList<>(partNumbers.size());
+        List<Long> partSizes = new ArrayList<>(partNumbers.size());
+        for (int partNumber : partNumbers) {
+            String eTag = etags.get(partNumber);
+            completedParts.add(CompletedPart.builder().partNumber(partNumber).eTag(eTag).build());
+            partSizes.add(sizes.getOrDefault(partNumber, 0L));
+        }
+
+        AtomicBoolean newFlag = new AtomicBoolean(false);
+        activeSuspendFlags.put(dataFlowId, newFlag);
+
+        AtomicReference<DataFlowCheckpoint> cpRef = new AtomicReference<>(checkpoint);
+        UploadCheckpointCallback callback = buildCheckpointCallback(cpRef, processId, dataFlowId);
+
+        return new ResumableUploadRequest(
+                checkpoint.getUploadId(),
+                completedParts,
+                partSizes,
+                checkpoint.getConfirmedBytes(),
+                newFlag,
+                callback);
+    }
+
+    /**
+     * Creates a checkpoint callback that persists upload progress to MongoDB after each part
+     * and when the multipart upload ID is first assigned.
+     *
+     * <p>The callback updates the {@code currentCheckpoint} reference atomically so that if
+     * the upload thread is stopped mid-part, the last fully committed checkpoint is available
+     * for a future resume attempt.</p>
+     *
+     * @param currentCheckpoint mutable reference holding the latest persisted checkpoint
+     * @param processId         the transfer process ID
+     * @param dataFlowId        the data flow entity ID
+     * @return a live checkpoint callback
+     */
+    private UploadCheckpointCallback buildCheckpointCallback(AtomicReference<DataFlowCheckpoint> currentCheckpoint,
+                                                             String processId,
+                                                             String dataFlowId) {
+        return new UploadCheckpointCallback() {
+            @Override
+            public void onMultipartCreated(String uploadId) {
+                DataFlowCheckpoint updated = currentCheckpoint.get().withUploadId(uploadId);
+                updated = checkpointService.save(updated);
+                currentCheckpoint.set(updated);
+                log.debug("Checkpoint created for processId={} with uploadId={}", processId, uploadId);
+            }
+
+            @Override
+            public void onPartCompleted(int partNumber, String eTag, long partSize, long contiguousConfirmedBytes) {
+                DataFlowCheckpoint updated = currentCheckpoint.get()
+                        .withCompletedPart(partNumber, partSize, eTag, contiguousConfirmedBytes);
+                updated = checkpointService.save(updated);
+                currentCheckpoint.set(updated);
+                log.debug("Checkpoint updated for processId={}: part={}, confirmedBytes={}",
+                        processId, partNumber, contiguousConfirmedBytes);
+            }
+        };
     }
 
     /**

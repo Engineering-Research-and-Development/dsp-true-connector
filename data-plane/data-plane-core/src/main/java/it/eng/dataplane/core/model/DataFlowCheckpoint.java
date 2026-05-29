@@ -48,7 +48,7 @@ public class DataFlowCheckpoint {
     /** Map of part number to the ETag returned by S3 for that part. Required to complete a multipart upload. */
     private Map<Integer, String> partETags;
 
-    /** Total bytes confirmed uploaded so far. */
+    /** Total contiguous bytes confirmed uploaded so far. */
     private long confirmedBytes;
 
     private Instant createdAt;
@@ -77,6 +77,26 @@ public class DataFlowCheckpoint {
      * @return updated copy with part appended and {@code confirmedBytes} incremented
      */
     public DataFlowCheckpoint withCompletedPart(int partNumber, long partSize, String eTag) {
+        return withCompletedPart(partNumber, partSize, eTag, this.confirmedBytes + partSize);
+    }
+
+    /**
+     * Returns a new {@link DataFlowCheckpoint} with the given part appended to the completed list,
+     * along with its ETag for multipart resume and the updated contiguous confirmed byte count.
+     *
+     * <p>The {@code eTag} is required by S3 / MinIO when calling {@code CompleteMultipartUpload}
+     * after a resume. The {@code confirmedBytes} value should be the contiguous byte count
+     * reported by the {@link it.eng.tools.s3.service.upload.UploadCheckpointCallback}; it is
+     * stored directly rather than re-derived from part sizes.</p>
+     *
+     * @param partNumber     the 1-based part number
+     * @param partSize       the size of the part in bytes
+     * @param eTag           the ETag returned by S3 for this part
+     * @param confirmedBytes total contiguous bytes confirmed from part 1 through the latest
+     *                       uninterrupted sequence at the time this part completed
+     * @return updated copy with part appended
+     */
+    public DataFlowCheckpoint withCompletedPart(int partNumber, long partSize, String eTag, long confirmedBytes) {
         DataFlowCheckpoint copy = copyOf(this);
         List<Integer> parts = new ArrayList<>(copy.completedParts == null ? List.of() : copy.completedParts);
         parts.add(partNumber);
@@ -87,7 +107,7 @@ public class DataFlowCheckpoint {
         Map<Integer, String> tags = new HashMap<>(copy.partETags == null ? Map.of() : copy.partETags);
         tags.put(partNumber, eTag);
         copy.partETags = Map.copyOf(tags);
-        copy.confirmedBytes = copy.confirmedBytes + partSize;
+        copy.confirmedBytes = confirmedBytes;
         copy.updatedAt = Instant.now();
         return copy;
     }

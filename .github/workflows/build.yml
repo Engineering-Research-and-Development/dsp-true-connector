@@ -159,17 +159,19 @@ jobs:
   datatransfer-api-http-pull-tests:
     needs: build-and-push-image
     runs-on: ubuntu-latest
+    env:
+      DATATRANSFER_COMPOSE_FILES: -f ./ci/docker/docker-compose.yml -f ./ci/docker/docker-compose-async-override.yml
+      MINIO_EXTERNAL_URL: http://localhost:9000
 
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
 
+      - name: Generate large transfer fixture
+        run: TARGET_MEBIBYTES=128 bash ./ci/docker/generate-test-data.sh
+
       - name: Run docker container for datatransfer-api-http-pull-tests
-        # Newman runs directly on the host runner (npx newman), so localhost resolves correctly.
-        # Use localhost:9000 for the MinIO presigned URL endpoint.
-        env:
-          MINIO_EXTERNAL_URL: http://localhost:9000
-        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile pull up -d
+        run: docker compose ${DATATRANSFER_COMPOSE_FILES} --env-file ./ci/docker/.env --profile pull up -d
 
       - name: Wait for connectors to be healthy
         run: |
@@ -184,8 +186,8 @@ jobs:
             echo "Attempt $i/36 — connector-a=$A connector-b=$B — waiting 10s..."
             sleep 10
           done
-          curl -sf http://localhost:8080/actuator/health || (echo "connector-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-a && exit 1)
-          curl -sf http://localhost:8090/actuator/health || (echo "connector-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-b && exit 1)
+          curl -sf http://localhost:8080/actuator/health || (echo "connector-a unhealthy" && docker compose ${DATATRANSFER_COMPOSE_FILES} --env-file ./ci/docker/.env logs connector-a && exit 1)
+          curl -sf http://localhost:8090/actuator/health || (echo "connector-b unhealthy" && docker compose ${DATATRANSFER_COMPOSE_FILES} --env-file ./ci/docker/.env logs connector-b && exit 1)
 
       - name: Wait for data plane containers to be healthy
         run: |
@@ -200,8 +202,8 @@ jobs:
             echo "Attempt $i/18 — pull-a=$PA pull-b=$PB — waiting 10s..."
             sleep 10
           done
-          curl -sf http://localhost:9090/actuator/health || (echo "data-plane-http-pull-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs data-plane-http-pull-a && exit 1)
-          curl -sf http://localhost:9092/actuator/health || (echo "data-plane-http-pull-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs data-plane-http-pull-b && exit 1)
+          curl -sf http://localhost:9090/actuator/health || (echo "data-plane-http-pull-a unhealthy" && docker compose ${DATATRANSFER_COMPOSE_FILES} --env-file ./ci/docker/.env logs data-plane-http-pull-a && exit 1)
+          curl -sf http://localhost:9092/actuator/health || (echo "data-plane-http-pull-b unhealthy" && docker compose ${DATATRANSFER_COMPOSE_FILES} --env-file ./ci/docker/.env logs data-plane-http-pull-b && exit 1)
 
       - name: Wait for data planes to register with connectors
         run: |
@@ -229,24 +231,28 @@ jobs:
 
       - name: Dump docker datatransfer-api-http-pull-tests
         if: failure()
-        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile pull logs
+        run: docker compose ${DATATRANSFER_COMPOSE_FILES} --env-file ./ci/docker/.env --profile pull logs
 
       - name: Stop docker container datatransfer-api-http-pull-tests
         if: always()
-        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
+        run: docker compose ${DATATRANSFER_COMPOSE_FILES} --env-file ./ci/docker/.env down -v
 
   datatransfer-api-http-push-tests:
     needs: build-and-push-image
     runs-on: ubuntu-latest
+    env:
+      DATATRANSFER_COMPOSE_FILES: -f ./ci/docker/docker-compose.yml -f ./ci/docker/docker-compose-async-override.yml
+      MINIO_EXTERNAL_URL: http://localhost:9000
     
     steps:
       - name: Git Checkout
         uses: actions/checkout@v6
 
+      - name: Generate large transfer fixture
+        run: TARGET_MEBIBYTES=128 bash ./ci/docker/generate-test-data.sh
+
       - name: Run docker container for datatransfer-api-http-push-tests
-        env:
-          MINIO_EXTERNAL_URL: http://localhost:9000
-        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile push up -d
+        run: docker compose ${DATATRANSFER_COMPOSE_FILES} --env-file ./ci/docker/.env --profile push up -d
 
       - name: Wait for connectors to be healthy
         run: |
@@ -261,8 +267,8 @@ jobs:
             echo "Attempt $i/36 — connector-a=$A connector-b=$B — waiting 10s..."
             sleep 10
           done
-          curl -sf http://localhost:8080/actuator/health || (echo "connector-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-a && exit 1)
-          curl -sf http://localhost:8090/actuator/health || (echo "connector-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs connector-b && exit 1)
+          curl -sf http://localhost:8080/actuator/health || (echo "connector-a unhealthy" && docker compose ${DATATRANSFER_COMPOSE_FILES} --env-file ./ci/docker/.env logs connector-a && exit 1)
+          curl -sf http://localhost:8090/actuator/health || (echo "connector-b unhealthy" && docker compose ${DATATRANSFER_COMPOSE_FILES} --env-file ./ci/docker/.env logs connector-b && exit 1)
 
       - name: Wait for data plane containers to be healthy
         run: |
@@ -277,8 +283,8 @@ jobs:
             echo "Attempt $i/18 — push-a=$PA push-b=$PB — waiting 10s..."
             sleep 10
           done
-          curl -sf http://localhost:9093/actuator/health || (echo "data-plane-http-push-a unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs data-plane-http-push-a && exit 1)
-          curl -sf http://localhost:9091/actuator/health || (echo "data-plane-http-push-b unhealthy" && docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env logs data-plane-http-push-b && exit 1)
+          curl -sf http://localhost:9093/actuator/health || (echo "data-plane-http-push-a unhealthy" && docker compose ${DATATRANSFER_COMPOSE_FILES} --env-file ./ci/docker/.env logs data-plane-http-push-a && exit 1)
+          curl -sf http://localhost:9091/actuator/health || (echo "data-plane-http-push-b unhealthy" && docker compose ${DATATRANSFER_COMPOSE_FILES} --env-file ./ci/docker/.env logs data-plane-http-push-b && exit 1)
 
       - name: Wait for data planes to register with connectors
         run: |
@@ -306,11 +312,11 @@ jobs:
 
       - name: Dump docker datatransfer-api-http-push-tests
         if: failure()
-        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile push logs
+        run: docker compose ${DATATRANSFER_COMPOSE_FILES} --env-file ./ci/docker/.env --profile push logs
 
       - name: Stop docker container datatransfer-api-http-push-tests
         if: always()
-        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
+        run: docker compose ${DATATRANSFER_COMPOSE_FILES} --env-file ./ci/docker/.env down -v
 
   api-endpoints-tests:
     needs: build-and-push-image

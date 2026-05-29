@@ -4,15 +4,22 @@ import com.sun.net.httpserver.HttpServer;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.core.client.ControlPlaneClient;
+import it.eng.dataplane.core.model.DataFlowCheckpoint;
+import it.eng.dataplane.core.model.DataFlowEntity;
+import it.eng.dataplane.core.repository.DataFlowRepository;
+import it.eng.dataplane.core.service.DataFlowCheckpointService;
 import it.eng.dataplane.s3.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.dataplane.s3.service.TenantBucketResolver;
+import it.eng.tools.s3.service.upload.ResumableUploadRequest;
+import it.eng.tools.s3.service.upload.UploadPausedException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
@@ -21,7 +28,9 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
@@ -31,6 +40,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -49,6 +60,10 @@ class HttpPullTransferProtocolTest {
     private TenantBucketResolver tenantBucketResolver;
     @Mock
     private ControlPlaneClient controlPlaneClient;
+    @Mock
+    private DataFlowRepository dataFlowRepository;
+    @Mock
+    private DataFlowCheckpointService checkpointService;
 
     private HttpPullTransferProtocol protocol;
     private HttpServer testHttpServer;
@@ -64,13 +79,16 @@ class HttpPullTransferProtocolTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(checkpointService.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         protocol = new HttpPullTransferProtocol(
             s3ClientService,
             s3Properties,
             tenantBucketResolver,
             syncExecutor,
             testHttpClient,
-            controlPlaneClient
+            controlPlaneClient,
+            dataFlowRepository,
+            checkpointService
         );
     }
 
@@ -85,6 +103,39 @@ class HttpPullTransferProtocolTest {
     @DisplayName("getProtocolId returns HttpData-PULL")
     void protocolIdIsHttpDataPull() {
         assertThat(protocol.getProtocolId()).isEqualTo("HttpData-PULL");
+    }
+
+    @Test
+    @DisplayName("hasUsableAccessMaterial returns true when endpoint is present")
+    void hasUsableAccessMaterial_returnsTrueWhenEndpointPresent() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-material")
+                .transferType("HttpData-PULL")
+                .dataAddress(Map.of("endpoint", "https://example.com/presigned"))
+                .build();
+        assertThat(protocol.hasUsableAccessMaterial(dataFlow)).isTrue();
+    }
+
+    @Test
+    @DisplayName("hasUsableAccessMaterial returns false when endpoint is missing")
+    void hasUsableAccessMaterial_returnsFalseWhenEndpointMissing() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-material")
+                .transferType("HttpData-PULL")
+                .dataAddress(Map.of())
+                .build();
+        assertThat(protocol.hasUsableAccessMaterial(dataFlow)).isFalse();
+    }
+
+    @Test
+    @DisplayName("hasUsableAccessMaterial returns false when dataAddress is null")
+    void hasUsableAccessMaterial_returnsFalseWhenDataAddressNull() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-material")
+                .transferType("HttpData-PULL")
+                .dataAddress(null)
+                .build();
+        assertThat(protocol.hasUsableAccessMaterial(dataFlow)).isFalse();
     }
 
     @Test
@@ -527,7 +578,7 @@ class HttpPullTransferProtocolTest {
         when(s3Properties.getRegion()).thenReturn("us-east-1");
         when(s3Properties.getAccessKey()).thenReturn("access-key");
         when(s3Properties.getSecretKey()).thenReturn("secret-key");
-        when(s3ClientService.uploadFile(any(), any(), any(), any()))
+        when(s3ClientService.uploadFile(any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.completedFuture("etag-123"));
 
         DataFlow dataFlow = DataFlow.Builder.newInstance()
@@ -572,7 +623,7 @@ class HttpPullTransferProtocolTest {
         when(s3Properties.getRegion()).thenReturn("us-east-1");
         when(s3Properties.getAccessKey()).thenReturn("access-key");
         when(s3Properties.getSecretKey()).thenReturn("secret-key");
-        when(s3ClientService.uploadFile(any(), any(), any(), any()))
+        when(s3ClientService.uploadFile(any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.completedFuture("etag-ok"));
 
         DataFlow dataFlow = DataFlow.Builder.newInstance()
@@ -611,7 +662,7 @@ class HttpPullTransferProtocolTest {
         when(s3Properties.getRegion()).thenReturn("us-east-1");
         when(s3Properties.getAccessKey()).thenReturn("access-key");
         when(s3Properties.getSecretKey()).thenReturn("secret-key");
-        when(s3ClientService.uploadFile(any(), any(), any(), any()))
+        when(s3ClientService.uploadFile(any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.failedFuture(new RuntimeException("S3 upload failed")));
 
         DataFlow dataFlow = DataFlow.Builder.newInstance()

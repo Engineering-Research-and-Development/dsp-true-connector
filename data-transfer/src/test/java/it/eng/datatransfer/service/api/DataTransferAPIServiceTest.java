@@ -579,6 +579,29 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
+    @DisplayName("startTransfer resume preserves download-in-progress flag for resumed downloads")
+    public void startTransfer_resumePreservesDownloadInProgressFlag() {
+        TransferProcess suspended = DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER_HTTP_PULL;
+        when(transferProcessRepository.findById(suspended.getId()))
+                .thenReturn(Optional.of(suspended));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
+                .thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        apiService.startTransfer(suspended.getId());
+
+        verify(transferProcessRepository).save(argThat(tp ->
+                TransferState.STARTED.equals(tp.getState())
+                        && "STARTED".equals(tp.getDataFlowState())
+                        && tp.isDownloadInProgress()));
+        verify(dataPlaneClient).resume(suspended.getId(), suspended.getFormat());
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, null);
+    }
+
+    @Test
     @DisplayName("startTransfer resume rollback preserves dataFlowState=SUSPENDED and suspendedBy when peer rejects start")
     public void startTransfer_resumeRollback_preservesDataFlowStateAndSuspendedBy() {
         // Given: a SUSPENDED TP with dataFlowState="SUSPENDED" and suspendedBy=PROVIDER (local is initiator)
