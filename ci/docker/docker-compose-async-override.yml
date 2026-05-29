@@ -1,7 +1,6 @@
 services:
   connector-b:
     environment:
-      - APPLICATION_MOCK_DATA_RESOURCE=file:/home/nobody/ftp/test-data/large-transfer.txt
       - S3_UPLOAD_MODE=ASYNC
       - S3_CHUNKSIZE=5242880
 

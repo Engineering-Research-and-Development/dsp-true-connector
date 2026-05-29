@@ -162,6 +162,7 @@ jobs:
     env:
       DATATRANSFER_COMPOSE_FILES: -f ./ci/docker/docker-compose.yml
       MINIO_EXTERNAL_URL: http://localhost:9000
+      APPLICATION_MOCK_DATA_RESOURCE: file:/home/nobody/ftp/test-data/large-transfer.txt
 
     steps:
       - name: Git Checkout
@@ -243,6 +244,7 @@ jobs:
     env:
       DATATRANSFER_COMPOSE_FILES: -f ./ci/docker/docker-compose.yml -f ./ci/docker/docker-compose-async-override.yml
       MINIO_EXTERNAL_URL: http://localhost:9000
+      APPLICATION_MOCK_DATA_RESOURCE: file:/home/nobody/ftp/test-data/large-transfer.txt
 
     steps:
       - name: Git Checkout
@@ -324,6 +326,7 @@ jobs:
     env:
       DATATRANSFER_COMPOSE_FILES: -f ./ci/docker/docker-compose.yml
       MINIO_EXTERNAL_URL: http://localhost:9000
+      APPLICATION_MOCK_DATA_RESOURCE: file:/home/nobody/ftp/test-data/large-transfer.txt
 
     steps:
       - name: Git Checkout
@@ -405,6 +408,7 @@ jobs:
     env:
       DATATRANSFER_COMPOSE_FILES: -f ./ci/docker/docker-compose.yml -f ./ci/docker/docker-compose-async-override.yml
       MINIO_EXTERNAL_URL: http://localhost:9000
+      APPLICATION_MOCK_DATA_RESOURCE: file:/home/nobody/ftp/test-data/large-transfer.txt
 
     steps:
       - name: Git Checkout
