@@ -78,6 +78,8 @@ public class DataFlowService {
         stateMachine.assertTransition(entity.getState(), DataFlowState.STARTED);
         DataFlowEntity startedEntity = entity.withState(DataFlowState.STARTED);
         repository.save(startedEntity);
+        auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_RESUMED,
+                processId, entity.getTransferType(), "Data flow resumed", null);
 
         CompletableFuture<DataFlowResult> future = requiredProtocol(entity.getTransferType())
                 .resumeTransfer(entity.getId());

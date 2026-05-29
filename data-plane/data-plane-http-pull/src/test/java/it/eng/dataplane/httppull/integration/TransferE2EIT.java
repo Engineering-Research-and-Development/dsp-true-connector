@@ -1,11 +1,19 @@
 package it.eng.dataplane.httppull.integration;
 
+import it.eng.dataplane.api.model.DataFlowState;
+import it.eng.dataplane.core.model.DataFlowCheckpoint;
+import it.eng.dataplane.core.model.DataFlowEntity;
+import it.eng.dataplane.core.repository.DataFlowCheckpointRepository;
+import it.eng.dataplane.core.repository.DataFlowRepository;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 
+import java.time.Instant;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -35,6 +43,12 @@ class TransferE2EIT extends BaseHttpPullIT {
     private static final String TRANSFER_TYPE_PULL = "HttpData-PULL";
     private static final String E2E_SOURCE_KEY = "urn:uuid:e2e-pull-source-dataset";
     private static final String E2E_SOURCE_CONTENT = "Hello from HTTP-PULL E2E test";
+
+    @Autowired
+    private DataFlowRepository dataFlowRepository;
+
+    @Autowired
+    private DataFlowCheckpointRepository checkpointRepository;
 
     /**
      * Uploads the source artifact to the consumer MinIO bucket before any e2e test runs.
@@ -84,5 +98,59 @@ class TransferE2EIT extends BaseHttpPullIT {
         String actualContent = downloadContentFromMinIO(processId);
         assertEquals(E2E_SOURCE_CONTENT, actualContent,
                 "Downloaded and stored file content must match the source artifact");
+    }
+
+    @Test
+    @DisplayName("E2E: resume from SUSPENDED state with empty checkpoint completes the transfer from scratch")
+    void pullTransfer_resumeFromSuspendedWithEmptyCheckpoint_completesTransfer() throws Exception {
+        Map<String, Object> prepareBody = Map.of(
+                "processId", newId(),
+                "datasetId", E2E_SOURCE_KEY
+        );
+        String prepareJson = mockMvc.perform(withApiKey(post("/dataflows/prepare"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(prepareBody)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        Map<?, ?> prepareResponse = objectMapper.readValue(prepareJson, Map.class);
+        @SuppressWarnings("unchecked")
+        Map<String, String> prepareDataAddress = (Map<String, String>) prepareResponse.get("dataAddress");
+        String presignedUrl = prepareDataAddress.get("presignedUrl");
+        assertNotNull(presignedUrl, "prepare must return a presignedUrl");
+
+        String processId = newId();
+        String dataFlowId = UUID.randomUUID().toString();
+        Instant now = Instant.now();
+
+        DataFlowEntity suspendedEntity = DataFlowEntity.Builder.newInstance()
+                .id(dataFlowId)
+                .processId(processId)
+                .transferType(TRANSFER_TYPE_PULL)
+                .state(DataFlowState.SUSPENDED)
+                .dataAddress(Map.of("endpoint", presignedUrl))
+                .tenantId(null)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        dataFlowRepository.save(suspendedEntity);
+
+        DataFlowCheckpoint checkpoint = DataFlowCheckpoint.Builder.newInstance()
+                .processId(processId)
+                .dataFlowId(dataFlowId)
+                .transferType(TRANSFER_TYPE_PULL)
+                .confirmedBytes(0L)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        checkpointRepository.save(checkpoint);
+
+        mockMvc.perform(withApiKey(post("/dataflows/{id}/resume", processId)))
+                .andExpect(status().isOk());
+
+        awaitObjectExists(processId, 20);
+        String actualContent = downloadContentFromMinIO(processId);
+        assertEquals(E2E_SOURCE_CONTENT, actualContent,
+                "Resumed transfer must produce the same file content as a fresh transfer");
     }
 }

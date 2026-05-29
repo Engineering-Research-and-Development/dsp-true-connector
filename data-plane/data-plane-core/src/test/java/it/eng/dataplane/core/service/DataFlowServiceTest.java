@@ -305,6 +305,29 @@ class DataFlowServiceTest {
     }
 
     /**
+     * Verifies that resume() emits the resumed audit event as soon as the entity is moved back
+     * to STARTED, before the protocol future completes.
+     */
+    @Test
+    void resumeEmitsResumedAuditEventBeforeCompletion() {
+        DataFlowEntity suspendedEntity = DataFlowEntity.Builder.newInstance()
+                .id("df-resumed-audit")
+                .processId("tp-resumed-audit")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.SUSPENDED)
+                .build();
+
+        when(repository.findByProcessId("tp-resumed-audit")).thenReturn(Optional.of(suspendedEntity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.resumeTransfer("df-resumed-audit")).thenReturn(new CompletableFuture<>());
+
+        service.resume("tp-resumed-audit");
+
+        verify(auditEventService).saveEvent(DataPlaneAuditEventType.DATAFLOW_RESUMED,
+                "tp-resumed-audit", "HttpData-PULL", "Data flow resumed", null);
+    }
+
+    /**
      * Verifies that resume() does not transition the entity when the protocol returns a paused result,
      * and that no completion or error callbacks are triggered.
      */

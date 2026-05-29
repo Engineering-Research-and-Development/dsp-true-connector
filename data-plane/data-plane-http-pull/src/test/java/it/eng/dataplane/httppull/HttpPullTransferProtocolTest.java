@@ -174,6 +174,7 @@ class HttpPullTransferProtocolTest {
         verify(controlPlaneClient, never()).sendStarted(any(), any(), any());
     }
 
+    @Test
     @DisplayName("suspendTransfer sets the suspend flag and returns success")
     void suspendTransferSetsFlagAndReturnsSuccess() throws Exception {
         // Start a transfer to register a suspend flag
