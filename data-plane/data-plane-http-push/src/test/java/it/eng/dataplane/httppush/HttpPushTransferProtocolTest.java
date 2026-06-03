@@ -3,10 +3,13 @@ package it.eng.dataplane.httppush;
 import it.eng.dataplane.api.DataPlaneConstants;
 import it.eng.dataplane.api.io.SourceContext;
 import it.eng.dataplane.api.io.SourceOpenResult;
+import it.eng.dataplane.api.message.DataFlowPrepareMessage;
+import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.dataplane.s3.io.S3SourceReader;
+import it.eng.tools.s3.model.TemporaryBucketUser;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
@@ -21,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -31,6 +35,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -73,6 +79,101 @@ class HttpPushTransferProtocolTest {
     @DisplayName("getProtocolId returns HttpData-PUSH")
     void getProtocolId_returnsHttpDataPush() {
         assertThat(protocol.getProtocolId()).isEqualTo("HttpData-PUSH");
+    }
+
+    @Test
+    @DisplayName("prepare uses sink.s3 bucket metadata when creating temporary upload credentials")
+    void prepare_usesSinkS3BucketMetadataForTemporaryUserCreation() {
+        TemporaryBucketUser tempUser = TemporaryBucketUser.Builder.newInstance()
+                .transferProcessId("tp-prepare")
+                .bucketName("tenant-bucket")
+                .objectKey("tp-prepare")
+                .accessKey("temp-access")
+                .secretKey("temp-secret")
+                .build();
+        when(temporaryBucketUserService.createTemporaryUser("tp-prepare", "tenant-bucket", "tp-prepare"))
+                .thenReturn(tempUser);
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+
+        DataFlowPrepareMessage prepareMessage = DataFlowPrepareMessage.Builder.newInstance()
+                .processId("tp-prepare")
+                .transferType("HttpData-PUSH")
+                .metadata(Map.of(
+                        DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "tenant-bucket"))))
+                .build();
+
+        DataFlowPrepareResponse response = protocol.prepare(prepareMessage);
+
+        assertThat(response.getDataAddress())
+                .containsEntry(S3Utils.BUCKET_NAME, "tenant-bucket")
+                .containsEntry(S3Utils.OBJECT_KEY, "tp-prepare")
+                .containsEntry(S3Utils.REGION, "us-east-1")
+                .containsEntry(S3Utils.ACCESS_KEY, "temp-access")
+                .containsEntry(S3Utils.SECRET_KEY, "temp-secret")
+                .containsEntry(S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000");
+        verify(temporaryBucketUserService).createTemporaryUser("tp-prepare", "tenant-bucket", "tp-prepare");
+        verify(s3Properties, never()).getBucketName();
+    }
+
+    @Test
+    @DisplayName("prepare uses internal s3.endpoint for sink endpointOverride even when externalPresignedEndpoint is set")
+    void prepare_usesSinkInternalEndpointNotExternalPresignedEndpoint() {
+        TemporaryBucketUser tempUser = TemporaryBucketUser.Builder.newInstance()
+                .transferProcessId("tp-internal")
+                .bucketName("tenant-bucket")
+                .objectKey("tp-internal")
+                .accessKey("temp-access")
+                .secretKey("temp-secret")
+                .build();
+        when(temporaryBucketUserService.createTemporaryUser("tp-internal", "tenant-bucket", "tp-internal"))
+                .thenReturn(tempUser);
+        when(s3Properties.getRegion()).thenReturn("us-east-1");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        // externalPresignedEndpoint is set but must NOT appear in sink upload credentials
+        lenient().when(s3Properties.getExternalPresignedEndpoint()).thenReturn("http://172.17.0.1:9000");
+
+        DataFlowPrepareMessage prepareMessage = DataFlowPrepareMessage.Builder.newInstance()
+                .processId("tp-internal")
+                .transferType("HttpData-PUSH")
+                .metadata(Map.of(
+                        DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "tenant-bucket"))))
+                .build();
+
+        DataFlowPrepareResponse response = protocol.prepare(prepareMessage);
+
+        // Server-side upload must use the internal/container-reachable endpoint, not the external presigned URL endpoint
+        assertThat(response.getDataAddress())
+                .containsEntry(S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000")
+                .doesNotContainEntry(S3Utils.ENDPOINT_OVERRIDE, "http://172.17.0.1:9000");
+    }
+
+    @Test
+    @DisplayName("prepare view mode uses sink.s3 bucket metadata when generating presigned URL")
+    void prepare_viewMode_usesSinkS3BucketMetadataForPresignedUrl() {
+        when(s3ClientService.generateGetPresignedUrl("tenant-bucket", "tp-view", Duration.ofDays(7L)))
+                .thenReturn("http://presigned/view");
+
+        DataFlowPrepareMessage prepareMessage = DataFlowPrepareMessage.Builder.newInstance()
+                .processId("tp-view")
+                .transferType("HttpData-PUSH")
+                .metadata(Map.of(
+                        DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                                DataPlaneConstants.METADATA_FIELD_MODE, "VIEW",
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "tenant-bucket"))))
+                .build();
+
+        DataFlowPrepareResponse response = protocol.prepare(prepareMessage);
+
+        assertThat(response.getDataAddress()).containsEntry(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY, "http://presigned/view");
+        verify(s3ClientService).generateGetPresignedUrl("tenant-bucket", "tp-view", Duration.ofDays(7L));
+        verify(temporaryBucketUserService, never()).createTemporaryUser(anyString(), anyString(), anyString());
+        verify(s3Properties, never()).getBucketName();
     }
 
     @Test
@@ -300,6 +401,26 @@ class HttpPushTransferProtocolTest {
         DataFlowResult result = protocol.terminateTransfer("df-1").get();
 
         assertThat(result.isSuccess()).isTrue();
+    }
+
+    @Test
+    @DisplayName("terminateTransfer deletes temporary bucket user to prevent credential leak on prepare/request failure")
+    void terminateTransfer_deletesTemporaryBucketUser() throws Exception {
+        DataFlowResult result = protocol.terminateTransfer("tp-cleanup").get();
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(temporaryBucketUserService).deleteTemporaryUser("tp-cleanup");
+    }
+
+    @Test
+    @DisplayName("terminateTransfer returns success even when temp user deletion fails (best-effort cleanup)")
+    void terminateTransfer_returnsSucessEvenWhenDeletionFails() throws Exception {
+        doThrow(new RuntimeException("IAM user not found")).when(temporaryBucketUserService).deleteTemporaryUser("tp-missing");
+
+        DataFlowResult result = protocol.terminateTransfer("tp-missing").get();
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(temporaryBucketUserService).deleteTemporaryUser("tp-missing");
     }
 
     private static final class CloseTrackingInputStream extends InputStream {

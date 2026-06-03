@@ -1,5 +1,9 @@
 package it.eng.dataplane.core.service;
 
+import it.eng.dataplane.api.DataPlaneConstants;
+import it.eng.dataplane.api.message.DataFlowPrepareMessage;
+import it.eng.dataplane.api.message.DataFlowPrepareMetadata;
+import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.spi.DataTransferProtocol;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
@@ -13,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -31,21 +36,136 @@ public class DataFlowService {
     private final DataFlowStateMachine stateMachine;
 
     /**
+     * Prepares resources for a data transfer and persists a {@link DataFlowState#PREPARED} entity.
+     *
+     * <p>Resolves the protocol for the requested transfer type (with fallback to the single
+     * registered protocol when the type is absent), delegates to
+     * {@link DataTransferProtocol#prepare(DataFlowPrepareMessage)}, and persists a PREPARED
+     * {@link DataFlowEntity} keyed by processId so that a later {@code terminate} can clean up
+     * any allocated resources even before {@code start} is called.</p>
+     *
+     * @param message the prepare message from the Control Plane
+     * @return the prepare response carrying protocol-specific addressing data
+     * @throws IllegalArgumentException if the protocol rejects the request
+     */
+    public DataFlowPrepareResponse prepare(DataFlowPrepareMessage message) {
+        Optional<DataFlowEntity> existingOpt = repository.findByProcessId(message.getProcessId());
+        if (existingOpt.isPresent()) {
+            DataFlowEntity existing = existingOpt.get();
+            // VIEW-mode prepare must always generate a fresh presigned URL; do NOT return the
+            // cached data address because presigned URLs expire and become stale after each call.
+            boolean isViewMode = "VIEW".equals(
+                    DataFlowPrepareMetadata.from(message).getSinkSection()
+                            .getString(DataPlaneConstants.METADATA_FIELD_MODE));
+            if (existing.getState() == DataFlowState.PREPARED && !isViewMode) {
+                log.info("Reusing PREPARED DataFlow for processId={}", message.getProcessId());
+                return DataFlowPrepareResponse.Builder.newInstance()
+                        .processId(message.getProcessId())
+                        .dataAddress(existing.getDataAddress())
+                        .build();
+            }
+            // Allow a fresh prepare when the previous flow reached a terminal state, or when the
+            // existing PREPARED entry is being refreshed for a VIEW request (presigned URL renewal).
+            // This also covers retry-after-rollback (DP was TERMINATED by a failed
+            // peer-notification rollback, and the CP now re-prepares for the same processId).
+            if (existing.getState() != DataFlowState.PREPARED
+                    && existing.getState() != DataFlowState.TERMINATED
+                    && existing.getState() != DataFlowState.COMPLETED) {
+                throw new IllegalStateException("DataFlow with processId " + message.getProcessId()
+                        + " already exists in state " + existing.getState());
+            }
+            log.info("Allowing fresh prepare over {} DataFlow for processId={}{}",
+                    existing.getState(), message.getProcessId(), isViewMode ? " (VIEW mode)" : "");
+        }
+
+        String transferType = DataFlowPrepareMetadata.from(message).getTransferType();
+        if (transferType == null) {
+            transferType = "";
+        }
+
+        DataTransferProtocol protocol = registry.getProtocol(transferType);
+        if (protocol == null) {
+            var supported = registry.getSupportedProtocols();
+            if (!supported.isEmpty()) {
+                String fallback = supported.iterator().next();
+                protocol = registry.getProtocol(fallback);
+                transferType = fallback;
+                log.info("No transferType in prepare message; using single registered protocol '{}'", fallback);
+            }
+        }
+
+        DataFlowPrepareResponse response;
+        if (protocol != null) {
+            response = protocol.prepare(message); // may throw IllegalArgumentException
+        } else {
+            log.warn("No protocol registered; returning empty prepare response for processId={}", message.getProcessId());
+            response = DataFlowPrepareResponse.Builder.newInstance()
+                    .processId(message.getProcessId())
+                    .build();
+        }
+
+        // Reuse the existing entity's MongoDB _id when re-preparing over a terminal record.
+        // Using the incoming processId as the new _id would trigger an INSERT that hits the
+        // unique index on processId (the old row — created by start() with a UUID-based _id —
+        // still owns that processId value), causing a DuplicateKey error.
+        String entityId = existingOpt.map(DataFlowEntity::getId).orElse(message.getProcessId());
+        Instant now = Instant.now();
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id(entityId)
+                .processId(message.getProcessId())
+                .agreementId(message.getAgreementId())
+                .datasetId(message.getDatasetId())
+                .transferType(transferType)
+                .callbackAddress(message.getCallbackAddress())
+                .participantId(message.getParticipantId())
+                .counterPartyId(message.getCounterPartyId())
+                .state(DataFlowState.PREPARED)
+                .dataAddress(response.getDataAddress())
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        repository.save(entity);
+
+        auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_PREPARE_REQUESTED,
+                message.getProcessId(), transferType, "Data flow prepare requested", null);
+
+        return response;
+    }
+
+    /**
      * Starts a data transfer using the appropriate protocol implementation.
      * Persists the entity with {@link DataFlowState#STARTING} before delegating to the
      * protocol, then transitions to {@link DataFlowState#STARTED} on successful initiation.
      *
+     * <p>If an entity for this processId already exists in {@link DataFlowState#PREPARED} state,
+     * it is reused and transitioned to STARTING. Any other pre-existing state causes an
+     * {@link IllegalStateException}.</p>
+     *
      * @param dataFlow the data flow request
      * @throws IllegalArgumentException if no protocol supports the transfer type
-     * @throws IllegalStateException if a flow for this processId already exists
+     * @throws IllegalStateException if a non-PREPARED flow for this processId already exists
      */
     public void start(DataFlow dataFlow) {
-        repository.findByProcessId(dataFlow.getProcessId()).ifPresent(existing -> {
-            throw new IllegalStateException("DataFlow with processId " + dataFlow.getProcessId() + " already exists");
-        });
+        Optional<DataFlowEntity> existingOpt = repository.findByProcessId(dataFlow.getProcessId());
+        DataFlowEntity entity;
+        if (existingOpt.isPresent()) {
+            DataFlowEntity existing = existingOpt.get();
+            if (existing.getState() != DataFlowState.PREPARED) {
+                if (existing.getState() == DataFlowState.STARTED
+                        || existing.getState() == DataFlowState.COMPLETED
+                        || existing.getState() == DataFlowState.TERMINATED) {
+                    throw new DataFlowConflictException("DataFlow with processId " + dataFlow.getProcessId()
+                            + " already exists in lifecycle state " + existing.getState());
+                }
+                throw new IllegalStateException("DataFlow with processId " + dataFlow.getProcessId() + " already exists");
+            }
+            log.info("Reusing PREPARED DataFlow for processId={}", dataFlow.getProcessId());
+            entity = existing.withState(DataFlowState.STARTING);
+        } else {
+            entity = toEntity(dataFlow, DataFlowState.STARTING);
+        }
 
         DataTransferProtocol protocol = requiredProtocol(dataFlow.getTransferType());
-        DataFlowEntity entity = toEntity(dataFlow, DataFlowState.STARTING);
         repository.save(entity);
 
         auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_STARTED,
@@ -72,7 +192,7 @@ public class DataFlowService {
         DataFlowEntity entity = findRequired(processId);
         stateMachine.assertTransition(entity.getState(), DataFlowState.STARTED);
         requiredProtocol(entity.getTransferType())
-                .resumeTransfer(entity.getId())
+                .resumeTransfer(processId)
                 .thenAccept(result -> {
                     if (result.isSuccess()) {
                         updateState(processId, DataFlowState.STARTED);
@@ -112,7 +232,7 @@ public class DataFlowService {
 
         DataTransferProtocol protocol = registry.getProtocol(transferType);
         if (protocol != null) {
-            protocol.terminateTransfer(entity.getId())
+            protocol.terminateTransfer(processId)
                 .thenAccept(result -> {
                     updateState(processId, DataFlowState.TERMINATED);
                     auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_TERMINATED,
@@ -139,7 +259,7 @@ public class DataFlowService {
 
         DataTransferProtocol protocol = registry.getProtocol(transferType);
         if (protocol != null) {
-            protocol.suspendTransfer(entity.getId())
+            protocol.suspendTransfer(processId)
                 .thenAccept(result -> {
                     updateState(processId, DataFlowState.SUSPENDED);
                     auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_SUSPENDED,

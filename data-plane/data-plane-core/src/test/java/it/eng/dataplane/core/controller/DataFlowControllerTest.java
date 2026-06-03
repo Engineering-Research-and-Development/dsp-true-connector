@@ -10,11 +10,9 @@ import it.eng.dataplane.api.message.DataFlowStartMessage;
 import it.eng.dataplane.api.message.DataFlowStatusMessage;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowState;
-import it.eng.dataplane.api.spi.DataTransferProtocol;
 import it.eng.dataplane.core.model.DataFlowEntity;
-import it.eng.dataplane.core.registry.DataTransferProtocolRegistry;
+import it.eng.dataplane.core.service.DataFlowConflictException;
 import it.eng.dataplane.core.service.DataFlowService;
-import it.eng.dataplane.core.service.DataPlaneAuditEventService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,7 +25,6 @@ import org.springframework.http.ResponseEntity;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -41,15 +38,6 @@ class DataFlowControllerTest {
 
     @Mock
     private DataFlowService dataFlowService;
-
-    @Mock
-    private DataTransferProtocolRegistry protocolRegistry;
-
-    @Mock
-    private DataPlaneAuditEventService auditEventService;
-
-    @Mock
-    private DataTransferProtocol protocol;
 
     @InjectMocks
     private DataFlowController controller;
@@ -96,6 +84,39 @@ class DataFlowControllerTest {
     }
 
     @Test
+    @DisplayName("startDataFlow returns 409 CONFLICT when DataFlow is in STARTED lifecycle state")
+    void startDataFlow_returns409WhenDataFlowExistsInStartedState() {
+        doThrow(new DataFlowConflictException("DataFlow proc-started already in STARTED state"))
+                .when(dataFlowService).start(any());
+
+        ResponseEntity<Void> response = controller.startDataFlow(buildStartMessage("proc-started"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("startDataFlow returns 409 CONFLICT when DataFlow is in COMPLETED lifecycle state")
+    void startDataFlow_returns409WhenDataFlowExistsInCompletedState() {
+        doThrow(new DataFlowConflictException("DataFlow proc-completed already in COMPLETED state"))
+                .when(dataFlowService).start(any());
+
+        ResponseEntity<Void> response = controller.startDataFlow(buildStartMessage("proc-completed"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+    }
+
+    @Test
+    @DisplayName("startDataFlow returns 409 CONFLICT when DataFlow is in TERMINATED lifecycle state")
+    void startDataFlow_returns409WhenDataFlowExistsInTerminatedState() {
+        doThrow(new DataFlowConflictException("DataFlow proc-terminated already in TERMINATED state"))
+                .when(dataFlowService).start(any());
+
+        ResponseEntity<Void> response = controller.startDataFlow(buildStartMessage("proc-terminated"));
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+    }
+
+    @Test
     @DisplayName("startDataFlow returns 400 BAD REQUEST on invalid argument")
     void startDataFlow_returns400OnIllegalArgument() {
         doThrow(new IllegalArgumentException("invalid")).when(dataFlowService).start(any());
@@ -137,59 +158,40 @@ class DataFlowControllerTest {
     // ─── prepareDataFlow ─────────────────────────────────────────────────────
 
     @Test
-    @DisplayName("prepareDataFlow delegates to protocol matched by transferType in metadata")
-    void prepareDataFlow_delegatesToProtocol() {
+    @DisplayName("prepareDataFlow returns 200 OK with service response")
+    void prepareDataFlow_returns200WithServiceResponse() {
         DataFlowPrepareResponse expected = DataFlowPrepareResponse.Builder.newInstance()
                 .processId("proc-1")
                 .build();
-        when(protocolRegistry.getProtocol("HttpData-PULL")).thenReturn(protocol);
-        when(protocol.prepare(any())).thenReturn(expected);
+        when(dataFlowService.prepare(any())).thenReturn(expected);
 
         ResponseEntity<DataFlowPrepareResponse> response = controller.prepareDataFlow(
                 buildPrepareMessage("proc-1", Map.of("transferType", "HttpData-PULL")));
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(expected, response.getBody());
+        verify(dataFlowService).prepare(any(DataFlowPrepareMessage.class));
     }
 
     @Test
-    @DisplayName("prepareDataFlow falls back to single registered protocol when transferType absent from metadata")
-    void prepareDataFlow_fallsBackToSingleProtocol() {
+    @DisplayName("prepareDataFlow returns 200 OK with null metadata")
+    void prepareDataFlow_returns200WithNullMetadata() {
         DataFlowPrepareResponse expected = DataFlowPrepareResponse.Builder.newInstance()
-                .processId("proc-2")
+                .processId("proc-4")
                 .build();
-        when(protocolRegistry.getProtocol("")).thenReturn(null);
-        when(protocolRegistry.getSupportedProtocols()).thenReturn(Set.of("HttpData-PUSH"));
-        when(protocolRegistry.getProtocol("HttpData-PUSH")).thenReturn(protocol);
-        when(protocol.prepare(any())).thenReturn(expected);
+        when(dataFlowService.prepare(any())).thenReturn(expected);
 
         ResponseEntity<DataFlowPrepareResponse> response = controller.prepareDataFlow(
-                buildPrepareMessage("proc-2", Map.of()));
+                buildPrepareMessage("proc-4", null));
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertEquals(expected, response.getBody());
     }
 
     @Test
-    @DisplayName("prepareDataFlow returns empty response when no protocol registered")
-    void prepareDataFlow_returnsEmptyResponseWhenNoProtocol() {
-        when(protocolRegistry.getProtocol("")).thenReturn(null);
-        when(protocolRegistry.getSupportedProtocols()).thenReturn(Set.of());
-
-        ResponseEntity<DataFlowPrepareResponse> response = controller.prepareDataFlow(
-                buildPrepareMessage("proc-3", Map.of()));
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        assertNotNull(response.getBody());
-        assertEquals("proc-3", response.getBody().getProcessId());
-    }
-
-    @Test
-    @DisplayName("prepareDataFlow returns 400 BAD_REQUEST when protocol.prepare throws IllegalArgumentException")
-    void prepareDataFlow_returns400OnIllegalArgumentFromProtocol() {
-        when(protocolRegistry.getProtocol("stream:grpc")).thenReturn(protocol);
+    @DisplayName("prepareDataFlow returns 400 BAD_REQUEST when service throws IllegalArgumentException")
+    void prepareDataFlow_returns400OnIllegalArgumentFromService() {
         doThrow(new IllegalArgumentException("No SourceReader available for sourceType: unknown"))
-                .when(protocol).prepare(any());
+                .when(dataFlowService).prepare(any());
 
         ResponseEntity<DataFlowPrepareResponse> response = controller.prepareDataFlow(
                 buildPrepareMessage("proc-err", Map.of("transferType", "stream:grpc")));
@@ -197,21 +199,34 @@ class DataFlowControllerTest {
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
     }
 
+    // ─── terminateDataFlow ───────────────────────────────────────────────────
+
     @Test
-    @DisplayName("prepareDataFlow handles null metadata without NPE")
-    void prepareDataFlow_handlesNullMetadata() {
+    @DisplayName("prepareDataFlow routes through DataFlowService instead of invoking protocol directly")
+    void prepareDataFlow_routesThroughDataFlowService() {
+        DataFlowPrepareMessage message = buildPrepareMessage("proc-svc", Map.of("transferType", "HttpData-PUSH"));
         DataFlowPrepareResponse expected = DataFlowPrepareResponse.Builder.newInstance()
-                .processId("proc-4")
+                .processId("proc-svc")
                 .build();
-        when(protocolRegistry.getProtocol("")).thenReturn(null);
-        when(protocolRegistry.getSupportedProtocols()).thenReturn(Set.of("HttpData-PULL"));
-        when(protocolRegistry.getProtocol("HttpData-PULL")).thenReturn(protocol);
-        when(protocol.prepare(any())).thenReturn(expected);
+        when(dataFlowService.prepare(any())).thenReturn(expected);
 
-        ResponseEntity<DataFlowPrepareResponse> response = controller.prepareDataFlow(
-                buildPrepareMessage("proc-4", null));
+        controller.prepareDataFlow(message);
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
+        // The controller must delegate to the service — not bypass it
+        verify(dataFlowService).prepare(message);
+    }
+
+    @Test
+    @DisplayName("prepareDataFlow returns 409 CONFLICT when DataFlowService.prepare throws IllegalStateException")
+    void prepareDataFlow_returns409WhenServiceThrowsIllegalState() {
+        DataFlowPrepareMessage message = buildPrepareMessage("proc-svc-bad",
+                Map.of("transferType", "stream:grpc"));
+        doThrow(new IllegalStateException("already exists in state STARTED"))
+                .when(dataFlowService).prepare(any());
+
+        ResponseEntity<DataFlowPrepareResponse> response = controller.prepareDataFlow(message);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
     }
 
     // ─── terminateDataFlow ───────────────────────────────────────────────────

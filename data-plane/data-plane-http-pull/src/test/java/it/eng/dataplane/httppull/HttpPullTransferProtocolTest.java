@@ -451,4 +451,27 @@ class HttpPullTransferProtocolTest {
         // No CP callbacks when validation fails before transfer starts
         verify(controlPlaneClient, never()).sendStarted(any(), any(), any());
     }
+
+    @Test
+    @DisplayName("prepare VIEW mode uses CP-provided sink.s3.bucketName from metadata over DP-local s3Properties")
+    void prepareViewModeUsesCpProvidedSinkBucketNameFromMetadata() {
+        when(s3ClientService.generateGetPresignedUrl("cp-bucket", "tp-view-cp", Duration.ofDays(7L)))
+                .thenReturn("https://example.com/cp-presigned");
+
+        DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
+                .processId("tp-view-cp")
+                .datasetId("dataset-cp")
+                .metadata(Map.of(
+                        "sink", Map.of(
+                                "mode", "VIEW",
+                                "s3", Map.of("bucketName", "cp-bucket"))))
+                .build();
+
+        DataFlowPrepareResponse response = protocol.prepare(message);
+
+        assertThat(response.getDataAddress()).containsEntry("presignedUrl", "https://example.com/cp-presigned");
+        verify(s3ClientService).generateGetPresignedUrl("cp-bucket", "tp-view-cp", Duration.ofDays(7L));
+        // DP-local s3Properties must NOT be consulted when CP provides the bucket
+        verify(s3Properties, never()).getBucketName();
+    }
 }

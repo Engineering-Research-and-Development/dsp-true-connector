@@ -21,7 +21,7 @@ import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
 import okhttp3.Credentials;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -250,7 +250,7 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
                 .andExpect(content().contentType(MediaType.TEXT_PLAIN))
                 .andReturn();
         String response = resultArtifact.getResponse().getContentAsString();
-        assertTrue(StringUtils.equals(fileContent, response));
+        assertTrue(Strings.CS.equals(fileContent, response));
     }
 
     @Test

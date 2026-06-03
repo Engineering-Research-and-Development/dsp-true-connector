@@ -18,6 +18,10 @@ class DataFlowStartMessageTest {
         DataFlowStartMessage msg = DataFlowStartMessage.Builder.newInstance()
             .processId("proc-1")
             .transferType("HttpData-PULL")
+                .dataAddress(DataAddress.Builder.newInstance()
+                        .endpoint("http://example.com/data")
+                        .endpointType("HttpData-PULL")
+                        .build())
             .build();
         String json = MAPPER.writeValueAsString(msg);
         assertTrue(json.contains("proc-1"));

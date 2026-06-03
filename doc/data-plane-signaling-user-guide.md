@@ -24,12 +24,12 @@ services independently and scale them as needed.
 
 The connector ships four ready-made Data Plane images:
 
-| Image | Transfer type | Default port |
+| Image | Transfer type | Local profile ports |
 |---|---|---|
-| `data-plane-http-pull` | `HttpData-PULL` | 9090 |
-| `data-plane-http-push` | `HttpData-PUSH` | 9091 |
-| `data-plane-grpc` | `stream:grpc` | REST 9094, gRPC 9095 |
-| `data-plane-kafka` | `stream:kafka` | REST 9098 |
+| `data-plane-http-pull` | `HttpData-PULL` | consumer 9090, provider 9092 |
+| `data-plane-http-push` | `HttpData-PUSH` | consumer 9093, provider 9091 |
+| `data-plane-grpc` | `stream:grpc` | consumer REST 9094 / gRPC 9095, provider REST 9096 / gRPC 9097 |
+| `data-plane-kafka` | `stream:kafka` | consumer 9098, provider 9099 |
 
 All four are wired in `ci/docker/docker-compose.yml`:
 
@@ -48,6 +48,45 @@ dataplane.endpoint=http://dp-http-pull:9090
 # Shared secret — must match what is stored on the CP for this DP
 dataplane.api-key=change-me-in-production
 ```
+
+### How `application.properties` and profile files work
+
+Each standalone Data Plane module ships with:
+
+- `application.properties`
+- `application-consumer.properties`
+- `application-provider.properties`
+
+Spring Boot loads `application.properties` first and then applies the active profile file on
+top of it. In this repository, the profile files contain only the values that differ between the
+consumer and provider roles, such as the port, DP endpoint, CP admin endpoint, MongoDB name,
+default bucket, and encryption key.
+
+This means:
+
+1. If you run with `--spring.profiles.active=consumer`, Spring combines
+   `application.properties` + `application-consumer.properties`.
+2. If you run with `--spring.profiles.active=provider`, Spring combines
+   `application.properties` + `application-provider.properties`.
+3. If you run without an active profile, Spring uses only `application.properties`.
+
+Example:
+
+```bash
+java -jar data-plane-http-pull.jar --spring.profiles.active=consumer
+```
+
+or
+
+```bash
+SPRING_PROFILES_ACTIVE=provider java -jar data-plane-grpc.jar
+```
+
+> **Deployment rule**: the shipped `application-consumer.properties` and
+> `application-provider.properties` files are override files, not complete standalone
+> configurations. If you use them, keep the base `application.properties` available as well.
+> If you prefer a single deployment file, provide one complete `application.properties` and do
+> not activate a profile.
 
 ### Additional configuration for the HTTP-PUSH DP
 

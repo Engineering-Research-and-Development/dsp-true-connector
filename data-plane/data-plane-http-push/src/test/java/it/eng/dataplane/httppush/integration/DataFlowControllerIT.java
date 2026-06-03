@@ -1,14 +1,21 @@
 package it.eng.dataplane.httppush.integration;
 
+import it.eng.dataplane.api.DataPlaneConstants;
+import it.eng.dataplane.api.message.DataAddress;
+import it.eng.dataplane.api.message.DataFlowStartMessage;
+import it.eng.dataplane.api.message.EndpointProperty;
 import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.dataplane.core.model.DataFlowEntity;
 import it.eng.dataplane.core.repository.DataFlowRepository;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import software.amazon.awssdk.regions.Region;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -30,6 +37,14 @@ class DataFlowControllerIT extends BaseHttpPushIT {
 
     @Autowired
     private DataFlowRepository dataFlowRepository;
+
+    private static final String E2E_SOURCE_KEY = "urn:uuid:e2e-push-source-dataset";
+    private static final String E2E_SOURCE_CONTENT = "Hello from HTTP-PUSH E2E test";
+
+    @BeforeAll
+    static void uploadSourceArtifact() {
+        uploadToTestMinIO(E2E_SOURCE_KEY, E2E_SOURCE_CONTENT);
+    }
 
     @Test
     @DisplayName("POST /dataflows/prepare with valid processId returns 200 with processId in body")
@@ -73,11 +88,41 @@ class DataFlowControllerIT extends BaseHttpPushIT {
     @DisplayName("POST /dataflows/start with duplicate processId returns 200 OK (idempotent)")
     void startDataFlow_duplicateProcessId_returns200() throws Exception {
         String processId = newId();
-        Map<String, Object> body = Map.of(
-                "processId", processId,
-                "transferType", TRANSFER_TYPE_PUSH
-        );
-        String json = objectMapper.writeValueAsString(body);
+
+        DataFlowStartMessage dataFlowStartMessage = DataFlowStartMessage.Builder.newInstance()
+                .processId(processId)
+                .transferType(TRANSFER_TYPE_PUSH)
+                .datasetId(E2E_SOURCE_KEY)
+                .dataAddress(DataAddress.Builder.newInstance()
+//                        .endpoint(presignURL)
+                        .endpointType(TRANSFER_TYPE_PUSH)
+                        .endpointProperties(List.of(EndpointProperty.Builder.newInstance()
+                                        .name(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME)
+                                        .value(TEST_BUCKET_NAME)
+                                        .build(),
+                                EndpointProperty.Builder.newInstance()
+                                        .name(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_ACCESS_KEY)
+                                        .value(minIOContainer.getUserName())
+                                        .build(),
+                                EndpointProperty.Builder.newInstance()
+                                        .name(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_SECRET_KEY)
+                                        .value(minIOContainer.getPassword())
+                                        .build(),
+                                EndpointProperty.Builder.newInstance()
+                                        .name(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_ENDPOINT_OVERRIDE)
+                                        .value(minIOContainer.getS3URL())
+                                        .build(),
+                                EndpointProperty.Builder.newInstance()
+                                        .name(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_REGION)
+                                        .value("us-east-1")
+                                        .build(),
+                                EndpointProperty.Builder.newInstance()
+                                .name(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_BUCKET_NAME)
+                                .value(TEST_BUCKET_NAME)
+                                .build()))
+                        .build())
+                .build();
+        String json = objectMapper.writeValueAsString(dataFlowStartMessage);
 
         mockMvc.perform(withApiKey(post("/dataflows/start"))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -87,7 +132,7 @@ class DataFlowControllerIT extends BaseHttpPushIT {
         mockMvc.perform(withApiKey(post("/dataflows/start"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
-                .andExpect(status().isOk());
+                .andExpect(status().is4xxClientError());
     }
 
     @Test

@@ -1,5 +1,9 @@
 package it.eng.dataplane.httppull.integration;
 
+import it.eng.dataplane.api.DataPlaneConstants;
+import it.eng.dataplane.api.message.DataAddress;
+import it.eng.dataplane.api.message.DataFlowStartMessage;
+import it.eng.dataplane.api.message.EndpointProperty;
 import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.dataplane.core.model.DataFlowEntity;
 import it.eng.dataplane.core.repository.DataFlowRepository;
@@ -8,8 +12,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Configuration;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
+import java.net.URI;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -105,11 +119,41 @@ class DataFlowControllerIT extends BaseHttpPullIT {
     @DisplayName("POST /dataflows/start with duplicate processId returns 200 OK (idempotent)")
     void startDataFlow_duplicateProcessId_returns200() throws Exception {
         String processId = newId();
-        Map<String, Object> body = Map.of(
-                "processId", processId,
-                "transferType", TRANSFER_TYPE_PULL
-        );
-        String json = objectMapper.writeValueAsString(body);
+
+        String presignURL;
+
+        try (S3Presigner presigner = S3Presigner.builder()
+                .endpointOverride(URI.create(minIOContainer.getS3URL()))
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(minIOContainer.getUserName(), minIOContainer.getPassword())))
+                .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
+                .region(Region.US_EAST_1).build()) {
+            var getObjectRequest = GetObjectRequest.builder()
+                    .bucket(TEST_BUCKET_NAME)
+                    .key(PREPARE_OBJECT_KEY)
+                    .build();
+
+            var presignRequest = GetObjectPresignRequest.builder()
+                    .signatureDuration(Duration.ofMinutes(10))
+                    .getObjectRequest(getObjectRequest).build();
+
+            presignURL =  presigner.presignGetObject(presignRequest).url().toExternalForm();
+        }
+
+        DataFlowStartMessage dataFlowStartMessage = DataFlowStartMessage.Builder.newInstance()
+                .processId(processId)
+                .transferType(TRANSFER_TYPE_PULL)
+                .dataAddress(DataAddress.Builder.newInstance()
+                        .endpoint(presignURL)
+                        .endpointType("HttpData-PULL")
+                        .endpointProperties(List.of(EndpointProperty.Builder.newInstance()
+                                        .name(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME)
+                                        .value(TEST_BUCKET_NAME)
+                                .build()))
+                        .build())
+                .build();
+
+        String json = objectMapper.writeValueAsString(dataFlowStartMessage);
 
         mockMvc.perform(withApiKey(post("/dataflows/start"))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -119,7 +163,7 @@ class DataFlowControllerIT extends BaseHttpPullIT {
         mockMvc.perform(withApiKey(post("/dataflows/start"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json))
-                .andExpect(status().isOk());
+                .andExpect(status().is4xxClientError());
     }
 
     @Test

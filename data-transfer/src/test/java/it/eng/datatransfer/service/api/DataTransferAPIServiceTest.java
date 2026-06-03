@@ -343,11 +343,9 @@ class DataTransferAPIServiceTest {
                         DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT, "https://minio.example.com/presigned/artifact",
                         DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT_TYPE, "https://w3id.org/idsa/v4.1/HTTP"))
                 .build();
-        lenient().when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL")))
+        lenient().when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull()))
                 .thenReturn(dpResponse);
-        // lenient stub for old S3 code path — replaced by DP prepare after production change
-        lenient().when(s3ClientService.generateGetPresignedUrl(any(), any(), any()))
-                .thenReturn("https://minio.example.com/presigned/artifact");
+        lenient().when(dataPlaneClient.getStickyEndpoint(any())).thenReturn(Optional.empty());
 
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
@@ -356,9 +354,9 @@ class DataTransferAPIServiceTest {
 
         apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId());
 
-        // After production change: CP must delegate to DP, not call S3 directly
+        // CP must use the sticky/profile-aware overload (3-arg) for HTTP-PULL prepare
         ArgumentCaptor<DataFlowPrepareMessage> prepareCaptor = ArgumentCaptor.forClass(DataFlowPrepareMessage.class);
-        verify(dataPlaneClient).prepare(prepareCaptor.capture(), eq("HttpData-PULL"));
+        verify(dataPlaneClient).prepare(prepareCaptor.capture(), eq("HttpData-PULL"), isNull());
         verify(s3ClientService, never()).generateGetPresignedUrl(any(), any(), any());
 
         // Prepare message must include source.s3 metadata with CP-resolved bucket and dataset as objectKey
@@ -626,6 +624,32 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
+    @DisplayName("Terminate HTTP-PULL transfer with assigned dataplane endpoint must call DP terminate and sticky restore")
+    public void terminateTransfer_httpPull_withAssignedDataplaneEndpoint_callsDpTerminate() {
+        // HTTP-PULL: transportProfile is null but assignedDataplaneEndpoint is set after consumer-side start
+        TransferProcess httpPullWithDpEndpoint = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED
+                .withAssignedDataplaneEndpoint("http://dp:9090");
+
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
+                .thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+                .thenReturn(Optional.of(httpPullWithDpEndpoint));
+
+        apiService.terminateTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+
+        // Sticky must be restored before the DP terminate call
+        verify(dataPlaneClient).restoreStickyAssignment(
+                DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), "http://dp:9090");
+        // DP terminate must be invoked even though transportProfile is null (HTTP-PULL)
+        verify(dataPlaneClient).terminate(
+                eq(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()), any(), isNull());
+        // Sticky must always be cleared after successful termination
+        verify(dataPlaneClient).clearStickyAssignment(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+    }
+
+    @Test
     @DisplayName("Download data - success")
     public void downloadData_success() {
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
@@ -650,12 +674,16 @@ class DataTransferAPIServiceTest {
                 .build());
         when(s3Properties.getRegion()).thenReturn("eu-central-1");
         when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        // No sticky endpoint available for this scenario → only one save expected
+        when(dataPlaneClient.getStickyEndpoint(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+                .thenReturn(Optional.empty());
 
         assertDoesNotThrow(() -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
         ArgumentCaptor<DataFlowStartMessage> startCaptor = ArgumentCaptor.forClass(DataFlowStartMessage.class);
-        verify(dataPlaneClient).start(startCaptor.capture());
-        // Exactly one save: to mark isDownloadInProgress=true
+        // HTTP-PULL must use the sticky/profile-aware overload with null profile
+        verify(dataPlaneClient).start(startCaptor.capture(), isNull());
+        // Exactly one save: to mark isDownloadInProgress=true (no sticky endpoint returned in this test)
         verify(transferProcessRepository, times(1)).save(argCaptorTransferProcess.capture());
 
         TransferProcess processWithInProgressFlag = argCaptorTransferProcess.getValue();
@@ -705,7 +733,7 @@ class DataTransferAPIServiceTest {
                 DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_PROVIDER_HTTP_PUSH.getId()));
 
         ArgumentCaptor<DataFlowStartMessage> startCaptor = ArgumentCaptor.forClass(DataFlowStartMessage.class);
-        verify(dataPlaneClient).start(startCaptor.capture());
+        verify(dataPlaneClient).start(startCaptor.capture(), isNull());
 
         Map<String, String> endpointProperties = toEndpointPropertyMap(startCaptor.getValue().getDataAddress().getEndpointProperties());
 
@@ -779,7 +807,7 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.save(any(TransferProcess.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        doThrow(DataPlaneClientException.class).when(dataPlaneClient).start(any(DataFlowStartMessage.class));
+        doThrow(DataPlaneClientException.class).when(dataPlaneClient).start(any(DataFlowStartMessage.class), isNull());
 
         CompletableFuture<Void> future = apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
         ExecutionException ex = assertThrows(ExecutionException.class, future::get);
@@ -802,7 +830,7 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.save(any(TransferProcess.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
-        doThrow(IllegalStateException.class).when(dataPlaneClient).start(any(DataFlowStartMessage.class));
+        doThrow(IllegalStateException.class).when(dataPlaneClient).start(any(DataFlowStartMessage.class), isNull());
 
         CompletableFuture<Void> future = apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
         ExecutionException ex = assertThrows(ExecutionException.class, future::get);
@@ -905,7 +933,7 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
-    @DisplayName("View data - success")
+    @DisplayName("View data - success - delegates to HTTP-PULL DP prepare with VIEW mode and CP-provided sink bucket")
     public void viewData_success() {
         String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
 
@@ -915,18 +943,36 @@ class DataTransferAPIServiceTest {
         GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
-        when(tenantBucketResolver.resolveBucketName(any())).thenReturn("test-bucket");
-        when(s3ClientService.generateGetPresignedUrl(eq("test-bucket"), eq(objectKey), any()))
-                .thenReturn("https://example.com/presigned-url");
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+        DataFlowPrepareResponse viewPrepareResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId(objectKey)
+                .dataAddress(Map.of("presignedUrl", "https://example.com/presigned-url"))
+                .build();
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull()))
+                .thenReturn(viewPrepareResponse);
 
         assertDoesNotThrow(() -> apiService.viewData(objectKey));
 
-        verify(s3ClientService).generateGetPresignedUrl(eq("test-bucket"), eq(objectKey), any());
+        // viewData must delegate to the HTTP-PULL DP prepare, not call S3 directly
+        ArgumentCaptor<DataFlowPrepareMessage> prepareCaptor = ArgumentCaptor.forClass(DataFlowPrepareMessage.class);
+        verify(dataPlaneClient).prepare(prepareCaptor.capture(), eq("HttpData-PULL"), isNull());
+        verify(s3ClientService, never()).generateGetPresignedUrl(any(), any(), any());
+        // Prepare message must carry VIEW mode in sink metadata
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sinkSection = (Map<String, Object>) prepareCaptor.getValue().getMetadata()
+                .get(DataPlaneConstants.METADATA_SECTION_SINK);
+        assertNotNull(sinkSection, "prepare metadata must contain a sink section");
+        assertEquals("VIEW", sinkSection.get(DataPlaneConstants.METADATA_FIELD_MODE));
+        // sink.s3 must carry CP-resolved bucket metadata
+        @SuppressWarnings("unchecked")
+        Map<String, Object> s3Section = (Map<String, Object>) sinkSection.get(DataPlaneConstants.METADATA_SECTION_S3);
+        assertNotNull(s3Section, "sink section must contain an s3 subsection");
+        assertNotNull(s3Section.get(DataPlaneConstants.METADATA_S3_BUCKET_NAME), "sink.s3 must carry bucketName");
         verify(publisher).publishEvent(any(ArtifactConsumedEvent.class));
     }
 
     @Test
-    @DisplayName("View data - fail - generate presignURL exception")
+    @DisplayName("View data - fail - DP prepare throws exception")
     public void viewData_fail_canNotAccessData() {
         String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
 
@@ -936,16 +982,16 @@ class DataTransferAPIServiceTest {
         GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
-        when(tenantBucketResolver.resolveBucketName(any())).thenReturn("test-bucket");
-        doThrow(new RuntimeException("S3 error generating presigned URL"))
-                .when(s3ClientService).generateGetPresignedUrl(any(), any(), any());
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+        doThrow(new RuntimeException("DP unreachable"))
+                .when(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull());
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(objectKey));
     }
 
     @Test
-    @DisplayName("View data - fail - S3 not reachable")
+    @DisplayName("View data - fail - DP prepare returns no presigned URL")
     public void viewData_fail_fileNotFound() {
         String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
 
@@ -955,14 +1001,18 @@ class DataTransferAPIServiceTest {
         GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
-        when(tenantBucketResolver.resolveBucketName(any())).thenReturn("test-bucket");
-        doThrow(new RuntimeException("No S3 endpoint available"))
-                .when(s3ClientService).generateGetPresignedUrl(any(), any(), any());
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+        DataFlowPrepareResponse emptyResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId(objectKey)
+                .dataAddress(Map.of())
+                .build();
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull()))
+                .thenReturn(emptyResponse);
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(objectKey));
 
-        verify(s3ClientService).generateGetPresignedUrl(any(), any(), any());
+        verify(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull());
     }
 
 
@@ -980,7 +1030,7 @@ class DataTransferAPIServiceTest {
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId()));
 
-        verify(s3ClientService, times(0)).generateGetPresignedUrl(any(), any(), any());
+        verify(dataPlaneClient, never()).prepare(any(), anyString(), any());
     }
 
     @Test
@@ -992,7 +1042,308 @@ class DataTransferAPIServiceTest {
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED.getId()));
 
-        verify(s3ClientService, times(0)).generateGetPresignedUrl(any(), any(), any());
+        verify(dataPlaneClient, never()).prepare(any(), anyString(), any());
+    }
+
+    @Test
+    @DisplayName("viewData - succeeds when bucket credential records are absent - VIEW path does not need CP credentials")
+    public void viewData_success_noBucketCredentials() {
+        String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
+
+        when(transferProcessRepository.findById(objectKey))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED));
+        when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+        GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
+        when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+                .thenReturn(TransferSerializer.serializePlain(internalResponse));
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+        DataFlowPrepareResponse viewPrepareResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId(objectKey)
+                .dataAddress(Map.of(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY, "https://example.com/presigned"))
+                .build();
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull()))
+                .thenReturn(viewPrepareResponse);
+
+        // Must succeed — bucket credentials must not be required for VIEW prepare
+        assertDoesNotThrow(() -> apiService.viewData(objectKey));
+        verify(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull());
+        // Verify bucket credentials are never consulted for the VIEW path
+        verify(bucketCredentialsService, never()).getBucketCredentials(anyString());
+    }
+
+    @Test
+    @DisplayName("viewData - prepare metadata does not contain access or secret keys for VIEW path")
+    public void viewData_success_metadataDoesNotContainCredentials() {
+        String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
+
+        when(transferProcessRepository.findById(objectKey))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED));
+        when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+        GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
+        when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+                .thenReturn(TransferSerializer.serializePlain(internalResponse));
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+        DataFlowPrepareResponse viewPrepareResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId(objectKey)
+                .dataAddress(Map.of(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY, "https://example.com/presigned"))
+                .build();
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull()))
+                .thenReturn(viewPrepareResponse);
+
+        apiService.viewData(objectKey);
+
+        ArgumentCaptor<DataFlowPrepareMessage> prepareCaptor = ArgumentCaptor.forClass(DataFlowPrepareMessage.class);
+        verify(dataPlaneClient).prepare(prepareCaptor.capture(), eq("HttpData-PULL"), isNull());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sinkSection = (Map<String, Object>) prepareCaptor.getValue().getMetadata()
+                .get(DataPlaneConstants.METADATA_SECTION_SINK);
+        assertNotNull(sinkSection, "prepare metadata must contain a sink section");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> s3Section = (Map<String, Object>) sinkSection.get(DataPlaneConstants.METADATA_SECTION_S3);
+        assertNotNull(s3Section, "sink section must contain an s3 subsection");
+        assertNull(s3Section.get(DataPlaneConstants.METADATA_S3_ACCESS_KEY),
+                "VIEW metadata must not contain accessKey — DP uses its own admin credentials");
+        assertNull(s3Section.get(DataPlaneConstants.METADATA_S3_SECRET_KEY),
+                "VIEW metadata must not contain secretKey — DP uses its own admin credentials");
+        assertNotNull(s3Section.get(DataPlaneConstants.METADATA_S3_BUCKET_NAME),
+                "VIEW metadata must carry bucket name so DP can route to correct tenant bucket");
+        assertNotNull(s3Section.get(DataPlaneConstants.METADATA_S3_OBJECT_KEY),
+                "VIEW metadata must carry object key so DP knows which artifact to presign");
+    }
+
+    @Test
+    @DisplayName("viewData - success - cleans up PREPARED DP session and sticky entry after generating presigned URL")
+    public void viewData_success_cleansUpPreparedDataPlaneSession() {
+        String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
+
+        when(transferProcessRepository.findById(objectKey))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED));
+        when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+        when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+                .thenReturn(TransferSerializer.serializePlain(GenericApiResponse.success(null, "successful response")));
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+        DataFlowPrepareResponse viewPrepareResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId(objectKey)
+                .dataAddress(Map.of(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY, "https://example.com/presigned-url"))
+                .build();
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull()))
+                .thenReturn(viewPrepareResponse);
+        when(dataPlaneClient.getStickyEndpoint(objectKey)).thenReturn(Optional.of("http://dp-view:9090"));
+
+        apiService.viewData(objectKey);
+
+        // VIEW is a helper-only prepare — the PREPARED DP session must be terminated and sticky cleared
+        verify(dataPlaneClient).terminate(objectKey, "HttpData-PULL", null);
+        verify(dataPlaneClient).clearStickyAssignment(objectKey);
+    }
+
+    @Test
+    @DisplayName("viewData - prepare throws exception - sticky assignment is cleared (best-effort cleanup)")
+    public void viewData_fail_prepareThrows_clearsStickyAssignment() {
+        String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
+        when(transferProcessRepository.findById(objectKey))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED));
+        when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+        when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+                .thenReturn(TransferSerializer.serializePlain(GenericApiResponse.success(null, "successful response")));
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+        doThrow(new RuntimeException("DP unreachable"))
+                .when(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull());
+        when(dataPlaneClient.getStickyEndpoint(objectKey)).thenReturn(Optional.of("http://dp-view:9090"));
+
+        assertThrows(DataTransferAPIException.class, () -> apiService.viewData(objectKey));
+
+        // Sticky must be cleared even when prepare throws so the router does not retain a stale pin
+        verify(dataPlaneClient).clearStickyAssignment(objectKey);
+    }
+
+    @Test
+    @DisplayName("startTransfer - provider HTTP-PULL - persists assignedDataplaneEndpoint after sticky prepare")
+    public void startTransfer_httpPull_file_persistsAssignedEndpointAfterPrepare() {
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL));
+        when(artifactTransferService.findArtifact(any())).thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
+        when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID)).thenReturn("provider-bucket");
+        lenient().when(bucketCredentialsService.getBucketCredentials("provider-bucket")).thenReturn(
+                BucketCredentialsEntity.Builder.newInstance()
+                        .bucketName("provider-bucket")
+                        .accessKey("provider-access-key")
+                        .secretKey("provider-secret-key")
+                        .build());
+        lenient().when(s3Properties.getRegion()).thenReturn("us-east-1");
+        lenient().when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+
+        DataFlowPrepareResponse dpResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId())
+                .dataAddress(Map.of(
+                        DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT, "https://minio.example.com/presigned/artifact",
+                        DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT_TYPE, "https://w3id.org/idsa/v4.1/HTTP"))
+                .build();
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull()))
+                .thenReturn(dpResponse);
+        when(dataPlaneClient.getStickyEndpoint(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId()))
+                .thenReturn(Optional.of("http://dp-http-pull:9090"));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId());
+
+        verify(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull());
+        verify(dataPlaneClient).getStickyEndpoint(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId());
+        // The saved STARTED process must carry the sticky endpoint
+        verify(transferProcessRepository, atLeastOnce()).save(argCaptorTransferProcess.capture());
+        boolean endpointPersisted = argCaptorTransferProcess.getAllValues().stream()
+                .anyMatch(tp -> "http://dp-http-pull:9090".equals(tp.getAssignedDataplaneEndpoint()));
+        assertTrue(endpointPersisted,
+                "assignedDataplaneEndpoint must be persisted in the STARTED TP after HTTP-PULL DP prepare");
+    }
+
+    @Test
+    @DisplayName("startTransfer - provider HTTP-PULL: peer failure after successful DP prepare clears sticky assignment")
+    public void startTransfer_httpPull_peerFailure_afterSuccessfulPrepare_clearsStickyAssignment() {
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL));
+        when(artifactTransferService.findArtifact(any())).thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+
+        DataFlowPrepareResponse dpResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId())
+                .dataAddress(Map.of(
+                        DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT, "https://minio.example.com/presigned/artifact",
+                        DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT_TYPE, "https://w3id.org/idsa/v4.1/HTTP"))
+                .build();
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull()))
+                .thenReturn(dpResponse);
+        when(dataPlaneClient.getStickyEndpoint(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId()))
+                .thenReturn(Optional.of("http://dp-http-pull:9090"));
+
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(false);
+        when(apiResponse.getMessage()).thenReturn("peer notification failed");
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThrows(DataTransferAPIException.class,
+                () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId()));
+
+        // TP must be rolled back to REQUESTED
+        verify(transferProcessRepository, times(2)).save(argCaptorTransferProcess.capture());
+        List<TransferProcess> savedValues = argCaptorTransferProcess.getAllValues();
+        assertTrue(savedValues.stream().anyMatch(p -> p.getState() == TransferState.REQUESTED),
+                "rollback must save TP in REQUESTED state");
+
+        // Sticky must be cleared for HTTP-PULL even though transportProfile is null
+        verify(dataPlaneClient).clearStickyAssignment(
+                DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId());
+    }
+
+    @Test
+    @DisplayName("startTransfer - provider HTTP-PULL FILE: prepare throws - sticky assignment is cleared (best-effort cleanup)")
+    public void startTransfer_httpPull_file_prepareThrows_clearsStickyAssignment() {
+        String processId = DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId();
+        when(transferProcessRepository.findById(processId))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL));
+        when(artifactTransferService.findArtifact(any())).thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+        doThrow(new RuntimeException("DP unreachable"))
+                .when(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull());
+        when(dataPlaneClient.getStickyEndpoint(processId)).thenReturn(Optional.of("http://dp-http-pull:9090"));
+
+        assertThrows(DataTransferAPIException.class, () -> apiService.startTransfer(processId));
+
+        // Sticky must be cleared even when prepare throws so the router does not retain a stale pin
+        verify(dataPlaneClient).clearStickyAssignment(processId);
+    }
+
+    @Test
+    @DisplayName("startTransfer - provider HTTP-PULL FILE: PREPARED DP session is terminated after successful start")
+    public void startTransfer_providerHttpPull_fileArtifact_cleansUpPreparedDpOnSuccess() {
+        String processId = DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL.getId();
+        when(transferProcessRepository.findById(processId))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL));
+        when(artifactTransferService.findArtifact(any())).thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+
+        DataFlowPrepareResponse dpResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId(processId)
+                .dataAddress(Map.of(
+                        DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT, "https://minio.example.com/presigned/artifact",
+                        DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT_TYPE, "https://w3id.org/idsa/v4.1/HTTP"))
+                .build();
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull()))
+                .thenReturn(dpResponse);
+        when(dataPlaneClient.getStickyEndpoint(processId)).thenReturn(Optional.of("http://dp-http-pull:9090"));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.save(any(TransferProcess.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        apiService.startTransfer(processId);
+
+        // HTTP-PULL FILE uses DP prepare only to get the presigned URL — PREPARED session must be terminated on success
+        verify(dataPlaneClient).terminate(processId, "HttpData-PULL", null);
+        verify(dataPlaneClient).clearStickyAssignment(processId);
+    }
+
+    @Test
+    @DisplayName("downloadData - HTTP-PULL consumer - uses sticky start overload and persists assignedDataplaneEndpoint")
+    public void downloadData_httpPull_usesStickyStartAndPersistsAssignedEndpoint() {
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        GenericApiResponse<String> internalResponse = GenericApiResponse.success(null, "successful response");
+        when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+        when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+                .thenReturn(TransferSerializer.serializePlain(internalResponse));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(s3Properties.getRegion()).thenReturn("eu-central-1");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+
+        // The consumer DP returns a sticky endpoint after start
+        when(dataPlaneClient.getStickyEndpoint(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+                .thenReturn(Optional.of("http://dp-http-pull:9090"));
+
+        assertDoesNotThrow(() -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+
+        // HTTP-PULL must use sticky overload with null profile
+        verify(dataPlaneClient).start(any(DataFlowStartMessage.class), isNull());
+        // Two saves: mark isDownloadInProgress=true, then persist assignedDataplaneEndpoint
+        verify(transferProcessRepository, times(2)).save(argCaptorTransferProcess.capture());
+        List<TransferProcess> savedValues = argCaptorTransferProcess.getAllValues();
+        boolean endpointPersisted = savedValues.stream()
+                .anyMatch(tp -> "http://dp-http-pull:9090".equals(tp.getAssignedDataplaneEndpoint()));
+        assertTrue(endpointPersisted,
+                "assignedDataplaneEndpoint must be persisted after HTTP-PULL consumer DP start");
+    }
+
+    @Test
+    @DisplayName("downloadData - endpoint persistence OptimisticLockingFailureException is handled benignly when TP already moved forward")
+    public void downloadData_endpointPersistRaceHandledBenignly() {
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        when(usageControlProperties.usageControlEnabled()).thenReturn(false);
+        // 1st save (mark isDownloadInProgress) succeeds; 2nd save (endpoint persist) races against DP callback
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0))
+                .thenThrow(new org.springframework.dao.OptimisticLockingFailureException(
+                        "TP already moved to COMPLETED by DP callback"))
+                .thenAnswer(invocation -> invocation.getArgument(0)); // for catch-block reset if not fixed
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+        when(dataPlaneClient.getStickyEndpoint(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+                .thenReturn(Optional.of("http://dp-http-pull:9090"));
+
+        CompletableFuture<Void> result = apiService.downloadData(
+                DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+
+        assertFalse(result.isCompletedExceptionally(),
+                "downloadData must succeed despite endpoint persistence race - the TP already moved forward");
     }
 
     private static Stream<Arguments> startTransfer_wrongStates() {
@@ -1054,8 +1405,8 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
-    @DisplayName("Request transfer (HTTP-PUSH consumer) - creates temp S3 user directly in CP and sends TransferRequestMessage")
-    public void requestTransfer_sendsDataFlowPrepareMessageToDataPlane() {
+    @DisplayName("Request transfer (HTTP-PUSH consumer) uses consumer DP prepare and persists assigned dataplane endpoint")
+    public void requestTransfer_httpPush_usesConsumerDpPrepareInsteadOfLocalTempUserCreation() {
         TransferProcess httpPushInitialized = TransferProcess.Builder.newInstance()
                 .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
                 .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
@@ -1070,23 +1421,23 @@ class DataTransferAPIServiceTest {
                 DataTransferFormat.HTTP_PUSH.format(),
                 null);
 
-        TemporaryBucketUser tempUser = TemporaryBucketUser.Builder.newInstance()
-                .transferProcessId(httpPushInitialized.getId())
-                .bucketName("test-bucket")
-                .objectKey(httpPushInitialized.getId())
-                .accessKey("test-access-key")
-                .secretKey("test-secret-key")
+        DataFlowPrepareResponse prepareResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId(httpPushInitialized.getId())
+                .dataAddress(Map.of(
+                        "bucketName", "test-bucket",
+                        "objectKey", httpPushInitialized.getId(),
+                        "region", "us-east-1",
+                        "accessKey", "test-access-key",
+                        "secretKey", "test-secret-key",
+                        "endpointOverride", "http://minio:9000"))
                 .build();
 
         when(transferProcessRepository.findById(httpPushInitialized.getId()))
                 .thenReturn(Optional.of(httpPushInitialized));
-        when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID))
-                .thenReturn("test-bucket");
-        when(temporaryBucketUserService.createTemporaryUser(
-                httpPushInitialized.getId(), "test-bucket", httpPushInitialized.getId()))
-                .thenReturn(tempUser);
-        when(s3Properties.getRegion()).thenReturn("us-east-1");
-        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq(DataTransferFormat.HTTP_PUSH.format()), isNull()))
+                .thenReturn(prepareResponse);
+        when(dataPlaneClient.getStickyEndpoint(httpPushInitialized.getId()))
+                .thenReturn(Optional.of("http://dp-http-push:9090"));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
         when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
                 .thenReturn(apiResponse);
@@ -1094,22 +1445,38 @@ class DataTransferAPIServiceTest {
         when(apiResponse.getData()).thenReturn(
                 TransferSerializer.serializeProtocol(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER));
         when(transferProcessRepository.save(any(TransferProcess.class)))
-                .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER);
+                .thenAnswer(invocation -> invocation.getArgument(0));
         when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
 
         apiService.requestTransfer(httpPushRequest);
 
-        // No longer calls dataPlaneClient.prepare() — CP creates temp user directly
-        verify(dataPlaneClient, never()).prepare(any(), any());
-        verify(temporaryBucketUserService).createTemporaryUser(
-                httpPushInitialized.getId(), "test-bucket", httpPushInitialized.getId());
+        ArgumentCaptor<DataFlowPrepareMessage> prepareCaptor = ArgumentCaptor.forClass(DataFlowPrepareMessage.class);
+        verify(dataPlaneClient).prepare(prepareCaptor.capture(), eq(DataTransferFormat.HTTP_PUSH.format()), isNull());
+        assertEquals(DataTransferFormat.HTTP_PUSH.format(), prepareCaptor.getValue().getTransferType());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sinkSection = (Map<String, Object>) prepareCaptor.getValue().getMetadata()
+                .get(DataPlaneConstants.METADATA_SECTION_SINK);
+        assertNotNull(sinkSection, "prepare metadata must contain a sink section");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> s3Section = (Map<String, Object>) sinkSection.get(DataPlaneConstants.METADATA_SECTION_S3);
+        assertNotNull(s3Section, "sink section must contain sink.s3 metadata");
+        assertEquals("test-bucket", s3Section.get(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        assertEquals(httpPushInitialized.getId(), s3Section.get(DataPlaneConstants.METADATA_S3_OBJECT_KEY));
+        assertEquals("us-east-1", s3Section.get(DataPlaneConstants.METADATA_S3_REGION));
+        assertEquals("http://minio:9000", s3Section.get(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+        verify(temporaryBucketUserService, never()).createTemporaryUser(anyString(), anyString(), anyString());
 
-        // Verify a TransferRequestMessage was sent to the provider
+        verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
+        TransferProcess savedTransferProcess = argCaptorTransferProcess.getValue();
+        assertEquals(TransferState.REQUESTED, savedTransferProcess.getState());
+        assertEquals("http://dp-http-push:9090", savedTransferProcess.getAssignedDataplaneEndpoint(),
+                "assignedDataplaneEndpoint must be persisted after HTTP-PUSH prepare");
+
         verify(okHttpRestClient).sendRequestProtocol(any(), any(), any());
     }
 
     @Test
-    @DisplayName("Request transfer (HTTP-PUSH consumer) - terminates process when temp user creation fails")
+    @DisplayName("Request transfer (HTTP-PUSH consumer) terminates process when DP prepare fails")
     public void requestTransfer_terminatesProcessWhenDataPlanePrepareFails() {
         TransferProcess httpPushInitialized = TransferProcess.Builder.newInstance()
                 .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
@@ -1127,18 +1494,64 @@ class DataTransferAPIServiceTest {
 
         when(transferProcessRepository.findById(httpPushInitialized.getId()))
                 .thenReturn(Optional.of(httpPushInitialized));
-        when(tenantBucketResolver.resolveBucketName(DataTransferMockObjectUtil.TENANT_ID))
-                .thenReturn("test-bucket");
         doThrow(new RuntimeException("MinIO unreachable"))
-                .when(temporaryBucketUserService).createTemporaryUser(anyString(), anyString(), anyString());
+                .when(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), eq(DataTransferFormat.HTTP_PUSH.format()), isNull());
 
-        // Should not propagate — exception is caught and process is terminated
         assertDoesNotThrow(() -> apiService.requestTransfer(httpPushRequest));
 
         verify(transferProcessRepository, atLeastOnce()).save(argCaptorTransferProcess.capture());
         List<TransferProcess> saved = argCaptorTransferProcess.getAllValues();
         boolean hasTerminated = saved.stream().anyMatch(p -> p.getState() == TransferState.TERMINATED);
         assertTrue(hasTerminated, "Transfer process should be saved in TERMINATED state");
+        verify(temporaryBucketUserService, never()).createTemporaryUser(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @DisplayName("Request transfer (HTTP-PUSH consumer) cleans up prepared DP session when provider rejects request")
+    public void requestTransfer_httpPush_cleansUpPreparedDataPlaneSessionWhenProviderRejects() {
+        TransferProcess httpPushInitialized = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .datasetId(DataTransferMockObjectUtil.DATASET_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.INITIALIZED)
+                .build();
+        DataTransferRequest httpPushRequest = new DataTransferRequest(
+                httpPushInitialized.getId(),
+                DataTransferFormat.HTTP_PUSH.format(),
+                null);
+
+        DataFlowPrepareResponse prepareResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId(httpPushInitialized.getId())
+                .dataAddress(Map.of(
+                        "bucketName", "test-bucket",
+                        "objectKey", httpPushInitialized.getId(),
+                        "region", "us-east-1",
+                        "accessKey", "test-access-key",
+                        "secretKey", "test-secret-key"))
+                .build();
+
+        when(transferProcessRepository.findById(httpPushInitialized.getId()))
+                .thenReturn(Optional.of(httpPushInitialized));
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq(DataTransferFormat.HTTP_PUSH.format()), isNull()))
+                .thenReturn(prepareResponse);
+        when(dataPlaneClient.getStickyEndpoint(httpPushInitialized.getId()))
+                .thenReturn(Optional.of("http://dp-http-push:9090"));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
+                .thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(false);
+        when(apiResponse.getData()).thenReturn(TransferSerializer.serializeProtocol(DataTransferMockObjectUtil.TRANSFER_ERROR));
+        when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
+
+        assertThrows(DataTransferAPIException.class, () -> apiService.requestTransfer(httpPushRequest));
+
+        verify(dataPlaneClient).restoreStickyAssignment(httpPushInitialized.getId(), "http://dp-http-push:9090");
+        verify(dataPlaneClient).terminate(httpPushInitialized.getId(), DataTransferFormat.HTTP_PUSH.format(), null);
+        verify(dataPlaneClient).clearStickyAssignment(httpPushInitialized.getId());
+        verify(temporaryBucketUserService, never()).deleteTemporaryUser(anyString());
     }
 
     @Test
@@ -1301,6 +1714,37 @@ class DataTransferAPIServiceTest {
         apiService.completeTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 
         verify(dataPlaneClient).clearStickyAssignment(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+    }
+
+    @Test
+    @DisplayName("completeTransfer - HTTP-PUSH consumer with assigned DP endpoint: terminates PREPARED DP session on completion")
+    public void completeTransfer_httpPushConsumer_withAssignedDpEndpoint_cleansUpPreparedDpSession() {
+        TransferProcess httpPushConsumerStarted = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .datasetId(DataTransferMockObjectUtil.DATASET_ID)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.STARTED)
+                .format(DataTransferFormat.HTTP_PUSH.format())
+                .assignedDataplaneEndpoint("http://dp-http-push:9090")
+                .build();
+
+        when(transferProcessRepository.findById(httpPushConsumerStarted.getId()))
+                .thenReturn(Optional.of(httpPushConsumerStarted));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+
+        apiService.completeTransfer(httpPushConsumerStarted.getId());
+
+        // PREPARED DP session must be terminated when HTTP-PUSH consumer TP completes
+        verify(dataPlaneClient).restoreStickyAssignment(httpPushConsumerStarted.getId(), "http://dp-http-push:9090");
+        verify(dataPlaneClient).terminate(httpPushConsumerStarted.getId(), DataTransferFormat.HTTP_PUSH.format(), null);
+        verify(dataPlaneClient).clearStickyAssignment(httpPushConsumerStarted.getId());
     }
 
     @Test
@@ -1632,6 +2076,44 @@ class DataTransferAPIServiceTest {
         // Sticky must be cleared even after rollback
         verify(dataPlaneClient).clearStickyAssignment(
                 DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId());
+    }
+
+    @Test
+    @DisplayName("startTransfer - provider gRPC: rollback preserves transportProfile and assignedDataplaneEndpoint for cleanup recovery")
+    public void startTransfer_grpc_provider_rollback_preservesRoutingMetadata() {
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC));
+        when(transportProfileResolver.resolve(TransportProfile.STREAM_GRPC)).thenReturn(TransportProfile.STREAM_GRPC);
+
+        DataFlowPrepareResponse prepareResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId())
+                .dataAddress(Map.of("endpoint", "grpc://dp-grpc:5050"))
+                .build();
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq(TransportProfile.STREAM_GRPC), eq(TransportProfile.STREAM_GRPC)))
+                .thenReturn(prepareResponse);
+        when(dataPlaneClient.getStickyEndpoint(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId()))
+                .thenReturn(Optional.of("http://dp-grpc:9090"));
+
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(false);
+        when(apiResponse.getMessage()).thenReturn("peer error");
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThrows(DataTransferAPIException.class,
+                () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC.getId()));
+
+        verify(transferProcessRepository, times(2)).save(argCaptorTransferProcess.capture());
+        TransferProcess rollbackTp = argCaptorTransferProcess.getAllValues().stream()
+                .filter(p -> p.getState() == TransferState.REQUESTED)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("rollback TP in REQUESTED state not found"));
+
+        assertEquals(TransportProfile.STREAM_GRPC, rollbackTp.getTransportProfile(),
+                "rollback TP must preserve transportProfile so later cleanup can route back to the same DP instance");
+        assertEquals("http://dp-grpc:9090", rollbackTp.getAssignedDataplaneEndpoint(),
+                "rollback TP must preserve assignedDataplaneEndpoint so later cleanup can route back to the same DP instance");
     }
 
     @Test
@@ -2002,5 +2484,72 @@ class DataTransferAPIServiceTest {
         assertEquals("kafka-consumer-access-key", endpointProperties.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY));
         assertEquals("kafka-consumer-secret-key", endpointProperties.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY));
         assertEquals("http://kafka-minio:9000", endpointProperties.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE));
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Issue 2 — HTTP-PUSH prepare must not require bucket credential records
+    // ──────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Verifies that {@code requestTransfer} for HTTP-PUSH does not call
+     * {@link BucketCredentialsService#getBucketCredentials} during prepare-metadata construction.
+     *
+     * <p>The DP only needs {@code sink.s3.bucketName} during prepare; access/secret keys are not
+     * used until {@code start()}. Requiring bucket credential records for prepare creates an
+     * unnecessary bootstrap dependency that can fail on first-time setups or multi-tenant
+     * environments where per-tenant credentials are provisioned lazily.</p>
+     */
+    @Test
+    @DisplayName("HTTP-PUSH requestTransfer prepare succeeds without bucket credential records (DP only needs bucketName)")
+    public void requestTransfer_httpPush_prepareMetadataDoesNotRequireBucketCredentials() {
+        // No bucket credentials exist for the consumer bucket — simulate a first-time or lazy setup.
+        // Before the fix, buildHttpPushPrepareMetadata called getBucketCredentials which would
+        // throw when credentials were null. After the fix the CP does not consult bucket credentials
+        // for HTTP-PUSH prepare at all (the verify(never()) below enforces this contract).
+
+        TransferProcess httpPushInitialized = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .datasetId(DataTransferMockObjectUtil.DATASET_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.INITIALIZED)
+                .build();
+        DataTransferRequest httpPushRequest = new DataTransferRequest(
+                httpPushInitialized.getId(),
+                DataTransferFormat.HTTP_PUSH.format(),
+                null);
+
+        DataFlowPrepareResponse prepareResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId(httpPushInitialized.getId())
+                .dataAddress(Map.of(
+                        "bucketName", "test-bucket",
+                        "objectKey", httpPushInitialized.getId(),
+                        "accessKey", "temp-access-key",
+                        "secretKey", "temp-secret-key"))
+                .build();
+
+        when(transferProcessRepository.findById(httpPushInitialized.getId()))
+                .thenReturn(Optional.of(httpPushInitialized));
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq(DataTransferFormat.HTTP_PUSH.format()), isNull()))
+                .thenReturn(prepareResponse);
+        when(dataPlaneClient.getStickyEndpoint(httpPushInitialized.getId()))
+                .thenReturn(Optional.of("http://dp-http-push:9090"));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
+                .thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(apiResponse.getData()).thenReturn(
+                TransferSerializer.serializeProtocol(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
+
+        // Must NOT throw even though no bucket credential record exists
+        assertDoesNotThrow(() -> apiService.requestTransfer(httpPushRequest));
+
+        // Bucket credentials must NOT be consulted at prepare time for HTTP-PUSH
+        verify(bucketCredentialsService, never()).getBucketCredentials(anyString());
     }
 }

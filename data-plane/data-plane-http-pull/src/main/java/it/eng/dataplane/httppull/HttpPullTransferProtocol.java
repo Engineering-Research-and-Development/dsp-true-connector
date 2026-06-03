@@ -60,7 +60,7 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
     /** Mode value for consumer viewData requests — returns a pre-signed URL for the stored file. */
     static final String MODE_VIEW = "VIEW";
     /** Data address key carrying the pre-signed URL in the prepare response. */
-    static final String PRESIGNED_URL_KEY = "presignedUrl";
+    static final String PRESIGNED_URL_KEY = DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY;
 
     @Override
     public String getProtocolId() {
@@ -73,8 +73,10 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
      *
      * <ul>
      *   <li>If {@code metadata.sink.mode == VIEW}: the consumer Control Plane is requesting a URL
-     *       so the API caller can download a previously stored file. The bucket comes from
-     *       local {@code s3Properties}; the object key is {@code message.processId}
+     *       so the API caller can download a previously stored file. The bucket is resolved from
+     *       {@code metadata.sink.s3.bucketName} (CP-provided, supports multi-tenant isolation),
+     *       falling back to local {@code s3Properties} for single-tenant deployments.
+     *       The object key is {@code message.processId}
      *       (the transfer process ID used as key when storing). Returns {@code presignedUrl}.</li>
      *   <li>Otherwise (provider side): the Control Plane provides the bucket name and object key
      *       via {@code metadata.source.s3.bucketName} and {@code metadata.source.s3.objectKey}.
@@ -99,8 +101,14 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
         Map<String, String> dataAddress = new HashMap<>();
 
         if (MODE_VIEW.equals(mode)) {
-            // Consumer viewData: the file was stored with processId as the object key
-            String bucketName = s3Properties.getBucketName();
+            // Consumer viewData: the file was stored with processId as the object key.
+            // Prefer the CP-provided bucket from sink.s3.bucketName so multi-tenant deployments
+            // route to the correct per-tenant bucket; fall back to the DP-local s3Properties for
+            // single-tenant / legacy configurations.
+            DataFlowPrepareMetadataSection sinkS3Section = meta.getSinkSection()
+                    .getSection(DataPlaneConstants.METADATA_SECTION_S3);
+            String cpBucket = sinkS3Section.getString(DataPlaneConstants.METADATA_S3_BUCKET_NAME);
+            String bucketName = StringUtils.isNotBlank(cpBucket) ? cpBucket : s3Properties.getBucketName();
             String objectKey = message.getProcessId();
             log.info("Preparing viewData presigned URL for processId={} in bucket={}", objectKey, bucketName);
             String presignedUrl = s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));

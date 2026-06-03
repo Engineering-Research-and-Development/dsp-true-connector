@@ -53,24 +53,24 @@ public interface DataTransferProtocol {
     /**
      * Suspends an active data transfer.
      *
-     * @param dataFlowId the ID of the data flow to suspend
+     * @param processId the transfer process ID of the data flow to suspend
      * @return future with the result of the suspension
      */
-    CompletableFuture<DataFlowResult> suspendTransfer(String dataFlowId);
+    CompletableFuture<DataFlowResult> suspendTransfer(String processId);
 
     /**
      * Resumes a suspended data transfer.
      *
-     * @param dataFlowId the ID of the data flow to resume
+     * @param processId the transfer process ID of the data flow to resume
      * @return future with the result of the resumption
      */
-    CompletableFuture<DataFlowResult> resumeTransfer(String dataFlowId);
+    CompletableFuture<DataFlowResult> resumeTransfer(String processId);
 
     /**
      * Terminates a data transfer.
      *
-     * @param dataFlowId the ID of the data flow to terminate
+     * @param processId the transfer process ID of the data flow to terminate
      * @return future with the result of the termination
      */
-    CompletableFuture<DataFlowResult> terminateTransfer(String dataFlowId);
+    CompletableFuture<DataFlowResult> terminateTransfer(String processId);
 }

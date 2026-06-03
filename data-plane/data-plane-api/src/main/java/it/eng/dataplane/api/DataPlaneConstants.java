@@ -107,6 +107,9 @@ public final class DataPlaneConstants {
     public static final String DATA_ADDRESS_PROPERTY_SOURCE_ENDPOINT_OVERRIDE =
             METADATA_SECTION_SOURCE + "." + METADATA_S3_ENDPOINT_OVERRIDE;
 
+    /** Data address key for the presigned URL returned by an HTTP-PULL prepare response. */
+    public static final String DATA_ADDRESS_PRESIGNED_URL_KEY = "presignedUrl";
+
     private DataPlaneConstants() {
     }
 }

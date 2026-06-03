@@ -60,8 +60,6 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
 
     /** Mode value for consumer viewData requests — returns a pre-signed URL for the pushed file. */
     private static final String MODE_VIEW = "VIEW";
-    /** Data address key carrying the pre-signed URL in the prepare response. */
-    private static final String PRESIGNED_URL_KEY = "presignedUrl";
 
     /**
      * Prepares the consumer-side bucket for an HTTP-PUSH transfer by creating a temporary
@@ -83,10 +81,10 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     @Override
     public DataFlowPrepareResponse prepare(DataFlowPrepareMessage message) {
         String processId = message.getProcessId();
-        String bucketName = s3Properties.getBucketName();
+        DataFlowPrepareMetadata metadata = DataFlowPrepareMetadata.from(message);
+        String bucketName = resolvePrepareBucketName(metadata);
 
-        String mode = DataFlowPrepareMetadata.from(message)
-                .getSinkSection()
+        String mode = metadata.getSinkSection()
                 .getString(DataPlaneConstants.METADATA_FIELD_MODE);
         if (MODE_VIEW.equals(mode)) {
             log.info("Preparing viewData presigned URL for processId={} in bucket={}", processId, bucketName);
@@ -94,7 +92,7 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
             log.debug("Generated presigned URL for pushed file, objectKey='{}'", processId);
             return DataFlowPrepareResponse.Builder.newInstance()
                     .processId(processId)
-                    .dataAddress(Map.of(PRESIGNED_URL_KEY, presignedUrl))
+                    .dataAddress(Map.of(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY, presignedUrl))
                     .build();
         }
 
@@ -109,9 +107,10 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
         dataAddress.put(S3Utils.OBJECT_KEY, processId);
         dataAddress.put(S3Utils.ACCESS_KEY, tempUser.getAccessKey());
         dataAddress.put(S3Utils.SECRET_KEY, tempUser.getSecretKey());
-        String endpointOverride = StringUtils.isNotBlank(s3Properties.getExternalPresignedEndpoint())
-                ? s3Properties.getExternalPresignedEndpoint()
-                : s3Properties.getEndpoint();
+        // Server-to-server uploads must reach the internal/container-reachable endpoint.
+        // externalPresignedEndpoint is only for presigned URLs embedded in DSP messages
+        // consumed by external clients — never use it for sink upload credentials.
+        String endpointOverride = s3Properties.getEndpoint();
         if (StringUtils.isNotBlank(endpointOverride)) {
             dataAddress.put(S3Utils.ENDPOINT_OVERRIDE, endpointOverride);
         }
@@ -197,9 +196,13 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     }
 
     /**
-     * Terminates a data transfer.
-     * Temporary IAM credentials created by the consumer CP for HTTP-PUSH transfers are cleaned up
-     * by the consumer CP when it receives the termination event, not by this provider-side DP.
+     * Terminates a data transfer and cleans up the temporary IAM credentials created by
+     * {@link #prepare} for the consumer's upload bucket.
+     *
+     * <p>Cleanup is best-effort: if the temporary user has already been deleted or was never
+     * created (e.g., prepare failed before credential creation), the failure is logged as a
+     * warning and the method still returns success so that the Control Plane can continue
+     * its own lifecycle transitions.</p>
      *
      * @param processId the DPS transfer process ID
      * @return future with success result
@@ -207,7 +210,23 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     @Override
     public CompletableFuture<DataFlowResult> terminateTransfer(String processId) {
         log.info("Terminating HttpData-PUSH transfer for processId={}", processId);
+        try {
+            temporaryBucketUserService.deleteTemporaryUser(processId);
+            log.info("Deleted temporary IAM user for processId={}", processId);
+        } catch (Exception e) {
+            log.warn("Best-effort cleanup: failed to delete temporary IAM user for processId={}: {}", processId, e.getMessage());
+        }
         return CompletableFuture.completedFuture(DataFlowResult.success());
+    }
+
+    private String resolvePrepareBucketName(DataFlowPrepareMetadata metadata) {
+        String bucketName = metadata.getSinkSection()
+                .getSection(DataPlaneConstants.METADATA_SECTION_S3)
+                .getString(DataPlaneConstants.METADATA_S3_BUCKET_NAME);
+        if (StringUtils.isBlank(bucketName)) {
+            return s3Properties.getBucketName();
+        }
+        return bucketName;
     }
 
     /**

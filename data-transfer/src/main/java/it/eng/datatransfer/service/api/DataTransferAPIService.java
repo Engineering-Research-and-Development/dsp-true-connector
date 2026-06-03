@@ -28,8 +28,6 @@ import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.BucketCredentialsService;
-import it.eng.tools.s3.service.S3ClientService;
-import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.serializer.ToolsSerializer;
 import it.eng.tools.service.AuditEventPublisher;
@@ -38,8 +36,9 @@ import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.tomcat.util.codec.binary.Base64;
+import org.apache.commons.lang3.Strings;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -48,7 +47,6 @@ import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -70,10 +68,8 @@ public class DataTransferAPIService {
     private final AuditEventPublisher publisher;
     private final ArtifactTransferService artifactTransferService;
     private final DataPlaneClient dataPlaneClient;
-    private final S3ClientService s3ClientService;
     private final BucketCredentialsService bucketCredentialsService;
     private final TenantBucketResolver tenantBucketResolver;
-    private final TemporaryBucketUserService temporaryBucketUserService;
     private final S3Properties s3Properties;
     private final TransportProfileResolver transportProfileResolver;
 
@@ -88,10 +84,8 @@ public class DataTransferAPIService {
      * @param publisher                  audit event publisher
      * @param artifactTransferService    artifact lookup service
      * @param dataPlaneClient            DPS client for forwarding data-flow messages
-     * @param s3ClientService            S3 client for presigned URL generation
      * @param bucketCredentialsService   service for resolving decrypted per-bucket S3 credentials
      * @param tenantBucketResolver       resolves the effective bucket name for the current tenant
-     * @param temporaryBucketUserService service for creating and cleaning up temporary S3 users
      * @param s3Properties               S3 configuration (region, external endpoint)
      * @param transportProfileResolver   resolves the internal transport profile from a transfer format
      */
@@ -103,10 +97,8 @@ public class DataTransferAPIService {
                                   AuditEventPublisher publisher,
                                   ArtifactTransferService artifactTransferService,
                                   DataPlaneClient dataPlaneClient,
-                                  S3ClientService s3ClientService,
                                   BucketCredentialsService bucketCredentialsService,
                                   TenantBucketResolver tenantBucketResolver,
-                                  TemporaryBucketUserService temporaryBucketUserService,
                                   S3Properties s3Properties,
                                   TransportProfileResolver transportProfileResolver) {
         super();
@@ -118,10 +110,8 @@ public class DataTransferAPIService {
         this.publisher = publisher;
         this.artifactTransferService = artifactTransferService;
         this.dataPlaneClient = dataPlaneClient;
-        this.s3ClientService = s3ClientService;
         this.bucketCredentialsService = bucketCredentialsService;
         this.tenantBucketResolver = tenantBucketResolver;
-        this.temporaryBucketUserService = temporaryBucketUserService;
         this.s3Properties = s3Properties;
         this.transportProfileResolver = transportProfileResolver;
     }
@@ -175,43 +165,39 @@ public class DataTransferAPIService {
 
         stateTransitionCheck(TransferState.REQUESTED, transferProcessInitialized);
         DataAddress dataAddressForMessage = null;
-        boolean isHttpPush = "HttpData-PUSH".equals(dataTransferRequest.getFormat());
+        boolean isHttpPush = DataTransferFormat.HTTP_PUSH.format().equals(dataTransferRequest.getFormat());
+        String assignedEndpoint = null;
         if (isHttpPush) {
-            // HTTP-PUSH only: consumer CP creates temporary S3 credentials directly and embeds them in
-            // the TransferRequestMessage dataAddress so the provider DP can push to the consumer bucket.
-            // HTTP-PULL intentionally omits the dataAddress — the provider CP generates the presigned
-            // GET URL directly during startTransfer and sends it in the TransferStartMessage instead.
             try {
-                String bucketName = tenantBucketResolver.resolveBucketName(transferProcessInitialized.getTenantId());
-                String objectKey = transferProcessInitialized.getId();
-                var tempUser = temporaryBucketUserService.createTemporaryUser(objectKey, bucketName, objectKey);
-
-                Map<String, String> endpointMap = new HashMap<>();
-                endpointMap.put(S3Utils.BUCKET_NAME, bucketName);
-                endpointMap.put(S3Utils.REGION, s3Properties.getRegion());
-                endpointMap.put(S3Utils.OBJECT_KEY, objectKey);
-                endpointMap.put(S3Utils.ACCESS_KEY, tempUser.getAccessKey());
-                endpointMap.put(S3Utils.SECRET_KEY, tempUser.getSecretKey());
-                // Use the internal S3 endpoint (e.g., http://minio:9000) so the provider DP
-                // can reach MinIO from within the Docker network. externalPresignedEndpoint
-                // is only for URLs served to external API callers, not for server-side uploads.
-                String endpointOverride = s3Properties.getEndpoint();
-                if (StringUtils.isNotBlank(endpointOverride)) {
-                    endpointMap.put(S3Utils.ENDPOINT_OVERRIDE, endpointOverride);
-                }
-
-                List<EndpointProperty> endpointProperties = endpointMap.entrySet().stream()
-                        .map(e -> EndpointProperty.Builder.newInstance()
-                                .name(e.getKey())
-                                .value(e.getValue())
-                                .build())
-                        .toList();
-
-                dataAddressForMessage = DataAddress.Builder.newInstance()
-                        .endpointProperties(endpointProperties)
+                DataFlowPrepareMessage prepareMessage = applyCommonDataPlaneFields(
+                        DataFlowPrepareMessage.Builder.newInstance(),
+                        transferProcessInitialized,
+                        DataTransferFormat.HTTP_PUSH.format())
+                        .processId(transferProcessInitialized.getId())
+                        .agreementId(transferProcessInitialized.getAgreementId())
+                        .datasetId(transferProcessInitialized.getDatasetId())
+                        .callbackAddress(dataTransferProperties.dataPlaneFeedbackAddress())
+                        .metadata(buildHttpPushPrepareMetadata(
+                                transferProcessInitialized.getTenantId(),
+                                transferProcessInitialized.getId()))
                         .build();
+                DataFlowPrepareResponse prepareResponse = dataPlaneClient.prepare(
+                        prepareMessage,
+                        DataTransferFormat.HTTP_PUSH.format(),
+                        null);
+                dataAddressForMessage = prepareResponseToDataAddress(
+                        prepareResponse.getDataAddress(),
+                        DataTransferFormat.HTTP_PUSH.format());
+                assignedEndpoint = dataPlaneClient.getStickyEndpoint(transferProcessInitialized.getId()).orElse(null);
             } catch (Exception e) {
-                log.error("Failed to create temporary S3 user for HTTP-PUSH transfer {}: {}",
+                assignedEndpoint = dataPlaneClient.getStickyEndpoint(transferProcessInitialized.getId()).orElse(null);
+                cleanupPreparedDataPlaneSession(
+                        transferProcessInitialized.getId(),
+                        DataTransferFormat.HTTP_PUSH.format(),
+                        null,
+                        assignedEndpoint,
+                        "HTTP-PUSH prepare cleanup failed for process");
+                log.error("Failed to prepare HTTP-PUSH dataplane for transfer {}: {}",
                         transferProcessInitialized.getId(), e.getMessage());
                 TransferProcess terminated = transferProcessInitialized.copyWithNewTransferState(TransferState.TERMINATED);
                 transferProcessRepository.save(terminated);
@@ -242,8 +228,6 @@ public class DataTransferAPIService {
                 .dataAddress(dataAddressForMessage)
                 .build();
 
-        boolean succeeded = false;
-        try {
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
                 DataTransferCallback.getConsumerDataTransferRequest(transferProcessInitialized.getCallbackAddress()),
                 TransferSerializer.serializeProtocolJsonNode(transferRequestMessage),
@@ -269,6 +253,7 @@ public class DataTransferAPIService {
                         .role(IConstants.ROLE_CONSUMER)
                         .state(transferProcessFromResponse.getState())
                         .tenantId(transferProcessInitialized.getTenantId())
+                        .assignedDataplaneEndpoint(assignedEndpoint)
                         .created(transferProcessInitialized.getCreated())
                         .createdBy(transferProcessInitialized.getCreatedBy())
                         .modified(transferProcessInitialized.getModified())
@@ -286,7 +271,6 @@ public class DataTransferAPIService {
                                 "role", IConstants.ROLE_API,
                                 "consumerPid", transferProcessForDB.getConsumerPid(),
                                 "providerPid", transferProcessForDB.getProviderPid()));
-                succeeded = true;
             } catch (JsonProcessingException e) {
                 log.error("Transfer process from response not valid");
                 throw new DataTransferAPIException(e.getLocalizedMessage(), e);
@@ -312,27 +296,40 @@ public class DataTransferAPIService {
                     publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
                             "Transfer process request failed",
                             details);
+                    if (isHttpPush) {
+                        cleanupPreparedDataPlaneSession(
+                                transferProcessInitialized.getId(),
+                                DataTransferFormat.HTTP_PUSH.format(),
+                                null,
+                                assignedEndpoint,
+                                "HTTP-PUSH request cleanup failed for process");
+                    }
                     throw new DataTransferAPIException(transferError, "Error making request");
                 } catch (jakarta.validation.ValidationException ve) {
                     log.warn("Provider error response is not a DSP TransferError: {}", response.getData());
+                    if (isHttpPush) {
+                        cleanupPreparedDataPlaneSession(
+                                transferProcessInitialized.getId(),
+                                DataTransferFormat.HTTP_PUSH.format(),
+                                null,
+                                assignedEndpoint,
+                                "HTTP-PUSH request cleanup failed for process");
+                    }
                     throw new DataTransferAPIException("Transfer request failed: " + response.getMessage());
                 }
             } catch (JsonProcessingException ex) {
+                if (isHttpPush) {
+                    cleanupPreparedDataPlaneSession(
+                            transferProcessInitialized.getId(),
+                            DataTransferFormat.HTTP_PUSH.format(),
+                            null,
+                            assignedEndpoint,
+                            "HTTP-PUSH request cleanup failed for process");
+                }
                 throw new DataTransferAPIException("Error occurred");
             }
         }
         return TransferSerializer.serializePlainJsonNode(transferProcessForDB);
-        } finally {
-            if (isHttpPush && !succeeded && dataAddressForMessage != null) {
-                // Temp S3 user was created — clean it up on failure
-                try {
-                    temporaryBucketUserService.deleteTemporaryUser(transferProcessInitialized.getId());
-                } catch (Exception e) {
-                    log.warn("Could not clean up temp S3 user after requestTransfer failure for process {}: {}",
-                            transferProcessInitialized.getId(), e.getMessage());
-                }
-            }
-        }
     }
 
     /**
@@ -345,7 +342,7 @@ public class DataTransferAPIService {
     public JsonNode startTransfer(String transferProcessId) {
         TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 
-        if (StringUtils.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole()) && TransferState.REQUESTED.equals(transferProcess.getState())) {
+        if (Strings.CS.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole()) && TransferState.REQUESTED.equals(transferProcess.getState())) {
             throw new DataTransferAPIException("State transition aborted, consumer can not transit from " + transferProcess.getState().name()
                     + " to " + TransferState.STARTED.name());
         }
@@ -360,10 +357,10 @@ public class DataTransferAPIService {
         String transportProfile = null;
         String assignedEndpoint = null;
 
-        if (StringUtils.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole())) {
+        if (Strings.CS.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole())) {
             address = DataTransferCallback.getProviderDataTransferStart(transferProcess.getCallbackAddress(), transferProcess.getProviderPid());
         }
-        if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
+        if (Strings.CS.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
             address = DataTransferCallback.getConsumerDataTransferStart(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
             transportProfile = transportProfileResolver.resolve(transferProcess.getFormat());
             if (transportProfile != null) {
@@ -409,8 +406,20 @@ public class DataTransferAPIService {
                             .metadata(buildPrepareMetadata(transferProcess.getTenantId(),
                                     transferProcess.getDatasetId(), transferProcess.getDataAddress()))
                             .build();
-                    DataFlowPrepareResponse prepareResponse = dataPlaneClient.prepare(prepareMsg, "HttpData-PULL");
+                    DataFlowPrepareResponse prepareResponse;
+                    try {
+                        prepareResponse = dataPlaneClient.prepare(prepareMsg, "HttpData-PULL", null);
+                    } catch (Exception prepareEx) {
+                        assignedEndpoint = dataPlaneClient.getStickyEndpoint(transferProcess.getId()).orElse(null);
+                        cleanupPreparedDataPlaneSession(transferProcess.getId(), "HttpData-PULL", null, assignedEndpoint,
+                                "HTTP-PULL FILE DP prepare failed (best-effort cleanup)");
+                        throw new DataTransferAPIException("HTTP-PULL DP prepare failed: " + prepareEx.getMessage());
+                    }
+                    // Capture sticky immediately so it is available for cleanup if the response is unusable.
+                    assignedEndpoint = dataPlaneClient.getStickyEndpoint(transferProcess.getId()).orElse(null);
                     if (prepareResponse == null || prepareResponse.getDataAddress() == null) {
+                        cleanupPreparedDataPlaneSession(transferProcess.getId(), "HttpData-PULL", null, assignedEndpoint,
+                                "HTTP-PULL DP prepare returned no dataAddress");
                         throw new DataTransferAPIException("HTTP-PULL DP prepare returned no dataAddress");
                     }
                     dataAddress = prepareResponseToDataAddress(prepareResponse.getDataAddress(), "HttpData-PULL");
@@ -492,6 +501,14 @@ public class DataTransferAPIService {
                         credentialUtils.getConnectorCredentials());
         log.info("Response received {}", response);
         if (response.isSuccess()) {
+            // For HTTP-PULL FILE: the DP was used only as a helper to generate a presigned URL.
+            // The PREPARED session has no ongoing data flow; terminate it so it does not accumulate.
+            // gRPC sessions (transportProfile != null) are NOT terminated here — the DP hosts active streaming.
+            if (transportProfile == null && assignedEndpoint != null) {
+                cleanupPreparedDataPlaneSession(transferProcessStarted.getId(), transferProcessStarted.getFormat(),
+                        null, assignedEndpoint,
+                        "HTTP-PULL FILE DP terminate failed (best-effort)");
+            }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
                     "Transfer process started successfully",
                     auditMap("transferProcess", transferProcessStarted,
@@ -520,6 +537,10 @@ public class DataTransferAPIService {
                     .datasetId(transferProcessStarted.getDatasetId())
                     .retryCount(transferProcessStarted.getRetryCount())
                     .tenantId(transferProcessStarted.getTenantId())
+                    // Preserve routing metadata so that if the best-effort DP terminate below fails,
+                    // later cleanup/recovery can still route back to the same DP instance.
+                    .transportProfile(transportProfile)
+                    .assignedDataplaneEndpoint(assignedEndpoint)
                     .created(transferProcessStarted.getCreated())
                     .createdBy(transferProcessStarted.getCreatedBy())
                     .modified(transferProcessStarted.getModified())
@@ -527,11 +548,14 @@ public class DataTransferAPIService {
                     .version(transferProcessStarted.getVersion())
                     .build();
             transferProcessRepository.save(rollback);
-            // Best-effort: if a gRPC DP session was prepared, terminate it so resources are not leaked.
-            if (transportProfile != null) {
+            // Best-effort: if any DP session was prepared (gRPC, HTTP-PULL), terminate it and
+            // clear the sticky assignment so the router does not retain a stale entry.
+            // transportProfile is set for gRPC; assignedEndpoint can be non-null for HTTP-PULL
+            // even though transportProfile is null.
+            if (transportProfile != null || assignedEndpoint != null) {
                 cleanupPreparedDataPlaneSession(transferProcessStarted.getId(), transferProcessStarted.getFormat(),
                         transportProfile, assignedEndpoint,
-                        "Best-effort DP terminate failed for rolled-back gRPC process");
+                        "Best-effort DP terminate failed for rolled-back process");
             }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
                     "Transfer process start failed",
@@ -569,6 +593,36 @@ public class DataTransferAPIService {
                 responseMap.get(DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT_TYPE),
                 defaultStartMessageEndpointType(transferType)));
         return builder.build();
+    }
+
+    /**
+     * Builds the DPS prepare metadata for an HTTP-PUSH consumer request.
+     *
+     * <p>The sink section carries only the consumer bucket coordinates (name, key, region, and
+     * optional endpoint override). Access/secret credentials are intentionally omitted: the DP
+     * creates a temporary IAM user during {@code prepare()} itself, so the CP does not need to
+     * supply bucket credentials at this stage. Requiring them would create an unnecessary
+     * bootstrap dependency on credential records that may not yet exist.</p>
+     *
+     * @param tenantId  the consumer tenant (used to resolve the per-tenant bucket name)
+     * @param objectKey the S3 object key for the pushed artifact (transfer process id)
+     * @return metadata map with {@code sink.s3} bucket/key coordinates but no credentials
+     */
+    private Map<String, Object> buildHttpPushPrepareMetadata(String tenantId, String objectKey) {
+        String bucketName = tenantBucketResolver.resolveBucketName(tenantId);
+        Map<String, Object> s3Section = new LinkedHashMap<>();
+        s3Section.put(DataPlaneConstants.METADATA_S3_BUCKET_NAME, bucketName);
+        s3Section.put(DataPlaneConstants.METADATA_S3_OBJECT_KEY, objectKey);
+        String region = s3Properties.getRegion();
+        if (StringUtils.isNotBlank(region)) {
+            s3Section.put(DataPlaneConstants.METADATA_S3_REGION, region);
+        }
+        String endpoint = s3Properties.getEndpoint();
+        if (StringUtils.isNotBlank(endpoint)) {
+            s3Section.put(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, endpoint);
+        }
+        return Map.of(DataPlaneConstants.METADATA_SECTION_SINK,
+                Map.of(DataPlaneConstants.METADATA_SECTION_S3, Map.copyOf(s3Section)));
     }
 
     /**
@@ -615,14 +669,14 @@ public class DataTransferAPIService {
     }
 
     private String resolveLocalParticipantId(TransferProcess transferProcess) {
-        if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
+        if (Strings.CS.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
             return transferProcess.getProviderPid();
         }
         return transferProcess.getConsumerPid();
     }
 
     private String resolveRemoteParticipantId(TransferProcess transferProcess) {
-        if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
+        if (Strings.CS.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
             return transferProcess.getConsumerPid();
         }
         return transferProcess.getProviderPid();
@@ -662,10 +716,10 @@ public class DataTransferAPIService {
                 .build();
 
         String address = null;
-        if (StringUtils.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole())) {
+        if (Strings.CS.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole())) {
             address = DataTransferCallback.getProviderDataTransferCompletion(transferProcess.getCallbackAddress(), transferProcess.getProviderPid());
         }
-        if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
+        if (Strings.CS.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
             address = DataTransferCallback.getConsumerDataTransferCompletion(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
         }
         log.info("Sending TransferCompletionMessage to {}", address);
@@ -691,6 +745,21 @@ public class DataTransferAPIService {
             }
             transferProcessRepository.save(transferProcessCompleted);
             log.info("Transfer process {} saved", transferProcessCompleted.getId());
+            // Terminate any PREPARED DP session (e.g. HTTP-PUSH consumer or HTTP-PULL FILE helper prepare)
+            // that was not yet cleaned up by a lifecycle call. Mirrors the logic in terminateTransfer().
+            if (transferProcess.getTransportProfile() != null || transferProcess.getAssignedDataplaneEndpoint() != null) {
+                if (transferProcess.getAssignedDataplaneEndpoint() != null) {
+                    dataPlaneClient.restoreStickyAssignment(transferProcess.getId(),
+                            transferProcess.getAssignedDataplaneEndpoint());
+                }
+                try {
+                    dataPlaneClient.terminate(transferProcess.getId(), transferProcess.getFormat(),
+                            transferProcess.getTransportProfile());
+                } catch (Exception e) {
+                    log.warn("DP terminate call failed for process {} (best-effort); sticky cleanup will still run: {}",
+                            transferProcess.getId(), e.getMessage());
+                }
+            }
             dataPlaneClient.clearStickyAssignment(transferProcess.getId());
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED,
                     "Transfer process completed successfully",
@@ -744,10 +813,10 @@ public class DataTransferAPIService {
         log.info("Sending TransferSuspensionMessage to {}", transferProcess.getCallbackAddress());
         String address = null;
 
-        if (StringUtils.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole())) {
+        if (Strings.CS.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole())) {
             address = DataTransferCallback.getProviderDataTransferSuspension(transferProcess.getCallbackAddress(), transferProcess.getProviderPid());
         }
-        if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
+        if (Strings.CS.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
             address = DataTransferCallback.getConsumerDataTransferSuspension(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
         }
         if (address == null) {
@@ -830,10 +899,10 @@ public class DataTransferAPIService {
         log.info("Sending TransferTerminationMessage to {}", transferProcess.getCallbackAddress());
         String address = null;
 
-        if (StringUtils.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole())) {
+        if (Strings.CS.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole())) {
             address = DataTransferCallback.getProviderDataTransferTermination(transferProcess.getCallbackAddress(), transferProcess.getProviderPid());
         }
-        if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
+        if (Strings.CS.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
             address = DataTransferCallback.getConsumerDataTransferTermination(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
         }
         if (address == null) {
@@ -848,7 +917,7 @@ public class DataTransferAPIService {
             TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
-            if (transferProcess.getTransportProfile() != null) {
+            if (transferProcess.getTransportProfile() != null || transferProcess.getAssignedDataplaneEndpoint() != null) {
                 // Restore sticky from persisted endpoint so the DP call reaches the right instance
                 // even after a CP restart that cleared the in-memory stickyMap.
                 if (transferProcess.getAssignedDataplaneEndpoint() != null) {
@@ -962,14 +1031,23 @@ public class DataTransferAPIService {
                     .build();
             if (transportProfile != null) {
                 dataPlaneClient.start(startMessage, transportProfile);
-                // Persist the selected DP endpoint so sticky routing survives a CP restart.
-                dataPlaneClient.getStickyEndpoint(transferProcessDownloading.getId()).ifPresent(endpoint -> {
+            } else {
+                dataPlaneClient.start(startMessage, null);
+            }
+            // Persist the selected DP endpoint for both profile-based and HTTP transports
+            // so sticky routing survives a CP restart.
+            // If the DP completes very quickly and its callback already advanced the TP version,
+            // this secondary save will lose the optimistic-lock race. That is benign: the transfer
+            // succeeded and the endpoint no longer matters for routing.
+            dataPlaneClient.getStickyEndpoint(transferProcessDownloading.getId()).ifPresent(endpoint -> {
+                try {
                     TransferProcess withEndpoint = transferProcessDownloading.withAssignedDataplaneEndpoint(endpoint);
                     transferProcessRepository.save(withEndpoint);
-                });
-            } else {
-                dataPlaneClient.start(startMessage);
-            }
+                } catch (OptimisticLockingFailureException e) {
+                    log.info("Endpoint persistence skipped for {} — TP already moved forward (DP completed before save)",
+                            transferProcessDownloading.getId());
+                }
+            });
         } catch (Exception e) {
             transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
             return CompletableFuture.failedFuture(e);
@@ -1001,11 +1079,44 @@ public class DataTransferAPIService {
         policyCheck(transferProcess);
 
         try {
-            // Generate presigned URL directly using the connector's own S3 client.
-            // The artifact is stored in the consumer's S3 bucket with the transferProcessId as the object key.
+            // Delegate presigned URL generation to the HTTP-PULL Data Plane so that
+            // the DP can use its own S3 credentials, correct per-tenant bucket, and
+            // presigning infrastructure — consistent with how provider startTransfer works.
+            // The CP supplies sink.s3 metadata so the DP does not need to know about tenants.
             // TODO verify Duration does not exceed EndDateTime, if it is present
-            String bucketName = tenantBucketResolver.resolveBucketName(transferProcess.getTenantId());
-            String artifactURL = s3ClientService.generateGetPresignedUrl(bucketName, transferProcessId, Duration.ofDays(7L));
+            DataFlowPrepareMessage viewPrepareMsg = applyCommonDataPlaneFields(
+                            DataFlowPrepareMessage.Builder.newInstance(), transferProcess, "HttpData-PULL")
+                    .processId(transferProcess.getId())
+                    .agreementId(transferProcess.getAgreementId())
+                    .datasetId(transferProcess.getDatasetId())
+                    .callbackAddress(dataTransferProperties.dataPlaneFeedbackAddress())
+                    .metadata(buildViewPrepareMetadata(transferProcess.getTenantId(), transferProcessId))
+                    .build();
+            DataFlowPrepareResponse viewPrepareResponse;
+            String viewStickyEndpoint;
+            try {
+                viewPrepareResponse = dataPlaneClient.prepare(viewPrepareMsg, "HttpData-PULL", null);
+                // Capture sticky immediately after prepare so it can be cleared during cleanup.
+                viewStickyEndpoint = dataPlaneClient.getStickyEndpoint(transferProcess.getId()).orElse(null);
+            } catch (DataTransferAPIException e) {
+                throw e;
+            } catch (Exception prepareEx) {
+                String stickyOnFailure = dataPlaneClient.getStickyEndpoint(transferProcess.getId()).orElse(null);
+                cleanupPreparedDataPlaneSession(transferProcess.getId(), "HttpData-PULL", null,
+                        stickyOnFailure, "VIEW DP prepare failed (best-effort cleanup)");
+                throw new DataTransferAPIException("HTTP-PULL DP VIEW prepare failed: " + prepareEx.getMessage());
+            }
+            if (viewPrepareResponse == null || viewPrepareResponse.getDataAddress() == null
+                    || !viewPrepareResponse.getDataAddress().containsKey(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY)) {
+                cleanupPreparedDataPlaneSession(transferProcess.getId(), "HttpData-PULL", null,
+                        viewStickyEndpoint, "VIEW DP terminate failed after missing presigned URL");
+                throw new DataTransferAPIException("HTTP-PULL DP VIEW prepare returned no presigned URL");
+            }
+            String artifactURL = viewPrepareResponse.getDataAddress().get(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY);
+            // VIEW is a helper-only prepare: the DP session is not needed after the URL is obtained.
+            // Terminate the PREPARED record and clear the sticky entry so neither accumulates indefinitely.
+            cleanupPreparedDataPlaneSession(transferProcess.getId(), "HttpData-PULL", null,
+                    viewStickyEndpoint, "VIEW DP terminate failed (best-effort)");
             publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
             publisher.publishEvent(AuditEventType.TRANSFER_VIEW,
                     "Transfer process (view) generated artifact URL",
@@ -1014,6 +1125,8 @@ public class DataTransferAPIService {
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid()));
             return artifactURL;
+        } catch (DataTransferAPIException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Error while accessing data", e);
             publisher.publishEvent(AuditEventType.TRANSFER_VIEW,
@@ -1305,6 +1418,37 @@ public class DataTransferAPIService {
         Map<String, Object> s3Metadata = new LinkedHashMap<>();
         s3PropertiesMap.forEach(s3Metadata::put);
         return Map.copyOf(s3Metadata);
+    }
+
+    /**
+     * Builds the DPS prepare metadata for an HTTP-PULL VIEW request.
+     *
+     * <p>The sink section carries the consumer's own S3 bucket and object coordinates so
+     * the Data Plane can generate a presigned GET URL for the stored artifact. The DP uses
+     * its own admin S3 credentials for presigning; therefore this method intentionally
+     * omits access/secret keys to avoid an unnecessary dependency on bucket credential
+     * records in the VIEW path.</p>
+     *
+     * @param tenantId  the tenant that owns the data (used to resolve the per-tenant bucket)
+     * @param objectKey the S3 object key (transfer process ID used at download time)
+     * @return metadata map with {@code sink.mode = "VIEW"} and {@code sink.s3} bucket/object info
+     */
+    private Map<String, Object> buildViewPrepareMetadata(String tenantId, String objectKey) {
+        String bucketName = tenantBucketResolver.resolveBucketName(tenantId);
+        Map<String, Object> s3Section = new LinkedHashMap<>();
+        s3Section.put(DataPlaneConstants.METADATA_S3_BUCKET_NAME, bucketName);
+        s3Section.put(DataPlaneConstants.METADATA_S3_OBJECT_KEY, objectKey);
+        String region = s3Properties.getRegion();
+        if (StringUtils.isNotBlank(region)) {
+            s3Section.put(DataPlaneConstants.METADATA_S3_REGION, region);
+        }
+        if (StringUtils.isNotBlank(s3Properties.getEndpoint())) {
+            s3Section.put(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, s3Properties.getEndpoint());
+        }
+        Map<String, Object> sinkSection = new LinkedHashMap<>();
+        sinkSection.put(DataPlaneConstants.METADATA_FIELD_MODE, "VIEW");
+        sinkSection.put(DataPlaneConstants.METADATA_SECTION_S3, Map.copyOf(s3Section));
+        return Map.of(DataPlaneConstants.METADATA_SECTION_SINK, Map.copyOf(sinkSection));
     }
 
     private Map<String, String> buildScopedSinkS3Properties(String tenantId, String objectKey) {

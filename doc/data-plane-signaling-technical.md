@@ -559,6 +559,40 @@ The CP publishes to `audit_events` whenever a DP registers or deregisters:
 | `server.port` | Listening port | `9090` (pull) / `9091` (push) |
 | `server.ssl.enabled` | Enable TLS | `true` / `false` |
 
+#### Profile-specific overrides
+
+Each standalone Data Plane module now also includes:
+
+- `application-consumer.properties`
+- `application-provider.properties`
+
+Spring Boot loads the base `application.properties` first and then applies the active
+profile-specific file as an override. In this repository, those profile files redefine only the
+role-specific keys, for example:
+
+- `server.port`
+- `spring.application.name`
+- `spring.data.mongodb.uri`
+- `dataplane.id`
+- `dataplane.endpoint`
+- `dataplane.control-plane-admin-endpoint`
+- `s3.bucketName`
+- `application.encryption.key`
+- `grpc.server.port` for the gRPC Data Plane
+
+The remaining shared settings continue to come from `application.properties`, including
+properties such as `dataplane.api-key`, `dataplane.control-plane-admin-secret`, `s3.endpoint`,
+`s3.accessKey`, `s3.secretKey`, `s3.region`, and TLS defaults.
+
+As a result, the repository-provided profile files are not intended to be used alone. When a
+deployment activates `consumer` or `provider`, the effective configuration is:
+
+- `application.properties` + `application-consumer.properties`, or
+- `application.properties` + `application-provider.properties`
+
+If an operator does not want to use Spring profiles, a single complete `application.properties`
+file is also valid.
+
 ### S3 properties required by the push DP
 
 The push DP's local S3 config is relevant only for its own optional direct-DPS `prepare()` flow.
