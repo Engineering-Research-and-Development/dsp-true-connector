@@ -948,14 +948,18 @@ class DataTransferAPIServiceTest {
                 .processId(objectKey)
                 .dataAddress(Map.of("presignedUrl", "https://example.com/presigned-url"))
                 .build();
-        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull()))
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class),
+                eq(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getFormat()),
+                isNull()))
                 .thenReturn(viewPrepareResponse);
 
         assertDoesNotThrow(() -> apiService.viewData(objectKey));
 
         // viewData must delegate to the HTTP-PULL DP prepare, not call S3 directly
         ArgumentCaptor<DataFlowPrepareMessage> prepareCaptor = ArgumentCaptor.forClass(DataFlowPrepareMessage.class);
-        verify(dataPlaneClient).prepare(prepareCaptor.capture(), eq("HttpData-PULL"), isNull());
+        verify(dataPlaneClient).prepare(prepareCaptor.capture(),
+                eq(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getFormat()),
+                isNull());
         verify(s3ClientService, never()).generateGetPresignedUrl(any(), any(), any());
         // Prepare message must carry VIEW mode in sink metadata
         @SuppressWarnings("unchecked")
@@ -1012,7 +1016,9 @@ class DataTransferAPIServiceTest {
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(objectKey));
 
-        verify(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull());
+        verify(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class),
+                eq(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getFormat()),
+                isNull());
     }
 
 
@@ -1061,12 +1067,16 @@ class DataTransferAPIServiceTest {
                 .processId(objectKey)
                 .dataAddress(Map.of(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY, "https://example.com/presigned"))
                 .build();
-        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull()))
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class),
+                eq(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getFormat()),
+                isNull()))
                 .thenReturn(viewPrepareResponse);
 
         // Must succeed — bucket credentials must not be required for VIEW prepare
         assertDoesNotThrow(() -> apiService.viewData(objectKey));
-        verify(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull());
+        verify(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class),
+                eq(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getFormat()),
+                isNull());
         // Verify bucket credentials are never consulted for the VIEW path
         verify(bucketCredentialsService, never()).getBucketCredentials(anyString());
     }
@@ -1087,13 +1097,17 @@ class DataTransferAPIServiceTest {
                 .processId(objectKey)
                 .dataAddress(Map.of(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY, "https://example.com/presigned"))
                 .build();
-        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull()))
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class),
+                eq(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getFormat()),
+                isNull()))
                 .thenReturn(viewPrepareResponse);
 
         apiService.viewData(objectKey);
 
         ArgumentCaptor<DataFlowPrepareMessage> prepareCaptor = ArgumentCaptor.forClass(DataFlowPrepareMessage.class);
-        verify(dataPlaneClient).prepare(prepareCaptor.capture(), eq("HttpData-PULL"), isNull());
+        verify(dataPlaneClient).prepare(prepareCaptor.capture(),
+                eq(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getFormat()),
+                isNull());
         @SuppressWarnings("unchecked")
         Map<String, Object> sinkSection = (Map<String, Object>) prepareCaptor.getValue().getMetadata()
                 .get(DataPlaneConstants.METADATA_SECTION_SINK);
@@ -1126,14 +1140,16 @@ class DataTransferAPIServiceTest {
                 .processId(objectKey)
                 .dataAddress(Map.of(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY, "https://example.com/presigned-url"))
                 .build();
-        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull()))
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class),
+                eq(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getFormat()),
+                isNull()))
                 .thenReturn(viewPrepareResponse);
         when(dataPlaneClient.getStickyEndpoint(objectKey)).thenReturn(Optional.of("http://dp-view:9090"));
 
         apiService.viewData(objectKey);
 
         // VIEW is a helper-only prepare — the PREPARED DP session must be terminated and sticky cleared
-        verify(dataPlaneClient).terminate(objectKey, "HttpData-PULL", null);
+        verify(dataPlaneClient).terminate(objectKey, DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getFormat(), null);
         verify(dataPlaneClient).clearStickyAssignment(objectKey);
     }
 

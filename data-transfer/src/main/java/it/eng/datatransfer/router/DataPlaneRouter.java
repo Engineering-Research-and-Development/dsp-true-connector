@@ -153,11 +153,11 @@ public class DataPlaneRouter {
      * @param processId the transfer process ID; {@code null} always returns empty
      * @return the pinned endpoint, or {@link java.util.Optional#empty()} if none
      */
-    public java.util.Optional<String> getStickyEndpoint(String processId) {
+    public Optional<String> getStickyEndpoint(String processId) {
         if (processId == null) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
-        return java.util.Optional.ofNullable(stickyMap.get(processId));
+        return Optional.ofNullable(stickyMap.get(processId));
     }
 
     /**

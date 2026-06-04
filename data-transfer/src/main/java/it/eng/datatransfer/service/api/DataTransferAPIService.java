@@ -1079,13 +1079,13 @@ public class DataTransferAPIService {
         policyCheck(transferProcess);
 
         try {
-            // Delegate presigned URL generation to the HTTP-PULL Data Plane so that
+            // Delegate presigned URL generation to the Data Plane so that
             // the DP can use its own S3 credentials, correct per-tenant bucket, and
             // presigning infrastructure — consistent with how provider startTransfer works.
             // The CP supplies sink.s3 metadata so the DP does not need to know about tenants.
             // TODO verify Duration does not exceed EndDateTime, if it is present
             DataFlowPrepareMessage viewPrepareMsg = applyCommonDataPlaneFields(
-                            DataFlowPrepareMessage.Builder.newInstance(), transferProcess, "HttpData-PULL")
+                            DataFlowPrepareMessage.Builder.newInstance(), transferProcess,  transferProcess.getFormat())
                     .processId(transferProcess.getId())
                     .agreementId(transferProcess.getAgreementId())
                     .datasetId(transferProcess.getDatasetId())
@@ -1095,27 +1095,27 @@ public class DataTransferAPIService {
             DataFlowPrepareResponse viewPrepareResponse;
             String viewStickyEndpoint;
             try {
-                viewPrepareResponse = dataPlaneClient.prepare(viewPrepareMsg, "HttpData-PULL", null);
+                viewPrepareResponse = dataPlaneClient.prepare(viewPrepareMsg,  transferProcess.getFormat(), null);
                 // Capture sticky immediately after prepare so it can be cleared during cleanup.
                 viewStickyEndpoint = dataPlaneClient.getStickyEndpoint(transferProcess.getId()).orElse(null);
             } catch (DataTransferAPIException e) {
                 throw e;
             } catch (Exception prepareEx) {
                 String stickyOnFailure = dataPlaneClient.getStickyEndpoint(transferProcess.getId()).orElse(null);
-                cleanupPreparedDataPlaneSession(transferProcess.getId(), "HttpData-PULL", null,
+                cleanupPreparedDataPlaneSession(transferProcess.getId(),  transferProcess.getFormat(), null,
                         stickyOnFailure, "VIEW DP prepare failed (best-effort cleanup)");
                 throw new DataTransferAPIException("HTTP-PULL DP VIEW prepare failed: " + prepareEx.getMessage());
             }
             if (viewPrepareResponse == null || viewPrepareResponse.getDataAddress() == null
                     || !viewPrepareResponse.getDataAddress().containsKey(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY)) {
-                cleanupPreparedDataPlaneSession(transferProcess.getId(), "HttpData-PULL", null,
+                cleanupPreparedDataPlaneSession(transferProcess.getId(),  transferProcess.getFormat(), null,
                         viewStickyEndpoint, "VIEW DP terminate failed after missing presigned URL");
                 throw new DataTransferAPIException("HTTP-PULL DP VIEW prepare returned no presigned URL");
             }
             String artifactURL = viewPrepareResponse.getDataAddress().get(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY);
             // VIEW is a helper-only prepare: the DP session is not needed after the URL is obtained.
             // Terminate the PREPARED record and clear the sticky entry so neither accumulates indefinitely.
-            cleanupPreparedDataPlaneSession(transferProcess.getId(), "HttpData-PULL", null,
+            cleanupPreparedDataPlaneSession(transferProcess.getId(),  transferProcess.getFormat(), null,
                     viewStickyEndpoint, "VIEW DP terminate failed (best-effort)");
             publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
             publisher.publishEvent(AuditEventType.TRANSFER_VIEW,
