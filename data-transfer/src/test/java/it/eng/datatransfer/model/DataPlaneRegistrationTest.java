@@ -15,14 +15,14 @@ public class DataPlaneRegistrationTest {
     public void buildWithRequiredFieldsSucceeds() {
         DataPlaneRegistration reg = DataPlaneRegistration.Builder.newInstance()
                 .endpoint("http://dataplane.example.com")
-                .supportedTransferTypes(Set.of("HttpData-PULL"))
+                .supportedTransferTypes(Set.of(DataTransferFormat.HTTP_PULL.format()))
                 .build();
 
         assertNotNull(reg);
         assertNotNull(reg.getId());
         assertNotNull(reg.getRegisteredAt());
         assertEquals("http://dataplane.example.com", reg.getEndpoint());
-        assertTrue(reg.getSupportedTransferTypes().contains("HttpData-PULL"));
+        assertTrue(reg.getSupportedTransferTypes().contains(DataTransferFormat.HTTP_PULL.format()));
     }
 
     @Test
@@ -30,7 +30,7 @@ public class DataPlaneRegistrationTest {
     public void missingEndpointThrowsValidation() {
         assertThrows(ValidationException.class, () ->
                 DataPlaneRegistration.Builder.newInstance()
-                        .supportedTransferTypes(Set.of("HttpData-PULL"))
+                        .supportedTransferTypes(Set.of(DataTransferFormat.HTTP_PULL.format()))
                         .build());
     }
 

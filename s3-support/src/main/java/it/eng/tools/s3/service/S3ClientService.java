@@ -1,5 +1,6 @@
 package it.eng.tools.s3.service;
 
+import it.eng.tools.s3.service.upload.ResumableUploadRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.InputStream;
@@ -15,19 +16,43 @@ public interface S3ClientService {
 
     /**
      * Uploads a file to the specified bucket with the specified object key.
-     * <p>
-     * After stream is processed, it will be closed automatically.
      *
-     * @param inputStream        the input stream of the file to upload
+     * <p>After stream is processed, it will be closed automatically.
+     *
+     * @param inputStream             the input stream of the file to upload
      * @param destinationS3Properties the properties of the destination S3 bucket
-     * @param contentType        the content type of the file
-     * @param contentDisposition the content disposition of the file
+     * @param contentType             the content type of the file
+     * @param contentDisposition      the content disposition of the file
      * @return a CompletableFuture that completes with the ETag of the uploaded object
      */
     CompletableFuture<String> uploadFile(InputStream inputStream,
                                          Map<String, String> destinationS3Properties,
                                          String contentType,
                                          String contentDisposition);
+
+    /**
+     * Uploads a file to the specified bucket with resumable checkpoint support.
+     *
+     * <p>If the {@link ResumableUploadRequest} carries an existing {@code uploadId},
+     * the multipart upload is resumed from where it left off instead of starting a
+     * new one. Callers can receive progress updates via the embedded
+     * {@link it.eng.tools.s3.service.upload.UploadCheckpointCallback} and trigger a
+     * clean pause via the {@code suspendRequested} flag.
+     *
+     * <p>After the stream is processed, it will be closed automatically.
+     *
+     * @param inputStream             the input stream of the file to upload
+     * @param destinationS3Properties the properties of the destination S3 bucket
+     * @param contentType             the content type of the file
+     * @param contentDisposition      the content disposition of the file
+     * @param resumableUploadRequest  the resumable upload context
+     * @return a CompletableFuture that completes with the ETag of the uploaded object
+     */
+    CompletableFuture<String> uploadFile(InputStream inputStream,
+                                         Map<String, String> destinationS3Properties,
+                                         String contentType,
+                                         String contentDisposition,
+                                         ResumableUploadRequest resumableUploadRequest);
 
     /**
      * Downloads a file from the specified bucket with the specified object key.

@@ -1,5 +1,6 @@
 package it.eng.datatransfer.rest.protocol;
 
+import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
 import it.eng.datatransfer.model.TransferCompletionMessage;
 import it.eng.datatransfer.model.TransferStartMessage;
@@ -79,6 +80,19 @@ public class ConsumerDataTransferCallbackControllerTest {
         when(dataTransferService.startDataTransfer(any(TransferStartMessage.class), any(String.class), isNull()))
                 .thenThrow(new TransferProcessNotFoundException("TransferProcess not found test"));
         assertThrows(TransferProcessNotFoundException.class, () ->
+                controller.startDataTransfer(TENANT_ID, DataTransferMockObjectUtil.CONSUMER_PID,
+                        TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE)));
+    }
+
+    @Test
+    @DisplayName("Start TransferProcess - rejects resume when local side initiated the suspension")
+    public void startDataTransfer_rejectsNonInitiatorResume() {
+        when(dataTransferService.startDataTransfer(any(TransferStartMessage.class), any(String.class), isNull()))
+                .thenThrow(new TransferProcessInvalidStateException(
+                        "Only the suspend initiator may resume via protocol",
+                        DataTransferMockObjectUtil.CONSUMER_PID,
+                        DataTransferMockObjectUtil.PROVIDER_PID));
+        assertThrows(TransferProcessInvalidStateException.class, () ->
                 controller.startDataTransfer(TENANT_ID, DataTransferMockObjectUtil.CONSUMER_PID,
                         TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE)));
     }

@@ -4,6 +4,8 @@ import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.upload.ResumableUploadRequest;
+import it.eng.tools.s3.service.upload.UploadCheckpointCallback;
 import it.eng.tools.s3.util.S3Utils;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -104,6 +107,8 @@ public class S3ClientServiceImplTest {
 
         // Configure default behavior for mock upload strategy
         lenient().when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture("test-etag"));
+        lenient().when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.completedFuture("test-etag"));
     }
 
@@ -943,5 +948,30 @@ public class S3ClientServiceImplTest {
                         .build());
 
         assertDoesNotThrow(() -> s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofMinutes(5)));
+    }
+
+    @Test
+    @DisplayName("Should pass ResumableUploadRequest to strategy via the 5-arg overload")
+    void uploadFile_withResumableRequest_delegatesToStrategyWith7ArgMethod() {
+        // Arrange
+        String expectedETag = "resumable-etag";
+        ResumableUploadRequest resumable = new ResumableUploadRequest(
+                "existing-upload-id",
+                List.of(),
+                List.of(),
+                0L,
+                new AtomicBoolean(false),
+                UploadCheckpointCallback.noop());
+
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(expectedETag));
+
+        // Act
+        CompletableFuture<String> result = s3ClientService.uploadFile(
+                INPUT_STREAM, DESTINATION_S3_PROPERTIES, CONTENT_TYPE, CONTENT_DISPOSITION, resumable);
+
+        // Assert
+        assertEquals(expectedETag, result.join());
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any(), eq(resumable));
     }
 }

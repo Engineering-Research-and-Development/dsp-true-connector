@@ -41,6 +41,7 @@ public class DataFlowStatusMessage {
 
     private Map<String, String> dataAddress;
     private String errorMessage;
+    private Boolean resumable;
 
     /** Builder for {@link DataFlowStatusMessage}. */
     @JsonPOJOBuilder(withPrefix = "")
@@ -95,6 +96,14 @@ public class DataFlowStatusMessage {
          * @return this builder
          */
         public Builder errorMessage(String errorMessage) { message.errorMessage = errorMessage; return this; }
+
+        /**
+         * Sets whether the suspended transfer can be resumed.
+         *
+         * @param resumable true if a valid checkpoint exists and the transfer can be resumed
+         * @return this builder
+         */
+        public Builder resumable(Boolean resumable) { message.resumable = resumable; return this; }
 
         /**
          * Builds and validates the message.

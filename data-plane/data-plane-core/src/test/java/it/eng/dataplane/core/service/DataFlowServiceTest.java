@@ -13,6 +13,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -47,11 +48,17 @@ class DataFlowServiceTest {
     @Mock
     private DataFlowStateMachine stateMachine;
 
+    @Mock
+    private DataFlowCheckpointService checkpointService;
+
+    @Mock
+    private DataFlowExecutionRegistry executionRegistry;
+
     private DataFlowService service;
 
     @BeforeEach
     void setUp() {
-        service = new DataFlowService(repository, registry, auditEventService, stateMachine);
+        service = new DataFlowService(repository, registry, auditEventService, stateMachine, checkpointService, executionRegistry);
     }
 
     /**
@@ -266,19 +273,23 @@ class DataFlowServiceTest {
     }
 
     /**
-     * Verifies that resume() moves a SUSPENDED flow back to STARTED after successful protocol resumption,
-     * and that the state machine transition is validated before invoking the protocol.
+     * Verifies that resume() drives a SUSPENDED flow all the way to COMPLETED when the
+     * protocol future resolves with success, with proper registry and checkpoint cleanup.
      */
     @Test
-    void resumeMovesSuspendedFlowBackToStarted() {
-        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+    void resumeCompletesFlowWhenProtocolSucceeds() {
+        DataFlowEntity suspendedEntity = DataFlowEntity.Builder.newInstance()
                 .id("df-1")
                 .processId("tp-1")
                 .transferType("HttpData-PULL")
                 .state(DataFlowState.SUSPENDED)
                 .build();
 
-        when(repository.findByProcessId("tp-1")).thenReturn(Optional.of(entity));
+        DataFlowEntity startedEntity = suspendedEntity.withState(DataFlowState.STARTED);
+
+        when(repository.findByProcessId("tp-1"))
+                .thenReturn(Optional.of(suspendedEntity))
+                .thenReturn(Optional.of(startedEntity));
         when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
         when(protocol.resumeTransfer("df-1")).thenReturn(CompletableFuture.completedFuture(DataFlowResult.success()));
 
@@ -286,8 +297,61 @@ class DataFlowServiceTest {
 
         verify(stateMachine, atLeastOnce()).assertTransition(DataFlowState.SUSPENDED, DataFlowState.STARTED);
         verify(repository, atLeastOnce()).save(argThat(saved -> saved.getState() == DataFlowState.STARTED));
+        verify(repository).save(argThat(saved -> saved.getState() == DataFlowState.COMPLETED));
+        verify(executionRegistry).remove("tp-1");
+        verify(checkpointService).deleteByProcessId("tp-1");
+        verify(auditEventService).saveEvent(DataPlaneAuditEventType.DATAFLOW_COMPLETED,
+                "tp-1", "HttpData-PULL", "Data flow completed", null);
+    }
+
+    /**
+     * Verifies that resume() emits the resumed audit event as soon as the entity is moved back
+     * to STARTED, before the protocol future completes.
+     */
+    @Test
+    void resumeEmitsResumedAuditEventBeforeCompletion() {
+        DataFlowEntity suspendedEntity = DataFlowEntity.Builder.newInstance()
+                .id("df-resumed-audit")
+                .processId("tp-resumed-audit")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.SUSPENDED)
+                .build();
+
+        when(repository.findByProcessId("tp-resumed-audit")).thenReturn(Optional.of(suspendedEntity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.resumeTransfer("df-resumed-audit")).thenReturn(new CompletableFuture<>());
+
+        service.resume("tp-resumed-audit");
+
         verify(auditEventService).saveEvent(DataPlaneAuditEventType.DATAFLOW_RESUMED,
-                "tp-1", "HttpData-PULL", "Data flow resumed", null);
+                "tp-resumed-audit", "HttpData-PULL", "Data flow resumed", null);
+    }
+
+    /**
+     * Verifies that resume() does not transition the entity when the protocol returns a paused result,
+     * and that no completion or error callbacks are triggered.
+     */
+    @Test
+    void resumeIgnoresPausedResultWithoutStateTransition() {
+        DataFlowEntity suspendedEntity = DataFlowEntity.Builder.newInstance()
+                .id("df-paused")
+                .processId("tp-paused")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.SUSPENDED)
+                .build();
+
+        when(repository.findByProcessId("tp-paused")).thenReturn(Optional.of(suspendedEntity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.resumeTransfer("df-paused"))
+                .thenReturn(CompletableFuture.completedFuture(DataFlowResult.paused()));
+
+        service.resume("tp-paused");
+
+        // Only the STARTED pre-save must have happened — no COMPLETED or TERMINATED
+        verify(repository).save(argThat(saved -> saved.getState() == DataFlowState.STARTED));
+        verify(repository, never()).save(argThat(saved -> saved.getState() == DataFlowState.COMPLETED));
+        verify(repository, never()).save(argThat(saved -> saved.getState() == DataFlowState.TERMINATED));
+        verify(checkpointService, never()).deleteByProcessId(any());
     }
 
     /**
@@ -296,22 +360,26 @@ class DataFlowServiceTest {
      */
     @Test
     void resumeFailedResultDoesNotMoveToStarted() {
-        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+        DataFlowEntity suspendedEntity = DataFlowEntity.Builder.newInstance()
                 .id("df-2")
                 .processId("tp-2")
                 .transferType("HttpData-PULL")
                 .state(DataFlowState.SUSPENDED)
                 .build();
 
-        when(repository.findByProcessId("tp-2")).thenReturn(Optional.of(entity));
+        DataFlowEntity startedEntity = suspendedEntity.withState(DataFlowState.STARTED);
+
+        when(repository.findByProcessId("tp-2"))
+                .thenReturn(Optional.of(suspendedEntity))
+                .thenReturn(Optional.of(startedEntity));
         when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
         when(protocol.resumeTransfer("df-2"))
                 .thenReturn(CompletableFuture.completedFuture(DataFlowResult.failure("resume-error")));
 
         service.resume("tp-2");
 
-        verify(repository, never()).save(argThat(saved -> saved.getState() == DataFlowState.STARTED));
-        verify(repository, atLeastOnce()).save(argThat(saved -> saved.getState() == DataFlowState.TERMINATED));
+        verify(repository).save(argThat(saved -> saved.getState() == DataFlowState.STARTED));
+        verify(repository).save(argThat(saved -> saved.getState() == DataFlowState.TERMINATED));
     }
 
     /**
@@ -435,6 +503,7 @@ class DataFlowServiceTest {
 
         // COMPLETED must never be persisted — stale overwrite is prevented
         verify(repository, never()).save(argThat(saved -> saved.getState() == DataFlowState.COMPLETED));
+        verify(checkpointService, never()).deleteByProcessId("tp-stale");
     }
 
     /**
@@ -484,5 +553,311 @@ class DataFlowServiceTest {
 
         verify(auditEventService, never()).saveEvent(
                 eq(DataPlaneAuditEventType.DATAFLOW_SUSPENDED), any(), any(), any(), any());
+    }
+
+    /**
+     * Verifies that start() registers an execution handle in the registry for the running transfer.
+     */
+    @Test
+    void startRegistersExecutionHandleInRegistry() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-reg-start")
+                .transferType("HttpData-PULL")
+                .build();
+
+        when(repository.findByProcessId("tp-reg-start")).thenReturn(Optional.empty());
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.initiateTransfer(any(DataFlow.class))).thenReturn(new CompletableFuture<>());
+
+        service.start(dataFlow);
+
+        verify(executionRegistry).register(eq("tp-reg-start"), any(DataFlowExecutionHandle.class));
+    }
+
+    /**
+     * Verifies that a successful transfer completion removes the execution handle from the registry
+     * and deletes the checkpoint.
+     */
+    @Test
+    void completionRemovesHandleAndDeletesCheckpoint() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-reg-complete")
+                .transferType("HttpData-PULL")
+                .build();
+
+        DataFlowEntity startedEntity = DataFlowEntity.Builder.newInstance()
+                .processId("tp-reg-complete")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-reg-complete"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(startedEntity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.initiateTransfer(any(DataFlow.class)))
+                .thenReturn(CompletableFuture.completedFuture(DataFlowResult.success()));
+
+        service.start(dataFlow);
+
+        verify(executionRegistry).remove("tp-reg-complete");
+        verify(checkpointService).deleteByProcessId("tp-reg-complete");
+    }
+
+    /**
+     * Verifies that a failed transfer removes the execution handle from the registry
+     * and deletes the checkpoint.
+     */
+    @Test
+    void errorRemovesHandleAndDeletesCheckpoint() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-reg-error")
+                .transferType("HttpData-PULL")
+                .build();
+
+        DataFlowEntity startedEntity = DataFlowEntity.Builder.newInstance()
+                .processId("tp-reg-error")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-reg-error"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(startedEntity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.initiateTransfer(any(DataFlow.class)))
+                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("transfer-failed")));
+
+        service.start(dataFlow);
+
+        verify(executionRegistry).remove("tp-reg-error");
+        verify(checkpointService).deleteByProcessId("tp-reg-error");
+    }
+
+    /**
+     * Verifies that resume() registers an execution handle in the registry for the resumed transfer.
+     */
+    @Test
+    void resumeRegistersExecutionHandleInRegistry() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-reg-resume")
+                .processId("tp-reg-resume")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.SUSPENDED)
+                .build();
+
+        when(repository.findByProcessId("tp-reg-resume")).thenReturn(Optional.of(entity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.resumeTransfer("df-reg-resume")).thenReturn(new CompletableFuture<>());
+
+        service.resume("tp-reg-resume");
+
+        verify(executionRegistry).register(eq("tp-reg-resume"), any(DataFlowExecutionHandle.class));
+    }
+
+    /**
+     * Verifies that resume() persists STARTED before launching the protocol and therefore
+     * blocks a second concurrent resume attempt from launching another transfer future.
+     */
+    @Test
+    void resumePreSaveBlocksDuplicateResume() {
+        DataFlowEntity suspendedEntity = DataFlowEntity.Builder.newInstance()
+                .id("df-resume-duplicate")
+                .processId("tp-resume-duplicate")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.SUSPENDED)
+                .build();
+
+        DataFlowEntity startedEntity = suspendedEntity.withState(DataFlowState.STARTED);
+
+        when(repository.findByProcessId("tp-resume-duplicate"))
+                .thenReturn(Optional.of(suspendedEntity))
+                .thenReturn(Optional.of(startedEntity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.resumeTransfer("df-resume-duplicate")).thenReturn(new CompletableFuture<>());
+        lenient().doThrow(new IllegalStateException("STARTED -> STARTED not allowed"))
+                .when(stateMachine).assertTransition(DataFlowState.STARTED, DataFlowState.STARTED);
+
+        service.resume("tp-resume-duplicate");
+
+        assertThrows(IllegalStateException.class, () -> service.resume("tp-resume-duplicate"));
+        verify(repository).save(argThat(saved -> saved.getState() == DataFlowState.STARTED));
+        verify(protocol, times(1)).resumeTransfer("df-resume-duplicate");
+    }
+
+    /**
+     * Verifies that terminate() removes the execution handle and deletes the checkpoint
+     * after the protocol callback fires.
+     */
+    @Test
+    void terminateRemovesHandleAndDeletesCheckpoint() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-reg-terminate")
+                .processId("tp-reg-terminate")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        DataFlowEntity freshEntity = DataFlowEntity.Builder.newInstance()
+                .id("df-reg-terminate")
+                .processId("tp-reg-terminate")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-reg-terminate"))
+                .thenReturn(Optional.of(entity))
+                .thenReturn(Optional.of(freshEntity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.terminateTransfer("df-reg-terminate"))
+                .thenReturn(CompletableFuture.completedFuture(DataFlowResult.success()));
+
+        service.terminate("tp-reg-terminate");
+
+        verify(executionRegistry).remove("tp-reg-terminate");
+        verify(checkpointService).deleteByProcessId("tp-reg-terminate");
+    }
+
+    /**
+     * Verifies that terminate() cancels and removes the active execution handle before
+     * delegating to the protocol, so the old transfer future cannot race the termination.
+     */
+    @Test
+    void terminateCancelsAndRemovesExecutionHandle() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-terminate-cancel")
+                .processId("tp-terminate-cancel")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-terminate-cancel")).thenReturn(Optional.of(entity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.terminateTransfer("df-terminate-cancel")).thenReturn(new CompletableFuture<>());
+
+        DataFlowExecutionHandle handle = mock(DataFlowExecutionHandle.class);
+        when(executionRegistry.find("tp-terminate-cancel")).thenReturn(Optional.of(handle));
+
+        service.terminate("tp-terminate-cancel");
+
+        InOrder inOrder = inOrder(handle, executionRegistry, protocol);
+        inOrder.verify(handle).cancel();
+        inOrder.verify(executionRegistry).remove("tp-terminate-cancel");
+        inOrder.verify(protocol).terminateTransfer("df-terminate-cancel");
+    }
+
+    /**
+     * Verifies that terminate() removes the handle and deletes the checkpoint immediately
+     * when no protocol is registered.
+     */
+    @Test
+    void terminateNoProtocolRemovesHandleAndDeletesCheckpoint() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-reg-terminate-noproto")
+                .processId("tp-terminate-noproto")
+                .transferType("Unknown-Protocol")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-terminate-noproto")).thenReturn(Optional.of(entity));
+        when(registry.getProtocol("Unknown-Protocol")).thenReturn(null);
+
+        service.terminate("tp-terminate-noproto");
+
+        verify(executionRegistry).remove("tp-terminate-noproto");
+        verify(checkpointService).deleteByProcessId("tp-terminate-noproto");
+    }
+
+    /**
+     * Verifies that suspend() cancels and removes the active execution handle from the registry
+     * before delegating to the protocol. This prevents the old running future's callbacks from
+     * flipping a SUSPENDED flow to COMPLETED or TERMINATED after suspend succeeds.
+     */
+    @Test
+    void suspendCancelsAndRemovesExecutionHandle() {
+        DataFlowEntity entity = DataFlowEntity.Builder.newInstance()
+                .id("df-suspend-cancel")
+                .processId("tp-suspend-cancel")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-suspend-cancel")).thenReturn(Optional.of(entity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.suspendTransfer(any())).thenReturn(new CompletableFuture<>());
+
+        DataFlowExecutionHandle handle = mock(DataFlowExecutionHandle.class);
+        when(executionRegistry.find("tp-suspend-cancel")).thenReturn(Optional.of(handle));
+
+        service.suspend("tp-suspend-cancel");
+
+        verify(handle).cancel();
+        verify(executionRegistry).remove("tp-suspend-cancel");
+    }
+
+    /**
+     * Verifies that a suspended flow is not silently completed when the old running future
+     * fires its completion callback after the flow has been marked SUSPENDED. The stale
+     * completion must be discarded: COMPLETED must never be persisted and the checkpoint
+     * must not be deleted.
+     */
+    @Test
+    void suspendedFlowNotCompletedByOldFuture() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-suspended-race")
+                .transferType("HttpData-PULL")
+                .build();
+
+        CompletableFuture<DataFlowResult> future = new CompletableFuture<>();
+
+        DataFlowEntity suspendedEntity = DataFlowEntity.Builder.newInstance()
+                .processId("tp-suspended-race")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.SUSPENDED)
+                .build();
+
+        // First call: duplicate check; subsequent: entity is already SUSPENDED
+        when(repository.findByProcessId("tp-suspended-race"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(suspendedEntity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.initiateTransfer(any(DataFlow.class))).thenReturn(future);
+
+        service.start(dataFlow);
+
+        // Simulate race: old future completes after the flow has been suspended
+        future.complete(DataFlowResult.success());
+
+        // COMPLETED must never be persisted and the checkpoint must remain intact
+        verify(repository, never()).save(argThat(saved -> saved.getState() == DataFlowState.COMPLETED));
+        verify(checkpointService, never()).deleteByProcessId("tp-suspended-race");
+    }
+
+    /**
+     * Verifies that a CancellationException from the old future (caused by the suspend path
+     * calling handle.cancel()) does not flip the suspended flow to TERMINATED or delete
+     * the checkpoint. Cancellation is expected during suspend and must be silently ignored.
+     */
+    @Test
+    void suspendedFlowNotTerminatedByCancellationException() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-cancel-race")
+                .transferType("HttpData-PULL")
+                .build();
+
+        CompletableFuture<DataFlowResult> future = new CompletableFuture<>();
+
+        when(repository.findByProcessId("tp-cancel-race")).thenReturn(Optional.empty());
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.initiateTransfer(any(DataFlow.class))).thenReturn(future);
+
+        service.start(dataFlow);
+
+        // Simulate suspend cancelling the old future
+        future.cancel(true);
+
+        // TERMINATED must never be persisted and the checkpoint must remain intact
+        verify(repository, never()).save(argThat(saved -> saved.getState() == DataFlowState.TERMINATED));
+        verify(checkpointService, never()).deleteByProcessId("tp-cancel-race");
     }
 }

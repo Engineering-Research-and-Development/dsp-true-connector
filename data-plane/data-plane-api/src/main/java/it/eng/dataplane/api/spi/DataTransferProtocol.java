@@ -73,4 +73,22 @@ public interface DataTransferProtocol {
      * @return future with the result of the termination
      */
     CompletableFuture<DataFlowResult> terminateTransfer(String dataFlowId);
+
+    /**
+     * Checks whether the protocol has usable access material to resume the given data flow.
+     *
+     * <p>Access material includes items like pre-signed URLs, temporary IAM credentials,
+     * or tokens that were issued when the transfer started. If these have expired or been
+     * revoked the transfer cannot be resumed without restarting.</p>
+     *
+     * <p>Default implementation returns {@code true}, suitable for protocols where access
+     * material does not expire or is not tracked at the protocol level. Override in protocol
+     * implementations that manage time-limited credentials.</p>
+     *
+     * @param dataFlow the data flow to inspect
+     * @return {@code true} if access material is present and still usable; {@code false} otherwise
+     */
+    default boolean hasUsableAccessMaterial(DataFlow dataFlow) {
+        return true;
+    }
 }

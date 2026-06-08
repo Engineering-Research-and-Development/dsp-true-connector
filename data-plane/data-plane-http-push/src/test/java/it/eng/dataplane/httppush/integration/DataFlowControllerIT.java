@@ -153,6 +153,22 @@ class DataFlowControllerIT extends BaseHttpPushIT {
     }
 
     @Test
+    @DisplayName("POST /dataflows/{id}/resume on existing SUSPENDED DataFlow returns 200 OK")
+    void resumeDataFlow_existingFlow_returns200() throws Exception {        String processId = newId();
+        dataFlowRepository.save(suspendedEntity(processId, TRANSFER_TYPE_PUSH));
+
+        mockMvc.perform(withApiKey(post("/dataflows/{id}/resume", processId)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("POST /dataflows/{id}/resume with non-existent processId returns 404")
+    void resumeDataFlow_notFound_returns404() throws Exception {
+        mockMvc.perform(withApiKey(post("/dataflows/{id}/resume", newId())))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     @DisplayName("PUT /controlplanes with endpoint payload returns 200 OK")
     void registerControlPlane_returnsOk() throws Exception {
         Map<String, String> body = Map.of("endpoint", wireMock.baseUrl());
@@ -179,6 +195,32 @@ class DataFlowControllerIT extends BaseHttpPushIT {
                 .processId(processId)
                 .transferType(transferType)
                 .state(DataFlowState.STARTED)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+    }
+
+    /**
+     * Creates a {@link DataFlowEntity} in {@link DataFlowState#SUSPENDED} state for use in
+     * resume tests. The entity carries minimal consumer S3 credentials so the resume
+     * endpoint can locate it and the protocol's {@code hasUsableAccessMaterial} check passes.
+     *
+     * @param processId    the transfer process ID
+     * @param transferType the transfer type (e.g. {@code HttpData-PUSH})
+     * @return a ready-to-save entity in SUSPENDED state
+     */
+    private static DataFlowEntity suspendedEntity(String processId, String transferType) {
+        Instant now = Instant.now();
+        return DataFlowEntity.Builder.newInstance()
+                .id(UUID.randomUUID().toString())
+                .processId(processId)
+                .transferType(transferType)
+                .state(DataFlowState.SUSPENDED)
+                .dataAddress(Map.of(
+                        "bucketName", "consumer-bucket",
+                        "accessKey", "acc",
+                        "secretKey", "sec"
+                ))
                 .createdAt(now)
                 .updatedAt(now)
                 .build();

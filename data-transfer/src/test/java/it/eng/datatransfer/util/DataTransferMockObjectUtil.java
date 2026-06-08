@@ -199,9 +199,49 @@ public class DataTransferMockObjectUtil {
             .role(IConstants.ROLE_PROVIDER)
             .tenantId(TENANT_ID)
             .state(TransferState.SUSPENDED)
+            .dataFlowState(TransferState.SUSPENDED.name())
+            .suspendedBy(IConstants.ROLE_PROVIDER)
             .build();
 
     public static final TransferProcess TRANSFER_PROCESS_SUSPENDED_CONSUMER = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
+            .state(TransferState.SUSPENDED)
+            .dataFlowState(TransferState.SUSPENDED.name())
+            .suspendedBy(IConstants.ROLE_CONSUMER)
+            .build();
+
+    /**
+     * Provider transfer process in SUSPENDED state with HTTP-PULL format, suspended by the provider
+     * (i.e. local role == suspendedBy). Used to test that resume is allowed and reuses the stored
+     * dataAddress without generating a fresh presigned URL.
+     */
+    public static final TransferProcess TRANSFER_PROCESS_SUSPENDED_PROVIDER_HTTP_PULL = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .datasetId(DATASET_ID)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
+            .state(TransferState.SUSPENDED)
+            .format(DataTransferFormat.HTTP_PULL.format())
+            .dataFlowState(TransferState.SUSPENDED.name())
+            .suspendedBy(IConstants.ROLE_PROVIDER)
+            .build();
+
+    /**
+     * Legacy provider transfer process in SUSPENDED state with {@code suspendedBy == null}.
+     * Simulates records created before the suspendedBy field was introduced; resume must be
+     * allowed without restriction.
+     */
+    public static final TransferProcess TRANSFER_PROCESS_SUSPENDED_LEGACY = TransferProcess.Builder.newInstance()
             .consumerPid(CONSUMER_PID)
             .providerPid(PROVIDER_PID)
             .dataAddress(DATA_ADDRESS)

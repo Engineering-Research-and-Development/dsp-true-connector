@@ -8,6 +8,7 @@ import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.core.model.DataFlowEntity;
 import it.eng.dataplane.core.model.DataPlaneAuditEventType;
 import it.eng.dataplane.core.registry.DataTransferProtocolRegistry;
+import it.eng.dataplane.core.service.DataFlowCheckpointService;
 import it.eng.dataplane.core.service.DataFlowService;
 import it.eng.dataplane.core.service.DataPlaneAuditEventService;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class DataFlowController {
     private final DataFlowService dataFlowService;
     private final DataTransferProtocolRegistry protocolRegistry;
     private final DataPlaneAuditEventService auditEventService;
+    private final DataFlowCheckpointService checkpointService;
 
     /**
      * Initiates a new data transfer based on a Control Plane request.
@@ -178,12 +180,15 @@ public class DataFlowController {
 
         try {
             DataFlowEntity entity = dataFlowService.status(processId);
+            boolean resumable = !entity.getState().isTerminal()
+                    && checkpointService.hasResumableCheckpoint(processId);
             DataFlowStatusMessage message = DataFlowStatusMessage.Builder.newInstance()
                     .dataFlowId(entity.getId())
                     .processId(entity.getProcessId())
                     .state(entity.getState())
                     .dataAddress(entity.getDataAddress())
                     .errorMessage(entity.getErrorMessage())
+                    .resumable(resumable)
                     .build();
             return ResponseEntity.ok(message);
         } catch (IllegalStateException e) {

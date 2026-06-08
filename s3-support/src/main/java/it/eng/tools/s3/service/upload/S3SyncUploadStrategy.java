@@ -13,7 +13,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
@@ -29,6 +31,12 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
     private final S3ClientProvider s3ClientProvider;
     private final S3Properties s3Properties;
 
+    /**
+     * Constructs an {@link S3SyncUploadStrategy}.
+     *
+     * @param s3ClientProvider provider for S3 client instances
+     * @param s3Properties     S3 configuration properties
+     */
     public S3SyncUploadStrategy(S3ClientProvider s3ClientProvider, S3Properties s3Properties) {
         this.s3ClientProvider = s3ClientProvider;
         this.s3Properties = s3Properties;
@@ -36,51 +44,77 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
 
     @Override
     public CompletableFuture<String> uploadFile(InputStream inputStream,
-                                               S3ClientRequest s3ClientRequest,
-                                               String bucketName,
-                                               String objectKey,
-                                               String contentType,
-                                               String contentDisposition) {
+                                                S3ClientRequest s3ClientRequest,
+                                                String bucketName,
+                                                String objectKey,
+                                                String contentType,
+                                                String contentDisposition,
+                                                ResumableUploadRequest resumable) {
         return CompletableFuture.supplyAsync(() -> {
             S3Client s3Client = s3ClientProvider.s3Client(s3ClientRequest);
+            UploadCheckpointCallback callback = resumable.checkpointCallback();
+
+            // Initialize part-size map from previously completed parts
+            Map<Integer, Long> partSizeByNumber = new HashMap<>();
+            for (int i = 0; i < resumable.completedParts().size(); i++) {
+                partSizeByNumber.put(
+                        resumable.completedParts().get(i).partNumber(),
+                        resumable.partSizes().get(i));
+            }
 
             try {
-                log.info("Creating multipart upload (SYNC) for key: {}", objectKey);
+                // Determine upload ID: reuse existing or create new
+                String uploadId;
+                if (resumable.uploadId() != null && !resumable.uploadId().isBlank()) {
+                    uploadId = resumable.uploadId();
+                    log.info("Reusing existing multipart upload (SYNC) for key: {} with uploadId: {}", objectKey, uploadId);
+                } else {
+                    log.info("Creating multipart upload (SYNC) for key: {}", objectKey);
+                    CreateMultipartUploadRequest createRequest = CreateMultipartUploadRequest.builder()
+                            .bucket(bucketName)
+                            .contentType(contentType)
+                            .contentDisposition(contentDisposition)
+                            .key(objectKey)
+                            .build();
+                    CreateMultipartUploadResponse createResponse = s3Client.createMultipartUpload(createRequest);
+                    uploadId = createResponse.uploadId();
+                    log.info("Created multipart upload (SYNC) for key: {} with uploadId: {}", objectKey, uploadId);
+                    callback.onMultipartCreated(uploadId);
+                }
 
-                CreateMultipartUploadRequest createRequest = CreateMultipartUploadRequest.builder()
-                        .bucket(bucketName)
-                        .contentType(contentType)
-                        .contentDisposition(contentDisposition)
-                        .key(objectKey)
-                        .build();
-
-                CreateMultipartUploadResponse createResponse = s3Client.createMultipartUpload(createRequest);
-                String uploadId = createResponse.uploadId();
-
-                log.info("Created multipart upload (SYNC) for key: {} with uploadId: {}", objectKey, uploadId);
-
-                List<CompletedPart> completedParts = new ArrayList<>();
-                int partNumber = 1;
+                // Collect all completed parts: pre-existing + newly uploaded
+                List<CompletedPart> allCompletedParts = new ArrayList<>(resumable.completedParts());
+                int partNumber = allCompletedParts.size() + 1;
                 byte[] buffer = new byte[s3Properties.getChunkSize()];
 
                 while (true) {
+                    if (resumable.suspendRequested().get()) {
+                        throw buildPauseException(uploadId, allCompletedParts, partSizeByNumber,
+                                resumable.confirmedBytes());
+                    }
+
                     int totalRead = readFully(inputStream, buffer);
                     if (totalRead == 0) break;
 
-                    // Reuse the same buffer when full; copy only the final (smaller) part
                     byte[] partData = (totalRead == buffer.length)
                             ? buffer
                             : Arrays.copyOf(buffer, totalRead);
 
                     CompletedPart part = uploadPart(s3Client, bucketName, objectKey, uploadId, partNumber, partData);
-                    completedParts.add(part);
+                    allCompletedParts.add(part);
+
+                    partSizeByNumber.put(partNumber, (long) totalRead);
+                    long contiguous = Math.max(resumable.confirmedBytes(),
+                            calculateContiguous(partSizeByNumber));
+                    callback.onPartCompleted(partNumber, part.eTag(), totalRead, contiguous);
+
                     partNumber++;
                 }
 
-                log.info("All {} parts uploaded successfully (SYNC) for key: {}", completedParts.size(), objectKey);
+                log.info("All {} parts uploaded successfully (SYNC) for key: {}", allCompletedParts.size(), objectKey);
 
                 CompletedMultipartUpload completedUpload = CompletedMultipartUpload.builder()
-                        .parts(completedParts)
+                        .parts(allCompletedParts)
                         .build();
 
                 CompleteMultipartUploadRequest completeRequest = CompleteMultipartUploadRequest.builder()
@@ -91,14 +125,13 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
                         .build();
 
                 log.info("Completing multipart upload (SYNC) for key: {} with uploadId: {}", objectKey, uploadId);
-
                 CompleteMultipartUploadResponse completeResponse = s3Client.completeMultipartUpload(completeRequest);
                 String eTag = completeResponse.eTag();
-
                 log.info("Upload completed successfully (SYNC) for key: {} with ETag: {}", objectKey, eTag);
-
                 return eTag;
 
+            } catch (UploadPausedException e) {
+                throw e;
             } catch (IOException e) {
                 log.error("Failed to upload file (SYNC) {}: {}", objectKey, e.getMessage());
                 throw new CompletionException("Failed to upload file", e);
@@ -116,6 +149,34 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
     }
 
     /**
+     * Builds an {@link UploadPausedException} with the current checkpoint state.
+     *
+     * <p>Callers must {@code throw} the returned exception to halt the upload:
+     * <pre>
+     *     throw buildPauseException(uploadId, completedParts, partSizeByNumber, confirmedBytesFloor);
+     * </pre>
+     *
+     * @param uploadId             the current multipart upload ID
+     * @param completedParts       the parts completed so far
+     * @param partSizeByNumber     map of part number to size in bytes
+     * @param confirmedBytesFloor  the previously confirmed contiguous byte count; used as a
+     *                             floor so the reported value never decreases during a resume
+     * @return the constructed {@link UploadPausedException}; never {@code null}
+     */
+    private UploadPausedException buildPauseException(String uploadId,
+                                     List<CompletedPart> completedParts,
+                                     Map<Integer, Long> partSizeByNumber,
+                                     long confirmedBytesFloor) {
+        List<Long> sizes = new ArrayList<>();
+        for (CompletedPart cp : completedParts) {
+            sizes.add(partSizeByNumber.getOrDefault(cp.partNumber(), 0L));
+        }
+        long contiguous = Math.max(confirmedBytesFloor, calculateContiguous(partSizeByNumber));
+        log.info("Upload paused (SYNC) for uploadId: {}, confirmed bytes: {}", uploadId, contiguous);
+        return new UploadPausedException("Upload paused on request", uploadId, completedParts, sizes, contiguous);
+    }
+
+    /**
      * Uploads a single part synchronously using S3Client.
      *
      * @param s3Client   the S3 client
@@ -127,11 +188,11 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
      * @return the completed part
      */
     private CompletedPart uploadPart(S3Client s3Client,
-                                    String bucketName,
-                                    String objectKey,
-                                    String uploadId,
-                                    int partNumber,
-                                    byte[] partData) {
+                                     String bucketName,
+                                     String objectKey,
+                                     String uploadId,
+                                     int partNumber,
+                                     byte[] partData) {
         UploadPartRequest uploadPartRequest = UploadPartRequest.builder()
                 .bucket(bucketName)
                 .key(objectKey)
@@ -154,12 +215,29 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
     }
 
     /**
+     * Calculates the total number of contiguous confirmed bytes from part 1.
+     *
+     * @param sizeByPartNumber map of part number to size in bytes
+     * @return the sum of sizes for all parts in the contiguous prefix starting at part 1
+     */
+    private long calculateContiguous(Map<Integer, Long> sizeByPartNumber) {
+        long total = 0L;
+        int nextPart = 1;
+        while (sizeByPartNumber.containsKey(nextPart)) {
+            total += sizeByPartNumber.get(nextPart);
+            nextPart++;
+        }
+        return total;
+    }
+
+    /**
      * Reads bytes from the stream until the buffer is full or the stream is exhausted.
      * Avoids the extra copy introduced by ByteArrayOutputStream.toByteArray().
      *
      * @param in  the input stream
      * @param buf the buffer to fill
      * @return the number of bytes actually read; 0 means the stream is exhausted
+     * @throws IOException if an I/O error occurs
      */
     private int readFully(InputStream in, byte[] buf) throws IOException {
         int offset = 0, read;

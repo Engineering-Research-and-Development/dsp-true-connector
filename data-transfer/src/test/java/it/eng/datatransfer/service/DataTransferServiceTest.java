@@ -290,13 +290,11 @@ public class DataTransferServiceTest {
         when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER));
 
-        TransferProcess transferProcessStarted = service.startDataTransfer(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID);
+        assertThrows(TransferProcessInvalidStateException.class, () ->
+                service.startDataTransfer(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE, null, DataTransferMockObjectUtil.PROVIDER_PID)
+        );
 
-        assertEquals(TransferState.STARTED, transferProcessStarted.getState());
-        verify(transferProcessRepository).save(argTransferProcess.capture());
-        assertEquals(TransferState.STARTED, argTransferProcess.getValue().getState());
-
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED);
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR);
     }
 
     @Test

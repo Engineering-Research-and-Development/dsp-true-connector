@@ -171,6 +171,33 @@ class DataFlowControllerIT extends BaseHttpPullIT {
     }
 
     @Test
+    @DisplayName("POST /dataflows/{id}/resume on SUSPENDED DataFlow returns 200 OK")
+    void resumeDataFlow_suspendedFlow_returns200() throws Exception {
+        String processId = newId();
+        Instant now = Instant.now();
+        DataFlowEntity suspendedEntity = DataFlowEntity.Builder.newInstance()
+                .id(UUID.randomUUID().toString())
+                .processId(processId)
+                .transferType(TRANSFER_TYPE_PULL)
+                .state(DataFlowState.SUSPENDED)
+                .dataAddress(Map.of("endpoint", "http://example.com/presigned-url"))
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        dataFlowRepository.save(suspendedEntity);
+
+        mockMvc.perform(withApiKey(post("/dataflows/{id}/resume", processId)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("POST /dataflows/{id}/resume with non-existent processId returns 404")
+    void resumeDataFlow_notFound_returns404() throws Exception {
+        mockMvc.perform(withApiKey(post("/dataflows/{id}/resume", newId())))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     @DisplayName("PUT /controlplanes with endpoint payload returns 200 OK")
     void registerControlPlane_returnsOk() throws Exception {
         Map<String, String> body = Map.of("endpoint", wireMock.baseUrl());

@@ -2,6 +2,7 @@ package it.eng.datatransfer.service;
 
 import it.eng.datatransfer.exceptions.DataPlaneNotFoundException;
 import it.eng.datatransfer.model.DataPlaneRegistration;
+import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.repository.DataPlaneRegistrationRepository;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.service.AuditEventPublisher;
@@ -36,7 +37,7 @@ public class DataPlaneRegistrationServiceTest {
     private DataPlaneRegistration buildRegistration() {
         return DataPlaneRegistration.Builder.newInstance()
                 .endpoint("http://dataplane.example.com")
-                .supportedTransferTypes(Set.of("HttpData-PULL"))
+                .supportedTransferTypes(Set.of(DataTransferFormat.HTTP_PULL.format()))
                 .build();
     }
 
@@ -58,14 +59,14 @@ public class DataPlaneRegistrationServiceTest {
     @DisplayName("findByTransferType returns matching registrations")
     public void findByTransferTypeReturnsMatchingRegistrations() {
         DataPlaneRegistration reg = buildRegistration();
-        when(repository.findBySupportedTransferTypesContaining("HttpData-PULL"))
+        when(repository.findBySupportedTransferTypesContaining(DataTransferFormat.HTTP_PULL.format()))
                 .thenReturn(List.of(reg));
 
-        List<DataPlaneRegistration> results = service.findByTransferType("HttpData-PULL");
+        List<DataPlaneRegistration> results = service.findByTransferType(DataTransferFormat.HTTP_PULL.format());
 
         assertEquals(1, results.size());
         assertEquals(reg.getEndpoint(), results.get(0).getEndpoint());
-        verify(repository).findBySupportedTransferTypesContaining("HttpData-PULL");
+        verify(repository).findBySupportedTransferTypesContaining(DataTransferFormat.HTTP_PULL.format());
     }
 
     @Test
@@ -99,7 +100,7 @@ public class DataPlaneRegistrationServiceTest {
         DataPlaneRegistration reg1 = buildRegistration();
         DataPlaneRegistration reg2 = DataPlaneRegistration.Builder.newInstance()
                 .endpoint("http://dataplane2.example.com")
-                .supportedTransferTypes(Set.of("HttpData-PUSH"))
+                .supportedTransferTypes(Set.of(DataTransferFormat.HTTP_PUSH.format()))
                 .build();
         when(repository.findAll()).thenReturn(List.of(reg1, reg2));
 

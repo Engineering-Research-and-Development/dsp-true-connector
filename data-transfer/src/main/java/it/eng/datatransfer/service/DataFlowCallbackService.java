@@ -1,5 +1,6 @@
 package it.eng.datatransfer.service;
 
+import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.datatransfer.model.DataAddress;
 import it.eng.datatransfer.model.EndpointProperty;
 import it.eng.datatransfer.model.TransferProcess;
@@ -37,7 +38,7 @@ public class DataFlowCallbackService {
     public void handlePrepared(String processId, Map<String, String> dataAddress) {
         log.info("Handling prepared callback for processId={}", processId);
         var process = findRequired(processId);
-        var updated = process.withDataFlowState("PREPARED");
+        var updated = process.withDataFlowState(DataFlowState.PREPARED.name());
         if (dataAddress != null && !dataAddress.isEmpty()) {
             updated = updated.withDataAddress(dataAddressFromMap(dataAddress));
         }
@@ -54,7 +55,7 @@ public class DataFlowCallbackService {
     public void handleStarted(String processId, Map<String, String> dataAddress) {
         log.info("Handling started callback for processId={}", processId);
         var process = findRequired(processId);
-        var updated = process.withDataFlowState("STARTED");
+        var updated = process.withDataFlowState(DataFlowState.STARTED.name());
         if (dataAddress != null && !dataAddress.isEmpty()) {
             updated = updated.withDataAddress(dataAddressFromMap(dataAddress));
         }
@@ -73,7 +74,7 @@ public class DataFlowCallbackService {
     public void handleCompleted(String processId, Map<String, String> dataAddress) {
         log.info("Handling completed callback for processId={}", processId);
         var process = findRequired(processId);
-        var updated = process.withDataFlowState("COMPLETED");
+        var updated = process.withDataFlowState(DataFlowState.COMPLETED.name());
         if (dataAddress != null && !dataAddress.isEmpty()) {
             updated = updated.withDataAddress(dataAddressFromMap(dataAddress));
         }
@@ -98,7 +99,7 @@ public class DataFlowCallbackService {
     public void handleErrored(String processId, String errorMessage) {
         log.info("Handling errored callback for processId={}, error={}", processId, errorMessage);
         var process = findRequired(processId);
-        var updated = process.withDataFlowState("TERMINATED").withDataFlowErrorMessage(errorMessage);
+        var updated = process.withDataFlowState(DataFlowState.TERMINATED.name()).withDataFlowErrorMessage(errorMessage);
         repository.save(updated);
         try {
             apiService.terminateTransfer(processId);

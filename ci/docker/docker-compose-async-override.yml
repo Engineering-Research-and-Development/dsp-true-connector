@@ -1,0 +1,15 @@
+services:
+  connector-b:
+    environment:
+      - S3_UPLOAD_MODE=ASYNC
+      - S3_CHUNKSIZE=5242880
+
+  data-plane-http-pull-a:
+    environment:
+      - S3_UPLOAD_MODE=ASYNC
+      - S3_CHUNKSIZE=5242880
+
+  data-plane-http-push-b:
+    environment:
+      - S3_UPLOAD_MODE=ASYNC
+      - S3_CHUNKSIZE=5242880

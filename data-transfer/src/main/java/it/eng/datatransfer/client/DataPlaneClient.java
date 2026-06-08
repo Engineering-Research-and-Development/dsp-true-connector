@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
+import it.eng.dataplane.api.message.DataFlowStatusMessage;
 import it.eng.datatransfer.exceptions.DataPlaneClientException;
 import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.datatransfer.router.DataPlaneRouter;
@@ -133,6 +134,42 @@ public class DataPlaneClient {
         String url = dp.getEndpoint() + "/dataflows/" + processId + "/resume";
         log.info("Sending resume request for process '{}' to '{}'", processId, url);
         post(url, null, dp.getApiKey());
+    }
+
+    /**
+     * Fetches the current status of the given transfer process from the selected Data Plane.
+     *
+     * <p>GETs {@code {dpEndpoint}/dataflows/{processId}/status} and deserializes the response
+     * body as {@link DataFlowStatusMessage}. Used by startup crash-reconciliation to determine
+     * whether a stale process can be resumed or must be terminated.</p>
+     *
+     * @param processId    the transfer process ID to query
+     * @param transferType the transfer type used to select the target Data Plane
+     * @return the current status message from the Data Plane
+     * @throws IllegalStateException    if no Data Plane is registered for the transfer type
+     * @throws DataPlaneClientException if the request fails or the response cannot be deserialized
+     */
+    public DataFlowStatusMessage status(String processId, String transferType) {
+        DataPlaneRegistration dp = selectOrThrow(transferType);
+        String url = dp.getEndpoint() + "/dataflows/" + processId + "/status";
+        log.info("Fetching status for process '{}' from '{}'", processId, url);
+        Request.Builder builder = new Request.Builder()
+                .url(url)
+                .get();
+        if (dp.getApiKey() != null) {
+            builder.header(X_API_KEY, dp.getApiKey());
+        }
+        Request request = builder.build();
+        try (Response response = okHttpClient.newCall(request).execute()) {
+            if (!response.isSuccessful() || response.body() == null) {
+                throw new DataPlaneClientException("Data Plane returned HTTP " + response.code() + " for " + url);
+            }
+            String body = response.body().string();
+            return objectMapper.readValue(body, DataFlowStatusMessage.class);
+        } catch (IOException e) {
+            log.error("Failed to fetch status from {}: {}", url, e.getMessage());
+            throw new DataPlaneClientException("Failed to read data plane status at " + url, e);
+        }
     }
 
     private DataPlaneRegistration selectOrThrow(String transferType) {

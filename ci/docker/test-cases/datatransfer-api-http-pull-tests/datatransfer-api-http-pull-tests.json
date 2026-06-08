@@ -17,6 +17,7 @@
 							"pm.test(\"Retrieve consumer transfer process id\", function () {\r",
 							"    var jsonData = pm.response.json();\r",
 							"    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][\"@id\"])\r",
+							"    pm.collectionVariables.set(\"provider_transferProcessId\", jsonData[\"data\"][\"@id\"])\r",
 							"});\r",
 							"\r",
 							"pm.test(\"Check if status code is 200\", function () {\r",
@@ -67,10 +68,10 @@
 							"    pm.response.to.have.status(200);\r",
 							"});\r",
 							"\r",
-							"pm.test(\"Retrieve provider transfer process id\", function () {\r",
+							"pm.test(\"Check provider transfer process id\", function () {\r",
 							"    var jsonData = pm.response.json();\r",
-							"    pm.collectionVariables.set(\"provider_transferProcessId\", \r",
-							"    jsonData[\"response\"][\"data\"][\"content\"][0][\"@id\"])\r",
+							"    pm.expect(jsonData[\"data\"][\"@id\"]).to.eql(pm.collectionVariables.get(\"provider_transferProcessId\"));\r",
+							"    pm.expect(jsonData[\"data\"][\"role\"]).to.eql(\"provider\");\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -88,23 +89,12 @@
 					}
 				],
 				"url": {
-					"raw": "{{PROVIDER_API_TRANSFERS}}?state=REQUESTED&role=provider&datasetId=urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+					"raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}",
 					"host": [
 						"{{PROVIDER_API_TRANSFERS}}"
 					],
-					"query": [
-						{
-							"key": "state",
-							"value": "REQUESTED"
-						},
-						{
-							"key": "role",
-							"value": "provider"
-						},
-						{
-							"key": "datasetId",
-							"value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
-						}
+					"path": [
+						"{{provider_transferProcessId}}"
 					]
 				}
 			},
@@ -152,6 +142,44 @@
 					"path": [
 						"{{provider_transferProcessId}}",
 						"start"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "[C] Download data",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 202\", function () {",
+							"    pm.response.to.have.status(202);",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+					"host": [
+						"{{CONSUMER_API_TRANSFERS}}"
+					],
+					"path": [
+						"{{consumer_transferProcessId}}",
+						"download"
 					]
 				}
 			},
@@ -281,7 +309,7 @@
 			"response": []
 		},
 		{
-			"name": "[C] Start transfer",
+			"name": "[C] Start transfer after suspend",
 			"event": [
 				{
 					"listen": "test",
@@ -328,15 +356,34 @@
 			"response": []
 		},
 		{
-			"name": "[C] Download data",
+			"name": "[C] Wait for transfer COMPLETED",
 			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							"const waitUntil = Date.now() + 1000; while (Date.now() < waitUntil) {}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
 				{
 					"listen": "test",
 					"script": {
 						"exec": [
-							"pm.test(\"Status code is 202\", function () {\r",
-							"    pm.response.to.have.status(202);\r",
-							"});"
+							"const retries = parseInt(pm.collectionVariables.get('waitRetry') || '0');",
+							"const body = pm.response.json();",
+							"const state = body.data && body.data.state;",
+							"if (state !== 'COMPLETED' && retries < 30) {",
+							"    pm.collectionVariables.set('waitRetry', retries + 1);",
+							"    postman.setNextRequest('[C] Wait for transfer COMPLETED');",
+							"} else {",
+							"    pm.collectionVariables.set('waitRetry', 0);",
+							"    pm.test('Transfer process reached COMPLETED state', () => {",
+							"        pm.expect(state).to.eql('COMPLETED');",
+							"    });",
+							"}"
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -353,13 +400,12 @@
 					}
 				],
 				"url": {
-					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+					"raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}",
 					"host": [
 						"{{CONSUMER_API_TRANSFERS}}"
 					],
 					"path": [
-						"{{consumer_transferProcessId}}",
-						"download"
+						"{{consumer_transferProcessId}}"
 					]
 				}
 			},
@@ -378,18 +424,6 @@
 							"    pm.expect(response).to.match(/https?:\\/\\/[^/]+\\/dsp-true-connector-a/);\r",
 							"    pm.collectionVariables.set(\"presignedURL\", response)\r",
 							"});"
-						],
-						"type": "text/javascript",
-						"packages": {}
-					}
-				},
-				{
-					"listen": "prerequest",
-					"script": {
-						"exec": [
-							"// Busy-wait 5 seconds so the async DP download can complete and callback to CP\r\n",
-							"const waitUntil = Date.now() + 5000;\r\n",
-							"while (Date.now() < waitUntil) {}\r\n"
 						],
 						"type": "text/javascript",
 						"packages": {}
@@ -426,9 +460,12 @@
 					"script": {
 						"exec": [
 							"pm.test(\"Check expected response\", ()=> {\r",
-							"    pm.response.to.have.status(200);\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"    pm.response.to.have.status(206);\r",
+							"    var response = pm.response.text();\r",
+							"    var contentRange = pm.response.headers.get('Content-Range') || '';\r",
+							"    pm.expect(contentRange).to.include('/134217728');\r",
+							"    pm.expect(response.startsWith('seed-line-00000000|')).to.eql(true);\r",
+							"    pm.expect(response).to.include('dsp-true-connector-suspend-resume-fixture');\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -442,6 +479,11 @@
 					{
 						"key": "Content-Type",
 						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Range",
+						"value": "bytes=0-1023",
 						"type": "text"
 					}
 				],
@@ -550,9 +592,12 @@
 					"script": {
 						"exec": [
 							"pm.test(\"Check expected response\", ()=> {\r",
-							"    pm.response.to.have.status(200);\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+							"    pm.response.to.have.status(206);\r",
+							"    var response = pm.response.text();\r",
+							"    var contentRange = pm.response.headers.get('Content-Range') || '';\r",
+							"    pm.expect(contentRange).to.include('/134217728');\r",
+							"    pm.expect(response.startsWith('seed-line-00000000|')).to.eql(true);\r",
+							"    pm.expect(response).to.include('dsp-true-connector-suspend-resume-fixture');\r",
 							"});"
 						],
 						"type": "text/javascript",
@@ -566,6 +611,11 @@
 					{
 						"key": "Content-Type",
 						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Range",
+						"value": "bytes=0-1023",
 						"type": "text"
 					}
 				],

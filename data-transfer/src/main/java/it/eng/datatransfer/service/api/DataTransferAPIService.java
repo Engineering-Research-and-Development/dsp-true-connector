@@ -5,6 +5,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
+import it.eng.dataplane.api.message.DataFlowStatusMessage;
+import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.datatransfer.client.DataPlaneClient;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
@@ -30,6 +32,7 @@ import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.codec.binary.Base64;
@@ -39,7 +42,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
@@ -109,20 +111,54 @@ public class DataTransferAPIService {
     }
 
     /**
-     * Resets any {@code isDownloadInProgress=true} flags left over from a previous crash or unclean shutdown.
-     * Called automatically once the Spring context has finished initializing.
+     * Reconciles any transfer processes left with {@code isDownloadInProgress=true} from a previous crash
+     * or unclean shutdown. Called automatically once the Spring context has finished initializing.
+     *
+     * <p>For each stale record the dataplane is queried for its actual status:
+     * <ul>
+     *   <li>If the dataplane reports {@code SUSPENDED} and {@code resumable=true} the TP is persisted as
+     *       {@link TransferState#SUSPENDED} with {@code dataFlowState="SUSPENDED"} and the outbound
+     *       suspension callback is sent so the peer is in sync.</li>
+     *   <li>Otherwise the TP is persisted as {@link TransferState#TERMINATED} with a descriptive error
+     *       message and the outbound termination callback is sent.</li>
+     * </ul>
+     * Errors during reconciliation of a single TP are caught and logged so that the remaining records
+     * are still processed.
+     * </p>
      */
     @PostConstruct
     void resetStaleDownloadingFlags() {
-//TODO remove or move when the suspend/resume logic is in place. Check also if cleanup is still needed for stale parts on S3 (download never finished) .
         List<TransferProcess> stale = transferProcessRepository.findAllByIsDownloadInProgressTrue();
-        if (!stale.isEmpty()) {
-            log.warn("Found {} transfer process(es) with stale isDownloadInProgress=true flag. Resetting on startup.", stale.size());
-            stale.forEach(tp -> {
-                TransferProcess reset = tp.withIsDownloadInProgress(false);
-                transferProcessRepository.save(reset);
-                log.info("Reset isDownloadInProgress flag for transfer process {}", tp.getId());
-            });
+        if (stale.isEmpty()) {
+            return;
+        }
+        log.warn("Found {} transfer process(es) with stale isDownloadInProgress=true flag. Reconciling on startup.", stale.size());
+        for (TransferProcess tp : stale) {
+            try {
+                DataFlowStatusMessage status = dataPlaneClient.status(tp.getId(), tp.getFormat());
+                if (Boolean.TRUE.equals(status.getResumable()) && DataFlowState.SUSPENDED.equals(status.getState())) {
+                    TransferProcess suspended = tp.copyWithNewTransferState(TransferState.SUSPENDED)
+                            .withDataFlowState(TransferState.SUSPENDED.name())
+                            .withIsDownloadInProgress(false)
+                            .withSuspendedBy(tp.getRole())
+                            .withDataFlowErrorMessage(null);
+                    suspendRecoveredTransfer(suspended);
+                    transferProcessRepository.save(suspended);
+                    log.info("Reconciled crash-interrupted transfer {} as SUSPENDED (resumable)", tp.getId());
+                } else {
+                    String errorMsg = "unrecoverable error, start a new data transfer";
+                    TransferProcess terminated = tp.copyWithNewTransferState(TransferState.TERMINATED)
+                            .withDataFlowState(TransferState.TERMINATED.name())
+                            .withIsDownloadInProgress(false)
+                            .withSuspendedBy(null)
+                            .withDataFlowErrorMessage(errorMsg);
+                    terminateRecoveredTransfer(terminated, errorMsg);
+                    transferProcessRepository.save(terminated);
+                    log.info("Reconciled crash-interrupted transfer {} as TERMINATED (not resumable)", tp.getId());
+                }
+            } catch (RuntimeException ex) {
+                log.error("Failed to reconcile crash-interrupted transfer {}", tp.getId(), ex);
+            }
         }
     }
 
@@ -157,7 +193,7 @@ public class DataTransferAPIService {
 
         stateTransitionCheck(TransferState.REQUESTED, transferProcessInitialized);
         DataAddress dataAddressForMessage = null;
-        boolean isHttpPush = "HttpData-PUSH".equals(dataTransferRequest.getFormat());
+        boolean isHttpPush = DataTransferFormat.HTTP_PUSH.format().equals(dataTransferRequest.getFormat());
         if (isHttpPush) {
             // HTTP-PUSH only: consumer CP creates temporary S3 credentials directly and embeds them in
             // the TransferRequestMessage dataAddress so the provider DP can push to the consumer bucket.
@@ -311,11 +347,14 @@ public class DataTransferAPIService {
      */
     public JsonNode startTransfer(String transferProcessId) {
         TransferProcess transferProcess = findTransferProcessById(transferProcessId);
+        boolean resuming = TransferState.SUSPENDED.equals(transferProcess.getState());
 
         if (StringUtils.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole()) && TransferState.REQUESTED.equals(transferProcess.getState())) {
             throw new DataTransferAPIException("State transition aborted, consumer can not transit from " + transferProcess.getState().name()
                     + " to " + TransferState.STARTED.name());
         }
+
+        assertResumeInitiator(transferProcess);
 
         stateTransitionCheck(TransferState.STARTED, transferProcess);
 
@@ -328,7 +367,7 @@ public class DataTransferAPIService {
         }
         if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
             address = DataTransferCallback.getConsumerDataTransferStart(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
-            if ("HttpData-PULL".equals(transferProcess.getFormat())) {
+            if (!resuming && DataTransferFormat.HTTP_PULL.format().equals(transferProcess.getFormat())) {
                 Artifact artifact = artifactTransferService.findArtifact(transferProcess);
                 String artifactURL = switch (artifact.getArtifactType()) {
                     case FILE -> {
@@ -389,10 +428,13 @@ public class DataTransferAPIService {
                 .callbackAddress(transferProcess.getCallbackAddress())
                 .dataAddress(transferStartMessage.getDataAddress())
                 .isDownloaded(transferProcess.isDownloaded())
+                .isDownloadInProgress(resuming || transferProcess.isDownloadInProgress())
                 .dataId(transferProcess.getDataId())
                 .format(transferProcess.getFormat())
                 .state(TransferState.STARTED)
+                .dataFlowState(resuming ? TransferState.STARTED.name() : null)
                 .role(transferProcess.getRole())
+                .suspendedBy(null)
                 .datasetId(transferProcess.getDatasetId())
                 .tenantId(transferProcess.getTenantId())
                 .created(transferProcess.getCreated())
@@ -410,6 +452,66 @@ public class DataTransferAPIService {
                         credentialUtils.getConnectorCredentials());
         log.info("Response received {}", response);
         if (response.isSuccess()) {
+            if (resuming) {
+                try {
+                    dataPlaneClient.resume(transferProcess.getId(), transferProcess.getFormat());
+                    log.info("Transfer process {} dataplane resumed after successful peer start", transferProcess.getId());
+                } catch (RuntimeException ex) {
+                    // Peer accepted the start but local dataplane resume failed.
+                    // Roll back to SUSPENDED so the admin can retry and the TP is not left as
+                    // an apparently healthy STARTED record with a paused dataplane.
+                    log.error("Dataplane resume failed for transfer {} after peer accepted start — rolling back to SUSPENDED",
+                            transferProcess.getId(), ex);
+                    TransferProcess rollback = TransferProcess.Builder.newInstance()
+                            .id(transferProcessStarted.getId())
+                            .agreementId(transferProcessStarted.getAgreementId())
+                            .consumerPid(transferProcessStarted.getConsumerPid())
+                            .providerPid(transferProcessStarted.getProviderPid())
+                            .callbackAddress(transferProcessStarted.getCallbackAddress())
+                            .dataAddress(transferProcess.getDataAddress())
+                            .isDownloaded(transferProcessStarted.isDownloaded())
+                            .dataId(transferProcessStarted.getDataId())
+                            .format(transferProcessStarted.getFormat())
+                            .state(TransferState.SUSPENDED)
+                            .dataFlowState(transferProcess.getDataFlowState())
+                            .role(transferProcessStarted.getRole())
+                            .suspendedBy(transferProcess.getSuspendedBy())
+                            .datasetId(transferProcessStarted.getDatasetId())
+                            .retryCount(transferProcessStarted.getRetryCount())
+                            .tenantId(transferProcessStarted.getTenantId())
+                            .created(transferProcessStarted.getCreated())
+                            .createdBy(transferProcessStarted.getCreatedBy())
+                            .modified(transferProcessStarted.getModified())
+                            .lastModifiedBy(transferProcessStarted.getLastModifiedBy())
+                            .version(transferProcessStarted.getVersion())
+                            .build();
+                    boolean rollbackPersisted = false;
+                    try {
+                        transferProcessRepository.save(rollback);
+                        rollbackPersisted = true;
+                        log.info("Transfer process {} rolled back to SUSPENDED after dataplane resume failure",
+                                transferProcess.getId());
+                    } catch (RuntimeException saveEx) {
+                        log.error("Failed to persist SUSPENDED rollback for transfer {} — manual intervention required: "
+                                + "TP may be stuck as STARTED with a paused dataplane", transferProcess.getId(), saveEx);
+                    }
+                    String resumeFailureMessage = ex.getMessage() != null ? ex.getMessage() : ex.toString();
+                    String operatorMessage = rollbackPersisted
+                            ? "Dataplane resume failed after peer accepted start — transfer rolled back to "
+                            + "SUSPENDED: " + resumeFailureMessage
+                            : "Dataplane resume failed after peer accepted start — rollback to SUSPENDED "
+                            + "also failed; manual intervention required: " + resumeFailureMessage;
+                    publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
+                            "Transfer process start failed",
+                            auditMap("transferProcess", transferProcess,
+                                    "role", IConstants.ROLE_API,
+                                    "consumerPid", transferProcess.getConsumerPid(),
+                                    "providerPid", transferProcess.getProviderPid(),
+                                    "errorMessage", operatorMessage));
+                    throw new DataTransferAPIException(
+                            operatorMessage);
+                }
+            }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
                     "Transfer process started successfully",
                     auditMap("transferProcess", transferProcessStarted,
@@ -418,11 +520,12 @@ public class DataTransferAPIService {
                             "providerPid", transferProcessStarted.getProviderPid()));
             return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
         } else {
-            log.error("Error response received — rolling back TP to REQUESTED state");
-            // Roll back: restore the original REQUESTED state so the admin can retry.
+            // Roll back: restore the pre-start state so the admin can retry.
             // Build the rollback entity from transferProcessStarted (which has the current @Version
             // after the STARTED save) to avoid OptimisticLockingFailureException. Use the original
             // dataAddress from transferProcess so generated fields (e.g. presigned URLs) are discarded.
+            TransferState rollbackState = resuming ? TransferState.SUSPENDED : TransferState.REQUESTED;
+            log.error("Error response received — rolling back TP to {} state", rollbackState);
             TransferProcess rollback = TransferProcess.Builder.newInstance()
                     .id(transferProcessStarted.getId())
                     .agreementId(transferProcessStarted.getAgreementId())
@@ -433,8 +536,10 @@ public class DataTransferAPIService {
                     .isDownloaded(transferProcessStarted.isDownloaded())
                     .dataId(transferProcessStarted.getDataId())
                     .format(transferProcessStarted.getFormat())
-                    .state(TransferState.REQUESTED)
+                    .state(rollbackState)
+                    .dataFlowState(resuming ? transferProcess.getDataFlowState() : null)
                     .role(transferProcessStarted.getRole())
+                    .suspendedBy(resuming ? transferProcess.getSuspendedBy() : null)
                     .datasetId(transferProcessStarted.getDatasetId())
                     .retryCount(transferProcessStarted.getRetryCount())
                     .tenantId(transferProcessStarted.getTenantId())
@@ -537,13 +642,6 @@ public class DataTransferAPIService {
 
         stateTransitionCheck(TransferState.SUSPENDED, transferProcess);
 
-        if (transferProcess.isDownloadInProgress()) {
-            log.error("Cannot suspend transfer {} while data transfer is in progress", transferProcessId);
-            throw new DataTransferAPIException(
-                    "Cannot suspend transfer while data transfer is in progress. "
-                            + "The active data plane transfer cannot be paused mid-flight.");
-        }
-
         TransferSuspensionMessage transferSuspensionMessage = TransferSuspensionMessage.Builder.newInstance()
                 .consumerPid(transferProcess.getConsumerPid())
                 .providerPid(transferProcess.getProviderPid())
@@ -564,32 +662,66 @@ public class DataTransferAPIService {
         if (address == null) {
             throw new DataTransferAPIException("Cannot resolve callback address for unknown role: " + transferProcess.getRole());
         }
-        GenericApiResponse<String> response = okHttpRestClient
-                .sendRequestProtocol(address,
-                        TransferSerializer.serializeProtocolJsonNode(transferSuspensionMessage),
-                        credentialUtils.getConnectorCredentials());
-        log.info("Response received {}", response);
-        if (response.isSuccess()) {
-            TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
-            transferProcessRepository.save(transferProcessStarted);
-            log.info("Transfer process {} saved", transferProcessStarted.getId());
+
+        dataPlaneClient.suspend(transferProcess.getId(), transferProcess.getFormat());
+        log.info("Data plane suspended for transfer {}", transferProcessId);
+
+        TransferProcess suspended = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED)
+                .withDataFlowState(TransferState.SUSPENDED.name())
+                .withIsDownloadInProgress(false)
+                .withSuspendedBy(transferProcess.getRole());
+
+        try {
+            GenericApiResponse<String> response = okHttpRestClient
+                    .sendRequestProtocol(address,
+                            TransferSerializer.serializeProtocolJsonNode(transferSuspensionMessage),
+                            credentialUtils.getConnectorCredentials());
+            log.info("Response received {}", response);
+            if (!response.isSuccess()) {
+                throw new DataTransferAPIException(response.getMessage());
+            }
+            transferProcessRepository.save(suspended);
+            log.info("Transfer process {} saved as SUSPENDED", suspended.getId());
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
                     "Transfer process suspended successfully",
                     auditMap("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid()));
-            return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
-        } else {
-            log.error("Error response received!");
+            return TransferSerializer.serializePlainJsonNode(suspended);
+        } catch (RuntimeException ex) {
+            log.error("Suspension failed for transfer {} — attempting dataplane rollback", transferProcessId);
+            try {
+                dataPlaneClient.resume(transferProcess.getId(), transferProcess.getFormat());
+                TransferProcess resumed = transferProcess.copyWithNewTransferState(TransferState.STARTED)
+                        .withDataFlowState(TransferState.STARTED.name())
+                        .withIsDownloadInProgress(transferProcess.isDownloadInProgress())
+                        .withSuspendedBy(null)
+                        .withDataFlowErrorMessage(null);
+                transferProcessRepository.save(resumed);
+                log.info("Dataplane rollback succeeded for transfer {}", transferProcessId);
+            } catch (RuntimeException rollbackEx) {
+                log.error("Dataplane rollback resume failed for transfer {} — recording divergence", transferProcessId, rollbackEx);
+                TransferProcess divergence = transferProcess.copyWithNewTransferState(TransferState.STARTED)
+                        .withDataFlowState(TransferState.SUSPENDED.name())
+                        .withIsDownloadInProgress(false)
+                        .withSuspendedBy(null)
+                        .withDataFlowErrorMessage(
+                                "manual intervention required: local dataplane suspend succeeded but rollback resume failed");
+                try {
+                    transferProcessRepository.save(divergence);
+                } catch (RuntimeException saveEx) {
+                    log.error("Failed to persist divergence state for transfer {} — manual intervention required", transferProcessId, saveEx);
+                }
+            }
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
                     "Transfer process suspension failed",
                     auditMap("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid(),
-                            "errorMessage", response.getMessage()));
-            throw new DataTransferAPIException(response.getMessage());
+                            "errorMessage", ex.getMessage()));
+            throw ex;
         }
     }
 
@@ -709,20 +841,26 @@ public class DataTransferAPIService {
         // DataFlowCallbackController when done. Completion/termination lifecycle is driven
         // entirely by those callbacks — do NOT call completeTransfer() here.
         try {
-            // Use dataPlaneFeedbackAddress() (global base URL, no tenant path) so the Data Plane
-            // can POST back to /api/v1/dataflows/complete on this connector's admin chain.
-            // providerCallbackAddress() would include the tenant path which the admin
-            // DataFlowCallbackController does not have, causing a 404.
-            String callbackAddress = dataTransferProperties.dataPlaneFeedbackAddress();
-            DataFlowStartMessage startMessage = DataFlowStartMessage.Builder.newInstance()
-                    .processId(transferProcessDownloading.getId())
-                    .transferType(transferProcessDownloading.getFormat())
-                    .callbackAddress(callbackAddress)
-                    .dataAddress(toDataAddressMap(transferProcessDownloading.getDataAddress()))
-                    .agreementId(transferProcessDownloading.getAgreementId())
-                    .datasetId(transferProcessDownloading.getDatasetId())
-                    .build();
-            dataPlaneClient.start(startMessage);
+            boolean resumable = TransferState.SUSPENDED.name().equals(transferProcessDownloading.getDataFlowState());
+            if (resumable) {
+                // Local dataplane mirror says the flow is SUSPENDED — resume instead of starting fresh.
+                dataPlaneClient.resume(transferProcessDownloading.getId(), transferProcessDownloading.getFormat());
+            } else {
+                // Use dataPlaneFeedbackAddress() (global base URL, no tenant path) so the Data Plane
+                // can POST back to /api/v1/dataflows/complete on this connector's admin chain.
+                // providerCallbackAddress() would include the tenant path which the admin
+                // DataFlowCallbackController does not have, causing a 404.
+                String callbackAddress = dataTransferProperties.dataPlaneFeedbackAddress();
+                DataFlowStartMessage startMessage = DataFlowStartMessage.Builder.newInstance()
+                        .processId(transferProcessDownloading.getId())
+                        .transferType(transferProcessDownloading.getFormat())
+                        .callbackAddress(callbackAddress)
+                        .dataAddress(toDataAddressMap(transferProcessDownloading.getDataAddress()))
+                        .agreementId(transferProcessDownloading.getAgreementId())
+                        .datasetId(transferProcessDownloading.getDatasetId())
+                        .build();
+                dataPlaneClient.start(startMessage);
+            }
         } catch (Exception e) {
             transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
             return CompletableFuture.failedFuture(e);
@@ -837,6 +975,126 @@ public class DataTransferAPIService {
                     transferProcess.getConsumerPid(),
                     transferProcess.getProviderPid());
         }
+    }
+
+    /**
+     * Guards admin-API resume against non-initiator attempts.
+     * When a transfer is SUSPENDED, only the local side that originally requested the suspension
+     * may trigger the resume via the admin API. If the peer initiated the suspension, the resume
+     * must arrive via the DSP protocol start message instead.
+     * <p>
+     * Legacy records created before the {@code suspendedBy} field was introduced carry
+     * {@code suspendedBy == null}. Those records are treated as unrestricted and may always
+     * be resumed via the admin API.
+     *
+     * @param transferProcess the transfer process to validate
+     * @throws DataTransferAPIException if the transfer is SUSPENDED, {@code suspendedBy} is non-null,
+     *                                  and the local role is not the suspend initiator
+     */
+    private void assertResumeInitiator(TransferProcess transferProcess) {
+        if (TransferState.SUSPENDED.equals(transferProcess.getState())
+                && transferProcess.getSuspendedBy() != null
+                && !StringUtils.equals(transferProcess.getRole(), transferProcess.getSuspendedBy())) {
+            String errorMessage = "Resume rejected: the peer initiated the suspension of transfer "
+                    + transferProcess.getId() + "; resume must arrive via the DSP protocol start message";
+            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR,
+                    "Transfer process resume rejected — not the suspend initiator",
+                    auditMap("transferProcess", transferProcess,
+                            "currentState", transferProcess.getState(),
+                            "role", IConstants.ROLE_API,
+                            "consumerPid", transferProcess.getConsumerPid(),
+                            "providerPid", transferProcess.getProviderPid()));
+            throw new DataTransferAPIException(errorMessage);
+        }
+    }
+
+    /**
+     * Sends an outbound {@link TransferSuspensionMessage} to the peer as part of crash-recovery
+     * reconciliation when the dataplane reports the flow is still {@code SUSPENDED} and resumable.
+     *
+     * @param transferProcess the recovered TP already in {@link TransferState#SUSPENDED} state
+     * @throws DataTransferAPIException if the peer rejects the suspension message
+     */
+    private void suspendRecoveredTransfer(TransferProcess transferProcess) {
+        TransferSuspensionMessage message = TransferSuspensionMessage.Builder.newInstance()
+                .consumerPid(transferProcess.getConsumerPid())
+                .providerPid(transferProcess.getProviderPid())
+                .code("200")
+                .reason(List.of("Data transfer suspended"))
+                .build();
+        GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
+                resolveSuspensionAddress(transferProcess),
+                TransferSerializer.serializeProtocolJsonNode(message),
+                credentialUtils.getConnectorCredentials());
+        if (!response.isSuccess()) {
+            throw new DataTransferAPIException(response.getMessage());
+        }
+    }
+
+    /**
+     * Sends an outbound {@link TransferTerminationMessage} to the peer as part of crash-recovery
+     * reconciliation when the dataplane flow is no longer resumable.
+     *
+     * @param transferProcess the recovered TP already in {@link TransferState#TERMINATED} state
+     * @param reason          human-readable reason for termination
+     * @throws DataTransferAPIException if the peer rejects the termination message
+     */
+    private void terminateRecoveredTransfer(TransferProcess transferProcess, String reason) {
+        TransferTerminationMessage message = TransferTerminationMessage.Builder.newInstance()
+                .consumerPid(transferProcess.getConsumerPid())
+                .providerPid(transferProcess.getProviderPid())
+                .code("500")
+                .reason(List.of(reason))
+                .build();
+        GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
+                resolveTerminationAddress(transferProcess),
+                TransferSerializer.serializeProtocolJsonNode(message),
+                credentialUtils.getConnectorCredentials());
+        if (!response.isSuccess()) {
+            throw new DataTransferAPIException(response.getMessage());
+        }
+    }
+
+    /**
+     * Resolves the peer-facing DSP suspension callback URL for the given transfer process.
+     *
+     * <p>Consumer-role TPs suspend towards the provider; provider-role TPs suspend towards the consumer.</p>
+     *
+     * @param transferProcess the TP to resolve the callback address for
+     * @return the resolved suspension callback URL
+     * @throws DataTransferAPIException if the role is not {@code CONSUMER} or {@code PROVIDER}
+     */
+    private String resolveSuspensionAddress(TransferProcess transferProcess) {
+        if (StringUtils.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole())) {
+            return DataTransferCallback.getProviderDataTransferSuspension(
+                    transferProcess.getCallbackAddress(), transferProcess.getProviderPid());
+        }
+        if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
+            return DataTransferCallback.getConsumerDataTransferSuspension(
+                    transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
+        }
+        throw new DataTransferAPIException("Cannot resolve callback address for unknown role: " + transferProcess.getRole());
+    }
+
+    /**
+     * Resolves the peer-facing DSP termination callback URL for the given transfer process.
+     *
+     * <p>Consumer-role TPs terminate towards the provider; provider-role TPs terminate towards the consumer.</p>
+     *
+     * @param transferProcess the TP to resolve the callback address for
+     * @return the resolved termination callback URL
+     * @throws DataTransferAPIException if the role is not {@code CONSUMER} or {@code PROVIDER}
+     */
+    private String resolveTerminationAddress(TransferProcess transferProcess) {
+        if (StringUtils.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole())) {
+            return DataTransferCallback.getProviderDataTransferTermination(
+                    transferProcess.getCallbackAddress(), transferProcess.getProviderPid());
+        }
+        if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
+            return DataTransferCallback.getConsumerDataTransferTermination(
+                    transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
+        }
+        throw new DataTransferAPIException("Cannot resolve callback address for unknown role: " + transferProcess.getRole());
     }
 
     private void policyCheck(TransferProcess transferProcess) {

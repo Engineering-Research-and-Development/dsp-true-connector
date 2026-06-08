@@ -1,10 +1,14 @@
 package it.eng.datatransfer.service;
 
+import it.eng.datatransfer.model.DataTransferFormat;
+import it.eng.datatransfer.model.TransferProcess;
+import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.service.AuditEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -200,6 +204,43 @@ public class AutomaticDataTransferServiceTest {
     }
 
     @Test
+    @DisplayName("processStart: skips provider HTTP-PUSH processDownload when resuming a suspended transfer")
+    void processStart_httpPushProviderResumeDoesNotChainDownload() {
+        setUp();
+        String id = "tp6-resume-push";
+        TransferProcess suspended = TransferProcess.Builder.newInstance()
+                .id(id)
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.SUSPENDED)
+                .format(DataTransferFormat.HTTP_PUSH.format())
+                .dataFlowState(TransferState.SUSPENDED.name())
+                .suspendedBy(IConstants.ROLE_PROVIDER)
+                .build();
+        TransferProcess startedAfterResume = suspended.copyWithNewTransferState(TransferState.STARTED)
+                .withDataFlowState(TransferState.STARTED.name())
+                .withSuspendedBy(null);
+
+        when(transferProcessRepository.findById(id))
+                .thenReturn(Optional.of(suspended))
+                .thenReturn(Optional.of(suspended))
+                .thenReturn(Optional.of(startedAfterResume));
+        when(transferProperties.getMaxRetryAttempts()).thenReturn(3);
+        when(apiService.startTransfer(id)).thenReturn(null);
+
+        service.processStart(id);
+
+        verify(apiService, times(1)).startTransfer(id);
+        verify(apiService, never()).downloadData(id);
+        verify(taskScheduler, never()).schedule(any(Runnable.class), any(Instant.class));
+    }
+
+    @Test
     @DisplayName("processDownload: succeeds on first attempt")
     void processDownload_success() {
         setUp();
@@ -330,8 +371,10 @@ public class AutomaticDataTransferServiceTest {
         String id = "tp_ole";
         var tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER;
         var tpWithRetry = tp.withRetryCount(1);
-        // First findById is from scheduleAttempt; second is the fresh re-read inside the catch block.
+        // First findById is from scheduleAttempt; second is the pre-start read in processStart;
+        // third is the fresh re-read inside the catch block.
         when(transferProcessRepository.findById(id))
+                .thenReturn(Optional.of(tp))
                 .thenReturn(Optional.of(tp))
                 .thenReturn(Optional.of(tp));
         when(transferProperties.getMaxRetryAttempts()).thenReturn(3);
@@ -343,7 +386,7 @@ public class AutomaticDataTransferServiceTest {
         service.processStart(id);
 
         // Retry-count save must use the freshly-read entity, not the stale one from before the action.
-        verify(transferProcessRepository, times(2)).findById(id);
+        verify(transferProcessRepository, times(3)).findById(id);
         verify(transferProcessRepository, times(1)).save(argThat(t -> t.getRetryCount() == 1));
         verify(taskScheduler, times(1)).schedule(any(Runnable.class), any(Instant.class));
     }
@@ -356,6 +399,7 @@ public class AutomaticDataTransferServiceTest {
         var tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER;
         when(transferProcessRepository.findById(id))
                 .thenReturn(Optional.of(tp))
+                .thenReturn(Optional.of(tp))
                 .thenReturn(Optional.of(tp));
         when(transferProperties.getMaxRetryAttempts()).thenReturn(3);
         when(transferProperties.getRetryDelayMs()).thenReturn(1000L);
@@ -367,9 +411,8 @@ public class AutomaticDataTransferServiceTest {
         // Must not throw — the catch inside scheduleAttempt swallows the secondary OLE.
         service.processStart(id);
 
-        verify(transferProcessRepository, times(2)).findById(id);
+        verify(transferProcessRepository, times(3)).findById(id);
         verify(taskScheduler, times(1)).schedule(any(Runnable.class), any(Instant.class));
     }
 
 }
-

@@ -1,6 +1,7 @@
 package it.eng.datatransfer.router;
 
 import it.eng.datatransfer.model.DataPlaneRegistration;
+import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.service.DataPlaneRegistrationService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,7 +29,7 @@ public class DataPlaneRouterTest {
     private DataPlaneRegistration buildRegistration(String endpoint) {
         return DataPlaneRegistration.Builder.newInstance()
                 .endpoint(endpoint)
-                .supportedTransferTypes(Set.of("HttpData-PULL"))
+                .supportedTransferTypes(Set.of(DataTransferFormat.HTTP_PULL.format()))
                 .build();
     }
 
@@ -36,9 +37,9 @@ public class DataPlaneRouterTest {
     @DisplayName("selectsEndpointForKnownTransferType - one DP registered, returns it")
     public void selectsEndpointForKnownTransferType() {
         DataPlaneRegistration reg = buildRegistration("http://dp1:9090");
-        when(registrationService.findByTransferType("HttpData-PULL")).thenReturn(List.of(reg));
+        when(registrationService.findByTransferType(DataTransferFormat.HTTP_PULL.format())).thenReturn(List.of(reg));
 
-        Optional<DataPlaneRegistration> result = router.selectDataPlane("HttpData-PULL");
+        Optional<DataPlaneRegistration> result = router.selectDataPlane(DataTransferFormat.HTTP_PULL.format());
 
         assertTrue(result.isPresent());
         assertEquals("http://dp1:9090", result.get().getEndpoint());
@@ -59,10 +60,10 @@ public class DataPlaneRouterTest {
     public void roundRobinsAcrossMultipleInstances() {
         DataPlaneRegistration reg1 = buildRegistration("http://dp1:9090");
         DataPlaneRegistration reg2 = buildRegistration("http://dp2:9090");
-        when(registrationService.findByTransferType("HttpData-PULL")).thenReturn(List.of(reg1, reg2));
+        when(registrationService.findByTransferType(DataTransferFormat.HTTP_PULL.format())).thenReturn(List.of(reg1, reg2));
 
-        Optional<DataPlaneRegistration> first = router.selectDataPlane("HttpData-PULL");
-        Optional<DataPlaneRegistration> second = router.selectDataPlane("HttpData-PULL");
+        Optional<DataPlaneRegistration> first = router.selectDataPlane(DataTransferFormat.HTTP_PULL.format());
+        Optional<DataPlaneRegistration> second = router.selectDataPlane(DataTransferFormat.HTTP_PULL.format());
 
         assertTrue(first.isPresent());
         assertTrue(second.isPresent());

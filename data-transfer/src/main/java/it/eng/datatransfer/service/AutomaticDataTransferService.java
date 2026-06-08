@@ -2,6 +2,7 @@ package it.eng.datatransfer.service;
 
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
+import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
@@ -49,12 +50,21 @@ public class AutomaticDataTransferService {
 
     public void processStart(String transferProcessId) {
         scheduleAttempt(transferProcessId, "START", id -> {
+            TransferProcess tpBeforeStart = transferProcessRepository.findById(id).orElse(null);
             apiService.startTransfer(id);
             // For HTTP_PUSH on the provider side: after the consumer acknowledges the
             // TransferStartMessage, the provider must push the artifact to the consumer's
             // S3 endpoint (stored in the provider TP's dataAddress) and then send
             // TransferCompletionMessage. This is done by chaining processDownload here.
             TransferProcess tpAfterStart = transferProcessRepository.findById(id).orElse(null);
+            if (tpBeforeStart != null
+                    && TransferState.SUSPENDED.equals(tpBeforeStart.getState())
+                    && tpAfterStart != null
+                    && DataTransferFormat.HTTP_PUSH.format().equals(tpAfterStart.getFormat())
+                    && IConstants.ROLE_PROVIDER.equals(tpAfterStart.getRole())) {
+                log.info("HTTP_PUSH provider resume already kicked off inside startTransfer for TransferProcess {}", id);
+                return;
+            }
             if (tpAfterStart != null
                     && DataTransferFormat.HTTP_PUSH.format().equals(tpAfterStart.getFormat())
                     && IConstants.ROLE_PROVIDER.equals(tpAfterStart.getRole())) {
