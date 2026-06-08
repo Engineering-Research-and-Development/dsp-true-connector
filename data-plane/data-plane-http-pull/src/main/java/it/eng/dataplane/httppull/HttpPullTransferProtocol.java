@@ -111,7 +111,8 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
             String bucketName = StringUtils.isNotBlank(cpBucket) ? cpBucket : s3Properties.getBucketName();
             String objectKey = message.getProcessId();
             log.info("Preparing viewData presigned URL for processId={} in bucket={}", objectKey, bucketName);
-            String presignedUrl = s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
+//            String presignedUrl = s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
+            String presignedUrl = s3ClientService.generateGetPresignedUrl(sinkS3Section.toScalarMap(), Duration.ofDays(7L));
             log.debug("Generated viewData presigned URL for objectKey='{}'", objectKey);
             dataAddress.put(PRESIGNED_URL_KEY, presignedUrl);
         } else {

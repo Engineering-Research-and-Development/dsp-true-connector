@@ -5,6 +5,7 @@ import it.eng.dataplane.api.io.SourceContext;
 import it.eng.dataplane.api.io.SourceOpenResult;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
 import it.eng.dataplane.api.message.DataFlowPrepareMetadata;
+import it.eng.dataplane.api.message.DataFlowPrepareMetadataSection;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
@@ -87,8 +88,14 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
         String mode = metadata.getSinkSection()
                 .getString(DataPlaneConstants.METADATA_FIELD_MODE);
         if (MODE_VIEW.equals(mode)) {
+
+
             log.info("Preparing viewData presigned URL for processId={} in bucket={}", processId, bucketName);
-            String presignedUrl = s3ClientService.generateGetPresignedUrl(bucketName, processId, Duration.ofDays(7L));
+            DataFlowPrepareMetadata meta = DataFlowPrepareMetadata.from(message);
+            DataFlowPrepareMetadataSection sinkS3Section = meta.getSinkSection()
+                    .getSection(DataPlaneConstants.METADATA_SECTION_S3);
+            String presignedUrl = s3ClientService.generateGetPresignedUrl(sinkS3Section.toScalarMap(), Duration.ofDays(7L));
+//            String presignedUrl = s3ClientService.generateGetPresignedUrl(bucketName, processId, Duration.ofDays(7L));
             log.debug("Generated presigned URL for pushed file, objectKey='{}'", processId);
             return DataFlowPrepareResponse.Builder.newInstance()
                     .processId(processId)

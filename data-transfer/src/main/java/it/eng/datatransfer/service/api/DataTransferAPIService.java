@@ -398,7 +398,7 @@ public class DataTransferAPIService {
                     // FILE: delegate presigned URL generation to the provider Data Plane so the DP
                     // can use its own S3 credentials and presigning infrastructure.
                     DataFlowPrepareMessage prepareMsg = applyCommonDataPlaneFields(
-                                    DataFlowPrepareMessage.Builder.newInstance(), transferProcess, "HttpData-PULL")
+                                    DataFlowPrepareMessage.Builder.newInstance(), transferProcess, transferProcess.getFormat())
                             .processId(transferProcess.getId())
                             .agreementId(transferProcess.getAgreementId())
                             .datasetId(transferProcess.getDatasetId())
@@ -752,13 +752,14 @@ public class DataTransferAPIService {
                     dataPlaneClient.restoreStickyAssignment(transferProcess.getId(),
                             transferProcess.getAssignedDataplaneEndpoint());
                 }
-                try {
-                    dataPlaneClient.terminate(transferProcess.getId(), transferProcess.getFormat(),
-                            transferProcess.getTransportProfile());
-                } catch (Exception e) {
-                    log.warn("DP terminate call failed for process {} (best-effort); sticky cleanup will still run: {}",
-                            transferProcess.getId(), e.getMessage());
-                }
+//TODO figure out how to solve this in better way, currently it fails for streaming since completed -> terminate throws ex
+//                try {
+//                    dataPlaneClient.terminate(transferProcess.getId(), transferProcess.getFormat(),
+//                            transferProcess.getTransportProfile());
+//                } catch (Exception e) {
+//                    log.warn("DP terminate call failed for process {} (best-effort); sticky cleanup will still run: {}",
+//                            transferProcess.getId(), e.getMessage());
+//                }
             }
             dataPlaneClient.clearStickyAssignment(transferProcess.getId());
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED,
@@ -767,6 +768,7 @@ public class DataTransferAPIService {
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcessCompleted.getConsumerPid(),
                             "providerPid", transferProcessCompleted.getProviderPid()));
+            // TODO check if this is correct assumption in comment
             // Temporary IAM credentials (HTTP-PUSH) are cleaned up by the consumer CP
             // in AbstractDataTransferService.completeDataTransfer when the consumer TP transitions to COMPLETED.
             return TransferSerializer.serializePlainJsonNode(transferProcessCompleted);
@@ -1027,6 +1029,9 @@ public class DataTransferAPIService {
                     .callbackAddress(callbackAddress)
                     .dataAddress(buildStartMessageDataAddress(transferProcessDownloading))
                     .agreementId(transferProcessDownloading.getAgreementId())
+                    // check if this cna be used for both pull and push, to pass BucketCredentialsEntity information for transfer
+                    .metadata(buildPrepareMetadata(transferProcess.getTenantId(),
+                            transferProcess.getDatasetId(), transferProcess.getDataAddress()))
                     .datasetId(transferProcessDownloading.getDatasetId())
                     .build();
             if (transportProfile != null) {
@@ -1085,7 +1090,7 @@ public class DataTransferAPIService {
             // The CP supplies sink.s3 metadata so the DP does not need to know about tenants.
             // TODO verify Duration does not exceed EndDateTime, if it is present
             DataFlowPrepareMessage viewPrepareMsg = applyCommonDataPlaneFields(
-                            DataFlowPrepareMessage.Builder.newInstance(), transferProcess,  transferProcess.getFormat())
+                            DataFlowPrepareMessage.Builder.newInstance(), transferProcess, transferProcess.getFormat())
                     .processId(transferProcess.getId())
                     .agreementId(transferProcess.getAgreementId())
                     .datasetId(transferProcess.getDatasetId())
@@ -1095,7 +1100,7 @@ public class DataTransferAPIService {
             DataFlowPrepareResponse viewPrepareResponse;
             String viewStickyEndpoint;
             try {
-                viewPrepareResponse = dataPlaneClient.prepare(viewPrepareMsg,  transferProcess.getFormat(), null);
+                viewPrepareResponse = dataPlaneClient.prepare(viewPrepareMsg, transferProcess.getFormat(), null);
                 // Capture sticky immediately after prepare so it can be cleared during cleanup.
                 viewStickyEndpoint = dataPlaneClient.getStickyEndpoint(transferProcess.getId()).orElse(null);
             } catch (DataTransferAPIException e) {
@@ -1438,12 +1443,22 @@ public class DataTransferAPIService {
         Map<String, Object> s3Section = new LinkedHashMap<>();
         s3Section.put(DataPlaneConstants.METADATA_S3_BUCKET_NAME, bucketName);
         s3Section.put(DataPlaneConstants.METADATA_S3_OBJECT_KEY, objectKey);
-        String region = s3Properties.getRegion();
+//        add also bucket credentials here
+        BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
+        String region = requireControlPlaneS3Configuration("region", s3Properties.getRegion());
+        String accessKey = requireControlPlaneS3Credential(bucketName, "accessKey",
+                bucketCredentials == null ? null : bucketCredentials.getAccessKey());
+        String secretKey = requireControlPlaneS3Credential(bucketName, "secretKey",
+                bucketCredentials == null ? null : bucketCredentials.getSecretKey());
+        s3Section.put(DataPlaneConstants.METADATA_S3_ACCESS_KEY, accessKey);
+        s3Section.put(DataPlaneConstants.METADATA_S3_SECRET_KEY, secretKey);
+
+//        String region = s3Properties.getRegion();
         if (StringUtils.isNotBlank(region)) {
             s3Section.put(DataPlaneConstants.METADATA_S3_REGION, region);
         }
-        if (StringUtils.isNotBlank(s3Properties.getEndpoint())) {
-            s3Section.put(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, s3Properties.getEndpoint());
+        if (StringUtils.isNotBlank(s3Properties.getExternalPresignedEndpoint())) {
+            s3Section.put(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, s3Properties.getExternalPresignedEndpoint());
         }
         Map<String, Object> sinkSection = new LinkedHashMap<>();
         sinkSection.put(DataPlaneConstants.METADATA_FIELD_MODE, "VIEW");

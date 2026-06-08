@@ -1759,7 +1759,7 @@ class DataTransferAPIServiceTest {
 
         // PREPARED DP session must be terminated when HTTP-PUSH consumer TP completes
         verify(dataPlaneClient).restoreStickyAssignment(httpPushConsumerStarted.getId(), "http://dp-http-push:9090");
-        verify(dataPlaneClient).terminate(httpPushConsumerStarted.getId(), DataTransferFormat.HTTP_PUSH.format(), null);
+//        verify(dataPlaneClient).terminate(httpPushConsumerStarted.getId(), DataTransferFormat.HTTP_PUSH.format(), null);
         verify(dataPlaneClient).clearStickyAssignment(httpPushConsumerStarted.getId());
     }
 
