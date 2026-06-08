@@ -32,6 +32,7 @@ import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.codec.binary.Base64;
@@ -41,7 +42,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
@@ -138,7 +138,7 @@ public class DataTransferAPIService {
                 DataFlowStatusMessage status = dataPlaneClient.status(tp.getId(), tp.getFormat());
                 if (Boolean.TRUE.equals(status.getResumable()) && DataFlowState.SUSPENDED.equals(status.getState())) {
                     TransferProcess suspended = tp.copyWithNewTransferState(TransferState.SUSPENDED)
-                            .withDataFlowState("SUSPENDED")
+                            .withDataFlowState(TransferState.SUSPENDED.name())
                             .withIsDownloadInProgress(false)
                             .withSuspendedBy(tp.getRole())
                             .withDataFlowErrorMessage(null);
@@ -148,7 +148,7 @@ public class DataTransferAPIService {
                 } else {
                     String errorMsg = "unrecoverable error, start a new data transfer";
                     TransferProcess terminated = tp.copyWithNewTransferState(TransferState.TERMINATED)
-                            .withDataFlowState("TERMINATED")
+                            .withDataFlowState(TransferState.TERMINATED.name())
                             .withIsDownloadInProgress(false)
                             .withSuspendedBy(null)
                             .withDataFlowErrorMessage(errorMsg);
@@ -193,7 +193,7 @@ public class DataTransferAPIService {
 
         stateTransitionCheck(TransferState.REQUESTED, transferProcessInitialized);
         DataAddress dataAddressForMessage = null;
-        boolean isHttpPush = "HttpData-PUSH".equals(dataTransferRequest.getFormat());
+        boolean isHttpPush = DataTransferFormat.HTTP_PUSH.format().equals(dataTransferRequest.getFormat());
         if (isHttpPush) {
             // HTTP-PUSH only: consumer CP creates temporary S3 credentials directly and embeds them in
             // the TransferRequestMessage dataAddress so the provider DP can push to the consumer bucket.
@@ -367,7 +367,7 @@ public class DataTransferAPIService {
         }
         if (StringUtils.equals(IConstants.ROLE_PROVIDER, transferProcess.getRole())) {
             address = DataTransferCallback.getConsumerDataTransferStart(transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
-            if (!resuming && "HttpData-PULL".equals(transferProcess.getFormat())) {
+            if (!resuming && DataTransferFormat.HTTP_PULL.format().equals(transferProcess.getFormat())) {
                 Artifact artifact = artifactTransferService.findArtifact(transferProcess);
                 String artifactURL = switch (artifact.getArtifactType()) {
                     case FILE -> {
@@ -432,7 +432,7 @@ public class DataTransferAPIService {
                 .dataId(transferProcess.getDataId())
                 .format(transferProcess.getFormat())
                 .state(TransferState.STARTED)
-                .dataFlowState(resuming ? "STARTED" : null)
+                .dataFlowState(resuming ? TransferState.STARTED.name() : null)
                 .role(transferProcess.getRole())
                 .suspendedBy(null)
                 .datasetId(transferProcess.getDatasetId())
@@ -667,7 +667,7 @@ public class DataTransferAPIService {
         log.info("Data plane suspended for transfer {}", transferProcessId);
 
         TransferProcess suspended = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED)
-                .withDataFlowState("SUSPENDED")
+                .withDataFlowState(TransferState.SUSPENDED.name())
                 .withIsDownloadInProgress(false)
                 .withSuspendedBy(transferProcess.getRole());
 
@@ -694,7 +694,7 @@ public class DataTransferAPIService {
             try {
                 dataPlaneClient.resume(transferProcess.getId(), transferProcess.getFormat());
                 TransferProcess resumed = transferProcess.copyWithNewTransferState(TransferState.STARTED)
-                        .withDataFlowState("STARTED")
+                        .withDataFlowState(TransferState.STARTED.name())
                         .withIsDownloadInProgress(transferProcess.isDownloadInProgress())
                         .withSuspendedBy(null)
                         .withDataFlowErrorMessage(null);
@@ -703,7 +703,7 @@ public class DataTransferAPIService {
             } catch (RuntimeException rollbackEx) {
                 log.error("Dataplane rollback resume failed for transfer {} — recording divergence", transferProcessId, rollbackEx);
                 TransferProcess divergence = transferProcess.copyWithNewTransferState(TransferState.STARTED)
-                        .withDataFlowState("SUSPENDED")
+                        .withDataFlowState(TransferState.SUSPENDED.name())
                         .withIsDownloadInProgress(false)
                         .withSuspendedBy(null)
                         .withDataFlowErrorMessage(
@@ -841,7 +841,7 @@ public class DataTransferAPIService {
         // DataFlowCallbackController when done. Completion/termination lifecycle is driven
         // entirely by those callbacks — do NOT call completeTransfer() here.
         try {
-            boolean resumable = "SUSPENDED".equals(transferProcessDownloading.getDataFlowState());
+            boolean resumable = TransferState.SUSPENDED.name().equals(transferProcessDownloading.getDataFlowState());
             if (resumable) {
                 // Local dataplane mirror says the flow is SUSPENDED — resume instead of starting fresh.
                 dataPlaneClient.resume(transferProcessDownloading.getId(), transferProcessDownloading.getFormat());

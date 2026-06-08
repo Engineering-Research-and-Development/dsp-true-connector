@@ -3,10 +3,10 @@ package it.eng.datatransfer.rest.api;
 import it.eng.dataplane.api.message.DataFlowStatusMessage;
 import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.datatransfer.model.DataPlaneRegistration;
+import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.service.DataFlowCallbackService;
 import it.eng.datatransfer.service.DataPlaneRegistrationService;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
-import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,7 +33,7 @@ class DataFlowCallbackControllerTest {
     private static final DataPlaneRegistration DATA_PLANE_REGISTRATION =
             DataPlaneRegistration.Builder.newInstance()
                     .endpoint("http://dataplane:9000")
-                    .supportedTransferTypes(Set.of("HttpData-PULL"))
+                    .supportedTransferTypes(Set.of(DataTransferFormat.HTTP_PULL.format()))
                     .apiKey(VALID_API_KEY)
                     .build();
 

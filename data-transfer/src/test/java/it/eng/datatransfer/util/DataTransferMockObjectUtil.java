@@ -199,7 +199,7 @@ public class DataTransferMockObjectUtil {
             .role(IConstants.ROLE_PROVIDER)
             .tenantId(TENANT_ID)
             .state(TransferState.SUSPENDED)
-            .dataFlowState("SUSPENDED")
+            .dataFlowState(TransferState.SUSPENDED.name())
             .suspendedBy(IConstants.ROLE_PROVIDER)
             .build();
 
@@ -212,7 +212,7 @@ public class DataTransferMockObjectUtil {
             .role(IConstants.ROLE_PROVIDER)
             .tenantId(TENANT_ID)
             .state(TransferState.SUSPENDED)
-            .dataFlowState("SUSPENDED")
+            .dataFlowState(TransferState.SUSPENDED.name())
             .suspendedBy(IConstants.ROLE_CONSUMER)
             .build();
 
@@ -232,7 +232,7 @@ public class DataTransferMockObjectUtil {
             .tenantId(TENANT_ID)
             .state(TransferState.SUSPENDED)
             .format(DataTransferFormat.HTTP_PULL.format())
-            .dataFlowState("SUSPENDED")
+            .dataFlowState(TransferState.SUSPENDED.name())
             .suspendedBy(IConstants.ROLE_PROVIDER)
             .build();
 

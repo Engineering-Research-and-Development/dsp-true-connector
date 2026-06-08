@@ -1,5 +1,6 @@
 package it.eng.datatransfer.service;
 
+import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.datatransfer.model.DataAddress;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.repository.TransferProcessRepository;
@@ -46,7 +47,7 @@ class DataFlowCallbackServiceTest {
 
         service.handlePrepared(PROCESS_ID, null);
 
-        verify(repository).save(argThat(saved -> "PREPARED".equals(saved.getDataFlowState())));
+        verify(repository).save(argThat(saved -> DataFlowState.PREPARED.name().equals(saved.getDataFlowState())));
         verifyNoInteractions(apiService);
     }
 
@@ -60,7 +61,7 @@ class DataFlowCallbackServiceTest {
         ArgumentCaptor<TransferProcess> captor = ArgumentCaptor.forClass(TransferProcess.class);
         verify(repository).save(captor.capture());
         TransferProcess saved = captor.getValue();
-        assertEquals("PREPARED", saved.getDataFlowState());
+        assertEquals(DataFlowState.PREPARED.name(), saved.getDataFlowState());
         assertNotNull(saved.getDataAddress());
         assertEquals("HttpData", saved.getDataAddress().getEndpointType());
         assertEquals("https://example.com", saved.getDataAddress().getEndpoint());
@@ -75,7 +76,7 @@ class DataFlowCallbackServiceTest {
 
         service.handleStarted(PROCESS_ID, Map.of("endpointType", "HttpData"));
 
-        verify(repository).save(argThat(saved -> "STARTED".equals(saved.getDataFlowState())));
+        verify(repository).save(argThat(saved -> DataFlowState.STARTED.name().equals(saved.getDataFlowState())));
         verifyNoInteractions(apiService);
     }
 
@@ -105,7 +106,7 @@ class DataFlowCallbackServiceTest {
         service.handleCompleted(PROCESS_ID, null);
 
         var inOrder = inOrder(repository, apiService);
-        inOrder.verify(repository).save(argThat(saved -> "COMPLETED".equals(saved.getDataFlowState())));
+        inOrder.verify(repository).save(argThat(saved -> DataFlowState.COMPLETED.name().equals(saved.getDataFlowState())));
         inOrder.verify(apiService).completeTransfer(PROCESS_ID);
     }
 
@@ -119,7 +120,7 @@ class DataFlowCallbackServiceTest {
         ArgumentCaptor<TransferProcess> captor = ArgumentCaptor.forClass(TransferProcess.class);
         verify(repository).save(captor.capture());
         TransferProcess saved = captor.getValue();
-        assertEquals("COMPLETED", saved.getDataFlowState());
+        assertEquals(DataFlowState.COMPLETED.name(), saved.getDataFlowState());
         assertEquals("https://presigned-url.example.com", saved.getDataAddress().getEndpoint());
         verify(apiService).completeTransfer(PROCESS_ID);
     }
@@ -135,7 +136,7 @@ class DataFlowCallbackServiceTest {
 
         assertEquals("completion failed", exception.getMessage());
         var inOrder = inOrder(repository, apiService);
-        inOrder.verify(repository).save(argThat(saved -> "COMPLETED".equals(saved.getDataFlowState())));
+        inOrder.verify(repository).save(argThat(saved -> DataFlowState.COMPLETED.name().equals(saved.getDataFlowState())));
         inOrder.verify(apiService).completeTransfer(PROCESS_ID);
         inOrder.verify(repository).save(argThat(saved -> saved.getDataFlowState() == null
                 && saved.getDataFlowErrorMessage() == null
@@ -154,7 +155,7 @@ class DataFlowCallbackServiceTest {
         var inOrder = inOrder(repository, apiService);
         inOrder.verify(repository).save(argThat(
                 saved -> "provider dp failed".equals(saved.getDataFlowErrorMessage())
-                        && "TERMINATED".equals(saved.getDataFlowState())));
+                        && DataFlowState.TERMINATED.name().equals(saved.getDataFlowState())));
         inOrder.verify(apiService).terminateTransfer(PROCESS_ID);
     }
 
@@ -165,7 +166,7 @@ class DataFlowCallbackServiceTest {
 
         service.handleErrored(PROCESS_ID, null);
 
-        verify(repository).save(argThat(saved -> "TERMINATED".equals(saved.getDataFlowState())));
+        verify(repository).save(argThat(saved -> DataFlowState.TERMINATED.name().equals(saved.getDataFlowState())));
         verify(apiService).terminateTransfer(PROCESS_ID);
     }
 
@@ -180,7 +181,7 @@ class DataFlowCallbackServiceTest {
 
         assertEquals("termination failed", exception.getMessage());
         var inOrder = inOrder(repository, apiService);
-        inOrder.verify(repository).save(argThat(saved -> "TERMINATED".equals(saved.getDataFlowState())
+        inOrder.verify(repository).save(argThat(saved -> DataFlowState.TERMINATED.name().equals(saved.getDataFlowState())
                 && "provider dp failed".equals(saved.getDataFlowErrorMessage())));
         inOrder.verify(apiService).terminateTransfer(PROCESS_ID);
         inOrder.verify(repository).save(argThat(saved -> saved.getDataFlowState() == null

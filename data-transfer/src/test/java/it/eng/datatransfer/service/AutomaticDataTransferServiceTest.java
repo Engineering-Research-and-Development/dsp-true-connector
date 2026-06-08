@@ -219,11 +219,11 @@ public class AutomaticDataTransferServiceTest {
                 .tenantId(DataTransferMockObjectUtil.TENANT_ID)
                 .state(TransferState.SUSPENDED)
                 .format(DataTransferFormat.HTTP_PUSH.format())
-                .dataFlowState("SUSPENDED")
+                .dataFlowState(TransferState.SUSPENDED.name())
                 .suspendedBy(IConstants.ROLE_PROVIDER)
                 .build();
         TransferProcess startedAfterResume = suspended.copyWithNewTransferState(TransferState.STARTED)
-                .withDataFlowState("STARTED")
+                .withDataFlowState(TransferState.STARTED.name())
                 .withSuspendedBy(null);
 
         when(transferProcessRepository.findById(id))
