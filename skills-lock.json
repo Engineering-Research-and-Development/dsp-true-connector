@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "brainstorming": {
+      "source": "obra/superpowers",
+      "sourceType": "github",
+      "computedHash": "8df9b47092524833138b58682d03f2e153a242e550d1693657afdbee0cc9cdb0"
+    },
+    "task-decomposition": {
+      "source": "jwynia/agent-skills",
+      "sourceType": "github",
+      "computedHash": "12a50dd7c3def09b9a9ed59844fd404f20e6fbe177b63ea37686017a682f4be2"
+    }
+  }
+}
