@@ -8,9 +8,7 @@ import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.dataplane.s3.model.IConstants;
-import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
-import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.s3.util.S3Utils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,8 +47,6 @@ class HttpPullTransferProtocolTest {
     @Mock
     private S3ClientService s3ClientService;
     @Mock
-    private S3Properties s3Properties;
-    @Mock
     private ControlPlaneClient controlPlaneClient;
 
     private HttpPullTransferProtocol protocol;
@@ -69,7 +65,6 @@ class HttpPullTransferProtocolTest {
     void setUp() {
         protocol = new HttpPullTransferProtocol(
             s3ClientService,
-            s3Properties,
             syncExecutor,
             testHttpClient,
             controlPlaneClient
@@ -90,22 +85,37 @@ class HttpPullTransferProtocolTest {
     }
 
     @Test
-    @DisplayName("prepare uses sink metadata view mode to generate presigned URL for the stored processId object")
+    @DisplayName("prepare uses sink.s3 metadata in VIEW mode to generate presigned URL using all CP-provided credentials")
     void prepareViewModeUsesSinkMetadata() {
-        when(s3Properties.getBucketName()).thenReturn("test-bucket");
-        when(s3ClientService.generateGetPresignedUrl("test-bucket", "tp-view", Duration.ofDays(7L)))
+        Map<String, String> sinkS3Props = Map.of(
+                S3Utils.BUCKET_NAME, "test-bucket",
+                S3Utils.OBJECT_KEY, "tp-view",
+                S3Utils.ACCESS_KEY, "bucket-access",
+                S3Utils.SECRET_KEY, "bucket-secret",
+                S3Utils.REGION, "us-east-1",
+                S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000");
+        when(s3ClientService.generateGetPresignedUrl(sinkS3Props, Duration.ofDays(7L)))
                 .thenReturn("https://example.com/presigned");
 
         DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
                 .processId("tp-view")
                 .datasetId("dataset-1")
-                .metadata(Map.of("sink", Map.of("mode", "VIEW")))
+                .metadata(Map.of(
+                        DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                                DataPlaneConstants.METADATA_FIELD_MODE, "VIEW",
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "test-bucket",
+                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "tp-view",
+                                        DataPlaneConstants.METADATA_S3_ACCESS_KEY, "bucket-access",
+                                        DataPlaneConstants.METADATA_S3_SECRET_KEY, "bucket-secret",
+                                        DataPlaneConstants.METADATA_S3_REGION, "us-east-1",
+                                        DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://minio:9000"))))
                 .build();
 
         DataFlowPrepareResponse response = protocol.prepare(message);
 
         assertThat(response.getDataAddress()).containsEntry("presignedUrl", "https://example.com/presigned");
-        verify(s3ClientService).generateGetPresignedUrl("test-bucket", "tp-view", Duration.ofDays(7L));
+        verify(s3ClientService).generateGetPresignedUrl(sinkS3Props, Duration.ofDays(7L));
     }
 
     @Test
@@ -190,14 +200,14 @@ class HttpPullTransferProtocolTest {
                 .transferType("HttpData-PULL")
                 .tenantId("tenant-1")
                 .callbackAddress("http://cp:8080")
-                .dataAddress(Map.of(
-                        "endpoint", url,
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "test-bucket",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, "tp-404",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, "access",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, "secret",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, "us-east-1"
-                ))
+                .dataAddress(Map.of("endpoint", url))
+                .metadata(Map.of(DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                        DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                DataPlaneConstants.METADATA_S3_BUCKET_NAME, "test-bucket",
+                                DataPlaneConstants.METADATA_S3_OBJECT_KEY, "tp-404",
+                                DataPlaneConstants.METADATA_S3_ACCESS_KEY, "access",
+                                DataPlaneConstants.METADATA_S3_SECRET_KEY, "secret",
+                                DataPlaneConstants.METADATA_S3_REGION, "us-east-1"))))
                 .build();
 
         DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
@@ -239,14 +249,16 @@ class HttpPullTransferProtocolTest {
                 .dataAddress(Map.of(
                         "endpoint", presignedUrl,
                         IConstants.AUTH_TYPE, "Bearer",
-                        IConstants.AUTHORIZATION, "test-token-abc",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "test-bucket",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, "tp-auth-1",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, "access-key",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, "secret-key",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, "us-east-1",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE, "http://minio:9000"
+                        IConstants.AUTHORIZATION, "test-token-abc"
                 ))
+                .metadata(Map.of(DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                        DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                DataPlaneConstants.METADATA_S3_BUCKET_NAME, "test-bucket",
+                                DataPlaneConstants.METADATA_S3_OBJECT_KEY, "tp-auth-1",
+                                DataPlaneConstants.METADATA_S3_ACCESS_KEY, "access-key",
+                                DataPlaneConstants.METADATA_S3_SECRET_KEY, "secret-key",
+                                DataPlaneConstants.METADATA_S3_REGION, "us-east-1",
+                                DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://minio:9000"))))
                 .build();
 
         CompletableFuture<DataFlowResult> resultFuture = protocol.initiateTransfer(dataFlow);
@@ -282,15 +294,15 @@ class HttpPullTransferProtocolTest {
                 .transferType("HttpData-PULL")
                 .tenantId("tenant-1")
                 .callbackAddress("http://cp:8080")
-                .dataAddress(Map.of(
-                        "endpoint", presignedUrl,
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "test-bucket",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, "tp-1",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, "access-key",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, "secret-key",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, "us-east-1",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE, "http://minio:9000"
-                ))
+                .dataAddress(Map.of("endpoint", presignedUrl))
+                .metadata(Map.of(DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                        DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                DataPlaneConstants.METADATA_S3_BUCKET_NAME, "test-bucket",
+                                DataPlaneConstants.METADATA_S3_OBJECT_KEY, "tp-1",
+                                DataPlaneConstants.METADATA_S3_ACCESS_KEY, "access-key",
+                                DataPlaneConstants.METADATA_S3_SECRET_KEY, "secret-key",
+                                DataPlaneConstants.METADATA_S3_REGION, "us-east-1",
+                                DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://minio:9000"))))
                 .build();
 
         protocol.initiateTransfer(dataFlow).join();
@@ -324,15 +336,15 @@ class HttpPullTransferProtocolTest {
                 .transferType("HttpData-PULL")
                 .tenantId("tenant-1")
                 .callbackAddress("http://cp:8080")
-                .dataAddress(Map.of(
-                        "endpoint", presignedUrl,
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "cp-provided-bucket",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, "cp-provided-key",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, "cp-access-key",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, "cp-secret-key",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, "eu-west-1",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE, "http://cp-minio:9000"
-                ))
+                .dataAddress(Map.of("endpoint", presignedUrl))
+                .metadata(Map.of(DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                        DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                DataPlaneConstants.METADATA_S3_BUCKET_NAME, "cp-provided-bucket",
+                                DataPlaneConstants.METADATA_S3_OBJECT_KEY, "cp-provided-key",
+                                DataPlaneConstants.METADATA_S3_ACCESS_KEY, "cp-access-key",
+                                DataPlaneConstants.METADATA_S3_SECRET_KEY, "cp-secret-key",
+                                DataPlaneConstants.METADATA_S3_REGION, "eu-west-1",
+                                DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://cp-minio:9000"))))
                 .build();
 
         DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
@@ -377,14 +389,14 @@ class HttpPullTransferProtocolTest {
                 .transferType("HttpData-PULL")
                 .tenantId("tenant-1")
                 .callbackAddress("http://cp:8080")
-                .dataAddress(Map.of(
-                        "endpoint", presignedUrl,
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "test-bucket",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, "tp-fail-1",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, "access-key",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, "secret-key",
-                        DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, "us-east-1"
-                ))
+                .dataAddress(Map.of("endpoint", presignedUrl))
+                .metadata(Map.of(DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                        DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                DataPlaneConstants.METADATA_S3_BUCKET_NAME, "test-bucket",
+                                DataPlaneConstants.METADATA_S3_OBJECT_KEY, "tp-fail-1",
+                                DataPlaneConstants.METADATA_S3_ACCESS_KEY, "access-key",
+                                DataPlaneConstants.METADATA_S3_SECRET_KEY, "secret-key",
+                                DataPlaneConstants.METADATA_S3_REGION, "us-east-1"))))
                 .build();
 
         DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
@@ -429,49 +441,58 @@ class HttpPullTransferProtocolTest {
         assertThat(response.getDataAddress().get(DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT))
                 .isEqualTo("https://minio.example.com/presigned/artifact");
         verify(s3ClientService).generateGetPresignedUrl(sourceProperties, Duration.ofDays(7L));
-        verify(s3Properties, never()).getBucketName();
     }
 
     @Test
-    @DisplayName("initiateTransfer returns failure when sink.bucketName is missing — no CP callback")
+    @DisplayName("initiateTransfer returns failure when metadata.sink.s3.bucketName is missing — no CP callback")
     void initiateTransfer_returnFailureWhenSinkBucketNameMissing() throws Exception {
         DataFlow dataFlow = DataFlow.Builder.newInstance()
             .processId("tp-no-bucket")
             .transferType("HttpData-PULL")
-            .dataAddress(Map.of(
-                    "endpoint", "http://example.com/artifact"
-            ))
+            .dataAddress(Map.of("endpoint", "http://example.com/artifact"))
+            // no metadata.sink.s3 — bucketName absent
             .build();
 
         CompletableFuture<DataFlowResult> resultFuture = protocol.initiateTransfer(dataFlow);
         DataFlowResult result = resultFuture.get();
 
         assertThat(result.isSuccess()).isFalse();
-        assertThat(result.getErrorMessage()).contains("sink.bucketName");
+        assertThat(result.getErrorMessage()).contains("metadata.sink.s3.bucketName");
         // No CP callbacks when validation fails before transfer starts
         verify(controlPlaneClient, never()).sendStarted(any(), any(), any());
     }
 
     @Test
-    @DisplayName("prepare VIEW mode uses CP-provided sink.s3.bucketName from metadata over DP-local s3Properties")
+    @DisplayName("prepare VIEW mode uses CP-provided sink.s3 credentials from metadata — no DP-local s3Properties consulted")
     void prepareViewModeUsesCpProvidedSinkBucketNameFromMetadata() {
-        when(s3ClientService.generateGetPresignedUrl("cp-bucket", "tp-view-cp", Duration.ofDays(7L)))
+        Map<String, String> sinkS3Props = Map.of(
+                S3Utils.BUCKET_NAME, "cp-bucket",
+                S3Utils.OBJECT_KEY, "tp-view-cp",
+                S3Utils.ACCESS_KEY, "cp-access",
+                S3Utils.SECRET_KEY, "cp-secret",
+                S3Utils.REGION, "us-east-1",
+                S3Utils.ENDPOINT_OVERRIDE, "http://cp-minio:9000");
+        when(s3ClientService.generateGetPresignedUrl(sinkS3Props, Duration.ofDays(7L)))
                 .thenReturn("https://example.com/cp-presigned");
 
         DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
                 .processId("tp-view-cp")
                 .datasetId("dataset-cp")
                 .metadata(Map.of(
-                        "sink", Map.of(
-                                "mode", "VIEW",
-                                "s3", Map.of("bucketName", "cp-bucket"))))
+                        DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                                DataPlaneConstants.METADATA_FIELD_MODE, "VIEW",
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "cp-bucket",
+                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "tp-view-cp",
+                                        DataPlaneConstants.METADATA_S3_ACCESS_KEY, "cp-access",
+                                        DataPlaneConstants.METADATA_S3_SECRET_KEY, "cp-secret",
+                                        DataPlaneConstants.METADATA_S3_REGION, "us-east-1",
+                                        DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://cp-minio:9000"))))
                 .build();
 
         DataFlowPrepareResponse response = protocol.prepare(message);
 
         assertThat(response.getDataAddress()).containsEntry("presignedUrl", "https://example.com/cp-presigned");
-        verify(s3ClientService).generateGetPresignedUrl("cp-bucket", "tp-view-cp", Duration.ofDays(7L));
-        // DP-local s3Properties must NOT be consulted when CP provides the bucket
-        verify(s3Properties, never()).getBucketName();
+        verify(s3ClientService).generateGetPresignedUrl(sinkS3Props, Duration.ofDays(7L));
     }
 }

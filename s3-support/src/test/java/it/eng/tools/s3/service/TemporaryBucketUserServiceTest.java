@@ -3,6 +3,7 @@ package it.eng.tools.s3.service;
 import it.eng.tools.exception.S3ServerException;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.TemporaryBucketUser;
+import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.repository.TemporaryBucketUserRepository;
 import it.eng.tools.service.FieldEncryptionService;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,11 +42,17 @@ public class TemporaryBucketUserServiceTest {
     @Mock
     private FieldEncryptionService fieldEncryptionService;
 
+    @Mock
+    private S3Properties s3Properties;
+
     private TemporaryBucketUserService service;
 
     @BeforeEach
     void setUp() {
-        service = new TemporaryBucketUserService(iamUserManagementService, temporaryBucketUserRepository, fieldEncryptionService);
+        service = new TemporaryBucketUserService(iamUserManagementService, temporaryBucketUserRepository,
+                fieldEncryptionService, s3Properties);
+        lenient().when(s3Properties.getAccessKey()).thenReturn("minioadmin");
+        lenient().when(s3Properties.getSecretKey()).thenReturn("minioadmin-secret");
     }
 
     // -------------------------------------------------------------------------
@@ -53,7 +60,7 @@ public class TemporaryBucketUserServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("createTemporaryUser - should create IAM user, attach scoped policy, persist with encrypted key, return plain key")
+    @DisplayName("createTemporaryUser - should use bootstrap properties for management credentials, persist encrypted key, and return plain key")
     void createTemporaryUser_success() {
         when(fieldEncryptionService.encrypt(anyString())).thenReturn(ENCRYPTED_SECRET_KEY);
         when(temporaryBucketUserRepository.save(any(TemporaryBucketUser.class)))
@@ -71,6 +78,9 @@ public class TemporaryBucketUserServiceTest {
         ArgumentCaptor<String> policyNameCaptor = ArgumentCaptor.forClass(String.class);
         ArgumentCaptor<String> policyJsonCaptor = ArgumentCaptor.forClass(String.class);
         verify(iamUserManagementService).attachTemporaryPolicy(
+                argThat(managementCredentials -> BUCKET_NAME.equals(managementCredentials.getBucketName())
+                        && "minioadmin".equals(managementCredentials.getAccessKey())
+                        && "minioadmin-secret".equals(managementCredentials.getSecretKey())),
                 anyString(), policyNameCaptor.capture(), policyJsonCaptor.capture());
         assertTrue(policyNameCaptor.getValue().contains(TRANSFER_PROCESS_ID),
                 "Policy name should contain transferProcessId");
@@ -153,7 +163,7 @@ public class TemporaryBucketUserServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("deleteTemporaryUser - found: deletes IAM user before policy, then removes MongoDB document")
+    @DisplayName("deleteTemporaryUser - found: uses bootstrap properties, deletes IAM user before policy, then removes MongoDB document")
     void deleteTemporaryUser_found() {
         TemporaryBucketUser stored = TemporaryBucketUser.Builder.newInstance()
                 .transferProcessId(TRANSFER_PROCESS_ID)
@@ -164,15 +174,20 @@ public class TemporaryBucketUserServiceTest {
                 .build();
 
         when(temporaryBucketUserRepository.findById(TRANSFER_PROCESS_ID)).thenReturn(Optional.of(stored));
-
         service.deleteTemporaryUser(TRANSFER_PROCESS_ID);
 
         // User must be deleted before the policy — Minio rejects policy deletion while it is
         // still attached to a user (XMinioIAMPolicyInUse). Deleting the user first releases
         // the attachment so the subsequent policy deletion succeeds.
         InOrder order = inOrder(iamUserManagementService);
-        order.verify(iamUserManagementService).deleteUser("TempUser-abc12345");
-        order.verify(iamUserManagementService).deletePolicy(contains(TRANSFER_PROCESS_ID));
+        order.verify(iamUserManagementService).deleteUser(argThat(managementCredentials ->
+                BUCKET_NAME.equals(managementCredentials.getBucketName())
+                        && "minioadmin".equals(managementCredentials.getAccessKey())
+                        && "minioadmin-secret".equals(managementCredentials.getSecretKey())), eq("TempUser-abc12345"));
+        order.verify(iamUserManagementService).deletePolicy(argThat(managementCredentials ->
+                BUCKET_NAME.equals(managementCredentials.getBucketName())
+                        && "minioadmin".equals(managementCredentials.getAccessKey())
+                        && "minioadmin-secret".equals(managementCredentials.getSecretKey())), contains(TRANSFER_PROCESS_ID));
         verify(temporaryBucketUserRepository).deleteById(TRANSFER_PROCESS_ID);
     }
 
@@ -183,8 +198,8 @@ public class TemporaryBucketUserServiceTest {
 
         service.deleteTemporaryUser(TRANSFER_PROCESS_ID);
 
-        verify(iamUserManagementService, never()).deleteUser(anyString());
-        verify(iamUserManagementService, never()).deletePolicy(anyString());
+        verify(iamUserManagementService, never()).deleteUser(any(BucketCredentialsEntity.class), anyString());
+        verify(iamUserManagementService, never()).deletePolicy(any(BucketCredentialsEntity.class), anyString());
         verify(temporaryBucketUserRepository, never()).deleteById(anyString());
     }
 
@@ -200,11 +215,12 @@ public class TemporaryBucketUserServiceTest {
                 .build();
 
         when(temporaryBucketUserRepository.findById(TRANSFER_PROCESS_ID)).thenReturn(Optional.of(stored));
-        doThrow(new RuntimeException("MinIO unavailable")).when(iamUserManagementService).deleteUser(anyString());
+        doThrow(new RuntimeException("MinIO unavailable")).when(iamUserManagementService)
+                .deleteUser(any(BucketCredentialsEntity.class), anyString());
 
         assertDoesNotThrow(() -> service.deleteTemporaryUser(TRANSFER_PROCESS_ID));
 
-        verify(iamUserManagementService).deletePolicy(contains(TRANSFER_PROCESS_ID));
+        verify(iamUserManagementService).deletePolicy(any(BucketCredentialsEntity.class), contains(TRANSFER_PROCESS_ID));
         verify(temporaryBucketUserRepository).deleteById(TRANSFER_PROCESS_ID);
     }
 
@@ -220,11 +236,12 @@ public class TemporaryBucketUserServiceTest {
                 .build();
 
         when(temporaryBucketUserRepository.findById(TRANSFER_PROCESS_ID)).thenReturn(Optional.of(stored));
-        doThrow(new RuntimeException("policy not found")).when(iamUserManagementService).deletePolicy(anyString());
+        doThrow(new RuntimeException("policy not found")).when(iamUserManagementService)
+                .deletePolicy(any(BucketCredentialsEntity.class), anyString());
 
         assertDoesNotThrow(() -> service.deleteTemporaryUser(TRANSFER_PROCESS_ID));
 
-        verify(iamUserManagementService).deleteUser("TempUser-abc12345");
+        verify(iamUserManagementService).deleteUser(any(BucketCredentialsEntity.class), eq("TempUser-abc12345"));
         verify(temporaryBucketUserRepository).deleteById(TRANSFER_PROCESS_ID);
     }
 
@@ -247,15 +264,15 @@ public class TemporaryBucketUserServiceTest {
         // this stub is never reached and deletePolicy succeeds without error.
         doAnswer(invocation -> {
             // Verify the user was already deleted before this call
-            verify(iamUserManagementService).deleteUser("TempUser-abc12345");
+            verify(iamUserManagementService).deleteUser(any(BucketCredentialsEntity.class), eq("TempUser-abc12345"));
             return null;
-        }).when(iamUserManagementService).deletePolicy(anyString());
+        }).when(iamUserManagementService).deletePolicy(any(BucketCredentialsEntity.class), anyString());
 
         service.deleteTemporaryUser(TRANSFER_PROCESS_ID);
 
         InOrder order = inOrder(iamUserManagementService);
-        order.verify(iamUserManagementService).deleteUser("TempUser-abc12345");
-        order.verify(iamUserManagementService).deletePolicy(contains(TRANSFER_PROCESS_ID));
+        order.verify(iamUserManagementService).deleteUser(any(BucketCredentialsEntity.class), eq("TempUser-abc12345"));
+        order.verify(iamUserManagementService).deletePolicy(any(BucketCredentialsEntity.class), contains(TRANSFER_PROCESS_ID));
     }
 
     @Test
@@ -270,8 +287,10 @@ public class TemporaryBucketUserServiceTest {
                 .build();
 
         when(temporaryBucketUserRepository.findById(TRANSFER_PROCESS_ID)).thenReturn(Optional.of(stored));
-        doThrow(new RuntimeException("MinIO unavailable")).when(iamUserManagementService).deleteUser(anyString());
-        doThrow(new RuntimeException("MinIO unavailable")).when(iamUserManagementService).deletePolicy(anyString());
+        doThrow(new RuntimeException("MinIO unavailable")).when(iamUserManagementService)
+                .deleteUser(any(BucketCredentialsEntity.class), anyString());
+        doThrow(new RuntimeException("MinIO unavailable")).when(iamUserManagementService)
+                .deletePolicy(any(BucketCredentialsEntity.class), anyString());
 
         assertDoesNotThrow(() -> service.deleteTemporaryUser(TRANSFER_PROCESS_ID));
 

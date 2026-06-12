@@ -101,15 +101,19 @@ public class S3BucketProvisionService {
         validateBucketName(bucketName);
         log.info("Ensuring bucket credentials exist for bucket: {}", bucketName);
 
-        boolean credentialsExist = bucketCredentialsService.bucketCredentialsExist(bucketName);
-        if (credentialsExist) {
+        if (bucketCredentialsService.bucketCredentialsExist(bucketName)) {
             log.info("Bucket credentials already exist for bucket: {}", bucketName);
-            return bucketCredentialsService.getBucketCredentials(bucketName);
+            BucketCredentialsEntity existingCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
+            if (!isAwsEndpoint(s3Properties.getEndpoint())) {
+                iamUserManagementService.createUser(existingCredentials);
+                iamUserManagementService.attachPolicyToUser(existingCredentials);
+                updateBucketPolicy(bucketName, existingCredentials.getAccessKey());
+                s3ClientProvider.clearBucketCache(bucketName);
+            }
+            return existingCredentials;
         }
 
-        boolean bucketExists = bucketExists(bucketName);
-
-        if (bucketExists) {
+        if (bucketExists(bucketName)) {
             log.info("Bucket {} exists but credentials are missing. Creating credentials...", bucketName);
             BucketCredentialsEntity credentials = createBucketCredentials(bucketName);
             log.info("Created bucket credentials for existing bucket: {}", bucketName);
@@ -213,14 +217,16 @@ public class S3BucketProvisionService {
                             "AWS": ["arn:aws:iam::*:user/%s"]
                         },
                         "Action": [
+                            "s3:ListBucket",
                             "s3:GetObject",
                             "s3:PutObject"
                         ],
                         "Resource": [
+                            "arn:aws:s3:::%s",
                             "arn:aws:s3:::%s/*"
                         ]
                     }
-                    """, UUID.randomUUID().toString().substring(0, 8), accessKey, bucketName);
+                    """, UUID.randomUUID().toString().substring(0, 8), accessKey, bucketName, bucketName);
 
             String finalPolicy;
             if (existingPolicy != null && !existingPolicy.isEmpty()) {

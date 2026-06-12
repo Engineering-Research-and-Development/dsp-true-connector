@@ -167,9 +167,9 @@ uploads it directly to the **consumer's S3 bucket** using temporary credentials.
 Consumer CP                  Provider CP               Provider-side Push DP
      |                            |                             |
      |  [consumer admin calls requestTransfer()]                |
-     |  Consumer CP resolves tenant bucket via TenantBucketResolver,
-     |  creates temp MinIO/IAM user with PUT-only access to     |
-     |  consumer's bucket (TemporaryBucketUserService)          |
+     |  Consumer CP resolves tenant bucket via TenantBucketResolver
+     |  and sends consumer bucket coordinates plus temporary    |
+     |  MinIO management credentials to the consumer Push DP    |
      |                            |                             |
      |---- TransferRequestMsg --->|                             |
      |     dataAddress = {        |                             |
@@ -205,10 +205,12 @@ Both CPs → COMPLETED             |                             |
 ```
 
 Key points:
-- The consumer CP resolves the tenant bucket via `TenantBucketResolver` and creates temporary
-  credentials via `TemporaryBucketUserService` directly — no consumer-side push DP call is made
-  for the built-in flow. The temp user grants only `s3:PutObject` on the exact
-  `objectKey = transferProcessId`.
+- The consumer CP resolves the tenant bucket via `TenantBucketResolver`, then calls the consumer
+  push DP `prepare` endpoint. The DP creates temporary credentials via
+  `TemporaryBucketUserService`. In the current MinIO fallback, the CP passes bootstrap
+  `application.properties` credentials as management credentials for that DP-side temp-user
+  create/delete path until bucket-scoped delegated policies work for `BucketCredentialsEntity`.
+  The temp user grants only `s3:PutObject` on the exact `objectKey = transferProcessId`.
 - The CP embeds the internal S3 endpoint (`s3.endpoint`) as `endpointOverride` in the consumer
   dataAddress so the provider DP can reach MinIO from within the Docker network.
   `s3.externalPresignedEndpoint` is **not** used here — it is only for presigned URLs delivered

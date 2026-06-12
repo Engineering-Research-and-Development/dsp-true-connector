@@ -191,6 +191,7 @@ public class DataFlowController {
             .datasetId(message.getDatasetId())
             .callbackAddress(message.getCallbackAddress())
             .dataAddress(message.getDataAddress() == null ? null : message.getDataAddress().toPropertyMap())
+            .metadata(message.getMetadata())
             .participantId(message.getParticipantId())
             .counterPartyId(message.getCounterPartyId())
             .build();

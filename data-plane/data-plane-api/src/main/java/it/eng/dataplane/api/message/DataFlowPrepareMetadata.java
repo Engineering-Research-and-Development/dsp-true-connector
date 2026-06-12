@@ -28,6 +28,17 @@ public final class DataFlowPrepareMetadata {
     }
 
     /**
+     * Creates typed metadata accessors for a raw metadata map, e.g. from a
+     * {@link it.eng.dataplane.api.model.DataFlow#getMetadata()} start-time metadata map.
+     *
+     * @param metadata structured metadata map from a start or status message
+     * @return typed metadata accessor
+     */
+    public static DataFlowPrepareMetadata fromMap(Map<String, Object> metadata) {
+        return new DataFlowPrepareMetadata(null, metadata);
+    }
+
+    /**
      * Returns the prepare-time transfer type hint.
      *
      * @return transfer type, or {@code null} when absent

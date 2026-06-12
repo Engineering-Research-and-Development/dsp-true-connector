@@ -1,6 +1,7 @@
 package it.eng.datatransfer.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import it.eng.datatransfer.client.DataPlaneClient;
 import it.eng.datatransfer.event.AutoTransferDownloadEvent;
 import it.eng.datatransfer.event.AutoTransferStartEvent;
 import it.eng.datatransfer.event.TransferProcessChangeEvent;
@@ -12,14 +13,12 @@ import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
-import it.eng.datatransfer.router.DataPlaneRouter;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
@@ -40,23 +39,20 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
     // Consider this for removal
     private final TransferRequestMessageRepository transferRequestMessageRepository;
     private final DataTransferProperties transferProperties;
-    private final TemporaryBucketUserService temporaryBucketUserService;
-    private final DataPlaneRouter dataPlaneRouter;
+    private final DataPlaneClient dataPlaneClient;
 
     protected AbstractDataTransferService(TransferProcessRepository transferProcessRepository,
                                           AuditEventPublisher publisher,
                                           OkHttpRestClient okHttpRestClient,
                                           TransferRequestMessageRepository transferRequestMessageRepository,
                                           DataTransferProperties transferProperties,
-                                          TemporaryBucketUserService temporaryBucketUserService,
-                                          DataPlaneRouter dataPlaneRouter) {
+                                          DataPlaneClient dataPlaneClient) {
         this.transferProcessRepository = transferProcessRepository;
         this.publisher = publisher;
         this.okHttpRestClient = okHttpRestClient;
         this.transferRequestMessageRepository = transferRequestMessageRepository;
         this.transferProperties = transferProperties;
-        this.temporaryBucketUserService = temporaryBucketUserService;
-        this.dataPlaneRouter = dataPlaneRouter;
+        this.dataPlaneClient = dataPlaneClient;
     }
 
     /**
@@ -328,18 +324,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .build();
 
         saveTransferProcess(transferProcessCompleted);
-        dataPlaneRouter.clearStickyAssignment(transferProcessCompleted.getId());
-        if (IConstants.ROLE_CONSUMER.equals(transferProcessCompleted.getRole())
-                && DataTransferFormat.HTTP_PUSH.format().equals(transferProcessCompleted.getFormat())) {
-            try {
-                temporaryBucketUserService.deleteTemporaryUser(transferProcessCompleted.getId());
-                log.info("Cleaned up temporary IAM credentials for HTTP-PUSH consumer transfer process {}",
-                        transferProcessCompleted.getId());
-            } catch (Exception e) {
-                log.warn("Failed to clean up temporary IAM credentials for process {}: {}",
-                        transferProcessCompleted.getId(), e.getMessage());
-            }
-        }
+        dataPlaneClient.clearStickyAssignment(transferProcessCompleted.getId());
         publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
                 .oldTransferProcess(transferProcessStarted)
                 .newTransferProcess(transferProcessCompleted)
@@ -374,18 +359,22 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
 
         TransferProcess transferProcessTerminated = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
         saveTransferProcess(transferProcessTerminated);
-        dataPlaneRouter.clearStickyAssignment(transferProcessTerminated.getId());
         if (IConstants.ROLE_CONSUMER.equals(transferProcessTerminated.getRole())
-                && DataTransferFormat.HTTP_PUSH.format().equals(transferProcessTerminated.getFormat())) {
+                && DataTransferFormat.HTTP_PUSH.format().equals(transferProcessTerminated.getFormat())
+                && transferProcessTerminated.getAssignedDataplaneEndpoint() != null) {
+            dataPlaneClient.restoreStickyAssignment(transferProcessTerminated.getId(),
+                    transferProcessTerminated.getAssignedDataplaneEndpoint());
             try {
-                temporaryBucketUserService.deleteTemporaryUser(transferProcessTerminated.getId());
-                log.info("Cleaned up temporary IAM credentials for terminated HTTP-PUSH consumer transfer process {}",
+                dataPlaneClient.terminate(transferProcessTerminated.getId(),
+                        DataTransferFormat.HTTP_PUSH.format(), null);
+                log.info("Signalled Data Plane to clean up HTTP-PUSH consumer transfer process {}",
                         transferProcessTerminated.getId());
             } catch (Exception e) {
-                log.warn("Failed to clean up temporary IAM credentials for process {}: {}",
+                log.warn("DP terminate call failed for HTTP-PUSH consumer process {} (best-effort): {}",
                         transferProcessTerminated.getId(), e.getMessage());
             }
         }
+        dataPlaneClient.clearStickyAssignment(transferProcessTerminated.getId());
         publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
                 .oldTransferProcess(transferProcess)
                 .newTransferProcess(transferProcessTerminated)

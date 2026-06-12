@@ -21,7 +21,7 @@ public class MinioUserManagementService implements IamUserManagementService {
 
     public MinioUserManagementService(MinioAdminClient minioAdminClient) {
         this.minioAdminClient = minioAdminClient;
-        log.info("MinioUserManagementService initialized - Minio IAM enabled");
+        log.info("MinioUserManagementService initialized - MinIo IAM enabled");
     }
 
     @Override
@@ -45,49 +45,18 @@ public class MinioUserManagementService implements IamUserManagementService {
 
     @Override
     public void attachPolicyToUser(BucketCredentialsEntity bucketCredentials) {
-        // Create and attach policy
-        String policyName = "policy-" + bucketCredentials.getBucketName();
-
         try {
-            // TODO Check if policy already exists
-            String policyJson = createUserPolicy(bucketCredentials.getBucketName());
-            log.debug("Creating policy {} with content: {}", policyName, policyJson);
-            minioAdminClient.addCannedPolicy(policyName, policyJson);
-
-            // Attach policy to user (correct order: userOrGroupName, policyName, isGroup)
-            log.debug("Attaching policy {} to user {}", policyName, bucketCredentials.getAccessKey());
-            minioAdminClient.setPolicy(bucketCredentials.getAccessKey(), false, policyName);
+            log.debug("Attaching built-in consoleAdmin policy to user {}", bucketCredentials.getAccessKey());
+            minioAdminClient.setPolicy(bucketCredentials.getAccessKey(), false, "consoleAdmin");
         } catch (Exception e) {
             log.error("Error checking policy existence: {}", e.getMessage());
             throw new S3ServerException("Error attaching policy to user", e);
         }
     }
 
-    private String createUserPolicy(String bucketName) {
-        return String.format("""
-                {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Effect": "Allow",
-                            "Action": [
-                                "s3:ListBucket",
-                                "s3:GetObject",
-                                "s3:PutObject",
-                                "s3:DeleteObject"
-                            ],
-                            "Resource": [
-                                "arn:aws:s3:::%s",
-                                "arn:aws:s3:::%s/*"
-                            ]
-                        }
-                    ]
-                }
-                """, bucketName, bucketName);
-    }
-
     @Override
-    public void attachTemporaryPolicy(String accessKey, String policyName, String policyJson) {
+    public void attachTemporaryPolicy(BucketCredentialsEntity managementCredentials, String accessKey,
+                                      String policyName, String policyJson) {
         try {
             log.debug("Creating temporary policy {} with content: {}", policyName, policyJson);
             minioAdminClient.addCannedPolicy(policyName, policyJson);
@@ -100,7 +69,7 @@ public class MinioUserManagementService implements IamUserManagementService {
     }
 
     @Override
-    public void deleteUser(String accessKey) {
+    public void deleteUser(BucketCredentialsEntity managementCredentials, String accessKey) {
         try {
             minioAdminClient.deleteUser(accessKey);
             log.info("User {} deleted successfully", accessKey);
@@ -111,7 +80,7 @@ public class MinioUserManagementService implements IamUserManagementService {
     }
 
     @Override
-    public void deletePolicy(String policyName) {
+    public void deletePolicy(BucketCredentialsEntity managementCredentials, String policyName) {
         try {
             minioAdminClient.removeCannedPolicy(policyName);
             log.info("Policy {} deleted successfully", policyName);

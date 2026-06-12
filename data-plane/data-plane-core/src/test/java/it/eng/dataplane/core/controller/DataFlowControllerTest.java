@@ -155,6 +155,28 @@ class DataFlowControllerTest {
                 "mode", "non-finite"), dataFlowCaptor.getValue().getDataAddress());
     }
 
+    @Test
+    @DisplayName("startDataFlow forwards structured metadata to the runtime DataFlow")
+    void startDataFlow_forwardsStructuredMetadata() {
+        Map<String, Object> metadata = Map.of(
+                DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                        DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                DataPlaneConstants.METADATA_S3_BUCKET_NAME, "consumer-bucket")));
+        DataFlowStartMessage message = DataFlowStartMessage.Builder.newInstance()
+                .processId("proc-meta")
+                .transferType("HttpData-PUSH")
+                .callbackAddress("http://cp:8080/callback")
+                .metadata(metadata)
+                .build();
+
+        ResponseEntity<Void> response = controller.startDataFlow(message);
+
+        ArgumentCaptor<DataFlow> dataFlowCaptor = ArgumentCaptor.forClass(DataFlow.class);
+        verify(dataFlowService).start(dataFlowCaptor.capture());
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+        assertEquals(metadata, dataFlowCaptor.getValue().getMetadata());
+    }
+
     // ─── prepareDataFlow ─────────────────────────────────────────────────────
 
     @Test

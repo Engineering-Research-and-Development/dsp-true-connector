@@ -7,39 +7,56 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.stereotype.Component;
 
 /**
- * AWS S3 IAM user management service - no-op implementation.
+ * AWS S3 IAM user management service.
  *
  * This service is activated when MinioAdminClient bean does NOT exist,
- * indicating AWS S3 mode. IAM users must be pre-configured externally.
+ * indicating AWS S3 mode.
  */
 @Component
 @ConditionalOnMissingBean(MinioAdminClient.class)
 @Slf4j
 public class AwsUserManagementService implements IamUserManagementService {
+    private static final String TEMP_USER_REDESIGN_MESSAGE =
+            "AWS temporary IAM user management is not implemented yet. "
+                    + "TemporaryBucketUserService currently generates caller-chosen access/secret pairs, "
+                    + "but AWS CreateAccessKey returns AWS-generated credentials. "
+                    + "Redesign the temporary-user flow so AwsUserManagementService creates and returns the "
+                    + "AWS-generated access key pair before enabling this path.";
+
     /**
-     * @param accessKey
-     * @param policyName
-     * @param policyJson
+     * The AWS temporary-user path needs a follow-up redesign before it can be implemented safely.
+     *
+     * @param managementCredentials the tenant-scoped management credentials
+     * @param accessKey the temporary user's access key identifier
+     * @param policyName the policy to attach
+     * @param policyJson the policy document
      */
     @Override
-    public void attachTemporaryPolicy(String accessKey, String policyName, String policyJson) {
-
+    public void attachTemporaryPolicy(BucketCredentialsEntity managementCredentials, String accessKey,
+                                      String policyName, String policyJson) {
+        throw new UnsupportedOperationException(TEMP_USER_REDESIGN_MESSAGE);
     }
 
     /**
-     * @param accessKey
+     * The AWS temporary-user path needs a follow-up redesign before it can be implemented safely.
+     *
+     * @param managementCredentials the tenant-scoped management credentials
+     * @param accessKey the temporary user's access key identifier
      */
     @Override
-    public void deleteUser(String accessKey) {
-
+    public void deleteUser(BucketCredentialsEntity managementCredentials, String accessKey) {
+        throw new UnsupportedOperationException(TEMP_USER_REDESIGN_MESSAGE);
     }
 
     /**
-     * @param policyName
+     * The AWS temporary-user path needs a follow-up redesign before it can be implemented safely.
+     *
+     * @param managementCredentials the tenant-scoped management credentials
+     * @param policyName the policy to remove
      */
     @Override
-    public void deletePolicy(String policyName) {
-
+    public void deletePolicy(BucketCredentialsEntity managementCredentials, String policyName) {
+        throw new UnsupportedOperationException(TEMP_USER_REDESIGN_MESSAGE);
     }
 
     public AwsUserManagementService() {
@@ -56,4 +73,3 @@ public class AwsUserManagementService implements IamUserManagementService {
         log.info("AWS S3 mode - policy attachment skipped. Bucket: {}", bucketCredentials.getBucketName());
     }
 }
-

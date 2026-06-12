@@ -13,7 +13,7 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
-import it.eng.datatransfer.router.DataPlaneRouter;
+import it.eng.datatransfer.client.DataPlaneClient;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
@@ -42,9 +42,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import org.mockito.InOrder;
+
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -63,7 +64,7 @@ public class DataTransferServiceTest {
     @Mock
     private TemporaryBucketUserService temporaryBucketUserService;
     @Mock
-    private DataPlaneRouter dataPlaneRouter;
+    private DataPlaneClient dataPlaneClient;
 
     @InjectMocks
     private DataTransferService service;
@@ -479,15 +480,17 @@ public class DataTransferServiceTest {
     }
 
     @Test
-    @DisplayName("HTTP-PUSH consumer completion cleans up temporary IAM credentials")
-    public void completeDataTransfer_httpPush_consumer_deletesTemporaryUser() {
+    @DisplayName("HTTP-PUSH consumer protocol-callback completion must NOT directly delete temp user — cleanup is DP-owned")
+    public void completeDataTransfer_httpPush_consumer_doesNotDirectlyDeleteTemporaryUser() {
         when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH));
 
         service.completeDataTransfer(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE,
                 DataTransferMockObjectUtil.CONSUMER_PID, null);
 
-        verify(temporaryBucketUserService).deleteTemporaryUser(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH.getId());
+        // Ownership of temp-user cleanup belongs to the Data Plane (HttpPushTransferProtocol.terminateTransfer).
+        // The CP protocol-callback path must NOT call deleteTemporaryUser directly.
+        verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
     }
 
     @Test
@@ -526,7 +529,7 @@ public class DataTransferServiceTest {
         service.completeDataTransfer(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE,
                 null, DataTransferMockObjectUtil.PROVIDER_PID);
 
-        verify(dataPlaneRouter).clearStickyAssignment(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+        verify(dataPlaneClient).clearStickyAssignment(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
     }
 
     @Test
@@ -538,19 +541,38 @@ public class DataTransferServiceTest {
         service.terminateDataTransfer(DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE,
                 null, DataTransferMockObjectUtil.PROVIDER_PID);
 
-        verify(dataPlaneRouter).clearStickyAssignment(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+        verify(dataPlaneClient).clearStickyAssignment(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
     }
 
     @Test
-    @DisplayName("HTTP-PUSH consumer termination cleans up temporary IAM credentials")
-    public void terminateDataTransfer_httpPush_consumer_deletesTemporaryUser() {
+    @DisplayName("HTTP-PUSH consumer termination without DP endpoint must NOT directly delete temporary user — cleanup is DP-owned")
+    public void terminateDataTransfer_httpPush_consumer_noDataplane_doesNotDirectlyDeleteTemporaryUser() {
         when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH));
 
         service.terminateDataTransfer(DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE,
                 DataTransferMockObjectUtil.CONSUMER_PID, null);
 
-        verify(temporaryBucketUserService).deleteTemporaryUser(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH.getId());
+        // No DP endpoint assigned — no DP terminate call, and CP must NOT call deleteTemporaryUser directly.
+        verify(dataPlaneClient, never()).terminate(any(), any(), any());
+        verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
+    }
+
+    @Test
+    @DisplayName("HTTP-PUSH consumer termination with assigned DP endpoint delegates cleanup to Data Plane")
+    public void terminateDataTransfer_httpPush_consumer_withDataplane_delegatesToDp() {
+        TransferProcess tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH_WITH_DATAPLANE;
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+                .thenReturn(Optional.of(tp));
+
+        service.terminateDataTransfer(DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE,
+                DataTransferMockObjectUtil.CONSUMER_PID, null);
+
+        InOrder order = inOrder(dataPlaneClient);
+        order.verify(dataPlaneClient).restoreStickyAssignment(tp.getId(), "http://dp-push:9090");
+        order.verify(dataPlaneClient).terminate(eq(tp.getId()), eq(DataTransferFormat.HTTP_PUSH.format()), isNull());
+        // CP must NOT call deleteTemporaryUser directly — that belongs to the Data Plane.
+        verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
     }
 
     // suspend

@@ -30,6 +30,7 @@ public class DataFlowEntity {
     private String callbackAddress;
     private DataFlowState state;
     private Map<String, String> dataAddress;
+    private Map<String, Object> metadata;
     private String tenantId;
     private String participantId;
     private String counterPartyId;
@@ -78,6 +79,7 @@ public class DataFlowEntity {
         copy.callbackAddress = source.callbackAddress;
         copy.state = source.state;
         copy.dataAddress = source.dataAddress;
+        copy.metadata = source.metadata;
         copy.tenantId = source.tenantId;
         copy.participantId = source.participantId;
         copy.counterPartyId = source.counterPartyId;
@@ -175,6 +177,15 @@ public class DataFlowEntity {
          */
         public Builder dataAddress(Map<String, String> dataAddress) {
             instance.dataAddress = dataAddress;
+            return this;
+        }
+
+        /**
+         * @param metadata structured runtime metadata grouped by section
+         * @return this builder
+         */
+        public Builder metadata(Map<String, Object> metadata) {
+            instance.metadata = metadata;
             return this;
         }
 

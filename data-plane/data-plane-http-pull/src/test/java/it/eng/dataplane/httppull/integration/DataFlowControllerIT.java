@@ -2,11 +2,16 @@ package it.eng.dataplane.httppull.integration;
 
 import it.eng.dataplane.api.DataPlaneConstants;
 import it.eng.dataplane.api.message.DataAddress;
+import it.eng.dataplane.api.message.DataFlowPrepareMessage;
 import it.eng.dataplane.api.message.DataFlowStartMessage;
 import it.eng.dataplane.api.message.EndpointProperty;
 import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.dataplane.core.model.DataFlowEntity;
 import it.eng.dataplane.core.repository.DataFlowRepository;
+import it.eng.tools.s3.model.BucketCredentialsEntity;
+import it.eng.tools.s3.repository.BucketCredentialsRepository;
+import it.eng.tools.s3.service.S3ClientServiceImpl;
+import it.eng.tools.service.FieldEncryptionService;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,6 +28,7 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -46,11 +52,18 @@ class DataFlowControllerIT extends BaseHttpPullIT {
     @Autowired
     private DataFlowRepository dataFlowRepository;
 
+    @Autowired
+    private FieldEncryptionService fieldEncryptionService;
+
     /**
      * Object key pre-loaded into test MinIO for prepare-endpoint tests.
      * Uses a fixed value so the presigned URL generation finds an existing object.
      */
     private static final String PREPARE_OBJECT_KEY = "urn:uuid:test-prepare-fixture-00000001";
+    @Autowired
+    private BucketCredentialsRepository bucketCredentialsRepository;
+    @Autowired
+    private S3ClientServiceImpl s3ClientServiceImpl;
 
     /**
      * Uploads a test fixture object to MinIO so that presigned URL generation in the
@@ -64,14 +77,25 @@ class DataFlowControllerIT extends BaseHttpPullIT {
     @Test
     @DisplayName("POST /dataflows/prepare with valid processId returns 200 with processId in body")
     void prepareDataFlow_returnsOkWithProcessId() throws Exception {
-        Map<String, Object> body = Map.of(
-                "processId", PREPARE_OBJECT_KEY,
-                "metadata", Map.of("sink", Map.of("mode", "VIEW"))
-        );
+        BucketCredentialsEntity bucketCredentialsEntity = bucketCredentialsRepository.findByBucketName(TEST_BUCKET_NAME).orElseThrow();
+        Map<String, Object> s3Section = new LinkedHashMap<>();
+        String decryptedSecretKey = fieldEncryptionService.decrypt(bucketCredentialsEntity.getSecretKey());
+        s3Section.put(DataPlaneConstants.METADATA_S3_BUCKET_NAME, TEST_BUCKET_NAME);
+        s3Section.put(DataPlaneConstants.METADATA_S3_OBJECT_KEY, PREPARE_OBJECT_KEY);
+        s3Section.put(DataPlaneConstants.METADATA_S3_ACCESS_KEY, bucketCredentialsEntity.getAccessKey());
+        s3Section.put(DataPlaneConstants.METADATA_S3_SECRET_KEY, decryptedSecretKey);
+        s3Section.put(DataPlaneConstants.METADATA_S3_REGION,  "us-east-1");
+        s3Section.put(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, minIOContainer.getS3URL());
+
+        DataFlowPrepareMessage dataFlowPrepareMessage = DataFlowPrepareMessage.Builder.newInstance()
+                .processId(PREPARE_OBJECT_KEY)
+                .metadata(Map.of("sink", Map.of("mode", "VIEW",
+                        "s3", s3Section)))
+                .build();
 
         mockMvc.perform(withApiKey(post("/dataflows/prepare"))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(body)))
+                .content(objectMapper.writeValueAsString(dataFlowPrepareMessage)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.processId").value(PREPARE_OBJECT_KEY));
     }

@@ -121,6 +121,7 @@ public class DataFlowService {
                 .counterPartyId(message.getCounterPartyId())
                 .state(DataFlowState.PREPARED)
                 .dataAddress(response.getDataAddress())
+                .metadata(message.getMetadata())
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -160,7 +161,7 @@ public class DataFlowService {
                 throw new IllegalStateException("DataFlow with processId " + dataFlow.getProcessId() + " already exists");
             }
             log.info("Reusing PREPARED DataFlow for processId={}", dataFlow.getProcessId());
-            entity = existing.withState(DataFlowState.STARTING);
+            entity = mergeForStart(existing, dataFlow, DataFlowState.STARTING);
         } else {
             entity = toEntity(dataFlow, DataFlowState.STARTING);
         }
@@ -274,16 +275,29 @@ public class DataFlowService {
     }
 
     private void handleCompletion(String processId, DataFlowResult result) {
-        if (result.isSuccess()) {
-            DataFlowEntity fresh = findRequired(processId);
-            stateMachine.assertTransition(fresh.getState(), DataFlowState.COMPLETED);
-            DataFlowEntity completed = fresh.withState(DataFlowState.COMPLETED);
-            repository.save(completed);
-            auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_COMPLETED,
-                    processId, completed.getTransferType(), "Data flow completed", null);
-        } else {
+        if (!result.isSuccess()) {
             handleError(processId, new RuntimeException(result.getErrorMessage()));
+            return;
         }
+
+        DataFlowEntity current = findRequired(processId);
+        requiredProtocol(current.getTransferType()).completeTransfer(processId)
+                .thenAccept(cleanupResult -> {
+                    if (!cleanupResult.isSuccess()) {
+                        handleError(processId, new RuntimeException(cleanupResult.getErrorMessage()));
+                        return;
+                    }
+                    DataFlowEntity fresh = findRequired(processId);
+                    stateMachine.assertTransition(fresh.getState(), DataFlowState.COMPLETED);
+                    DataFlowEntity completed = fresh.withState(DataFlowState.COMPLETED);
+                    repository.save(completed);
+                    auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_COMPLETED,
+                            processId, completed.getTransferType(), "Data flow completed", null);
+                })
+                .exceptionally(ex -> {
+                    handleError(processId, ex);
+                    return null;
+                });
     }
 
     private void handleError(String processId, Throwable ex) {
@@ -331,11 +345,35 @@ public class DataFlowService {
                 .callbackAddress(dataFlow.getCallbackAddress())
                 .state(state)
                 .dataAddress(dataFlow.getDataAddress())
+                .metadata(dataFlow.getMetadata())
                 .tenantId(dataFlow.getTenantId())
                 .participantId(dataFlow.getParticipantId())
                 .counterPartyId(dataFlow.getCounterPartyId())
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
+    }
+
+    private DataFlowEntity mergeForStart(DataFlowEntity existing, DataFlow dataFlow, DataFlowState state) {
+        return DataFlowEntity.Builder.newInstance()
+                .id(existing.getId())
+                .processId(existing.getProcessId())
+                .agreementId(preferValue(dataFlow.getAgreementId(), existing.getAgreementId()))
+                .datasetId(preferValue(dataFlow.getDatasetId(), existing.getDatasetId()))
+                .transferType(preferValue(dataFlow.getTransferType(), existing.getTransferType()))
+                .callbackAddress(preferValue(dataFlow.getCallbackAddress(), existing.getCallbackAddress()))
+                .state(state)
+                .dataAddress(preferValue(dataFlow.getDataAddress(), existing.getDataAddress()))
+                .metadata(preferValue(dataFlow.getMetadata(), existing.getMetadata()))
+                .tenantId(preferValue(dataFlow.getTenantId(), existing.getTenantId()))
+                .participantId(preferValue(dataFlow.getParticipantId(), existing.getParticipantId()))
+                .counterPartyId(preferValue(dataFlow.getCounterPartyId(), existing.getCounterPartyId()))
+                .createdAt(existing.getCreatedAt())
+                .updatedAt(Instant.now())
+                .build();
+    }
+
+    private <T> T preferValue(T preferred, T fallback) {
+        return preferred != null ? preferred : fallback;
     }
 }

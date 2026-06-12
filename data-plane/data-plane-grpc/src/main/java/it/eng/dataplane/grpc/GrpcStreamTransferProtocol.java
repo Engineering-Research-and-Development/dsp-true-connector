@@ -374,20 +374,22 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
     }
 
     private SinkContext buildSinkContext(DataFlow dataFlow) {
-        Map<String, String> dataAddress = dataFlow.getDataAddress();
+        DataFlowPrepareMetadataSection s3Section = DataFlowPrepareMetadata.fromMap(dataFlow.getMetadata())
+                .getSinkSection()
+                .getSection(DataPlaneConstants.METADATA_SECTION_S3);
         Map<String, String> sinkProperties = new HashMap<>();
         putIfPresent(sinkProperties, S3Utils.BUCKET_NAME,
-                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME));
-        String objectKey = dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY);
+                s3Section.getString(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        String objectKey = s3Section.getString(DataPlaneConstants.METADATA_S3_OBJECT_KEY);
         sinkProperties.put(S3Utils.OBJECT_KEY, objectKey != null ? objectKey : dataFlow.getProcessId());
         putIfPresent(sinkProperties, S3Utils.REGION,
-                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION));
+                s3Section.getString(DataPlaneConstants.METADATA_S3_REGION));
         putIfPresent(sinkProperties, S3Utils.ACCESS_KEY,
-                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY));
+                s3Section.getString(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
         putIfPresent(sinkProperties, S3Utils.SECRET_KEY,
-                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY));
+                s3Section.getString(DataPlaneConstants.METADATA_S3_SECRET_KEY));
         putIfPresent(sinkProperties, S3Utils.ENDPOINT_OVERRIDE,
-                dataAddress.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE));
+                s3Section.getString(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
         return SinkContext.Builder.newInstance()
                 .properties(sinkProperties)
                 .build();

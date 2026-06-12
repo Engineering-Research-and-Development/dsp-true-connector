@@ -598,31 +598,21 @@ public class DataTransferAPIService {
     /**
      * Builds the DPS prepare metadata for an HTTP-PUSH consumer request.
      *
-     * <p>The sink section carries only the consumer bucket coordinates (name, key, region, and
-     * optional endpoint override). Access/secret credentials are intentionally omitted: the DP
-     * creates a temporary IAM user during {@code prepare()} itself, so the CP does not need to
-     * supply bucket credentials at this stage. Requiring them would create an unnecessary
-     * bootstrap dependency on credential records that may not yet exist.</p>
+     * <p>The sink section carries the consumer bucket coordinates plus Minio management
+     * credentials from {@code application.properties}. This is a temporary fallback for Minio:
+     * delegated temp-user CRUD through {@link BucketCredentialsEntity} is currently blocked by
+     * Minio policy limitations in the tested environment. Once tenant-scoped bucket manager
+     * policies work, replace these bootstrap credentials with the persisted
+     * {@link BucketCredentialsEntity} values.</p>
      *
      * @param tenantId  the consumer tenant (used to resolve the per-tenant bucket name)
      * @param objectKey the S3 object key for the pushed artifact (transfer process id)
      * @return metadata map with {@code sink.s3} bucket/key coordinates but no credentials
      */
     private Map<String, Object> buildHttpPushPrepareMetadata(String tenantId, String objectKey) {
-        String bucketName = tenantBucketResolver.resolveBucketName(tenantId);
-        Map<String, Object> s3Section = new LinkedHashMap<>();
-        s3Section.put(DataPlaneConstants.METADATA_S3_BUCKET_NAME, bucketName);
-        s3Section.put(DataPlaneConstants.METADATA_S3_OBJECT_KEY, objectKey);
-        String region = s3Properties.getRegion();
-        if (StringUtils.isNotBlank(region)) {
-            s3Section.put(DataPlaneConstants.METADATA_S3_REGION, region);
-        }
-        String endpoint = s3Properties.getEndpoint();
-        if (StringUtils.isNotBlank(endpoint)) {
-            s3Section.put(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, endpoint);
-        }
-        return Map.of(DataPlaneConstants.METADATA_SECTION_SINK,
-                Map.of(DataPlaneConstants.METADATA_SECTION_S3, Map.copyOf(s3Section)));
+        return buildCanonicalMetadata(
+                Map.of(),
+                buildCanonicalSection(Map.of(), buildBootstrapManagementS3Metadata(tenantId, objectKey), null));
     }
 
     /**
@@ -636,14 +626,11 @@ public class DataTransferAPIService {
     private Map<String, Object> buildPrepareMetadata(String tenantId,
                                                      String objectKey,
                                                      DataAddress sourceDataAddress) {
-        Map<String, Object> metadata = new LinkedHashMap<>();
-        Map<String, Object> sourceSection = new LinkedHashMap<>(toStructuredSourceMetadata(sourceDataAddress));
-        sourceSection.put(DataPlaneConstants.METADATA_SECTION_S3,
-                buildControlPlaneS3Metadata(tenantId, objectKey));
-        if (!sourceSection.isEmpty()) {
-            metadata.put(DataPlaneConstants.METADATA_SECTION_SOURCE, sourceSection);
-        }
-        return Map.copyOf(metadata);
+        return buildCanonicalMetadata(
+                buildCanonicalSection(toStructuredSectionMetadata(sourceDataAddress),
+                        buildControlPlaneS3Metadata(tenantId, objectKey),
+                        null),
+                Map.of());
     }
 
     private DataFlowPrepareMessage.Builder applyCommonDataPlaneFields(DataFlowPrepareMessage.Builder builder,
@@ -659,13 +646,15 @@ public class DataTransferAPIService {
 
     private DataFlowStartMessage.Builder applyCommonDataPlaneFields(DataFlowStartMessage.Builder builder,
                                                                     TransferProcess transferProcess,
-                                                                    String transferType) {
+                                                                    String transferType,
+                                                                    Map<String, Object> metadata) {
         return builder.messageId(UUID.randomUUID().toString())
                 .participantId(resolveLocalParticipantId(transferProcess))
                 .counterPartyId(resolveRemoteParticipantId(transferProcess))
                 .dataspaceContext(DataPlaneConstants.DSPACE_2025_01_CONTEXT)
                 .claims(Map.of())
-                .transferType(transferType);
+                .transferType(transferType)
+                .metadata(metadata);
     }
 
     private String resolveLocalParticipantId(TransferProcess transferProcess) {
@@ -745,21 +734,21 @@ public class DataTransferAPIService {
             }
             transferProcessRepository.save(transferProcessCompleted);
             log.info("Transfer process {} saved", transferProcessCompleted.getId());
-            // Terminate any PREPARED DP session (e.g. HTTP-PUSH consumer or HTTP-PULL FILE helper prepare)
-            // that was not yet cleaned up by a lifecycle call. Mirrors the logic in terminateTransfer().
-            if (transferProcess.getTransportProfile() != null || transferProcess.getAssignedDataplaneEndpoint() != null) {
-                if (transferProcess.getAssignedDataplaneEndpoint() != null) {
-                    dataPlaneClient.restoreStickyAssignment(transferProcess.getId(),
-                            transferProcess.getAssignedDataplaneEndpoint());
+            // For HTTP-PUSH consumer transfers with an assigned DP endpoint, restore sticky routing
+            // and signal the DP to terminate its PREPARED session — this triggers
+            // HttpPushTransferProtocol.terminateTransfer() which owns the temp-IAM-user cleanup.
+            if (IConstants.ROLE_CONSUMER.equals(transferProcess.getRole())
+                    && DataTransferFormat.HTTP_PUSH.format().equals(transferProcess.getFormat())
+                    && transferProcess.getAssignedDataplaneEndpoint() != null) {
+                dataPlaneClient.restoreStickyAssignment(transferProcess.getId(),
+                        transferProcess.getAssignedDataplaneEndpoint());
+                try {
+                    dataPlaneClient.terminate(transferProcess.getId(),
+                            DataTransferFormat.HTTP_PUSH.format(), null);
+                } catch (Exception e) {
+                    log.warn("DP terminate call failed for HTTP-PUSH consumer process {} (best-effort): {}",
+                            transferProcess.getId(), e.getMessage());
                 }
-//TODO figure out how to solve this in better way, currently it fails for streaming since completed -> terminate throws ex
-//                try {
-//                    dataPlaneClient.terminate(transferProcess.getId(), transferProcess.getFormat(),
-//                            transferProcess.getTransportProfile());
-//                } catch (Exception e) {
-//                    log.warn("DP terminate call failed for process {} (best-effort); sticky cleanup will still run: {}",
-//                            transferProcess.getId(), e.getMessage());
-//                }
             }
             dataPlaneClient.clearStickyAssignment(transferProcess.getId());
             publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED,
@@ -768,9 +757,6 @@ public class DataTransferAPIService {
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcessCompleted.getConsumerPid(),
                             "providerPid", transferProcessCompleted.getProviderPid()));
-            // TODO check if this is correct assumption in comment
-            // Temporary IAM credentials (HTTP-PUSH) are cleaned up by the consumer CP
-            // in AbstractDataTransferService.completeDataTransfer when the consumer TP transitions to COMPLETED.
             return TransferSerializer.serializePlainJsonNode(transferProcessCompleted);
         } else {
             log.error("Error response received!");
@@ -942,8 +928,6 @@ public class DataTransferAPIService {
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid()));
-            // Temporary IAM credentials (HTTP-PUSH) are cleaned up by the consumer CP
-            // in AbstractDataTransferService.terminateDataTransfer when the consumer TP transitions to TERMINATED.
             return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
         } else {
             log.error("Error response received!");
@@ -1024,14 +1008,13 @@ public class DataTransferAPIService {
             // DataFlowCallbackController does not have, causing a 404.
             String callbackAddress = dataTransferProperties.dataPlaneFeedbackAddress();
             DataFlowStartMessage startMessage = applyCommonDataPlaneFields(DataFlowStartMessage.Builder.newInstance(),
-                            transferProcessDownloading, transferProcessDownloading.getFormat())
+                            transferProcessDownloading,
+                            transferProcessDownloading.getFormat(),
+                            buildStartMetadata(transferProcessDownloading))
                     .processId(transferProcessDownloading.getId())
                     .callbackAddress(callbackAddress)
                     .dataAddress(buildStartMessageDataAddress(transferProcessDownloading))
                     .agreementId(transferProcessDownloading.getAgreementId())
-                    // check if this cna be used for both pull and push, to pass BucketCredentialsEntity information for transfer
-                    .metadata(buildPrepareMetadata(transferProcess.getTenantId(),
-                            transferProcess.getDatasetId(), transferProcess.getDataAddress()))
                     .datasetId(transferProcessDownloading.getDatasetId())
                     .build();
             if (transportProfile != null) {
@@ -1259,31 +1242,19 @@ public class DataTransferAPIService {
     /**
      * Builds the DPS data address for an HTTP-PUSH provider start message.
      *
-     * <ul>
-     *   <li>{@code source.*} properties contain the provider's own S3 bucket credentials
-     *       (resolved via {@link TenantBucketResolver} + {@link BucketCredentialsService}).</li>
-     *   <li>{@code sink.*} properties contain the consumer's temporary IAM credentials,
-     *       translated from the flat keys ({@code bucketName}, {@code accessKey}, …) that
-     *       the consumer CP placed in the transfer process {@code dataAddress}.</li>
-     * </ul>
+     * <p>S3 coordinates for both source and sink are now carried exclusively in
+     * {@code metadata.source.s3} / {@code metadata.sink.s3} (built by
+     * {@link #buildStartMetadata}). The {@code dataAddress} carries only the transport
+     * {@code endpointType}; no flat {@code source.*} or {@code sink.*} properties are added.</p>
      *
      * @param transferProcess the provider-side HTTP-PUSH transfer process
-     * @return schema-aligned data address containing {@code source.*} and {@code sink.*} properties
+     * @return schema-aligned data address containing only {@code endpointType}
      */
     private it.eng.dataplane.api.message.DataAddress buildHttpPushProviderStartDataAddress(
             TransferProcess transferProcess) {
-        List<it.eng.dataplane.api.message.EndpointProperty> endpointProperties = new ArrayList<>();
-        // source.* = provider's own bucket (the artifact origin, read by the provider DP)
-        endpointProperties.addAll(buildStartSourceEndpointProperties(
-                transferProcess.getTenantId(), transferProcess.getDatasetId()));
-        // sink.* = consumer's temporary credentials (the upload destination)
-        endpointProperties.addAll(translateConsumerFlatToSinkProperties(
-                transferProcess.getDataAddress() == null ? null
-                        : transferProcess.getDataAddress().getEndpointProperties()));
         String endpointType = defaultStartMessageEndpointType(transferProcess.getFormat());
         return it.eng.dataplane.api.message.DataAddress.Builder.newInstance()
                 .endpointType(endpointType)
-                .endpointProperties(endpointProperties)
                 .build();
     }
 
@@ -1327,20 +1298,24 @@ public class DataTransferAPIService {
     /**
      * Converts a DSP {@link DataAddress} into a schema-aligned DPS data address.
      *
+     * <p>S3 sink coordinates are now carried exclusively in {@code metadata.sink.s3}
+     * (built by {@link #buildStartMetadata}). Only the transport fields originally present
+     * in the DSP {@code dataAddress} (e.g. {@code endpoint}, {@code endpointType},
+     * {@code authorization}) are forwarded here.</p>
+     *
      * @param dataAddress the data address to convert; may be {@code null}
      * @param transferType the transfer type associated with the start message
-     * @param tenantId the tenant that owns the sink bucket
-     * @param sinkObjectKey the sink object key chosen by the control plane
+     * @param tenantId the tenant that owns the sink bucket (unused; kept for signature compatibility)
+     * @param sinkObjectKey the sink object key chosen by the control plane (unused; now in metadata)
      * @return schema-aligned data address, or {@code null} when input is {@code null}
      */
     private it.eng.dataplane.api.message.DataAddress toStartMessageDataAddress(DataAddress dataAddress,
                                                                                String transferType,
                                                                                String tenantId,
                                                                                String sinkObjectKey) {
-        List<it.eng.dataplane.api.message.EndpointProperty> endpointProperties =
-                new ArrayList<>(buildStartSinkEndpointProperties(tenantId, sinkObjectKey));
+        List<it.eng.dataplane.api.message.EndpointProperty> endpointProperties = new ArrayList<>();
         if (dataAddress != null && dataAddress.getEndpointProperties() != null) {
-            endpointProperties.addAll(0, dataAddress.getEndpointProperties().stream()
+            endpointProperties.addAll(dataAddress.getEndpointProperties().stream()
                     .map(property -> it.eng.dataplane.api.message.EndpointProperty.Builder.newInstance()
                             .name(property.getName())
                             .value(property.getValue())
@@ -1356,20 +1331,27 @@ public class DataTransferAPIService {
                 .build();
     }
 
-    private Map<String, Object> toStructuredSourceMetadata(DataAddress sourceDataAddress) {
-        if (sourceDataAddress == null || sourceDataAddress.getEndpointProperties() == null) {
+    private Map<String, Object> toStructuredSectionMetadata(DataAddress dataAddress) {
+        if (dataAddress == null || dataAddress.getEndpointProperties() == null) {
             return Map.of();
         }
-        Map<String, Object> sourceSection = new java.util.LinkedHashMap<>();
-        for (EndpointProperty property : sourceDataAddress.getEndpointProperties()) {
+        Map<String, Object> section = new LinkedHashMap<>();
+        Map<String, Object> s3Section = new LinkedHashMap<>();
+        for (EndpointProperty property : dataAddress.getEndpointProperties()) {
             if (property == null || StringUtils.isBlank(property.getName()) || property.getValue() == null) {
                 continue;
             }
-            if (!isS3MetadataField(property.getName())) {
-                sourceSection.put(property.getName(), property.getValue());
+            String s3MetadataKey = toS3MetadataKey(property.getName());
+            if (s3MetadataKey != null) {
+                s3Section.put(s3MetadataKey, property.getValue());
+            } else if (!isS3MetadataField(property.getName())) {
+                section.put(property.getName(), property.getValue());
             }
         }
-        return sourceSection.isEmpty() ? Map.of() : Map.copyOf(sourceSection);
+        if (!s3Section.isEmpty()) {
+            section.put(DataPlaneConstants.METADATA_SECTION_S3, Map.copyOf(s3Section));
+        }
+        return section.isEmpty() ? Map.of() : Map.copyOf(section);
     }
 
     private List<it.eng.dataplane.api.message.EndpointProperty> buildStartSinkEndpointProperties(String tenantId,
@@ -1425,45 +1407,107 @@ public class DataTransferAPIService {
         return Map.copyOf(s3Metadata);
     }
 
-    /**
-     * Builds the DPS prepare metadata for an HTTP-PULL VIEW request.
-     *
-     * <p>The sink section carries the consumer's own S3 bucket and object coordinates so
-     * the Data Plane can generate a presigned GET URL for the stored artifact. The DP uses
-     * its own admin S3 credentials for presigning; therefore this method intentionally
-     * omits access/secret keys to avoid an unnecessary dependency on bucket credential
-     * records in the VIEW path.</p>
-     *
-     * @param tenantId  the tenant that owns the data (used to resolve the per-tenant bucket)
-     * @param objectKey the S3 object key (transfer process ID used at download time)
-     * @return metadata map with {@code sink.mode = "VIEW"} and {@code sink.s3} bucket/object info
-     */
-    private Map<String, Object> buildViewPrepareMetadata(String tenantId, String objectKey) {
+    private Map<String, Object> buildStartMetadata(TransferProcess transferProcess) {
+        if (DataTransferFormat.HTTP_PUSH.format().equals(transferProcess.getFormat())) {
+            return buildCanonicalMetadata(
+                    buildCanonicalSection(Map.of(),
+                            buildControlPlaneS3Metadata(transferProcess.getTenantId(), transferProcess.getDatasetId()),
+                            null),
+                    buildCanonicalSection(toStructuredSectionMetadata(transferProcess.getDataAddress()), Map.of(), null));
+        }
+        return buildCanonicalMetadata(
+                buildCanonicalSection(toStructuredSectionMetadata(transferProcess.getDataAddress()), Map.of(), null),
+                buildCanonicalSection(Map.of(),
+                        buildControlPlaneS3Metadata(transferProcess.getTenantId(), transferProcess.getId()),
+                        null));
+    }
+
+    private Map<String, Object> buildCanonicalMetadata(Map<String, Object> sourceSection,
+                                                       Map<String, Object> sinkSection) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        if (!sourceSection.isEmpty()) {
+            metadata.put(DataPlaneConstants.METADATA_SECTION_SOURCE, Map.copyOf(sourceSection));
+        }
+        if (!sinkSection.isEmpty()) {
+            metadata.put(DataPlaneConstants.METADATA_SECTION_SINK, Map.copyOf(sinkSection));
+        }
+        return metadata.isEmpty() ? Map.of() : Map.copyOf(metadata);
+    }
+
+    private Map<String, Object> buildCanonicalSection(Map<String, Object> sectionMetadata,
+                                                      Map<String, Object> s3Metadata,
+                                                      String mode) {
+        Map<String, Object> section = new LinkedHashMap<>(sectionMetadata);
+        if (StringUtils.isNotBlank(mode)) {
+            section.put(DataPlaneConstants.METADATA_FIELD_MODE, mode);
+        }
+        if (!s3Metadata.isEmpty()) {
+            section.put(DataPlaneConstants.METADATA_SECTION_S3, Map.copyOf(s3Metadata));
+        }
+        return section.isEmpty() ? Map.of() : Map.copyOf(section);
+    }
+
+    private Map<String, Object> buildBootstrapManagementS3Metadata(String tenantId, String objectKey) {
         String bucketName = tenantBucketResolver.resolveBucketName(tenantId);
         Map<String, Object> s3Section = new LinkedHashMap<>();
         s3Section.put(DataPlaneConstants.METADATA_S3_BUCKET_NAME, bucketName);
         s3Section.put(DataPlaneConstants.METADATA_S3_OBJECT_KEY, objectKey);
-//        add also bucket credentials here
+        String region = s3Properties.getRegion();
+        if (StringUtils.isNotBlank(region)) {
+            s3Section.put(DataPlaneConstants.METADATA_S3_REGION, region);
+        }
+        String endpoint = s3Properties.getEndpoint();
+        if (StringUtils.isNotBlank(endpoint)) {
+            s3Section.put(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, endpoint);
+        }
+        // Temporary Minio fallback: pass bootstrap admin credentials to the DP until
+        // BucketCredentialsEntity-backed delegated policies are working end-to-end.
+        s3Section.put(DataPlaneConstants.METADATA_S3_ACCESS_KEY,
+                requireControlPlaneS3Configuration(S3Utils.ACCESS_KEY, s3Properties.getAccessKey()));
+        s3Section.put(DataPlaneConstants.METADATA_S3_SECRET_KEY,
+                requireControlPlaneS3Configuration(S3Utils.SECRET_KEY, s3Properties.getSecretKey()));
+        return Map.copyOf(s3Section);
+    }
+
+    private Map<String, Object> buildViewS3Metadata(String tenantId, String objectKey) {
+        String bucketName = tenantBucketResolver.resolveBucketName(tenantId);
         BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
-        String region = requireControlPlaneS3Configuration("region", s3Properties.getRegion());
-        String accessKey = requireControlPlaneS3Credential(bucketName, "accessKey",
+        String region = requireControlPlaneS3Configuration(S3Utils.REGION, s3Properties.getRegion());
+        String accessKey = requireControlPlaneS3Credential(bucketName, S3Utils.ACCESS_KEY,
                 bucketCredentials == null ? null : bucketCredentials.getAccessKey());
-        String secretKey = requireControlPlaneS3Credential(bucketName, "secretKey",
+        String secretKey = requireControlPlaneS3Credential(bucketName, S3Utils.SECRET_KEY,
                 bucketCredentials == null ? null : bucketCredentials.getSecretKey());
+
+        Map<String, Object> s3Section = new LinkedHashMap<>();
+        s3Section.put(DataPlaneConstants.METADATA_S3_BUCKET_NAME, bucketName);
+        s3Section.put(DataPlaneConstants.METADATA_S3_OBJECT_KEY, objectKey);
         s3Section.put(DataPlaneConstants.METADATA_S3_ACCESS_KEY, accessKey);
         s3Section.put(DataPlaneConstants.METADATA_S3_SECRET_KEY, secretKey);
-
-//        String region = s3Properties.getRegion();
         if (StringUtils.isNotBlank(region)) {
             s3Section.put(DataPlaneConstants.METADATA_S3_REGION, region);
         }
         if (StringUtils.isNotBlank(s3Properties.getExternalPresignedEndpoint())) {
             s3Section.put(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, s3Properties.getExternalPresignedEndpoint());
         }
-        Map<String, Object> sinkSection = new LinkedHashMap<>();
-        sinkSection.put(DataPlaneConstants.METADATA_FIELD_MODE, "VIEW");
-        sinkSection.put(DataPlaneConstants.METADATA_SECTION_S3, Map.copyOf(s3Section));
-        return Map.of(DataPlaneConstants.METADATA_SECTION_SINK, Map.copyOf(sinkSection));
+        return Map.copyOf(s3Section);
+    }
+
+    /**
+     * Builds the DPS prepare metadata for an HTTP-PULL VIEW request.
+     *
+     * <p>The sink section carries the consumer's own S3 bucket and object coordinates so
+     * the Data Plane can generate a presigned GET URL for the stored artifact. The DP must
+     * use tenant-scoped bucket credentials for presigning so the generated URL reflects the
+     * actual runtime bucket identity rather than bootstrap admin credentials.</p>
+     *
+     * @param tenantId  the tenant that owns the data (used to resolve the per-tenant bucket)
+     * @param objectKey the S3 object key (transfer process ID used at download time)
+     * @return metadata map with {@code sink.mode = METADATA_MODE_VIEW} and {@code sink.s3} bucket/object info
+     */
+    private Map<String, Object> buildViewPrepareMetadata(String tenantId, String objectKey) {
+        return buildCanonicalMetadata(
+                Map.of(),
+                buildCanonicalSection(Map.of(), buildViewS3Metadata(tenantId, objectKey), DataPlaneConstants.METADATA_MODE_VIEW));
     }
 
     private Map<String, String> buildScopedSinkS3Properties(String tenantId, String objectKey) {
@@ -1489,10 +1533,10 @@ public class DataTransferAPIService {
     private Map<String, String> buildControlPlaneS3Properties(String tenantId, String objectKey) {
         String bucketName = tenantBucketResolver.resolveBucketName(tenantId);
         BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
-        String region = requireControlPlaneS3Configuration("region", s3Properties.getRegion());
-        String accessKey = requireControlPlaneS3Credential(bucketName, "accessKey",
+        String region = requireControlPlaneS3Configuration(S3Utils.REGION, s3Properties.getRegion());
+        String accessKey = requireControlPlaneS3Credential(bucketName, S3Utils.ACCESS_KEY,
                 bucketCredentials == null ? null : bucketCredentials.getAccessKey());
-        String secretKey = requireControlPlaneS3Credential(bucketName, "secretKey",
+        String secretKey = requireControlPlaneS3Credential(bucketName, S3Utils.SECRET_KEY,
                 bucketCredentials == null ? null : bucketCredentials.getSecretKey());
 
         Map<String, String> s3Metadata = new LinkedHashMap<>();
@@ -1529,6 +1573,18 @@ public class DataTransferAPIService {
                 || DataPlaneConstants.METADATA_S3_ACCESS_KEY.equals(fieldName)
                 || DataPlaneConstants.METADATA_S3_SECRET_KEY.equals(fieldName)
                 || DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE.equals(fieldName);
+    }
+
+    private String toS3MetadataKey(String fieldName) {
+        return switch (fieldName) {
+            case S3Utils.BUCKET_NAME -> DataPlaneConstants.METADATA_S3_BUCKET_NAME;
+            case S3Utils.OBJECT_KEY -> DataPlaneConstants.METADATA_S3_OBJECT_KEY;
+            case S3Utils.REGION -> DataPlaneConstants.METADATA_S3_REGION;
+            case S3Utils.ACCESS_KEY -> DataPlaneConstants.METADATA_S3_ACCESS_KEY;
+            case S3Utils.SECRET_KEY -> DataPlaneConstants.METADATA_S3_SECRET_KEY;
+            case S3Utils.ENDPOINT_OVERRIDE -> DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE;
+            default -> null;
+        };
     }
 
     private String defaultStartMessageEndpointType(String transferType) {

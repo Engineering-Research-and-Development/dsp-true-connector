@@ -447,6 +447,10 @@
                             threadCount=4 per core: e.g. 4-core machine = 16 concurrent test classes.
                             Override parallel=none in modules that need sequential execution (e2e tests).
                         -->
+                        <argLine>
+                            -javaagent:${settings.localRepository}/org/mockito/mockito-core/5.17.0/mockito-core-5.17.0.jar
+                            -Xshare:off
+                        </argLine>
                         <forkCount>1</forkCount>
                         <reuseForks>true</reuseForks>
                         <parallel>classes</parallel>

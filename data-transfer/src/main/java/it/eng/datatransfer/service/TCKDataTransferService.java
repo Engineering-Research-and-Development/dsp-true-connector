@@ -3,20 +3,19 @@ package it.eng.datatransfer.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.datatransfer.client.DataPlaneClient;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.rest.protocol.DataTransferCallback;
-import it.eng.datatransfer.router.DataPlaneRouter;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -52,10 +51,9 @@ public class TCKDataTransferService extends AbstractDataTransferService {
                                   OkHttpRestClient okHttpRestClient,
                                   CredentialUtils credentialUtils,
                                   DataTransferProperties dataTransferProperties,
-                                  TemporaryBucketUserService temporaryBucketUserService,
-                                  DataPlaneRouter dataPlaneRouter) {
+                                  DataPlaneClient dataPlaneClient) {
         super(transferProcessRepository, auditEventPublisher, okHttpRestClient, transferRequestMessageRepository,
-                dataTransferProperties, temporaryBucketUserService, dataPlaneRouter);
+                dataTransferProperties, dataPlaneClient);
         this.dataTransferAPIService = dataTransferAPIService;
         this.auditEventPublisher = auditEventPublisher;
         this.okHttpRestClient = okHttpRestClient;

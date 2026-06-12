@@ -111,6 +111,7 @@ public class BaseHttpPullIT {
         registry.add("s3.externalPresignedEndpoint", minIOContainer::getS3URL);
         registry.add("s3.accessKey", minIOContainer::getUserName);
         registry.add("s3.secretKey", minIOContainer::getPassword);
+        registry.add("s3.region", () -> "us-east-1");
     }
 
     @BeforeEach

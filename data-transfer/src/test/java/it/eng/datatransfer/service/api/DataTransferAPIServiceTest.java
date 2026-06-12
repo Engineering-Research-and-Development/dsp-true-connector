@@ -33,6 +33,7 @@ import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.BucketCredentialsService;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
+import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.usagecontrol.UsageControlProperties;
@@ -128,6 +129,8 @@ class DataTransferAPIServiceTest {
                 .build());
         lenient().when(s3Properties.getRegion()).thenReturn("us-east-1");
         lenient().when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        lenient().when(s3Properties.getAccessKey()).thenReturn("minioadmin");
+        lenient().when(s3Properties.getSecretKey()).thenReturn("minioadmin-secret");
     }
 
     @Test
@@ -487,6 +490,48 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
+    @DisplayName("Complete HTTP-PUSH consumer transfer with assigned DP endpoint — must restore sticky and call DP terminate (best-effort)")
+    public void completeTransfer_httpPushConsumer_withAssignedDpEndpoint_callsDpTerminate() {
+        TransferProcess tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH_WITH_DATAPLANE;
+
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
+                .thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.findById(tp.getId())).thenReturn(Optional.of(tp));
+
+        apiService.completeTransfer(tp.getId());
+
+        // Sticky must be restored before DP terminate so the correct DP instance is reached
+        InOrder order = inOrder(dataPlaneClient);
+        order.verify(dataPlaneClient).restoreStickyAssignment(tp.getId(), "http://dp-push:9090");
+        order.verify(dataPlaneClient).terminate(eq(tp.getId()), eq(DataTransferFormat.HTTP_PUSH.format()), isNull());
+        order.verify(dataPlaneClient).clearStickyAssignment(tp.getId());
+
+        // CP must NOT directly delete the temp user — that is the DP's responsibility
+        verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
+    }
+
+    @Test
+    @DisplayName("Complete HTTP-PUSH consumer transfer without assigned DP endpoint — no DP terminate call")
+    public void completeTransfer_httpPushConsumer_withoutAssignedDpEndpoint_doesNotCallDpTerminate() {
+        // No assignedDataplaneEndpoint: PREPARED session was never assigned to a specific DP instance
+        TransferProcess tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH;
+
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
+                .thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.findById(tp.getId())).thenReturn(Optional.of(tp));
+
+        apiService.completeTransfer(tp.getId());
+
+        verify(dataPlaneClient, never()).restoreStickyAssignment(any(), any());
+        verify(dataPlaneClient, never()).terminate(any(), any(), any());
+        verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
+    }
+
+    @Test
     @DisplayName("Suspend transfer process success")
     public void suspendTransfer_success_requestedState() {
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
@@ -695,20 +740,35 @@ class DataTransferAPIServiceTest {
         assertEquals(DataTransferMockObjectUtil.ENDPOINT_URL, startCaptor.getValue().getDataAddress().getEndpoint());
         assertEquals(DataTransferMockObjectUtil.ENDPOINT_TYPE, startCaptor.getValue().getDataAddress().getEndpointType());
         assertEquals("TOKEN-ABCDEFG", endpointProperties.get("authorization"));
-        assertEquals("consumer-bucket", endpointProperties.get("sink.bucketName"));
-        assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), endpointProperties.get("sink.objectKey"));
-        assertEquals("eu-central-1", endpointProperties.get("sink.region"));
-        assertEquals("consumer-access-key", endpointProperties.get("sink.accessKey"));
-        assertEquals("consumer-secret-key", endpointProperties.get("sink.secretKey"));
-        assertEquals("http://minio:9000", endpointProperties.get("sink.endpointOverride"));
+        // Flat sink.* keys must NOT be in dataAddress - S3 coords live in metadata.sink.s3 only
+        assertFalse(endpointProperties.containsKey("sink.bucketName"), "sink.bucketName must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("sink.objectKey"), "sink.objectKey must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("sink.region"), "sink.region must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("sink.accessKey"), "sink.accessKey must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("sink.secretKey"), "sink.secretKey must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("sink.endpointOverride"), "sink.endpointOverride must not be in dataAddress");
+
+        // S3 sink coordinates must appear in metadata.sink.s3
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sinkSection = (Map<String, Object>) startCaptor.getValue().getMetadata()
+                .get(DataPlaneConstants.METADATA_SECTION_SINK);
+        assertNotNull(sinkSection, "start metadata must contain a canonical sink section");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sinkS3 = (Map<String, Object>) sinkSection.get(DataPlaneConstants.METADATA_SECTION_S3);
+        assertEquals("consumer-bucket", sinkS3.get(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), sinkS3.get(DataPlaneConstants.METADATA_S3_OBJECT_KEY));
+        assertEquals("eu-central-1", sinkS3.get(DataPlaneConstants.METADATA_S3_REGION));
+        assertEquals("consumer-access-key", sinkS3.get(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        assertEquals("consumer-secret-key", sinkS3.get(DataPlaneConstants.METADATA_S3_SECRET_KEY));
+        assertEquals("http://minio:9000", sinkS3.get(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
 
         // completeTransfer() must NOT be called — completion is driven by the DP callback
         verify(okHttpRestClient, never()).sendRequestProtocol(contains("/transfers/"), any(JsonNode.class), anyString());
     }
 
     @Test
-    @DisplayName("Download data - HTTP-PUSH provider - sends source.* (provider bucket) and sink.* (consumer credentials) in start message")
-    public void downloadData_httpPushProvider_sendsSourceAndSinkPropertiesInStartMessage() {
+    @DisplayName("Download data - HTTP-PUSH provider - sends canonical source and sink metadata alongside transport dataAddress")
+    public void downloadData_httpPushProvider_sendsCanonicalSourceAndSinkMetadataInStartMessage() {
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_PROVIDER_HTTP_PUSH.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_PROVIDER_HTTP_PUSH));
 
@@ -737,26 +797,50 @@ class DataTransferAPIServiceTest {
 
         Map<String, String> endpointProperties = toEndpointPropertyMap(startCaptor.getValue().getDataAddress().getEndpointProperties());
 
-        // source.* = provider's bucket (read-side for push)
-        assertEquals("provider-bucket", endpointProperties.get("source.bucketName"));
-        assertEquals(DataTransferMockObjectUtil.DATASET_ID, endpointProperties.get("source.objectKey"));
-        assertEquals("eu-central-1", endpointProperties.get("source.region"));
-        assertEquals("provider-access-key", endpointProperties.get("source.accessKey"));
-        assertEquals("provider-secret-key", endpointProperties.get("source.secretKey"));
-        assertEquals("http://provider-minio:9000", endpointProperties.get("source.endpointOverride"));
+        // Flat source.*/sink.* keys must NOT be in dataAddress - S3 coords live in metadata only
+        assertFalse(endpointProperties.containsKey("source.bucketName"), "source.bucketName must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("source.objectKey"), "source.objectKey must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("source.region"), "source.region must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("source.accessKey"), "source.accessKey must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("source.secretKey"), "source.secretKey must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("source.endpointOverride"), "source.endpointOverride must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("sink.bucketName"), "sink.bucketName must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("sink.objectKey"), "sink.objectKey must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("sink.accessKey"), "sink.accessKey must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("sink.secretKey"), "sink.secretKey must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("sink.region"), "sink.region must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("sink.endpointOverride"), "sink.endpointOverride must not be in dataAddress");
 
-        // sink.* = consumer's credentials (write-side for push, translated from flat keys)
-        assertEquals("consumer-push-bucket", endpointProperties.get("sink.bucketName"));
-        assertEquals("tp-push-obj", endpointProperties.get("sink.objectKey"));
-        assertEquals("consumer-temp-access", endpointProperties.get("sink.accessKey"));
-        assertEquals("consumer-temp-secret", endpointProperties.get("sink.secretKey"));
-        assertEquals("eu-central-1", endpointProperties.get("sink.region"));
-        assertEquals("http://consumer-minio:9000", endpointProperties.get("sink.endpointOverride"));
+        // Flat consumer keys must NOT be included
+        assertFalse(endpointProperties.containsKey(S3Utils.BUCKET_NAME));
+        assertFalse(endpointProperties.containsKey(S3Utils.ACCESS_KEY));
+        assertFalse(endpointProperties.containsKey(S3Utils.SECRET_KEY));
 
-        // Flat consumer keys must NOT be included (they are translated to sink.* only)
-        assertFalse(endpointProperties.containsKey("bucketName"));
-        assertFalse(endpointProperties.containsKey("accessKey"));
-        assertFalse(endpointProperties.containsKey("secretKey"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sourceMetadata = (Map<String, Object>) startCaptor.getValue().getMetadata()
+                .get(DataPlaneConstants.METADATA_SECTION_SOURCE);
+        assertNotNull(sourceMetadata, "start metadata must contain a canonical source section");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sourceS3Metadata = (Map<String, Object>) sourceMetadata.get(DataPlaneConstants.METADATA_SECTION_S3);
+        assertEquals("provider-bucket", sourceS3Metadata.get(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        assertEquals(DataTransferMockObjectUtil.DATASET_ID, sourceS3Metadata.get(DataPlaneConstants.METADATA_S3_OBJECT_KEY));
+        assertEquals("eu-central-1", sourceS3Metadata.get(DataPlaneConstants.METADATA_S3_REGION));
+        assertEquals("provider-access-key", sourceS3Metadata.get(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        assertEquals("provider-secret-key", sourceS3Metadata.get(DataPlaneConstants.METADATA_S3_SECRET_KEY));
+        assertEquals("http://provider-minio:9000", sourceS3Metadata.get(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sinkMetadata = (Map<String, Object>) startCaptor.getValue().getMetadata()
+                .get(DataPlaneConstants.METADATA_SECTION_SINK);
+        assertNotNull(sinkMetadata, "start metadata must contain a canonical sink section");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sinkS3Metadata = (Map<String, Object>) sinkMetadata.get(DataPlaneConstants.METADATA_SECTION_S3);
+        assertEquals("consumer-push-bucket", sinkS3Metadata.get(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        assertEquals("tp-push-obj", sinkS3Metadata.get(DataPlaneConstants.METADATA_S3_OBJECT_KEY));
+        assertEquals("eu-central-1", sinkS3Metadata.get(DataPlaneConstants.METADATA_S3_REGION));
+        assertEquals("consumer-temp-access", sinkS3Metadata.get(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        assertEquals("consumer-temp-secret", sinkS3Metadata.get(DataPlaneConstants.METADATA_S3_SECRET_KEY));
+        assertEquals("http://consumer-minio:9000", sinkS3Metadata.get(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
 
         // completeTransfer() must NOT be called — completion is driven by the DP callback
         verify(okHttpRestClient, never()).sendRequestProtocol(contains("/transfers/"), any(JsonNode.class), anyString());
@@ -966,7 +1050,7 @@ class DataTransferAPIServiceTest {
         Map<String, Object> sinkSection = (Map<String, Object>) prepareCaptor.getValue().getMetadata()
                 .get(DataPlaneConstants.METADATA_SECTION_SINK);
         assertNotNull(sinkSection, "prepare metadata must contain a sink section");
-        assertEquals("VIEW", sinkSection.get(DataPlaneConstants.METADATA_FIELD_MODE));
+        assertEquals(DataPlaneConstants.METADATA_MODE_VIEW, sinkSection.get(DataPlaneConstants.METADATA_FIELD_MODE));
         // sink.s3 must carry CP-resolved bucket metadata
         @SuppressWarnings("unchecked")
         Map<String, Object> s3Section = (Map<String, Object>) sinkSection.get(DataPlaneConstants.METADATA_SECTION_S3);
@@ -1052,8 +1136,8 @@ class DataTransferAPIServiceTest {
     }
 
     @Test
-    @DisplayName("viewData - succeeds when bucket credential records are absent - VIEW path does not need CP credentials")
-    public void viewData_success_noBucketCredentials() {
+    @DisplayName("viewData - succeeds and loads bucket credentials for VIEW presigning")
+    public void viewData_success_usesBucketCredentials() {
         String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
 
         when(transferProcessRepository.findById(objectKey))
@@ -1072,18 +1156,16 @@ class DataTransferAPIServiceTest {
                 isNull()))
                 .thenReturn(viewPrepareResponse);
 
-        // Must succeed — bucket credentials must not be required for VIEW prepare
         assertDoesNotThrow(() -> apiService.viewData(objectKey));
         verify(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class),
                 eq(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getFormat()),
                 isNull());
-        // Verify bucket credentials are never consulted for the VIEW path
-        verify(bucketCredentialsService, never()).getBucketCredentials(anyString());
+        verify(bucketCredentialsService).getBucketCredentials("test-bucket");
     }
 
     @Test
-    @DisplayName("viewData - prepare metadata does not contain access or secret keys for VIEW path")
-    public void viewData_success_metadataDoesNotContainCredentials() {
+    @DisplayName("viewData - prepare metadata contains bucket credentials for presigned URL generation")
+    public void viewData_success_metadataContainsBucketCredentials() {
         String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
 
         when(transferProcessRepository.findById(objectKey))
@@ -1115,10 +1197,10 @@ class DataTransferAPIServiceTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> s3Section = (Map<String, Object>) sinkSection.get(DataPlaneConstants.METADATA_SECTION_S3);
         assertNotNull(s3Section, "sink section must contain an s3 subsection");
-        assertNull(s3Section.get(DataPlaneConstants.METADATA_S3_ACCESS_KEY),
-                "VIEW metadata must not contain accessKey — DP uses its own admin credentials");
-        assertNull(s3Section.get(DataPlaneConstants.METADATA_S3_SECRET_KEY),
-                "VIEW metadata must not contain secretKey — DP uses its own admin credentials");
+        assertEquals("default-access-key", s3Section.get(DataPlaneConstants.METADATA_S3_ACCESS_KEY),
+                "VIEW metadata must contain accessKey so DP presigning uses bucket credentials");
+        assertEquals("default-secret-key", s3Section.get(DataPlaneConstants.METADATA_S3_SECRET_KEY),
+                "VIEW metadata must contain secretKey so DP presigning uses bucket credentials");
         assertNotNull(s3Section.get(DataPlaneConstants.METADATA_S3_BUCKET_NAME),
                 "VIEW metadata must carry bucket name so DP can route to correct tenant bucket");
         assertNotNull(s3Section.get(DataPlaneConstants.METADATA_S3_OBJECT_KEY),
@@ -1440,12 +1522,12 @@ class DataTransferAPIServiceTest {
         DataFlowPrepareResponse prepareResponse = DataFlowPrepareResponse.Builder.newInstance()
                 .processId(httpPushInitialized.getId())
                 .dataAddress(Map.of(
-                        "bucketName", "test-bucket",
-                        "objectKey", httpPushInitialized.getId(),
-                        "region", "us-east-1",
-                        "accessKey", "test-access-key",
-                        "secretKey", "test-secret-key",
-                        "endpointOverride", "http://minio:9000"))
+                        S3Utils.BUCKET_NAME, "test-bucket",
+                        S3Utils.OBJECT_KEY, httpPushInitialized.getId(),
+                        S3Utils.REGION, "us-east-1",
+                        S3Utils.ACCESS_KEY, "test-access-key",
+                        S3Utils.SECRET_KEY, "test-secret-key",
+                        S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000"))
                 .build();
 
         when(transferProcessRepository.findById(httpPushInitialized.getId()))
@@ -1480,6 +1562,8 @@ class DataTransferAPIServiceTest {
         assertEquals(httpPushInitialized.getId(), s3Section.get(DataPlaneConstants.METADATA_S3_OBJECT_KEY));
         assertEquals("us-east-1", s3Section.get(DataPlaneConstants.METADATA_S3_REGION));
         assertEquals("http://minio:9000", s3Section.get(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+        assertEquals("minioadmin", s3Section.get(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        assertEquals("minioadmin-secret", s3Section.get(DataPlaneConstants.METADATA_S3_SECRET_KEY));
         verify(temporaryBucketUserService, never()).createTemporaryUser(anyString(), anyString(), anyString());
 
         verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
@@ -1542,11 +1626,11 @@ class DataTransferAPIServiceTest {
         DataFlowPrepareResponse prepareResponse = DataFlowPrepareResponse.Builder.newInstance()
                 .processId(httpPushInitialized.getId())
                 .dataAddress(Map.of(
-                        "bucketName", "test-bucket",
-                        "objectKey", httpPushInitialized.getId(),
-                        "region", "us-east-1",
-                        "accessKey", "test-access-key",
-                        "secretKey", "test-secret-key"))
+                        S3Utils.BUCKET_NAME, "test-bucket",
+                        S3Utils.OBJECT_KEY, httpPushInitialized.getId(),
+                        S3Utils.REGION, "us-east-1",
+                        S3Utils.ACCESS_KEY, "test-access-key",
+                        S3Utils.SECRET_KEY, "test-secret-key"))
                 .build();
 
         when(transferProcessRepository.findById(httpPushInitialized.getId()))
@@ -1600,8 +1684,8 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient).sendRequestProtocol(
                 anyString(),
                 argThat(body -> !body.toString().contains("\"dataAddress\"")
-                        && !body.toString().contains("bucketName")
-                        && !body.toString().contains("accessKey")),
+                        && !body.toString().contains(S3Utils.BUCKET_NAME)
+                        && !body.toString().contains(S3Utils.ACCESS_KEY)),
                 anyString());
     }
 
@@ -1668,12 +1752,27 @@ class DataTransferAPIServiceTest {
         assertEquals("DataAddress", startCaptor.getValue().getDataAddress().getType());
         Map<String, String> endpointProperties = toEndpointPropertyMap(startCaptor.getValue().getDataAddress().getEndpointProperties());
         assertEquals("TOKEN-ABCDEFG", endpointProperties.get("authorization"));
-        assertEquals("consumer-bucket", endpointProperties.get("sink.bucketName"));
-        assertEquals(grpcProcess.getId(), endpointProperties.get("sink.objectKey"));
-        assertEquals("eu-central-1", endpointProperties.get("sink.region"));
-        assertEquals("consumer-access-key", endpointProperties.get("sink.accessKey"));
-        assertEquals("consumer-secret-key", endpointProperties.get("sink.secretKey"));
-        assertEquals("http://minio:9000", endpointProperties.get("sink.endpointOverride"));
+        // Flat sink.* keys must NOT be in dataAddress - S3 coords live in metadata.sink.s3 only
+        assertFalse(endpointProperties.containsKey("sink.bucketName"), "sink.bucketName must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("sink.objectKey"), "sink.objectKey must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("sink.region"), "sink.region must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("sink.accessKey"), "sink.accessKey must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("sink.secretKey"), "sink.secretKey must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey("sink.endpointOverride"), "sink.endpointOverride must not be in dataAddress");
+
+        // S3 sink coordinates must appear in metadata.sink.s3
+        @SuppressWarnings("unchecked")
+        Map<String, Object> grpcSinkSection = (Map<String, Object>) startCaptor.getValue().getMetadata()
+                .get(DataPlaneConstants.METADATA_SECTION_SINK);
+        assertNotNull(grpcSinkSection, "start metadata must contain a canonical sink section");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> grpcSinkS3 = (Map<String, Object>) grpcSinkSection.get(DataPlaneConstants.METADATA_SECTION_S3);
+        assertEquals("consumer-bucket", grpcSinkS3.get(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        assertEquals(grpcProcess.getId(), grpcSinkS3.get(DataPlaneConstants.METADATA_S3_OBJECT_KEY));
+        assertEquals("eu-central-1", grpcSinkS3.get(DataPlaneConstants.METADATA_S3_REGION));
+        assertEquals("consumer-access-key", grpcSinkS3.get(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        assertEquals("consumer-secret-key", grpcSinkS3.get(DataPlaneConstants.METADATA_S3_SECRET_KEY));
+        assertEquals("http://minio:9000", grpcSinkS3.get(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
     }
 
     @Test
@@ -2491,33 +2590,52 @@ class DataTransferAPIServiceTest {
         verify(dataPlaneClient).start(startCaptor.capture(), eq(TransportProfile.STREAM_KAFKA));
         verify(dataPlaneClient, never()).start(any(DataFlowStartMessage.class));
 
-        // start message must carry consumer bucket credentials as sink.* properties
+        // start message must carry consumer bucket credentials in metadata.sink.s3 only - NOT as flat sink.* dataAddress properties
         Map<String, String> endpointProperties = toEndpointPropertyMap(
                 startCaptor.getValue().getDataAddress().getEndpointProperties());
-        assertEquals("consumer-kafka-bucket", endpointProperties.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME));
-        assertEquals(kafkaConsumerProcess.getId(), endpointProperties.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY));
-        assertEquals("eu-central-1", endpointProperties.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION));
-        assertEquals("kafka-consumer-access-key", endpointProperties.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY));
-        assertEquals("kafka-consumer-secret-key", endpointProperties.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY));
-        assertEquals("http://kafka-minio:9000", endpointProperties.get(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE));
+        assertFalse(endpointProperties.containsKey(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME),
+                "sink.bucketName must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY),
+                "sink.objectKey must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION),
+                "sink.region must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY),
+                "sink.accessKey must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY),
+                "sink.secretKey must not be in dataAddress");
+        assertFalse(endpointProperties.containsKey(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE),
+                "sink.endpointOverride must not be in dataAddress");
+
+        // S3 sink coordinates must appear in metadata.sink.s3
+        @SuppressWarnings("unchecked")
+        Map<String, Object> kafkaSinkSection = (Map<String, Object>) startCaptor.getValue().getMetadata()
+                .get(DataPlaneConstants.METADATA_SECTION_SINK);
+        assertNotNull(kafkaSinkSection, "start metadata must contain a canonical sink section");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> kafkaSinkS3 = (Map<String, Object>) kafkaSinkSection.get(DataPlaneConstants.METADATA_SECTION_S3);
+        assertEquals("consumer-kafka-bucket", kafkaSinkS3.get(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        assertEquals(kafkaConsumerProcess.getId(), kafkaSinkS3.get(DataPlaneConstants.METADATA_S3_OBJECT_KEY));
+        assertEquals("eu-central-1", kafkaSinkS3.get(DataPlaneConstants.METADATA_S3_REGION));
+        assertEquals("kafka-consumer-access-key", kafkaSinkS3.get(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        assertEquals("kafka-consumer-secret-key", kafkaSinkS3.get(DataPlaneConstants.METADATA_S3_SECRET_KEY));
+        assertEquals("http://kafka-minio:9000", kafkaSinkS3.get(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // Issue 2 — HTTP-PUSH prepare must not require bucket credential records
+    // Issue 2 — HTTP-PUSH prepare must use bootstrap MinIO management credentials, not bucket records
     // ──────────────────────────────────────────────────────────────────────────
 
     /**
-     * Verifies that {@code requestTransfer} for HTTP-PUSH does not call
+     * Verifies that {@code requestTransfer} for HTTP-PUSH uses bootstrap management credentials
+     * from {@code application.properties} and still does not consult
      * {@link BucketCredentialsService#getBucketCredentials} during prepare-metadata construction.
      *
-     * <p>The DP only needs {@code sink.s3.bucketName} during prepare; access/secret keys are not
-     * used until {@code start()}. Requiring bucket credential records for prepare creates an
-     * unnecessary bootstrap dependency that can fail on first-time setups or multi-tenant
-     * environments where per-tenant credentials are provisioned lazily.</p>
+     * <p>This fallback keeps HTTP-PUSH prepare operational in MinIO by passing bootstrap
+     * admin credentials to the DP until tenant-scoped bucket manager policies are implemented.</p>
      */
     @Test
-    @DisplayName("HTTP-PUSH requestTransfer prepare succeeds without bucket credential records (DP only needs bucketName)")
-    public void requestTransfer_httpPush_prepareMetadataDoesNotRequireBucketCredentials() {
+    @DisplayName("HTTP-PUSH requestTransfer prepare uses bootstrap management credentials without bucket records")
+    public void requestTransfer_httpPush_prepareMetadataUsesBootstrapManagementCredentials() {
         // No bucket credentials exist for the consumer bucket — simulate a first-time or lazy setup.
         // Before the fix, buildHttpPushPrepareMetadata called getBucketCredentials which would
         // throw when credentials were null. After the fix the CP does not consult bucket credentials
@@ -2540,10 +2658,10 @@ class DataTransferAPIServiceTest {
         DataFlowPrepareResponse prepareResponse = DataFlowPrepareResponse.Builder.newInstance()
                 .processId(httpPushInitialized.getId())
                 .dataAddress(Map.of(
-                        "bucketName", "test-bucket",
-                        "objectKey", httpPushInitialized.getId(),
-                        "accessKey", "temp-access-key",
-                        "secretKey", "temp-secret-key"))
+                        S3Utils.BUCKET_NAME, "test-bucket",
+                        S3Utils.OBJECT_KEY, httpPushInitialized.getId(),
+                        S3Utils.ACCESS_KEY, "temp-access-key",
+                        S3Utils.SECRET_KEY, "temp-secret-key"))
                 .build();
 
         when(transferProcessRepository.findById(httpPushInitialized.getId()))
@@ -2562,10 +2680,17 @@ class DataTransferAPIServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
 
-        // Must NOT throw even though no bucket credential record exists
         assertDoesNotThrow(() -> apiService.requestTransfer(httpPushRequest));
 
-        // Bucket credentials must NOT be consulted at prepare time for HTTP-PUSH
+        ArgumentCaptor<DataFlowPrepareMessage> prepareCaptor = ArgumentCaptor.forClass(DataFlowPrepareMessage.class);
+        verify(dataPlaneClient).prepare(prepareCaptor.capture(), eq(DataTransferFormat.HTTP_PUSH.format()), isNull());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sinkSection = (Map<String, Object>) prepareCaptor.getValue().getMetadata()
+                .get(DataPlaneConstants.METADATA_SECTION_SINK);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> s3Section = (Map<String, Object>) sinkSection.get(DataPlaneConstants.METADATA_SECTION_S3);
+        assertEquals("minioadmin", s3Section.get(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        assertEquals("minioadmin-secret", s3Section.get(DataPlaneConstants.METADATA_S3_SECRET_KEY));
         verify(bucketCredentialsService, never()).getBucketCredentials(anyString());
     }
 }

@@ -67,6 +67,20 @@ public interface DataTransferProtocol {
     CompletableFuture<DataFlowResult> resumeTransfer(String processId);
 
     /**
+     * Completes protocol-specific cleanup after a successful transfer.
+     *
+     * <p>This hook runs after the transfer itself has completed successfully but before the
+     * dataplane runtime persists {@code COMPLETED}. Protocols can override it to release
+     * temporary credentials or other runtime resources.</p>
+     *
+     * @param processId the transfer process ID of the data flow to complete
+     * @return future with the result of the cleanup step
+     */
+    default CompletableFuture<DataFlowResult> completeTransfer(String processId) {
+        return CompletableFuture.completedFuture(DataFlowResult.success());
+    }
+
+    /**
      * Terminates a data transfer.
      *
      * @param processId the transfer process ID of the data flow to terminate

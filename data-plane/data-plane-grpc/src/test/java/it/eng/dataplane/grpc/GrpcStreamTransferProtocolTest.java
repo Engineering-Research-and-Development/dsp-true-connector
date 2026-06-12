@@ -196,15 +196,15 @@ class GrpcStreamTransferProtocolTest {
         DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
                 .processId("tp-grpc-source-s3")
                 .datasetId("ds-source-s3")
-                .metadata(Map.of("source", Map.of(
-                        "sourceType", "s3",
-                        "s3", Map.of(
-                                "bucketName", "cp-source-bucket",
-                                "objectKey", "cp-source-object",
-                                "region", "eu-west-1",
-                                "accessKey", "cp-access-key",
-                                "secretKey", "cp-secret-key",
-                                "endpointOverride", "http://minio:9000"))))
+                .metadata(Map.of(DataPlaneConstants.METADATA_SECTION_SOURCE, Map.of(
+                        DataPlaneConstants.METADATA_FIELD_SOURCE_TYPE, "s3",
+                        DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                DataPlaneConstants.METADATA_S3_BUCKET_NAME, "cp-source-bucket",
+                                DataPlaneConstants.METADATA_S3_OBJECT_KEY, "cp-source-object",
+                                DataPlaneConstants.METADATA_S3_REGION, "eu-west-1",
+                                DataPlaneConstants.METADATA_S3_ACCESS_KEY, "cp-access-key",
+                                DataPlaneConstants.METADATA_S3_SECRET_KEY, "cp-secret-key",
+                                DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://minio:9000"))))
                 .build();
 
         protocol.prepare(message);
@@ -290,8 +290,6 @@ class GrpcStreamTransferProtocolTest {
                 "sessionId", "sess-1",
                 "mode", "finite"
         ));
-        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "bucket-a");
-        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, "tp-1");
         DataFlow dataFlow = DataFlow.Builder.newInstance()
                 .dataFlowId("df-finite-1")
                 .processId("tp-1")
@@ -299,6 +297,11 @@ class GrpcStreamTransferProtocolTest {
                 .transferType("stream:grpc")
                 .callbackAddress("http://cp:8080")
                 .dataAddress(dataAddress)
+                .metadata(java.util.Map.of(
+                        DataPlaneConstants.METADATA_SECTION_SINK, java.util.Map.of(
+                                DataPlaneConstants.METADATA_SECTION_S3, java.util.Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "bucket-a",
+                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "tp-1"))))
                 .build();
 
         try {
@@ -467,14 +470,14 @@ class GrpcStreamTransferProtocolTest {
         DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
                 .processId("tp-source-s3-1")
                 .datasetId("ds-src-1")
-                .metadata(Map.of("source", Map.of(
-                        "sourceType", "s3",
-                        "s3", Map.of(
-                                "bucketName", "cp-source-bucket",
-                                "region", "eu-west-1",
-                                "accessKey", "cp-access",
-                                "secretKey", "cp-secret",
-                                "endpointOverride", "http://cp-minio:9000")
+                .metadata(Map.of(DataPlaneConstants.METADATA_SECTION_SOURCE, Map.of(
+                        DataPlaneConstants.METADATA_FIELD_SOURCE_TYPE, "s3",
+                        DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                DataPlaneConstants.METADATA_S3_BUCKET_NAME, "cp-source-bucket",
+                                DataPlaneConstants.METADATA_S3_REGION, "eu-west-1",
+                                DataPlaneConstants.METADATA_S3_ACCESS_KEY, "cp-access",
+                                DataPlaneConstants.METADATA_S3_SECRET_KEY, "cp-secret",
+                                DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://cp-minio:9000")
                 )))
                 .build();
 
@@ -492,7 +495,7 @@ class GrpcStreamTransferProtocolTest {
     }
 
     @Test
-    @DisplayName("initiateTransfer() builds sink context from CP-provided sink.* properties in dataAddress")
+    @DisplayName("initiateTransfer() builds sink context from CP-provided metadata.sink.s3 properties")
     void initiateTransfer_usesCpProvidedSinkPropertiesFromDataAddress() throws Exception {
         String serverName = InProcessServerBuilder.generateName();
         Server server = InProcessServerBuilder.forName(serverName)
@@ -510,12 +513,7 @@ class GrpcStreamTransferProtocolTest {
         dataAddress.put("port", "9094");
         dataAddress.put("sessionId", "sess-sink-cp");
         dataAddress.put("mode", "finite");
-        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "cp-sink-bucket");
-        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, "cp-sink-key");
-        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, "us-west-2");
-        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, "cp-sink-access");
-        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, "cp-sink-secret");
-        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE, "http://cp-minio:9000");
+        // S3 sink credentials come from metadata.sink.s3, not flat dataAddress keys
 
         DataFlow dataFlow = DataFlow.Builder.newInstance()
                 .dataFlowId("df-sink-cp-1")
@@ -524,6 +522,15 @@ class GrpcStreamTransferProtocolTest {
                 .transferType("stream:grpc")
                 .callbackAddress("http://cp:8080")
                 .dataAddress(dataAddress)
+                .metadata(java.util.Map.of(
+                        DataPlaneConstants.METADATA_SECTION_SINK, java.util.Map.of(
+                                DataPlaneConstants.METADATA_SECTION_S3, java.util.Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "cp-sink-bucket",
+                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "cp-sink-key",
+                                        DataPlaneConstants.METADATA_S3_REGION, "us-west-2",
+                                        DataPlaneConstants.METADATA_S3_ACCESS_KEY, "cp-sink-access",
+                                        DataPlaneConstants.METADATA_S3_SECRET_KEY, "cp-sink-secret",
+                                        DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://cp-minio:9000"))))
                 .build();
 
         try {

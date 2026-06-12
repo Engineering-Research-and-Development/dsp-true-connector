@@ -8,9 +8,10 @@ public interface IamUserManagementService {
 
     void attachPolicyToUser(BucketCredentialsEntity bucketCredentials);
 
-    void attachTemporaryPolicy(String accessKey, String policyName, String policyJson);
+    void attachTemporaryPolicy(BucketCredentialsEntity managementCredentials, String accessKey,
+                               String policyName, String policyJson);
 
-    void deleteUser(String accessKey);
+    void deleteUser(BucketCredentialsEntity managementCredentials, String accessKey);
 
-    void deletePolicy(String policyName);
+    void deletePolicy(BucketCredentialsEntity managementCredentials, String policyName);
 }

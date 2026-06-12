@@ -360,13 +360,13 @@ class KafkaStreamTransferProtocolTest {
                 .processId("tp-source-meta-kafka")
                 .datasetId("dataset-meta")
                 .callbackAddress("http://cp/callback")
-                .metadata(Map.of("source", Map.of(
-                        "sourceType", "s3",
-                        "s3", Map.of(
-                                "bucketName", "cp-source-bucket",
-                                "region", "eu-west-2",
-                                "accessKey", "cp-src-key",
-                                "secretKey", "cp-src-secret")
+                .metadata(Map.of(DataPlaneConstants.METADATA_SECTION_SOURCE, Map.of(
+                        DataPlaneConstants.METADATA_FIELD_SOURCE_TYPE, "s3",
+                        DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                DataPlaneConstants.METADATA_S3_BUCKET_NAME, "cp-source-bucket",
+                                DataPlaneConstants.METADATA_S3_REGION, "eu-west-2",
+                                DataPlaneConstants.METADATA_S3_ACCESS_KEY, "cp-src-key",
+                                DataPlaneConstants.METADATA_S3_SECRET_KEY, "cp-src-secret")
                 )))
                 .build());
 
@@ -392,7 +392,7 @@ class KafkaStreamTransferProtocolTest {
 
     @Test
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
-    @DisplayName("initiateTransfer uses CP-provided sink.* properties from dataAddress for sink context")
+    @DisplayName("initiateTransfer uses CP-provided metadata.sink.s3 properties for sink context")
     void initiateTransfer_usesCpProvidedSinkPropertiesFromDataAddress() throws Exception {
         KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
         ContextCapturingSinkWriter sinkWriter = new ContextCapturingSinkWriter();
@@ -416,12 +416,8 @@ class KafkaStreamTransferProtocolTest {
                 .metadata(Map.of("source", Map.of("sourceType", "s3")))
                 .build());
 
+        // S3 sink credentials come from metadata.sink.s3, not flat dataAddress keys
         Map<String, String> dataAddress = new java.util.HashMap<>(prepareResponse.getDataAddress());
-        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, "cp-sink-bucket");
-        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY, "cp-sink-key");
-        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, "ap-southeast-1");
-        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, "cp-sink-access");
-        dataAddress.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, "cp-sink-secret");
 
         DataFlow dataFlow = DataFlow.Builder.newInstance()
                 .dataFlowId("df-sink-cp-kafka")
@@ -430,6 +426,14 @@ class KafkaStreamTransferProtocolTest {
                 .callbackAddress("http://cp/callback")
                 .transferType(KafkaStreamTransferProtocol.PROTOCOL_ID)
                 .dataAddress(dataAddress)
+                .metadata(java.util.Map.of(
+                        DataPlaneConstants.METADATA_SECTION_SINK, java.util.Map.of(
+                                DataPlaneConstants.METADATA_SECTION_S3, java.util.Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "cp-sink-bucket",
+                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "cp-sink-key",
+                                        DataPlaneConstants.METADATA_S3_REGION, "ap-southeast-1",
+                                        DataPlaneConstants.METADATA_S3_ACCESS_KEY, "cp-sink-access",
+                                        DataPlaneConstants.METADATA_S3_SECRET_KEY, "cp-sink-secret"))))
                 .build();
 
         protocol.initiateTransfer(dataFlow).get(30, TimeUnit.SECONDS);

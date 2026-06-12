@@ -4,6 +4,7 @@ import it.eng.datatransfer.model.*;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.s3.util.S3Utils;
 import org.bson.types.ObjectId;
 import org.springframework.http.MediaType;
 
@@ -207,6 +208,14 @@ public class DataTransferMockObjectUtil {
             .build();
 
     /**
+     * HTTP-PUSH consumer transfer with an assigned Data Plane endpoint — simulates a transfer
+     * where the consumer CP prepared the DP session (created temp IAM user) and the DP endpoint
+     * was persisted for sticky routing. Used to verify that completion signals the DP to clean up.
+     */
+    public static final TransferProcess TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH_WITH_DATAPLANE =
+            TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH.withAssignedDataplaneEndpoint("http://dp-push:9090");
+
+    /**
      * Consumer-provided S3 credentials stored as flat endpoint properties in the provider-side HTTP-PUSH TP.
      * These are translated to {@code sink.*} keys when the provider CP builds the DataFlowStartMessage.
      */
@@ -214,12 +223,12 @@ public class DataTransferMockObjectUtil {
             .endpoint(ENDPOINT_URL)
             .endpointType(ENDPOINT_TYPE)
             .endpointProperties(List.of(
-                    EndpointProperty.Builder.newInstance().name("bucketName").value("consumer-push-bucket").build(),
-                    EndpointProperty.Builder.newInstance().name("objectKey").value("tp-push-obj").build(),
-                    EndpointProperty.Builder.newInstance().name("accessKey").value("consumer-temp-access").build(),
-                    EndpointProperty.Builder.newInstance().name("secretKey").value("consumer-temp-secret").build(),
-                    EndpointProperty.Builder.newInstance().name("region").value("eu-central-1").build(),
-                    EndpointProperty.Builder.newInstance().name("endpointOverride").value("http://consumer-minio:9000").build()
+                    EndpointProperty.Builder.newInstance().name(S3Utils.BUCKET_NAME).value("consumer-push-bucket").build(),
+                    EndpointProperty.Builder.newInstance().name(S3Utils.OBJECT_KEY).value("tp-push-obj").build(),
+                    EndpointProperty.Builder.newInstance().name(S3Utils.ACCESS_KEY).value("consumer-temp-access").build(),
+                    EndpointProperty.Builder.newInstance().name(S3Utils.SECRET_KEY).value("consumer-temp-secret").build(),
+                    EndpointProperty.Builder.newInstance().name(S3Utils.REGION).value("eu-central-1").build(),
+                    EndpointProperty.Builder.newInstance().name(S3Utils.ENDPOINT_OVERRIDE).value("http://consumer-minio:9000").build()
             ))
             .build();
 

@@ -11,12 +11,12 @@ import it.eng.dataplane.core.model.DataFlowEntity;
 import it.eng.dataplane.core.model.DataPlaneAuditEventType;
 import it.eng.dataplane.core.registry.DataTransferProtocolRegistry;
 import it.eng.dataplane.core.repository.DataFlowRepository;
-import it.eng.dataplane.core.service.DataPlaneAuditEventService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -292,6 +292,8 @@ class DataFlowServiceTest {
         when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
         when(protocol.initiateTransfer(any(DataFlow.class)))
                 .thenReturn(CompletableFuture.completedFuture(DataFlowResult.success()));
+        when(protocol.completeTransfer("tp-complete"))
+                .thenReturn(CompletableFuture.completedFuture(DataFlowResult.success()));
 
         service.start(dataFlow);
 
@@ -301,6 +303,69 @@ class DataFlowServiceTest {
         assertEquals(DataFlowState.STARTING,  entityCaptor.getAllValues().get(0).getState());
         assertEquals(DataFlowState.STARTED,   entityCaptor.getAllValues().get(1).getState());
         assertEquals(DataFlowState.COMPLETED, entityCaptor.getAllValues().get(2).getState());
+    }
+
+    /**
+     * Verifies that start() persists structured metadata from the incoming DataFlow.
+     */
+    @Test
+    @DisplayName("start() persists metadata from the start message")
+    void startPersistsMetadataFromStartMessage() {
+        Map<String, Object> metadata = Map.of(
+                DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                        DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                DataPlaneConstants.METADATA_S3_BUCKET_NAME, "consumer-bucket")));
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-runtime")
+                .transferType("HttpData-PUSH")
+                .metadata(metadata)
+                .build();
+
+        when(repository.findByProcessId("tp-runtime")).thenReturn(Optional.empty());
+        when(registry.getProtocol("HttpData-PUSH")).thenReturn(protocol);
+        when(protocol.initiateTransfer(any(DataFlow.class))).thenReturn(new CompletableFuture<>());
+
+        service.start(dataFlow);
+
+        ArgumentCaptor<DataFlowEntity> entityCaptor = ArgumentCaptor.forClass(DataFlowEntity.class);
+        verify(repository, times(2)).save(entityCaptor.capture());
+        assertEquals(metadata, entityCaptor.getAllValues().get(0).getMetadata());
+        assertEquals(metadata, entityCaptor.getAllValues().get(1).getMetadata());
+    }
+
+    /**
+     * Verifies that completion cleanup is invoked before the data flow is persisted as COMPLETED.
+     */
+    @Test
+    @DisplayName("handleCompletion() invokes protocol cleanup before persisting COMPLETED")
+    void handleCompletionInvokesProtocolCleanupBeforeCompletedState() {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-runtime")
+                .transferType("HttpData-PULL")
+                .build();
+
+        DataFlowEntity startedEntity = DataFlowEntity.Builder.newInstance()
+                .id("df-runtime")
+                .processId("tp-runtime")
+                .transferType("HttpData-PULL")
+                .state(DataFlowState.STARTED)
+                .build();
+
+        when(repository.findByProcessId("tp-runtime"))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(startedEntity));
+        when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
+        when(protocol.initiateTransfer(any(DataFlow.class)))
+                .thenReturn(CompletableFuture.completedFuture(DataFlowResult.success()));
+        when(protocol.completeTransfer("tp-runtime"))
+                .thenReturn(CompletableFuture.completedFuture(DataFlowResult.success()));
+
+        service.start(dataFlow);
+
+        InOrder inOrder = inOrder(protocol, repository);
+        inOrder.verify(protocol).initiateTransfer(dataFlow);
+        inOrder.verify(protocol).completeTransfer("tp-runtime");
+        inOrder.verify(repository).save(argThat((DataFlowEntity entity) -> entity.getState() == DataFlowState.COMPLETED));
     }
 
     /**
@@ -499,6 +564,8 @@ class DataFlowServiceTest {
                 .thenReturn(Optional.of(terminatedEntity));
         when(registry.getProtocol("HttpData-PULL")).thenReturn(protocol);
         when(protocol.initiateTransfer(any(DataFlow.class)))
+                .thenReturn(CompletableFuture.completedFuture(DataFlowResult.success()));
+        when(protocol.completeTransfer("tp-stale"))
                 .thenReturn(CompletableFuture.completedFuture(DataFlowResult.success()));
         lenient().doThrow(new IllegalStateException("TERMINATED -> COMPLETED not allowed"))
                 .when(stateMachine).assertTransition(DataFlowState.TERMINATED, DataFlowState.COMPLETED);

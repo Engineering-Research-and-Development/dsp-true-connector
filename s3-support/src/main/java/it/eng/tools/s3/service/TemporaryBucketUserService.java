@@ -3,6 +3,7 @@ package it.eng.tools.s3.service;
 import it.eng.tools.exception.S3ServerException;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.TemporaryBucketUser;
+import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.repository.TemporaryBucketUserRepository;
 import it.eng.tools.service.FieldEncryptionService;
 import lombok.extern.slf4j.Slf4j;
@@ -20,13 +21,16 @@ public class TemporaryBucketUserService {
     private final IamUserManagementService iamUserManagementService;
     private final TemporaryBucketUserRepository temporaryBucketUserRepository;
     private final FieldEncryptionService fieldEncryptionService;
+    private final S3Properties s3Properties;
 
     public TemporaryBucketUserService(IamUserManagementService iamUserManagementService,
                                       TemporaryBucketUserRepository temporaryBucketUserRepository,
-                                      FieldEncryptionService fieldEncryptionService) {
+                                      FieldEncryptionService fieldEncryptionService,
+                                      S3Properties s3Properties) {
         this.iamUserManagementService = iamUserManagementService;
         this.temporaryBucketUserRepository = temporaryBucketUserRepository;
         this.fieldEncryptionService = fieldEncryptionService;
+        this.s3Properties = s3Properties;
     }
 
     /**
@@ -45,6 +49,22 @@ public class TemporaryBucketUserService {
      * @return the persisted {@link TemporaryBucketUser} with a plain secret key
      */
     public TemporaryBucketUser createTemporaryUser(String transferProcessId, String bucketName, String objectKey) {
+        return createTemporaryUser(transferProcessId, bootstrapManagementCredentials(bucketName), bucketName, objectKey);
+    }
+
+    /**
+     * Creates a temporary Minio user using the supplied management credentials.
+     *
+     * @param transferProcessId the transfer process ID — used as the document {@code @Id}
+     * @param managementCredentials the credentials used for Minio IAM administration
+     * @param bucketName the bucket that holds the object
+     * @param objectKey the exact object key the temporary user is allowed to write
+     * @return the persisted {@link TemporaryBucketUser} with a plain secret key
+     */
+    public TemporaryBucketUser createTemporaryUser(String transferProcessId,
+                                                   BucketCredentialsEntity managementCredentials,
+                                                   String bucketName,
+                                                   String objectKey) {
         String accessKey = TEMP_USER_PREFIX + UUID.randomUUID().toString().substring(0, 8);
         String plainSecretKey = UUID.randomUUID().toString();
 
@@ -65,7 +85,7 @@ public class TemporaryBucketUserService {
             // Attach a minimal PutObject-only policy scoped to the exact object key
             String policyJson = createTemporaryUserPolicy(bucketName, objectKey);
             log.debug("Attaching temporary policy {} to user {}", policyName, accessKey);
-            iamUserManagementService.attachTemporaryPolicy(accessKey, policyName, policyJson);
+            iamUserManagementService.attachTemporaryPolicy(managementCredentials, accessKey, policyName, policyJson);
 
             // Persist with encrypted secret key
             TemporaryBucketUser entity = TemporaryBucketUser.Builder.newInstance()
@@ -81,7 +101,7 @@ public class TemporaryBucketUserService {
             // Compensate: remove the IAM user so it does not become an orphaned resource
             log.error("Failed to complete temporary user setup for {}; compensating by deleting IAM user {}", transferProcessId, accessKey);
             try {
-                iamUserManagementService.deleteUser(accessKey);
+                iamUserManagementService.deleteUser(managementCredentials, accessKey);
             } catch (Exception compensationEx) {
                 log.error("Compensation failed — IAM user {} may be orphaned", accessKey, compensationEx);
             }
@@ -133,22 +153,36 @@ public class TemporaryBucketUserService {
         temporaryBucketUserRepository.findById(transferProcessId).ifPresent(entity -> {
             log.info("Cleaning up temporary bucket user {} for transfer process {}", entity.getAccessKey(), transferProcessId);
             String policyName = TEMP_POLICY_PREFIX + transferProcessId;
+            BucketCredentialsEntity managementCredentials = bootstrapManagementCredentials(entity.getBucketName());
             // Delete the user first so the policy is no longer attached, then delete the policy.
             // Minio rejects policy deletion with XMinioIAMPolicyInUse if the policy is still
             // assigned to a user; removing the user first releases that attachment.
             try {
-                iamUserManagementService.deleteUser(entity.getAccessKey());
+                iamUserManagementService.deleteUser(managementCredentials, entity.getAccessKey());
             } catch (Exception e) {
                 log.warn("Could not delete temporary Minio user {}: {}", entity.getAccessKey(), e.getMessage());
             }
             try {
-                iamUserManagementService.deletePolicy(policyName);
+                iamUserManagementService.deletePolicy(managementCredentials, policyName);
             } catch (Exception e) {
                 log.warn("Could not delete temporary Minio policy {}: {}", policyName, e.getMessage());
             }
             temporaryBucketUserRepository.deleteById(transferProcessId);
             log.info("Temporary bucket user {} cleaned up for transfer process {}", entity.getAccessKey(), transferProcessId);
         });
+    }
+
+    private BucketCredentialsEntity bootstrapManagementCredentials(String bucketName) {
+        String accessKey = s3Properties.getAccessKey();
+        String secretKey = s3Properties.getSecretKey();
+        if (accessKey == null || accessKey.isBlank() || secretKey == null || secretKey.isBlank()) {
+            throw new S3ServerException("Missing bootstrap S3 management credentials in application.properties");
+        }
+        return BucketCredentialsEntity.Builder.newInstance()
+                .bucketName(bucketName)
+                .accessKey(accessKey)
+                .secretKey(secretKey)
+                .build();
     }
 
     private String createTemporaryUserPolicy(String bucketName, String objectKey) {
@@ -170,5 +204,3 @@ public class TemporaryBucketUserService {
                 """, bucketName, objectKey);
     }
 }
-
-

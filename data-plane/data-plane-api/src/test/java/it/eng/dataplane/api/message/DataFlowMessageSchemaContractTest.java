@@ -94,7 +94,20 @@ class DataFlowMessageSchemaContractTest {
                 .metadata(Map.of(
                         DataPlaneConstants.METADATA_SECTION_SOURCE,
                         Map.of(DataPlaneConstants.METADATA_SECTION_S3,
-                                Map.of(DataPlaneConstants.METADATA_S3_BUCKET_NAME, "source-bucket"))))
+                                Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "source-bucket",
+                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "dataset-2",
+                                        DataPlaneConstants.METADATA_S3_REGION, "us-east-1",
+                                        DataPlaneConstants.METADATA_S3_ACCESS_KEY, "source-access",
+                                        DataPlaneConstants.METADATA_S3_SECRET_KEY, "source-secret")),
+                        DataPlaneConstants.METADATA_SECTION_SINK,
+                        Map.of(DataPlaneConstants.METADATA_SECTION_S3,
+                                Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "sink-bucket",
+                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "process-2",
+                                        DataPlaneConstants.METADATA_S3_REGION, "us-east-1",
+                                        DataPlaneConstants.METADATA_S3_ACCESS_KEY, "sink-access",
+                                        DataPlaneConstants.METADATA_S3_SECRET_KEY, "sink-secret"))))
                 .dataAddress(dataAddress)
                 .build();
 

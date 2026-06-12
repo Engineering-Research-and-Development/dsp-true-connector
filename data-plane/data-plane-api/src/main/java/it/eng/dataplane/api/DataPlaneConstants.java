@@ -32,6 +32,9 @@ public final class DataPlaneConstants {
     /** Metadata field name for sink mode hints. */
     public static final String METADATA_FIELD_MODE = "mode";
 
+    /** Metadata value used when the sink flow is a presigned VIEW operation. */
+    public static final String METADATA_MODE_VIEW = "VIEW";
+
     /** Metadata section name for S3-specific transfer details. */
     public static final String METADATA_SECTION_S3 = "s3";
 
