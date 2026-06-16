@@ -15,6 +15,7 @@ import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
+import it.eng.tools.event.policyenforcement.ArtifactTransferredEvent;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
@@ -664,6 +665,10 @@ public class DataTransferAPIService {
                 .whenComplete((transfer, throwable) -> {
                     if (throwable == null) {
                         log.info("Download completed successfully for process {}", transferProcessId);
+
+                        if(IConstants.ROLE_PROVIDER.equals(transferProcessDownloading.getRole()))  {
+                            publisher.publishEvent(new ArtifactTransferredEvent(transferProcessDownloading.getAgreementId()));
+                        }
 
                         publisher.publishEvent(
                                 AuditEventType.TRANSFER_COMPLETED,

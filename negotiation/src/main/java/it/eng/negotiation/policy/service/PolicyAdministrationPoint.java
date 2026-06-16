@@ -34,7 +34,7 @@ public class PolicyAdministrationPoint {
 	public void createPolicyEnforcement(String agreementId) {
 		PolicyEnforcement pe = new PolicyEnforcement();
 		pe.setAgreementId(agreementId);
-		pe.setCount(1);
+		pe.setCount(0);
 		policyEnforcementRepository.save(pe);
 	}
 	

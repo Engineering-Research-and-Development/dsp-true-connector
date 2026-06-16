@@ -175,7 +175,7 @@ class AccessCountPolicyEvaluatorTest {
 	                .agreementId("agreement-123")
 	                .resourceId("resource-123")
 	                .userId("user-123")
-	                .attribute(PolicyConstants.CURRENT_COUNT, 4) // Current count
+	                .attribute(PolicyConstants.CURRENT_COUNT, 3) // Current count
 	                .action(Action.ANONYMIZE)
 	                .build();
 	        

@@ -180,6 +180,17 @@ public class DataTransferMockObjectUtil {
             .state(TransferState.TERMINATED)
             .build();
 
+    public static final TransferProcess TRANSFER_PROCESS_STARTED_SFTP = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_PROVIDER)
+            .state(TransferState.STARTED)
+            .format(DataTransferFormat.SFTP.name())
+            .build();
+
     public static final TransferRequestMessage TRANSFER_REQUEST_MESSAGE = TransferRequestMessage.Builder.newInstance()
             .consumerPid(CONSUMER_PID)
             .agreementId(AGREEMENT_ID)
