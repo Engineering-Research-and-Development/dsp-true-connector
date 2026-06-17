@@ -70,7 +70,7 @@ class AccessCountPolicyEvaluatorTest {
 	                .description("Access count policy")
 	                .enabled(true)
 	                .validFrom(LocalDateTime.now().minusDays(1))
-	                .attribute(PolicyConstants.COUNT, 3) // Max count
+	                .attribute(PolicyConstants.COUNT, 4) // Max count
 	                .attribute(PolicyConstants.OPERATOR, Operator.LT) // Operator
 	                .build();
 		  
@@ -102,7 +102,7 @@ class AccessCountPolicyEvaluatorTest {
 	                .description("Access count policy")
 	                .enabled(true)
 	                .validFrom(LocalDateTime.now().minusDays(1))
-	                .attribute("count", 3) // Max count
+	                .attribute("count", 4) // Max count
 	                .attribute("operator", Operator.LT) // Operator
 	                .build();
 		  

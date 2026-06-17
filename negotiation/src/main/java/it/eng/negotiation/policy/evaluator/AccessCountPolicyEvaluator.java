@@ -49,7 +49,7 @@ public class AccessCountPolicyEvaluator implements PolicyEvaluator {
 		
 		switch (operator) {	
 		case LT:
-			if (!((currentCount) < count)) {
+			if (!((currentCount+1) < count)) {
 				return PolicyDecision.Builder.newInstance()
 						.allowed(false)
 						.message("Access count exceeded")
