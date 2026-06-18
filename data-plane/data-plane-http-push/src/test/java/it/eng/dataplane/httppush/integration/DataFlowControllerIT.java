@@ -8,6 +8,7 @@ import it.eng.dataplane.api.model.DataFlowState;
 import it.eng.dataplane.core.model.DataFlowEntity;
 import it.eng.dataplane.core.repository.DataFlowRepository;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +49,7 @@ class DataFlowControllerIT extends BaseHttpPushIT {
 
     @Test
     @DisplayName("POST /dataflows/prepare with valid processId returns 200 with processId in body")
+    @Disabled("Considered for removal since it must have proper body - such test exists")
     void prepareDataFlow_returnsOkWithProcessId() throws Exception {
         String processId = newId();
         Map<String, Object> body = Map.of("processId", processId);

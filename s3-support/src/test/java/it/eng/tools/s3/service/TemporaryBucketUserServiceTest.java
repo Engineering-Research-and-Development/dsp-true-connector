@@ -60,7 +60,7 @@ public class TemporaryBucketUserServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("createTemporaryUser - should use bootstrap properties for management credentials, persist encrypted key, and return plain key")
+    @DisplayName("createTemporaryUser (bootstrap) - persists encrypted key, stores bootstrap mgmt credentials, returns plain key")
     void createTemporaryUser_success() {
         when(fieldEncryptionService.encrypt(anyString())).thenReturn(ENCRYPTED_SECRET_KEY);
         when(temporaryBucketUserRepository.save(any(TemporaryBucketUser.class)))
@@ -68,9 +68,10 @@ public class TemporaryBucketUserServiceTest {
 
         TemporaryBucketUser result = service.createTemporaryUser(TRANSFER_PROCESS_ID, BUCKET_NAME, OBJECT_KEY);
 
-        // IAM user created
+        // IAM user created with temp user credentials and bootstrap management credentials
         ArgumentCaptor<BucketCredentialsEntity> iamCaptor = ArgumentCaptor.forClass(BucketCredentialsEntity.class);
-        verify(iamUserManagementService).createUser(iamCaptor.capture());
+        verify(iamUserManagementService).createUser(iamCaptor.capture(),
+                argThat(mgmt -> "minioadmin".equals(mgmt.getAccessKey())));
         assertTrue(iamCaptor.getValue().getAccessKey().startsWith("TempUser-"),
                 "Access key should be prefixed with TempUser-");
 
@@ -88,13 +89,16 @@ public class TemporaryBucketUserServiceTest {
         assertTrue(policyJsonCaptor.getValue().contains(OBJECT_KEY));
         assertTrue(policyJsonCaptor.getValue().contains("s3:PutObject"));
 
-        // Persisted entity has encrypted secret key
+        // Persisted entity has encrypted secret key and stored bootstrap mgmt credentials
         ArgumentCaptor<TemporaryBucketUser> savedCaptor = ArgumentCaptor.forClass(TemporaryBucketUser.class);
         verify(temporaryBucketUserRepository).save(savedCaptor.capture());
-        assertEquals(ENCRYPTED_SECRET_KEY, savedCaptor.getValue().getSecretKey());
-        assertEquals(TRANSFER_PROCESS_ID, savedCaptor.getValue().getTransferProcessId());
-        assertEquals(BUCKET_NAME, savedCaptor.getValue().getBucketName());
-        assertEquals(OBJECT_KEY, savedCaptor.getValue().getObjectKey());
+        TemporaryBucketUser saved = savedCaptor.getValue();
+        assertEquals(ENCRYPTED_SECRET_KEY, saved.getSecretKey());
+        assertEquals(TRANSFER_PROCESS_ID, saved.getTransferProcessId());
+        assertEquals(BUCKET_NAME, saved.getBucketName());
+        assertEquals(OBJECT_KEY, saved.getObjectKey());
+        assertEquals("minioadmin", saved.getMgmtAccessKey());
+        assertEquals(ENCRYPTED_SECRET_KEY, saved.getMgmtSecretKey());
 
         // Returned entity carries the PLAIN key for immediate use
         assertNotNull(result);
@@ -104,6 +108,37 @@ public class TemporaryBucketUserServiceTest {
         assertEquals(BUCKET_NAME, result.getBucketName());
         assertEquals(OBJECT_KEY, result.getObjectKey());
         assertTrue(result.getAccessKey().startsWith("TempUser-"));
+    }
+
+    @Test
+    @DisplayName("createTemporaryUser (explicit mgmt creds) - stores mgmt access key, encrypted secret, and endpoint")
+    void createTemporaryUser_withExplicitManagementCredentials_storesMgmtCredentials() {
+        when(fieldEncryptionService.encrypt(anyString())).thenReturn(ENCRYPTED_SECRET_KEY);
+        when(temporaryBucketUserRepository.save(any(TemporaryBucketUser.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        BucketCredentialsEntity mgmtCreds = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName(BUCKET_NAME)
+                .accessKey("dp-admin-key")
+                .secretKey("dp-admin-secret")
+                .endpointOverride("http://minio:9000")
+                .build();
+
+        service.createTemporaryUser(TRANSFER_PROCESS_ID, mgmtCreds, BUCKET_NAME, OBJECT_KEY);
+
+        // Verify createUser was called with user adapter AND management credentials
+        verify(iamUserManagementService).createUser(
+                argThat(user -> user.getAccessKey().startsWith("TempUser-")),
+                argThat(mgmt -> "dp-admin-key".equals(mgmt.getAccessKey())
+                        && "http://minio:9000".equals(mgmt.getEndpointOverride())));
+
+        ArgumentCaptor<TemporaryBucketUser> savedCaptor = ArgumentCaptor.forClass(TemporaryBucketUser.class);
+        verify(temporaryBucketUserRepository).save(savedCaptor.capture());
+        TemporaryBucketUser saved = savedCaptor.getValue();
+
+        assertEquals("dp-admin-key", saved.getMgmtAccessKey());
+        assertEquals(ENCRYPTED_SECRET_KEY, saved.getMgmtSecretKey());
+        assertEquals("http://minio:9000", saved.getMgmtEndpoint());
     }
 
     @Test
@@ -163,8 +198,10 @@ public class TemporaryBucketUserServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("deleteTemporaryUser - found: uses bootstrap properties, deletes IAM user before policy, then removes MongoDB document")
-    void deleteTemporaryUser_found() {
+    @DisplayName("deleteTemporaryUser (legacy CP entity) - uses bootstrap properties when no mgmt credentials stored")
+    void deleteTemporaryUser_found_legacyEntityFallsBackToBootstrap() {
+        // Pre-migration entity: no mgmtAccessKey stored ÔåÆ resolveManagementCredentials falls
+        // back to bootstrapManagementCredentials which reads from S3Properties
         TemporaryBucketUser stored = TemporaryBucketUser.Builder.newInstance()
                 .transferProcessId(TRANSFER_PROCESS_ID)
                 .accessKey("TempUser-abc12345")
@@ -192,9 +229,39 @@ public class TemporaryBucketUserServiceTest {
     }
 
     @Test
+    @DisplayName("deleteTemporaryUser (data-plane entity) - uses stored mgmt credentials, no S3Properties needed")
+    void deleteTemporaryUser_found_dataPlaneEntityUsesStoredMgmtCredentials() {
+        when(fieldEncryptionService.decrypt(ENCRYPTED_SECRET_KEY)).thenReturn("dp-admin-secret");
+
+        TemporaryBucketUser stored = TemporaryBucketUser.Builder.newInstance()
+                .transferProcessId(TRANSFER_PROCESS_ID)
+                .accessKey("TempUser-abc12345")
+                .secretKey(ENCRYPTED_SECRET_KEY)
+                .bucketName(BUCKET_NAME)
+                .objectKey(OBJECT_KEY)
+                .mgmtAccessKey("dp-admin-key")
+                .mgmtSecretKey(ENCRYPTED_SECRET_KEY)
+                .mgmtEndpoint("http://minio:9000")
+                .build();
+
+        when(temporaryBucketUserRepository.findById(TRANSFER_PROCESS_ID)).thenReturn(Optional.of(stored));
+        service.deleteTemporaryUser(TRANSFER_PROCESS_ID);
+
+        // Should use stored mgmt credentials, not bootstrap S3Properties
+        verify(s3Properties, never()).getAccessKey();
+        InOrder order = inOrder(iamUserManagementService);
+        order.verify(iamUserManagementService).deleteUser(argThat(creds ->
+                "dp-admin-key".equals(creds.getAccessKey())
+                        && "dp-admin-secret".equals(creds.getSecretKey())
+                        && "http://minio:9000".equals(creds.getEndpointOverride())), eq("TempUser-abc12345"));
+        order.verify(iamUserManagementService).deletePolicy(argThat(creds ->
+                "dp-admin-key".equals(creds.getAccessKey())), contains(TRANSFER_PROCESS_ID));
+        verify(temporaryBucketUserRepository).deleteById(TRANSFER_PROCESS_ID);
+    }
+
+    @Test
     @DisplayName("deleteTemporaryUser - not found: no IAM or DB operations performed")
-    void deleteTemporaryUser_notFound() {
-        when(temporaryBucketUserRepository.findById(TRANSFER_PROCESS_ID)).thenReturn(Optional.empty());
+    void deleteTemporaryUser_notFound() {        when(temporaryBucketUserRepository.findById(TRANSFER_PROCESS_ID)).thenReturn(Optional.empty());
 
         service.deleteTemporaryUser(TRANSFER_PROCESS_ID);
 

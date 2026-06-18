@@ -168,6 +168,7 @@ public class S3ClientProvider implements S3ClientFactory {
      */
     @Override
     public S3Client getClient(S3ClientRequest request) {
+        log.info("Fetching S3 client from S3ClientProvider for request={}", request);
         return s3Client(request);
     }
 

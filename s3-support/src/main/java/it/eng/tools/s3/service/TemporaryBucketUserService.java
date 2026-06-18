@@ -76,7 +76,7 @@ public class TemporaryBucketUserService {
                 .secretKey(plainSecretKey)
                 .bucketName(bucketName)
                 .build();
-        iamUserManagementService.createUser(adapter);
+        iamUserManagementService.createUser(adapter, managementCredentials);
 
         // Attach policy and persist; compensate by deleting the IAM user on any failure
         // to avoid orphaned resources that cannot be cleaned up later
@@ -87,13 +87,16 @@ public class TemporaryBucketUserService {
             log.debug("Attaching temporary policy {} to user {}", policyName, accessKey);
             iamUserManagementService.attachTemporaryPolicy(managementCredentials, accessKey, policyName, policyJson);
 
-            // Persist with encrypted secret key
+            // Persist with encrypted secret key; management credentials stored for cleanup on data plane
             TemporaryBucketUser entity = TemporaryBucketUser.Builder.newInstance()
                     .transferProcessId(transferProcessId)
                     .accessKey(accessKey)
                     .secretKey(fieldEncryptionService.encrypt(plainSecretKey))
                     .bucketName(bucketName)
                     .objectKey(objectKey)
+                    .mgmtAccessKey(managementCredentials.getAccessKey())
+                    .mgmtSecretKey(fieldEncryptionService.encrypt(managementCredentials.getSecretKey()))
+                    .mgmtEndpoint(managementCredentials.getEndpointOverride())
                     .build();
             temporaryBucketUserRepository.save(entity);
             log.info("Temporary bucket user {} persisted for transfer process {}", accessKey, transferProcessId);
@@ -153,7 +156,7 @@ public class TemporaryBucketUserService {
         temporaryBucketUserRepository.findById(transferProcessId).ifPresent(entity -> {
             log.info("Cleaning up temporary bucket user {} for transfer process {}", entity.getAccessKey(), transferProcessId);
             String policyName = TEMP_POLICY_PREFIX + transferProcessId;
-            BucketCredentialsEntity managementCredentials = bootstrapManagementCredentials(entity.getBucketName());
+            BucketCredentialsEntity managementCredentials = resolveManagementCredentials(entity);
             // Delete the user first so the policy is no longer attached, then delete the policy.
             // Minio rejects policy deletion with XMinioIAMPolicyInUse if the policy is still
             // assigned to a user; removing the user first releases that attachment.
@@ -170,6 +173,26 @@ public class TemporaryBucketUserService {
             temporaryBucketUserRepository.deleteById(transferProcessId);
             log.info("Temporary bucket user {} cleaned up for transfer process {}", entity.getAccessKey(), transferProcessId);
         });
+    }
+
+    /**
+     * Reconstructs management credentials for cleanup. Prefers credentials stored on the
+     * entity (data-plane path where CP provides them per-request); falls back to
+     * {@link #bootstrapManagementCredentials} for control-plane records that pre-date
+     * the mgmt credential storage.
+     * @param entity the temporary bucket user entity
+     * @return the management credentials
+     */
+    private BucketCredentialsEntity resolveManagementCredentials(TemporaryBucketUser entity) {
+        if (entity.getMgmtAccessKey() != null && !entity.getMgmtAccessKey().isBlank()) {
+            return BucketCredentialsEntity.Builder.newInstance()
+                    .bucketName(entity.getBucketName())
+                    .accessKey(entity.getMgmtAccessKey())
+                    .secretKey(fieldEncryptionService.decrypt(entity.getMgmtSecretKey()))
+                    .endpointOverride(entity.getMgmtEndpoint())
+                    .build();
+        }
+        return bootstrapManagementCredentials(entity.getBucketName());
     }
 
     private BucketCredentialsEntity bootstrapManagementCredentials(String bucketName) {

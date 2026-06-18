@@ -1,19 +1,17 @@
 package it.eng.tools.s3.service;
 
-import io.minio.admin.MinioAdminClient;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.stereotype.Component;
 
 /**
  * AWS S3 IAM user management service.
  *
- * This service is activated when MinioAdminClient bean does NOT exist,
- * indicating AWS S3 mode.
+ * <p>Plain (non-Spring) class instantiated by {@link DynamicIamUserManagementService}
+ * when the target endpoint is AWS. Temporary-user operations are not yet fully implemented
+ * for AWS ÔÇö {@code attachTemporaryPolicy}, {@code deleteUser}, and {@code deletePolicy}
+ * throw {@link UnsupportedOperationException} until the AWS credential-generation flow
+ * is redesigned.</p>
  */
-@Component
-@ConditionalOnMissingBean(MinioAdminClient.class)
 @Slf4j
 public class AwsUserManagementService implements IamUserManagementService {
     private static final String TEMP_USER_REDESIGN_MESSAGE =

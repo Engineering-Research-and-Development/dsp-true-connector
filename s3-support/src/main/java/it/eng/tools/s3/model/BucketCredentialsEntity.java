@@ -49,6 +49,13 @@ public class BucketCredentialsEntity {
     @Field("version")
     private Long version;
 
+    /**
+     * Admin endpoint for on-demand MinioAdminClient creation. Not persisted to MongoDB.
+     * Blank or null signals AWS mode (routed to AwsUserManagementService).
+     */
+    @org.springframework.data.annotation.Transient
+    private String endpointOverride;
+
     @JsonPOJOBuilder(withPrefix = "")
     public static class Builder {
 
@@ -103,6 +110,11 @@ public class BucketCredentialsEntity {
         @JsonProperty("version")
         public Builder version(Long version) {
             bucketCredentials.version = version;
+            return this;
+        }
+
+        public Builder endpointOverride(String endpointOverride) {
+            bucketCredentials.endpointOverride = endpointOverride;
             return this;
         }
 

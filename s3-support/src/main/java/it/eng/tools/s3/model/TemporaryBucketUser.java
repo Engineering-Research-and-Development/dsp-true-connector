@@ -36,6 +36,16 @@ public class TemporaryBucketUser {
     @JsonProperty("object_key")
     private String objectKey;
 
+    @JsonProperty("mgmt_access_key")
+    private String mgmtAccessKey;
+
+    @JsonProperty("mgmt_secret_key")
+    @Encrypted
+    private String mgmtSecretKey;
+
+    @JsonProperty("mgmt_endpoint")
+    private String mgmtEndpoint;
+
     @CreatedDate
     private Instant issued;
 
@@ -95,6 +105,24 @@ public class TemporaryBucketUser {
         @JsonProperty("object_key")
         public Builder objectKey(String objectKey) {
             temporaryBucketUser.objectKey = objectKey;
+            return this;
+        }
+
+        @JsonProperty("mgmt_access_key")
+        public Builder mgmtAccessKey(String mgmtAccessKey) {
+            temporaryBucketUser.mgmtAccessKey = mgmtAccessKey;
+            return this;
+        }
+
+        @JsonProperty("mgmt_secret_key")
+        public Builder mgmtSecretKey(String mgmtSecretKey) {
+            temporaryBucketUser.mgmtSecretKey = mgmtSecretKey;
+            return this;
+        }
+
+        @JsonProperty("mgmt_endpoint")
+        public Builder mgmtEndpoint(String mgmtEndpoint) {
+            temporaryBucketUser.mgmtEndpoint = mgmtEndpoint;
             return this;
         }
 

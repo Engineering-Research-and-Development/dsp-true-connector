@@ -172,7 +172,7 @@ services:
       # Defaults to localhost:9000 (MinIO port is published). GHA overrides via MINIO_EXTERNAL_URL
       # to the Docker bridge gateway (172.17.0.1:9000) because matt-ball/newman-action runs Newman
       # inside a Docker container where localhost does not reach the host.
-#      - S3_EXTERNAL_PRESIGNED_ENDPOINT=${MINIO_EXTERNAL_URL:-http://localhost:9000}
+      - S3_EXTERNAL_PRESIGNED_ENDPOINT=${MINIO_EXTERNAL_URL:-http://localhost:9000}
 
   ### data-plane-http-pull-b (provider pull DP — registers with connector-b)
   ### Used for: startTransfer presigned URL generation for artifact in provider's bucket
@@ -236,7 +236,7 @@ services:
       # Consumer's bucket; temp credentials are used by provider DP (Docker network) → use minio hostname
 #      - S3_BUCKETNAME=dsp-true-connector-a
       # External endpoint for presigned URLs returned to API callers (viewData after PUSH transfer)
-#      - S3_EXTERNALPRESIGNEDENDPOINT=${MINIO_EXTERNAL_URL:-}
+      - S3_EXTERNALPRESIGNEDENDPOINT=${MINIO_EXTERNAL_URL:-}
 
   ### data-plane-http-push-b (provider push DP — registers with connector-b)
   ### Used for: startTransfer — pushes artifact to consumer's temporary S3 credentials

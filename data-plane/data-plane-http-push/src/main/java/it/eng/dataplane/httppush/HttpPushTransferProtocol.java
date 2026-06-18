@@ -105,10 +105,12 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
         DataFlowPrepareMetadataSection sinkS3Section = metadata.getSinkSection()
                 .getSection(DataPlaneConstants.METADATA_SECTION_S3);
         String bucketName = sinkS3Section.getString(DataPlaneConstants.METADATA_S3_BUCKET_NAME);
+        String endpointOverride = sinkS3Section.getString(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE);
         BucketCredentialsEntity managementCredentials = BucketCredentialsEntity.Builder.newInstance()
                 .bucketName(bucketName)
                 .accessKey(sinkS3Section.getString(DataPlaneConstants.METADATA_S3_ACCESS_KEY))
                 .secretKey(sinkS3Section.getString(DataPlaneConstants.METADATA_S3_SECRET_KEY))
+                .endpointOverride(endpointOverride)
                 .build();
 
         log.info("Preparing HTTP-PUSH temp user for processId={} in bucket={}", processId, bucketName);
@@ -130,7 +132,6 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
         }
         // endpointOverride from CP metadata — internal/container-reachable endpoint for server-side uploads.
         // The external presigned URL endpoint is a CP concern and must not be embedded here.
-        String endpointOverride = sinkS3Section.getString(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE);
         if (StringUtils.isNotBlank(endpointOverride)) {
             dataAddress.put(S3Utils.ENDPOINT_OVERRIDE, endpointOverride);
         }

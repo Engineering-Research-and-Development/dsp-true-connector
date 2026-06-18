@@ -1,5 +1,6 @@
 package it.eng.tools.s3.configuration;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +18,7 @@ import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
  * during the Spring Boot context refresh.</p>
  */
 @Configuration
+@Slf4j
 public class S3ClientFactoryConfiguration {
 
     /**
@@ -32,6 +34,7 @@ public class S3ClientFactoryConfiguration {
     @ConditionalOnMissingBean(S3ClientFactory.class)
     public DynamicS3ClientFactory dynamicS3ClientFactory(SdkHttpClient sdkHttpClient,
                                                          SdkAsyncHttpClient sdkAsyncHttpClient) {
+        log.info("Registering DynamicS3ClientFactory as S3ClientFactory bean (data-plane mode, no bootstrap S3 credentials)");
         return new DynamicS3ClientFactory(sdkHttpClient, sdkAsyncHttpClient);
     }
 }

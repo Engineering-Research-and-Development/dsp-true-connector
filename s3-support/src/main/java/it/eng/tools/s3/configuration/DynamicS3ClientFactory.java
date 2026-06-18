@@ -69,6 +69,7 @@ public class DynamicS3ClientFactory implements S3ClientFactory {
      */
     @Override
     public S3Client getClient(S3ClientRequest request) {
+        log.info("Fetching S3 client from Dynamic S3 client for request={}", request);
         String cacheKey = cacheKey(request);
         return clientCache.computeIfAbsent(cacheKey, k -> createSyncClient(request));
     }
