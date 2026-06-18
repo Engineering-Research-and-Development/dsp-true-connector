@@ -2,6 +2,7 @@ package it.eng.tools.s3.service;
 
 import it.eng.tools.exception.S3ServerException;
 import it.eng.tools.s3.configuration.S3ClientProvider;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +18,7 @@ import java.time.Duration;
 import java.util.UUID;
 
 @Service
+@ConditionalOnBean(S3ClientProvider.class)
 @Slf4j
 public class S3BucketProvisionService {
     private final S3ClientProvider s3ClientProvider;

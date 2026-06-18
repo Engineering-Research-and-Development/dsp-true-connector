@@ -1,6 +1,6 @@
 package it.eng.tools.s3.service;
 
-import it.eng.tools.s3.configuration.S3ClientProvider;
+import it.eng.tools.s3.configuration.S3ClientFactory;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.model.S3UploadMode;
@@ -46,7 +46,7 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 public class S3ClientServiceImpl implements S3ClientService {
 
-    private final S3ClientProvider s3ClientProvider;
+    private final S3ClientFactory s3ClientFactory;
     private final S3Properties s3Properties;
     private final BucketCredentialsService bucketCredentialsService;
     private final S3UploadStrategyFactory uploadStrategyFactory;
@@ -57,7 +57,7 @@ public class S3ClientServiceImpl implements S3ClientService {
     /**
      * Constructor for S3ClientServiceImpl.
      *
-     * @param s3ClientProvider         provider for S3 client (sync and async)
+     * @param s3ClientFactory          factory for S3 clients (static or dynamic depending on context)
      * @param s3Properties             the S3 properties
      * @param bucketCredentialsService service for managing bucket credentials
      * @param uploadStrategyFactory    factory for creating upload strategy instances
@@ -65,12 +65,12 @@ public class S3ClientServiceImpl implements S3ClientService {
      *                                 may be {@code null} in Data Plane context
      */
     @Autowired
-    public S3ClientServiceImpl(S3ClientProvider s3ClientProvider,
+    public S3ClientServiceImpl(S3ClientFactory s3ClientFactory,
                                S3Properties s3Properties,
                                BucketCredentialsService bucketCredentialsService,
                                S3UploadStrategyFactory uploadStrategyFactory,
                                @Nullable ApplicationPropertyReader propertyReader) {
-        this.s3ClientProvider = s3ClientProvider;
+        this.s3ClientFactory = s3ClientFactory;
         this.s3Properties = s3Properties;
         this.bucketCredentialsService = bucketCredentialsService;
         this.uploadStrategyFactory = uploadStrategyFactory;
@@ -217,7 +217,7 @@ public class S3ClientServiceImpl implements S3ClientService {
         S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
                 s3Properties.getEndpoint(),
                 bucketCredentials);
-        return s3ClientProvider.s3Client(s3ClientRequest);
+        return s3ClientFactory.getClient(s3ClientRequest);
     }
 
     @Override
@@ -356,7 +356,7 @@ public class S3ClientServiceImpl implements S3ClientService {
 
     private S3Client getS3Client(String region, String endpointOverride, BucketCredentialsEntity bucketCredentials) {
         S3ClientRequest s3ClientRequest = S3ClientRequest.from(region, endpointOverride, bucketCredentials);
-        return s3ClientProvider.s3Client(s3ClientRequest);
+        return s3ClientFactory.getClient(s3ClientRequest);
     }
 
     private String requireProperty(Map<String, String> properties, String key) {
@@ -371,7 +371,7 @@ public class S3ClientServiceImpl implements S3ClientService {
     public List<String> listFiles(String bucketName) {
         validateBucketName(bucketName);
         try {
-            S3Client s3Client = s3ClientProvider.adminS3Client();
+            S3Client s3Client = s3ClientFactory.adminClient();
 
             ListObjectsV2Request request = ListObjectsV2Request.builder()
                     .bucket(bucketName)

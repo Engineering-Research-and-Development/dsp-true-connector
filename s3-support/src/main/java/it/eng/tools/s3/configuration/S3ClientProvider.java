@@ -4,6 +4,7 @@ import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
@@ -25,8 +26,9 @@ import java.util.concurrent.Executors;
 import static software.amazon.awssdk.core.client.config.SdkAdvancedAsyncClientOption.FUTURE_COMPLETION_EXECUTOR;
 
 @Service
+@ConditionalOnProperty(prefix = "s3", name = "access-key")
 @Slf4j
-public class S3ClientProvider {
+public class S3ClientProvider implements S3ClientFactory {
 
     private final Executor executor;
     private final S3Properties s3Properties;
@@ -162,12 +164,37 @@ public class S3ClientProvider {
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public S3Client getClient(S3ClientRequest request) {
+        return s3Client(request);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public S3AsyncClient getAsyncClient(S3ClientRequest request) {
+        return s3AsyncClient(request);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public S3Client adminClient() {
+        return adminS3Client();
+    }
+
+    /**
      * Clears cached S3 clients for a specific bucket.
      * This should be called when bucket credentials are updated to ensure
      * new clients are created with the updated credentials.
      *
      * @param bucketName the name of the bucket to clear from cache
      */
+    @Override
     public void clearBucketCache(String bucketName) {
         log.info("Clearing S3 client cache for bucket: {}", bucketName);
         String prefix = bucketName + "|";

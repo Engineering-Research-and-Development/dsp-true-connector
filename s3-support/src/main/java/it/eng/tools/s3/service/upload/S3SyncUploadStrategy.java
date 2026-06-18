@@ -1,6 +1,6 @@
 package it.eng.tools.s3.service.upload;
 
-import it.eng.tools.s3.configuration.S3ClientProvider;
+import it.eng.tools.s3.configuration.S3ClientFactory;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
 import lombok.extern.slf4j.Slf4j;
@@ -26,11 +26,17 @@ import java.util.concurrent.CompletionException;
 @Slf4j
 public class S3SyncUploadStrategy implements S3UploadStrategy {
 
-    private final S3ClientProvider s3ClientProvider;
+    private final S3ClientFactory s3ClientFactory;
     private final S3Properties s3Properties;
 
-    public S3SyncUploadStrategy(S3ClientProvider s3ClientProvider, S3Properties s3Properties) {
-        this.s3ClientProvider = s3ClientProvider;
+    /**
+     * Creates the synchronous upload strategy.
+     *
+     * @param s3ClientFactory factory for obtaining S3 clients (static or dynamic)
+     * @param s3Properties    S3 properties, used for chunk size configuration
+     */
+    public S3SyncUploadStrategy(S3ClientFactory s3ClientFactory, S3Properties s3Properties) {
+        this.s3ClientFactory = s3ClientFactory;
         this.s3Properties = s3Properties;
     }
 
@@ -42,7 +48,7 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
                                                String contentType,
                                                String contentDisposition) {
         return CompletableFuture.supplyAsync(() -> {
-            S3Client s3Client = s3ClientProvider.s3Client(s3ClientRequest);
+            S3Client s3Client = s3ClientFactory.getClient(s3ClientRequest);
 
             try {
                 log.info("Creating multipart upload (SYNC) for key: {}", objectKey);

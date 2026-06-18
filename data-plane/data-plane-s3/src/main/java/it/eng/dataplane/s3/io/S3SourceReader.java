@@ -3,7 +3,7 @@ package it.eng.dataplane.s3.io;
 import it.eng.dataplane.api.io.SourceContext;
 import it.eng.dataplane.api.io.SourceOpenResult;
 import it.eng.dataplane.api.io.SourceReader;
-import it.eng.tools.s3.configuration.S3ClientProvider;
+import it.eng.tools.s3.configuration.S3ClientFactory;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.util.S3Utils;
@@ -30,15 +30,15 @@ public class S3SourceReader implements SourceReader {
 
     private static final String SOURCE_TYPE = "s3";
 
-    private final S3ClientProvider s3ClientProvider;
+    private final S3ClientFactory s3ClientFactory;
 
     /**
      * Creates the S3 source reader.
      *
-     * @param s3ClientProvider S3 client provider
+     * @param s3ClientFactory S3 client factory (static or dynamic depending on context)
      */
-    public S3SourceReader(S3ClientProvider s3ClientProvider) {
-        this.s3ClientProvider = s3ClientProvider;
+    public S3SourceReader(S3ClientFactory s3ClientFactory) {
+        this.s3ClientFactory = s3ClientFactory;
     }
 
     /**
@@ -83,7 +83,7 @@ public class S3SourceReader implements SourceReader {
                     .secretKey(secretKey)
                     .build();
             S3ClientRequest clientRequest = S3ClientRequest.from(region, endpointOverride, credentials);
-            S3Client s3Client = s3ClientProvider.s3Client(clientRequest);
+            S3Client s3Client = s3ClientFactory.getClient(clientRequest);
             GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                     .bucket(bucketName)
                     .key(objectKey)

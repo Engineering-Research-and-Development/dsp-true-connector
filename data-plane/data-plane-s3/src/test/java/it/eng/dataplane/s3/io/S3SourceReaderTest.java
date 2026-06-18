@@ -2,7 +2,7 @@ package it.eng.dataplane.s3.io;
 
 import it.eng.dataplane.api.io.SourceContext;
 import it.eng.dataplane.api.io.SourceOpenResult;
-import it.eng.tools.s3.configuration.S3ClientProvider;
+import it.eng.tools.s3.configuration.S3ClientFactory;
 import it.eng.tools.s3.util.S3Utils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,7 +30,7 @@ import static org.mockito.Mockito.when;
 class S3SourceReaderTest {
 
     @Mock
-    private S3ClientProvider s3ClientProvider;
+    private S3ClientFactory s3ClientFactory;
     @Mock
     private S3Client s3Client;
     @Mock
@@ -65,7 +65,7 @@ class S3SourceReaderTest {
                 .properties(fullProperties())
                 .build();
 
-        when(s3ClientProvider.s3Client(any())).thenReturn(s3Client);
+        when(s3ClientFactory.getClient(any())).thenReturn(s3Client);
         when(s3Client.getObject(any(GetObjectRequest.class))).thenReturn(responseInputStream);
         when(responseInputStream.response()).thenReturn(getObjectResponse);
         when(getObjectResponse.contentType()).thenReturn("text/plain");
@@ -167,7 +167,7 @@ class S3SourceReaderTest {
                 .properties(fullProperties())
                 .build();
 
-        when(s3ClientProvider.s3Client(any())).thenReturn(s3Client);
+        when(s3ClientFactory.getClient(any())).thenReturn(s3Client);
         when(s3Client.getObject(any(GetObjectRequest.class)))
                 .thenThrow(SdkException.create("connection refused", null));
 

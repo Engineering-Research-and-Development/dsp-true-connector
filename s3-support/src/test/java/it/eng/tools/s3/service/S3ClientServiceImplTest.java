@@ -1,6 +1,6 @@
 package it.eng.tools.s3.service;
 
-import it.eng.tools.s3.configuration.S3ClientProvider;
+import it.eng.tools.s3.configuration.S3ClientFactory;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
@@ -44,7 +44,7 @@ public class S3ClientServiceImplTest {
     private static final String CONTENT_DISPOSITION = "attachment; filename=test-file.txt";
     private static final InputStream INPUT_STREAM = new ByteArrayInputStream("test content".getBytes());
     @Mock
-    private S3ClientProvider s3ClientProvider;
+    private S3ClientFactory s3ClientFactory;
 
     @Mock
     private S3Client s3Client;
@@ -92,9 +92,9 @@ public class S3ClientServiceImplTest {
                 .bucketName(bucketName)
                 .build();
         lenient().when(bucketCredentialsService.getBucketCredentials(any())).thenReturn(bucketCredentials);
-        lenient().when(s3ClientProvider.s3Client(any(S3ClientRequest.class))).thenReturn(s3Client);
-        lenient().when(s3ClientProvider.s3AsyncClient(any(S3ClientRequest.class))).thenReturn(s3AsyncClient);
-        lenient().when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+        lenient().when(s3ClientFactory.getClient(any(S3ClientRequest.class))).thenReturn(s3Client);
+        lenient().when(s3ClientFactory.getAsyncClient(any(S3ClientRequest.class))).thenReturn(s3AsyncClient);
+        lenient().when(s3ClientFactory.adminClient()).thenReturn(s3Client);
         // Default to ASYNC mode for backward compatibility with existing tests
         lenient().when(s3Properties.getUploadMode()).thenReturn("ASYNC");
         lenient().when(propertyReader.getPropertyValue(any())).thenReturn(java.util.Optional.empty());
@@ -729,7 +729,7 @@ public class S3ClientServiceImplTest {
                 S3Object.builder().key("file2.txt").build(),
                 S3Object.builder().key("file3.txt").build()
         );
-        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+        when(s3ClientFactory.adminClient()).thenReturn(s3Client);
         when(s3Client.listObjectsV2(any(ListObjectsV2Request.class)))
                 .thenReturn(ListObjectsV2Response.builder()
                         .contents(s3Objects)
@@ -751,7 +751,7 @@ public class S3ClientServiceImplTest {
     void listFiles_EmptyBucket() {
         // Arrange
         String bucketName = "empty-bucket";
-        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+        when(s3ClientFactory.adminClient()).thenReturn(s3Client);
         when(s3Client.listObjectsV2(any(ListObjectsV2Request.class)))
                 .thenReturn(ListObjectsV2Response.builder()
                         .contents(new ArrayList<>())
@@ -772,7 +772,7 @@ public class S3ClientServiceImplTest {
     void listFiles_WhenListingFails() {
         // Arrange
         String bucketName = "test-bucket";
-        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+        when(s3ClientFactory.adminClient()).thenReturn(s3Client);
         when(s3Client.listObjectsV2(any(ListObjectsV2Request.class)))
                 .thenThrow(S3Exception.builder()
                         .message("Failed to list objects")

@@ -1,6 +1,6 @@
 package it.eng.tools.s3.service.upload;
 
-import it.eng.tools.s3.configuration.S3ClientProvider;
+import it.eng.tools.s3.configuration.S3ClientFactory;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,7 +42,7 @@ public class S3AsyncUploadStrategyTest {
     private static final String ETAG = "async-etag";
 
     @Mock
-    private S3ClientProvider s3ClientProvider;
+    private S3ClientFactory s3ClientFactory;
 
     @Mock
     private S3Properties s3Properties;
@@ -59,7 +59,7 @@ public class S3AsyncUploadStrategyTest {
     @BeforeEach
     void setUp() {
         lenient().when(s3Properties.getChunkSize()).thenReturn(10 * 1024 * 1024);
-        when(s3ClientProvider.s3AsyncClient(any(S3ClientRequest.class))).thenReturn(s3AsyncClient);
+        when(s3ClientFactory.getAsyncClient(any(S3ClientRequest.class))).thenReturn(s3AsyncClient);
     }
 
     @Test
@@ -86,7 +86,7 @@ public class S3AsyncUploadStrategyTest {
 
         // Assert
         assertEquals(ETAG, result.join());
-        verify(s3ClientProvider).s3AsyncClient(s3ClientRequest);
+        verify(s3ClientFactory).getAsyncClient(s3ClientRequest);
         verify(s3AsyncClient).createMultipartUpload(any(CreateMultipartUploadRequest.class));
         verify(s3AsyncClient).completeMultipartUpload(any(CompleteMultipartUploadRequest.class));
     }

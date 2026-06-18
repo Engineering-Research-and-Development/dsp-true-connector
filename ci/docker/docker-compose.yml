@@ -162,17 +162,17 @@ services:
       - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}
       - DATAPLANE_AUTH_TYPE=API_KEY
       - DATAPLANE_API_KEY=${DP_PULL_API_KEY:-changeme}
-      - S3_ENDPOINT=http://minio:9000
-      - S3_ACCESSKEY=minioadmin
-      - S3_SECRETKEY=minioadmin
-      - S3_REGION=us-east-1
+#      - S3_ENDPOINT=http://minio:9000
+#      - S3_ACCESSKEY=minioadmin
+#      - S3_SECRETKEY=minioadmin
+#      - S3_REGION=us-east-1
       # Must match connector-a's s3.bucketName so downloaded files land in consumer's own bucket
-      - S3_BUCKETNAME=dsp-true-connector-a
+#      - S3_BUCKETNAME=dsp-true-connector-a
       # viewData presigned URLs are consumed by external clients (Newman running on the host).
       # Defaults to localhost:9000 (MinIO port is published). GHA overrides via MINIO_EXTERNAL_URL
       # to the Docker bridge gateway (172.17.0.1:9000) because matt-ball/newman-action runs Newman
       # inside a Docker container where localhost does not reach the host.
-      - S3_EXTERNAL_PRESIGNED_ENDPOINT=${MINIO_EXTERNAL_URL:-http://localhost:9000}
+#      - S3_EXTERNAL_PRESIGNED_ENDPOINT=${MINIO_EXTERNAL_URL:-http://localhost:9000}
 
   ### data-plane-http-pull-b (provider pull DP — registers with connector-b)
   ### Used for: startTransfer presigned URL generation for artifact in provider's bucket
@@ -198,12 +198,12 @@ services:
       - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}
       - DATAPLANE_AUTH_TYPE=API_KEY
       - DATAPLANE_API_KEY=${DP_PULL_API_KEY:-changeme}
-      - S3_ENDPOINT=http://minio:9000
-      - S3_ACCESSKEY=minioadmin
-      - S3_SECRETKEY=minioadmin
-      - S3_REGION=us-east-1
+#      - S3_ENDPOINT=http://minio:9000
+#      - S3_ACCESSKEY=minioadmin
+#      - S3_SECRETKEY=minioadmin
+#      - S3_REGION=us-east-1
       # Provider's bucket; presigned URLs are consumed by consumer DP (Docker network) → use minio hostname
-      - S3_BUCKETNAME=dsp-true-connector-b
+#      - S3_BUCKETNAME=dsp-true-connector-b
 
   ### data-plane-http-push-a (consumer push DP — registers with connector-a)
   ### Used for: requestTransfer — creates temporary IAM user in consumer's bucket
@@ -229,14 +229,14 @@ services:
       - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}
       - DATAPLANE_AUTH_TYPE=API_KEY
       - DATAPLANE_API_KEY=${DP_PUSH_API_KEY:-changeme}
-      - S3_ENDPOINT=http://minio:9000
-      - S3_ACCESSKEY=minioadmin
-      - S3_SECRETKEY=minioadmin
-      - S3_REGION=us-east-1
+#      - S3_ENDPOINT=http://minio:9000
+#      - S3_ACCESSKEY=minioadmin
+#      - S3_SECRETKEY=minioadmin
+#      - S3_REGION=us-east-1
       # Consumer's bucket; temp credentials are used by provider DP (Docker network) → use minio hostname
-      - S3_BUCKETNAME=dsp-true-connector-a
+#      - S3_BUCKETNAME=dsp-true-connector-a
       # External endpoint for presigned URLs returned to API callers (viewData after PUSH transfer)
-      - S3_EXTERNALPRESIGNEDENDPOINT=${MINIO_EXTERNAL_URL:-}
+#      - S3_EXTERNALPRESIGNEDENDPOINT=${MINIO_EXTERNAL_URL:-}
 
   ### data-plane-http-push-b (provider push DP — registers with connector-b)
   ### Used for: startTransfer — pushes artifact to consumer's temporary S3 credentials
@@ -263,12 +263,12 @@ services:
       - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=${DP_ADMIN_SECRET}
       - DATAPLANE_AUTH_TYPE=API_KEY
       - DATAPLANE_API_KEY=${DP_PUSH_API_KEY:-changeme}
-      - S3_ENDPOINT=http://minio:9000
-      - S3_ACCESSKEY=minioadmin
-      - S3_SECRETKEY=minioadmin
-      - S3_REGION=us-east-1
+#      - S3_ENDPOINT=http://minio:9000
+#      - S3_ACCESSKEY=minioadmin
+#      - S3_SECRETKEY=minioadmin
+#      - S3_REGION=us-east-1
       # Provider's bucket; presigned GET URLs for artifact are consumed within Docker network
-      - S3_BUCKETNAME=dsp-true-connector-b
+#      - S3_BUCKETNAME=dsp-true-connector-b
 
   ### data-plane-grpc-a (consumer streaming DP — registers with connector-a)
   ### Used for: downloadData on the consumer side for stream:grpc transfers
@@ -298,11 +298,11 @@ services:
       - SERVER_PORT=9094
       - GRPC_SERVER_HOST=data-plane-grpc-a
       - GRPC_SERVER_PORT=9095
-      - S3_ENDPOINT=http://minio:9000
-      - S3_ACCESSKEY=minioadmin
-      - S3_SECRETKEY=minioadmin
-      - S3_REGION=us-east-1
-      - S3_BUCKETNAME=dsp-true-connector-a
+#      - S3_ENDPOINT=http://minio:9000
+#      - S3_ACCESSKEY=minioadmin
+#      - S3_SECRETKEY=minioadmin
+#      - S3_REGION=us-east-1
+#      - S3_BUCKETNAME=dsp-true-connector-a
 
   ### data-plane-grpc-b (provider streaming DP — registers with connector-b)
   ### Used for: startTransfer prepare on the provider side and gRPC source streaming to consumer DP
@@ -333,11 +333,11 @@ services:
       - SERVER_PORT=9094
       - GRPC_SERVER_HOST=data-plane-grpc-b
       - GRPC_SERVER_PORT=9095
-      - S3_ENDPOINT=http://minio:9000
-      - S3_ACCESSKEY=minioadmin
-      - S3_SECRETKEY=minioadmin
-      - S3_REGION=us-east-1
-      - S3_BUCKETNAME=dsp-true-connector-b
+#      - S3_ENDPOINT=http://minio:9000
+#      - S3_ACCESSKEY=minioadmin
+#      - S3_SECRETKEY=minioadmin
+#      - S3_REGION=us-east-1
+#      - S3_BUCKETNAME=dsp-true-connector-b
 
   kafka-broker:
     image: apache/kafka:3.9.0
@@ -391,11 +391,11 @@ services:
       - DATAPLANE_API_KEY=${DP_KAFKA_API_KEY:-changeme}
       - SERVER_PORT=9098
       - DATAPLANE_KAFKA_BOOTSTRAP_SERVERS=kafka-broker:9092
-      - S3_ENDPOINT=http://minio:9000
-      - S3_ACCESSKEY=minioadmin
-      - S3_SECRETKEY=minioadmin
-      - S3_REGION=us-east-1
-      - S3_BUCKETNAME=dsp-true-connector-a
+#      - S3_ENDPOINT=http://minio:9000
+#      - S3_ACCESSKEY=minioadmin
+#      - S3_SECRETKEY=minioadmin
+#      - S3_REGION=us-east-1
+#      - S3_BUCKETNAME=dsp-true-connector-a
 
   data-plane-kafka-b:
     image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-kafka:test
@@ -423,11 +423,11 @@ services:
       - DATAPLANE_API_KEY=${DP_KAFKA_API_KEY:-changeme}
       - SERVER_PORT=9098
       - DATAPLANE_KAFKA_BOOTSTRAP_SERVERS=kafka-broker:9092
-      - S3_ENDPOINT=http://minio:9000
-      - S3_ACCESSKEY=minioadmin
-      - S3_SECRETKEY=minioadmin
-      - S3_REGION=us-east-1
-      - S3_BUCKETNAME=dsp-true-connector-b
+#      - S3_ENDPOINT=http://minio:9000
+#      - S3_ACCESSKEY=minioadmin
+#      - S3_SECRETKEY=minioadmin
+#      - S3_REGION=us-east-1
+#      - S3_BUCKETNAME=dsp-true-connector-b
 
 networks:
   network-a: { }
