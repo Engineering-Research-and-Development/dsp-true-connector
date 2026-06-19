@@ -11,7 +11,6 @@ import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
-import it.eng.tools.event.policyenforcement.ArtifactTransferredEvent;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.util.CredentialUtils;
@@ -121,11 +120,5 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
         log.info("Increasing access count for artifactId {}", artifactConsumedEvent.getAgreementId());
         policyAdministrationPoint.updateAccessCount(artifactConsumedEvent.getAgreementId());
     }
-
-//    public void artifactTransferredEvent(ArtifactTransferredEvent artifactTransferredEvent) {
-//        log.info("Increasing access count for artifactId {}", artifactTransferredEvent.getAgreementId());
-//        policyAdministrationPoint.updateAccessCount(artifactTransferredEvent.getAgreementId());
-//    }
-
 
 }

@@ -3,6 +3,7 @@ package it.eng.negotiation.service;
 import it.eng.negotiation.exception.ContractNegotiationAPIException;
 import it.eng.negotiation.exception.PolicyEnforcementException;
 import it.eng.negotiation.model.Agreement;
+import it.eng.negotiation.model.PolicyEnforcement;
 import it.eng.negotiation.policy.model.PolicyDecision;
 import it.eng.negotiation.policy.service.PolicyEnforcementPoint;
 import it.eng.negotiation.repository.AgreementRepository;
@@ -86,7 +87,7 @@ public class AgreementAPIService {
      */
     public Optional<Integer> getCurrentCount(String agreementId) {
         return policyEnforcementRepository.findByAgreementId(agreementId)
-                .map(enforcement -> enforcement.getCount());
+                .map(PolicyEnforcement::getCount);
     }
 
     /**

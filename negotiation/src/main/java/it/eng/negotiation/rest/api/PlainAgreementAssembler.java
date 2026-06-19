@@ -22,7 +22,7 @@ public class PlainAgreementAssembler implements RepresentationModelAssembler<Agr
 
     @Override
     public EntityModel<Object> toModel(Agreement entity) {
-        var plainJson = (ObjectNode) NegotiationSerializer.serializePlainJsonNode(entity);
+        ObjectNode plainJson = (ObjectNode) NegotiationSerializer.serializePlainJsonNode(entity);
         Map<String, Object> content = new ObjectMapper().convertValue(plainJson, new TypeReference<>() {});
         return EntityModel.of(content,
                 linkTo(methodOn(AgreementAPIController.class).getAgreementById(entity.getId())).withSelfRel());

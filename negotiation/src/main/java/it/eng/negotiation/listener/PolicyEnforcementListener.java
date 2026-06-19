@@ -16,6 +16,11 @@ public class PolicyEnforcementListener {
         this.policyAdministrationPoint = policyAdministrationPoint;
     }
 
+    /**
+     * Handles the artifact transferred event and updates the access count.
+     * @param artifactTransferredEvent the event carrying the agreementId
+     */
+
     @EventListener
     public void handleArtifactTransferredEvent(ArtifactTransferredEvent artifactTransferredEvent) {
         log.info("Increasing access count for artifactId {}", artifactTransferredEvent.getAgreementId());
