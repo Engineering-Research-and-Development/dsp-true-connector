@@ -186,7 +186,7 @@ jobs:
         # Newman runs directly on the host runner (npx newman), so localhost resolves correctly.
         # Use localhost:9000 for the MinIO presigned URL endpoint.
         env:
-          MINIO_EXTERNAL_URL: http://localhost:9000
+#          MINIO_EXTERNAL_URL: http://localhost:9000
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile pull up -d
 
       - name: Wait for connectors to be healthy
@@ -263,7 +263,7 @@ jobs:
 
       - name: Run docker container for datatransfer-api-http-push-tests
         env:
-          MINIO_EXTERNAL_URL: http://localhost:9000
+#          MINIO_EXTERNAL_URL: http://localhost:9000
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile push up -d
 
       - name: Wait for connectors to be healthy
@@ -340,7 +340,7 @@ jobs:
 
       - name: Run docker container for datatransfer-api-stream-grpc-tests
         env:
-          MINIO_EXTERNAL_URL: http://localhost:9000
+#          MINIO_EXTERNAL_URL: http://localhost:9000
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile grpc up -d
 
       - name: Wait for connectors to be healthy
@@ -417,7 +417,7 @@ jobs:
 
       - name: Run docker container for datatransfer-api-stream-kafka-tests
         env:
-          MINIO_EXTERNAL_URL: http://localhost:9000
+#          MINIO_EXTERNAL_URL: http://localhost:9000
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile kafka up -d
 
       - name: Wait for connectors to be healthy
