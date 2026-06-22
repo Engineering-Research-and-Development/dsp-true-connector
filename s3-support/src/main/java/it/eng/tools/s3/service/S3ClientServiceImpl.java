@@ -241,7 +241,8 @@ public class S3ClientServiceImpl implements S3ClientService {
         String accessKey = requireProperty(sourceS3Properties, S3Utils.ACCESS_KEY);
         String secretKey = requireProperty(sourceS3Properties, S3Utils.SECRET_KEY);
         String region = requireProperty(sourceS3Properties, S3Utils.REGION);
-        String endpointOverride = sourceS3Properties.get(S3Utils.ENDPOINT_OVERRIDE);
+        String internalEndpointOverride = sourceS3Properties.get(S3Utils.ENDPOINT_OVERRIDE);
+        String publicPresignedEndpoint = sourceS3Properties.get(S3Utils.PUBLIC_PRESIGNED_ENDPOINT);
 
         BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
                 .bucketName(bucketName)
@@ -249,9 +250,9 @@ public class S3ClientServiceImpl implements S3ClientService {
                 .secretKey(secretKey)
                 .build();
 
-        String endpoint = resolvePresignedEndpoint(bucketName, endpointOverride, region);
-        return generateGetPresignedUrl(bucketName, objectKey, expiration, bucketCredentials, region, endpoint,
-                endpointOverride);
+        String presignedEndpoint = resolvePresignedEndpoint(bucketName, publicPresignedEndpoint, region);
+        return generateGetPresignedUrl(bucketName, objectKey, expiration, bucketCredentials, region,
+                presignedEndpoint, internalEndpointOverride);
     }
 
     private String generateGetPresignedUrl(String bucketName,

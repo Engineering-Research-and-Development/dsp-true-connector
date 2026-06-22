@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -943,6 +944,56 @@ public class S3ClientServiceImplTest {
                         .build());
 
         assertDoesNotThrow(() -> s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofMinutes(5)));
+    }
+
+    @Test
+    @DisplayName("generateGetPresignedUrl uses endpointOverride for S3 access and publicPresignedEndpoint for returned URL")
+    void generateGetPresignedUrl_SplitsInternalAndPublicEndpoints() {
+        Map<String, String> sourceS3Properties = Map.of(
+                S3Utils.BUCKET_NAME, "test-bucket",
+                S3Utils.OBJECT_KEY, "test-key",
+                S3Utils.ACCESS_KEY, "accessKey",
+                S3Utils.SECRET_KEY, "secretKey",
+                S3Utils.REGION, "us-east-1",
+                S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000",
+                S3Utils.PUBLIC_PRESIGNED_ENDPOINT, "http://downloads.example.com");
+        when(s3Client.headObject(any(HeadObjectRequest.class)))
+                .thenReturn(HeadObjectResponse.builder()
+                        .contentType("text/plain")
+                        .contentDisposition("attachment; filename=test.txt")
+                        .build());
+
+        String result = s3ClientService.generateGetPresignedUrl(sourceS3Properties, Duration.ofMinutes(5));
+
+        ArgumentCaptor<S3ClientRequest> requestCaptor = ArgumentCaptor.forClass(S3ClientRequest.class);
+        verify(s3ClientFactory).getClient(requestCaptor.capture());
+        assertEquals("http://minio:9000", requestCaptor.getValue().endpointOverride());
+        assertTrue(result.contains("downloads.example.com"), "presigned URL must use the public host");
+    }
+
+    @Test
+    @DisplayName("generateGetPresignedUrl falls back to externalPresignedEndpoint when publicPresignedEndpoint is absent")
+    void generateGetPresignedUrl_FallsBackToExternalEndpointWhenPublicPresignedEndpointAbsent() {
+        Map<String, String> sourceS3Properties = Map.of(
+                S3Utils.BUCKET_NAME, "test-bucket",
+                S3Utils.OBJECT_KEY, "test-key",
+                S3Utils.ACCESS_KEY, "accessKey",
+                S3Utils.SECRET_KEY, "secretKey",
+                S3Utils.REGION, "us-east-1",
+                S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000");
+        when(s3Properties.getExternalPresignedEndpoint()).thenReturn("http://172.17.0.1:9000");
+        when(s3Client.headObject(any(HeadObjectRequest.class)))
+                .thenReturn(HeadObjectResponse.builder()
+                        .contentType("text/plain")
+                        .contentDisposition("attachment; filename=test.txt")
+                        .build());
+
+        String result = s3ClientService.generateGetPresignedUrl(sourceS3Properties, Duration.ofMinutes(5));
+
+        ArgumentCaptor<S3ClientRequest> requestCaptor = ArgumentCaptor.forClass(S3ClientRequest.class);
+        verify(s3ClientFactory).getClient(requestCaptor.capture());
+        assertEquals("http://minio:9000", requestCaptor.getValue().endpointOverride());
+        assertTrue(result.contains("172.17.0.1"), "presigned URL must use the external endpoint fallback");
     }
 
 }

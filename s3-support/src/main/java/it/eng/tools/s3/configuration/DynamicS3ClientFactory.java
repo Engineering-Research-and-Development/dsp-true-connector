@@ -27,8 +27,8 @@ import static software.amazon.awssdk.core.client.config.SdkAdvancedAsyncClientOp
  * <p>Creates S3 clients on demand from credentials carried in each {@link S3ClientRequest}.
  * No bootstrap credentials are required at startup — this factory is safe to instantiate
  * when no {@code s3.*} properties are set. Clients are cached by
- * {@code bucketName|accessKey} so repeated calls within the same transfer process reuse the
- * same instance.</p>
+ * {@code bucketName|accessKey|region|endpointOverride} so repeated calls with the same
+ * target bucket and endpoint reuse the same instance.</p>
  *
  * <p>Every call to {@link #getClient(S3ClientRequest)} and {@link #getAsyncClient(S3ClientRequest)}
  * requires {@link S3ClientRequest#bucketCredentials()} to be non-null. A null value is a
@@ -158,7 +158,10 @@ public class DynamicS3ClientFactory implements S3ClientFactory {
         if (creds == null) {
             return request.region() + "|" + request.endpointOverride();
         }
-        return creds.getBucketName() + "|" + creds.getAccessKey();
+        return creds.getBucketName()
+                + "|" + creds.getAccessKey()
+                + "|" + request.region()
+                + "|" + request.endpointOverride();
     }
 
     private boolean isAwsEndpoint(String endpoint) {

@@ -56,6 +56,20 @@ class DynamicS3ClientFactoryTest {
     }
 
     @Test
+    @DisplayName("getClient with same bucket and access key but different endpoints returns different cached instances")
+    void getClient_differentEndpointOverride_returnsDifferentClient() {
+        S3ClientRequest firstRequest = S3ClientRequest.from("us-east-1", "http://minio-a:9000",
+                bucket("cache-bucket", "same-access", "same-secret"));
+        S3ClientRequest secondRequest = S3ClientRequest.from("us-east-1", "http://minio-b:9000",
+                bucket("cache-bucket", "same-access", "same-secret"));
+
+        S3Client first = factory.getClient(firstRequest);
+        S3Client second = factory.getClient(secondRequest);
+
+        assertThat(first).isNotSameAs(second);
+    }
+
+    @Test
     @DisplayName("getClient with null credentials throws IllegalStateException")
     void getClient_withNullCredentials_throwsIllegalState() {
         S3ClientRequest request = S3ClientRequest.from("us-east-1", "http://minio:9000");
