@@ -972,8 +972,8 @@ public class S3ClientServiceImplTest {
     }
 
     @Test
-    @DisplayName("generateGetPresignedUrl falls back to externalPresignedEndpoint when publicPresignedEndpoint is absent")
-    void generateGetPresignedUrl_FallsBackToExternalEndpointWhenPublicPresignedEndpointAbsent() {
+    @DisplayName("generateGetPresignedUrl falls back to endpointOverride when publicPresignedEndpoint is absent")
+    void generateGetPresignedUrl_FallsBackToEndpointOverrideWhenPublicPresignedEndpointAbsent() {
         Map<String, String> sourceS3Properties = Map.of(
                 S3Utils.BUCKET_NAME, "test-bucket",
                 S3Utils.OBJECT_KEY, "test-key",
@@ -981,7 +981,6 @@ public class S3ClientServiceImplTest {
                 S3Utils.SECRET_KEY, "secretKey",
                 S3Utils.REGION, "us-east-1",
                 S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000");
-        when(s3Properties.getExternalPresignedEndpoint()).thenReturn("http://172.17.0.1:9000");
         when(s3Client.headObject(any(HeadObjectRequest.class)))
                 .thenReturn(HeadObjectResponse.builder()
                         .contentType("text/plain")
@@ -993,6 +992,30 @@ public class S3ClientServiceImplTest {
         ArgumentCaptor<S3ClientRequest> requestCaptor = ArgumentCaptor.forClass(S3ClientRequest.class);
         verify(s3ClientFactory).getClient(requestCaptor.capture());
         assertEquals("http://minio:9000", requestCaptor.getValue().endpointOverride());
+        assertTrue(result.contains("minio:9000"), "presigned URL must reuse the request endpointOverride");
+    }
+
+    @Test
+    @DisplayName("generateGetPresignedUrl falls back to externalPresignedEndpoint when request endpoint is absent")
+    void generateGetPresignedUrl_FallsBackToExternalEndpointWhenRequestEndpointAbsent() {
+        Map<String, String> sourceS3Properties = Map.of(
+                S3Utils.BUCKET_NAME, "test-bucket",
+                S3Utils.OBJECT_KEY, "test-key",
+                S3Utils.ACCESS_KEY, "accessKey",
+                S3Utils.SECRET_KEY, "secretKey",
+                S3Utils.REGION, "us-east-1");
+        when(s3Properties.getExternalPresignedEndpoint()).thenReturn("http://172.17.0.1:9000");
+        when(s3Client.headObject(any(HeadObjectRequest.class)))
+                .thenReturn(HeadObjectResponse.builder()
+                        .contentType("text/plain")
+                        .contentDisposition("attachment; filename=test.txt")
+                        .build());
+
+        String result = s3ClientService.generateGetPresignedUrl(sourceS3Properties, Duration.ofMinutes(5));
+
+        ArgumentCaptor<S3ClientRequest> requestCaptor = ArgumentCaptor.forClass(S3ClientRequest.class);
+        verify(s3ClientFactory).getClient(requestCaptor.capture());
+        assertNull(requestCaptor.getValue().endpointOverride());
         assertTrue(result.contains("172.17.0.1"), "presigned URL must use the external endpoint fallback");
     }
 

@@ -250,7 +250,12 @@ public class S3ClientServiceImpl implements S3ClientService {
                 .secretKey(secretKey)
                 .build();
 
-        String presignedEndpoint = resolvePresignedEndpoint(bucketName, publicPresignedEndpoint, region);
+        String presignedEndpointOverride = publicPresignedEndpoint;
+        if (presignedEndpointOverride == null || presignedEndpointOverride.isBlank()) {
+            presignedEndpointOverride = internalEndpointOverride;
+        }
+
+        String presignedEndpoint = resolvePresignedEndpoint(bucketName, presignedEndpointOverride, region);
         return generateGetPresignedUrl(bucketName, objectKey, expiration, bucketCredentials, region,
                 presignedEndpoint, internalEndpointOverride);
     }
