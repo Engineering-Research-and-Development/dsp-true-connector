@@ -27,6 +27,7 @@ import it.eng.dataplane.grpc.proto.DataChunk;
 import it.eng.dataplane.grpc.proto.DataStreamGrpc;
 import it.eng.dataplane.grpc.proto.StreamRequest;
 import it.eng.dataplane.grpc.registry.GrpcSessionRegistry;
+import it.eng.dataplane.s3.service.FiniteArtifactViewPrepareService;
 import it.eng.tools.s3.util.S3Utils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -76,6 +77,8 @@ class GrpcStreamTransferProtocolTest {
     private ControlPlaneClient controlPlaneClient;
     @Mock
     private GrpcChannelFactory channelFactory;
+    @Mock
+    private FiniteArtifactViewPrepareService finiteArtifactViewPrepareService;
 
     private ExecutorService transferExecutor;
     private GrpcStreamTransferProtocol protocol;
@@ -90,7 +93,8 @@ class GrpcStreamTransferProtocolTest {
                 sinkWriterRegistry,
                 controlPlaneClient,
                 channelFactory,
-                transferExecutor
+                transferExecutor,
+                finiteArtifactViewPrepareService
         );
     }
 
@@ -139,6 +143,63 @@ class GrpcStreamTransferProtocolTest {
         DataFlowPrepareResponse response = protocol.prepare(message);
 
         assertThat(response.getDataAddress()).containsEntry("mode", "non-finite");
+    }
+
+    @Test
+    @DisplayName("prepare() returns presigned URL for VIEW mode and skips session registration")
+    void prepare_viewMode_returnsPresignedUrlAndSkipsSessionRegistration() {
+        DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
+                .processId("tp-view-1")
+                .datasetId("ds-view-1")
+                .metadata(Map.of(
+                        DataPlaneConstants.METADATA_SECTION_SOURCE, Map.of(
+                                DataPlaneConstants.METADATA_FIELD_SOURCE_TYPE, "s3"),
+                        DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                                DataPlaneConstants.METADATA_FIELD_MODE, DataPlaneConstants.METADATA_MODE_VIEW,
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "view-bucket",
+                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "view-object"))))
+                .build();
+        DataFlowPrepareResponse expectedResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId("tp-view-1")
+                .dataAddress(Map.of(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY, "https://example/presigned"))
+                .build();
+        when(finiteArtifactViewPrepareService.isViewRequest(message)).thenReturn(true);
+        when(finiteArtifactViewPrepareService.prepareViewResponse("stream:grpc", message)).thenReturn(expectedResponse);
+
+        DataFlowPrepareResponse response = protocol.prepare(message);
+
+        assertThat(response.getDataAddress())
+                .containsEntry(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY, "https://example/presigned");
+        verify(sessionRegistry, never()).register(org.mockito.ArgumentMatchers.any());
+        verify(sourceReaderRegistry, never()).getReader(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("prepare() rethrows a clear exception for non-finite VIEW mode")
+    void prepare_viewMode_nonFinite_rethrowsClearException() {
+        DataFlowPrepareMessage message = DataFlowPrepareMessage.Builder.newInstance()
+                .processId("tp-view-nonfinite")
+                .datasetId("ds-view-nonfinite")
+                .metadata(Map.of(
+                        DataPlaneConstants.METADATA_SECTION_SOURCE, Map.of(
+                                DataPlaneConstants.METADATA_FIELD_SOURCE_TYPE, "s3",
+                                DataPlaneConstants.METADATA_FIELD_FINITE, "false"),
+                        DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                                DataPlaneConstants.METADATA_FIELD_MODE, DataPlaneConstants.METADATA_MODE_VIEW,
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "view-bucket",
+                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "view-object"))))
+                .build();
+        when(finiteArtifactViewPrepareService.isViewRequest(message)).thenReturn(true);
+        when(finiteArtifactViewPrepareService.prepareViewResponse("stream:grpc", message))
+                .thenThrow(new IllegalArgumentException("VIEW mode is supported only for finite materialized artifacts; "
+                        + "non-finite stream view is not implemented for stream:grpc"));
+
+        assertThatThrownBy(() -> protocol.prepare(message))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("VIEW mode is supported only for finite materialized artifacts; "
+                        + "non-finite stream view is not implemented for stream:grpc");
     }
 
     @Test

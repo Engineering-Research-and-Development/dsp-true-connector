@@ -173,7 +173,8 @@ class HttpPushTransferProtocolTest {
                 S3Utils.ACCESS_KEY, "bucket-access",
                 S3Utils.SECRET_KEY, "bucket-secret",
                 S3Utils.REGION, "us-east-1",
-                S3Utils.ENDPOINT_OVERRIDE, "http://172.17.0.1:9000");
+                S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000",
+                S3Utils.PUBLIC_PRESIGNED_ENDPOINT, "http://downloads.example.com");
         when(s3ClientService.generateGetPresignedUrl(expectedSinkProperties, Duration.ofDays(7L)))
                 .thenReturn("http://presigned/view");
 
@@ -189,7 +190,9 @@ class HttpPushTransferProtocolTest {
                                         DataPlaneConstants.METADATA_S3_ACCESS_KEY, "bucket-access",
                                         DataPlaneConstants.METADATA_S3_SECRET_KEY, "bucket-secret",
                                         DataPlaneConstants.METADATA_S3_REGION, "us-east-1",
-                                        DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://172.17.0.1:9000"))))
+                                        DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://minio:9000",
+                                        DataPlaneConstants.METADATA_S3_PUBLIC_PRESIGNED_ENDPOINT,
+                                                "http://downloads.example.com"))))
                 .build();
 
         DataFlowPrepareResponse response = protocol.prepare(prepareMessage);

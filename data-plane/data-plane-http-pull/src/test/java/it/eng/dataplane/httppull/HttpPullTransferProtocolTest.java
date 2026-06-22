@@ -93,7 +93,8 @@ class HttpPullTransferProtocolTest {
                 S3Utils.ACCESS_KEY, "bucket-access",
                 S3Utils.SECRET_KEY, "bucket-secret",
                 S3Utils.REGION, "us-east-1",
-                S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000");
+                S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000",
+                S3Utils.PUBLIC_PRESIGNED_ENDPOINT, "http://downloads.example.com");
         when(s3ClientService.generateGetPresignedUrl(sinkS3Props, Duration.ofDays(7L)))
                 .thenReturn("https://example.com/presigned");
 
@@ -109,7 +110,9 @@ class HttpPullTransferProtocolTest {
                                         DataPlaneConstants.METADATA_S3_ACCESS_KEY, "bucket-access",
                                         DataPlaneConstants.METADATA_S3_SECRET_KEY, "bucket-secret",
                                         DataPlaneConstants.METADATA_S3_REGION, "us-east-1",
-                                        DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://minio:9000"))))
+                                        DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://minio:9000",
+                                        DataPlaneConstants.METADATA_S3_PUBLIC_PRESIGNED_ENDPOINT,
+                                                "http://downloads.example.com"))))
                 .build();
 
         DataFlowPrepareResponse response = protocol.prepare(message);
@@ -416,7 +419,8 @@ class HttpPullTransferProtocolTest {
                 S3Utils.REGION, "us-east-1",
                 S3Utils.ACCESS_KEY, "provider-access",
                 S3Utils.SECRET_KEY, "provider-secret",
-                S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000"
+                S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000",
+                S3Utils.PUBLIC_PRESIGNED_ENDPOINT, "http://downloads.example.com"
         );
         when(s3ClientService.generateGetPresignedUrl(sourceProperties, Duration.ofDays(7L)))
                 .thenReturn("https://minio.example.com/presigned/artifact");
@@ -432,7 +436,9 @@ class HttpPullTransferProtocolTest {
                                         DataPlaneConstants.METADATA_S3_REGION, "us-east-1",
                                         DataPlaneConstants.METADATA_S3_ACCESS_KEY, "provider-access",
                                         DataPlaneConstants.METADATA_S3_SECRET_KEY, "provider-secret",
-                                        DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://minio:9000"))))
+                                        DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://minio:9000",
+                                        DataPlaneConstants.METADATA_S3_PUBLIC_PRESIGNED_ENDPOINT,
+                                                "http://downloads.example.com"))))
                 .build();
 
         DataFlowPrepareResponse response = protocol.prepare(message);
@@ -471,7 +477,8 @@ class HttpPullTransferProtocolTest {
                 S3Utils.ACCESS_KEY, "cp-access",
                 S3Utils.SECRET_KEY, "cp-secret",
                 S3Utils.REGION, "us-east-1",
-                S3Utils.ENDPOINT_OVERRIDE, "http://cp-minio:9000");
+                S3Utils.ENDPOINT_OVERRIDE, "http://cp-minio:9000",
+                S3Utils.PUBLIC_PRESIGNED_ENDPOINT, "http://downloads.example.com");
         when(s3ClientService.generateGetPresignedUrl(sinkS3Props, Duration.ofDays(7L)))
                 .thenReturn("https://example.com/cp-presigned");
 
@@ -487,7 +494,9 @@ class HttpPullTransferProtocolTest {
                                         DataPlaneConstants.METADATA_S3_ACCESS_KEY, "cp-access",
                                         DataPlaneConstants.METADATA_S3_SECRET_KEY, "cp-secret",
                                         DataPlaneConstants.METADATA_S3_REGION, "us-east-1",
-                                        DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://cp-minio:9000"))))
+                                        DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://cp-minio:9000",
+                                        DataPlaneConstants.METADATA_S3_PUBLIC_PRESIGNED_ENDPOINT,
+                                                "http://downloads.example.com"))))
                 .build();
 
         DataFlowPrepareResponse response = protocol.prepare(message);

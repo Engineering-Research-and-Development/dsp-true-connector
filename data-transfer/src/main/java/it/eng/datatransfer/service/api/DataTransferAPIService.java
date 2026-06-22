@@ -1550,6 +1550,10 @@ public class DataTransferAPIService {
         if (StringUtils.isNotBlank(s3Properties.getEndpoint())) {
             s3Metadata.put(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, s3Properties.getEndpoint());
         }
+        if (StringUtils.isNotBlank(s3Properties.getExternalPresignedEndpoint())) {
+            s3Metadata.put(DataPlaneConstants.METADATA_S3_PUBLIC_PRESIGNED_ENDPOINT,
+                    s3Properties.getExternalPresignedEndpoint());
+        }
         return Map.copyOf(s3Metadata);
     }
 

@@ -339,7 +339,37 @@ public class HttpPullTransferProtocol implements DataTransferProtocol {
                 s3Section.getString(DataPlaneConstants.METADATA_S3_SECRET_KEY));
         putIfNotBlank(sourceS3Properties, S3Utils.ENDPOINT_OVERRIDE,
                 s3Section.getString(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+        putIfNotBlank(sourceS3Properties, S3Utils.PUBLIC_PRESIGNED_ENDPOINT,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_PUBLIC_PRESIGNED_ENDPOINT));
         return sourceS3Properties;
+    }
+
+    /**
+     * Builds the VIEW presign properties from the CP-provided {@code sink.s3} metadata section.
+     *
+     * <p>The dataplane preserves both the internal {@code endpointOverride} used for S3 access
+     * and the optional {@code publicPresignedEndpoint} used for the returned URL.</p>
+     *
+     * @param s3Section the sink.s3 metadata section
+     * @return S3 properties map ready for {@link S3ClientService#generateGetPresignedUrl(Map, java.time.Duration)}
+     */
+    private Map<String, String> buildViewS3Properties(DataFlowPrepareMetadataSection s3Section) {
+        Map<String, String> viewS3Properties = new HashMap<>();
+        putIfNotBlank(viewS3Properties, S3Utils.BUCKET_NAME,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        putIfNotBlank(viewS3Properties, S3Utils.OBJECT_KEY,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_OBJECT_KEY));
+        putIfNotBlank(viewS3Properties, S3Utils.REGION,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_REGION));
+        putIfNotBlank(viewS3Properties, S3Utils.ACCESS_KEY,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        putIfNotBlank(viewS3Properties, S3Utils.SECRET_KEY,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_SECRET_KEY));
+        putIfNotBlank(viewS3Properties, S3Utils.ENDPOINT_OVERRIDE,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+        putIfNotBlank(viewS3Properties, S3Utils.PUBLIC_PRESIGNED_ENDPOINT,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_PUBLIC_PRESIGNED_ENDPOINT));
+        return viewS3Properties;
     }
 
     private void putIfNotBlank(Map<String, String> target, String key, String value) {

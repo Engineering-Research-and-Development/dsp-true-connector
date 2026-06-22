@@ -90,30 +90,39 @@ SPRING_PROFILES_ACTIVE=provider java -jar data-plane-grpc.jar
 
 ### Additional configuration for the HTTP-PUSH DP
 
-For the **current built-in TRUE Connector flow**, the CP handles the two operator-facing S3 steps
-itself:
+For the **current built-in TRUE Connector flow**, the CP initiates the two operator-facing S3
+steps:
 
 1. **Request transfer (`HttpData-PUSH`)** — the consumer CP creates the temporary IAM user directly.
-2. **`viewData` after completion** — the consumer CP generates the presigned GET URL directly.
+2. **`viewData` after completion** — the consumer CP sends a transport-neutral DPS
+   `prepare(mode=VIEW)` request to the dataplane registered for the transfer format, and that DP
+   returns the presigned GET URL.
 
 The provider-side push DP also does **not** use local S3 config to access the provider artifact.
 Instead, the CP resolves the provider's tenant bucket and per-bucket credentials and passes them
 as `source.*` properties in `DataFlowStartMessage.dataAddress`. The push DP reads the artifact
 via `S3SourceReader` with those CP-supplied credentials.
 
-The push DP's local S3 config remains relevant only for its own optional DPS `prepare()` capability
-(including `mode=VIEW`) if that DP endpoint is invoked directly. In that DP-local path, the current
-implementation prefers `s3.externalPresignedEndpoint` for returned `endpointOverride`, falling back
-to `s3.endpoint` when the external value is blank.
+
+For the built-in `viewData` path, the CP supplies the full sink S3 coordinates in the VIEW
+prepare metadata. Two endpoint values may be present:
+
+- `sink.s3.endpointOverride` — internal/container-reachable S3 endpoint used by the dataplane
+  for `HeadObject` and other server-side SDK calls
+- `sink.s3.publicPresignedEndpoint` — public-facing base URL embedded into the presigned GET URL
+  returned to the browser or API caller
+
+This allows MinIO/AWS access to remain on private service names while `viewData` returns a
+host-accessible or reverse-proxy URL.
 
 ```properties
 s3.endpoint=http://minio:9000
 s3.accessKey=minioadmin
 s3.secretKey=minioadmin
 s3.region=us-east-1
-# Relevant only for the optional consumer-side DPS prepare() path described above.
+# Used by the consumer connector when it prepares sink metadata for built-in VIEW presigning.
 s3.bucketName=my-consumer-bucket
-# For MinIO behind Docker NAT: used only in the optional direct DPS prepare(mode=VIEW) path.
+# For MinIO behind Docker NAT: the consumer connector forwards this as the VIEW presign endpoint.
 # Leave blank for AWS or when MinIO is directly accessible at s3.endpoint.
 s3.externalPresignedEndpoint=http://172.17.0.1:9000
 ```
@@ -214,8 +223,10 @@ TRUE Connector does **not** call DPS `prepare` for every transfer type:
 4. **Consumer admin** calls *Download data*.
    The consumer CP routes `POST /dataflows/start` to the consumer gRPC DP, which opens the gRPC
    stream and writes received chunks into the consumer bucket.
-5. Finite streams notify `COMPLETED` on EOF. Non-finite streams stay `STARTED` until explicitly
-   terminated; if the provider unexpectedly closes a non-finite stream, the DP reports `errored`.
+5. Finite streams notify `COMPLETED` on EOF, after which the consumer can use the shared
+   `viewData` behavior described below to obtain a fresh presigned URL for the stored artifact.
+   Non-finite streams stay `STARTED` until explicitly terminated; if the provider unexpectedly
+   closes a non-finite stream, the DP reports `errored`.
 
 The provider-side prepared session is sticky-routed to one DP instance and is cleaned up on
 rollback or termination.
@@ -252,9 +263,19 @@ After a transfer reaches `COMPLETED`, call:
 GET /api/v1/transfers/{transferProcessId}/view
 ```
 
-The CP generates a presigned S3 GET URL for the artifact **directly via its own S3 client**
-(stored under `objectKey = transferProcessId` in the consumer's bucket). The URL is valid
-for 7 days. No DP call is made.
+The CP sends a transport-neutral DPS `prepare(mode=VIEW)` request to the dataplane registered for
+that transfer format. The DP returns a presigned S3 GET URL for the artifact stored under
+`objectKey = transferProcessId` in the consumer's bucket. The URL is valid for 7 days.
+
+### Streaming `viewData` semantics
+
+For streaming transports (`stream:grpc`, `stream:kafka`), `viewData` is supported only when the
+completed transfer produced a finite, materialized consumer-side artifact (for example, one S3
+object). In that case, the dataplane `prepare(mode=VIEW)` path returns a presigned URL for the
+stored artifact.
+
+`viewData` is not a generic live-stream access mechanism. Non-finite streams are not exposed
+through presigned URLs; they require a separate consume/query/subscribe model.
 
 ---
 
@@ -470,5 +491,5 @@ See `doc/data-plane-signaling-technical.md` for the full message schemas.
 | CP rejects DP callbacks with HTTP 401 | API key mismatch | Verify `dataplane.api-key` matches the key stored in `DataPlaneRegistration` on the CP |
 | Transfer stuck in `STARTED` after push | DP completed but CP callback failed | Check DP logs; verify the CP callback URL (`dataplane.control-plane-admin-endpoint`) is reachable from the DP container |
 | `400 Cannot suspend while data transfer is in progress` | `downloadData()` was already called | Suspend is only valid before the actual data movement starts |
-| `viewData` returns a presigned URL with the wrong host | `s3.externalPresignedEndpoint` not set on the consumer CP | Set `s3.externalPresignedEndpoint` to the host-accessible MinIO address (e.g. `http://172.17.0.1:9000`) on the consumer connector; the built-in `viewData` flow is handled by the CP, not the DP |
+| `viewData` returns a presigned URL with the wrong host | `s3.externalPresignedEndpoint` not set on the consumer CP, or set to an internal-only hostname | Set `s3.externalPresignedEndpoint` to the browser-accessible or reverse-proxy URL; the CP sends it as `sink.s3.publicPresignedEndpoint` while the dataplane keeps using `sink.s3.endpointOverride` for internal S3 calls |
 | `viewData` returns 400 | Transfer not yet COMPLETED or artifact not downloaded | Ensure the transfer is COMPLETED and `isDownloaded = true` |

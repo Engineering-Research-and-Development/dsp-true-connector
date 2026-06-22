@@ -338,6 +338,7 @@ class DataTransferAPIServiceTest {
                         .build());
         lenient().when(s3Properties.getRegion()).thenReturn("us-east-1");
         lenient().when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        lenient().when(s3Properties.getExternalPresignedEndpoint()).thenReturn("http://downloads.example.com");
         lenient().when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
 
         DataFlowPrepareResponse dpResponse = DataFlowPrepareResponse.Builder.newInstance()
@@ -370,6 +371,9 @@ class DataTransferAPIServiceTest {
         Map<String, Object> s3Section = (Map<String, Object>) sourceSection.get(DataPlaneConstants.METADATA_SECTION_S3);
         assertEquals("provider-bucket", s3Section.get(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
         assertEquals(DataTransferMockObjectUtil.DATASET_ID, s3Section.get(DataPlaneConstants.METADATA_S3_OBJECT_KEY));
+        assertEquals("http://minio:9000", s3Section.get(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+        assertEquals("http://downloads.example.com",
+                s3Section.get(DataPlaneConstants.METADATA_S3_PUBLIC_PRESIGNED_ENDPOINT));
 
         // TransferStartMessage sent to peer must carry the DP-returned presigned URL
         verify(okHttpRestClient).sendRequestProtocol(
@@ -1028,6 +1032,7 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
         when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+        when(s3Properties.getExternalPresignedEndpoint()).thenReturn("http://downloads.example.com");
         DataFlowPrepareResponse viewPrepareResponse = DataFlowPrepareResponse.Builder.newInstance()
                 .processId(objectKey)
                 .dataAddress(Map.of("presignedUrl", "https://example.com/presigned-url"))
@@ -1056,6 +1061,9 @@ class DataTransferAPIServiceTest {
         Map<String, Object> s3Section = (Map<String, Object>) sinkSection.get(DataPlaneConstants.METADATA_SECTION_S3);
         assertNotNull(s3Section, "sink section must contain an s3 subsection");
         assertNotNull(s3Section.get(DataPlaneConstants.METADATA_S3_BUCKET_NAME), "sink.s3 must carry bucketName");
+        assertEquals("http://minio:9000", s3Section.get(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+        assertEquals("http://downloads.example.com",
+                s3Section.get(DataPlaneConstants.METADATA_S3_PUBLIC_PRESIGNED_ENDPOINT));
         verify(publisher).publishEvent(any(ArtifactConsumedEvent.class));
     }
 

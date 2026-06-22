@@ -23,6 +23,7 @@ import it.eng.dataplane.grpc.proto.DataChunk;
 import it.eng.dataplane.grpc.proto.DataStreamGrpc;
 import it.eng.dataplane.grpc.proto.StreamRequest;
 import it.eng.dataplane.grpc.registry.GrpcSessionRegistry;
+import it.eng.dataplane.s3.service.FiniteArtifactViewPrepareService;
 import it.eng.tools.s3.util.S3Utils;
 import io.grpc.ManagedChannel;
 import lombok.extern.slf4j.Slf4j;
@@ -74,6 +75,7 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
     private final ControlPlaneClient controlPlaneClient;
     private final GrpcChannelFactory channelFactory;
     private final Executor transferExecutor;
+    private final FiniteArtifactViewPrepareService finiteArtifactViewPrepareService;
 
     private final ConcurrentHashMap<String, ManagedChannel> activeChannels = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CompletableFuture<DataFlowResult>> activeTransfers = new ConcurrentHashMap<>();
@@ -88,6 +90,7 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
      * @param controlPlaneClient control-plane callback client
      * @param channelFactory managed-channel factory
      * @param transferExecutor async executor
+     * @param finiteArtifactViewPrepareService helper for finite VIEW prepare responses
      */
     public GrpcStreamTransferProtocol(GrpcSessionRegistry sessionRegistry,
                                       SourceReaderRegistry sourceReaderRegistry,
@@ -95,7 +98,8 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
                                       SinkWriterRegistry sinkWriterRegistry,
                                       ControlPlaneClient controlPlaneClient,
                                       GrpcChannelFactory channelFactory,
-                                      @Qualifier("transferExecutor") Executor transferExecutor) {
+                                      @Qualifier("transferExecutor") Executor transferExecutor,
+                                      FiniteArtifactViewPrepareService finiteArtifactViewPrepareService) {
         this.sessionRegistry = sessionRegistry;
         this.sourceReaderRegistry = sourceReaderRegistry;
         this.grpcProperties = grpcProperties;
@@ -103,6 +107,7 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
         this.controlPlaneClient = controlPlaneClient;
         this.channelFactory = channelFactory;
         this.transferExecutor = transferExecutor;
+        this.finiteArtifactViewPrepareService = finiteArtifactViewPrepareService;
     }
 
     /**
@@ -143,6 +148,10 @@ public class GrpcStreamTransferProtocol implements DataTransferProtocol {
      */
     @Override
     public DataFlowPrepareResponse prepare(DataFlowPrepareMessage message) {
+        if (finiteArtifactViewPrepareService.isViewRequest(message)) {
+            return finiteArtifactViewPrepareService.prepareViewResponse(PROTOCOL_ID, message);
+        }
+
         DataFlowPrepareMetadataSection sourceSection = DataFlowPrepareMetadata.from(message).getSourceSection();
         String requestedSourceType = sourceSection.getString(DataPlaneConstants.METADATA_FIELD_SOURCE_TYPE);
         String sourceType = requestedSourceType == null ? DEFAULT_SOURCE_TYPE : requestedSourceType;

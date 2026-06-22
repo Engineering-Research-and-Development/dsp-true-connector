@@ -213,8 +213,9 @@ Key points:
   The temp user grants only `s3:PutObject` on the exact `objectKey = transferProcessId`.
 - The CP embeds the internal S3 endpoint (`s3.endpoint`) as `endpointOverride` in the consumer
   dataAddress so the provider DP can reach MinIO from within the Docker network.
-  `s3.externalPresignedEndpoint` is **not** used here — it is only for presigned URLs delivered
-  to external consumers.
+  `s3.externalPresignedEndpoint` is only for the public host embedded into presigned URLs delivered
+  to external consumers. Dataplane server-side S3 access continues to use `s3.endpoint` (or the
+  CP-provided internal endpoint override in DPS metadata) and must not be switched to the public host.
 - `POST /dataflows/start` is sent to the **provider's** registered push DP only when the provider
   admin triggers the push (e.g. via `GET /api/v1/transfers/{id}/download`). It is **not** sent
   automatically on `startTransfer()`.

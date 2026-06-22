@@ -17,6 +17,7 @@ import it.eng.dataplane.api.spi.DataTransferProtocol;
 import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.dataplane.core.registry.SinkWriterRegistry;
 import it.eng.dataplane.core.registry.SourceReaderRegistry;
+import it.eng.dataplane.s3.service.FiniteArtifactViewPrepareService;
 import it.eng.tools.s3.util.S3Utils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -52,6 +53,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Iterator;
+import java.util.Objects;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -107,7 +109,19 @@ public class KafkaStreamTransferProtocol implements DataTransferProtocol {
     @Qualifier("transferExecutor")
     private Executor transferExecutor;
 
+    private final FiniteArtifactViewPrepareService finiteArtifactViewPrepareService;
+
     private final ConcurrentHashMap<String, ActiveKafkaTransfer> activeTransfers = new ConcurrentHashMap<>();
+
+    /**
+     * Creates a new Kafka stream transfer protocol.
+     *
+     * @param finiteArtifactViewPrepareService helper for finite VIEW preparation
+     */
+    public KafkaStreamTransferProtocol(FiniteArtifactViewPrepareService finiteArtifactViewPrepareService) {
+        this.finiteArtifactViewPrepareService = Objects.requireNonNull(finiteArtifactViewPrepareService,
+                "finiteArtifactViewPrepareService");
+    }
 
     /**
      * Returns the unique identifier for this transfer protocol.
@@ -127,6 +141,10 @@ public class KafkaStreamTransferProtocol implements DataTransferProtocol {
      */
     @Override
     public DataFlowPrepareResponse prepare(DataFlowPrepareMessage message) {
+        if (finiteArtifactViewPrepareService.isViewRequest(message)) {
+            return finiteArtifactViewPrepareService.prepareViewResponse(PROTOCOL_ID, message);
+        }
+
         DataFlowPrepareMetadataSection sourceSection = DataFlowPrepareMetadata.from(message).getSourceSection();
         boolean finite = !"false".equalsIgnoreCase(sourceSection.getString(DataPlaneConstants.METADATA_FIELD_FINITE));
         String topic = topicPrefix + toKafkaTopicSegment(message.getProcessId());

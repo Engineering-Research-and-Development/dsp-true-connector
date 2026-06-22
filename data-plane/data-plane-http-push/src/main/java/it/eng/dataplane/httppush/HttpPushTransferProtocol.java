@@ -373,6 +373,28 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
         return props;
     }
 
+    /**
+     * Builds the VIEW presign properties from the CP-provided {@code sink.s3} metadata section.
+     *
+     * <p>The dataplane preserves both the internal {@code endpointOverride} used for S3 access
+     * and the optional {@code publicPresignedEndpoint} used for the returned URL.</p>
+     *
+     * @param s3Section the sink.s3 metadata section
+     * @return S3 properties for shared presigned URL generation
+     */
+    private Map<String, String> buildViewS3Properties(DataFlowPrepareMetadataSection s3Section) {
+        Map<String, String> props = new HashMap<>();
+        putIfNotBlank(props, S3Utils.BUCKET_NAME, s3Section.getString(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        putIfNotBlank(props, S3Utils.OBJECT_KEY, s3Section.getString(DataPlaneConstants.METADATA_S3_OBJECT_KEY));
+        putIfNotBlank(props, S3Utils.ACCESS_KEY, s3Section.getString(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        putIfNotBlank(props, S3Utils.SECRET_KEY, s3Section.getString(DataPlaneConstants.METADATA_S3_SECRET_KEY));
+        putIfNotBlank(props, S3Utils.ENDPOINT_OVERRIDE, s3Section.getString(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+        putIfNotBlank(props, S3Utils.PUBLIC_PRESIGNED_ENDPOINT,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_PUBLIC_PRESIGNED_ENDPOINT));
+        putIfNotBlank(props, S3Utils.REGION, s3Section.getString(DataPlaneConstants.METADATA_S3_REGION));
+        return props;
+    }
+
     private void putIfNotBlank(Map<String, String> target, String key, String value) {
         if (StringUtils.isNotBlank(value)) {
             target.put(key, value);

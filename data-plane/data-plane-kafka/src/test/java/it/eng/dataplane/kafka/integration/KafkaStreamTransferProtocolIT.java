@@ -15,6 +15,7 @@ import it.eng.dataplane.core.client.ControlPlaneClient;
 import it.eng.dataplane.core.registry.SinkWriterRegistry;
 import it.eng.dataplane.core.registry.SourceReaderRegistry;
 import it.eng.dataplane.kafka.KafkaStreamTransferProtocol;
+import it.eng.dataplane.s3.service.FiniteArtifactViewPrepareService;
 import it.eng.tools.s3.util.S3Utils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.DisplayName;
@@ -37,6 +38,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Integration tests for {@link KafkaStreamTransferProtocol}.
@@ -58,7 +60,7 @@ class KafkaStreamTransferProtocolIT {
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     @DisplayName("finite Kafka flow streams source bytes into the sink and completes")
     void finiteKafkaFlowStreamsIntoSink() throws Exception {
-        KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
+        KafkaStreamTransferProtocol protocol = createNonViewProtocol();
         IntegrationRecordingSinkWriter sinkWriter = new IntegrationRecordingSinkWriter();
         ControlPlaneClient controlPlaneClient = Mockito.mock(ControlPlaneClient.class);
 
@@ -100,7 +102,7 @@ class KafkaStreamTransferProtocolIT {
     @Test
     @DisplayName("prepare returns Kafka endpoint metadata for a finite session")
     void prepareFiniteSessionReturnsKafkaMetadata() {
-        KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
+        KafkaStreamTransferProtocol protocol = createNonViewProtocol();
         ReflectionTestUtils.setField(protocol, "bootstrapServers", "kafka:9092");
         ReflectionTestUtils.setField(protocol, "topicPrefix", "stream-topic-");
         ReflectionTestUtils.setField(protocol, "groupIdPrefix", "stream-group-");
@@ -126,7 +128,7 @@ class KafkaStreamTransferProtocolIT {
     @Test
     @DisplayName("prepare returns non-finite mode when finite hint is false")
     void prepareNonFiniteSessionReturnsNonFiniteMode() {
-        KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
+        KafkaStreamTransferProtocol protocol = createNonViewProtocol();
         ReflectionTestUtils.setField(protocol, "bootstrapServers", "kafka:9092");
         ReflectionTestUtils.setField(protocol, "topicPrefix", "stream-topic-");
         ReflectionTestUtils.setField(protocol, "groupIdPrefix", "stream-group-");
@@ -145,7 +147,7 @@ class KafkaStreamTransferProtocolIT {
     @Test
     @DisplayName("prepare normalizes Kafka topic names derived from URN process IDs")
     void prepareNormalizesKafkaTopicNameFromUrnProcessId() {
-        KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
+        KafkaStreamTransferProtocol protocol = createNonViewProtocol();
         ReflectionTestUtils.setField(protocol, "bootstrapServers", "kafka:9092");
         ReflectionTestUtils.setField(protocol, "topicPrefix", "stream-topic-");
         ReflectionTestUtils.setField(protocol, "groupIdPrefix", "stream-group-");
@@ -166,7 +168,7 @@ class KafkaStreamTransferProtocolIT {
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     @DisplayName("prepare and initiateTransfer stream a finite payload through Kafka into the sink")
     void prepareAndInitiateTransferFinitePayloadWritesToSink() throws Exception {
-        KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
+        KafkaStreamTransferProtocol protocol = createNonViewProtocol();
         RecordingSinkWriter sinkWriter = new RecordingSinkWriter();
         ControlPlaneClient controlPlaneClient = Mockito.mock(ControlPlaneClient.class);
         Executor transferExecutor = Runnable::run;
@@ -209,7 +211,7 @@ class KafkaStreamTransferProtocolIT {
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     @DisplayName("initiateTransfer keeps non-finite streams open and does not send completed")
     void initiateTransferNonFiniteStreamDoesNotAutoComplete() throws Exception {
-        KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
+        KafkaStreamTransferProtocol protocol = createNonViewProtocol();
         BlockingSinkWriter sinkWriter = new BlockingSinkWriter();
         ControlPlaneClient controlPlaneClient = Mockito.mock(ControlPlaneClient.class);
         ExecutorService executorService = Executors.newCachedThreadPool();
@@ -258,7 +260,7 @@ class KafkaStreamTransferProtocolIT {
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     @DisplayName("interrupted non-finite publisher shutdown does not escape as uncaught async failure")
     void interruptedNonFinitePublisherShutdownDoesNotEscapeAsUncaughtAsyncFailure() throws Exception {
-        KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
+        KafkaStreamTransferProtocol protocol = createNonViewProtocol();
         BlockingSinkWriter sinkWriter = new BlockingSinkWriter();
         ControlPlaneClient controlPlaneClient = Mockito.mock(ControlPlaneClient.class);
         BlockingQueue<Throwable> uncaughtFailures = new LinkedBlockingQueue<>();
@@ -314,7 +316,7 @@ class KafkaStreamTransferProtocolIT {
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     @DisplayName("terminateTransfer stops a non-finite Kafka stream and resolves the running future")
     void terminateTransferStopsNonFiniteStream() throws Exception {
-        KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
+        KafkaStreamTransferProtocol protocol = createNonViewProtocol();
         TerminableSinkWriter sinkWriter = new TerminableSinkWriter();
         ControlPlaneClient controlPlaneClient = Mockito.mock(ControlPlaneClient.class);
         ExecutorService executorService = Executors.newCachedThreadPool();
@@ -368,7 +370,7 @@ class KafkaStreamTransferProtocolIT {
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     @DisplayName("prepare uses CP-provided source bucket from metadata when publishing to Kafka")
     void prepare_usesSourceBucketFromPrepareMetadata() throws Exception {
-        KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
+        KafkaStreamTransferProtocol protocol = createNonViewProtocol();
         ContextCapturingSinkWriter sinkWriter = new ContextCapturingSinkWriter();
         ContextCapturingSourceReader sourceReader = new ContextCapturingSourceReader("payload");
         ControlPlaneClient controlPlaneClient = Mockito.mock(ControlPlaneClient.class);
@@ -422,7 +424,7 @@ class KafkaStreamTransferProtocolIT {
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     @DisplayName("initiateTransfer uses CP-provided metadata.sink.s3 properties for sink context")
     void initiateTransfer_usesCpProvidedSinkPropertiesFromDataAddress() throws Exception {
-        KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
+        KafkaStreamTransferProtocol protocol = createNonViewProtocol();
         ContextCapturingSinkWriter sinkWriter = new ContextCapturingSinkWriter();
         ControlPlaneClient controlPlaneClient = Mockito.mock(ControlPlaneClient.class);
         Executor transferExecutor = Runnable::run;
@@ -479,7 +481,7 @@ class KafkaStreamTransferProtocolIT {
     @Timeout(value = 30, unit = TimeUnit.SECONDS)
     @DisplayName("thrown sendCompleted callback exception does not fail a successful transfer")
     void sendCompletedCallbackExceptionDoesNotFailTransfer() throws Exception {
-        KafkaStreamTransferProtocol protocol = new KafkaStreamTransferProtocol();
+        KafkaStreamTransferProtocol protocol = createNonViewProtocol();
         RecordingSinkWriter sinkWriter = new RecordingSinkWriter();
         ControlPlaneClient controlPlaneClient = Mockito.mock(ControlPlaneClient.class);
         Executor transferExecutor = Runnable::run;
@@ -521,6 +523,16 @@ class KafkaStreamTransferProtocolIT {
         // Transfer should succeed even though sendCompleted threw an exception
         assertTrue(result.isSuccess(), "Transfer should succeed despite sendCompleted callback failure");
         assertEquals("payload from callback test", sinkWriter.getContent());
+    }
+
+    private static KafkaStreamTransferProtocol createNonViewProtocol() {
+        return new KafkaStreamTransferProtocol(nonViewFiniteArtifactViewPrepareService());
+    }
+
+    private static FiniteArtifactViewPrepareService nonViewFiniteArtifactViewPrepareService() {
+        FiniteArtifactViewPrepareService helper = Mockito.mock(FiniteArtifactViewPrepareService.class);
+        when(helper.isViewRequest(any(DataFlowPrepareMessage.class))).thenReturn(false);
+        return helper;
     }
 
     /**
