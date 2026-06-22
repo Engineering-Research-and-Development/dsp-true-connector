@@ -56,6 +56,9 @@ public final class DataPlaneConstants {
     /** S3 metadata key for the endpoint override. */
     public static final String METADATA_S3_ENDPOINT_OVERRIDE = "endpointOverride";
 
+    /** S3 metadata key for the public presigned endpoint. */
+    public static final String METADATA_S3_PUBLIC_PRESIGNED_ENDPOINT = "publicPresignedEndpoint";
+
     /** Data address field for the transfer endpoint. */
     public static final String DATA_ADDRESS_FIELD_ENDPOINT = "endpoint";
 

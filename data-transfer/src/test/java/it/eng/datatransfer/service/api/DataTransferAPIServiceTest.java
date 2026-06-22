@@ -1072,7 +1072,7 @@ class DataTransferAPIServiceTest {
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
         when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
         doThrow(new RuntimeException("DP unreachable"))
-                .when(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull());
+                .when(dataPlaneClient).prepare(any(DataFlowPrepareMessage.class), isNull(), isNull());
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.viewData(objectKey));
@@ -1094,7 +1094,7 @@ class DataTransferAPIServiceTest {
                 .processId(objectKey)
                 .dataAddress(Map.of())
                 .build();
-        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), eq("HttpData-PULL"), isNull()))
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class), isNull(), isNull()))
                 .thenReturn(emptyResponse);
 
         assertThrows(DataTransferAPIException.class,
@@ -1205,6 +1205,83 @@ class DataTransferAPIServiceTest {
                 "VIEW metadata must carry bucket name so DP can route to correct tenant bucket");
         assertNotNull(s3Section.get(DataPlaneConstants.METADATA_S3_OBJECT_KEY),
                 "VIEW metadata must carry object key so DP knows which artifact to presign");
+    }
+
+    @Test
+    @DisplayName("viewData - prepare metadata contains internal and public endpoints for VIEW presigning")
+    public void viewData_success_metadataContainsInternalAndPublicEndpoints() {
+        String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
+
+        when(transferProcessRepository.findById(objectKey))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED));
+        when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+        when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+                .thenReturn(TransferSerializer.serializePlain(GenericApiResponse.success(null, "successful response")));
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+        when(s3Properties.getEndpoint()).thenReturn("http://minio:9000");
+        when(s3Properties.getExternalPresignedEndpoint()).thenReturn("http://downloads.example.com");
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class),
+                eq(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getFormat()),
+                isNull()))
+                .thenReturn(DataFlowPrepareResponse.Builder.newInstance()
+                        .processId(objectKey)
+                        .dataAddress(Map.of(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY,
+                                "https://downloads.example.com/object"))
+                        .build());
+
+        apiService.viewData(objectKey);
+
+        ArgumentCaptor<DataFlowPrepareMessage> prepareCaptor = ArgumentCaptor.forClass(DataFlowPrepareMessage.class);
+        verify(dataPlaneClient).prepare(prepareCaptor.capture(),
+                eq(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getFormat()),
+                isNull());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sinkSection = (Map<String, Object>) prepareCaptor.getValue().getMetadata()
+                .get(DataPlaneConstants.METADATA_SECTION_SINK);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> s3Section = (Map<String, Object>) sinkSection.get(DataPlaneConstants.METADATA_SECTION_S3);
+
+        assertEquals("http://minio:9000", s3Section.get(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+        assertEquals("http://downloads.example.com",
+                s3Section.get(DataPlaneConstants.METADATA_S3_PUBLIC_PRESIGNED_ENDPOINT));
+    }
+
+    @Test
+    @DisplayName("viewData - prepare metadata omits endpoint keys when no overrides are configured")
+    public void viewData_success_metadataOmitsEndpointKeysWhenNoOverridesAreConfigured() {
+        String objectKey = DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId();
+
+        when(transferProcessRepository.findById(objectKey))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED));
+        when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+        when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+                .thenReturn(TransferSerializer.serializePlain(GenericApiResponse.success(null, "successful response")));
+        when(properties.dataPlaneFeedbackAddress()).thenReturn("http://connector:8080");
+        when(s3Properties.getEndpoint()).thenReturn("");
+        when(s3Properties.getExternalPresignedEndpoint()).thenReturn(null);
+        when(dataPlaneClient.prepare(any(DataFlowPrepareMessage.class),
+                eq(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getFormat()),
+                isNull()))
+                .thenReturn(DataFlowPrepareResponse.Builder.newInstance()
+                        .processId(objectKey)
+                        .dataAddress(Map.of(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY,
+                                "https://downloads.example.com/object"))
+                        .build());
+
+        apiService.viewData(objectKey);
+
+        ArgumentCaptor<DataFlowPrepareMessage> prepareCaptor = ArgumentCaptor.forClass(DataFlowPrepareMessage.class);
+        verify(dataPlaneClient).prepare(prepareCaptor.capture(),
+                eq(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getFormat()),
+                isNull());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> sinkSection = (Map<String, Object>) prepareCaptor.getValue().getMetadata()
+                .get(DataPlaneConstants.METADATA_SECTION_SINK);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> s3Section = (Map<String, Object>) sinkSection.get(DataPlaneConstants.METADATA_SECTION_S3);
+
+        assertFalse(s3Section.containsKey(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+        assertFalse(s3Section.containsKey(DataPlaneConstants.METADATA_S3_PUBLIC_PRESIGNED_ENDPOINT));
     }
 
     @Test

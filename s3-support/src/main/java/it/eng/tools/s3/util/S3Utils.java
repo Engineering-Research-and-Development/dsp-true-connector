@@ -7,4 +7,5 @@ public interface S3Utils {
     String ACCESS_KEY = "accessKey";
     String SECRET_KEY = "secretKey";
     String ENDPOINT_OVERRIDE = "endpointOverride";
+    String PUBLIC_PRESIGNED_ENDPOINT = "publicPresignedEndpoint";
 }

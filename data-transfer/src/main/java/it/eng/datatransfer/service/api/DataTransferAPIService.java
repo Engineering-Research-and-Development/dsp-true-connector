@@ -1483,11 +1483,13 @@ public class DataTransferAPIService {
         s3Section.put(DataPlaneConstants.METADATA_S3_OBJECT_KEY, objectKey);
         s3Section.put(DataPlaneConstants.METADATA_S3_ACCESS_KEY, accessKey);
         s3Section.put(DataPlaneConstants.METADATA_S3_SECRET_KEY, secretKey);
-        if (StringUtils.isNotBlank(region)) {
-            s3Section.put(DataPlaneConstants.METADATA_S3_REGION, region);
+        s3Section.put(DataPlaneConstants.METADATA_S3_REGION, region);
+        if (StringUtils.isNotBlank(s3Properties.getEndpoint())) {
+            s3Section.put(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, s3Properties.getEndpoint());
         }
         if (StringUtils.isNotBlank(s3Properties.getExternalPresignedEndpoint())) {
-            s3Section.put(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, s3Properties.getExternalPresignedEndpoint());
+            s3Section.put(DataPlaneConstants.METADATA_S3_PUBLIC_PRESIGNED_ENDPOINT,
+                    s3Properties.getExternalPresignedEndpoint());
         }
         return Map.copyOf(s3Section);
     }
