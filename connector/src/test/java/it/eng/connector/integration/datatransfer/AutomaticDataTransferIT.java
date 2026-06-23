@@ -16,6 +16,8 @@ import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
+import it.eng.negotiation.model.PolicyEnforcement;
+import it.eng.negotiation.repository.PolicyEnforcementRepository;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.repository.ArtifactRepository;
@@ -377,6 +379,13 @@ public class AutomaticDataTransferIT {
                 .build();
         providerRepository.save(providerTp);
         log.info("Provider TP created — id='{}', agreementId='{}'", providerTp.getId(), agreementId);
+
+        // Negotiation would have created this record; we pre-create it here since the test
+        // bypasses the negotiation flow but ArtifactTransferredEvent still fires on the provider.
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement();
+        policyEnforcement.setAgreementId(agreementId);
+        policyEnforcement.setCount(0);
+        providerCtx.getBean(PolicyEnforcementRepository.class).save(policyEnforcement);
 
         // Consumer side — callbackAddress is the provider's base URL where the consumer
         // sends TransferRequestMessage (via DataTransferCallback.getConsumerDataTransferRequest).
