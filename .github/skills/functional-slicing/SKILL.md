@@ -5,8 +5,6 @@ description: Use when the user asks to split a requirement, backlog source, GitH
 
 # DSP TRUE Connector functional slicing workflow
 
-The Copilot-native canonical version of this workflow lives at `.github/skills/functional-slicing/SKILL.md`. Keep this Claude-side file aligned as a compatibility mirror rather than a separate source of truth.
-
 This is the **canonical Stage 1 workflow** for turning requirement sources into functional-slice GitHub issues. Keep the detailed slicing logic here. Other repo docs should only point to this file instead of restating the full flow.
 
 ## Outcome
@@ -52,11 +50,18 @@ Use this workflow when the user says things like:
 
 - **brainstorming** (`.agents/skills/brainstorming/`) — use before slicing when the source is ambiguous, mixes multiple initiatives, or needs sharper capability boundaries before issues are created.
 
+### Supporting repository skills
+
+- **dsp-foundations** — use as the default DSP reference when the source touches DSP 2025-1 behavior generally or spans multiple DSP areas.
+- **dsp-catalog** / **dsp-contract-negotiation** / **dsp-transfer-process** — use the protocol-specific skill when the requirement source is clearly scoped to one protocol area.
+- **dsp-compliance-review** — use when the slicing boundary is driven by conformance, TCK expectations, or protocol-state validation concerns.
+- **github-actions-ci-cd-best-practices** — use when the source requirement is primarily about GitHub Actions, automation, or deployment workflow behavior.
+
 ### Follow-on workflow
 
 - **task-decomposition** — use later, in a separate session, to turn one functional-slice backlog issue into implementation-ready GitHub tasks in **To Do**.
 
-### Built-in Claude workers
+### Built-in agent workers
 
 - **Plan** — use for source analysis, slice framing, and the coverage matrix before issue creation.
 - **Explore** — use for issue/doc tracing without flooding the main context.
@@ -129,7 +134,7 @@ Presentation rules:
 6. **Use dependencies sparingly.** Only add `Depends on` or `Blocked by` when a slice truly cannot be decomposed or delivered independently.
 7. **Avoid overlap unless it is intentional and named.** If two slices touch the same requirement area, explain the boundary in both issues.
 8. **Require a coverage audit before finishing.** Do not stop once issues exist; verify that every source requirement item is mapped to at least one created slice.
-9. **Seed downstream QA and documentation expectations.** Every slice, when decomposed, will always produce exactly one slice-level QA task (`.github/ISSUE_TEMPLATE/qa-task.yml`) and exactly one slice-level documentation task (`.github/ISSUE_TEMPLATE/docs-task.yml`) alongside its implementation tasks. The slice issue's **Later task-decomposition guidance** section must seed this by naming the expected end-to-end flows for QA (including whether a TCK compliance run is required for protocol-facing slices) and the authoritative docs the documentation task will touch (candidates: `doc/architecture.md`, module docs, `doc/README.md`, `CHANGELOG.md`). See `.claude/skills/task-decomposition/SKILL.md` for the full dependency shape.
+9. **Seed downstream QA and documentation expectations.** Every slice, when decomposed, will always produce exactly one slice-level QA task (`.github/ISSUE_TEMPLATE/qa-task.yml`) and exactly one slice-level documentation task (`.github/ISSUE_TEMPLATE/docs-task.yml`) alongside its implementation tasks. The slice issue's **Later task-decomposition guidance** section must seed this by naming the expected end-to-end flows for QA (including whether a TCK compliance run is required for protocol-facing slices) and the authoritative docs the documentation task will touch (candidates: `doc/architecture.md`, module docs, `doc/README.md`, `CHANGELOG.md`). See `.github/skills/task-decomposition/SKILL.md` for the full dependency shape.
 10. **Carry the slice tag everywhere.** Every created slice must include the same chosen slice tag in its title, Source & Parent Traceability section, and GitHub label/tag.
 
 ## Required issue content

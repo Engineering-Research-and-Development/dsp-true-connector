@@ -5,8 +5,6 @@ description: Use when the user asks to break up, break down, split, define, sepa
 
 # DSP TRUE Connector task decomposition workflow
 
-The Copilot-native canonical version of this workflow lives at `.github/skills/task-decomposition/SKILL.md`. Keep this Claude-side file aligned as a compatibility mirror rather than a separate source of truth.
-
 This is the **canonical Stage 2 workflow** for turning functional-slice backlog items into implementation-ready GitHub issues. Keep the detailed decomposition logic here. Other repo docs should only point to this file instead of restating the full flow.
 
 ## Outcome
@@ -53,7 +51,15 @@ Use this workflow when the user says things like:
 - **brainstorming** (`.agents/skills/brainstorming/`) — use before decomposition when the source is ambiguous, combines multiple initiatives, or needs clarification before tasks are created.
 - **functional-slicing** — prefer this upstream workflow when the starting point is a broad requirement source that has not yet been split into backlog functional slices.
 
-### Built-in Claude workers
+### Supporting repository skills
+
+- **dsp-foundations** — use before decomposing DSP-sensitive work that spans multiple protocol areas or common protocol rules.
+- **dsp-catalog** / **dsp-contract-negotiation** / **dsp-transfer-process** — use the protocol-specific skill to keep task boundaries aligned with the affected DSP area.
+- **dsp-compliance-review** — use when decomposition must reflect TCK, state-transition, or conformance verification concerns.
+- **model-class-guidelines** — use when decomposition includes protocol message model changes that should preserve the builder/validation pattern.
+- **github-actions-ci-cd-best-practices** — use when decomposition includes workflow automation or CI/CD workstreams.
+
+### Built-in agent workers
 
 - **Plan** — use for source analysis and decomposition prep
 - **Explore** — use for issue/doc tracing without flooding the main context

@@ -50,7 +50,6 @@ CLAUDE.md                         Pointer to this file for Claude Code
 README.md                         Project overview
 CONTRIBUTING.md                   Contributor entry point
 CHANGELOG.md                      Version history (DoD requires updating it)
-skills-lock.json                  Vendored-skill provenance
 
 .github/skills/                   Copilot-native repository skills (workflow + topic guidance)
 .claude/skills/                   Imported Claude workflow mirrors / compatibility files

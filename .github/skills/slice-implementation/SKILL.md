@@ -5,11 +5,9 @@ description: Use when the user asks to execute a fully decomposed functional sli
 
 # DSP TRUE Connector slice implementation workflow
 
-The Copilot-native canonical version of this workflow lives at `.github/skills/slice-implementation/SKILL.md`. Keep this Claude-side file aligned as a compatibility mirror rather than a separate source of truth.
-
 This is the **canonical slice-level implementation workflow** for delivering one fully decomposed functional slice through **one coordinated slice branch and one PR**. Keep the slice-intake, dependency scheduling, batch execution, and slice-PR handoff logic here. Other repo docs should point to this file instead of restating the full flow.
 
-This workflow is **additive**. The existing `.claude/skills/task-implementation/SKILL.md` remains the canonical **one selected issue -> one branch -> one PR** path. Use this skill only when the delivery unit is the **entire remaining slice**, not one child task.
+This workflow is **additive**. The existing `.github/skills/task-implementation/SKILL.md` remains the canonical **one selected issue -> one branch -> one PR** path. Use this skill only when the delivery unit is the **entire remaining slice**, not one child task.
 
 ## Outcome
 
@@ -34,7 +32,7 @@ Use this workflow when the user says things like:
 1. `AGENTS.md`
 2. `doc/architecture.md`
 3. `doc/development_procedure.md`
-4. `.claude/skills/task-implementation/SKILL.md`
+4. `.github/skills/task-implementation/SKILL.md`
 5. `.github/ISSUE_TEMPLATE/functional-slice.yml`
 6. `.github/ISSUE_TEMPLATE/task.yml`
 7. `.github/ISSUE_TEMPLATE/qa-task.yml`
@@ -69,7 +67,17 @@ This skill defines its own intake, claim, scheduling, branch, and PR mechanics. 
 - **playwright-cli** — use only for browser-verifiable checks when applicable
 - built-in `/code-review` — use after the slice PR is open
 
-### Built-in Claude workers
+### Supporting repository skills
+
+- **java-development** — use when child implementation tasks touch Java source or Checkstyle-sensitive code.
+- **junit-5-tests** — use for child tasks that add or update unit/integration-oriented test coverage.
+- **model-class-guidelines** — use when the slice includes protocol model or builder/validation changes.
+- **dsp-foundations** — use as the shared DSP baseline for protocol-facing slices.
+- **dsp-catalog** / **dsp-contract-negotiation** / **dsp-transfer-process** — use the protocol-specific skill for the affected slice area.
+- **dsp-compliance-review** — use for slice-level protocol/TCK verification planning and review.
+- **github-actions-ci-cd-best-practices** — use when the slice includes CI/CD or workflow automation tasks.
+
+### Built-in agent workers
 
 - **Plan** — use for slice digestion, scheduling, and orchestration framing
 - **Explore** — use for cross-file tracing or GitHub issue tracing
@@ -90,7 +98,7 @@ Use this workflow only when all of these are true:
 4. there is exactly one slice-level QA issue and exactly one slice-level docs issue for the slice
 5. no open child issue for that slice remains in **Backlog** or **To Do**
 
-If the user wants to ship only a subset of child tasks, use `.claude/skills/task-implementation/SKILL.md` instead.
+If the user wants to ship only a subset of child tasks, use `.github/skills/task-implementation/SKILL.md` instead.
 
 ## Slice intake and membership resolution
 
@@ -213,7 +221,7 @@ Rules:
 For each runnable implementation batch:
 
 1. create one temporary worktree/branch per child issue in the batch
-2. execute that child issue using the canonical rules from `.claude/skills/task-implementation/SKILL.md`:
+2. execute that child issue using the canonical rules from `.github/skills/task-implementation/SKILL.md`:
    - read the child issue and relevant context
    - resolve ambiguity before editing
    - implement only the child issue scope
@@ -232,7 +240,7 @@ Run these sequentially on the final slice branch after implementation batches ar
 
 ### Slice-level QA
 
-Execute the QA child issue using the canonical QA rules from `.claude/skills/task-implementation/SKILL.md`:
+Execute the QA child issue using the canonical QA rules from `.github/skills/task-implementation/SKILL.md`:
 
 - the Verification Checklist is the work
 - prefer existing repo commands: `mvn clean verify`, targeted integration tests, SpotBugs scan, and the TCK compliance run for protocol-facing slices
@@ -242,7 +250,7 @@ On pass, keep the QA issue in **In Progress** until the slice PR opens.
 
 ### Slice-level docs
 
-Execute the docs child issue using the canonical docs rules from `.claude/skills/task-implementation/SKILL.md`:
+Execute the docs child issue using the canonical docs rules from `.github/skills/task-implementation/SKILL.md`:
 
 - update only the named authoritative docs (`doc/architecture.md`, module docs, `doc/README.md`, `CHANGELOG.md`)
 - register every API changes register row in its authoritative doc, with Postman collection updates where required
@@ -293,7 +301,7 @@ The PR body is the authoritative closure list. Do not rely on commit messages or
 
 ## PR self-review policy
 
-After the slice PR is open, run the Claude Code built-in `/code-review` skill at **high** effort against the full slice branch diff using the same self-review policy documented in `.claude/skills/task-implementation/SKILL.md`.
+After the slice PR is open, run the built-in `/code-review` skill at **high** effort against the full slice branch diff using the same self-review policy documented in `.github/skills/task-implementation/SKILL.md`.
 
 Apply fixes on the final slice branch, re-run the relevant checks, and keep the batch of referenced issues in **In Review** unless a blocking issue requires a `needs-human` handoff.
 
@@ -322,4 +330,4 @@ If the workflow fails or is unavailable, use this fallback after merge:
 - do not open child PRs from temporary implementation branches
 - do not treat `Relates to:` as a hard dependency
 - do not infer child membership from branch names alone
-- do not skip the per-child verification rules inherited from `.claude/skills/task-implementation/SKILL.md`
+- do not skip the per-child verification rules inherited from `.github/skills/task-implementation/SKILL.md`
