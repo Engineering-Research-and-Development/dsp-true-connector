@@ -1,0 +1,272 @@
+name: "Documentation Task (slice-level)"
+description: "Slice-level documentation task produced by task decomposition"
+title: "[DOCS] "
+labels: []
+body:
+
+  - type: markdown
+    attributes:
+      value: |
+        This template is for **slice-level documentation tasks** produced by task decomposition.
+
+        - Use `.github/ISSUE_TEMPLATE/task.yml` for implementation tasks.
+        - Use `.github/ISSUE_TEMPLATE/qa-task.yml` for slice-level QA.
+
+        After issue creation, update the title to include the shared slice tag and the issue-derived alias, for example `[DOCS][X1][T107] ...`. If this issue's **Type** is `bug`, use `B107` instead of `T107`. Apply the matching GitHub label/tag `slice:X1` and record both values in **Source & Parent Traceability**. The slice tag can be `C1`, `B1`, `X1`, or another short moderator/tag chosen for the slice set.
+
+        Task-local documentation (Javadoc on new public/protected methods, module doc notes scoped to a single task) stays inside the implementation task itself. This issue is the **additional, slice-wide** documentation: architecture updates, API/protocol-message records, CHANGELOG entries, and reusable learnings.
+
+        Detailed workflows:
+        - `.github/skills/task-decomposition/SKILL.md`
+        - `.github/skills/task-implementation/SKILL.md`
+
+  # ── Context ──────────────────────────────────────────────────────────
+
+  - type: textarea
+    id: context
+    attributes:
+      label: "Context"
+      description: >
+        What slice this documentation task records, why it matters for future
+        work, and which authoritative doc surfaces it will touch.
+      placeholder: |
+        **Slice**: #... (the parent functional-slice issue)
+        **What was implemented**: ...
+        **Why this doc work matters**: ...
+        **Primary doc surfaces**: `doc/architecture.md`, `negotiation/doc/...`, `CHANGELOG.md`
+    validations:
+      required: true
+
+  # ── Source Traceability ──────────────────────────────────────────────
+
+  - type: textarea
+    id: source-traceability
+    attributes:
+      label: "Source & Parent Traceability"
+      description: >
+        Record the parent slice, the sibling implementation tasks that shipped,
+        the QA task this docs task is gated on, plus the shared slice tag and issue alias.
+      placeholder: |
+        **Slice tag**: `X1`
+        **Issue alias**: `T107` / `B107` (derived from this issue number after creation)
+        **Source type**: slice decomposition
+        **Parent slice**: #...
+        **Sibling implementation tasks shipped**: #..., #..., #...
+        **Gating QA task**: #...
+        **Decomposition batch**: issue links created together in this split
+    validations:
+      required: true
+
+  # ── Documentation Scope ──────────────────────────────────────────────
+
+  - type: textarea
+    id: documentation-scope
+    attributes:
+      label: "Documentation scope"
+      description: >
+        Describe what was implemented across the slice and list exactly which
+        authoritative document sections must be updated. Reference the real
+        files — `doc/architecture.md`, the module docs, the `doc/README.md`
+        index, `CHANGELOG.md` — not generic "update the docs".
+      placeholder: |
+        **What was implemented across the slice**:
+        - ...
+        - ...
+
+        **Authoritative documents to update**:
+        - `doc/architecture.md` — section ...
+        - `negotiation/doc/...` / `data-transfer/doc/...` / `catalog/doc/...` / `connector/documentation/...` — section ...
+        - `doc/README.md` — index entry for any new doc
+        - `CHANGELOG.md` — entry under the upcoming version (DoD requirement)
+
+        **Out of scope here** (covered inside the implementation task):
+        - Javadoc on new public/protected methods
+        - module doc notes already landed with a single impl task
+    validations:
+      required: true
+
+  # ── API Changes Register ─────────────────────────────────────────────
+
+  - type: textarea
+    id: api-changes
+    attributes:
+      label: "API changes register"
+      description: >
+        One row per protocol endpoint, protocol message type, or management API
+        that was added or changed during this slice. Every row must name the
+        authoritative document and section that will receive it, and whether the
+        Postman collection (True_connector_DSP.postman_collection.json) needs
+        updating. Use `None` only if no API or protocol-message changes happened
+        in this slice.
+      placeholder: |
+        | Endpoint / message | Change | Authoritative doc & section | Postman collection update |
+        |---|---|---|---|
+        | `POST /transfers/request` | new optional field ... | `data-transfer/doc/data-transfer.md` → ... | yes |
+        | `TransferRequestMessage` | validation rule added | `negotiation/doc/model.md` → ... | no |
+    validations:
+      required: true
+
+  # ── What was Learned ─────────────────────────────────────────────────
+
+  - type: textarea
+    id: learnings
+    attributes:
+      label: "What was learned"
+      description: >
+        Reusable knowledge to capture from this slice. Candidates for new
+        `doc/` guides or ADRs under `doc/decisions/`. Use `None` only if no
+        durable learning emerged.
+      placeholder: |
+        - ... (reusable pattern worth a new `doc/` guide)
+        - ... (architectural decision worth an ADR under `doc/decisions/`)
+        - ... (gotcha future agents should know about)
+    validations:
+      required: true
+
+  # ── Dependencies ─────────────────────────────────────────────────────
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: "Dependencies"
+      description: >
+        This docs task must list `Depends on: #` for every sibling implementation
+        task AND the QA task of the parent slice. One relationship per line.
+      placeholder: |
+        Relates to: #... (parent slice)
+        Depends on: #... (impl task A)
+        Depends on: #... (impl task B)
+        Depends on: #... (impl task C)
+        Depends on: #... (QA task)
+    validations:
+      required: true
+
+  # ── Delivery Stream ──────────────────────────────────────────────────
+
+  - type: textarea
+    id: parallelization
+    attributes:
+      label: "Delivery Stream & Parallelization"
+      description: >
+        Describe the independent stream this docs task belongs to. Note that a
+        slice-level docs task by definition waits on its sibling impl tasks
+        and the slice's QA task.
+      placeholder: |
+        **Stream**: `negotiation-docs` / `data-transfer-docs` / `...`
+        **Can run in parallel with**: #... (docs tasks of unrelated slices)
+        **Must wait for**: all sibling implementation tasks + QA task of slice #...
+        **Why this is a separate stream**: ...
+    validations:
+      required: true
+
+  # ── Classification ───────────────────────────────────────────────────
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: "Type"
+      options:
+        - docs
+        - feature
+        - enhancement
+        - bug
+        - refactor
+        - test
+        - chore
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "Priority"
+      options:
+        - "P0 — blocker"
+        - "P1 — high"
+        - "P2 — medium"
+        - "P3 — low"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: "Milestone"
+      options:
+        - "Next release"
+        - "Future release"
+        - "Maintenance / hotfix"
+    validations:
+      required: true
+
+  # ── AI Agent Configuration ──────────────────────────────────────────
+
+  - type: dropdown
+    id: ai-model
+    attributes:
+      label: "AI Model"
+      description: "Which model should execute this docs task."
+      options:
+        - "Sonnet 4.6 (standard implementation)"
+        - "Opus 4.8 (complex, multi-file, architectural)"
+        - "Fable 5 (most capable — cross-module or protocol-critical work)"
+        - "Haiku 4.5 (simple, mechanical changes)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: agent-mode
+    attributes:
+      label: "Agent Mode"
+      description: "How agents should execute this docs task."
+      options:
+        - "Single agent — sequential execution"
+        - "Parallel agents — independent sub-tasks"
+        - "Human-assisted — agent executes, human validates interactively"
+    validations:
+      required: true
+
+  - type: textarea
+    id: agent-instructions
+    attributes:
+      label: "Agent Instructions"
+      description: >
+        Additional instructions for the agent executing this docs task.
+        This task is doc-only by default — no product code unless a doc-only
+        patch is insufficient, in which case the agent stops and comments.
+      placeholder: |
+        **Read first**: parent slice #..., merged PRs of sibling impl tasks, QA result on #...
+        **Constraints**: Do not modify product code as part of this task
+    validations:
+      required: false
+
+  # ── Verification Checklist ──────────────────────────────────────────
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: "Verification Checklist"
+      description: >
+        Deterministic pass/fail items. Each item must be independently
+        verifiable — name the doc file and the concrete change expected.
+        Use task list syntax. Prefix items that cannot be automated with [manual].
+      placeholder: |
+        **Authoritative doc updates**
+        - [ ] `doc/architecture.md` section ... updated with ...
+        - [ ] `negotiation/doc/...` section ... updated with ...
+        - [ ] `doc/README.md` index lists any new doc files
+        - [ ] `CHANGELOG.md` has an entry for this slice under the upcoming version
+
+        **API changes**
+        - [ ] Every row in the API changes register appears in its named authoritative doc
+        - [ ] Postman collection updated for every row marked "yes"
+
+        **Learnings captured**
+        - [ ] Each `What was learned` entry lands as a `doc/` guide or an ADR under `doc/decisions/`
+        - [ ] New ADRs are added to the `doc/decisions/README.md` index
+
+        **Doc hygiene**
+        - [ ] Cross-references between updated docs still resolve
+    validations:
+      required: true

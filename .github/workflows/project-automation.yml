@@ -1,0 +1,127 @@
+name: Project Board Automation
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [develop]
+
+permissions:
+  contents: read
+
+jobs:
+  move-to-done:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Extract issue numbers
+        id: issues
+        env:
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          PR_NUMS_JSON=$(printf '%s\n' "$PR_BODY" \
+            | grep -oiP '(?i)(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#\K\d+' \
+            | sort -u \
+            | jq -Rsc 'split("\n") | map(select(length > 0))')
+
+          if [ "$(echo "$PR_NUMS_JSON" | jq 'length')" -eq 0 ]; then
+            BRANCH_NUM=$(echo "$BRANCH" | grep -oP '^feature/\K\d+' || true)
+            if [ -n "$BRANCH_NUM" ]; then
+              ISSUE_NUMS_JSON=$(printf '%s\n' "$BRANCH_NUM" | jq -Rsc 'split("\n") | map(select(length > 0))')
+            else
+              ISSUE_NUMS_JSON='[]'
+            fi
+          else
+            ISSUE_NUMS_JSON="$PR_NUMS_JSON"
+          fi
+
+          echo "numbers=$ISSUE_NUMS_JSON" >> "$GITHUB_OUTPUT"
+          echo "Extracted issue numbers: $ISSUE_NUMS_JSON"
+
+      - name: Move issues to Done on project board
+        if: steps.issues.outputs.numbers != '[]'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          ISSUE_NUMS: ${{ steps.issues.outputs.numbers }}
+          REPO: ${{ github.repository }}
+        run: |
+          for ISSUE_NUM in $(echo "$ISSUE_NUMS" | jq -r '.[]'); do
+            ITEM_DATA=$(gh api graphql -f query='
+              query($owner: String!, $repo: String!, $issueNumber: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  issue(number: $issueNumber) {
+                    projectItems(first: 10) {
+                      nodes {
+                        id
+                        project { id }
+                      }
+                    }
+                  }
+                }
+              }
+            ' -f owner="${REPO%/*}" -f repo="${REPO#*/}" -F issueNumber="$ISSUE_NUM")
+
+            ITEM_ID=$(echo "$ITEM_DATA" | jq -r '.data.repository.issue.projectItems.nodes[0].id // empty')
+            PROJECT_ID=$(echo "$ITEM_DATA" | jq -r '.data.repository.issue.projectItems.nodes[0].project.id // empty')
+
+            if [ -z "$ITEM_ID" ] || [ -z "$PROJECT_ID" ]; then
+              echo "Issue #$ISSUE_NUM not found on any project board, skipping move"
+              continue
+            fi
+
+            FIELD_DATA=$(gh api graphql -f query='
+              query($projectId: ID!) {
+                node(id: $projectId) {
+                  ... on ProjectV2 {
+                    field(name: "Status") {
+                      ... on ProjectV2SingleSelectField {
+                        id
+                        options { id name }
+                      }
+                    }
+                  }
+                }
+              }
+            ' -f projectId="$PROJECT_ID")
+
+            FIELD_ID=$(echo "$FIELD_DATA" | jq -r '.data.node.field.id')
+            DONE_OPTION_ID=$(echo "$FIELD_DATA" | jq -r '.data.node.field.options[] | select(.name == "Done") | .id')
+
+            if [ -z "$DONE_OPTION_ID" ]; then
+              echo "Could not find 'Done' status option for issue #$ISSUE_NUM, skipping move"
+              continue
+            fi
+
+            gh api graphql -f query='
+              mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: $projectId
+                  itemId: $itemId
+                  fieldId: $fieldId
+                  value: { singleSelectOptionId: $optionId }
+                }) {
+                  projectV2Item { id }
+                }
+              }
+            ' -f projectId="$PROJECT_ID" -f itemId="$ITEM_ID" -f fieldId="$FIELD_ID" -f optionId="$DONE_OPTION_ID"
+
+            echo "Moved issue #$ISSUE_NUM to Done"
+          done
+
+      - name: Close issues
+        if: steps.issues.outputs.numbers != '[]'
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          ISSUE_NUMS: ${{ steps.issues.outputs.numbers }}
+          REPO: ${{ github.repository }}
+        run: |
+          for ISSUE_NUM in $(echo "$ISSUE_NUMS" | jq -r '.[]'); do
+            STATE=$(gh issue view "$ISSUE_NUM" --repo "$REPO" --json state -q '.state')
+            if [ "$STATE" = "OPEN" ]; then
+              gh issue close "$ISSUE_NUM" --repo "$REPO" --comment "Automatically closed — PR merged into develop."
+              echo "Closed issue #$ISSUE_NUM"
+            else
+              echo "Issue #$ISSUE_NUM already closed"
+            fi
+          done
