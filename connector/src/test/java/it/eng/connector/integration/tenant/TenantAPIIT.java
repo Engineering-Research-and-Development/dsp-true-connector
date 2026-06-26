@@ -1,6 +1,7 @@
 package it.eng.connector.integration.tenant;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.jayway.jsonpath.JsonPath;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Tenant;
@@ -11,10 +12,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.Objects;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -35,12 +38,22 @@ public class TenantAPIIT extends BaseIntegrationTest {
     private static final String ENGINEERING_TENANT_ID = "engineering";
     private static final String NON_EXISTING_TENANT_ID = "non-existing-tenant-xyz";
 
+    /** Tracks the server-generated UUID from API-created tenants for @AfterEach cleanup. */
+    private String generatedTenantId;
+
+    @Value("${application.callback.address:http://localhost:8080/}")
+    private String baseCallbackAddress;
+
     @Autowired
     private TenantRepository tenantRepository;
 
     @AfterEach
     public void cleanup() {
         tenantRepository.deleteById(NEW_TENANT_ID);
+        if (generatedTenantId != null) {
+            tenantRepository.deleteById(generatedTenantId);
+            generatedTenantId = null;
+        }
     }
 
     private Tenant buildNewTenant() {
@@ -99,7 +112,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/tenants as SUPER_ADMIN creates a tenant and returns 200")
+    @DisplayName("POST /api/v1/tenants as SUPER_ADMIN creates a tenant and returns 200 with server-generated UUID")
     public void createTenant_asSuperAdmin_returns200() throws Exception {
         Tenant newTenant = Tenant.Builder.newInstance()
                 .id(NEW_TENANT_ID)
@@ -112,7 +125,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
                 .automaticTransfer(false)
                 .build();
 
-        mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+        MvcResult result = mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
                         .with(user("super").roles("SUPER_ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(Objects.requireNonNull(ToolsSerializer.serializePlain(newTenant))))
@@ -120,8 +133,73 @@ public class TenantAPIIT extends BaseIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.data.id").value(NEW_TENANT_ID))
-                .andExpect(jsonPath("$.data.name").value("Test Tenant IT"));
+                .andExpect(jsonPath("$.data.name").value("Test Tenant IT"))
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        String returnedId = JsonPath.read(responseBody, "$.data.id");
+        // Server generates a UUID — the caller-supplied id must be ignored
+        assertThat(returnedId).isNotEqualTo(NEW_TENANT_ID);
+        assertThat(returnedId).matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
+        // Track for cleanup
+        generatedTenantId = returnedId;
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/tenants - server ignores caller id and returns a UUID")
+    public void createTenant_serverGeneratesUuid_ignoringCallerId() throws Exception {
+        Tenant request = Tenant.Builder.newInstance()
+                .id("caller-supplied-id-should-be-ignored")
+                .name("UUID Generation Test")
+                .connectorId("urn:connector:uuid-test")
+                .callbackAddress("http://ignored:9999")
+                .enabled(true)
+                .build();
+
+        MvcResult result = mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").exists())
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        String returnedId = JsonPath.read(responseBody, "$.data.id");
+        assertThat(returnedId).isNotEqualTo("caller-supplied-id-should-be-ignored");
+        assertThat(returnedId).matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
+        generatedTenantId = returnedId;
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/tenants - server derives callbackAddress from base URL and generated UUID")
+    public void createTenant_derivesCallbackAddressFromBaseUrl() throws Exception {
+        Tenant request = Tenant.Builder.newInstance()
+                .id("will-be-replaced")
+                .name("CallbackAddress Derivation Test")
+                .connectorId("urn:connector:callback-test")
+                .callbackAddress("http://ignored-by-server:9999")
+                .enabled(true)
+                .build();
+
+        MvcResult result = mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").exists())
+                .andExpect(jsonPath("$.data.callbackAddress").exists())
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        String returnedId = JsonPath.read(responseBody, "$.data.id");
+        String returnedCallback = JsonPath.read(responseBody, "$.data.callbackAddress");
+
+        String expectedBase = baseCallbackAddress.endsWith("/")
+                ? baseCallbackAddress.substring(0, baseCallbackAddress.length() - 1)
+                : baseCallbackAddress;
+        assertThat(returnedCallback).isEqualTo(expectedBase + "/" + returnedId);
+        generatedTenantId = returnedId;
     }
 
     @Test

@@ -7,11 +7,13 @@ import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.TenantRepository;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Service for managing tenants.
@@ -23,20 +25,26 @@ public class TenantService {
     private final TenantRepository tenantRepository;
     private final AuditEventPublisher auditEventPublisher;
     private final S3BucketProvisionService s3BucketProvisionService;
+    private final String baseCallbackAddress;
 
     /**
-     * Constructs the service with its repository, audit publisher, and S3 bucket provisioning dependencies.
+     * Constructs the service with its repository, audit publisher, S3 provisioning
+     * dependencies, and the configured application callback base URL.
      *
-     * @param tenantRepository          the tenant repository
-     * @param auditEventPublisher       the audit event publisher
-     * @param s3BucketProvisionService  the S3 bucket provisioning service
+     * @param tenantRepository         the tenant repository
+     * @param auditEventPublisher      the audit event publisher
+     * @param s3BucketProvisionService the S3 bucket provisioning service
+     * @param baseCallbackAddress      the base URL used to derive per-tenant callback addresses;
+     *                                 injected from {@code application.callback.address}
      */
     public TenantService(TenantRepository tenantRepository,
                          AuditEventPublisher auditEventPublisher,
-                         S3BucketProvisionService s3BucketProvisionService) {
+                         S3BucketProvisionService s3BucketProvisionService,
+                         @Value("${application.callback.address}") String baseCallbackAddress) {
         this.tenantRepository = tenantRepository;
         this.auditEventPublisher = auditEventPublisher;
         this.s3BucketProvisionService = s3BucketProvisionService;
+        this.baseCallbackAddress = baseCallbackAddress;
     }
 
     /**
@@ -81,28 +89,51 @@ public class TenantService {
     }
 
     /**
-     * Persists and returns the given tenant.
+     * Persists a new tenant with a server-generated UUID identifier and a programmatically
+     * derived {@code callbackAddress}.
+     *
+     * <p>Any {@code id} or {@code callbackAddress} supplied in the {@code tenant} argument
+     * are ignored.  The generated {@code callbackAddress} is
+     * {@code ${application.callback.address}/{generatedId}}.
      *
      * <p>If the tenant has a {@code bucketName} configured, the S3 bucket is provisioned
      * (or confirmed to exist) before the tenant is saved.  Bucket provisioning failure
      * prevents the tenant from being persisted.
      *
-     * @param tenant the tenant to save
-     * @return the saved tenant
+     * @param tenant the tenant to save; {@code id} and {@code callbackAddress} are overridden
+     * @return the saved tenant with the generated ID and derived callbackAddress
      * @throws IllegalArgumentException if another tenant already owns the requested bucket
      */
     public Tenant saveTenant(Tenant tenant) {
-        String bucketName = tenant.getBucketName();
+        String tenantId = UUID.randomUUID().toString();
+        String base = baseCallbackAddress.endsWith("/")
+                ? baseCallbackAddress.substring(0, baseCallbackAddress.length() - 1)
+                : baseCallbackAddress;
+        String callbackAddress = base + "/" + tenantId;
+
+        Tenant tenantToSave = Tenant.Builder.newInstance()
+                .id(tenantId)
+                .name(tenant.getName())
+                .description(tenant.getDescription())
+                .connectorId(tenant.getConnectorId())
+                .callbackAddress(callbackAddress)
+                .automaticNegotiation(tenant.isAutomaticNegotiation())
+                .automaticTransfer(tenant.isAutomaticTransfer())
+                .enabled(tenant.isEnabled())
+                .bucketName(tenant.getBucketName())
+                .build();
+
+        String bucketName = tenantToSave.getBucketName();
         if (StringUtils.hasText(bucketName)) {
             tenantRepository.findByBucketName(bucketName)
                     .ifPresent(existing -> {
                         throw new IllegalArgumentException(
                                 "Bucket '" + bucketName + "' is already assigned to tenant: " + existing.getId());
                     });
-            log.info("Provisioning S3 bucket '{}' for new tenant '{}'", bucketName, tenant.getId());
+            log.info("Provisioning S3 bucket '{}' for new tenant '{}'", bucketName, tenantId);
             s3BucketProvisionService.ensureBucketCredentials(bucketName);
         }
-        Tenant saved = tenantRepository.save(tenant);
+        Tenant saved = tenantRepository.save(tenantToSave);
         auditEventPublisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.TENANT_CREATED)
                 .description("Tenant created: " + saved.getId())

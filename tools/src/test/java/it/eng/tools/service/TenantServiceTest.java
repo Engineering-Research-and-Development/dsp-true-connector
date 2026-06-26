@@ -5,11 +5,12 @@ import it.eng.tools.event.AuditEventType;
 import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.TenantRepository;
+import it.eng.tools.s3.service.S3BucketProvisionService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -19,6 +20,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -30,6 +32,7 @@ import static org.mockito.Mockito.when;
 class TenantServiceTest {
 
     private static final String TENANT_ID = "engineering";
+    private static final String BASE_CALLBACK_URL = "http://localhost:8080";
 
     @Mock
     private TenantRepository tenantRepository;
@@ -37,8 +40,16 @@ class TenantServiceTest {
     @Mock
     private AuditEventPublisher auditEventPublisher;
 
-    @InjectMocks
+    @Mock
+    private S3BucketProvisionService s3BucketProvisionService;
+
     private TenantService tenantService;
+
+    @BeforeEach
+    void setUp() {
+        tenantService = new TenantService(tenantRepository, auditEventPublisher,
+                s3BucketProvisionService, BASE_CALLBACK_URL);
+    }
 
     private Tenant buildTenant(boolean enabled) {
         return Tenant.Builder.newInstance()
@@ -102,15 +113,52 @@ class TenantServiceTest {
     }
 
     @Test
-    @DisplayName("saveTenant persists, publishes TENANT_CREATED, and returns the tenant")
-    void saveTenant_returnsSavedAndPublishesAudit() {
-        Tenant tenant = buildTenant(true);
-        when(tenantRepository.save(tenant)).thenReturn(tenant);
+    @DisplayName("saveTenant generates a non-null UUID id regardless of caller-supplied id")
+    void saveTenant_generatesUuid_ignoresCallerSuppliedId() {
+        Tenant input = buildTenant(true);
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        Tenant result = tenantService.saveTenant(tenant);
+        Tenant result = tenantService.saveTenant(input);
 
-        assertNotNull(result);
-        assertEquals(TENANT_ID, result.getId());
+        assertNotNull(result.getId());
+        assertNotEquals(TENANT_ID, result.getId(),
+                "Server-generated UUID must not equal the caller-supplied id");
+    }
+
+    @Test
+    @DisplayName("saveTenant derives callbackAddress as baseUrl/generatedId")
+    void saveTenant_derivesCallbackAddress() {
+        Tenant input = buildTenant(true);
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Tenant result = tenantService.saveTenant(input);
+
+        String expectedPrefix = BASE_CALLBACK_URL + "/";
+        assertTrue(result.getCallbackAddress().startsWith(expectedPrefix),
+                "callbackAddress must start with base URL");
+        assertEquals(result.getCallbackAddress(), BASE_CALLBACK_URL + "/" + result.getId());
+    }
+
+    @Test
+    @DisplayName("saveTenant preserves caller-supplied fields other than id and callbackAddress")
+    void saveTenant_preservesOtherFields() {
+        Tenant input = buildTenant(true);
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Tenant result = tenantService.saveTenant(input);
+
+        assertEquals("Engineering", result.getName());
+        assertEquals("urn:connector:engineering", result.getConnectorId());
+        assertTrue(result.isEnabled());
+    }
+
+    @Test
+    @DisplayName("saveTenant publishes TENANT_CREATED audit event")
+    void saveTenant_publishesAuditEvent() {
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        tenantService.saveTenant(buildTenant(true));
+
         ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
         verify(auditEventPublisher).publishEvent(captor.capture());
         assertEquals(AuditEventType.TENANT_CREATED, captor.getValue().getEventType());

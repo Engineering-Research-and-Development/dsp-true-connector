@@ -92,3 +92,81 @@ If updating other user (than logged in), connector will return error message.
  - It will check if password matches with existing password 
  - Password validity enforcement for new password will be applied (min/max length, must contains digits, lower/upper case, special characters...)
  - If both checks are ok, old password will be replaced with new value
+
+## Tenant API endpoints (/api/v1/tenants)
+
+Connector supports multi-tenant operation. Tenants are managed via the tenant API (SUPER_ADMIN role required).
+
+### Create tenant
+
+POST request
+
+> **Important**: The `id` and `callbackAddress` fields in the request body are **ignored** — the server auto-generates both.
+> - `id` is auto-generated as a random UUID.
+> - `callbackAddress` is derived programmatically as `${application.callback.address}/{id}`.
+
+```
+{
+  "name"       : "My Tenant",
+  "description": "Optional tenant description",
+  "connectorId": "urn:connector:my-tenant"
+}
+```
+
+Example response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id"              : "550e8400-e29b-41d4-a716-446655440000",
+    "name"            : "My Tenant",
+    "connectorId"     : "urn:connector:my-tenant",
+    "callbackAddress" : "http://localhost:8080/550e8400-e29b-41d4-a716-446655440000",
+    "enabled"         : false
+  }
+}
+```
+
+## User management and multi-tenancy
+
+### tenantId field
+
+From the MT1 release, the create-user request body accepts an optional `tenantId` field that links the user to a specific tenant:
+
+```json
+{
+  "firstName" : "Alice",
+  "lastName"  : "Example",
+  "email"     : "alice@example.com",
+  "password"  : "SecurePass123!",
+  "role"      : "ROLE_ADMIN",
+  "tenantId"  : "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+Rules:
+
+- If `tenantId` is provided it **must reference an enabled tenant** (`enabled = true`). If the tenant does not exist or is disabled, the connector returns a 4xx error.
+- Users with `ROLE_SUPER_ADMIN` are **exempt** from tenant-existence validation; they may be created without a `tenantId`.
+
+### Keycloak mode user creation
+
+When the connector is running in **Keycloak authentication mode** (`application.auth.provider=KEYCLOAK`), the `POST /api/v1/users` endpoint delegates to `KeycloakUserService`, which:
+
+1. Obtains a client-credentials token from Keycloak using the configured service account.
+2. Calls the Keycloak Admin REST API (`POST /admin/realms/{realm}/users`) to create the user in the Keycloak realm.
+3. Returns the user JSON on success.
+
+Required properties for Keycloak mode:
+
+| Property | Description |
+|---|---|
+| `application.keycloak.admin.server-url` | Base URL of the Keycloak server (e.g. `http://keycloak:8080`) |
+| `application.keycloak.admin.realm`      | Realm in which users should be created (e.g. `dsp-connector`) |
+| `application.keycloak.server-url`       | Keycloak server for token validation (existing property) |
+| `application.keycloak.realm`            | Token validation realm (existing property) |
+
+The service account configured under `application.keycloak.client.*` must have the `manage-users` role assigned in the target realm.
+
+See [ADR D-TEC-001](../../doc/decisions/technical/D-TEC-001-keycloak-user-registration.md) for the design rationale.
