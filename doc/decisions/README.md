@@ -4,9 +4,14 @@ This directory captures architecturally significant decisions: choices that shap
 
 ## Index
 
-| ID | Title | Status | Category |
-|---|---|---|---|
-| [D-TEC-001](technical/D-TEC-001-keycloak-user-registration.md) | Keycloak user registration via Admin REST API | Accepted | Technical |
+| ID                                                                       | Title | Status | Category |
+|--------------------------------------------------------------------------|---|---|---|
+| [D-ARC-001](architecture/D-ARC-001-multi-module-maven-structure.md)      | Multi-module Maven structure by protocol concern | Accepted | Architecture |
+| [D-ARC-002](architecture/D-ARC-002-provider-consumer-spring-profiles.md) | Provider/consumer roles via Spring profiles | Accepted | Architecture |
+| [D-TEC-001](technical/D-TEC-001-mongodb-persistence.md)                  | MongoDB as the persistence layer | Accepted | Technical |
+| [D-TEC-002](technical/D-TEC-002-testcontainers-integration-testing.md)   | Testcontainers for integration testing | Accepted | Technical |
+| [D-TEC-003](technical/D-TEC-003-async-s3-multipart-upload.md)            | Asynchronous parallel S3 multipart upload | Accepted | Technical |
+| [D-TEC-004](technical/D-TEC-004-keycloak-user-registration.md)           | Keycloak user registration via Admin REST API | Accepted | Technical |
 
 ## Structure
 
@@ -19,7 +24,7 @@ decisions/
 
 ## How to Add an ADR
 
-1. Copy `template.md` into the right category folder.
+1. Copy [`template.md`](template.md) into the right category folder.
 2. Name it `D-{ARC|TEC}-NNN-short-kebab-title.md` with the next free number in that category.
 3. Fill in all sections — *Alternatives Considered* and *Consequences* are mandatory, not optional.
 4. Open it for review in the same PR as (or before) the implementation.

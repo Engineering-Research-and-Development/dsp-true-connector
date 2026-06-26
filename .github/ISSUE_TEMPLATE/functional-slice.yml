@@ -1,0 +1,225 @@
+name: "Functional Slice"
+description: "High-level functional backlog slice for later task decomposition"
+title: "[SLICE] "
+labels: []
+body:
+
+  - type: markdown
+    attributes:
+      value: |
+        Detailed functional slicing workflow: `.github/skills/functional-slicing/SKILL.md`
+
+        After issue creation, update the title to include the stable slice tag, for example `[SLICE][X1] ...`, apply the matching GitHub label/tag `slice:X1`, and record the same tag in **Source & Parent Traceability**. The slice tag can be `C1`, `B1`, `X1`, or another short moderator/tag chosen for the slice set.
+
+        This issue is intentionally higher-level than `.github/ISSUE_TEMPLATE/task.yml` and should later be decomposed with `.github/skills/task-decomposition/SKILL.md`.
+
+        When this slice is decomposed, the decomposition will always produce three task families as children:
+
+        - **Implementation tasks** using `.github/ISSUE_TEMPLATE/task.yml`
+        - **Exactly one slice-level QA task** using `.github/ISSUE_TEMPLATE/qa-task.yml`, which `Depends on` every sibling implementation task
+        - **Exactly one slice-level documentation task** using `.github/ISSUE_TEMPLATE/docs-task.yml`, which `Depends on` every sibling implementation task and the QA task
+
+        The "Later task-decomposition guidance" section below should make this easy to carry out.
+
+  # ── Context ──────────────────────────────────────────────────────────
+
+  - type: textarea
+    id: context
+    attributes:
+      label: "Context"
+      description: >
+        What requirement segment this slice covers, why it matters, and which
+        dataspace participant or business outcome it unlocks.
+      placeholder: |
+        **What**: ...
+        **Why**: ...
+        **Primary actor**: provider / consumer / connector admin / dataspace operator
+        **Requirement source**: #... or DSP 2025-1 spec section ... or CHANGELOG roadmap item ...
+    validations:
+      required: true
+
+  # ── Source Traceability ──────────────────────────────────────────────
+
+  - type: textarea
+    id: source-traceability
+    attributes:
+      label: "Source & Parent Traceability"
+      description: >
+        Record exactly what this slice was created from so the parent requirement
+        source, stable slice tag, and later decomposition work stay linked.
+      placeholder: |
+        **Slice tag**: `X1`
+        **Source type**: backlog issue / parent issue / DSP spec section / roadmap item
+        **Source**: #123 or DSP 2025-1 spec section ...
+        **Parent / root issue**: #...
+        **Slicing batch**: issue links created together in this pass
+    validations:
+      required: true
+
+  # ── Functional Intent ────────────────────────────────────────────────
+
+  - type: textarea
+    id: functional-outcome
+    attributes:
+      label: "Functional Outcome"
+      description: >
+        Describe the single coherent capability, protocol flow, or participant-visible
+        outcome this slice owns.
+      placeholder: |
+        This slice covers ...
+
+        **Primary outcome**: ...
+        **Participant value / business value**: ...
+        **Entry points / protocol touchpoints**: catalog request / negotiation message / transfer endpoint / management API ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: in-scope
+    attributes:
+      label: "In-Scope Outcomes"
+      description: >
+        List the outcomes, behaviors, or requirement items that belong inside
+        this slice.
+      placeholder: |
+        - ...
+        - ...
+        - ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: "Out-of-Scope Boundaries"
+      description: >
+        Name adjacent areas that are intentionally excluded so later
+        decomposition does not blur slice boundaries.
+      placeholder: |
+        - Not included here: ...
+        - Hand off to sibling slice: ...
+        - Deferred / separate concern: ...
+    validations:
+      required: true
+
+  # ── Slice Relationships ──────────────────────────────────────────────
+
+  - type: textarea
+    id: parallelization
+    attributes:
+      label: "Parallelization & Related Slices"
+      description: >
+        Explain how this slice relates to sibling slices and why it can be
+        worked on independently later.
+      placeholder: |
+        **Stream**: `catalog` / `negotiation` / `data-transfer` / `identity` / `platform-enablers`
+        **Can be decomposed in parallel with**: #..., #...
+        **Hands off to**: #... (or `None`)
+        **Why this is a separate functional slice**: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: "Dependencies"
+      description: >
+        Relationship to other issues. Use the exact prefixes shown. One
+        relationship per line.
+      placeholder: |
+        Relates to: #
+        Depends on: # (only when this slice truly must wait)
+        Blocked by: # (external blocker or unresolved prerequisite)
+    validations:
+      required: false
+
+  # ── Later decomposition handoff ──────────────────────────────────────
+
+  - type: textarea
+    id: decomposition-guidance
+    attributes:
+      label: "Later task-decomposition guidance"
+      description: >
+        Give later decomposition sessions enough direction to split this slice
+        into implementation tasks without turning this issue into an
+        implementation prompt. Every decomposition of this slice will always
+        produce exactly one slice-level QA task (`qa-task.yml`) and exactly
+        one slice-level documentation task (`docs-task.yml`) alongside the
+        implementation tasks — seed the fields below accordingly.
+      placeholder: |
+        **Slice tag to preserve in child issues**: `X1`
+
+        **Likely implementation task families**:
+        - ...
+        - ...
+
+        **Slice-level QA scope** (seeds the eventual `qa-task.yml` child):
+        - End-to-end flows to verify across implementation tasks: ...
+        - Cross-task integration points to exercise: ...
+        - TCK compliance run required: yes / no (yes when protocol-facing behavior changes)
+
+        **Slice-level documentation scope** (seeds the eventual `docs-task.yml` child):
+        - Authoritative docs this slice will touch: `doc/architecture.md`, `catalog/doc/...`, `negotiation/doc/...`, `connector/documentation/...`, `data-transfer/doc/...`, `tools/doc/...`, `CHANGELOG.md`
+        - Candidate API / protocol message changes: ...
+        - Expected reusable learnings: ...
+
+        **Relevant docs / areas to load first**:
+        - `doc/architecture.md`
+        - module docs for the affected protocol concern
+
+        **Notes for later decomposition**:
+        - ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: requirement-coverage
+    attributes:
+      label: "Requirement Coverage"
+      description: >
+        List the exact requirement clauses, protocol flows, or acceptance points this
+        slice covers so the full source can be audited for completeness.
+      placeholder: |
+        - DSP 2025-1 spec section ... — ...
+        - Parent issue #... item ... — ...
+        - Protocol flow / acceptance point — ...
+    validations:
+      required: true
+
+  # ── Classification ───────────────────────────────────────────────────
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: "Type"
+      options:
+        - capability
+        - integration
+        - enabler
+        - compliance
+        - docs
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "Priority"
+      options:
+        - "P0 — blocker"
+        - "P1 — high"
+        - "P2 — medium"
+        - "P3 — low"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: "Milestone"
+      options:
+        - "Next release"
+        - "Future release"
+        - "Maintenance / hotfix"
+    validations:
+      required: true
