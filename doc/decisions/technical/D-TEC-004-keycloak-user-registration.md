@@ -1,4 +1,4 @@
-# D-TEC-001 — Keycloak user registration via Admin REST API
+# D-TEC-004 — Keycloak user registration via Admin REST API
 
 ## Metadata
 - Status: Accepted
