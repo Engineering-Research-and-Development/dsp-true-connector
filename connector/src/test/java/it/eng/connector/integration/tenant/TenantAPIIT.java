@@ -17,7 +17,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.Objects;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -172,7 +171,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/tenants - server derives callbackAddress from base URL and generated UUID")
+    @DisplayName("POST /api/v1/tenants - server derives callbackAddress from base URL and connectorId")
     public void createTenant_derivesCallbackAddressFromBaseUrl() throws Exception {
         Tenant request = Tenant.Builder.newInstance()
                 .id("will-be-replaced")
@@ -198,12 +197,35 @@ public class TenantAPIIT extends BaseIntegrationTest {
         String expectedBase = baseCallbackAddress.endsWith("/")
                 ? baseCallbackAddress.substring(0, baseCallbackAddress.length() - 1)
                 : baseCallbackAddress;
-        assertThat(returnedCallback).isEqualTo(expectedBase + "/" + returnedId);
+        assertThat(returnedCallback).isEqualTo(expectedBase + "/urn:connector:callback-test");
         generatedTenantId = returnedId;
     }
 
     @Test
-    @DisplayName("DELETE /api/v1/tenants/{id} as SUPER_ADMIN removes the tenant")
+    @DisplayName("POST /api/v1/tenants with duplicate connectorId returns 400")
+    public void createTenant_duplicateConnectorId_returns400() throws Exception {
+        // Pre-save a tenant with a known connectorId
+        tenantRepository.save(buildNewTenant());
+
+        // Attempt to create a second tenant with the same connectorId
+        Tenant duplicate = Tenant.Builder.newInstance()
+                .name("Duplicate ConnectorId Tenant")
+                .connectorId("urn:connector:test-it")
+                .callbackAddress("http://localhost:9990")
+                .enabled(true)
+                .build();
+
+        mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(duplicate))))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
     public void deleteTenant_asSuperAdmin_returns200() throws Exception {
         Tenant tenantToDelete = Tenant.Builder.newInstance()
                 .id(NEW_TENANT_ID)
