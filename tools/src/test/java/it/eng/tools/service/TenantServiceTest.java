@@ -116,7 +116,7 @@ class TenantServiceTest {
     @DisplayName("saveTenant generates a non-null UUID id regardless of caller-supplied id")
     void saveTenant_generatesUuid_ignoresCallerSuppliedId() {
         Tenant input = buildTenant(true);
-        when(tenantRepository.findByName(input.getName())).thenReturn(Optional.empty());
+        when(tenantRepository.findByConnectorId(input.getConnectorId())).thenReturn(Optional.empty());
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Tenant result = tenantService.saveTenant(input);
@@ -127,24 +127,24 @@ class TenantServiceTest {
     }
 
     @Test
-    @DisplayName("saveTenant derives callbackAddress as baseUrl/name")
+    @DisplayName("saveTenant derives callbackAddress as baseUrl/connectorId")
     void saveTenant_derivesCallbackAddress() {
         Tenant input = buildTenant(true);
-        when(tenantRepository.findByName(input.getName())).thenReturn(Optional.empty());
+        when(tenantRepository.findByConnectorId(input.getConnectorId())).thenReturn(Optional.empty());
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Tenant result = tenantService.saveTenant(input);
 
-        String expectedCallbackAddress = BASE_CALLBACK_URL + "/" + result.getName();
+        String expectedCallbackAddress = BASE_CALLBACK_URL + "/" + result.getConnectorId();
         assertEquals(expectedCallbackAddress, result.getCallbackAddress(),
-                "callbackAddress must be baseURL/name");
+                "callbackAddress must be baseURL/connectorId");
     }
 
     @Test
     @DisplayName("saveTenant preserves caller-supplied fields other than id and callbackAddress")
     void saveTenant_preservesOtherFields() {
         Tenant input = buildTenant(true);
-        when(tenantRepository.findByName(input.getName())).thenReturn(Optional.empty());
+        when(tenantRepository.findByConnectorId(input.getConnectorId())).thenReturn(Optional.empty());
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Tenant result = tenantService.saveTenant(input);
@@ -158,7 +158,7 @@ class TenantServiceTest {
     @DisplayName("saveTenant publishes TENANT_CREATED audit event")
     void saveTenant_publishesAuditEvent() {
         Tenant input = buildTenant(true);
-        when(tenantRepository.findByName(input.getName())).thenReturn(Optional.empty());
+        when(tenantRepository.findByConnectorId(input.getConnectorId())).thenReturn(Optional.empty());
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
         tenantService.saveTenant(input);
@@ -169,16 +169,16 @@ class TenantServiceTest {
     }
 
     @Test
-    @DisplayName("saveTenant throws IllegalArgumentException when a tenant with the same name already exists")
-    void saveTenant_duplicateName_throwsIllegalArgumentException() {
+    @DisplayName("saveTenant throws IllegalArgumentException when a tenant with the same connectorId already exists")
+    void saveTenant_duplicateConnectorId_throwsIllegalArgumentException() {
         Tenant existing = buildTenant(true);
-        when(tenantRepository.findByName("Engineering")).thenReturn(Optional.of(existing));
+        when(tenantRepository.findByConnectorId("urn:connector:engineering")).thenReturn(Optional.of(existing));
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> tenantService.saveTenant(buildTenant(true)));
 
-        assertTrue(ex.getMessage().contains("Engineering"),
-                "Exception message must mention the duplicate name");
+        assertTrue(ex.getMessage().contains("urn:connector:engineering"),
+                "Exception message must mention the duplicate connectorId");
     }
 
     @Test

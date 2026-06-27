@@ -31,11 +31,11 @@ public interface TenantRepository extends MongoRepository<Tenant, String> {
     Optional<Tenant> findByBucketName(String bucketName);
 
     /**
-     * Finds a tenant by its human-readable name.
-     * Used to enforce uniqueness of tenant names.
+     * Finds a tenant by its DSP connector identity.
+     * Used to enforce uniqueness of connector IDs across tenants.
      *
-     * @param name the tenant name to search for
-     * @return an optional containing the tenant with this name, if any
+     * @param connectorId the connector ID to search for
+     * @return an optional containing the tenant with this connector ID, if any
      */
-    Optional<Tenant> findByName(String name);
+    Optional<Tenant> findByConnectorId(String connectorId);
 }
