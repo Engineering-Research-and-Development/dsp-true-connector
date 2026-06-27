@@ -116,6 +116,7 @@ class TenantServiceTest {
     @DisplayName("saveTenant generates a non-null UUID id regardless of caller-supplied id")
     void saveTenant_generatesUuid_ignoresCallerSuppliedId() {
         Tenant input = buildTenant(true);
+        when(tenantRepository.findByName(input.getName())).thenReturn(Optional.empty());
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Tenant result = tenantService.saveTenant(input);
@@ -126,23 +127,24 @@ class TenantServiceTest {
     }
 
     @Test
-    @DisplayName("saveTenant derives callbackAddress as baseUrl/generatedId")
+    @DisplayName("saveTenant derives callbackAddress as baseUrl/name")
     void saveTenant_derivesCallbackAddress() {
         Tenant input = buildTenant(true);
+        when(tenantRepository.findByName(input.getName())).thenReturn(Optional.empty());
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Tenant result = tenantService.saveTenant(input);
 
-        String expectedPrefix = BASE_CALLBACK_URL + "/";
-        assertTrue(result.getCallbackAddress().startsWith(expectedPrefix),
-                "callbackAddress must start with base URL");
-        assertEquals(result.getCallbackAddress(), BASE_CALLBACK_URL + "/" + result.getId());
+        String expectedCallbackAddress = BASE_CALLBACK_URL + "/" + result.getName();
+        assertEquals(expectedCallbackAddress, result.getCallbackAddress(),
+                "callbackAddress must be baseURL/name");
     }
 
     @Test
     @DisplayName("saveTenant preserves caller-supplied fields other than id and callbackAddress")
     void saveTenant_preservesOtherFields() {
         Tenant input = buildTenant(true);
+        when(tenantRepository.findByName(input.getName())).thenReturn(Optional.empty());
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Tenant result = tenantService.saveTenant(input);
@@ -155,13 +157,28 @@ class TenantServiceTest {
     @Test
     @DisplayName("saveTenant publishes TENANT_CREATED audit event")
     void saveTenant_publishesAuditEvent() {
+        Tenant input = buildTenant(true);
+        when(tenantRepository.findByName(input.getName())).thenReturn(Optional.empty());
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        tenantService.saveTenant(buildTenant(true));
+        tenantService.saveTenant(input);
 
         ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
         verify(auditEventPublisher).publishEvent(captor.capture());
         assertEquals(AuditEventType.TENANT_CREATED, captor.getValue().getEventType());
+    }
+
+    @Test
+    @DisplayName("saveTenant throws IllegalArgumentException when a tenant with the same name already exists")
+    void saveTenant_duplicateName_throwsIllegalArgumentException() {
+        Tenant existing = buildTenant(true);
+        when(tenantRepository.findByName("Engineering")).thenReturn(Optional.of(existing));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> tenantService.saveTenant(buildTenant(true)));
+
+        assertTrue(ex.getMessage().contains("Engineering"),
+                "Exception message must mention the duplicate name");
     }
 
     @Test

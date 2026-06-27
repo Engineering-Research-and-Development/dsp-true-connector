@@ -94,7 +94,11 @@ public class TenantService {
      *
      * <p>Any {@code id} or {@code callbackAddress} supplied in the {@code tenant} argument
      * are ignored.  The generated {@code callbackAddress} is
-     * {@code ${application.callback.address}/{generatedId}}.
+     * {@code ${application.callback.address}/{name}}, where {@code name} is the tenant's
+     * human-readable name (e.g. {@code http://host/engineering}).
+     *
+     * <p>Tenant names must be unique across all tenants.  If another tenant with the same
+     * name already exists, an {@link IllegalArgumentException} is thrown.
      *
      * <p>If the tenant has a {@code bucketName} configured, the S3 bucket is provisioned
      * (or confirmed to exist) before the tenant is saved.  Bucket provisioning failure
@@ -103,13 +107,20 @@ public class TenantService {
      * @param tenant the tenant to save; {@code id} and {@code callbackAddress} are overridden
      * @return the saved tenant with the generated ID and derived callbackAddress
      * @throws IllegalArgumentException if another tenant already owns the requested bucket
+     *                                  or if a tenant with the same name already exists
      */
     public Tenant saveTenant(Tenant tenant) {
+        tenantRepository.findByName(tenant.getName())
+                .ifPresent(existing -> {
+                    throw new IllegalArgumentException(
+                            "Tenant with name '" + tenant.getName() + "' already exists: " + existing.getId());
+                });
+
         String tenantId = UUID.randomUUID().toString();
         String base = baseCallbackAddress.endsWith("/")
                 ? baseCallbackAddress.substring(0, baseCallbackAddress.length() - 1)
                 : baseCallbackAddress;
-        String callbackAddress = base + "/" + tenantId;
+        String callbackAddress = base + "/" + tenant.getName();
 
         Tenant tenantToSave = Tenant.Builder.newInstance()
                 .id(tenantId)

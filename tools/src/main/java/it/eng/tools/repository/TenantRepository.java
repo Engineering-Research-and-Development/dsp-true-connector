@@ -29,4 +29,13 @@ public interface TenantRepository extends MongoRepository<Tenant, String> {
      * @return an optional containing the tenant that owns this bucket, if any
      */
     Optional<Tenant> findByBucketName(String bucketName);
+
+    /**
+     * Finds a tenant by its human-readable name.
+     * Used to enforce uniqueness of tenant names.
+     *
+     * @param name the tenant name to search for
+     * @return an optional containing the tenant with this name, if any
+     */
+    Optional<Tenant> findByName(String name);
 }

@@ -37,8 +37,11 @@ import java.util.stream.Collectors;
 @Document(collection = "tenants")
 public class Tenant {
 
+    /**
+     * The tenant identifier. Assigned programmatically by the service on creation;
+     * must not be supplied in create requests.
+     */
     @Id
-    @NotNull
     private String id;
 
     @NotNull
