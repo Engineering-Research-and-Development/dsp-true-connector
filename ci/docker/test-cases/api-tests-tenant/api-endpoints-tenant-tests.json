@@ -51,7 +51,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"id\": \"{{NEW_TENANT_ID}}\",\n  \"name\": \"Test Tenant\",\n  \"description\": \"Created by automated test\",\n  \"connectorId\": \"urn:test:connector\",\n  \"callbackAddress\": \"http://test.example.com\",\n  \"automaticNegotiation\": false,\n  \"automaticTransfer\": false\n}",
+							"raw": "{\n  \"name\": \"Test Tenant\",\n  \"description\": \"Created by automated test\",\n  \"connectorId\": \"urn:test:connector\",\n  \"callbackAddress\": \"http://test.example.com\",\n  \"automaticNegotiation\": false,\n  \"automaticTransfer\": false\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -80,9 +80,10 @@
 									"pm.test('Response has data', function () {",
 									"  var jsonData = pm.response.json();",
 									"  pm.expect(jsonData.data).to.exist;",
-									"  pm.expect(jsonData.data.id).to.eql(pm.collectionVariables.get('NEW_TENANT_ID'));",
+									"  pm.expect(jsonData.data.id).to.exist;",
 									"  pm.expect(jsonData.data.name).to.eql('Test Tenant');",
 									"  pm.expect(jsonData.data.enabled).to.be.false;",
+									"  pm.collectionVariables.set('NEW_TENANT_ID', jsonData.data.id);",
 									"});"
 								]
 							}
