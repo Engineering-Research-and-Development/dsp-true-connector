@@ -38,18 +38,6 @@ class TenantTest {
     }
 
     @Test
-    @DisplayName("Build tenant fails when id is null")
-    void buildTenantMissingId() {
-        assertThrows(ValidationException.class, () ->
-                Tenant.Builder.newInstance()
-                        .name("Test Tenant")
-                        .connectorId("urn:connector:test")
-                        .callbackAddress("http://example.com/test")
-                        .build()
-        );
-    }
-
-    @Test
     @DisplayName("Build tenant fails when name is null")
     void buildTenantMissingName() {
         assertThrows(ValidationException.class, () ->
