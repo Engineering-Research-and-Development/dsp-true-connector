@@ -28,20 +28,22 @@ import java.util.stream.Collectors;
 /**
  * Represents a tenant in the multi-tenant DSP connector.
  * Each tenant has a unique identifier, a human-readable name, and DSP-specific settings.
+ * The callback address is derived at runtime from the application base callback URL and the tenant id.
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = Tenant.Builder.class)
-@JsonPropertyOrder({"id", "name", "description", "connectorId", "callbackAddress",
+@JsonPropertyOrder({"id", "name", "description", "participantId",
         "automaticNegotiation", "automaticTransfer", "enabled", "bucketName"})
 @Document(collection = "tenants")
 public class Tenant {
 
     /**
-     * The tenant identifier. Assigned programmatically by the service on creation;
-     * must not be supplied in create requests.
+     * The tenant identifier. Must be supplied in create requests; must consist only of
+     * alphanumeric characters and hyphens.
      */
     @Id
+    @NotNull
     private String id;
 
     @NotNull
@@ -50,10 +52,7 @@ public class Tenant {
     private String description;
 
     @NotNull
-    private String connectorId;
-
-    @NotNull
-    private String callbackAddress;
+    private String participantId;
 
     private boolean automaticNegotiation;
 
@@ -88,6 +87,21 @@ public class Tenant {
     @Version
     @Field("version")
     private Long version;
+
+    /**
+     * Computes the callback address for this tenant.
+     * Strips a trailing slash from {@code baseCallbackAddress} if present and appends
+     * {@code "/" + id}.
+     *
+     * @param baseCallbackAddress the application base callback URL (e.g. {@code http://host:8080})
+     * @return the tenant-specific callback address (e.g. {@code http://host:8080/my-tenant})
+     */
+    public String getCallbackAddress(String baseCallbackAddress) {
+        String base = baseCallbackAddress.endsWith("/")
+                ? baseCallbackAddress.substring(0, baseCallbackAddress.length() - 1)
+                : baseCallbackAddress;
+        return base + "/" + this.id;
+    }
 
     /**
      * Builder for creating {@link Tenant} instances with validation.
@@ -145,24 +159,13 @@ public class Tenant {
         }
 
         /**
-         * Sets the unique DSP connector identity for this tenant.
+         * Sets the unique DSP participant identity for this tenant.
          *
-         * @param connectorId the connector ID
+         * @param participantId the participant ID
          * @return this builder
          */
-        public Builder connectorId(String connectorId) {
-            tenant.connectorId = connectorId;
-            return this;
-        }
-
-        /**
-         * Sets the base URL for outgoing DSP calls.
-         *
-         * @param callbackAddress the callback address URL
-         * @return this builder
-         */
-        public Builder callbackAddress(String callbackAddress) {
-            tenant.callbackAddress = callbackAddress;
+        public Builder participantId(String participantId) {
+            tenant.participantId = participantId;
             return this;
         }
 

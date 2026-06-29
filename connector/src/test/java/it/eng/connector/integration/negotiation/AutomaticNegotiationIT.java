@@ -218,14 +218,12 @@ public class AutomaticNegotiationIT {
                     .addCommandLineProperties(false)
                     .build();
             ConfigurableApplicationContext ctx = app.run();
-            // Phase 5: update the engineering tenant in the DB with the runtime callbackAddress
-            // and automaticNegotiation=true, since those now override the @Value property.
+            // Phase 5: update the engineering tenant in the DB with automaticNegotiation=true.
             TenantService tenantSvc = ctx.getBean(TenantService.class);
             Tenant tenantUpdate = Tenant.Builder.newInstance()
                     .id(TENANT_ID)
                     .name("Engineering")
-                    .connectorId("urn:connector:engineering")
-                    .callbackAddress(callbackAddress)
+                    .participantId("urn:connector:engineering")
                     .automaticNegotiation(true)
                     .enabled(true)
                     .build();

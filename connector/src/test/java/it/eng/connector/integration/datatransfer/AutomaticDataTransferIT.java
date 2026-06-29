@@ -215,15 +215,12 @@ public class AutomaticDataTransferIT {
                     .addCommandLineProperties(false)
                     .build();
             ConfigurableApplicationContext ctx = app.run();
-            // Phase 5: update the engineering tenant with the runtime callbackAddress,
-            // automaticNegotiation=true, and automaticTransfer=true since those now
-            // override the @Value fallback.
+            // Phase 5: update the engineering tenant with automaticNegotiation=true and automaticTransfer=true.
             TenantService tenantSvc = ctx.getBean(TenantService.class);
             Tenant tenantUpdate = Tenant.Builder.newInstance()
                     .id(TENANT_ID)
                     .name("Engineering")
-                    .connectorId("urn:connector:engineering")
-                    .callbackAddress(callbackAddress)
+                    .participantId("urn:connector:engineering")
                     .automaticNegotiation(true)
                     .automaticTransfer(true)
                     .enabled(true)

@@ -38,8 +38,7 @@ class TenantAPIControllerTest {
         return Tenant.Builder.newInstance()
                 .id(TENANT_ID)
                 .name("Engineering")
-                .connectorId("urn:connector:engineering")
-                .callbackAddress("http://localhost:8090")
+                .participantId("urn:connector:engineering")
                 .enabled(true)
                 .build();
     }
@@ -106,8 +105,7 @@ class TenantAPIControllerTest {
         Tenant disabled = Tenant.Builder.newInstance()
                 .id(TENANT_ID)
                 .name("Engineering")
-                .connectorId("urn:connector:engineering")
-                .callbackAddress("http://localhost:8090")
+                .participantId("urn:connector:engineering")
                 .enabled(false)
                 .build();
         when(tenantService.disableTenant(TENANT_ID)).thenReturn(disabled);
@@ -141,8 +139,7 @@ class TenantAPIControllerTest {
         Tenant updates = Tenant.Builder.newInstance()
                 .id(TENANT_ID)
                 .name("Updated Name")
-                .connectorId("urn:connector:updated")
-                .callbackAddress("http://localhost:8090")
+                .participantId("urn:connector:updated")
                 .build();
         Tenant updated = buildTenant();
         when(tenantService.updateTenant(TENANT_ID, updates)).thenReturn(updated);
@@ -159,8 +156,7 @@ class TenantAPIControllerTest {
         Tenant updates = Tenant.Builder.newInstance()
                 .id(TENANT_ID)
                 .name("Updated Name")
-                .connectorId("urn:connector:updated")
-                .callbackAddress("http://localhost:8090")
+                .participantId("urn:connector:updated")
                 .build();
         when(tenantService.updateTenant(TENANT_ID, updates)).thenThrow(new TenantNotFoundException("Not found"));
 

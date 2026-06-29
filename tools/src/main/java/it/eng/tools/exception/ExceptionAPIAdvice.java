@@ -54,7 +54,7 @@ public class ExceptionAPIAdvice extends ResponseEntityExceptionHandler {
 
     /**
      * Maps {@link IllegalArgumentException} to 400 Bad Request so that validation failures
-     * such as duplicate connectorId or duplicate bucket name return a consistent error response.
+     * such as duplicate participantId or duplicate bucket name return a consistent error response.
      *
      * @param ex      the exception
      * @param request the web request

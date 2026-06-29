@@ -23,7 +23,6 @@ import static org.mockito.Mockito.when;
 class DataTransferPropertiesTest {
 
     private static final String TENANT_ID = "engineering";
-    private static final String TENANT_CALLBACK = "http://tenant.example.com";
     private static final String GLOBAL_CALLBACK = "http://global.example.com";
 
     @Mock
@@ -44,8 +43,7 @@ class DataTransferPropertiesTest {
         enabledTenant = Tenant.Builder.newInstance()
                 .id(TENANT_ID)
                 .name("Engineering")
-                .connectorId("tenant-connector-id")
-                .callbackAddress(TENANT_CALLBACK)
+                .participantId("tenant-participant-id")
                 .automaticTransfer(true)
                 .enabled(true)
                 .build();
@@ -61,12 +59,12 @@ class DataTransferPropertiesTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("providerCallbackAddress returns tenant callbackAddress when tenant context is active")
+    @DisplayName("providerCallbackAddress returns computed tenant callbackAddress when tenant context is active")
     void providerCallbackAddress_withActiveTenant_returnsTenantCallback() {
         TenantContextHolder.setTenantId(TENANT_ID);
         when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(enabledTenant));
 
-        assertEquals(TENANT_CALLBACK, properties.providerCallbackAddress());
+        assertEquals(GLOBAL_CALLBACK + "/" + TENANT_ID, properties.providerCallbackAddress());
     }
 
     @Test
@@ -81,8 +79,7 @@ class DataTransferPropertiesTest {
         Tenant disabledTenant = Tenant.Builder.newInstance()
                 .id(TENANT_ID)
                 .name("Engineering")
-                .connectorId("tenant-connector-id")
-                .callbackAddress(TENANT_CALLBACK)
+                .participantId("tenant-participant-id")
                 .enabled(false)
                 .build();
         TenantContextHolder.setTenantId(TENANT_ID);
@@ -96,28 +93,22 @@ class DataTransferPropertiesTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("consumerCallbackAddress appends /consumer to tenant callbackAddress")
+    @DisplayName("consumerCallbackAddress appends /consumer to computed tenant callbackAddress")
     void consumerCallbackAddress_withActiveTenant_appendsConsumerSuffix() {
         TenantContextHolder.setTenantId(TENANT_ID);
         when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(enabledTenant));
 
-        assertEquals(TENANT_CALLBACK + "/consumer", properties.consumerCallbackAddress());
+        assertEquals(GLOBAL_CALLBACK + "/" + TENANT_ID + "/consumer", properties.consumerCallbackAddress());
     }
 
     @Test
-    @DisplayName("consumerCallbackAddress strips trailing slash before appending /consumer")
-    void consumerCallbackAddress_withTrailingSlash_stripsSlash() {
-        Tenant tenantWithSlash = Tenant.Builder.newInstance()
-                .id(TENANT_ID)
-                .name("Engineering")
-                .connectorId("tenant-connector-id")
-                .callbackAddress("http://tenant.example.com/")
-                .enabled(true)
-                .build();
+    @DisplayName("consumerCallbackAddress strips trailing slash from global base URL before computing")
+    void consumerCallbackAddress_withTrailingSlashInGlobal_stripsSlash() {
+        ReflectionTestUtils.setField(properties, "callbackAddress", GLOBAL_CALLBACK + "/");
         TenantContextHolder.setTenantId(TENANT_ID);
-        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(tenantWithSlash));
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(enabledTenant));
 
-        assertEquals("http://tenant.example.com/consumer", properties.consumerCallbackAddress());
+        assertEquals(GLOBAL_CALLBACK + "/" + TENANT_ID + "/consumer", properties.consumerCallbackAddress());
     }
 
     @Test

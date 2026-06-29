@@ -12,6 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TenantTest {
 
+    private static final String BASE_URL = "http://example.com";
+
     @Test
     @DisplayName("Build tenant successfully with all required fields")
     void buildTenantSuccessfully() {
@@ -19,8 +21,7 @@ class TenantTest {
                 .id("test-tenant")
                 .name("Test Tenant")
                 .description("A description")
-                .connectorId("urn:connector:test")
-                .callbackAddress("http://example.com/test")
+                .participantId("urn:connector:test")
                 .enabled(true)
                 .automaticNegotiation(true)
                 .automaticTransfer(false)
@@ -30,8 +31,8 @@ class TenantTest {
         assertEquals("test-tenant", tenant.getId());
         assertEquals("Test Tenant", tenant.getName());
         assertEquals("A description", tenant.getDescription());
-        assertEquals("urn:connector:test", tenant.getConnectorId());
-        assertEquals("http://example.com/test", tenant.getCallbackAddress());
+        assertEquals("urn:connector:test", tenant.getParticipantId());
+        assertEquals(BASE_URL + "/test-tenant", tenant.getCallbackAddress(BASE_URL));
         assertTrue(tenant.isEnabled());
         assertTrue(tenant.isAutomaticNegotiation());
         assertFalse(tenant.isAutomaticTransfer());
@@ -43,33 +44,42 @@ class TenantTest {
         assertThrows(ValidationException.class, () ->
                 Tenant.Builder.newInstance()
                         .id("test-tenant")
-                        .connectorId("urn:connector:test")
-                        .callbackAddress("http://example.com/test")
+                        .participantId("urn:connector:test")
                         .build()
         );
     }
 
     @Test
-    @DisplayName("Build tenant fails when connectorId is null")
-    void buildTenantMissingConnectorId() {
+    @DisplayName("Build tenant fails when participantId is null")
+    void buildTenantMissingParticipantId() {
         assertThrows(ValidationException.class, () ->
                 Tenant.Builder.newInstance()
                         .id("test-tenant")
                         .name("Test Tenant")
-                        .callbackAddress("http://example.com/test")
                         .build()
         );
     }
 
     @Test
-    @DisplayName("Build tenant fails when callbackAddress is null")
-    void buildTenantMissingCallbackAddress() {
+    @DisplayName("Build tenant fails when id is null")
+    void buildTenantMissingId() {
         assertThrows(ValidationException.class, () ->
                 Tenant.Builder.newInstance()
-                        .id("test-tenant")
                         .name("Test Tenant")
-                        .connectorId("urn:connector:test")
+                        .participantId("urn:connector:test")
                         .build()
         );
+    }
+
+    @Test
+    @DisplayName("getCallbackAddress strips trailing slash from base URL")
+    void getCallbackAddress_stripsTrailingSlash() {
+        Tenant tenant = Tenant.Builder.newInstance()
+                .id("my-tenant")
+                .name("Test")
+                .participantId("urn:connector:test")
+                .build();
+
+        assertEquals("http://example.com/my-tenant", tenant.getCallbackAddress("http://example.com/"));
     }
 }

@@ -90,8 +90,7 @@ class UserServiceTest {
 		when(passwordValidationResult.isValid()).thenReturn(true);
 		when(tenantService.findEnabledTenantById(TENANT_ID)).thenReturn(
 				Tenant.Builder.newInstance().id(TENANT_ID).name("Engineering")
-						.connectorId("urn:connector:engineering")
-						.callbackAddress("http://localhost:8080/" + TENANT_ID)
+						.participantId("urn:connector:engineering")
 						.enabled(true).build());
 
 		userService.createUser(userDTO);

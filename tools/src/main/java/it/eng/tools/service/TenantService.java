@@ -13,7 +13,6 @@ import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * Service for managing tenants.
@@ -21,6 +20,9 @@ import java.util.UUID;
 @Service
 @Slf4j
 public class TenantService {
+
+    private static final java.util.regex.Pattern TENANT_ID_PATTERN =
+            java.util.regex.Pattern.compile("^[a-zA-Z0-9-]+$");
 
     private final TenantRepository tenantRepository;
     private final AuditEventPublisher auditEventPublisher;
@@ -89,45 +91,48 @@ public class TenantService {
     }
 
     /**
-     * Persists a new tenant with a server-generated UUID identifier and a programmatically
-     * derived {@code callbackAddress}.
+     * Persists a new tenant using the client-supplied identifier.
      *
-     * <p>Any {@code id} or {@code callbackAddress} supplied in the {@code tenant} argument
-     * are ignored.  The generated {@code callbackAddress} is
-     * {@code ${application.callback.address}/{connectorId}}, where {@code connectorId} is the
-     * tenant's DSP connector identity (e.g. {@code http://host/urn:connector:engineering}).
+     * <p>The {@code id} on the incoming {@code tenant} is used directly and must be
+     * non-null and composed exclusively of alphanumeric characters and hyphens
+     * ({@code ^[a-zA-Z0-9-]+$}).  An {@link IllegalArgumentException} is thrown if the
+     * format is invalid or if the id is already taken.
      *
-     * <p>Connector IDs must be unique across all tenants.  If another tenant with the same
-     * {@code connectorId} already exists, an {@link IllegalArgumentException} is thrown.
+     * <p>Participant IDs must be unique across all tenants.  If another tenant with the same
+     * {@code participantId} already exists, an {@link IllegalArgumentException} is thrown.
      *
      * <p>If the tenant has a {@code bucketName} configured, the S3 bucket is provisioned
      * (or confirmed to exist) before the tenant is saved.  Bucket provisioning failure
      * prevents the tenant from being persisted.
      *
-     * @param tenant the tenant to save; {@code id} and {@code callbackAddress} are overridden
-     * @return the saved tenant with the generated ID and derived callbackAddress
-     * @throws IllegalArgumentException if another tenant already owns the requested bucket
-     *                                  or if a tenant with the same connectorId already exists
+     * @param tenant the tenant to save; {@code id} must be provided and valid
+     * @return the saved tenant
+     * @throws IllegalArgumentException if the id format is invalid, the id already exists,
+     *                                  another tenant already owns the requested bucket,
+     *                                  or a tenant with the same participantId already exists
      */
     public Tenant saveTenant(Tenant tenant) {
-        tenantRepository.findByConnectorId(tenant.getConnectorId())
+        String tenantId = tenant.getId();
+        if (!TENANT_ID_PATTERN.matcher(tenantId).matches()) {
+            throw new IllegalArgumentException(
+                    "Tenant id '" + tenantId + "' is invalid: only alphanumeric characters and hyphens are allowed.");
+        }
+        tenantRepository.findById(tenantId)
                 .ifPresent(existing -> {
                     throw new IllegalArgumentException(
-                            "Tenant with connectorId '" + tenant.getConnectorId() + "' already exists: " + existing.getId());
+                            "Tenant with id '" + tenantId + "' already exists.");
                 });
-
-        String tenantId = UUID.randomUUID().toString();
-        String base = baseCallbackAddress.endsWith("/")
-                ? baseCallbackAddress.substring(0, baseCallbackAddress.length() - 1)
-                : baseCallbackAddress;
-        String callbackAddress = base + "/" + tenant.getConnectorId();
+        tenantRepository.findByParticipantId(tenant.getParticipantId())
+                .ifPresent(existing -> {
+                    throw new IllegalArgumentException(
+                            "Tenant with participantId '" + tenant.getParticipantId() + "' already exists: " + existing.getId());
+                });
 
         Tenant tenantToSave = Tenant.Builder.newInstance()
                 .id(tenantId)
                 .name(tenant.getName())
                 .description(tenant.getDescription())
-                .connectorId(tenant.getConnectorId())
-                .callbackAddress(callbackAddress)
+                .participantId(tenant.getParticipantId())
                 .automaticNegotiation(tenant.isAutomaticNegotiation())
                 .automaticTransfer(tenant.isAutomaticTransfer())
                 .enabled(tenant.isEnabled())
@@ -222,8 +227,8 @@ public class TenantService {
     }
 
     /**
-     * Updates the mutable settings of an existing tenant (name, description, connectorId,
-     * callbackAddress, automaticNegotiation, automaticTransfer, bucketName).
+     * Updates the mutable settings of an existing tenant (name, description, participantId,
+     * automaticNegotiation, automaticTransfer, bucketName).
      * The {@code enabled} state is preserved from the existing tenant.
      *
      * <p>If {@code bucketName} is changed, the new bucket is provisioned before the tenant
@@ -258,8 +263,7 @@ public class TenantService {
                 .version(existing.getVersion())
                 .name(updates.getName() != null ? updates.getName() : existing.getName())
                 .description(updates.getDescription() != null ? updates.getDescription() : existing.getDescription())
-                .connectorId(updates.getConnectorId() != null ? updates.getConnectorId() : existing.getConnectorId())
-                .callbackAddress(updates.getCallbackAddress() != null ? updates.getCallbackAddress() : existing.getCallbackAddress())
+                .participantId(updates.getParticipantId() != null ? updates.getParticipantId() : existing.getParticipantId())
                 .automaticNegotiation(updates.isAutomaticNegotiation())
                 .automaticTransfer(updates.isAutomaticTransfer())
                 .enabled(existing.isEnabled())
@@ -288,8 +292,7 @@ public class TenantService {
                 .version(source.getVersion())
                 .name(source.getName())
                 .description(source.getDescription())
-                .connectorId(source.getConnectorId())
-                .callbackAddress(source.getCallbackAddress())
+                .participantId(source.getParticipantId())
                 .automaticNegotiation(source.isAutomaticNegotiation())
                 .automaticTransfer(source.isAutomaticTransfer())
                 .enabled(enabled)
