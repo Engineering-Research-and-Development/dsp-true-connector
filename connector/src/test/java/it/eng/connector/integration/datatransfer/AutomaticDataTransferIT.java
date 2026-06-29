@@ -12,6 +12,7 @@ import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.ApplicationConnector;
+import it.eng.connector.filter.ApiTenantContextFilter;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
@@ -438,9 +439,9 @@ public class AutomaticDataTransferIT {
                 {"transferProcessId": "%s", "format": "HttpData-PULL"}
                 """.formatted(consumerTpId);
 
-        HttpResponse<String> response = post(
+        HttpResponse<String> response = postAsTenant(
                 CONSUMER_BASE_URL + ApiEndpoints.TRANSFER_DATATRANSFER_V1,
-                requestBody, ADMIN_CREDENTIALS);
+                requestBody, ADMIN_CREDENTIALS, TENANT_ID);
 
         assertEquals(200, response.statusCode(),
                 "Consumer requestTransfer API failed: " + response.body());
@@ -502,9 +503,9 @@ public class AutomaticDataTransferIT {
                 {"transferProcessId": "%s", "format": "HttpData-PUSH"}
                 """.formatted(consumerTpId);
 
-        HttpResponse<String> response = post(
+        HttpResponse<String> response = postAsTenant(
                 CONSUMER_BASE_URL + ApiEndpoints.TRANSFER_DATATRANSFER_V1,
-                requestBody, ADMIN_CREDENTIALS);
+                requestBody, ADMIN_CREDENTIALS, TENANT_ID);
 
         assertEquals(200, response.statusCode(),
                 "Consumer requestTransfer API failed: " + response.body());
@@ -583,9 +584,9 @@ public class AutomaticDataTransferIT {
                 {"transferProcessId": "%s", "format": "HttpData-PULL"}
                 """.formatted(wmConsumerTpId);
 
-        HttpResponse<String> response = post(
+        HttpResponse<String> response = postAsTenant(
                 WIREMOCK_CONSUMER_BASE_URL + ApiEndpoints.TRANSFER_DATATRANSFER_V1,
-                requestBody, ADMIN_CREDENTIALS);
+                requestBody, ADMIN_CREDENTIALS, TENANT_ID);
 
         assertEquals(200, response.statusCode(),
                 "WireMock-consumer requestTransfer API failed: " + response.body());
@@ -692,6 +693,29 @@ public class AutomaticDataTransferIT {
                 .uri(URI.create(url))
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .header(HttpHeaders.AUTHORIZATION, "Basic " + credentials)
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+        return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    /**
+     * Sends an HTTP POST with Basic Auth and an {@code X-Tenant-ID} header so that
+     * {@link it.eng.connector.filter.ApiTenantContextFilter} can resolve the tenant context
+     * for the request, enabling per-tenant callback address computation.
+     *
+     * @param url         the target URL
+     * @param body        the JSON request body
+     * @param credentials Base64-encoded Basic Auth credentials
+     * @param tenantId    the tenant identifier to set in the {@code X-Tenant-ID} header
+     * @return the HTTP response
+     */
+    private HttpResponse<String> postAsTenant(String url, String body, String credentials,
+            String tenantId) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .header(HttpHeaders.AUTHORIZATION, "Basic " + credentials)
+                .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, tenantId)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
