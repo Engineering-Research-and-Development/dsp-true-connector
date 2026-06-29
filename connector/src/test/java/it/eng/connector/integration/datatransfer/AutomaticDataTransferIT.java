@@ -149,7 +149,7 @@ public class AutomaticDataTransferIT {
 
         // ── Consumer — downloaded artifact will land in consumerMinIO ─────────────
         consumerCtx = startInstance(mongoHost, mongoPort, CONSUMER_PORT,
-                "consumer", "consumer_db", CONSUMER_BASE_URL + "/" + TENANT_ID,
+                "consumer", "consumer_db", CONSUMER_BASE_URL,
                 consumerMinIO.getS3URL(), consumerMinIO.getUserName(), consumerMinIO.getPassword(),
                 "dsp-true-connector-consumer");
 
@@ -158,7 +158,7 @@ public class AutomaticDataTransferIT {
         // WireMock intercepts and returns HTTP 500 → triggers provider's retry loop.
         wiremockConsumerCtx = startInstance(mongoHost, mongoPort, WIREMOCK_CONSUMER_PORT,
                 "consumer-wiremock", "consumer_wiremock_db",
-                "http://localhost:" + WIREMOCK_PORT + "/" + TENANT_ID,
+                "http://localhost:" + WIREMOCK_PORT,
                 consumerMinIO.getS3URL(), consumerMinIO.getUserName(), consumerMinIO.getPassword(),
                 "dsp-true-connector-consumer");
 
