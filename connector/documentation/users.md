@@ -97,19 +97,33 @@ If updating other user (than logged in), connector will return error message.
 
 Connector supports multi-tenant operation. Tenants are managed via the tenant API (SUPER_ADMIN role required).
 
+All endpoints require `Content-Type: application/json` and an Authorization header for a user with `ROLE_SUPER_ADMIN`.
+
+| Method | Path | Description |
+|---|---|---|
+| GET    | `/api/v1/tenants`            | List all tenants |
+| GET    | `/api/v1/tenants/{id}`       | Get tenant by ID |
+| POST   | `/api/v1/tenants`            | Create a tenant |
+| PUT    | `/api/v1/tenants/{id}`       | Update a tenant |
+| PUT    | `/api/v1/tenants/{id}/enable`  | Enable a tenant |
+| PUT    | `/api/v1/tenants/{id}/disable` | Disable a tenant |
+| DELETE | `/api/v1/tenants/{id}`       | Delete a tenant |
+
 ### Create tenant
 
 POST request
 
-> **Important**: The `id` and `callbackAddress` fields in the request body are **ignored** — the server auto-generates both.
-> - `id` is auto-generated as a random UUID.
-> - `callbackAddress` is derived programmatically as `${application.callback.address}/{id}`.
+> **Important**: `id`, `name`, and `participantId` are **required**.
+> - `id` is **chosen by the caller** and must consist only of alphanumeric characters and hyphens (e.g. `my-tenant`). The server does not auto-generate it.
+> - `participantId` is the DSP participant identity for this tenant and must be unique across all tenants.
+> - `callbackAddress` is **not** a stored field — it is derived at runtime as `${application.callback.address}/{id}`.
 
-```
+```json
 {
-  "name"       : "My Tenant",
-  "description": "Optional tenant description",
-  "connectorId": "urn:connector:my-tenant"
+  "id"           : "my-tenant",
+  "name"         : "My Tenant",
+  "description"  : "Optional tenant description",
+  "participantId": "urn:connector:my-tenant"
 }
 ```
 
@@ -119,14 +133,53 @@ Example response:
 {
   "success": true,
   "data": {
-    "id"              : "550e8400-e29b-41d4-a716-446655440000",
-    "name"            : "My Tenant",
-    "connectorId"     : "urn:connector:my-tenant",
-    "callbackAddress" : "http://localhost:8080/550e8400-e29b-41d4-a716-446655440000",
-    "enabled"         : false
+    "id"                   : "my-tenant",
+    "name"                 : "My Tenant",
+    "description"          : "Optional tenant description",
+    "participantId"        : "urn:connector:my-tenant",
+    "automaticNegotiation" : false,
+    "automaticTransfer"    : false,
+    "enabled"              : false,
+    "bucketName"           : null
   }
 }
 ```
+
+A newly created tenant is **disabled** by default. Call `PUT /api/v1/tenants/{id}/enable` to activate it before assigning users.
+
+### Update tenant
+
+`PUT /api/v1/tenants/{id}`
+
+Mutable fields: `name`, `description`, `participantId`, `automaticNegotiation`, `automaticTransfer`, `bucketName`.
+
+The `enabled` state is **not** changed by this endpoint — use the dedicated enable/disable endpoints instead.
+
+```json
+{
+  "name"                 : "Updated Tenant Name",
+  "participantId"        : "urn:connector:my-tenant-v2",
+  "automaticNegotiation" : true,
+  "automaticTransfer"    : true
+}
+```
+
+### Enable / disable tenant
+
+```
+PUT /api/v1/tenants/{id}/enable
+PUT /api/v1/tenants/{id}/disable
+```
+
+These endpoints toggle the `enabled` flag. A disabled tenant's users cannot perform protocol operations and are rejected from tenant context resolution.
+
+### Delete tenant
+
+```
+DELETE /api/v1/tenants/{id}
+```
+
+Deletes the tenant record. If the tenant had an S3 bucket configured (`bucketName`), the bucket is **not** automatically deleted to prevent accidental data loss. Clean it up manually once all artifact data has been migrated or is no longer needed.
 
 ## User management and multi-tenancy
 
@@ -141,7 +194,7 @@ From the MT1 release, the create-user request body accepts an optional `tenantId
   "email"     : "alice@example.com",
   "password"  : "SecurePass123!",
   "role"      : "ROLE_ADMIN",
-  "tenantId"  : "550e8400-e29b-41d4-a716-446655440000"
+  "tenantId"  : "my-tenant"
 }
 ```
 
