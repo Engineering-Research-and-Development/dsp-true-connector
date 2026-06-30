@@ -105,24 +105,42 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/properties with admin token returns 200 in Keycloak mode")
-    void getPropertiesWithAdminTokenReturnsOk() throws Exception {
+    @DisplayName("GET /api/v1/properties with admin token returns 403 in Keycloak mode (SUPER_ADMIN required)")
+    void getPropertiesWithAdminTokenReturnsForbidden() throws Exception {
         mockMvc.perform(get(ApiEndpoints.PROPERTIES_V1 + "/")
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(adminAccessToken()))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/properties with super-admin token returns 200 in Keycloak mode")
+    void getPropertiesWithSuperAdminTokenReturnsOk() throws Exception {
+        mockMvc.perform(get(ApiEndpoints.PROPERTIES_V1 + "/")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(superAdminAccessToken()))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
 
     @Test
-    @DisplayName("GET /api/v1/users with admin token reaches the Keycloak-mode endpoint (not blocked by Spring Security)")
-    void getUsersWithAdminTokenReturnsOk() throws Exception {
+    @DisplayName("GET /api/v1/users with admin token returns 403 in Keycloak mode (SUPER_ADMIN required)")
+    void getUsersWithAdminTokenReturnsForbidden() throws Exception {
+        mockMvc.perform(get(ApiEndpoints.USERS_V1)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(adminAccessToken()))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/users with super-admin token reaches the Keycloak-mode endpoint (not blocked by Spring Security)")
+    void getUsersWithSuperAdminTokenReachesEndpoint() throws Exception {
         // In Keycloak mode, GET /api/v1/users is handled by KeycloakUserApiController.
-        // A valid admin bearer token must reach the endpoint (not be rejected with 401 or 403 by Spring Security).
+        // A valid super-admin bearer token must reach the endpoint (not be rejected by Spring Security).
         // The downstream Keycloak Admin API call may fail depending on service-account permissions,
         // which would return a 4xx, but that is an application-level concern, not a security-config concern.
         mockMvc.perform(get(ApiEndpoints.USERS_V1)
-                        .header(HttpHeaders.AUTHORIZATION, bearerToken(adminAccessToken()))
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(superAdminAccessToken()))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(result -> {
                     int status = result.getResponse().getStatus();

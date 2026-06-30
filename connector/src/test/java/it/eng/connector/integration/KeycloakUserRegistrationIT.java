@@ -78,7 +78,7 @@ class KeycloakUserRegistrationIT extends BaseKeycloakIntegrationTest {
         UserDTO userDTO = new UserDTO("First", "Last", "keycloak.user@test.com",
                 "TestPass123!", null, Role.ROLE_ADMIN, null);
 
-        String token = adminAccessToken();
+        String token = superAdminAccessToken();
         mockMvc.perform(post(ApiEndpoints.USERS_V1)
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
