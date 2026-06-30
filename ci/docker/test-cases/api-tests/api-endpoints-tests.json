@@ -119,7 +119,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"firstName\" : \"GHA Test user\",\r\n  \"lastName\" : \"DSP-TRUEConnector\",\r\n  \"email\" : \"user_gha@mail.com\",\r\n  \"password\" : \"GhaPassword123!\",\r\n  \"role\" : \"ROLE_ADMIN\"\r\n}",
+							"raw": "{\r\n  \"firstName\" : \"GHA Test user\",\r\n  \"lastName\" : \"DSP-TRUEConnector\",\r\n  \"email\" : \"user_gha@mail.com\",\r\n  \"password\" : \"GhaPassword123!\",\r\n  \"role\" : \"ADMIN\"\r\n}",
 							"options": {
 								"raw": {
 									"language": "json"
