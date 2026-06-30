@@ -26,6 +26,7 @@ The security config currently routes all of `/api/v1/users/**` to `ROLE_SUPER_AD
 
 - Available to `ROLE_ADMIN` and `ROLE_SUPER_ADMIN`.
 - Reads the `Principal` from the request, resolves the current user by email, and returns the user as a `JsonNode`.
+- If `Principal` is `null` (disabled-auth mode), the controller returns a `400 Bad Request` with a clear message, consistent with how the existing PUT methods handle it via the service's `loggedInUser == null` branch (which permits the action in disabled mode — the `/me` endpoint returns 400 in disabled mode since there is no authenticated user to identify).
 - A new `UserService.findCurrentUser(String email)` method is added (delegates to the existing repository lookup).
 - A new `UserApiController.getCurrentUser(Principal)` method handles the endpoint.
 
