@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] — Multi-Tenant Support
 
 ### Added
+- **MT1 — Tenant & User Lifecycle Foundation**
+  - `TenantService.saveTenant()` now auto-generates a **UUID** as the tenant ID; any caller-supplied `id` is ignored. `callbackAddress` is derived programmatically as `${application.callback.address}/{id}` — any caller-supplied `callbackAddress` is also ignored.
+  - `UserDTO` has a new `tenantId` field. When provided, `UserService.createUser()` validates that the referenced tenant exists and is enabled before persisting the user; users are stored with their `tenantId` linked.
+  - `ROLE_SUPER_ADMIN` users are exempt from tenant-existence validation and may be created without a `tenantId`.
+  - **Keycloak mode user registration** — `KeycloakUserService` and `KeycloakUserApiController` added. When `application.auth.provider=KEYCLOAK`, `POST /api/v1/users` delegates to the Keycloak Admin REST API (`POST /admin/realms/{realm}/users`) using the service account client credentials. Requires `application.keycloak.admin.server-url` and `application.keycloak.admin.realm` properties.
+  - ADR [D-TEC-001](doc/decisions/technical/D-TEC-001-keycloak-user-registration.md) — documents the Keycloak user-registration design rationale.
+
+### Changed
+- **MT1** — `POST /api/v1/tenants`: `id` and `callbackAddress` in the request body are now ignored (server-generated). See [connector/documentation/users.md](connector/documentation/users.md) for the updated API reference.
+- **MT1** — `POST /api/v1/users`: `tenantId` field added to the request body.
+
 - **Multi-tenant foundation** — `Tenant` model, `TenantRepository`, `TenantService`, `TenantContextHolder` (ThreadLocal + MDC), `TenantAPIController` for full tenant lifecycle management via `/api/v1/tenants`.
 - `TenantAwareProtocolController` — abstract base class for all DSP protocol controllers; resolves the `{tenantId}` path variable and sets `TenantContextHolder` before any request processing.
 - `ApiTenantContextFilter` — sets tenant scope for management API requests from the authenticated user's `tenantId`; super-admins may override with `X-Tenant-Id` header.

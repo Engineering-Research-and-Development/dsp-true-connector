@@ -29,4 +29,13 @@ public interface TenantRepository extends MongoRepository<Tenant, String> {
      * @return an optional containing the tenant that owns this bucket, if any
      */
     Optional<Tenant> findByBucketName(String bucketName);
+
+    /**
+     * Finds a tenant by its DSP participant identity.
+     * Used to enforce uniqueness of participant IDs across tenants.
+     *
+     * @param participantId the participant ID to search for
+     * @return an optional containing the tenant with this participant ID, if any
+     */
+    Optional<Tenant> findByParticipantId(String participantId);
 }

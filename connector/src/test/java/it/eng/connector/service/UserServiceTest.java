@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -24,26 +25,33 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import it.eng.connector.model.PasswordValidationResult;
+import it.eng.connector.model.Role;
 import it.eng.connector.model.User;
 import it.eng.connector.model.UserDTO;
 import it.eng.connector.repository.UserRepository;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.exception.BadRequestException;
 import it.eng.tools.exception.ResourceNotFoundException;
+import it.eng.tools.exception.TenantNotFoundException;
+import it.eng.tools.model.Tenant;
+import it.eng.tools.service.TenantService;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
-	
+
 	private static final String USER_ID = "1234";
 	private static final String USER = "user@test.com";
-	
+	private static final String TENANT_ID = "engineering";
+
 	@Mock
 	private UserRepository userRepository;
 	@Mock
 	private PasswordEncoder encoder;
 	@Mock
 	private PasswordCheckValidator passwordValidator;
-	
+	@Mock
+	private TenantService tenantService;
+
 	@InjectMocks
 	private UserService userService;
 
@@ -51,7 +59,7 @@ class UserServiceTest {
 	private UserDTO userDTO;
 	@Mock
 	private PasswordValidationResult passwordValidationResult;
-	
+
 	@Test
 	@DisplayName("Find users")
 	void testFindUsers() {
@@ -59,41 +67,82 @@ class UserServiceTest {
 		Collection<JsonNode> response = userService.findUsers(null);
 		assertNotNull(response);
 		assertFalse(response.stream().allMatch(jn -> jn.toPrettyString().contains("password")));
-		
+
 		// found by email
 		when(userRepository.findByEmail(TestUtil.USER.getEmail())).thenReturn(Optional.of(TestUtil.USER));
 		response = userService.findUsers(TestUtil.USER.getEmail());
 		assertNotNull(response);
 		assertFalse(response.stream().allMatch(jn -> jn.toPrettyString().contains("password")));
-		
+
 		// not found by email
 		when(userRepository.findByEmail("not found")).thenReturn(Optional.empty());
 		assertThrows(ResourceNotFoundException.class, () -> userService.findUsers("not found"));
 	}
 
 	@Test
-	@DisplayName("Create user")
-	void createUser() {
+	@DisplayName("Create user with valid tenantId - user saved with tenantId set")
+	void createUser_withValidTenantId() {
 		when(userDTO.getEmail()).thenReturn(USER);
+		when(userDTO.getRole()).thenReturn(Role.ROLE_ADMIN);
+		when(userDTO.getTenantId()).thenReturn(TENANT_ID);
 		when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(Optional.empty());
 		when(passwordValidator.isValid(userDTO.getPassword())).thenReturn(passwordValidationResult);
 		when(passwordValidationResult.isValid()).thenReturn(true);
-		
+		when(tenantService.findEnabledTenantById(TENANT_ID)).thenReturn(
+				Tenant.Builder.newInstance().id(TENANT_ID).name("Engineering")
+						.participantId("urn:connector:engineering")
+						.enabled(true).build());
+
 		userService.createUser(userDTO);
-		
+
+		verify(tenantService).findEnabledTenantById(TENANT_ID);
 		verify(userRepository).save(any(User.class));
 	}
-	
+
+	@Test
+	@DisplayName("Create user with non-existent tenantId - TenantNotFoundException thrown")
+	void createUser_withNonExistentTenantId() {
+		when(userDTO.getEmail()).thenReturn(USER);
+		when(userDTO.getRole()).thenReturn(Role.ROLE_ADMIN);
+		when(userDTO.getTenantId()).thenReturn("non-existent-tenant");
+		when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(Optional.empty());
+		when(passwordValidator.isValid(userDTO.getPassword())).thenReturn(passwordValidationResult);
+		when(passwordValidationResult.isValid()).thenReturn(true);
+		when(tenantService.findEnabledTenantById("non-existent-tenant"))
+				.thenThrow(new TenantNotFoundException("Tenant not found"));
+
+		assertThrows(TenantNotFoundException.class, () -> userService.createUser(userDTO));
+
+		verify(userRepository, never()).save(any(User.class));
+	}
+
+	@Test
+	@DisplayName("Create ROLE_SUPER_ADMIN user without tenantId - succeeds without tenant lookup")
+	void createUser_superAdmin_noTenantId() {
+		when(userDTO.getEmail()).thenReturn(USER);
+		when(userDTO.getRole()).thenReturn(Role.ROLE_SUPER_ADMIN);
+		when(userDTO.getTenantId()).thenReturn(null);
+		when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(Optional.empty());
+		when(passwordValidator.isValid(userDTO.getPassword())).thenReturn(passwordValidationResult);
+		when(passwordValidationResult.isValid()).thenReturn(true);
+
+		userService.createUser(userDTO);
+
+		// SUPER_ADMIN must never trigger a tenant lookup
+		verify(tenantService, never()).findEnabledTenantById(anyString());
+		verify(userRepository).save(any(User.class));
+	}
+
 	@Test
 	@DisplayName("Create user - user email already exists")
 	void createUser_not_found() {
 		when(userDTO.getEmail()).thenReturn(USER);
 		when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(Optional.of(TestUtil.USER));
 		assertThrows(BadRequestException.class, () -> userService.createUser(userDTO));
-		
+
 		verify(userRepository, times(0)).save(any(User.class));
 	}
-	
+
 	@Test
 	@DisplayName("Create user - password not valid")
 	void createUser_weak_password() {
@@ -101,9 +150,9 @@ class UserServiceTest {
 		when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(Optional.empty());
 		when(passwordValidator.isValid(userDTO.getPassword())).thenReturn(passwordValidationResult);
 		when(passwordValidationResult.isValid()).thenReturn(false);
-		
+
 		assertThrows(BadRequestException.class, () -> userService.createUser(userDTO));
-		
+
 		verify(userRepository, times(0)).save(any(User.class));
 	}
 
@@ -113,9 +162,9 @@ class UserServiceTest {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
 		when(userDTO.getFirstName()).thenReturn("First Name update");
 		when(userDTO.getLastName()).thenReturn("Last Name update");
-		
+
 		userService.updateUser(USER_ID, TestUtil.USER.getEmail(), userDTO);
-		
+
 		verify(userRepository).save(any(User.class));
 	}
 
@@ -130,26 +179,26 @@ class UserServiceTest {
 
 		verify(userRepository).save(any(User.class));
 	}
-	
+
 	@Test
 	@DisplayName("Update user - user not found")
 	void updateUser_not_found() {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
-		
-		assertThrows(BadRequestException.class, 
-				()-> userService.updateUser(USER_ID, TestUtil.USER.getEmail(), userDTO));
-		
+
+		assertThrows(BadRequestException.class,
+				() -> userService.updateUser(USER_ID, TestUtil.USER.getEmail(), userDTO));
+
 		verify(userRepository, times(0)).save(any(User.class));
 	}
-	
+
 	@Test
-	@DisplayName("Update user - updading other user than own")
+	@DisplayName("Update user - updating other user than own")
 	void updateUser_other_user() {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
 
-		assertThrows(BadRequestException.class, 
-				()-> userService.updateUser(USER_ID, "otheruser@mail.com", userDTO));
-		
+		assertThrows(BadRequestException.class,
+				() -> userService.updateUser(USER_ID, "otheruser@mail.com", userDTO));
+
 		verify(userRepository, times(0)).save(any(User.class));
 	}
 
@@ -163,9 +212,9 @@ class UserServiceTest {
 		when(passwordValidationResult.isValid()).thenReturn(true);
 		when(userDTO.getNewPassword()).thenReturn("newPassword");
 		when(encoder.encode(anyString())).thenReturn("passwordEncoded");
-		
+
 		userService.updatePassword(USER_ID, TestUtil.USER.getEmail(), userDTO);
-		
+
 		verify(userRepository).save(any(User.class));
 	}
 
@@ -184,28 +233,28 @@ class UserServiceTest {
 
 		verify(userRepository).save(any(User.class));
 	}
-	
+
 	@Test
-	@DisplayName("Update user password  user not found")
+	@DisplayName("Update user password - user not found")
 	void updatePassword_not_found() {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
-		
-		assertThrows(BadRequestException.class, 
-				()-> userService.updatePassword(USER_ID, USER, userDTO));
-		
+
+		assertThrows(BadRequestException.class,
+				() -> userService.updatePassword(USER_ID, USER, userDTO));
+
 		verify(userRepository, times(0)).save(any(User.class));
 	}
-	
+
 	@Test
 	@DisplayName("Update user password - old password not match")
 	void updatePassword_not_match() {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
 		when(userDTO.getPassword()).thenReturn("aaa");
 		when(encoder.matches(anyString(), anyString())).thenReturn(false);
-		
-		assertThrows(BadRequestException.class, 
-				()-> userService.updatePassword(USER_ID, TestUtil.USER.getEmail(), userDTO));
-		
+
+		assertThrows(BadRequestException.class,
+				() -> userService.updatePassword(USER_ID, TestUtil.USER.getEmail(), userDTO));
+
 		verify(userRepository, times(0)).save(any(User.class));
 	}
 

@@ -7,6 +7,7 @@ import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.TenantRepository;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -20,23 +21,32 @@ import java.util.Map;
 @Slf4j
 public class TenantService {
 
+    private static final java.util.regex.Pattern TENANT_ID_PATTERN =
+            java.util.regex.Pattern.compile("^[a-zA-Z0-9-]+$");
+
     private final TenantRepository tenantRepository;
     private final AuditEventPublisher auditEventPublisher;
     private final S3BucketProvisionService s3BucketProvisionService;
+    private final String baseCallbackAddress;
 
     /**
-     * Constructs the service with its repository, audit publisher, and S3 bucket provisioning dependencies.
+     * Constructs the service with its repository, audit publisher, S3 provisioning
+     * dependencies, and the configured application callback base URL.
      *
-     * @param tenantRepository          the tenant repository
-     * @param auditEventPublisher       the audit event publisher
-     * @param s3BucketProvisionService  the S3 bucket provisioning service
+     * @param tenantRepository         the tenant repository
+     * @param auditEventPublisher      the audit event publisher
+     * @param s3BucketProvisionService the S3 bucket provisioning service
+     * @param baseCallbackAddress      the base URL used to derive per-tenant callback addresses;
+     *                                 injected from {@code application.callback.address}
      */
     public TenantService(TenantRepository tenantRepository,
                          AuditEventPublisher auditEventPublisher,
-                         S3BucketProvisionService s3BucketProvisionService) {
+                         S3BucketProvisionService s3BucketProvisionService,
+                         @Value("${application.callback.address}") String baseCallbackAddress) {
         this.tenantRepository = tenantRepository;
         this.auditEventPublisher = auditEventPublisher;
         this.s3BucketProvisionService = s3BucketProvisionService;
+        this.baseCallbackAddress = baseCallbackAddress;
     }
 
     /**
@@ -81,28 +91,65 @@ public class TenantService {
     }
 
     /**
-     * Persists and returns the given tenant.
+     * Persists a new tenant using the client-supplied identifier.
+     *
+     * <p>The {@code id} on the incoming {@code tenant} is used directly and must be
+     * non-null and composed exclusively of alphanumeric characters and hyphens
+     * ({@code ^[a-zA-Z0-9-]+$}).  An {@link IllegalArgumentException} is thrown if the
+     * format is invalid or if the id is already taken.
+     *
+     * <p>Participant IDs must be unique across all tenants.  If another tenant with the same
+     * {@code participantId} already exists, an {@link IllegalArgumentException} is thrown.
      *
      * <p>If the tenant has a {@code bucketName} configured, the S3 bucket is provisioned
      * (or confirmed to exist) before the tenant is saved.  Bucket provisioning failure
      * prevents the tenant from being persisted.
      *
-     * @param tenant the tenant to save
+     * @param tenant the tenant to save; {@code id} must be provided and valid
      * @return the saved tenant
-     * @throws IllegalArgumentException if another tenant already owns the requested bucket
+     * @throws IllegalArgumentException if the id format is invalid, the id already exists,
+     *                                  another tenant already owns the requested bucket,
+     *                                  or a tenant with the same participantId already exists
      */
     public Tenant saveTenant(Tenant tenant) {
-        String bucketName = tenant.getBucketName();
+        String tenantId = tenant.getId();
+        if (!TENANT_ID_PATTERN.matcher(tenantId).matches()) {
+            throw new IllegalArgumentException(
+                    "Tenant id '" + tenantId + "' is invalid: only alphanumeric characters and hyphens are allowed.");
+        }
+        tenantRepository.findById(tenantId)
+                .ifPresent(existing -> {
+                    throw new IllegalArgumentException(
+                            "Tenant with id '" + tenantId + "' already exists.");
+                });
+        tenantRepository.findByParticipantId(tenant.getParticipantId())
+                .ifPresent(existing -> {
+                    throw new IllegalArgumentException(
+                            "Tenant with participantId '" + tenant.getParticipantId() + "' already exists: " + existing.getId());
+                });
+
+        Tenant tenantToSave = Tenant.Builder.newInstance()
+                .id(tenantId)
+                .name(tenant.getName())
+                .description(tenant.getDescription())
+                .participantId(tenant.getParticipantId())
+                .automaticNegotiation(tenant.isAutomaticNegotiation())
+                .automaticTransfer(tenant.isAutomaticTransfer())
+                .enabled(tenant.isEnabled())
+                .bucketName(tenant.getBucketName())
+                .build();
+
+        String bucketName = tenantToSave.getBucketName();
         if (StringUtils.hasText(bucketName)) {
             tenantRepository.findByBucketName(bucketName)
                     .ifPresent(existing -> {
                         throw new IllegalArgumentException(
                                 "Bucket '" + bucketName + "' is already assigned to tenant: " + existing.getId());
                     });
-            log.info("Provisioning S3 bucket '{}' for new tenant '{}'", bucketName, tenant.getId());
+            log.info("Provisioning S3 bucket '{}' for new tenant '{}'", bucketName, tenantId);
             s3BucketProvisionService.ensureBucketCredentials(bucketName);
         }
-        Tenant saved = tenantRepository.save(tenant);
+        Tenant saved = tenantRepository.save(tenantToSave);
         auditEventPublisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.TENANT_CREATED)
                 .description("Tenant created: " + saved.getId())
@@ -180,8 +227,8 @@ public class TenantService {
     }
 
     /**
-     * Updates the mutable settings of an existing tenant (name, description, connectorId,
-     * callbackAddress, automaticNegotiation, automaticTransfer, bucketName).
+     * Updates the mutable settings of an existing tenant (name, description, participantId,
+     * automaticNegotiation, automaticTransfer, bucketName).
      * The {@code enabled} state is preserved from the existing tenant.
      *
      * <p>If {@code bucketName} is changed, the new bucket is provisioned before the tenant
@@ -216,8 +263,7 @@ public class TenantService {
                 .version(existing.getVersion())
                 .name(updates.getName() != null ? updates.getName() : existing.getName())
                 .description(updates.getDescription() != null ? updates.getDescription() : existing.getDescription())
-                .connectorId(updates.getConnectorId() != null ? updates.getConnectorId() : existing.getConnectorId())
-                .callbackAddress(updates.getCallbackAddress() != null ? updates.getCallbackAddress() : existing.getCallbackAddress())
+                .participantId(updates.getParticipantId() != null ? updates.getParticipantId() : existing.getParticipantId())
                 .automaticNegotiation(updates.isAutomaticNegotiation())
                 .automaticTransfer(updates.isAutomaticTransfer())
                 .enabled(existing.isEnabled())
@@ -246,8 +292,7 @@ public class TenantService {
                 .version(source.getVersion())
                 .name(source.getName())
                 .description(source.getDescription())
-                .connectorId(source.getConnectorId())
-                .callbackAddress(source.getCallbackAddress())
+                .participantId(source.getParticipantId())
                 .automaticNegotiation(source.isAutomaticNegotiation())
                 .automaticTransfer(source.isAutomaticTransfer())
                 .enabled(enabled)

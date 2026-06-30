@@ -154,12 +154,12 @@ public class AutomaticNegotiationIT {
 
         // ── Provider instance first — needs S3 properties ─────────────────────────
         providerCtx = startInstance(mongoHost, mongoPort, PROVIDER_PORT,
-                "provider", "provider_db", PROVIDER_BASE_URL + "/" + TENANT_ID,
+                "provider", "provider_db", PROVIDER_BASE_URL,
                 providerMinIO.getS3URL(), providerMinIO.getUserName(), providerMinIO.getPassword());
 
         // ── Consumer instance — no S3 needed for negotiation flow ─────────────────
         consumerCtx = startInstance(mongoHost, mongoPort, CONSUMER_PORT,
-                "consumer", "consumer_db", CONSUMER_BASE_URL + "/" + TENANT_ID,
+                "consumer", "consumer_db", CONSUMER_BASE_URL,
                 null, null, null);
 
         // ── WireMock consumer — callbackAddress points to WireMock, not the real consumer ──
@@ -167,7 +167,7 @@ public class AutomaticNegotiationIT {
         // WireMock intercepts that request and returns an error → triggers provider's retry logic.
         wiremockConsumerCtx = startInstance(mongoHost, mongoPort, WIREMOCK_CONSUMER_PORT,
                 "consumer-wiremock", "consumer_wiremock_db",
-                "http://localhost:" + WIREMOCK_PORT + "/" + TENANT_ID,
+                "http://localhost:" + WIREMOCK_PORT,
                 null, null, null);
 
         // Populate provider catalog so offer validation succeeds
@@ -218,14 +218,12 @@ public class AutomaticNegotiationIT {
                     .addCommandLineProperties(false)
                     .build();
             ConfigurableApplicationContext ctx = app.run();
-            // Phase 5: update the engineering tenant in the DB with the runtime callbackAddress
-            // and automaticNegotiation=true, since those now override the @Value property.
+            // Phase 5: update the engineering tenant in the DB with automaticNegotiation=true.
             TenantService tenantSvc = ctx.getBean(TenantService.class);
             Tenant tenantUpdate = Tenant.Builder.newInstance()
                     .id(TENANT_ID)
                     .name("Engineering")
-                    .connectorId("urn:connector:engineering")
-                    .callbackAddress(callbackAddress)
+                    .participantId("urn:connector:engineering")
                     .automaticNegotiation(true)
                     .enabled(true)
                     .build();

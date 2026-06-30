@@ -81,7 +81,7 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
         log.info("No ContractNegotiation found with providerPid {}, creating a new one", contractOfferMessage.getProviderPid());
 
         Offer offerToBeInserted = Offer.Builder.newInstance()
-                .assignee(contractOfferMessage.getOffer().getAssignee() == null ? properties.connectorId() : contractOfferMessage.getOffer().getAssignee())
+                .assignee(contractOfferMessage.getOffer().getAssignee() == null ? properties.participantId() : contractOfferMessage.getOffer().getAssignee())
                 .assigner(contractOfferMessage.getOffer().getAssigner() == null ? contractOfferMessage.getCallbackAddress() : contractOfferMessage.getOffer().getAssigner())
                 .originalId(contractOfferMessage.getOffer().getId())
                 .permission(contractOfferMessage.getOffer().getPermission())

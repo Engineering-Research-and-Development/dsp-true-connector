@@ -198,8 +198,7 @@ class TenantBucketResolverTest {
         return Tenant.Builder.newInstance()
                 .id(TENANT_ID)
                 .name("Engineering")
-                .connectorId("urn:connector:engineering")
-                .callbackAddress("http://localhost:8090")
+                .participantId("urn:connector:engineering")
                 .enabled(true)
                 .bucketName(bucketName)
                 .build();

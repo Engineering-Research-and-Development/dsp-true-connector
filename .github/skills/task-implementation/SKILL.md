@@ -256,9 +256,33 @@ After implementation and verification are complete:
    - summary bullets
    - verification results
    - files changed
-4. move the issue to **In Review**
+4. wait for GitHub Actions to complete — see **GitHub Actions check after PR** below
+5. move the issue to **In Review** only after all GA checks pass
 
 Per `doc/development_procedure.md`, the PR will be **squash merged** to `develop` after review, and the feature branch deleted.
+
+## GitHub Actions check after PR
+
+After the PR is opened, GitHub Actions trigger automatically on the pushed branch. Wait for all checks to complete:
+
+```bash
+gh pr checks <PR-number> --watch
+```
+
+Treat every GA check outcome as part of the Shared verification policy, sharing the same **3-retry budget** already used by any local verification retries:
+
+- **All checks pass** — proceed to the PR self-review step.
+- **One or more checks fail** — this is a verification failure; enter the retry loop:
+  1. Read the failing run log: `gh run view <run-id> --log-failed`
+  2. Diagnose the root cause (compilation error, test failure, lint violation, Docker issue).
+  3. Apply the fix, commit, and push to the feature branch — the push re-triggers GA automatically.
+  4. Wait for the new run: `gh pr checks <PR-number> --watch`
+  5. Each push-and-wait counts as one retry cycle against the shared 3-cycle budget.
+- **After 3 total cycles** (combined local + GA) still failing:
+  1. Add the `needs-human` label.
+  2. Post a comment with the GA log excerpt and a summary of what was attempted.
+  3. Move the issue back to **Ready**.
+  4. Stop — do not complete the PR.
 
 ## PR self-review policy
 
@@ -283,4 +307,5 @@ After the PR is open, run a self-review of the branch diff using the built-in `/
 - do not invent new build, test, or QA tooling
 - do not create a PR after the 3-attempt failure path
 - do not skip the code review step after PR creation
+- do not move the issue to **In Review** while any required GitHub Actions checks are still failing
 - do not restate this workflow in `AGENTS.md` or `README.md`

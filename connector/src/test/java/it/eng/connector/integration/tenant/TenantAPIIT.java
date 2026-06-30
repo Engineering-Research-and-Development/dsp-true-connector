@@ -1,6 +1,7 @@
 package it.eng.connector.integration.tenant;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.jayway.jsonpath.JsonPath;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Tenant;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -35,12 +37,22 @@ public class TenantAPIIT extends BaseIntegrationTest {
     private static final String ENGINEERING_TENANT_ID = "engineering";
     private static final String NON_EXISTING_TENANT_ID = "non-existing-tenant-xyz";
 
+    /** Tracks the server-generated UUID from API-created tenants for @AfterEach cleanup. */
+    private String generatedTenantId;
+
+    @Value("${application.callback.address:http://localhost:8080/}")
+    private String baseCallbackAddress;
+
     @Autowired
     private TenantRepository tenantRepository;
 
     @AfterEach
     public void cleanup() {
         tenantRepository.deleteById(NEW_TENANT_ID);
+        if (generatedTenantId != null) {
+            tenantRepository.deleteById(generatedTenantId);
+            generatedTenantId = null;
+        }
     }
 
     private Tenant buildNewTenant() {
@@ -48,8 +60,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
                 .id(NEW_TENANT_ID)
                 .name("Test Tenant IT")
                 .description("Integration test tenant")
-                .connectorId("urn:connector:test-it")
-                .callbackAddress("http://localhost:9999")
+                .participantId("urn:connector:test-it")
                 .enabled(true)
                 .automaticNegotiation(false)
                 .automaticTransfer(false)
@@ -99,20 +110,19 @@ public class TenantAPIIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /api/v1/tenants as SUPER_ADMIN creates a tenant and returns 200")
+    @DisplayName("POST /api/v1/tenants as SUPER_ADMIN creates a tenant and returns 200 with client-supplied id")
     public void createTenant_asSuperAdmin_returns200() throws Exception {
         Tenant newTenant = Tenant.Builder.newInstance()
                 .id(NEW_TENANT_ID)
                 .name("Test Tenant IT")
                 .description("Integration test tenant")
-                .connectorId("urn:connector:test-it")
-                .callbackAddress("http://localhost:9999")
+                .participantId("urn:connector:test-it")
                 .enabled(true)
                 .automaticNegotiation(false)
                 .automaticTransfer(false)
                 .build();
 
-        mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+        MvcResult result = mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
                         .with(user("super").roles("SUPER_ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(Objects.requireNonNull(ToolsSerializer.serializePlain(newTenant))))
@@ -120,18 +130,115 @@ public class TenantAPIIT extends BaseIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.data.name").value("Test Tenant IT"))
                 .andExpect(jsonPath("$.data.id").value(NEW_TENANT_ID))
-                .andExpect(jsonPath("$.data.name").value("Test Tenant IT"));
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        generatedTenantId = JsonPath.read(responseBody, "$.data.id");
     }
 
     @Test
-    @DisplayName("DELETE /api/v1/tenants/{id} as SUPER_ADMIN removes the tenant")
+    @DisplayName("POST /api/v1/tenants - server uses client-supplied id")
+    public void createTenant_usesClientSuppliedId() throws Exception {
+        String clientId = "my-custom-tenant-id";
+        Tenant request = Tenant.Builder.newInstance()
+                .id(clientId)
+                .name("Custom ID Test")
+                .participantId("urn:connector:custom-id-test")
+                .enabled(true)
+                .build();
+
+        MvcResult result = mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(clientId))
+                .andReturn();
+
+        generatedTenantId = JsonPath.read(result.getResponse().getContentAsString(), "$.data.id");
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/tenants - callbackAddress is derived from base URL and tenant id")
+    public void createTenant_derivesCallbackAddressFromBaseUrl() throws Exception {
+        String tenantId = "callback-test-tenant";
+        Tenant request = Tenant.Builder.newInstance()
+                .id(tenantId)
+                .name("CallbackAddress Derivation Test")
+                .participantId("urn:connector:callback-test")
+                .enabled(true)
+                .build();
+
+        mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(tenantId));
+
+        // Verify callbackAddress is derived as base + "/" + tenantId
+        Tenant saved = tenantRepository.findById(tenantId).orElseThrow();
+        String expectedBase = baseCallbackAddress.endsWith("/")
+                ? baseCallbackAddress.substring(0, baseCallbackAddress.length() - 1)
+                : baseCallbackAddress;
+        assertThat(saved.getCallbackAddress(baseCallbackAddress)).isEqualTo(expectedBase + "/" + tenantId);
+        generatedTenantId = tenantId;
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/tenants with duplicate id returns 400")
+    public void createTenant_duplicateId_returns400() throws Exception {
+        tenantRepository.save(buildNewTenant());
+
+        Tenant duplicate = Tenant.Builder.newInstance()
+                .id(NEW_TENANT_ID)
+                .name("Duplicate ID Tenant")
+                .participantId("urn:connector:different")
+                .enabled(true)
+                .build();
+
+        mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(duplicate))))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/tenants with duplicate participantId returns 400")
+    public void createTenant_duplicateParticipantId_returns400() throws Exception {
+        // Pre-save a tenant with a known participantId
+        tenantRepository.save(buildNewTenant());
+
+        // Attempt to create a second tenant with the same participantId
+        Tenant duplicate = Tenant.Builder.newInstance()
+                .id("different-id")
+                .name("Duplicate ParticipantId Tenant")
+                .participantId("urn:connector:test-it")
+                .enabled(true)
+                .build();
+
+        mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(duplicate))))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
     public void deleteTenant_asSuperAdmin_returns200() throws Exception {
         Tenant tenantToDelete = Tenant.Builder.newInstance()
                 .id(NEW_TENANT_ID)
                 .name("Tenant To Delete")
-                .connectorId("urn:connector:delete-me")
-                .callbackAddress("http://localhost:9998")
+                .participantId("urn:connector:delete-me")
                 .enabled(true)
                 .build();
         tenantRepository.save(tenantToDelete);
@@ -154,8 +261,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
                 .id(NEW_TENANT_ID)
                 .name("Updated Name")
                 .description("Updated description")
-                .connectorId("urn:connector:updated")
-                .callbackAddress("http://localhost:9998")
+                .participantId("urn:connector:updated")
                 .automaticNegotiation(true)
                 .automaticTransfer(false)
                 .build();
@@ -179,8 +285,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
         Tenant updates = Tenant.Builder.newInstance()
                 .id(NON_EXISTING_TENANT_ID)
                 .name("Should Not Update")
-                .connectorId("urn:connector:test")
-                .callbackAddress("http://localhost:9999")
+                .participantId("urn:connector:test")
                 .build();
 
         mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/" + NON_EXISTING_TENANT_ID)
@@ -199,8 +304,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
         Tenant disabled = Tenant.Builder.newInstance()
                 .id(NEW_TENANT_ID)
                 .name("Disabled Tenant")
-                .connectorId("urn:connector:test-it")
-                .callbackAddress("http://localhost:9999")
+                .participantId("urn:connector:test-it")
                 .enabled(false)
                 .build();
         tenantRepository.save(disabled);
@@ -296,7 +400,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
         MvcResult result = mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
                         .with(user("super").roles("SUPER_ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"description\": \"missing id, name, connectorId and callbackAddress\"}"))
+                        .content("{\"description\": \"missing id, name, participantId\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andReturn();
