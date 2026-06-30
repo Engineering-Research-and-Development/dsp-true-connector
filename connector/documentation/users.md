@@ -40,7 +40,7 @@ Connector has implemented simple user management, including following:
  - update user
  - update password
  
-All endpoints requires Content-Type: application/json, and Authorization header with username:password for existing user with role ADMIN.
+All endpoints require `Content-Type: application/json` and an `Authorization` header for a user with `ROLE_SUPER_ADMIN`. `ROLE_ADMIN` users cannot access these endpoints and will receive HTTP 403.
  
 ### Create user 
 

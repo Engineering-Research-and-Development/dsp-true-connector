@@ -433,4 +433,29 @@ public class TenantAPIIT extends BaseIntegrationTest {
                         .with(user("admin").roles("ADMIN")))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @DisplayName("PUT /api/v1/tenants/{id} with different participantId succeeds but preserves original")
+    public void updateTenant_participantIdIsIgnored_returnsOriginalValue() throws Exception {
+        Tenant original = buildNewTenant();
+        tenantRepository.save(original);
+        String originalParticipantId = original.getParticipantId();
+
+        Tenant updates = Tenant.Builder.newInstance()
+                .id(original.getId())
+                .name("Updated Name")
+                .description("Updated description")
+                .participantId("urn:connector:changed")
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .build();
+
+        mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/" + original.getId())
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(updates))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.participantId").value(originalParticipantId));
+    }
 }

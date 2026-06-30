@@ -19,6 +19,7 @@ import it.eng.connector.model.UserDTO;
 import it.eng.connector.service.UserService;
 import it.eng.tools.auth.condition.BasicOrDisabledAuthenticationModeCondition;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.exception.BadRequestException;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -39,6 +40,26 @@ public class UserApiController {
 
 	public UserApiController(UserService userService) {
 		this.userService = userService;
+	}
+	
+	/**
+	 * Returns the currently authenticated user's own profile.
+	 *
+	 * <p>Returns {@code 400 Bad Request} when there is no authenticated principal (disabled-auth
+	 * mode), since there is no user identity to resolve.
+	 *
+	 * @param principal the authenticated principal injected by Spring Security
+	 * @return the current user as a {@link GenericApiResponse}
+	 */
+	@GetMapping(path = "/me")
+	public ResponseEntity<GenericApiResponse<JsonNode>> getCurrentUser(Principal principal) {
+		if (principal == null) {
+			throw new BadRequestException("No authenticated user in current context");
+		}
+		log.info("Fetching current user profile for principal '{}'", principal.getName());
+		JsonNode user = userService.findCurrentUser(principal.getName());
+		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
+				.body(GenericApiResponse.success(user, "Current user"));
 	}
 	
 	/**

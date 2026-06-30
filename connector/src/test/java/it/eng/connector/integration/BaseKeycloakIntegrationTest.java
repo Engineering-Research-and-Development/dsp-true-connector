@@ -34,6 +34,8 @@ public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
     private static final String KEYCLOAK_ADMIN_PASSWORD = "admin123";
     private static final String KEYCLOAK_CONNECTOR_USERNAME = "connector@test.com";
     private static final String KEYCLOAK_CONNECTOR_PASSWORD = "connector123";
+    private static final String KEYCLOAK_SUPER_ADMIN_USERNAME = "superadmin@test.com";
+    private static final String KEYCLOAK_SUPER_ADMIN_PASSWORD = "password";
     private static final Duration KEYCLOAK_STARTUP_TIMEOUT = Duration.ofMinutes(3);
     private static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
@@ -87,6 +89,16 @@ public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
      */
     protected String connectorAccessToken() throws Exception {
         return accessToken(KEYCLOAK_CONNECTOR_USERNAME, KEYCLOAK_CONNECTOR_PASSWORD);
+    }
+
+    /**
+     * Returns a bearer token for the Keycloak super-admin test user.
+     *
+     * @return a valid bearer token with the super_admin realm role
+     * @throws Exception when the token cannot be obtained
+     */
+    protected String superAdminAccessToken() throws Exception {
+        return accessToken(KEYCLOAK_SUPER_ADMIN_USERNAME, KEYCLOAK_SUPER_ADMIN_PASSWORD);
     }
 
     /**

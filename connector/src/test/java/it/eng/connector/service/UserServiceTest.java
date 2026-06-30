@@ -1,5 +1,6 @@
 package it.eng.connector.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -80,10 +81,32 @@ class UserServiceTest {
 	}
 
 	@Test
+	@DisplayName("findCurrentUser returns user for known email")
+	void findCurrentUser_returnsUser() {
+		when(userRepository.findByEmail(TestUtil.USER.getEmail()))
+				.thenReturn(Optional.of(TestUtil.USER));
+
+		JsonNode result = userService.findCurrentUser(TestUtil.USER.getEmail());
+
+		assertNotNull(result);
+		assertEquals(TestUtil.USER.getEmail(), result.get("email").asText());
+		verify(userRepository).findByEmail(TestUtil.USER.getEmail());
+	}
+
+	@Test
+	@DisplayName("findCurrentUser throws BadRequestException for unknown email")
+	void findCurrentUser_notFound_throws() {
+		when(userRepository.findByEmail("unknown@mail.com")).thenReturn(Optional.empty());
+
+		assertThrows(BadRequestException.class,
+				() -> userService.findCurrentUser("unknown@mail.com"));
+	}
+
+	@Test
 	@DisplayName("Create user with valid tenantId - user saved with tenantId set")
 	void createUser_withValidTenantId() {
 		when(userDTO.getEmail()).thenReturn(USER);
-		when(userDTO.getRole()).thenReturn(Role.ROLE_ADMIN);
+		when(userDTO.getRole()).thenReturn(Role.ADMIN);
 		when(userDTO.getTenantId()).thenReturn(TENANT_ID);
 		when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(Optional.empty());
 		when(passwordValidator.isValid(userDTO.getPassword())).thenReturn(passwordValidationResult);
@@ -103,7 +126,7 @@ class UserServiceTest {
 	@DisplayName("Create user with non-existent tenantId - TenantNotFoundException thrown")
 	void createUser_withNonExistentTenantId() {
 		when(userDTO.getEmail()).thenReturn(USER);
-		when(userDTO.getRole()).thenReturn(Role.ROLE_ADMIN);
+		when(userDTO.getRole()).thenReturn(Role.ADMIN);
 		when(userDTO.getTenantId()).thenReturn("non-existent-tenant");
 		when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(Optional.empty());
 		when(passwordValidator.isValid(userDTO.getPassword())).thenReturn(passwordValidationResult);
@@ -120,7 +143,7 @@ class UserServiceTest {
 	@DisplayName("Create ROLE_SUPER_ADMIN user without tenantId - succeeds without tenant lookup")
 	void createUser_superAdmin_noTenantId() {
 		when(userDTO.getEmail()).thenReturn(USER);
-		when(userDTO.getRole()).thenReturn(Role.ROLE_SUPER_ADMIN);
+		when(userDTO.getRole()).thenReturn(Role.SUPER_ADMIN);
 		when(userDTO.getTenantId()).thenReturn(null);
 		when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(Optional.empty());
 		when(passwordValidator.isValid(userDTO.getPassword())).thenReturn(passwordValidationResult);

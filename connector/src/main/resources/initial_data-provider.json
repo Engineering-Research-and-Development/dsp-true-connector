@@ -10,7 +10,7 @@
       "enabled": true,
       "expired": false,
       "locked": false,
-      "role": "ROLE_ADMIN",
+      "role": "ADMIN",
       "tenantId": "engineering-provider"
     },
     {
@@ -23,7 +23,7 @@
       "enabled": "true",
       "expired": false,
       "locked": false,
-      "role": "ROLE_CONNECTOR",
+      "role": "CONNECTOR",
       "tenantId": "engineering-provider"
     },
     {
@@ -36,7 +36,7 @@
       "enabled": true,
       "expired": false,
       "locked": false,
-      "role": "ROLE_SUPER_ADMIN"
+      "role": "SUPER_ADMIN"
     }
   ],
   "catalogs": [

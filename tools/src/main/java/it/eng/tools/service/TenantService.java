@@ -227,9 +227,10 @@ public class TenantService {
     }
 
     /**
-     * Updates the mutable settings of an existing tenant (name, description, participantId,
+     * Updates the mutable settings of an existing tenant (name, description,
      * automaticNegotiation, automaticTransfer, bucketName).
-     * The {@code enabled} state is preserved from the existing tenant.
+     * The {@code enabled} state and {@code participantId} are always preserved from the existing
+     * tenant; any {@code participantId} value in {@code updates} is silently ignored.
      *
      * <p>If {@code bucketName} is changed, the new bucket is provisioned before the tenant
      * is updated.  The old bucket is <strong>not</strong> deleted automatically.
@@ -263,7 +264,7 @@ public class TenantService {
                 .version(existing.getVersion())
                 .name(updates.getName() != null ? updates.getName() : existing.getName())
                 .description(updates.getDescription() != null ? updates.getDescription() : existing.getDescription())
-                .participantId(updates.getParticipantId() != null ? updates.getParticipantId() : existing.getParticipantId())
+                .participantId(existing.getParticipantId())  // immutable; any value in request body is silently ignored
                 .automaticNegotiation(updates.isAutomaticNegotiation())
                 .automaticTransfer(updates.isAutomaticTransfer())
                 .enabled(existing.isEnabled())

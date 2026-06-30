@@ -23,7 +23,8 @@
       "enabled": true,
       "automaticNegotiation": false,
       "automaticTransfer": false,
-      "version": 0
+      "version": 0,
+      "participantId": "urn:connector:engineering"
     }
   ]
 }

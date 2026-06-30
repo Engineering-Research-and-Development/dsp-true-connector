@@ -190,7 +190,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Updated Tenant Name\",\n  \"description\": \"Updated by automated test\",\n  \"automaticNegotiation\": true,\n  \"automaticTransfer\": false,\n  \"id\": \"{{NEW_TENANT_ID}}\",\n  \"participantId\": \"urn:test:connector:updated\"\n}",
+              "raw": "{\n  \"name\": \"Updated Tenant Name\",\n  \"description\": \"Updated by automated test\",\n  \"automaticNegotiation\": true,\n  \"automaticTransfer\": false,\n  \"id\": \"{{NEW_TENANT_ID}}\",\n  \"participantId\": \"urn:test:connector\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -209,7 +209,7 @@
                   "  var jsonData = pm.response.json();",
                   "  pm.expect(jsonData.data.name).to.eql('Updated Tenant Name');",
                   "  pm.expect(jsonData.data.description).to.eql('Updated by automated test');",
-                  "  pm.expect(jsonData.data.participantId).to.eql('urn:test:connector:updated');",
+                  "  pm.expect(jsonData.data.participantId).to.eql('urn:test:connector');",
                   "  pm.expect(jsonData.data.automaticNegotiation).to.be.true;",
                   "});"
                 ]

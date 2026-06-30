@@ -227,6 +227,7 @@ Rules:
 3. mark or respect `[manual]` items as manual verification targets
 4. after a failed check, fix the issue and re-run the relevant checks
 5. maximum **3 fix-and-retry cycles** per issue
+6. **full-suite gate**: before pushing to the remote branch, always run `mvn clean verify` (Docker required) as the final local check — targeted test runs (`-Dtest=...` or `-Dit.test=...`) are development aids only and do not substitute for this gate; a known pre-existing flaky test is not a reason to skip the full suite — run through it and note the known failure explicitly
 
 If the issue still fails after 3 cycles:
 

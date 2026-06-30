@@ -14,7 +14,7 @@ class UserDTOTest {
 		userDTO.setEmail("test@mail.com");
 		userDTO.setFirstName("firstName");
 		userDTO.setLastName("lastName");
-		userDTO.setRole(Role.ROLE_ADMIN);
+		userDTO.setRole(Role.ADMIN);
 		userDTO.setPassword("password");
 		assertNotNull(ToolsSerializer.serializePlain(userDTO));
 	}

@@ -76,13 +76,26 @@ public class UserService {
 	}
 
 	/**
+	 * Returns the authenticated user's own record by e-mail.
+	 *
+	 * @param email the e-mail of the authenticated principal
+	 * @return the user as a serialized JSON node
+	 * @throws BadRequestException if no user with the given e-mail exists
+	 */
+	public JsonNode findCurrentUser(String email) {
+		User user = userRepository.findByEmail(email)
+				.orElseThrow(() -> new BadRequestException("User not found"));
+		return ToolsSerializer.serializePlainJsonNode(user);
+	}
+
+	/**
 	 * Creates a new user.
 	 *
 	 * <p>For non-SUPER_ADMIN users the {@code tenantId} in {@code userDTO} must reference an
 	 * existing, enabled tenant.  SUPER_ADMIN users are exempt from this check.
 	 *
 	 * @param userDTO the user data; {@code tenantId} is required unless the role is
-	 *                {@code ROLE_SUPER_ADMIN}
+	 *                {@code SUPER_ADMIN}
 	 * @return the created user as a serialized JSON node
 	 * @throws BadRequestException                            if the e-mail already exists or the password is invalid
 	 * @throws it.eng.tools.exception.TenantNotFoundException if the referenced tenant does not exist
@@ -96,7 +109,7 @@ public class UserService {
 		if (validationResult.isValid()) {
 			// SUPER_ADMIN users are not bound to a specific tenant.
 			if (StringUtils.isNotBlank(userDTO.getTenantId())
-					&& userDTO.getRole() != Role.ROLE_SUPER_ADMIN) {
+					&& userDTO.getRole() != Role.SUPER_ADMIN) {
 				tenantService.findEnabledTenantById(userDTO.getTenantId());
 			}
 			User user = new User(createNewPid(), userDTO.getFirstName(), userDTO.getLastName(),
