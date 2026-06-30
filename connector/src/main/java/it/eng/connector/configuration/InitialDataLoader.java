@@ -184,4 +184,39 @@ public class InitialDataLoader {
                 .eventType(AuditEventType.APPLICATION_STOP)
                 .build());
     }
+
+    /**
+     * Creates compound MongoDB indexes for all primary multi-tenant collections at startup.
+     * Index creation via {@link com.mongodb.client.MongoCollection#createIndex} is idempotent —
+     * safe to call on every application start without side effects.
+     */
+    @EventListener(ApplicationReadyEvent.class)
+    public void createCompoundIndexes() {
+        log.info("Creating compound MongoDB indexes for multi-tenant collections...");
+        createIndex("catalogs",               new Document("tenantId", 1).append("_id", 1));
+        createIndex("datasets",               new Document("tenantId", 1).append("_id", 1));
+        createIndex("contract_negotiations",  new Document("tenantId", 1).append("state", 1).append("role", 1));
+        createIndex("transfer_process",       new Document("tenantId", 1).append("state", 1).append("role", 1));
+        createIndex("agreements",             new Document("tenantId", 1).append("_id", 1));
+        createIndex("audit_events",           new Document("tenantId", 1).append("timestamp", 1));
+        createIndex("application_properties", new Document("tenantId", 1).append("_id", 1));
+        log.info("Compound MongoDB indexes created (or already exist).");
+    }
+
+    /**
+     * Creates a MongoDB index on the given collection with the given key document.
+     * Errors are logged as warnings rather than propagated, so a failed index creation
+     * does not prevent the application from starting.
+     *
+     * @param collectionName the name of the MongoDB collection
+     * @param keys           the index key document
+     */
+    private void createIndex(String collectionName, Document keys) {
+        try {
+            mongoTemplate.getCollection(collectionName).createIndex(keys);
+            log.debug("Index ensured on collection '{}'", collectionName);
+        } catch (Exception e) {
+            log.warn("Could not create index on collection '{}': {}", collectionName, e.getMessage());
+        }
+    }
 }

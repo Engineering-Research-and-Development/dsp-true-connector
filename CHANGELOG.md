@@ -17,12 +17,21 @@ All notable changes to this project will be documented in this file.
   - **ROLE_ADMIN self-service user management** — `ROLE_ADMIN` users may now call `GET /api/v1/users/me` (own profile), `PUT /api/v1/users/{id}/update` (own name), and `PUT /api/v1/users/{id}/password` (own password) without requiring `ROLE_SUPER_ADMIN`. All other user-management endpoints remain restricted to `ROLE_SUPER_ADMIN`.
   - **Role enum cleanup** — `Role` enum values renamed from `ROLE_ADMIN`/`ROLE_USER`/`ROLE_CONNECTOR`/`ROLE_SUPER_ADMIN` to `ADMIN`/`USER`/`CONNECTOR`/`SUPER_ADMIN`. `authorityName()` helper added to produce the Spring Security `ROLE_`-prefixed authority string. `User.getAuthorities()` now calls `role.authorityName()`. All inline `"ROLE_*"` string literals removed from production and test code.
   - **Tenant.participantId immutability** — `TenantService.updateTenant()` no longer accepts a new `participantId` from the request body; any supplied value is silently ignored and the stored `participantId` is always preserved after tenant creation.
+- **MT3 — Per-Tenant Data Isolation**
+  - **S3 bucket auto-derivation** — `TenantService.saveTenant()` now auto-derives the S3 bucket name as `dsp-{tenantId}` when `bucketName` is not supplied in the request body. The derived bucket is provisioned via `S3BucketProvisionService.ensureBucketCredentials()` before the tenant document is persisted. See [tools/doc/tenant-s3-provisioning.md](tools/doc/tenant-s3-provisioning.md).
+  - **MongoDB compound startup indexes** — seven collections (`catalogs`, `datasets`, `contract_negotiations`, `transfer_process`, `agreements`, `audit_events`, `application_properties`) receive `(tenantId, _id)` compound indexes at application startup via `InitialDataLoader.createCompoundIndexes()`. Index creation is idempotent. See ADR [D-TEC-005](doc/decisions/technical/D-TEC-005-programmatic-startup-indexes.md).
+  - **Cross-tenant isolation integration test** — `CrossTenantIsolationIT` verifies that catalog, dataset, and data-service resources owned by one tenant are not accessible to a different tenant.
+  - ADR [D-TEC-005](doc/decisions/technical/D-TEC-005-programmatic-startup-indexes.md) — programmatic startup index creation rationale.
+  - ADR [D-TEC-006](doc/decisions/technical/D-TEC-006-dbref-tenant-filter-mitigation.md) — @DBRef tenant-filter limitation and service-layer mitigation.
 
 ### Changed
 - **MT1** — `POST /api/v1/tenants`: `id` and `callbackAddress` in the request body are now ignored (server-generated). See [connector/documentation/users.md](connector/documentation/users.md) for the updated API reference.
 - **MT1** — `POST /api/v1/users`: `tenantId` field added to the request body.
 - **MT2** — `ConnectorSecurityConfig`: hardcoded role strings `"SUPER_ADMIN"`, `"ADMIN"`, `"CONNECTOR"` replaced with constants derived from the `it.eng.connector.model.Role` enum. This makes the Role enum the single source of truth for all role names in the security configuration.
 - **MT2** — `TenantService.updateTenant()`: `participantId` is now immutable — any value in the request body is silently ignored. The stored `participantId` is always preserved after tenant creation.
+- **MT3** — `POST /api/v1/tenants`: `bucketName` is now optional; the server auto-derives `dsp-{tenantId}` when absent. See [tools/doc/tenant-s3-provisioning.md](tools/doc/tenant-s3-provisioning.md).
+- **MT3** — `CatalogService`: three update-helper methods (`updateCatalogDatasetAfterSave`, `updateCatalogDataServiceAfterSave`, `updateCatalogDistributionAfterSave`) now assert tenantId consistency before writing cross-document references, rejecting cross-tenant links with HTTP 404.
+- **MT3** — `CatalogRepository`: `findCatalogByDatasetId` and `findCatalogByDataServiceId` are supplemented with tenantId-scoped variants (`findCatalogByDatasetIdAndTenantId`, `findCatalogByDataServiceIdAndTenantId`) used by the service-layer guards.
 
 ### Security
 

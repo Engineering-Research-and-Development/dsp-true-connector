@@ -164,6 +164,48 @@ public class CatalogServiceTest {
         verify(repository).save(any(Catalog.class));
     }
 
+    @Test
+    @DisplayName("updateCatalogDatasetAfterSave rejects cross-tenant dataset with InternalServerErrorAPIException")
+    public void updateCatalogDatasetAfterSave_crossTenantDataset_throws() {
+        Dataset crossTenantDataset = Dataset.Builder.newInstance()
+                .id("urn:dataset:cross-tenant")
+                .tenantId("other-tenant")
+                .hasPolicy(new HashSet<>())
+                .build();
+
+        assertThrows(it.eng.catalog.exceptions.InternalServerErrorAPIException.class,
+                () -> service.updateCatalogDatasetAfterSave(crossTenantDataset),
+                "A dataset from a different tenant must be rejected");
+    }
+
+    @Test
+    @DisplayName("updateCatalogDataServiceAfterSave rejects cross-tenant dataService with InternalServerErrorAPIException")
+    public void updateCatalogDataServiceAfterSave_crossTenantDataService_throws() {
+        DataService crossTenantService = DataService.Builder.newInstance()
+                .id("urn:ds:cross-tenant")
+                .tenantId("other-tenant")
+                .build();
+
+        assertThrows(it.eng.catalog.exceptions.InternalServerErrorAPIException.class,
+                () -> service.updateCatalogDataServiceAfterSave(crossTenantService),
+                "A data service from a different tenant must be rejected");
+    }
+
+    @Test
+    @DisplayName("updateCatalogDistributionAfterSave rejects cross-tenant distribution with InternalServerErrorAPIException")
+    public void updateCatalogDistributionAfterSave_crossTenantDistribution_throws() {
+        Distribution crossTenantDist = Distribution.Builder.newInstance()
+                .id("urn:dist:cross-tenant")
+                .tenantId("other-tenant")
+                .format(CatalogMockObjectUtil.DISTRIBUTION.getFormat())
+                .accessService(CatalogMockObjectUtil.DATA_SERVICE)
+                .build();
+
+        assertThrows(it.eng.catalog.exceptions.InternalServerErrorAPIException.class,
+                () -> service.updateCatalogDistributionAfterSave(crossTenantDist),
+                "A distribution from a different tenant must be rejected");
+    }
+
 
     @Test
     @DisplayName("Offer valid")

@@ -289,5 +289,72 @@ class TenantServiceTest {
                 "participantId must remain unchanged regardless of update body");
         assertEquals("New Name", result.getName());
     }
+
+    @Test
+    @DisplayName("saveTenant without bucketName auto-derives 'dsp-{tenantId}' and provisions S3 bucket")
+    void saveTenant_withoutBucketName_autoDerivesAndProvisions() {
+        Tenant input = buildTenant(true);
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.empty());
+        when(tenantRepository.findByParticipantId(input.getParticipantId())).thenReturn(Optional.empty());
+        when(tenantRepository.findByBucketName(TenantService.BUCKET_NAME_PREFIX + TENANT_ID))
+                .thenReturn(Optional.empty());
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Tenant result = tenantService.saveTenant(input);
+
+        String expectedBucket = TenantService.BUCKET_NAME_PREFIX + TENANT_ID;
+        ArgumentCaptor<String> bucketCaptor = ArgumentCaptor.forClass(String.class);
+        verify(s3BucketProvisionService).ensureBucketCredentials(bucketCaptor.capture());
+        assertEquals(expectedBucket, bucketCaptor.getValue(),
+                "ensureBucketCredentials must be called with the auto-derived bucket name");
+        assertEquals(expectedBucket, result.getBucketName(),
+                "saved tenant must carry the auto-derived bucket name");
+    }
+
+    @Test
+    @DisplayName("saveTenant with explicit bucketName uses that name and provisions S3 bucket")
+    void saveTenant_withExplicitBucketName_usesExplicitName() {
+        String explicitBucket = "my-custom-bucket";
+        Tenant input = Tenant.Builder.newInstance()
+                .id(TENANT_ID)
+                .name("Engineering")
+                .participantId("urn:connector:engineering")
+                .enabled(true)
+                .bucketName(explicitBucket)
+                .build();
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.empty());
+        when(tenantRepository.findByParticipantId(input.getParticipantId())).thenReturn(Optional.empty());
+        when(tenantRepository.findByBucketName(explicitBucket)).thenReturn(Optional.empty());
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Tenant result = tenantService.saveTenant(input);
+
+        verify(s3BucketProvisionService).ensureBucketCredentials(explicitBucket);
+        assertEquals(explicitBucket, result.getBucketName(),
+                "explicit bucket name must be used as-is");
+    }
+
+    @Test
+    @DisplayName("saveTenant throws IllegalArgumentException when derived bucket is already owned by another tenant")
+    void saveTenant_derivedBucketAlreadyOwned_throwsIllegalArgumentException() {
+        Tenant input = buildTenant(true);
+        Tenant conflicting = Tenant.Builder.newInstance()
+                .id("other-tenant")
+                .name("Other")
+                .participantId("urn:connector:other")
+                .enabled(true)
+                .bucketName(TenantService.BUCKET_NAME_PREFIX + TENANT_ID)
+                .build();
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.empty());
+        when(tenantRepository.findByParticipantId(input.getParticipantId())).thenReturn(Optional.empty());
+        when(tenantRepository.findByBucketName(TenantService.BUCKET_NAME_PREFIX + TENANT_ID))
+                .thenReturn(Optional.of(conflicting));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> tenantService.saveTenant(input));
+
+        assertTrue(ex.getMessage().contains(TenantService.BUCKET_NAME_PREFIX + TENANT_ID),
+                "Exception message must mention the conflicting bucket name");
+    }
 }
 
