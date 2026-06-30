@@ -34,6 +34,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
@@ -74,10 +75,6 @@ import org.springframework.http.HttpHeaders;
 @EnableMethodSecurity
 public class ConnectorSecurityConfig {
 
-    private static final String ADMIN_ROLE = Role.ROLE_ADMIN.name().substring("ROLE_".length());
-    private static final String CONNECTOR_ROLE = Role.ROLE_CONNECTOR.name().substring("ROLE_".length());
-    private static final String SUPER_ADMIN_ROLE = Role.ROLE_SUPER_ADMIN.name().substring("ROLE_".length());
-
     @Value("${application.cors.allowed.origins:}")
     private String allowedOrigins;
 
@@ -115,9 +112,13 @@ public class ConnectorSecurityConfig {
 
     /**
      * Admin security filter chain covering {@code /api/**}, {@code /actuator/**} and {@code /env}.
-     * Requires {@code ROLE_SUPER_ADMIN} for {@code /api/v1/tenants/**}, {@code /api/v1/users/**},
-     * and {@code /api/v1/properties/**}; all other {@code /api/**} endpoints require
-     * {@code ROLE_ADMIN} or {@code ROLE_SUPER_ADMIN}. Disabled mode permits all requests.
+     * Requires {@code ROLE_SUPER_ADMIN} for {@code /api/v1/tenants/**},
+     * {@code /api/v1/properties/**}, and most {@code /api/v1/users/**} endpoints.
+     * {@code GET /api/v1/users/me}, {@code PUT /api/v1/users/*\/update}, and
+     * {@code PUT /api/v1/users/*\/password} are accessible to {@code ROLE_ADMIN} and
+     * {@code ROLE_SUPER_ADMIN} (self-service only — the service layer enforces ownership).
+     * All other {@code /api/**} endpoints require at minimum {@code ROLE_ADMIN}.
+     * Disabled mode permits all requests.
      *
      * <p>In BASIC mode, both {@link InternalServiceAuthenticationProvider} and
      * {@link DaoAuthenticationProvider} are registered so that internal machine-to-machine
@@ -148,10 +149,16 @@ public class ConnectorSecurityConfig {
                     .addFilterBefore(keycloakFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .addFilterAfter(apiTenantContextFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth
-                            .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(SUPER_ADMIN_ROLE)
-                            .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(SUPER_ADMIN_ROLE)
-                            .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(SUPER_ADMIN_ROLE)
-                            .anyRequest().hasAnyRole(ADMIN_ROLE, SUPER_ADMIN_ROLE))
+                            .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                            .requestMatchers(HttpMethod.GET,  ApiEndpoints.USERS_V1 + "/me")
+                                .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                            .requestMatchers(HttpMethod.PUT,  ApiEndpoints.USERS_V1 + "/*/update")
+                                .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                            .requestMatchers(HttpMethod.PUT,  ApiEndpoints.USERS_V1 + "/*/password")
+                                .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                            .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                            .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                            .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         } else {
             // BASIC: ApiTenantContextFilter must run AFTER BasicAuthenticationFilter so that
@@ -165,10 +172,16 @@ public class ConnectorSecurityConfig {
                             daoAuthenticationProvider.getObject()))
                     .addFilterAfter(apiTenantContextFilter.getObject(), BasicAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth
-                            .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(SUPER_ADMIN_ROLE)
-                            .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(SUPER_ADMIN_ROLE)
-                            .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(SUPER_ADMIN_ROLE)
-                            .anyRequest().hasAnyRole(ADMIN_ROLE, SUPER_ADMIN_ROLE))
+                            .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                            .requestMatchers(HttpMethod.GET,  ApiEndpoints.USERS_V1 + "/me")
+                                .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                            .requestMatchers(HttpMethod.PUT,  ApiEndpoints.USERS_V1 + "/*/update")
+                                .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                            .requestMatchers(HttpMethod.PUT,  ApiEndpoints.USERS_V1 + "/*/password")
+                                .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                            .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                            .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                            .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         }
         return http.build();
@@ -208,18 +221,18 @@ public class ConnectorSecurityConfig {
                 http.addFilterBefore(dcp, UsernamePasswordAuthenticationFilter.class);
             }
             http.anonymous(AbstractHttpConfigurer::disable)
-                    .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(CONNECTOR_ROLE))
+                    .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(Role.CONNECTOR.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         } else if (authMode == AuthenticationMode.KEYCLOAK) {
             http.anonymous(AbstractHttpConfigurer::disable)
                     .addFilterBefore(keycloakFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
-                    .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(CONNECTOR_ROLE))
+                    .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(Role.CONNECTOR.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         } else {
             // BASIC
             http.anonymous(AbstractHttpConfigurer::disable)
                     .httpBasic(basic -> basic.authenticationEntryPoint(authEntryPoint))
-                    .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(CONNECTOR_ROLE))
+                    .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(Role.CONNECTOR.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         }
         return http.build();
