@@ -1,5 +1,6 @@
 package it.eng.connector.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -77,6 +78,28 @@ class UserServiceTest {
 		// not found by email
 		when(userRepository.findByEmail("not found")).thenReturn(Optional.empty());
 		assertThrows(ResourceNotFoundException.class, () -> userService.findUsers("not found"));
+	}
+
+	@Test
+	@DisplayName("findCurrentUser returns user for known email")
+	void findCurrentUser_returnsUser() {
+		when(userRepository.findByEmail(TestUtil.USER.getEmail()))
+				.thenReturn(Optional.of(TestUtil.USER));
+
+		JsonNode result = userService.findCurrentUser(TestUtil.USER.getEmail());
+
+		assertNotNull(result);
+		assertEquals(TestUtil.USER.getEmail(), result.get("email").asText());
+		verify(userRepository).findByEmail(TestUtil.USER.getEmail());
+	}
+
+	@Test
+	@DisplayName("findCurrentUser throws BadRequestException for unknown email")
+	void findCurrentUser_notFound_throws() {
+		when(userRepository.findByEmail("unknown@mail.com")).thenReturn(Optional.empty());
+
+		assertThrows(BadRequestException.class,
+				() -> userService.findCurrentUser("unknown@mail.com"));
 	}
 
 	@Test

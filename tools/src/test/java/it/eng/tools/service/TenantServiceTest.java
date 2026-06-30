@@ -265,5 +265,29 @@ class TenantServiceTest {
         verify(auditEventPublisher).publishEvent(captor.capture());
         assertEquals(AuditEventType.TENANT_DISABLED, captor.getValue().getEventType());
     }
+
+    @Test
+    @DisplayName("updateTenant preserves participantId from existing tenant, ignoring update body")
+    void updateTenant_participantIdIsIgnored() {
+        Tenant existing = buildTenant(true);
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        String existingParticipantId = existing.getParticipantId();
+
+        Tenant updates = Tenant.Builder.newInstance()
+                .id(TENANT_ID)
+                .name("New Name")
+                .participantId("urn:connector:changed-value")
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .build();
+
+        Tenant result = tenantService.updateTenant(TENANT_ID, updates);
+
+        assertEquals(existingParticipantId, result.getParticipantId(),
+                "participantId must remain unchanged regardless of update body");
+        assertEquals("New Name", result.getName());
+    }
 }
 

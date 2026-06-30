@@ -302,4 +302,24 @@ public class UserIT extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @DisplayName("GET /api/v1/users/me as ROLE_ADMIN returns 200 with own profile")
+    @WithUserDetails(TestUtil.ADMIN_USER)
+    public void getCurrentUser_asAdmin_returns200() throws Exception {
+        mockMvc.perform(get(ApiEndpoints.USERS_V1 + "/me")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/users/me as ROLE_SUPER_ADMIN returns 200 with own profile")
+    public void getCurrentUser_asSuperAdmin_returns200() throws Exception {
+        mockMvc.perform(get(ApiEndpoints.USERS_V1 + "/me")
+                        .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
 }
