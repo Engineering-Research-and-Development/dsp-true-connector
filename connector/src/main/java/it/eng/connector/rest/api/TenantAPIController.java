@@ -78,10 +78,13 @@ public class TenantAPIController {
     }
 
     /**
-     * Updates the mutable settings of the tenant with the given ID.
+     * Updates the mutable settings of an existing tenant.
+     *
+     * <p>{@code participantId} is read-only after creation; any value supplied in the request
+     * body is silently ignored and the stored value is preserved.
      *
      * @param id      the tenant identifier
-     * @param updates the updated tenant settings
+     * @param updates the tenant body with the fields to update
      * @return 200 OK with the updated tenant
      */
     @PutMapping(path = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
