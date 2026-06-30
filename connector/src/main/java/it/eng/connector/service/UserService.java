@@ -82,7 +82,7 @@ public class UserService {
 	 * existing, enabled tenant.  SUPER_ADMIN users are exempt from this check.
 	 *
 	 * @param userDTO the user data; {@code tenantId} is required unless the role is
-	 *                {@code ROLE_SUPER_ADMIN}
+	 *                {@code SUPER_ADMIN}
 	 * @return the created user as a serialized JSON node
 	 * @throws BadRequestException                            if the e-mail already exists or the password is invalid
 	 * @throws it.eng.tools.exception.TenantNotFoundException if the referenced tenant does not exist
@@ -96,7 +96,7 @@ public class UserService {
 		if (validationResult.isValid()) {
 			// SUPER_ADMIN users are not bound to a specific tenant.
 			if (StringUtils.isNotBlank(userDTO.getTenantId())
-					&& userDTO.getRole() != Role.ROLE_SUPER_ADMIN) {
+					&& userDTO.getRole() != Role.SUPER_ADMIN) {
 				tenantService.findEnabledTenantById(userDTO.getTenantId());
 			}
 			User user = new User(createNewPid(), userDTO.getFirstName(), userDTO.getLastName(),

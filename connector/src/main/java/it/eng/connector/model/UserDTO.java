@@ -21,6 +21,6 @@ public class UserDTO {
 	private String password;
 	private String newPassword;
 	private Role role;
-	/** The tenant this user belongs to.  Optional only for ROLE_SUPER_ADMIN. */
+	/** The tenant this user belongs to.  Optional only for the {@code SUPER_ADMIN} role. */
 	private String tenantId;
 }

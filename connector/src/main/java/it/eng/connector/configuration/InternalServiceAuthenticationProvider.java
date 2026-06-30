@@ -72,7 +72,7 @@ public class InternalServiceAuthenticationProvider implements AuthenticationProv
         }
         User syntheticUser = User.builder()
                 .email(INTERNAL_SERVICE_USERNAME)
-                .role(Role.ROLE_ADMIN)
+                .role(Role.ADMIN)
                 .enabled(true)
                 .build();
         log.debug("InternalServiceAuthenticationProvider: authenticated internal-service");

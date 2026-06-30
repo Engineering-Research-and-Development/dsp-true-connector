@@ -174,7 +174,7 @@ public class KeycloakUserService {
             userRep.set("credentials", objectMapper.createArrayNode().add(credential));
         }
 
-        String roleName = userDTO.getRole() != null ? userDTO.getRole().name() : Role.ROLE_ADMIN.name();
+        String roleName = userDTO.getRole() != null ? userDTO.getRole().name() : Role.ADMIN.name();
         userRep.set("realmRoles", objectMapper.createArrayNode().add(roleName));
 
         return userRep;
@@ -185,7 +185,7 @@ public class KeycloakUserService {
         node.put("email", userDTO.getEmail());
         node.put("firstName", userDTO.getFirstName() != null ? userDTO.getFirstName() : "");
         node.put("lastName", userDTO.getLastName() != null ? userDTO.getLastName() : "");
-        node.put("role", userDTO.getRole() != null ? userDTO.getRole().name() : Role.ROLE_ADMIN.name());
+        node.put("role", userDTO.getRole() != null ? userDTO.getRole().name() : Role.ADMIN.name());
         if (userDTO.getTenantId() != null) {
             node.put("tenantId", userDTO.getTenantId());
         }
