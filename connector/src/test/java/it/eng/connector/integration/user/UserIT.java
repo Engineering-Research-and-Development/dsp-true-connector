@@ -316,8 +316,11 @@ public class UserIT extends BaseIntegrationTest {
     @Test
     @DisplayName("GET /api/v1/users/me as ROLE_SUPER_ADMIN returns 200 with own profile")
     public void getCurrentUser_asSuperAdmin_returns200() throws Exception {
+        // Use the permanent seed admin user (admin@mail.com) with SUPER_ADMIN role to verify
+        // the SUPER_ADMIN authority grants access to /me.  superadmin@mail.com is in the
+        // @AfterEach cleanup list and may be absent when this test runs.
         mockMvc.perform(get(ApiEndpoints.USERS_V1 + "/me")
-                        .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
+                        .with(user(TestUtil.ADMIN_USER).roles("SUPER_ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
