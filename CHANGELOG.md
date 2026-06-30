@@ -11,11 +11,18 @@ All notable changes to this project will be documented in this file.
   - `ROLE_SUPER_ADMIN` users are exempt from tenant-existence validation and may be created without a `tenantId`.
   - **Keycloak mode user registration** — `KeycloakUserService` and `KeycloakUserApiController` added. When `application.auth.provider=KEYCLOAK`, `POST /api/v1/users` delegates to the Keycloak Admin REST API (`POST /admin/realms/{realm}/users`) using the service account client credentials. Requires `application.keycloak.admin.server-url` and `application.keycloak.admin.realm` properties.
   - ADR [D-TEC-001](doc/decisions/technical/D-TEC-001-keycloak-user-registration.md) — documents the Keycloak user-registration design rationale.
+- **MT2 — Security & Access Control Hardening**
+  - `ROLE_SUPER_ADMIN` is now required for `/api/v1/users/**` and `/api/v1/properties/**` in both `BASIC` and `KEYCLOAK` authentication modes. Previously only `/api/v1/tenants/**` was restricted to `ROLE_SUPER_ADMIN`; `ROLE_ADMIN` users could access user and property management endpoints, creating a privilege-escalation gap.
+  - Integration tests added covering SUPER_ADMIN access (200) and ROLE_ADMIN denial (403) for all three restricted endpoint prefixes in both auth modes. DISABLED mode is explicitly verified as permit-all for all three endpoints.
 
 ### Changed
 - **MT1** — `POST /api/v1/tenants`: `id` and `callbackAddress` in the request body are now ignored (server-generated). See [connector/documentation/users.md](connector/documentation/users.md) for the updated API reference.
 - **MT1** — `POST /api/v1/users`: `tenantId` field added to the request body.
+- **MT2** — `ConnectorSecurityConfig`: hardcoded role strings `"SUPER_ADMIN"`, `"ADMIN"`, `"CONNECTOR"` replaced with constants derived from the `it.eng.connector.model.Role` enum. This makes the Role enum the single source of truth for all role names in the security configuration.
 
+### Security
+
+- **MT2 — SUPER_ADMIN access control** — Restricted `/api/v1/users/**` and `/api/v1/properties/**` to `ROLE_SUPER_ADMIN` in both `BASIC` and `KEYCLOAK` authentication modes. `ROLE_ADMIN` users now receive HTTP 403 on these endpoints, closing a privilege-escalation path where tenant admins could previously manage users or modify global runtime properties across all tenants. Only `/api/v1/tenants/**` was previously restricted; this hardens the full management surface.
 - **Multi-tenant foundation** — `Tenant` model, `TenantRepository`, `TenantService`, `TenantContextHolder` (ThreadLocal + MDC), `TenantAPIController` for full tenant lifecycle management via `/api/v1/tenants`.
 - `TenantAwareProtocolController` — abstract base class for all DSP protocol controllers; resolves the `{tenantId}` path variable and sets `TenantContextHolder` before any request processing.
 - `ApiTenantContextFilter` — sets tenant scope for management API requests from the authenticated user's `tenantId`; super-admins may override with `X-Tenant-Id` header.

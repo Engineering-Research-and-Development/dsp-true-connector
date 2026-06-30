@@ -61,11 +61,11 @@ application.auth.provider=KEYCLOAK
 
 | `auth.provider` | `dcp.enabled` | `/api/**` `/actuator/**` | Protocol endpoints¹ |
 |-----------------|---------------|--------------------------|----------------------|
-| `KEYCLOAK`      | `false`       | Keycloak JWT → `ROLE_ADMIN` | Keycloak JWT → `ROLE_CONNECTOR` |
-| `KEYCLOAK`      | `true`        | Keycloak JWT → `ROLE_ADMIN` | DCP → `ROLE_CONNECTOR` |
-| `BASIC`         | `false`       | HTTP Basic → `ROLE_ADMIN` | HTTP Basic → `ROLE_CONNECTOR` |
-| `BASIC`         | `true`        | HTTP Basic → `ROLE_ADMIN` | DCP → `ROLE_CONNECTOR` |
-| `DISABLED`      | `false`       | `permitAll()` | `permitAll()` |
+| `KEYCLOAK`      | `false`       | Keycloak JWT → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, `/users/**`, `/properties/**` | Keycloak JWT → `ROLE_CONNECTOR` |
+| `KEYCLOAK`      | `true`        | Keycloak JWT → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, `/users/**`, `/properties/**` | DCP → `ROLE_CONNECTOR` |
+| `BASIC`         | `false`       | HTTP Basic → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, `/users/**`, `/properties/**` | HTTP Basic → `ROLE_CONNECTOR` |
+| `BASIC`         | `true`        | HTTP Basic → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, `/users/**`, `/properties/**` | DCP → `ROLE_CONNECTOR` |
+| `DISABLED`      | `false`       | `permitAll()` — all management endpoints open, not for production | `permitAll()` |
 | `DISABLED`      | `true`        | ❌ startup error | ❌ startup error |
 
 ¹ Protocol endpoints: `/connector/**`, `/catalog/**`, `/negotiations/**`, `/transfers/**`
@@ -177,6 +177,22 @@ application.auth.provider=BASIC
 - `/api/v1/users` endpoints are **active** — users created here are valid credentials
 - Initial users and data are seeded from `initial_data.json` on startup
 - On authentication failure at protocol endpoints, returns a DSP-compliant error JSON
+
+### Management Endpoint Access Control
+
+The following endpoints are restricted to `ROLE_SUPER_ADMIN` in both `BASIC` and `KEYCLOAK` modes:
+
+| Endpoint prefix | Required role |
+|-----------------|---------------|
+| `/api/v1/tenants/**` | `ROLE_SUPER_ADMIN` |
+| `/api/v1/users/**` | `ROLE_SUPER_ADMIN` |
+| `/api/v1/properties/**` | `ROLE_SUPER_ADMIN` |
+
+All other `/api/**` endpoints require at minimum `ROLE_ADMIN`.
+
+**Convention**: All role names in `ConnectorSecurityConfig` must be derived from the `it.eng.connector.model.Role` enum using private constants (e.g., `Role.ROLE_SUPER_ADMIN.name().substring("ROLE_".length())`). Hardcoded role strings like `"SUPER_ADMIN"` must not be used directly.
+
+**DISABLED mode**: The `DISABLED` authentication mode permits all requests including management endpoints. It is intended only for local development and must **not** be used in production.
 
 ### User Model (Basic Mode)
 

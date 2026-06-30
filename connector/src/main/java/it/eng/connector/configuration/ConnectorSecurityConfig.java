@@ -38,6 +38,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import it.eng.connector.filter.ApiTenantContextFilter;
+import it.eng.connector.model.Role;
 import it.eng.connector.repository.UserRepository;
 import it.eng.tools.auth.AuthenticationMode;
 import it.eng.tools.auth.AuthenticationModeResolver;
@@ -73,8 +74,9 @@ import org.springframework.http.HttpHeaders;
 @EnableMethodSecurity
 public class ConnectorSecurityConfig {
 
-    private static final String ADMIN_ROLE = "ADMIN";
-    private static final String CONNECTOR_ROLE = "CONNECTOR";
+    private static final String ADMIN_ROLE = Role.ROLE_ADMIN.name().substring("ROLE_".length());
+    private static final String CONNECTOR_ROLE = Role.ROLE_CONNECTOR.name().substring("ROLE_".length());
+    private static final String SUPER_ADMIN_ROLE = Role.ROLE_SUPER_ADMIN.name().substring("ROLE_".length());
 
     @Value("${application.cors.allowed.origins:}")
     private String allowedOrigins;
@@ -113,7 +115,9 @@ public class ConnectorSecurityConfig {
 
     /**
      * Admin security filter chain covering {@code /api/**}, {@code /actuator/**} and {@code /env}.
-     * Requires {@code ROLE_ADMIN}. Disabled mode permits all requests.
+     * Requires {@code ROLE_SUPER_ADMIN} for {@code /api/v1/tenants/**}, {@code /api/v1/users/**},
+     * and {@code /api/v1/properties/**}; all other {@code /api/**} endpoints require
+     * {@code ROLE_ADMIN} or {@code ROLE_SUPER_ADMIN}. Disabled mode permits all requests.
      *
      * <p>In BASIC mode, both {@link InternalServiceAuthenticationProvider} and
      * {@link DaoAuthenticationProvider} are registered so that internal machine-to-machine
@@ -144,8 +148,10 @@ public class ConnectorSecurityConfig {
                     .addFilterBefore(keycloakFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .addFilterAfter(apiTenantContextFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth
-                            .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole("SUPER_ADMIN")
-                            .anyRequest().hasAnyRole(ADMIN_ROLE, "SUPER_ADMIN"))
+                            .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(SUPER_ADMIN_ROLE)
+                            .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(SUPER_ADMIN_ROLE)
+                            .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(SUPER_ADMIN_ROLE)
+                            .anyRequest().hasAnyRole(ADMIN_ROLE, SUPER_ADMIN_ROLE))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         } else {
             // BASIC: ApiTenantContextFilter must run AFTER BasicAuthenticationFilter so that
@@ -159,8 +165,10 @@ public class ConnectorSecurityConfig {
                             daoAuthenticationProvider.getObject()))
                     .addFilterAfter(apiTenantContextFilter.getObject(), BasicAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth
-                            .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole("SUPER_ADMIN")
-                            .anyRequest().hasAnyRole(ADMIN_ROLE, "SUPER_ADMIN"))
+                            .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(SUPER_ADMIN_ROLE)
+                            .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(SUPER_ADMIN_ROLE)
+                            .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(SUPER_ADMIN_ROLE)
+                            .anyRequest().hasAnyRole(ADMIN_ROLE, SUPER_ADMIN_ROLE))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         }
         return http.build();
