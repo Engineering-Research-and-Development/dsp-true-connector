@@ -14,11 +14,15 @@ All notable changes to this project will be documented in this file.
 - **MT2 — Security & Access Control Hardening**
   - `ROLE_SUPER_ADMIN` is now required for `/api/v1/users/**` and `/api/v1/properties/**` in both `BASIC` and `KEYCLOAK` authentication modes. Previously only `/api/v1/tenants/**` was restricted to `ROLE_SUPER_ADMIN`; `ROLE_ADMIN` users could access user and property management endpoints, creating a privilege-escalation gap.
   - Integration tests added covering SUPER_ADMIN access (200) and ROLE_ADMIN denial (403) for all three restricted endpoint prefixes in both auth modes. DISABLED mode is explicitly verified as permit-all for all three endpoints.
+  - **ROLE_ADMIN self-service user management** — `ROLE_ADMIN` users may now call `GET /api/v1/users/me` (own profile), `PUT /api/v1/users/{id}/update` (own name), and `PUT /api/v1/users/{id}/password` (own password) without requiring `ROLE_SUPER_ADMIN`. All other user-management endpoints remain restricted to `ROLE_SUPER_ADMIN`.
+  - **Role enum cleanup** — `Role` enum values renamed from `ROLE_ADMIN`/`ROLE_USER`/`ROLE_CONNECTOR`/`ROLE_SUPER_ADMIN` to `ADMIN`/`USER`/`CONNECTOR`/`SUPER_ADMIN`. `authorityName()` helper added to produce the Spring Security `ROLE_`-prefixed authority string. `User.getAuthorities()` now calls `role.authorityName()`. All inline `"ROLE_*"` string literals removed from production and test code.
+  - **Tenant.participantId immutability** — `TenantService.updateTenant()` no longer accepts a new `participantId` from the request body; any supplied value is silently ignored and the stored `participantId` is always preserved after tenant creation.
 
 ### Changed
 - **MT1** — `POST /api/v1/tenants`: `id` and `callbackAddress` in the request body are now ignored (server-generated). See [connector/documentation/users.md](connector/documentation/users.md) for the updated API reference.
 - **MT1** — `POST /api/v1/users`: `tenantId` field added to the request body.
 - **MT2** — `ConnectorSecurityConfig`: hardcoded role strings `"SUPER_ADMIN"`, `"ADMIN"`, `"CONNECTOR"` replaced with constants derived from the `it.eng.connector.model.Role` enum. This makes the Role enum the single source of truth for all role names in the security configuration.
+- **MT2** — `TenantService.updateTenant()`: `participantId` is now immutable — any value in the request body is silently ignored. The stored `participantId` is always preserved after tenant creation.
 
 ### Security
 

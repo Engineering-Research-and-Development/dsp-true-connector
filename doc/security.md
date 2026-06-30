@@ -61,10 +61,10 @@ application.auth.provider=KEYCLOAK
 
 | `auth.provider` | `dcp.enabled` | `/api/**` `/actuator/**` | Protocol endpoints¹ |
 |-----------------|---------------|--------------------------|----------------------|
-| `KEYCLOAK`      | `false`       | Keycloak JWT → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, `/users/**`, `/properties/**` | Keycloak JWT → `ROLE_CONNECTOR` |
-| `KEYCLOAK`      | `true`        | Keycloak JWT → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, `/users/**`, `/properties/**` | DCP → `ROLE_CONNECTOR` |
-| `BASIC`         | `false`       | HTTP Basic → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, `/users/**`, `/properties/**` | HTTP Basic → `ROLE_CONNECTOR` |
-| `BASIC`         | `true`        | HTTP Basic → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, `/users/**`, `/properties/**` | DCP → `ROLE_CONNECTOR` |
+| `KEYCLOAK`      | `false`       | Keycloak JWT → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, most `/users/**`, `/properties/**`; `ROLE_ADMIN` may call `/users/me` and own-account PUT endpoints | Keycloak JWT → `ROLE_CONNECTOR` |
+| `KEYCLOAK`      | `true`        | Keycloak JWT → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, most `/users/**`, `/properties/**`; `ROLE_ADMIN` may call `/users/me` and own-account PUT endpoints | DCP → `ROLE_CONNECTOR` |
+| `BASIC`         | `false`       | HTTP Basic → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, most `/users/**`, `/properties/**`; `ROLE_ADMIN` may call `/users/me` and own-account PUT endpoints | HTTP Basic → `ROLE_CONNECTOR` |
+| `BASIC`         | `true`        | HTTP Basic → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, most `/users/**`, `/properties/**`; `ROLE_ADMIN` may call `/users/me` and own-account PUT endpoints | DCP → `ROLE_CONNECTOR` |
 | `DISABLED`      | `false`       | `permitAll()` — all management endpoints open, not for production | `permitAll()` |
 | `DISABLED`      | `true`        | ❌ startup error | ❌ startup error |
 
@@ -180,17 +180,20 @@ application.auth.provider=BASIC
 
 ### Management Endpoint Access Control
 
-The following endpoints are restricted to `ROLE_SUPER_ADMIN` in both `BASIC` and `KEYCLOAK` modes:
+The following endpoints are restricted to `ROLE_SUPER_ADMIN` in both `BASIC` and `KEYCLOAK` modes, with self-service exceptions for `ROLE_ADMIN`:
 
-| Endpoint prefix | Required role |
-|-----------------|---------------|
+| Endpoint | Required role |
+|----------|---------------|
+| `GET /api/v1/users/me` | `ROLE_ADMIN`, `ROLE_SUPER_ADMIN` — self-service profile retrieval |
+| `PUT /api/v1/users/*/update` | `ROLE_ADMIN`, `ROLE_SUPER_ADMIN` — own account update (service layer enforces ownership) |
+| `PUT /api/v1/users/*/password` | `ROLE_ADMIN`, `ROLE_SUPER_ADMIN` — own password change (service layer enforces ownership) |
+| `* /api/v1/users/**` (all other) | `ROLE_SUPER_ADMIN` |
 | `/api/v1/tenants/**` | `ROLE_SUPER_ADMIN` |
-| `/api/v1/users/**` | `ROLE_SUPER_ADMIN` |
 | `/api/v1/properties/**` | `ROLE_SUPER_ADMIN` |
 
 All other `/api/**` endpoints require at minimum `ROLE_ADMIN`.
 
-**Convention**: All role names in `ConnectorSecurityConfig` must be derived from the `it.eng.connector.model.Role` enum using private constants (e.g., `Role.ROLE_SUPER_ADMIN.name().substring("ROLE_".length())`). Hardcoded role strings like `"SUPER_ADMIN"` must not be used directly.
+**Convention**: All role names in `ConnectorSecurityConfig` must be derived from the `it.eng.connector.model.Role` enum directly (e.g., `Role.SUPER_ADMIN.name()`, `Role.ADMIN.authorityName()`). Hardcoded role strings are not used.
 
 **DISABLED mode**: The `DISABLED` authentication mode permits all requests including management endpoints. It is intended only for local development and must **not** be used in production.
 
@@ -201,7 +204,7 @@ Three distinct user roles are used in `initial_data.json` and at runtime:
 | Role | Email | `tenantId` | Purpose |
 |------|-------|-----------|---------|
 | `ROLE_SUPER_ADMIN` | `superadmin@mail.com` | `null` | Manages tenants and cross-tenant operations. No data scope restriction — all tenant data is visible. |
-| `ROLE_ADMIN` | `admin@mail.com` | per-tenant (e.g., `engineering`) | Per-tenant admin. Manages catalog, dataset, negotiation, and transfer data for their assigned tenant only. |
+| `ROLE_ADMIN` | `admin@mail.com` | per-tenant (e.g., `engineering`) | Per-tenant admin. Manages catalog, dataset, negotiation, and transfer data for their assigned tenant only. May also call `GET /api/v1/users/me`, `PUT /api/v1/users/{id}/update`, and `PUT /api/v1/users/{id}/password` for their own account. |
 | `ROLE_CONNECTOR` | `connector@mail.com` | per-tenant (e.g., `engineering`) | Per-tenant connector user. Authenticates DSP protocol calls (connector-to-connector). |
 
 Each tenant should have its own `ROLE_ADMIN` and `ROLE_CONNECTOR` users with `tenantId` set to that tenant's ID. Multiple tenants cannot share the same email address.
