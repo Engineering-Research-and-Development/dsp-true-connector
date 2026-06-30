@@ -76,7 +76,7 @@ class KeycloakUserRegistrationIT extends BaseKeycloakIntegrationTest {
                 .willReturn(aResponse().withStatus(201)));
 
         UserDTO userDTO = new UserDTO("First", "Last", "keycloak.user@test.com",
-                "TestPass123!", null, Role.ROLE_ADMIN, null);
+                "TestPass123!", null, Role.ADMIN, null);
 
         String token = superAdminAccessToken();
         mockMvc.perform(post(ApiEndpoints.USERS_V1)
@@ -99,7 +99,7 @@ class KeycloakUserRegistrationIT extends BaseKeycloakIntegrationTest {
                         .withBody("{\"errorMessage\":\"User exists with same username or email\"}")));
 
         UserDTO userDTO = new UserDTO("First", "Last", "existing.user@test.com",
-                "TestPass123!", null, Role.ROLE_ADMIN, null);
+                "TestPass123!", null, Role.ADMIN, null);
 
         String token = adminAccessToken();
         mockMvc.perform(post(ApiEndpoints.USERS_V1)

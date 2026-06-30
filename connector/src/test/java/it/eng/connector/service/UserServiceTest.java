@@ -83,7 +83,7 @@ class UserServiceTest {
 	@DisplayName("Create user with valid tenantId - user saved with tenantId set")
 	void createUser_withValidTenantId() {
 		when(userDTO.getEmail()).thenReturn(USER);
-		when(userDTO.getRole()).thenReturn(Role.ROLE_ADMIN);
+		when(userDTO.getRole()).thenReturn(Role.ADMIN);
 		when(userDTO.getTenantId()).thenReturn(TENANT_ID);
 		when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(Optional.empty());
 		when(passwordValidator.isValid(userDTO.getPassword())).thenReturn(passwordValidationResult);
@@ -103,7 +103,7 @@ class UserServiceTest {
 	@DisplayName("Create user with non-existent tenantId - TenantNotFoundException thrown")
 	void createUser_withNonExistentTenantId() {
 		when(userDTO.getEmail()).thenReturn(USER);
-		when(userDTO.getRole()).thenReturn(Role.ROLE_ADMIN);
+		when(userDTO.getRole()).thenReturn(Role.ADMIN);
 		when(userDTO.getTenantId()).thenReturn("non-existent-tenant");
 		when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(Optional.empty());
 		when(passwordValidator.isValid(userDTO.getPassword())).thenReturn(passwordValidationResult);
@@ -120,7 +120,7 @@ class UserServiceTest {
 	@DisplayName("Create ROLE_SUPER_ADMIN user without tenantId - succeeds without tenant lookup")
 	void createUser_superAdmin_noTenantId() {
 		when(userDTO.getEmail()).thenReturn(USER);
-		when(userDTO.getRole()).thenReturn(Role.ROLE_SUPER_ADMIN);
+		when(userDTO.getRole()).thenReturn(Role.SUPER_ADMIN);
 		when(userDTO.getTenantId()).thenReturn(null);
 		when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(Optional.empty());
 		when(passwordValidator.isValid(userDTO.getPassword())).thenReturn(passwordValidationResult);
