@@ -10,7 +10,7 @@
       "enabled": true,
       "expired": false,
       "locked": false,
-      "role": "ROLE_ADMIN"
+      "role": "ADMIN"
     },
     {
       "_class": "it.eng.connector.model.User",
@@ -22,7 +22,7 @@
       "enabled": "true",
       "expired": false,
       "locked": false,
-      "role": "ROLE_CONNECTOR"
+      "role": "CONNECTOR"
     }
   ],
   "application_properties": [
