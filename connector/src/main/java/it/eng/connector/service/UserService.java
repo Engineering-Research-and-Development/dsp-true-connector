@@ -76,6 +76,19 @@ public class UserService {
 	}
 
 	/**
+	 * Returns the authenticated user's own record by e-mail.
+	 *
+	 * @param email the e-mail of the authenticated principal
+	 * @return the user as a serialized JSON node
+	 * @throws BadRequestException if no user with the given e-mail exists
+	 */
+	public JsonNode findCurrentUser(String email) {
+		User user = userRepository.findByEmail(email)
+				.orElseThrow(() -> new BadRequestException("User not found"));
+		return ToolsSerializer.serializePlainJsonNode(user);
+	}
+
+	/**
 	 * Creates a new user.
 	 *
 	 * <p>For non-SUPER_ADMIN users the {@code tenantId} in {@code userDTO} must reference an
