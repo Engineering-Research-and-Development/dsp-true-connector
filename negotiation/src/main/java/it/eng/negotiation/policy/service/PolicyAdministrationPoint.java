@@ -34,7 +34,8 @@ public class PolicyAdministrationPoint {
 	public void createPolicyEnforcement(String agreementId) {
 		PolicyEnforcement pe = new PolicyEnforcement();
 		pe.setAgreementId(agreementId);
-		pe.setCount(1);
+		//configured to start from zero at the initialized phase of data transfer in order to avoid one extra access beyond the configured limit
+		pe.setCount(0);
 		policyEnforcementRepository.save(pe);
 	}
 	

@@ -34,6 +34,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -124,6 +125,13 @@ public class AutomaticNegotiationIT {
 
     @BeforeAll
     static void startApplications() {
+        // Podman closes idle HTTP keep-alive connections faster than Docker does.
+        // Apache HttpClient reuses pooled connections without checking if the server
+        // closed them, causing NoHttpResponseException on the first Docker call after
+        // a gap between test classes. This probe intentionally triggers and discards
+        // the stale connection so that container.start() gets a fresh one
+        try { DockerClientFactory.instance().client().pingCmd().exec(); } catch (Exception ignored) {}
+
         mongoDBContainer.start();
         providerMinIO.start();
 

@@ -4,6 +4,7 @@ import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.tools.event.datatransfer.InitializeTransferProcess;
+import it.eng.tools.event.policyenforcement.ArtifactTransferredEvent;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.service.AuditEventPublisher;
 import lombok.extern.slf4j.Slf4j;
@@ -78,11 +79,21 @@ public class DataTransferEventListener {
 
     @EventListener
     public void handleTransferCompletionMessage(TransferCompletionMessage transferCompletionMessage) {
-        log.info("Completeing transfer with consumerPid {} and providerPid {}", transferCompletionMessage.getConsumerPid(), transferCompletionMessage.getProviderPid());
-        Optional<TransferRequestMessage> transferRequestMessage = transferRequestMessageRepository.findByConsumerPid(transferCompletionMessage.getConsumerPid());
-        if (transferRequestMessage.isPresent() && transferRequestMessage.get().getFormat().equals(DataTransferFormat.SFTP.name())) {
-            publisher.publishEvent(new StopFTPServerEvent());
-        }
+        log.info("Completing transfer with consumerPid {} and providerPid {}", transferCompletionMessage.getConsumerPid(), transferCompletionMessage.getProviderPid());
+//        Optional<TransferRequestMessage> transferRequestMessage = transferRequestMessageRepository.findByConsumerPid(transferCompletionMessage.getConsumerPid());
+       Optional<TransferProcess> tp = transferProcessRepository.findByConsumerPidAndProviderPid(transferCompletionMessage.getConsumerPid(), transferCompletionMessage.getProviderPid());
+       tp.ifPresent(transferProcess -> {
+           if(IConstants.ROLE_PROVIDER.equals(transferProcess.getRole()))  {
+               publisher.publishEvent(new ArtifactTransferredEvent(transferProcess.getAgreementId()));
+           }
+           if (transferProcess.getFormat().equals(DataTransferFormat.SFTP.name())) {
+               publisher.publishEvent(new StopFTPServerEvent());
+           }
+       });
+
+//        if (transferRequestMessage.isPresent() && transferRequestMessage.get().getFormat().equals(DataTransferFormat.SFTP.name())) {
+//            publisher.publishEvent(new StopFTPServerEvent());
+//        }
     }
 
     @EventListener

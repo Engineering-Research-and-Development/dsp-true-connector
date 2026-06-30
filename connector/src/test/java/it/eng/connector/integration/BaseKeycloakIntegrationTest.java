@@ -3,6 +3,7 @@ package it.eng.connector.integration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dasniko.testcontainers.keycloak.KeycloakContainer;
+import org.testcontainers.DockerClientFactory;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -41,6 +42,12 @@ public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
             .withStartupTimeout(KEYCLOAK_STARTUP_TIMEOUT);
 
     static {
+        // Podman closes idle HTTP keep-alive connections faster than Docker does.
+        // Apache HttpClient reuses pooled connections without checking if the server
+        // closed them, causing NoHttpResponseException on the first Docker call after
+        // a gap between test classes. This probe intentionally triggers and discards
+        // the stale connection so that container.start() gets a fresh one
+        try { DockerClientFactory.instance().client().pingCmd().exec(); } catch (Exception ignored) {}
         KEYCLOAK_CONTAINER.start();
         importRealm();
     }

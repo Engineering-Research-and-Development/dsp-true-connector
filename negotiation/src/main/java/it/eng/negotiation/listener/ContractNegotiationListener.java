@@ -2,6 +2,7 @@ package it.eng.negotiation.listener;
 
 import it.eng.negotiation.service.ContractNegotiationEventHandlerService;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
+import it.eng.tools.event.policyenforcement.ArtifactTransferredEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;

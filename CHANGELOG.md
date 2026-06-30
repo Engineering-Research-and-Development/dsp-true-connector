@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.12-SNAPSHOT] - 19.06.2026.
+
+### Added
+- `GET /api/v1/negotiations/agreements/{agreementId}` — new management endpoint returning a single agreement by ID, enriched with `currentCount` if an active policy enforcement record exists for that agreement.
+- `PolicyEnforcementListener` — new event listener that increments the access count via `PolicyAdministrationPoint` on every `ArtifactTransferredEvent`, enabling real-time tracking of how many times an artifact has been transferred under a given agreement.
+- `AgreementAPIService.findAgreementByIdEnriched()` — fetches the agreement and appends `currentCount` from `PolicyEnforcementRepository` before returning the JSON representation.
+
+### Changed
+- `AccessCountPolicyEvaluator` — fixed off-by-one in `LT` and `LTEQ` operator evaluation: both now use `currentCount + 1` so the current access attempt is counted before the limit check, preventing one extra access beyond the configured limit.
+
 ## [0.6.11-SNAPSHOT] - 16.04.2026.
 
 ### Added

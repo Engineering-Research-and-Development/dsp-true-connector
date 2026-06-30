@@ -1,5 +1,6 @@
 package it.eng.negotiation.configuration;
 
+import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.model.ContractNegotiation;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,6 +12,12 @@ public class HateoasNegotiationConfig {
 
     @Bean
     public PagedResourcesAssembler<ContractNegotiation> contractNegotiationPagedResourcesAssembler(
+            HateoasPageableHandlerMethodArgumentResolver resolver) {
+        return new PagedResourcesAssembler<>(resolver, null);
+    }
+
+    @Bean
+    public PagedResourcesAssembler<Agreement> agreementPagedResourcesAssembler(
             HateoasPageableHandlerMethodArgumentResolver resolver) {
         return new PagedResourcesAssembler<>(resolver, null);
     }

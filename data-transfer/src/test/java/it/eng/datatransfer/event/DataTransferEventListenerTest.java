@@ -1,5 +1,6 @@
 package it.eng.datatransfer.event;
 
+import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.service.AuditEventPublisher;
@@ -24,6 +25,8 @@ class DataTransferEventListenerTest {
     private AuditEventPublisher publisher;
     @Mock
     private TransferRequestMessageRepository transferRequestMessageRepository;
+    @Mock
+    private TransferProcessRepository transferProcessRepository;
 
     @InjectMocks
     private DataTransferEventListener dataTransferEventListener;
@@ -85,8 +88,8 @@ class DataTransferEventListenerTest {
     @Test
     @DisplayName("Handle TransferCompletionMessage")
     void handleTransferCompletionMessage() {
-        when(transferRequestMessageRepository.findByConsumerPid(anyString()))
-                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_REQUEST_MESSAGE));
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(anyString(), anyString()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
 
         dataTransferEventListener.handleTransferCompletionMessage(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE);
 
@@ -96,8 +99,8 @@ class DataTransferEventListenerTest {
     @Test
     @DisplayName("Handle TransferCompletionMessage - SFTP")
     void handleTransferCompletionMessage_sftp() {
-        when(transferRequestMessageRepository.findByConsumerPid(anyString()))
-                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_REQUEST_MESSAGE_SFTP));
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(anyString(), anyString()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_SFTP));
 
         dataTransferEventListener.handleTransferCompletionMessage(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE);
 

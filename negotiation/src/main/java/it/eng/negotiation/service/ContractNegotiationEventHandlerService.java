@@ -120,4 +120,5 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
         log.info("Increasing access count for artifactId {}", artifactConsumedEvent.getAgreementId());
         policyAdministrationPoint.updateAccessCount(artifactConsumedEvent.getAgreementId());
     }
+
 }

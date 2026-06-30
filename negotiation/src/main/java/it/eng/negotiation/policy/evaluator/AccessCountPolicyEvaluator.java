@@ -49,7 +49,9 @@ public class AccessCountPolicyEvaluator implements PolicyEvaluator {
 		
 		switch (operator) {	
 		case LT:
-			if (!(currentCount < count)) {
+			// added +1 because currentCount starts from zero and represents the number of times the user has already accessed the resource,
+			// and we want to allow access if the user has not yet reached the limit.
+			if (!((currentCount+1) < count)) {
 				return PolicyDecision.Builder.newInstance()
 						.allowed(false)
 						.message("Access count exceeded")
@@ -59,7 +61,9 @@ public class AccessCountPolicyEvaluator implements PolicyEvaluator {
 			}
 			break;
 		case LTEQ:
-			if (!(currentCount <= count)) {
+			// added +1 because currentCount starts from zero and represents the number of times the user has already accessed the resource,
+			// and we want to allow access if the user has not yet reached the limit.
+			if (!((currentCount+1) <= count)) {
 				return PolicyDecision.Builder.newInstance()
 						.allowed(false)
 						.message("Access count exceeded")

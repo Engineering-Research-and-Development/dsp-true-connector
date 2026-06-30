@@ -6,6 +6,8 @@ import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
+import it.eng.negotiation.model.PolicyEnforcement;
+import it.eng.negotiation.repository.PolicyEnforcementRepository;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.model.TemporaryBucketUser;
 import it.eng.tools.s3.repository.TemporaryBucketUserRepository;
@@ -26,16 +28,22 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 // STARTED -> COMPLETED
 
+    private static final String AGREEMENT_ID = "test-agreement-id";
+
     @Autowired
     private TransferProcessRepository transferProcessRepository;
 
     @Autowired
     private TemporaryBucketUserRepository temporaryBucketUserRepository;
 
+    @Autowired
+    private PolicyEnforcementRepository policyEnforcementRepository;
+
     @AfterEach
     public void cleanup() {
         transferProcessRepository.deleteAll();
         temporaryBucketUserRepository.deleteAll();
+        policyEnforcementRepository.deleteAll();
     }
 
     // Provider
@@ -44,12 +52,18 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void completeTransferProcess_provider() throws Exception {
 
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement();
+        policyEnforcement.setAgreementId(AGREEMENT_ID);
+        policyEnforcement.setCount(0);
+        policyEnforcementRepository.save(policyEnforcement);
+
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
                 .providerPid(createNewId())
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .state(TransferState.STARTED)
                 .role(IConstants.ROLE_PROVIDER)
+                .agreementId(AGREEMENT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
@@ -153,12 +167,19 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
     @DisplayName("Complete transfer process - from started - consumer")
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void completeTransferProcess_consumer() throws Exception {
+
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement();
+        policyEnforcement.setAgreementId(AGREEMENT_ID);
+        policyEnforcement.setCount(0);
+        policyEnforcementRepository.save(policyEnforcement);
+
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
                 .providerPid(createNewId())
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .state(TransferState.STARTED)
                 .role(IConstants.ROLE_PROVIDER)
+                .agreementId(AGREEMENT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
@@ -260,12 +281,19 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
     @DisplayName("Complete transfer process - temporary user deleted after HTTP-PUSH completion")
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void completeTransferProcess_provider_httpPush_deletesTemporaryUser() throws Exception {
+
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement();
+        policyEnforcement.setAgreementId(AGREEMENT_ID);
+        policyEnforcement.setCount(0);
+        policyEnforcementRepository.save(policyEnforcement);
+
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
                 .providerPid(createNewId())
                 .format(DataTransferFormat.HTTP_PUSH.format())
                 .state(TransferState.STARTED)
                 .role(IConstants.ROLE_PROVIDER)
+                .agreementId(AGREEMENT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
