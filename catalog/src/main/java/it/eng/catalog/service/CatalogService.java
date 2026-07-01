@@ -193,7 +193,7 @@ public class CatalogService {
      */
     public void updateCatalogDatasetAfterSave(Dataset newDataset) {
         // TODO handle the situation when new dataset have distribution which is not present in catalog
-        assertSameTenant(TenantContextHolder.getTenantId(), newDataset.getTenantId(), "Dataset", newDataset.getId());
+        assertSameTenant(TenantContextHolder.getTenantId(), newDataset.getTenantId(), Dataset.class.getSimpleName(), newDataset.getId());
         Catalog c = getCatalogForApi();
         c.getDataset().add(newDataset);
         saveCatalog(c);
@@ -218,7 +218,7 @@ public class CatalogService {
      * @param dataService The new data service reference to be added to the catalog.
      */
     public void updateCatalogDataServiceAfterSave(DataService dataService) {
-        assertSameTenant(TenantContextHolder.getTenantId(), dataService.getTenantId(), "DataService", dataService.getId());
+        assertSameTenant(TenantContextHolder.getTenantId(), dataService.getTenantId(), DataService.class.getSimpleName(), dataService.getId());
         Catalog c = getCatalogForApi();
         c.getService().add(dataService);
         saveCatalog(c);
@@ -245,7 +245,7 @@ public class CatalogService {
      * @param newDistribution The new distribution reference to be added to the catalog.
      */
     public void updateCatalogDistributionAfterSave(Distribution newDistribution) {
-        assertSameTenant(TenantContextHolder.getTenantId(), newDistribution.getTenantId(), "Distribution", newDistribution.getId());
+        assertSameTenant(TenantContextHolder.getTenantId(), newDistribution.getTenantId(), Distribution.class.getSimpleName(), newDistribution.getId());
         Catalog c = getCatalogForApi();
         c.getDistribution().add(newDistribution);
         saveCatalog(c);
