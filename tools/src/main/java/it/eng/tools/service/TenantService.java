@@ -104,15 +104,15 @@ public class TenantService {
      * <p>Participant IDs must be unique across all tenants.  If another tenant with the same
      * {@code participantId} already exists, an {@link IllegalArgumentException} is thrown.
      *
-     * <p>If the tenant does not provide a {@code bucketName}, one is automatically derived as
-     * {@code "dsp-" + tenantId.toLowerCase()}.  The bucket is then provisioned (or confirmed to
-     * exist) before the tenant is saved.  Bucket provisioning failure prevents the tenant from
-     * being persisted.
+     * <p>The bucket name is always auto-derived as {@code "dsp-" + tenantId.toLowerCase()}.
+     * Any {@code bucketName} supplied in the request body is silently ignored.
+     * The bucket is provisioned (or confirmed to exist) before the tenant is saved;
+     * provisioning failure prevents the tenant from being persisted.
      *
      * @param tenant the tenant to save; {@code id} must be provided and valid
      * @return the saved tenant
      * @throws IllegalArgumentException if the id format is invalid, the id already exists,
-     *                                  another tenant already owns the bucket name,
+     *                                  another tenant already owns the derived bucket name,
      *                                  or a tenant with the same participantId already exists
      */
     public Tenant saveTenant(Tenant tenant) {
@@ -132,9 +132,7 @@ public class TenantService {
                             "Tenant with participantId '" + tenant.getParticipantId() + "' already exists: " + existing.getId());
                 });
 
-        String effectiveBucketName = StringUtils.hasText(tenant.getBucketName())
-                ? tenant.getBucketName()
-                : BUCKET_NAME_PREFIX + tenantId.toLowerCase();
+        String effectiveBucketName = BUCKET_NAME_PREFIX + tenantId.toLowerCase();
 
         Tenant tenantToSave = Tenant.Builder.newInstance()
                 .id(tenantId)
@@ -233,38 +231,20 @@ public class TenantService {
 
     /**
      * Updates the mutable settings of an existing tenant (name, description,
-     * automaticNegotiation, automaticTransfer, bucketName).
-     * The {@code enabled} state and {@code participantId} are always preserved from the existing
-     * tenant; any {@code participantId} value in {@code updates} is silently ignored.
-     *
-     * <p>If {@code bucketName} is explicitly provided in {@code updates} and differs from the
-     * current value, the new bucket is provisioned before the tenant is updated.
-     * The old bucket is <strong>not</strong> deleted automatically.
+     * automaticNegotiation, automaticTransfer).
+     * The {@code enabled} state, {@code participantId}, and {@code bucketName} are always
+     * preserved from the existing tenant; any values for these fields in {@code updates} are
+     * silently ignored.
      *
      * @param tenantId the tenant identifier
      * @param updates  the tenant containing the new values to apply
      * @return the saved, updated tenant
      * @throws TenantNotFoundException  if the tenant does not exist
-     * @throws IllegalArgumentException if the new bucket name is already owned by another tenant
      */
     public Tenant updateTenant(String tenantId, Tenant updates) {
         Tenant existing = findById(tenantId);
-        String newBucketName = updates.getBucketName() != null ? updates.getBucketName() : existing.getBucketName();
-        if (StringUtils.hasText(newBucketName) && !newBucketName.equals(existing.getBucketName())) {
-            tenantRepository.findByBucketName(newBucketName)
-                    .filter(owner -> !owner.getId().equals(tenantId))
-                    .ifPresent(owner -> {
-                        throw new IllegalArgumentException(
-                                "Bucket '" + newBucketName + "' is already assigned to tenant: " + owner.getId());
-                    });
-            log.info("Provisioning new S3 bucket '{}' for tenant '{}'", newBucketName, tenantId);
-            s3BucketProvisionService.ensureBucketCredentials(newBucketName);
-            if (StringUtils.hasText(existing.getBucketName())) {
-                log.warn("Tenant '{}' bucket changed from '{}' to '{}'. "
-                        + "The old bucket was NOT deleted — clean it up manually if no longer needed.",
-                        tenantId, existing.getBucketName(), newBucketName);
-            }
-        }
+        // bucketName is immutable after creation; any value in updates is silently ignored
+        String preservedBucketName = existing.getBucketName();
         Tenant updated = Tenant.Builder.newInstance()
                 .id(existing.getId())
                 .version(existing.getVersion())
@@ -274,7 +254,7 @@ public class TenantService {
                 .automaticNegotiation(updates.isAutomaticNegotiation())
                 .automaticTransfer(updates.isAutomaticTransfer())
                 .enabled(existing.isEnabled())
-                .bucketName(newBucketName)
+                .bucketName(preservedBucketName)
                 .build();
         Tenant saved = tenantRepository.save(updated);
         auditEventPublisher.publishEvent(AuditEvent.Builder.newInstance()

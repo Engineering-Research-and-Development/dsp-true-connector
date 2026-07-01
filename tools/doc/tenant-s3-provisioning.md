@@ -5,8 +5,8 @@ including the bucket auto-derivation rule added in the MT3 slice.
 
 ## Bucket auto-derivation
 
-When a tenant is created via `POST /api/v1/tenants` and the request body omits `bucketName`,
-the service automatically derives one using the rule:
+When a tenant is created via `POST /api/v1/tenants`, the bucket name is **always** programmatically
+derived using the rule:
 
 ```
 bucketName = "dsp-" + tenantId.toLowerCase()
@@ -14,24 +14,11 @@ bucketName = "dsp-" + tenantId.toLowerCase()
 
 **Example**: a tenant with `id = "acme-corp"` receives bucket name `"dsp-acme-corp"`.
 
+Any `bucketName` field present in the request body is silently ignored.
+
 The auto-derived name is immediately provisioned in S3/MinIO before the tenant document
 is persisted. If the derived name is already owned by a different tenant, `saveTenant()`
 throws `IllegalArgumentException` and returns HTTP 409.
-
-### Providing an explicit bucket name
-
-You may still supply an explicit `bucketName` in the request body:
-
-```json
-{
-  "name": "ACME Corporation",
-  "participantId": "urn:connector:acme",
-  "bucketName": "my-custom-bucket"
-}
-```
-
-When a `bucketName` is present it is used as-is, and `S3BucketProvisionService.ensureBucketCredentials()`
-is called with the supplied name.
 
 ### Bucket name validation
 
@@ -40,11 +27,12 @@ Validation is enforced inside `S3BucketProvisionService` before any S3 operation
 
 ## Tenant update
 
-`PUT /api/v1/tenants/{tenantId}` (via `TenantService.updateTenant()`) does **not** auto-derive
-a bucket name. If `bucketName` is omitted from the update body, the existing bucket name is
-preserved. A new bucket is provisioned only when `bucketName` is explicitly included in the
-request body and its value differs from the current one. The old bucket is **not** deleted
-automatically — clean it up manually if it is no longer needed.
+`PUT /api/v1/tenants/{tenantId}` (via `TenantService.updateTenant()`) allows updating
+name, description, automaticNegotiation, and automaticTransfer.
+
+The `bucketName` is **immutable** after tenant creation. Any `bucketName` value in the
+update body is silently ignored and the existing bucket name is always preserved.
+The `participantId` and `enabled` state are similarly immutable via this endpoint.
 
 ## Per-tenant bucket isolation
 
