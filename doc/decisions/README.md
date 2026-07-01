@@ -12,6 +12,8 @@ This directory captures architecturally significant decisions: choices that shap
 | [D-TEC-002](technical/D-TEC-002-testcontainers-integration-testing.md)   | Testcontainers for integration testing | Accepted | Technical |
 | [D-TEC-003](technical/D-TEC-003-async-s3-multipart-upload.md)            | Asynchronous parallel S3 multipart upload | Accepted | Technical |
 | [D-TEC-004](technical/D-TEC-004-keycloak-user-registration.md)           | Keycloak user registration via Admin REST API | Accepted | Technical |
+| [D-TEC-005](technical/D-TEC-005-programmatic-startup-indexes.md)         | Programmatic startup index creation via MongoTemplate | Accepted | Technical |
+| [D-TEC-006](technical/D-TEC-006-dbref-tenant-filter-mitigation.md)       | @DBRef tenant-filter limitation and service-layer mitigation | Accepted | Technical |
 
 ## Structure
 

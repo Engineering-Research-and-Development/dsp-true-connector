@@ -17,6 +17,26 @@ public interface CatalogRepository extends MongoRepository<Catalog, String> {
     Optional<Catalog> findCatalogByDatasetId(String datasetId);
 
     /**
+     * Returns the catalog containing the given data service, scoped to the given tenant.
+     *
+     * @param dataServiceId the data service identifier
+     * @param tenantId      the tenant identifier
+     * @return the matching catalog, or empty if not found or not owned by tenant
+     */
+    @Query(value = "{'service.id': ?0, 'tenantId': ?1}", fields = "{'service.$': 1}")
+    Optional<Catalog> findCatalogByDataServiceIdAndTenantId(String dataServiceId, String tenantId);
+
+    /**
+     * Returns the catalog containing the given dataset, scoped to the given tenant.
+     *
+     * @param datasetId the dataset identifier
+     * @param tenantId  the tenant identifier
+     * @return the matching catalog, or empty if not found or not owned by tenant
+     */
+    @Query(value = "{'dataset.id': ?0, 'tenantId': ?1}", fields = "{'dataset.$': 1}")
+    Optional<Catalog> findCatalogByDatasetIdAndTenantId(String datasetId, String tenantId);
+
+    /**
      * Returns all catalogs belonging to the given tenant.
      *
      * @param tenantId the tenant identifier

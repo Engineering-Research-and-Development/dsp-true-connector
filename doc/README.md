@@ -59,7 +59,7 @@ Map of all documentation in this repository. For agent instructions and non-nego
 | `negotiation` | [policy_enforcement.md](../negotiation/doc/policy_enforcement.md), [model.md](../negotiation/doc/model.md) |
 | `connector` | [users.md](../connector/documentation/users.md), [negotiation.md](../connector/documentation/negotiation.md), [transfer.md](../connector/documentation/transfer.md) |
 | `data-transfer` | [data-transfer.md](../data-transfer/doc/data-transfer.md), [sftp.md](../data-transfer/doc/sftp.md) |
-| `tools` | [generic_filtering.md](../tools/doc/generic_filtering.md), [application_property.md](../tools/doc/application_property.md) |
+| `tools` | [generic_filtering.md](../tools/doc/generic_filtering.md), [application_property.md](../tools/doc/application_property.md), [tenant-s3-provisioning.md](../tools/doc/tenant-s3-provisioning.md) |
 
 ## Deployment
 

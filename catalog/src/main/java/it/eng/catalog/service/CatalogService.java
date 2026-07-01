@@ -193,6 +193,7 @@ public class CatalogService {
      */
     public void updateCatalogDatasetAfterSave(Dataset newDataset) {
         // TODO handle the situation when new dataset have distribution which is not present in catalog
+        assertSameTenant(TenantContextHolder.getTenantId(), newDataset.getTenantId(), Dataset.class.getSimpleName(), newDataset.getId());
         Catalog c = getCatalogForApi();
         c.getDataset().add(newDataset);
         saveCatalog(c);
@@ -217,6 +218,7 @@ public class CatalogService {
      * @param dataService The new data service reference to be added to the catalog.
      */
     public void updateCatalogDataServiceAfterSave(DataService dataService) {
+        assertSameTenant(TenantContextHolder.getTenantId(), dataService.getTenantId(), DataService.class.getSimpleName(), dataService.getId());
         Catalog c = getCatalogForApi();
         c.getService().add(dataService);
         saveCatalog(c);
@@ -243,6 +245,7 @@ public class CatalogService {
      * @param newDistribution The new distribution reference to be added to the catalog.
      */
     public void updateCatalogDistributionAfterSave(Distribution newDistribution) {
+        assertSameTenant(TenantContextHolder.getTenantId(), newDistribution.getTenantId(), Distribution.class.getSimpleName(), newDistribution.getId());
         Catalog c = getCatalogForApi();
         c.getDistribution().add(newDistribution);
         saveCatalog(c);
@@ -292,6 +295,25 @@ public class CatalogService {
         }
         log.info("Offer evaluated as {}", valid ? "valid" : "invalid");
         return valid;
+    }
+
+    /**
+     * Asserts that the caller tenant and the document tenant are the same, preventing cross-tenant
+     * references from being persisted.
+     *
+     * @param callerTenantId   the tenant ID of the current caller from {@link TenantContextHolder}
+     * @param documentTenantId the tenant ID stamped on the document being referenced
+     * @param documentType     a human-readable type label used in the error message and warning log
+     * @param documentId       the document identifier used in the error message and warning log
+     * @throws InternalServerErrorAPIException if both tenant IDs are non-null and not equal
+     */
+    private void assertSameTenant(String callerTenantId, String documentTenantId, String documentType, String documentId) {
+        if (callerTenantId != null && documentTenantId != null && !callerTenantId.equals(documentTenantId)) {
+            log.warn("Cross-tenant {} reference detected: caller tenant={}, document tenant={}, id={}",
+                    documentType, callerTenantId, documentTenantId, documentId);
+            throw new InternalServerErrorAPIException(
+                    "Cross-tenant reference rejected: " + documentType + " id=" + documentId);
+        }
     }
 
     private void validateCatalog(List<Catalog> allCatalogs) {
