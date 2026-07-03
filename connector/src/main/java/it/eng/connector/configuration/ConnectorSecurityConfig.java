@@ -1,7 +1,13 @@
 package it.eng.connector.configuration;
 
-import java.util.Arrays;
-
+import it.eng.connector.filter.ApiTenantContextFilter;
+import it.eng.connector.model.Role;
+import it.eng.connector.repository.UserRepository;
+import it.eng.tools.auth.AuthenticationMode;
+import it.eng.tools.auth.AuthenticationModeResolver;
+import it.eng.tools.auth.condition.BasicAuthenticationModeCondition;
+import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
+import it.eng.tools.controller.ApiEndpoints;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.springframework.beans.factory.ObjectProvider;
@@ -13,6 +19,8 @@ import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.ProviderManager;
@@ -34,19 +42,10 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.http.HttpMethod;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import it.eng.connector.filter.ApiTenantContextFilter;
-import it.eng.connector.model.Role;
-import it.eng.connector.repository.UserRepository;
-import it.eng.tools.auth.AuthenticationMode;
-import it.eng.tools.auth.AuthenticationModeResolver;
-import it.eng.tools.auth.condition.BasicAuthenticationModeCondition;
-import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
-import it.eng.tools.controller.ApiEndpoints;
-import org.springframework.http.HttpHeaders;
+import java.util.Arrays;
 
 /**
  * Unified security configuration for the connector.
@@ -208,10 +207,13 @@ public class ConnectorSecurityConfig {
         // Legacy non-prefixed catalog paths have been removed; the catalog controller
         // now requires the /{tenantId} prefix (Phase 2).
         // Negotiation and consumer paths now also require the /{tenantId} prefix (Phase 3).
+        // Non-prefixed protocol paths are also included here so that the TckProtocolForwardingFilter
+        // (active when application.tck.enabled=true) can forward them to the tenant-prefixed
+        // controller before the security chain completes authentication for the forwarded path.
         http.securityMatcher(
                 "/*/connector/**", "/*/catalog/**", "/*/negotiations/**", "/*/transfers/**",
                 "/*/consumer/**",
-                "/connector/**", "/transfers/**");
+                "/connector/**", "/catalog/**", "/negotiations/**", "/transfers/**", "/consumer/**");
 
         if (authMode == AuthenticationMode.DISABLED) {
             http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());

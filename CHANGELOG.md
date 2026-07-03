@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] — Multi-Tenant Support
 
+- **Updated java from 17 to 21**
+
 ### Added
 - **MT1 — Tenant & User Lifecycle Foundation**
   - `TenantService.saveTenant()` now auto-generates a **UUID** as the tenant ID; any caller-supplied `id` is ignored. `callbackAddress` is derived programmatically as `${application.callback.address}/{id}` — any caller-supplied `callbackAddress` is also ignored.

@@ -2,6 +2,8 @@ package it.eng.connector.configuration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.ReplaceOptions;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.Tenant;
@@ -91,24 +93,31 @@ public class InitialDataLoader {
                         Object documentId = mongoDocument.get("_id");
 
                         if (documentId != null) {
-                            // Check if document already exists
+                            // Use native driver replaceOne (upsert) to bypass Spring Data entity mapping.
+                            // mongoTemplate.save() triggers MappingMongoConverter which strips fields
+                            // annotated with @JsonIgnore (e.g. tenantId, bucketName) because Spring Data
+                            // detects the _class discriminator and applies entity-aware write processing.
+                            // The native replaceOne preserves the raw BSON document as-is.
                             Document existingDocument = mongoTemplate.findById(documentId, Document.class, collectionName);
+                            mongoTemplate.getCollection(collectionName).replaceOne(
+                                    Filters.eq("_id", documentId),
+                                    mongoDocument,
+                                    new ReplaceOptions().upsert(true));
                             if (existingDocument == null) {
-                                mongoTemplate.save(mongoDocument, collectionName);
                                 newDocuments++;
                             } else {
-                                log.debug("Document with ID {} already exists in collection '{}', skipping...",
+                                log.debug("Document with ID {} already exists in collection '{}', replacing...",
                                         documentId, collectionName);
                                 skippedDocuments++;
                             }
                         } else {
-                            // If document has no ID, treat as new document
-                            mongoTemplate.save(mongoDocument, collectionName);
+                            // If document has no ID, insert as new document (no upsert needed).
+                            mongoTemplate.getCollection(collectionName).insertOne(mongoDocument);
                             newDocuments++;
                         }
                     }
 
-                    log.info("Collection '{}': {} new documents loaded, {} documents skipped (already exist).",
+                    log.info("Collection '{}': {} new documents loaded, {} documents replaced (already existed).",
                             collectionName, newDocuments, skippedDocuments);
                 });
 

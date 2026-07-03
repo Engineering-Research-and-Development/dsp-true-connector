@@ -125,6 +125,7 @@ public class TCKDataTransferService extends AbstractDataTransferService {
                         .callbackAddress(transferProcessInitialized.getCallbackAddress())
                         .role(IConstants.ROLE_CONSUMER)
                         .state(transferProcessFromResponse.getState())
+                        .tenantId(transferProcessInitialized.getTenantId())
                         .created(transferProcessInitialized.getCreated())
                         .createdBy(transferProcessInitialized.getCreatedBy())
                         .modified(transferProcessInitialized.getModified())
