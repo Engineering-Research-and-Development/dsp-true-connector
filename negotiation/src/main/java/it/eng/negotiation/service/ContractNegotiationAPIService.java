@@ -227,7 +227,8 @@ public class ContractNegotiationAPIService {
                 .consumerPid(existingContractNegotiation.getConsumerPid())
                 .providerPid(existingContractNegotiation.getProviderPid())
                 .offer(offerWithoutOriginalId)
-                .callbackAddress(properties.consumerCallbackAddress())
+//                TODO commented out because of dsp-tck CN_C:01-02
+//                .callbackAddress(properties.consumerCallbackAddress())
                 .build();
 
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
