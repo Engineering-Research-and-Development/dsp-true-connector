@@ -227,6 +227,7 @@ public class ContractNegotiationAPIService {
                 .consumerPid(existingContractNegotiation.getConsumerPid())
                 .providerPid(existingContractNegotiation.getProviderPid())
                 .offer(offerWithoutOriginalId)
+//                TODO commented out because of dsp-tck CN_C:01-02
                 .callbackAddress(properties.consumerCallbackAddress())
                 .build();
 
@@ -361,7 +362,7 @@ public class ContractNegotiationAPIService {
                         .id(contractNegotiationFromResponse.getId())
                         .consumerPid(contractNegotiationFromResponse.getConsumerPid())
                         .providerPid(contractNegotiationFromResponse.getProviderPid())
-                        .callbackAddress(forwardTo)
+//                        .callbackAddress(forwardTo)
                         .assigner(updatedOffer.getAssigner())
                         .state(contractNegotiationFromResponse.getState())
                         .role(IConstants.ROLE_PROVIDER)

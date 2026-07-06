@@ -2472,6 +2472,7 @@
       "description": "Engineering tenant",
       "participantId": "urn:connector:engineering",
       "enabled": true,
+      "bucketName": "dsp-engineering",
       "automaticNegotiation": false,
       "automaticTransfer": false,
       "version": 0
