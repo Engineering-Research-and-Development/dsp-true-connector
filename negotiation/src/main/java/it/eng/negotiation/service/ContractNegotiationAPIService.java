@@ -228,7 +228,7 @@ public class ContractNegotiationAPIService {
                 .providerPid(existingContractNegotiation.getProviderPid())
                 .offer(offerWithoutOriginalId)
 //                TODO commented out because of dsp-tck CN_C:01-02
-//                .callbackAddress(properties.consumerCallbackAddress())
+                .callbackAddress(properties.consumerCallbackAddress())
                 .build();
 
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
@@ -362,7 +362,7 @@ public class ContractNegotiationAPIService {
                         .id(contractNegotiationFromResponse.getId())
                         .consumerPid(contractNegotiationFromResponse.getConsumerPid())
                         .providerPid(contractNegotiationFromResponse.getProviderPid())
-                        .callbackAddress(forwardTo)
+//                        .callbackAddress(forwardTo)
                         .assigner(updatedOffer.getAssigner())
                         .state(contractNegotiationFromResponse.getState())
                         .role(IConstants.ROLE_PROVIDER)
