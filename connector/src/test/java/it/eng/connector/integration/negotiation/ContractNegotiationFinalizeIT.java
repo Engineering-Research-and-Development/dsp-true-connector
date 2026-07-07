@@ -165,6 +165,7 @@ public class ContractNegotiationFinalizeIT extends BaseIntegrationTest {
                                 .build()))
                         .build()))
                 .build();
+        agreementRepository.save(agreement);
 
         ContractNegotiation contractNegotiationVerified = ContractNegotiation.Builder.newInstance()
                 .consumerPid(createNewId())

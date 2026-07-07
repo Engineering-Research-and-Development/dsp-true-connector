@@ -61,6 +61,13 @@ All notable changes to this project will be documented in this file.
 - `ConnectorSecurityConfig` security matchers updated to cover `/{tenantId}/` prefixed patterns.
 - `initial_data.json` — all seed catalog, dataset, distribution, data-service, and artifact entries include `"tenantId": "engineering"`.
 
+### Fixed
+- **#277 — Agreement `_id` collision across tenants** — `Agreement` now has its own tenant-independent MongoDB technical primary key (`technicalId`, `@Id`), separate from the shared DSP protocol `id`. Previously `Agreement.id` (which is legitimately shared between a provider's and a consumer's local copies of the same agreement) was used directly as the MongoDB `_id`, so when both connectors ran against the same MongoDB instance the second party's save silently overwrote the first party's document.
+  - `agreements` collection now has a unique compound index on `(tenantId, id)` instead of `(tenantId, _id)`.
+  - `AgreementRepository.findAgreementById(String id)` added for non-tenant-scoped lookups by the protocol `id` (distinct from the inherited `findById`, which now queries the technical id).
+  - `AgreementAPIService.enforceAgreement()` and `PolicyEnforcementPoint.enforcePolicy()` updated to resolve `Agreement`/`ContractNegotiation` references using the appropriate id (protocol `id` vs. technical id) instead of assuming the two always matched.
+  - New integration test `AgreementCrossTenantIT` covers persisting and enforcing agreements that share the same protocol `id` across two tenants.
+
 ## [0.6.11-SNAPSHOT] - 16.04.2026.
 
 ### Added

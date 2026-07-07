@@ -38,7 +38,7 @@ public class AgreementAPIService {
             agreement = agreementRepository.findByIdAndTenantId(agreementId, tenantId)
                     .orElseThrow(() -> new ContractNegotiationAPIException("Agreement with Id " + agreementId + " not found."));
         } else {
-            agreement = agreementRepository.findById(agreementId)
+            agreement = agreementRepository.findAgreementById(agreementId)
                     .orElseThrow(() -> new ContractNegotiationAPIException("Agreement with Id " + agreementId + " not found."));
         }
         // TODO add additional checks like contract dates

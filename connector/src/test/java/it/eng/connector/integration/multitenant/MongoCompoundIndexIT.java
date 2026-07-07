@@ -28,7 +28,7 @@ public class MongoCompoundIndexIT extends BaseIntegrationTest {
             "datasets",               List.of("tenantId", "_id"),
             "contract_negotiations",  List.of("tenantId", "state", "role"),
             "transfer_process",       List.of("tenantId", "state", "role"),
-            "agreements",             List.of("tenantId", "_id"),
+            "agreements",             List.of("tenantId", "id"),
             "audit_events",           List.of("tenantId", "timestamp"),
             "application_properties", List.of("tenantId", "_id")
     );
