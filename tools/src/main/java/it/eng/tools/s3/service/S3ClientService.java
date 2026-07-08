@@ -1,5 +1,6 @@
 package it.eng.tools.s3.service;
 
+import it.eng.tools.s3.service.upload.UploadCheckpointCallback;
 import jakarta.servlet.http.HttpServletResponse;
 
 import java.io.InputStream;
@@ -7,6 +8,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Service interface for S3 client operations.
@@ -14,20 +16,47 @@ import java.util.concurrent.CompletableFuture;
 public interface S3ClientService {
 
     /**
-     * Uploads a file to the specified bucket with the specified object key.
-     * <p>
-     * After stream is processed, it will be closed automatically.
+     * Uploads a file without cancellation or checkpoint support.
      *
-     * @param inputStream        the input stream of the file to upload
-     * @param destinationS3Properties the properties of the destination S3 bucket
-     * @param contentType        the content type of the file
-     * @param contentDisposition the content disposition of the file
-     * @return a CompletableFuture that completes with the ETag of the uploaded object
+     * <p>Delegates to the 6-parameter overload with a no-op token and callback.
+     * The {@code inputStream} is closed automatically after the upload completes.
+     *
+     * @param inputStream             data source
+     * @param destinationS3Properties destination bucket properties
+     * @param contentType             MIME type
+     * @param contentDisposition      content-disposition header value
+     * @return CompletableFuture resolving to the final ETag
+     */
+    default CompletableFuture<String> uploadFile(InputStream inputStream,
+                                                  Map<String, String> destinationS3Properties,
+                                                  String contentType,
+                                                  String contentDisposition) {
+        return uploadFile(inputStream, destinationS3Properties, contentType, contentDisposition,
+                new AtomicBoolean(false),
+                UploadCheckpointCallback.noOp());
+    }
+
+    /**
+     * Uploads a file with cancellation support and checkpoint callbacks.
+     *
+     * <p>The {@code inputStream} is closed automatically after the upload completes.
+     *
+     * @param inputStream             data source
+     * @param destinationS3Properties destination bucket properties
+     * @param contentType             MIME type
+     * @param contentDisposition      content-disposition header value
+     * @param cancellationToken       set to {@code true} to request graceful stop
+     * @param checkpointCallback      invoked after each successfully uploaded part
+     * @return CompletableFuture resolving to the final ETag
+     * @throws it.eng.tools.exceptions.TransferCancelledException if {@code cancellationToken}
+     *         is set to {@code true} before or during the upload
      */
     CompletableFuture<String> uploadFile(InputStream inputStream,
                                          Map<String, String> destinationS3Properties,
                                          String contentType,
-                                         String contentDisposition);
+                                         String contentDisposition,
+                                         AtomicBoolean cancellationToken,
+                                         UploadCheckpointCallback checkpointCallback);
 
     /**
      * Downloads a file from the specified bucket with the specified object key.

@@ -8,6 +8,8 @@ import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
+import it.eng.datatransfer.repository.TransferArtifactStateRepository;
+import it.eng.datatransfer.service.CancellationRegistry;
 import it.eng.datatransfer.rest.protocol.DataTransferCallback;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
@@ -24,8 +26,10 @@ import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -53,8 +57,13 @@ public class TCKDataTransferService extends AbstractDataTransferService {
                                   CredentialUtils credentialUtils,
                                   DataTransferProperties dataTransferProperties,
                                   TemporaryBucketUserService temporaryBucketUserService,
-                                  FieldEncryptionService fieldEncryptionService) {
-        super(transferProcessRepository, auditEventPublisher, okHttpRestClient, transferRequestMessageRepository, dataTransferProperties, temporaryBucketUserService, fieldEncryptionService);
+                                  FieldEncryptionService fieldEncryptionService,
+                                  CancellationRegistry cancellationRegistry,
+                                  TransferArtifactStateRepository transferArtifactStateRepository,
+                                  @Qualifier("transferTaskScheduler") TaskScheduler taskScheduler) {
+        super(transferProcessRepository, auditEventPublisher, okHttpRestClient, transferRequestMessageRepository,
+                dataTransferProperties, temporaryBucketUserService, fieldEncryptionService,
+                cancellationRegistry, transferArtifactStateRepository, taskScheduler);
         this.dataTransferAPIService = dataTransferAPIService;
         this.auditEventPublisher = auditEventPublisher;
         this.okHttpRestClient = okHttpRestClient;

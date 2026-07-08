@@ -103,7 +103,7 @@ public class S3ClientServiceImplTest {
         lenient().when(uploadStrategyFactory.getStrategy(any())).thenReturn(mockUploadStrategy);
 
         // Configure default behavior for mock upload strategy
-        lenient().when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+        lenient().when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.completedFuture("test-etag"));
     }
 
@@ -113,7 +113,7 @@ public class S3ClientServiceImplTest {
     void uploadFile_Success(){
         // Arrange
         String expectedETag = "test-etag";
-        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
@@ -123,7 +123,7 @@ public class S3ClientServiceImplTest {
         // Assert
         assertEquals(expectedETag, result.join());
         verify(uploadStrategyFactory).getStrategy(any());
-        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -132,7 +132,7 @@ public class S3ClientServiceImplTest {
         // Arrange - ensure ASYNC mode is used
         when(s3Properties.getUploadMode()).thenReturn("ASYNC");
         when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
-        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.failedFuture(
                         new CompletionException("Failed to upload file",
                                 S3Exception.builder().message("Upload failed").build())));
@@ -152,7 +152,7 @@ public class S3ClientServiceImplTest {
         String expectedETag = "sync-test-etag";
         when(s3Properties.getUploadMode()).thenReturn("SYNC");
         when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
-        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
@@ -162,7 +162,7 @@ public class S3ClientServiceImplTest {
         // Assert
         assertEquals(expectedETag, result.join());
         verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.SYNC);
-        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -177,7 +177,7 @@ public class S3ClientServiceImplTest {
 
         when(applicationPropertiesService.getPropertyByKey("s3.upload.mode"))
                 .thenReturn(java.util.Optional.of(property));
-        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
@@ -188,7 +188,7 @@ public class S3ClientServiceImplTest {
         assertEquals(expectedETag, result.join());
         verify(applicationPropertiesService).getPropertyByKey("s3.upload.mode");
         verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.SYNC);
-        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -203,7 +203,7 @@ public class S3ClientServiceImplTest {
 
         when(applicationPropertiesService.getPropertyByKey("s3.upload.mode"))
                 .thenReturn(java.util.Optional.of(property));
-        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
@@ -214,7 +214,7 @@ public class S3ClientServiceImplTest {
         assertEquals(expectedETag, result.join());
         verify(applicationPropertiesService).getPropertyByKey("s3.upload.mode");
         verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.ASYNC);
-        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -225,7 +225,7 @@ public class S3ClientServiceImplTest {
         when(applicationPropertiesService.getPropertyByKey("s3.upload.mode"))
                 .thenReturn(java.util.Optional.empty());
         when(s3Properties.getUploadMode()).thenReturn("SYNC");
-        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
@@ -237,7 +237,7 @@ public class S3ClientServiceImplTest {
         verify(applicationPropertiesService).getPropertyByKey("s3.upload.mode");
         verify(s3Properties).getUploadMode();
         verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.SYNC);
-        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -248,7 +248,7 @@ public class S3ClientServiceImplTest {
         when(applicationPropertiesService.getPropertyByKey("s3.upload.mode"))
                 .thenThrow(new RuntimeException("Database connection error"));
         when(s3Properties.getUploadMode()).thenReturn("ASYNC");
-        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
@@ -260,7 +260,7 @@ public class S3ClientServiceImplTest {
         verify(applicationPropertiesService).getPropertyByKey("s3.upload.mode");
         verify(s3Properties).getUploadMode();
         verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.ASYNC);
-        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -270,7 +270,7 @@ public class S3ClientServiceImplTest {
         String expectedETag = "default-sync-etag";
         when(s3Properties.getUploadMode()).thenReturn("INVALID_MODE");
         when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
-        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
@@ -280,7 +280,7 @@ public class S3ClientServiceImplTest {
         // Assert
         assertEquals(expectedETag, result.join());
         verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.SYNC);
-        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -289,7 +289,7 @@ public class S3ClientServiceImplTest {
         // Arrange
         when(s3Properties.getUploadMode()).thenReturn("SYNC");
         when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
-        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.failedFuture(
                         new CompletionException("Failed to upload file",
                                 S3Exception.builder().message("Sync upload failed").build())));
@@ -301,7 +301,7 @@ public class S3ClientServiceImplTest {
         Exception exception = assertThrows(CompletionException.class, () -> result.join());
         assertTrue(exception.getMessage().contains("Failed to upload file"));
         verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.SYNC);
-        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -310,7 +310,7 @@ public class S3ClientServiceImplTest {
         // Arrange
         when(s3Properties.getUploadMode()).thenReturn("ASYNC");
         when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
-        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.completedFuture("test-etag"));
 
         // Act
@@ -320,7 +320,7 @@ public class S3ClientServiceImplTest {
         // Assert - with strategy pattern, upload succeeds
         assertDoesNotThrow(() -> result.join());
         verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.ASYNC);
-        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -329,7 +329,7 @@ public class S3ClientServiceImplTest {
         // Arrange
         when(s3Properties.getUploadMode()).thenReturn("ASYNC");
         when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
-        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.failedFuture(
                         new CompletionException("Failed to upload file",
                                 S3Exception.builder().message("Complete upload failed").build())));
@@ -341,7 +341,7 @@ public class S3ClientServiceImplTest {
         Exception exception = assertThrows(CompletionException.class, () -> result.join());
         assertTrue(exception.getMessage().contains("Failed to upload file"));
         verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.ASYNC);
-        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -351,7 +351,7 @@ public class S3ClientServiceImplTest {
         String expectedETag = "empty-mode-etag";
         when(s3Properties.getUploadMode()).thenReturn("");
         when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
-        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
@@ -361,7 +361,7 @@ public class S3ClientServiceImplTest {
         // Assert
         assertEquals(expectedETag, result.join());
         verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.SYNC);
-        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -371,7 +371,7 @@ public class S3ClientServiceImplTest {
         String expectedETag = "null-mode-etag";
         when(s3Properties.getUploadMode()).thenReturn(null);
         when(applicationPropertiesService.getPropertyByKey(any())).thenReturn(java.util.Optional.empty());
-        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any()))
+        when(mockUploadStrategy.uploadFile(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(CompletableFuture.completedFuture(expectedETag));
 
         // Act
@@ -381,7 +381,7 @@ public class S3ClientServiceImplTest {
         // Assert
         assertEquals(expectedETag, result.join());
         verify(uploadStrategyFactory).getStrategy(it.eng.tools.s3.model.S3UploadMode.SYNC);
-        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any());
+        verify(mockUploadStrategy).uploadFile(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     // downloadFile tests

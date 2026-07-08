@@ -319,6 +319,40 @@ public class TransferProcess extends AbstractTransferMessage {
     }
 
     /**
+     * Creates a new TransferProcess that marks the data download as successfully completed.
+     * Sets {@code isDownloaded=true}, {@code isDownloadInProgress=false}, and {@code dataId} to this
+     * entity's id (the S3 object key). All other fields, including {@code state} and {@code version},
+     * remain unchanged so that the caller can safely save this entity without introducing a stale-version
+     * conflict when a concurrent suspend operation has already incremented {@code @Version}.
+     *
+     * @return new TransferProcess instance with download-complete flags set
+     */
+    public TransferProcess withDownloadComplete() {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(true)
+                .isDownloadInProgress(false)
+                .dataId(this.id)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                // auditable fields
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
      * Creates a new TransferProcess with the specified isDownloadInProgress flag.
      * All other fields remain unchanged.
      *

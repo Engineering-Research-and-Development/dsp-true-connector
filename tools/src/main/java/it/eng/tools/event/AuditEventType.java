@@ -39,6 +39,15 @@ public enum AuditEventType {
     TRANSFER_VIEW("Transfer completed"),
     TRANSFER_COMPLETED("Transfer completed"),
     TRANSFER_FAILED("Transfer failed"),
+    TRANSFER_PAUSED("Transfer paused"),
+    TRANSFER_RESUMED("Transfer resumed"),
+    TRANSFER_URL_EXPIRED("Transfer URL expired"),
+    TRANSFER_NOT_FOUND("Transfer not found"),
+    TRANSFER_STATE_TRANSITION_ERROR("State transition invalid"),
+    TRANSFER_REQUESTED("Transfer requested"),
+    TRANSFER_STARTED("Transfer started"),
+    TRANSFER_SUSPENDED("Transfer suspended"),
+    TRANSFER_TERMINATED("Transfer terminated"),
 
     NEGOTIATION_ACCESS_COUNT_INCREASE("Access count increase");
 

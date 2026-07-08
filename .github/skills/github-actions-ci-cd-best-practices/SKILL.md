@@ -1,27 +1,9 @@
 ---
-name: github-actions-ci-cd-best-practices
-description: "Guidance for designing secure, maintainable, and efficient GitHub Actions workflows in TRUE Connector, including workflow structure, permissions, caching, testing, and deployment strategy."
+applyTo: '.github/workflows/*.yml'
+description: 'Comprehensive guide for building robust, secure, and efficient CI/CD pipelines using GitHub Actions. Covers workflow structure, jobs, steps, environment variables, secret management, caching, matrix strategies, testing, and deployment strategies.'
 ---
 
 # GitHub Actions CI/CD Best Practices
-
-# Purpose
-
-Use this skill when creating or reviewing GitHub Actions workflows for TRUE Connector and you need detailed guidance for security, maintainability, testing, and deployment behavior.
-
-The detailed guidance below was adapted from `.github/instructions/github-actions-ci-cd-best-practices.instructions.md`.
-
-# Use this skill when
-
-- A task touches workflow files under `.github/workflows/*.yml`.
-- You are creating, reviewing, or refactoring CI/CD automation in GitHub Actions.
-- You need guidance on workflow permissions, secrets, caching, matrix builds, or deployment strategy.
-
-# Instructions for Copilot
-
-1. Favor least-privilege permissions, pinned actions, and explicit environment boundaries over convenient but broad defaults.
-2. Separate build, test, security, and deployment concerns into clear jobs or reusable workflows where that improves maintainability.
-3. When suggesting CI/CD changes, include validation, rollback, and secret-handling considerations.
 
 ## Your Mission
 
@@ -621,5 +603,332 @@ This section provides an expanded guide to diagnosing and resolving frequent pro
 GitHub Actions is a powerful and flexible platform for automating your software development lifecycle. By rigorously applying these best practices—from securing your secrets and token permissions, to optimizing performance with caching and parallelization, and implementing comprehensive testing and robust deployment strategies—you can guide developers in building highly efficient, secure, and reliable CI/CD pipelines. Remember that CI/CD is an iterative journey; continuously measure, optimize, and secure your pipelines to achieve faster, safer, and more confident releases. Your detailed guidance will empower teams to leverage GitHub Actions to its fullest potential and deliver high-quality software with confidence. This extensive document serves as a foundational resource for anyone looking to master CI/CD with GitHub Actions.
 
 ---
+
+## TRUE Connector — Newman End-to-End Test Suites
+
+This section documents the project-specific Newman-based end-to-end test suites used by `build.yml` and how to write, run, and debug them locally and in GitHub Actions.
+
+> **This section covers the E2E/API test layer only (Newman + Docker Compose).** Unit tests and Testcontainers integration tests are handled by `mvn clean verify` and are documented separately.
+
+### Overview
+
+All test suites run as **separate, isolated jobs** in `build.yml`, following this pattern:
+
+1. `docker compose up -d` — start fresh environment
+2. `sleep 30` — wait for connectors to boot and load seed data
+3. `newman run <collection>` — execute the tests
+4. `docker compose down -v` — **destroy all data** (`-v` removes MongoDB and MinIO volumes)
+
+**All suites are stateful.** Every suite depends on the clean `initial_data.json` seed state and builds up state as requests execute. Even a partial run leaves the connectors in a terminal DSP state (e.g., `FINALIZED`, `COMPLETED`). Re-running against the same environment will produce state-machine transition errors.
+
+**Never share a running environment between suites.** Always `down -v` between them, both locally and in CI.
+
+### Environment Topology
+
+| Service | Container Name | Local URL | Internal Network URL |
+|---------|---------------|-----------|---------------------|
+| Connector A (consumer) | `connector-a` | `http://localhost:8080` | `http://connector-a:8080` |
+| Connector B (provider) | `connector-b` | `http://localhost:8090` | `http://connector-b:8080` |
+| MinIO | `minio` | `http://localhost:9000` | `http://minio:9000` |
+
+**Callback addresses (inter-connector protocol calls):**
+- Consumer callback: `http://172.17.0.1:8080` (Docker host IP, so containers can reach the host-mapped port)
+- Provider callback: `http://172.17.0.1:8090`
+
+### Authentication
+
+Both connectors run with `application.auth.provider=BASIC`. All Newman collections authenticate using collection-level basic auth — do not embed credentials in individual requests.
+
+| User | Password | Role | Use for |
+|------|----------|------|---------|
+| `admin@mail.com` | `password` | `ROLE_ADMIN` | All management (`/api/v1/...`) endpoints |
+| `connector@mail.com` | `password` | `ROLE_CONNECTOR` | Protocol (`/negotiations/...`, `/transfers/...`, `/catalog/...`) endpoints |
+| `superadmin@mail.com` | `password` | `ROLE_SUPER_ADMIN` | Tenant API (`/api/v1/tenants/**`) — regular admin returns 403 |
+
+### Standard Collection Variables
+
+Every collection defines these variables in its `variable` array:
+
+| Variable | Example Value | Purpose |
+|----------|--------------|---------|
+| `CONSUMER_API_ENDPOINT` | `http://localhost:8080/api/v1/<resource>` | Consumer management API base |
+| `PROVIDER_API_ENDPOINT` | `http://localhost:8090/api/v1/<resource>` | Provider management API base |
+| `CONSUMER_PROTOCOL_ENDPOINT` | `http://172.17.0.1:8080/connector_a_tenant_id` | Consumer DSP protocol endpoint |
+| `PROVIDER_PROTOCOL_ENDPOINT` | `http://172.17.0.1:8090/connector_b_tenant_id` | Provider DSP protocol base |
+| `CONSUMER_SERVER_API_TRANSFERS` | `http://localhost:8080/api/v1/transfers` | Consumer transfer API |
+| `PROVIDER_SERVER_API_TRANSFERS` | `http://localhost:8090/api/v1/transfers` | Provider transfer API |
+| `datasetId` | `urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5` | Pre-seeded dataset ID |
+
+Stateful variables (populated by `pm.collectionVariables.set()` during the run) start empty:
+```
+consumer_contractNegotiationId, provider_contractNegotiationId,
+consumerPid, providerPid, consumer_agreementId, provider_agreementId
+```
+
+### Tenant Configuration
+
+The two connector instances use distinct tenant IDs. These values must be consistent across `initial_data.json` seed files, application properties, and Newman collection variables:
+
+| Instance | Port | Tenant ID |
+|---|---|---|
+| connector-a (consumer) | 8080 | `connector_a_tenant_id` |
+| connector-b (provider) | 8090 | `connector_b_tenant_id` |
+
+Key collection variables that embed the tenant ID:
+- `CONSUMER_PROTOCOL_ENDPOINT` — must be `http://172.17.0.1:8080/connector_a_tenant_id`
+- `PROVIDER_PROTOCOL_ENDPOINT` — must be `http://172.17.0.1:8090/connector_b_tenant_id`
+- `PROVIDER_PROTOCOL` — must be `http://172.17.0.1:8090/connector_b_tenant_id`
+
+Newman URL objects store the URL in two places: the `raw` string **and** the `path` array. Both must be updated when changing tenant IDs or host addresses — Newman uses the `path` array for resolution, not just `raw`.
+
+### Pre-Seeded State (initial_data.json)
+
+Each connector starts with seed data from `ci/docker/connector_a_resources/initial_data.json` (and a corresponding `connector_b_resources/` file):
+
+| Collection | Key IDs |
+|------------|---------|
+| users | `admin@mail.com` (ROLE_ADMIN), `connector@mail.com` (ROLE_CONNECTOR) |
+| catalogs | `urn:uuid:1dc45797-3333-4955-8baf-ab7fd66ac4d5` |
+| datasets | `urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5` |
+| distributions | pull: `urn:uuid:1dc45797-pull-4932-8baf-ab7fd66ql4d5`, push: `urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5` |
+| agreements | `urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA` |
+| transfer_process | `urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5` |
+
+If a test references these IDs by value (not variable), use the IDs above. If a test needs a fresh object, create it in an early request and save the ID to a collection variable.
+
+### Request Naming Convention
+
+Requests are prefixed to indicate which connector role sends them:
+
+- `[C]` — sent as **Consumer** (to `localhost:8080`)
+- `[P]` — sent as **Provider** (to `localhost:8090`)
+
+Example sequence in a negotiation flow:
+```
+[C] Send Contract Request Message    → POST {{CONSUMER_API_ENDPOINT}}/request
+[P] Find Contract Negotiation        → GET  {{PROVIDER_API_ENDPOINT}}?role=provider&state=REQUESTED&...
+[C] Requested check                  → GET  {{CONSUMER_API_ENDPOINT}}/{{consumer_contractNegotiationId}}
+[P] Send Contract Agreement Message  → POST {{PROVIDER_API_ENDPOINT}}/{{provider_contractNegotiationId}}/agree
+```
+
+Folder names should describe the flow, not a single HTTP action (e.g., `Negotiation`, `HTTP Pull Transfer`, not `POST /negotiations`).
+
+### Standard Test Script Patterns
+
+**Check status code:**
+```javascript
+pm.test("Check if status code is 200", function () {
+    pm.response.to.have.status(200);
+});
+```
+
+**Extract and store a response ID for subsequent requests:**
+```javascript
+pm.test("Retrieve contract negotiation id", function () {
+    var jsonData = pm.response.json();
+    pm.collectionVariables.set("consumer_contractNegotiationId", jsonData["data"]["@id"]);
+});
+```
+
+**Assert a state field value:**
+```javascript
+pm.test("Verify state REQUESTED - consumer", function () {
+    var jsonData = pm.response.json();
+    pm.expect(jsonData["data"]["dspace:state"]).to.eql("dspace:REQUESTED");
+});
+```
+
+**Query with filter parameters:**
+Use `?role=provider&state=REQUESTED&assigner=urn:uuid:ASSIGNER_PROVIDER` style query params on list endpoints to locate the negotiation/transfer the counterpart created.
+
+### Test suites and their collections
+
+| Job name | Collection path | CI job in build.yml? |
+|---|---|---|
+| `connector-tests` | `ci/docker/test-cases/connector-tests/connector-tests.json` | ✅ Yes |
+| `api-endpoints-tests` | `ci/docker/test-cases/api-tests/api-endpoints-tests.json` | ✅ Yes |
+| `dataset-api-tests` | `ci/docker/test-cases/dataset-api-tests/dataset-api-tests.json` | ✅ Yes |
+| `negotiation-api-without-counteroffer-tests` | `ci/docker/test-cases/negotiation-api-without-counteroffer-tests/negotiation-api-without-counteroffer-tests.json` | ✅ Yes |
+| `negotiation-api-with-counteroffer-tests` | `ci/docker/test-cases/negotiation-api-with-counteroffer-tests/negotiation-api-with-counteroffer-tests.json` | ❌ Not yet wired |
+| `datatransfer-api-http-pull-tests` | `ci/docker/test-cases/datatransfer-api-http-pull-tests/datatransfer-api-http-pull-tests.json` | ✅ Yes |
+| `datatransfer-api-http-push-tests` | `ci/docker/test-cases/datatransfer-api-http-push-tests/datatransfer-api-http-push-tests.json` | ✅ Yes |
+
+### Building the connector image locally
+
+The Docker Compose environment expects the image tag `ghcr.io/engineering-research-and-development/dsp-true-connector:test`. In CI this image is published by the `build-and-push-image` job. **When running locally you must build this image yourself first** — otherwise Docker will pull the last image published from CI, which does not include your uncommitted local changes.
+
+```bash
+cd <repo-root>
+
+# 1. Build the fat jar (skip tests for speed)
+mvn clean package -DskipTests
+
+# 2. Build and tag the Docker image with the tag the compose file expects
+docker build \
+  -t ghcr.io/engineering-research-and-development/dsp-true-connector:test \
+  -f connector/Dockerfile \
+  connector/
+```
+
+After this, `docker images | grep dsp-true-connector` should show the `:test` tag with a very recent `CREATED` timestamp. Docker Compose will use this local image instead of pulling from GHCR.
+
+> **Tip:** Repeat steps 1–2 whenever you change Java code and want to re-test. The compose environment does not hot-reload.
+
+### Running locally — the golden rule
+
+**Every suite must run against its own fresh Docker environment.** Never run two suites back-to-back against the same environment. Always `down -v` between them.
+
+```bash
+# Pattern to follow for each suite
+cd <repo-root>
+
+docker compose -f ci/docker/docker-compose.yml --env-file ci/docker/.env up -d
+sleep 60   # wait for both connectors to finish startup and seed data (30s is not enough locally)
+
+newman run ci/docker/test-cases/<suite-dir>/<suite-file>.json
+
+docker compose -f ci/docker/docker-compose.yml --env-file ci/docker/.env down -v
+```
+
+### Running all suites in sequence locally
+
+```bash
+cd <repo-root>
+
+COMPOSE="docker compose -f ci/docker/docker-compose.yml --env-file ci/docker/.env"
+
+for SUITE in \
+  "connector-tests/connector-tests.json" \
+  "api-tests/api-endpoints-tests.json" \
+  "dataset-api-tests/dataset-api-tests.json" \
+  "negotiation-api-without-counteroffer-tests/negotiation-api-without-counteroffer-tests.json" \
+  "negotiation-api-with-counteroffer-tests/negotiation-api-with-counteroffer-tests.json" \
+  "datatransfer-api-http-pull-tests/datatransfer-api-http-pull-tests.json" \
+  "datatransfer-api-http-push-tests/datatransfer-api-http-push-tests.json"
+do
+  echo "=== Starting: $SUITE ==="
+  $COMPOSE up -d
+  sleep 60
+  newman run ci/docker/test-cases/$SUITE
+  $COMPOSE down -v
+  echo "=== Done: $SUITE ==="
+done
+```
+
+### MinIO presigned URL access (datatransfer suites)
+
+The data transfer suites download artifacts via presigned URLs generated by MinIO. The presigned URL hostname is controlled by `s3.externalPresignedEndpoint` in `application.properties` (set to `http://172.17.0.1:9000`). This address must be reachable from the machine running Newman:
+
+- On GitHub Actions runners, `172.17.0.1` is the Docker bridge gateway and is reachable.
+- Locally, the Docker bridge IP may differ. If `172.17.0.1:9000` times out, MinIO is accessible via `localhost:9000` but presigned URLs already embed the configured host. The test will pass on GitHub Actions even if the presigned URL download step fails locally.
+
+### Adding a new test suite to build.yml
+
+Create the collection file at `ci/docker/test-cases/<suite-name>/<suite-name>.json` using this skeleton:
+
+```json
+{
+  "info": {
+    "name": "<Human readable name>",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "basic",
+    "basic": [
+      { "key": "username", "value": "admin@mail.com", "type": "string" },
+      { "key": "password", "value": "password", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "CONSUMER_API_ENDPOINT", "value": "http://localhost:8080/api/v1/<resource>" },
+    { "key": "PROVIDER_API_ENDPOINT", "value": "http://localhost:8090/api/v1/<resource>" }
+  ],
+  "item": [
+    {
+      "name": "<Flow name>",
+      "item": []
+    }
+  ]
+}
+```
+
+Then add a job to `build.yml` — each job must:
+1. Declare `needs: build-and-push-image` so it runs after the image is published.
+2. Start with `actions/checkout@v4`.
+3. Run `docker compose ... up -d` then `sleep 30`.
+4. Run `docker ps -a` to log container state (aids debugging on failure).
+5. Use `matt-ball/newman-action@v2.0.0` with the `collection` path.
+6. Include a `jwalton/gh-docker-logs@v2` step with `if: failure()` for log capture.
+7. Always end with `docker compose ... down -v` with `if: always()` to ensure cleanup even on test failure.
+
+```yaml
+  my-new-tests:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+      - name: Run docker container
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
+      - name: Wait for container starting
+        run: sleep 30
+      - name: Check if the container is up and running
+        run: docker ps -a
+      - uses: matt-ball/newman-action@v2.0.0
+        with:
+          collection: ./ci/docker/test-cases/my-new-tests/my-new-tests.json
+      - name: Dump docker logs on failure
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2
+      - name: Stop docker container
+        if: always()
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
+```
+
+> **Note:** Existing jobs in `build.yml` omit `if: always()` on the cleanup step, meaning `down -v` is skipped on test failure. Add `if: always()` to new jobs and consider back-filling it on existing ones to avoid orphaned containers on the runner.
+
+### Debugging Guide
+
+**Container not starting / health check failing:**
+1. Check container status: `docker ps -a`
+2. Inspect logs: `docker logs connector-a` or `docker logs connector-b`
+3. Verify the `:test` image tag exists in GHCR — the `build-and-push-image` job must have succeeded
+4. Look for OOM kills: `docker inspect connector-a | grep -i oom`
+5. Check `sleep 30` is sufficient — if connectors need more startup time, increase to `sleep 60`
+
+**401 Unauthorized:**
+1. Confirm collection-level basic auth is set (`admin@mail.com` / `password`)
+2. Confirm `application.auth.provider=BASIC` is in `ci/docker/connector_a_resources/application.properties` and `connector_b_resources/application.properties`
+3. Protocol endpoints require `ROLE_CONNECTOR` — use `connector@mail.com` for those requests
+4. Tenant API endpoints (`/api/v1/tenants/**`) require `ROLE_SUPER_ADMIN` — use `superadmin@mail.com`
+
+**Collection variable not set / empty:**
+- A variable like `consumer_contractNegotiationId` will be empty if a prior request's test script failed to set it
+- Run locally with `newman run --verbose` to see each request/response and spot which `pm.collectionVariables.set()` call failed
+- Check the response body shape — if the API changed its JSON structure, the path in the test script (e.g., `jsonData["data"]["@id"]`) may be stale
+
+**Wrong URL / 404:**
+- Check that `CONSUMER_API_ENDPOINT` and `PROVIDER_API_ENDPOINT` variables match the current `ApiEndpoints` constants in the Java source
+- Admin API routes are under `/api/v1/...`; protocol routes are under `/negotiations/...`, `/transfers/...`, `/catalog/...`
+- Never hardcode `localhost` in protocol-facing URLs — use `172.17.0.1` so Docker containers can reach the host-mapped ports
+
+**Test assertions failing due to state mismatch:**
+- The suite is stateful. If a request in the middle fails, all subsequent state-dependent requests will also fail
+- Run `compose down -v` and `compose up -d` to reset to clean seed state before re-running
+- Never run a second suite without `compose down -v` — MongoDB state from one suite will corrupt the next
+
+**Parallel job port conflicts:**
+- Each CI job runs in its own GitHub Actions runner VM, so there are no port conflicts between parallel jobs
+- Locally, only one suite can use ports 8080/8090 at a time — always `down -v` before starting another suite
+
+**Reading CI failure logs:**
+When `jwalton/gh-docker-logs@v2` runs on failure, it dumps all container logs. Key things to look for:
+- Spring Boot startup exceptions (missing env vars, bad TLS config)
+- MongoDB connection refused (container dependency ordering)
+- `ClassNotFoundException` or bean wiring errors from recent code changes
+
+### TCK Compliance Tests
+
+TCK tests are separate from Newman suites and live in `ci/tck/`. They are triggered manually via `workflow_dispatch` on `tck_compliance.yml`. The TCK runner checks `"Failed tests: 0"` in the output log. Do not mix TCK infrastructure with the Newman Docker Compose setup.
 
 <!-- End of GitHub Actions CI/CD Best Practices Instructions -->

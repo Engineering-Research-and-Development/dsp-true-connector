@@ -1,11 +1,15 @@
 package it.eng.datatransfer.service.api.strategy;
 
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
+import it.eng.datatransfer.exceptions.PresignedUrlExpiredException;
 import it.eng.datatransfer.model.*;
+import it.eng.datatransfer.repository.TransferArtifactStateRepository;
+import it.eng.datatransfer.service.CancellationRegistry;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.service.upload.UploadCheckpointCallback;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.FieldEncryptionService;
 import it.eng.tools.util.ToolsUtil;
@@ -25,8 +29,10 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -44,6 +50,10 @@ public class HttpPushTransferStrategyTest {
     private FieldEncryptionService fieldEncryptionService;
     @Mock
     private HttpURLConnection mockConnection;
+    @Mock
+    private TransferArtifactStateRepository transferArtifactStateRepository;
+    @Mock
+    private CancellationRegistry cancellationRegistry;
 
     /**
      * Strategy under test. Created manually in setUp so we can inject a direct
@@ -72,10 +82,30 @@ public class HttpPushTransferStrategyTest {
      */
     @BeforeEach
     void setUp() {
+        // Pre-load inner classes before any test opens a MockedConstruction<URL> scope.
+        // Mockito/ByteBuddy inline mocking + mockConstruction(URL.class) causes a JVM
+        // classloader interference that prevents inner classes from loading on-demand
+        // inside the try-with-resources block.  Touching the class literals here forces
+        // the JVM to resolve them while the classloader is in a clean state.
+        @SuppressWarnings("unused")
+        Class<?> preload = TransferArtifactState.Builder.class;
+        try {
+            Class.forName("it.eng.datatransfer.service.api.strategy.CheckpointCallbackImpl",
+                    false, HttpPushTransferStrategy.class.getClassLoader());
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException("Cannot pre-load CheckpointCallbackImpl", e);
+        }
+
         // Runnable::run is a valid Executor that executes tasks on the calling thread
-        strategy = new HttpPushTransferStrategy(s3Properties, s3ClientService, Runnable::run, fieldEncryptionService);
+        strategy = new HttpPushTransferStrategy(s3Properties, s3ClientService, Runnable::run, fieldEncryptionService,
+                transferArtifactStateRepository, cancellationRegistry);
         // Return the decrypted value for any encrypted secret key used in tests
         lenient().when(fieldEncryptionService.decrypt(TEST_ENCRYPTED_SECRET_KEY)).thenReturn(TEST_SECRET_KEY);
+        
+        // Setup basic mocks for the new dependencies
+        lenient().when(transferArtifactStateRepository.findById(anyString())).thenReturn(Optional.empty());
+        lenient().when(transferArtifactStateRepository.save(any(TransferArtifactState.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(cancellationRegistry.register(anyString())).thenReturn(new AtomicBoolean(false));
     }
 
     @Test
@@ -145,8 +175,14 @@ public class HttpPushTransferStrategyTest {
                 any(InputStream.class),
                 eq(endpointPropertiesMap),
                 eq(TEST_CONTENT_TYPE),
-                eq(TEST_CONTENT_DISPOSITION)
-        )).thenReturn(CompletableFuture.completedFuture("test-etag"));
+                eq(TEST_CONTENT_DISPOSITION),
+                any(AtomicBoolean.class),
+                any()
+        )).thenAnswer(inv -> {
+            UploadCheckpointCallback cb = inv.getArgument(5);
+            cb.onPartCompleted(1, "etag-1", 5_000_000L); // 1 part < 4 → stays in buffer
+            return CompletableFuture.completedFuture("test-etag");
+        });
 
         try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
                 (mock, context) -> when(mock.openConnection()).thenReturn(mockConnection))) {
@@ -161,11 +197,17 @@ public class HttpPushTransferStrategyTest {
             // Act — .join() ensures the synchronous future has completed before asserting
             assertDoesNotThrow(() -> strategy.transfer(transferProcess).join());
 
+            // Initial save (line 96 of strategy) + flush() in thenAccept = 2 saves
+            verify(transferArtifactStateRepository, times(2))
+                    .save(any(TransferArtifactState.class));
+
             verify(s3ClientService).uploadFile(
                     any(InputStream.class),
                     eq(endpointPropertiesMap),
                     eq(TEST_CONTENT_TYPE),
-                    eq(TEST_CONTENT_DISPOSITION)
+                    eq(TEST_CONTENT_DISPOSITION),
+                    any(AtomicBoolean.class),
+                    any()
             );
         }
     }
@@ -224,7 +266,8 @@ public class HttpPushTransferStrategyTest {
         when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
         when(s3ClientService.generateGetPresignedUrl(eq(TEST_BUCKET), eq(TEST_DATASET_ID), any()))
                 .thenReturn("http://presigned-url");
-        when(s3ClientService.uploadFile(any(InputStream.class), any(Map.class), anyString(), anyString()))
+        when(s3ClientService.uploadFile(any(InputStream.class), any(Map.class), anyString(), anyString(),
+                any(AtomicBoolean.class), any()))
                 .thenReturn(CompletableFuture.completedFuture("test-etag"));
 
         // 100 MB content-length → dynamic timeout = ceil(100*1024*1024 * 1.1 / (1024*1024)) * 1000 = 111_000 ms
@@ -278,7 +321,8 @@ public class HttpPushTransferStrategyTest {
         when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
         when(s3ClientService.generateGetPresignedUrl(eq(TEST_BUCKET), eq(TEST_DATASET_ID), any()))
                 .thenReturn("http://presigned-url");
-        when(s3ClientService.uploadFile(any(InputStream.class), any(Map.class), anyString(), anyString()))
+        when(s3ClientService.uploadFile(any(InputStream.class), any(Map.class), anyString(), anyString(),
+                any(AtomicBoolean.class), any()))
                 .thenReturn(CompletableFuture.completedFuture("test-etag"));
 
         try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
@@ -344,5 +388,83 @@ public class HttpPushTransferStrategyTest {
             // Verify disconnect was called to release resources
             verify(mockConnection).disconnect();
         }
+    }
+
+    @Test
+    @DisplayName("Should throw PresignedUrlExpiredException on HTTP 403")
+    void transfer_throwsPresignedUrlExpiredException_on403() throws Exception {
+        TransferProcess transferProcess = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED;
+
+        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
+        when(s3ClientService.generateGetPresignedUrl(eq(TEST_BUCKET), eq(DataTransferMockObjectUtil.DATASET_ID), any()))
+                .thenReturn("http://presigned-url");
+
+        try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
+                (mock, context) -> when(mock.openConnection()).thenReturn(mockConnection))) {
+
+            when(mockConnection.getResponseCode()).thenReturn(HttpURLConnection.HTTP_FORBIDDEN);
+
+            CompletionException exception = assertThrows(CompletionException.class,
+                    () -> strategy.transfer(transferProcess).join());
+            assertInstanceOf(PresignedUrlExpiredException.class, exception.getCause());
+            verify(mockConnection, times(1)).disconnect();
+        }
+    }
+
+    @Test
+    @DisplayName("Should add Range header when resuming from a non-zero offset")
+    void transfer_addsRangeHeader_whenResumingFromOffset() throws Exception {
+        TransferProcess transferProcess = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED;
+
+        TransferArtifactState existingState = TransferArtifactState.Builder.newInstance()
+                .id(transferProcess.getId())
+                .downloadedBytes(1024L)
+                .build();
+        when(transferArtifactStateRepository.findById(transferProcess.getId()))
+                .thenReturn(Optional.of(existingState));
+
+        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
+        when(s3ClientService.generateGetPresignedUrl(eq(TEST_BUCKET), eq(DataTransferMockObjectUtil.DATASET_ID), any()))
+                .thenReturn("http://presigned-url");
+        when(s3ClientService.uploadFile(any(), any(), anyString(), anyString(), any(AtomicBoolean.class), any()))
+                .thenReturn(CompletableFuture.completedFuture("etag"));
+
+        try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
+                (mock, context) -> when(mock.openConnection()).thenReturn(mockConnection))) {
+
+            when(mockConnection.getResponseCode()).thenReturn(206);
+            when(mockConnection.getContentType()).thenReturn(TEST_CONTENT_TYPE);
+            when(mockConnection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION)).thenReturn(TEST_CONTENT_DISPOSITION);
+            when(mockConnection.getInputStream()).thenReturn(new ByteArrayInputStream(TEST_CONTENT.getBytes()));
+
+            assertDoesNotThrow(() -> strategy.transfer(transferProcess).join());
+
+            verify(mockConnection).setRequestProperty(HttpHeaders.RANGE, "bytes=1024-");
+        }
+    }
+
+    @Test
+    @DisplayName("Should register cancellation token with transferProcessId before starting upload")
+    void transfer_registersTokenWithCancellationRegistry() throws Exception {
+        TransferProcess transferProcess = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED;
+
+        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
+        when(s3ClientService.generateGetPresignedUrl(eq(TEST_BUCKET), eq(DataTransferMockObjectUtil.DATASET_ID), any()))
+                .thenReturn("http://presigned-url");
+        when(s3ClientService.uploadFile(any(), any(), anyString(), anyString(), any(AtomicBoolean.class), any()))
+                .thenReturn(CompletableFuture.completedFuture("etag"));
+
+        try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
+                (mock, context) -> when(mock.openConnection()).thenReturn(mockConnection))) {
+
+            when(mockConnection.getResponseCode()).thenReturn(HttpURLConnection.HTTP_OK);
+            when(mockConnection.getContentType()).thenReturn(TEST_CONTENT_TYPE);
+            when(mockConnection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION)).thenReturn(TEST_CONTENT_DISPOSITION);
+            when(mockConnection.getInputStream()).thenReturn(new ByteArrayInputStream(TEST_CONTENT.getBytes()));
+
+            assertDoesNotThrow(() -> strategy.transfer(transferProcess).join());
+        }
+
+        verify(cancellationRegistry).register(transferProcess.getId());
     }
 }

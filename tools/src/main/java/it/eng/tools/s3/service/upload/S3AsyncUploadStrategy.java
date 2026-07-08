@@ -1,5 +1,6 @@
 package it.eng.tools.s3.service.upload;
 
+import it.eng.tools.exceptions.TransferCancelledException;
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
@@ -17,6 +18,9 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Asynchronous S3 upload strategy implementation.
@@ -48,90 +52,113 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
                                                String bucketName,
                                                String objectKey,
                                                String contentType,
-                                               String contentDisposition) {
+                                               String contentDisposition,
+                                               AtomicBoolean cancellationToken,
+                                               UploadCheckpointCallback checkpointCallback) {
         S3AsyncClient s3AsyncClient = s3ClientProvider.s3AsyncClient(s3ClientRequest);
-
-        CreateMultipartUploadRequest createMultipartUploadRequest = CreateMultipartUploadRequest.builder()
-                .bucket(bucketName)
-                .contentType(contentType)
-                .contentDisposition(contentDisposition)
-                .key(objectKey)
-                .build();
+        AtomicReference<String> uploadIdRef = new AtomicReference<>();
 
         log.info("Creating multipart upload (ASYNC) for key: {}", objectKey);
 
-        return s3AsyncClient.createMultipartUpload(createMultipartUploadRequest)
+        return s3AsyncClient.createMultipartUpload(CreateMultipartUploadRequest.builder()
+                        .bucket(bucketName).contentType(contentType)
+                        .contentDisposition(contentDisposition).key(objectKey).build())
                 .thenComposeAsync(response -> {
                     String uploadId = response.uploadId();
-                    log.info("Created multipart upload (ASYNC) for key: {} with uploadId: {}", objectKey, uploadId);
-
-                    return uploadParts(inputStream, s3AsyncClient, bucketName, objectKey, uploadId);
+                    uploadIdRef.set(uploadId);
+                    log.info("Created multipart upload (ASYNC) uploadId={} key={}", uploadId, objectKey);
+                    checkpointCallback.onUploadStarted(uploadId);
+                    return uploadParts(inputStream, s3AsyncClient, bucketName, objectKey, uploadId,
+                            cancellationToken, checkpointCallback);
                 })
-                .thenComposeAsync(uploadResult -> completeMultipartUpload(
-                            s3AsyncClient,
-                            bucketName,
-                            objectKey,
-                            uploadResult.uploadId(),
-                            uploadResult.completedParts()))
+                .thenComposeAsync(uploadResult ->
+                        completeMultipartUpload(s3AsyncClient, bucketName, objectKey,
+                                uploadResult.uploadId(), uploadResult.completedParts()))
                 .exceptionally(throwable -> {
-                    log.error("Failed to upload file (ASYNC) {}: {}", objectKey, throwable.getMessage());
+                    Throwable cause = throwable instanceof CompletionException && throwable.getCause() != null
+                            ? throwable.getCause() : throwable;
+                    if (cause instanceof TransferCancelledException) {
+                        log.info("Transfer cancelled (ASYNC) key={}. Abort dispatched.", objectKey);
+                        throw new CompletionException(cause);
+                    }
+                    log.error("Upload failed (ASYNC) key={}: {}", objectKey, throwable.getMessage());
+                    String uploadId = uploadIdRef.get();
+                    if (uploadId != null) {
+                        s3AsyncClient.abortMultipartUpload(AbortMultipartUploadRequest.builder()
+                                .bucket(bucketName).key(objectKey).uploadId(uploadId).build())
+                                .exceptionally(t -> {
+                                    log.warn("Failed to abort multipart upload key={} uploadId={}: {}",
+                                            objectKey, uploadId, t.getMessage());
+                                    return null;
+                                });
+                    }
                     throw new CompletionException("Failed to upload file", throwable);
                 })
                 .whenComplete((result, throwable) -> {
-                    try {
-                        inputStream.close();
-                    } catch (IOException e) {
+                    try { inputStream.close(); } catch (IOException e) {
                         log.error("Failed to close input stream: {}", e.getMessage());
                     }
                 });
     }
 
+
     /**
      * Reads the input stream and uploads parts asynchronously in parallel.
      *
-     * @param inputStream   the input stream to read from
-     * @param s3AsyncClient the S3 async client
-     * @param bucketName    the bucket name
-     * @param objectKey     the object key
-     * @param uploadId      the upload ID
+     * @param inputStream        the input stream to read from
+     * @param s3AsyncClient      the S3 async client
+     * @param bucketName         the bucket name
+     * @param objectKey          the object key
+     * @param uploadId           the upload ID
+     * @param cancellationToken  set to true externally to request graceful stop
+     * @param checkpointCallback invoked after each successfully uploaded part
      * @return a CompletableFuture with the upload result
      */
     private CompletableFuture<UploadResult> uploadParts(InputStream inputStream,
                                                         S3AsyncClient s3AsyncClient,
                                                         String bucketName,
                                                         String objectKey,
-                                                        String uploadId) {
+                                                        String uploadId,
+                                                        AtomicBoolean cancellationToken,
+                                                        UploadCheckpointCallback checkpointCallback) {
         List<CompletableFuture<CompletedPart>> partFutures = new ArrayList<>();
+        AtomicLong totalBytesUploaded = new AtomicLong(0);
 
-        // The stream-reading loop is blocking I/O and must run on an async thread.
-        // It submits all part uploads, then returns so thenCompose can wait for them
-        // without holding a thread (no .join() inside the supplyAsync).
         return CompletableFuture.runAsync(() -> {
             try {
                 int partNumber = 1;
-                // Single fixed-size buffer reused for every full part.
                 byte[] buffer = new byte[s3Properties.getChunkSize()];
-                // Limits the number of parts being uploaded at the same time.
                 Semaphore parallelism = new Semaphore(MAX_PARALLEL_PARTS);
 
-                log.debug("Reading stream and initiating bounded-parallel uploads...");
-
                 while (true) {
+                    if (cancellationToken.get()) {
+                        log.info("Cancellation signalled before part {} (ASYNC) key={}. Aborting.", partNumber, objectKey);
+                        s3AsyncClient.abortMultipartUpload(AbortMultipartUploadRequest.builder()
+                                .bucket(bucketName).key(objectKey).uploadId(uploadId).build())
+                                .exceptionally(t -> {
+                                    log.warn("Failed to abort multipart upload (ASYNC) key={} uploadId={}: {}",
+                                            objectKey, uploadId, t.getMessage());
+                                    return null;
+                                });
+                        throw new CompletionException(new TransferCancelledException(objectKey));
+                    }
                     int totalRead = readFully(inputStream, buffer);
                     if (totalRead == 0) break;
 
-                    // Copy the buffer for every part (full or partial) so each async upload
-                    // holds its own independent byte array and the shared buffer can be safely
-                    // refilled for the next read without corrupting in-flight uploads.
                     byte[] partData = Arrays.copyOf(buffer, totalRead);
-
                     final int currentPartNumber = partNumber;
+                    final long partBytes = totalRead;
                     parallelism.acquire();
 
                     CompletableFuture<CompletedPart> partFuture = uploadPart(
                             s3AsyncClient, bucketName, objectKey, uploadId, currentPartNumber, partData)
-                            .whenComplete((r, t) -> parallelism.release());
-
+                            .whenComplete((completedPart, t) -> {
+                                parallelism.release();
+                                if (t == null && completedPart != null) {
+                                    long cumulative = totalBytesUploaded.addAndGet(partBytes);
+                                    checkpointCallback.onPartCompleted(currentPartNumber, completedPart.eTag(), cumulative);
+                                }
+                            });
                     partFutures.add(partFuture);
                     partNumber++;
                 }
@@ -141,15 +168,12 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
                 Thread.currentThread().interrupt();
                 throw new CompletionException("Upload interrupted", e);
             }
-        })
-        .thenCompose(v ->
-            // All part futures are now submitted. Wait for them non-blockingly.
+        }).thenCompose(v ->
             CompletableFuture.allOf(partFutures.toArray(new CompletableFuture[0]))
                 .thenApply(ignored -> {
                     List<CompletedPart> completedParts = partFutures.stream()
-                            .map(CompletableFuture::join)  // safe: all futures are already completed
-                            .toList();
-                    log.info("All {} parts uploaded successfully for key: {}", completedParts.size(), objectKey);
+                            .map(CompletableFuture::join).toList();
+                    log.info("All {} parts uploaded (ASYNC) key={}", completedParts.size(), objectKey);
                     return new UploadResult(uploadId, completedParts);
                 })
         );

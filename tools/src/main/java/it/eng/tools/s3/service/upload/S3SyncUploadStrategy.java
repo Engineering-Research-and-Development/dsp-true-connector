@@ -1,5 +1,6 @@
 package it.eng.tools.s3.service.upload;
 
+import it.eng.tools.exceptions.TransferCancelledException;
 import it.eng.tools.s3.configuration.S3ClientProvider;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
@@ -16,6 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Synchronous S3 upload strategy implementation.
@@ -40,79 +42,85 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
                                                String bucketName,
                                                String objectKey,
                                                String contentType,
-                                               String contentDisposition) {
+                                               String contentDisposition,
+                                               AtomicBoolean cancellationToken,
+                                               UploadCheckpointCallback checkpointCallback) {
         return CompletableFuture.supplyAsync(() -> {
             S3Client s3Client = s3ClientProvider.s3Client(s3ClientRequest);
-
+            String uploadId = null;
             try {
                 log.info("Creating multipart upload (SYNC) for key: {}", objectKey);
-
-                CreateMultipartUploadRequest createRequest = CreateMultipartUploadRequest.builder()
-                        .bucket(bucketName)
-                        .contentType(contentType)
-                        .contentDisposition(contentDisposition)
-                        .key(objectKey)
-                        .build();
-
-                CreateMultipartUploadResponse createResponse = s3Client.createMultipartUpload(createRequest);
-                String uploadId = createResponse.uploadId();
-
-                log.info("Created multipart upload (SYNC) for key: {} with uploadId: {}", objectKey, uploadId);
+                CreateMultipartUploadResponse createResp = s3Client.createMultipartUpload(
+                        CreateMultipartUploadRequest.builder()
+                                .bucket(bucketName).contentType(contentType)
+                                .contentDisposition(contentDisposition).key(objectKey).build());
+                uploadId = createResp.uploadId();
+                log.info("Created multipart upload (SYNC) uploadId={} key={}", uploadId, objectKey);
+                checkpointCallback.onUploadStarted(uploadId);
 
                 List<CompletedPart> completedParts = new ArrayList<>();
                 int partNumber = 1;
+                long totalBytesUploaded = 0;
                 byte[] buffer = new byte[s3Properties.getChunkSize()];
 
                 while (true) {
+                    if (cancellationToken.get()) {
+                        log.info("Cancellation signalled before part {} for key={}. Aborting.", partNumber, objectKey);
+                        abortMultipartUpload(s3Client, bucketName, objectKey, uploadId);
+                        throw new TransferCancelledException(objectKey);
+                    }
                     int totalRead = readFully(inputStream, buffer);
                     if (totalRead == 0) break;
 
-                    // Reuse the same buffer when full; copy only the final (smaller) part
                     byte[] partData = (totalRead == buffer.length)
-                            ? buffer
-                            : Arrays.copyOf(buffer, totalRead);
-
+                            ? buffer : Arrays.copyOf(buffer, totalRead);
                     CompletedPart part = uploadPart(s3Client, bucketName, objectKey, uploadId, partNumber, partData);
                     completedParts.add(part);
+                    totalBytesUploaded += totalRead;
+                    checkpointCallback.onPartCompleted(partNumber, part.eTag(), totalBytesUploaded);
                     partNumber++;
                 }
 
-                log.info("All {} parts uploaded successfully (SYNC) for key: {}", completedParts.size(), objectKey);
-
-                CompletedMultipartUpload completedUpload = CompletedMultipartUpload.builder()
-                        .parts(completedParts)
-                        .build();
-
-                CompleteMultipartUploadRequest completeRequest = CompleteMultipartUploadRequest.builder()
-                        .bucket(bucketName)
-                        .key(objectKey)
-                        .uploadId(uploadId)
-                        .multipartUpload(completedUpload)
-                        .build();
-
-                log.info("Completing multipart upload (SYNC) for key: {} with uploadId: {}", objectKey, uploadId);
-
-                CompleteMultipartUploadResponse completeResponse = s3Client.completeMultipartUpload(completeRequest);
-                String eTag = completeResponse.eTag();
-
-                log.info("Upload completed successfully (SYNC) for key: {} with ETag: {}", objectKey, eTag);
-
+                CompleteMultipartUploadResponse completeResp = s3Client.completeMultipartUpload(
+                        CompleteMultipartUploadRequest.builder()
+                                .bucket(bucketName).key(objectKey).uploadId(uploadId)
+                                .multipartUpload(CompletedMultipartUpload.builder()
+                                        .parts(completedParts).build())
+                                .build());
+                String eTag = completeResp.eTag();
+                log.info("Upload completed (SYNC) key={} eTag={}", objectKey, eTag);
                 return eTag;
 
-            } catch (IOException e) {
-                log.error("Failed to upload file (SYNC) {}: {}", objectKey, e.getMessage());
-                throw new CompletionException("Failed to upload file", e);
+            } catch (TransferCancelledException e) {
+                throw new CompletionException(e);
             } catch (Exception e) {
-                log.error("Failed to upload file (SYNC) {}: {}", objectKey, e.getMessage());
+                log.error("Upload failed (SYNC) key={}: {}", objectKey, e.getMessage());
+                if (uploadId != null) abortMultipartUpload(s3Client, bucketName, objectKey, uploadId);
                 throw new CompletionException("Failed to upload file", e);
             } finally {
-                try {
-                    inputStream.close();
-                } catch (IOException e) {
+                try { inputStream.close(); } catch (IOException e) {
                     log.error("Failed to close input stream: {}", e.getMessage());
                 }
             }
         });
+    }
+
+    /**
+     * Aborts a multipart upload, logging any error without rethrowing.
+     *
+     * @param s3Client   the S3 client
+     * @param bucketName the bucket name
+     * @param objectKey  the object key
+     * @param uploadId   the multipart upload ID to abort
+     */
+    private void abortMultipartUpload(S3Client s3Client, String bucketName, String objectKey, String uploadId) {
+        try {
+            s3Client.abortMultipartUpload(AbortMultipartUploadRequest.builder()
+                    .bucket(bucketName).key(objectKey).uploadId(uploadId).build());
+            log.info("Aborted multipart upload (SYNC) key={} uploadId={}", objectKey, uploadId);
+        } catch (Exception e) {
+            log.warn("Failed to abort multipart upload key={} uploadId={}: {}", objectKey, uploadId, e.getMessage());
+        }
     }
 
     /**

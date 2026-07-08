@@ -1,5 +1,6 @@
 package it.eng.datatransfer.service;
 
+import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.scheduling.TaskScheduler;
 
 import java.time.Instant;
@@ -96,7 +98,7 @@ public class AutomaticDataTransferServiceTest {
     void processStart_failsOnce_schedulesRetry() {
         setUp();
         String id = "tp2";
-        var tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER;
+        TransferProcess tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER;
         when(transferProcessRepository.findById(id)).thenReturn(Optional.of(tp));
         when(transferProperties.getMaxRetryAttempts()).thenReturn(3);
         when(transferProperties.getRetryDelayMs()).thenReturn(1000L);
@@ -106,9 +108,28 @@ public class AutomaticDataTransferServiceTest {
         service.processStart(id);
 
         verify(apiService, times(1)).startTransfer(id);
+        // findById is called once at the start and once inside the catch block for the re-read
+        verify(transferProcessRepository, times(2)).findById(id);
         verify(transferProcessRepository, times(1)).save(argThat(t -> t.getRetryCount() == 1));
         verify(taskScheduler, times(1)).schedule(any(Runnable.class), any(Instant.class));
         verify(auditEventPublisher, never()).publishEvent(any(AuditEventType.class), anyString(), anyMap());
+    }
+
+    @Test
+    @DisplayName("processStart: OLE on retry-count save is swallowed, retry is still scheduled")
+    void processStart_oleOnRetryCountSave_retryStillScheduled() {
+        setUp();
+        String id = "tp_ole_start";
+        TransferProcess tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER;
+        when(transferProcessRepository.findById(id)).thenReturn(Optional.of(tp));
+        when(transferProperties.getMaxRetryAttempts()).thenReturn(3);
+        when(transferProperties.getRetryDelayMs()).thenReturn(1000L);
+        when(apiService.startTransfer(id)).thenThrow(new RuntimeException("action failed"));
+        when(transferProcessRepository.save(any())).thenThrow(new OptimisticLockingFailureException("concurrent modification"));
+
+        service.processStart(id);
+
+        verify(taskScheduler, times(1)).schedule(any(Runnable.class), any(Instant.class));
     }
 
     @Test
@@ -236,7 +257,7 @@ public class AutomaticDataTransferServiceTest {
     void processDownload_failsOnce_schedulesRetry() {
         setUp();
         String id = "tp8";
-        var tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED;
+        TransferProcess tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED;
         when(transferProcessRepository.findById(id)).thenReturn(Optional.of(tp));
         when(transferProperties.getMaxRetryAttempts()).thenReturn(3);
         when(transferProperties.getRetryDelayMs()).thenReturn(1000L);
@@ -246,9 +267,28 @@ public class AutomaticDataTransferServiceTest {
         service.processDownload(id);
 
         verify(apiService, times(1)).downloadData(id);
+        // findById is called once at the start and once inside the catch block for the re-read
+        verify(transferProcessRepository, times(2)).findById(id);
         verify(transferProcessRepository, times(1)).save(argThat(t -> t.getRetryCount() == 1));
         verify(taskScheduler, times(1)).schedule(any(Runnable.class), any(Instant.class));
         verify(auditEventPublisher, never()).publishEvent(any(AuditEventType.class), anyString(), anyMap());
+    }
+
+    @Test
+    @DisplayName("processDownload: OLE on retry-count save is swallowed, retry is still scheduled")
+    void processDownload_oleOnRetryCountSave_retryStillScheduled() {
+        setUp();
+        String id = "tp_ole_download";
+        TransferProcess tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED;
+        when(transferProcessRepository.findById(id)).thenReturn(Optional.of(tp));
+        when(transferProperties.getMaxRetryAttempts()).thenReturn(3);
+        when(transferProperties.getRetryDelayMs()).thenReturn(1000L);
+        when(apiService.downloadData(id)).thenReturn(CompletableFuture.failedFuture(new RuntimeException("action failed")));
+        when(transferProcessRepository.save(any())).thenThrow(new OptimisticLockingFailureException("concurrent modification"));
+
+        service.processDownload(id);
+
+        verify(taskScheduler, times(1)).schedule(any(Runnable.class), any(Instant.class));
     }
 
     @Test

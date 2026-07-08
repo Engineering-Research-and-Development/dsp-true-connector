@@ -2,18 +2,23 @@ package it.eng.datatransfer.service.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
+import it.eng.datatransfer.exceptions.PresignedUrlExpiredException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.DataTransferRequest;
+import it.eng.datatransfer.model.TransferArtifactState;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
+import it.eng.datatransfer.repository.TransferArtifactStateRepository;
+import it.eng.datatransfer.service.CancellationRegistry;
 import it.eng.datatransfer.service.api.strategy.HttpPullTransferStrategy;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.exceptions.TransferCancelledException;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
@@ -23,6 +28,7 @@ import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -75,6 +81,10 @@ class DataTransferAPIServiceTest {
     private HttpPullTransferStrategy httpPullTransferStrategy;
     @Mock
     private ArtifactTransferService artifactTransferService;
+    @Mock
+    private CancellationRegistry cancellationRegistry;
+    @Mock
+    private TransferArtifactStateRepository transferArtifactStateRepository;
     @Mock
     private Pageable pageable;
 
@@ -231,7 +241,7 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
         assertEquals(IConstants.ROLE_CONSUMER, argCaptorTransferProcess.getValue().getRole());
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_REQUESTED, null);
     }
 
     @Test
@@ -248,7 +258,7 @@ class DataTransferAPIServiceTest {
 
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_REQUESTED, null);
     }
 
     @Test
@@ -280,7 +290,7 @@ class DataTransferAPIServiceTest {
 
         verify(transferProcessRepository).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_STARTED, null);
     }
 
     @Test
@@ -291,7 +301,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_NOT_FOUND, null);
     }
 
     @ParameterizedTest
@@ -308,7 +318,7 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_STATE_TRANSITION_ERROR, null);
     }
 
     @Test
@@ -326,7 +336,39 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_STARTED, null);
+    }
+
+    @Test
+    @DisplayName("Start transfer - initial HTTP_PUSH by provider auto-triggers upload")
+    public void startTransfer_initialHttpPush_autoTriggersUpload() {
+        TransferProcess tpRequestedProviderPush = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .state(TransferState.REQUESTED)
+                .format(DataTransferFormat.HTTP_PUSH.format())
+                .build();
+
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(transferProcessRepository.findById(tpRequestedProviderPush.getId()))
+                .thenReturn(Optional.of(tpRequestedProviderPush));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(inv -> inv.getArgument(0));
+
+        apiService.startTransfer(tpRequestedProviderPush.getId());
+
+        // Verify auto-trigger fired: findById is called once by startTransfer() and once
+        // asynchronously by downloadData(). downloadData() exits early (state is not STARTED)
+        // but only after the repository lookup, giving us a reliable second call to assert on.
+        verify(transferProcessRepository, timeout(2000).atLeast(2)).findById(eq(tpRequestedProviderPush.getId()));
+        verify(transferProcessRepository).save(any(TransferProcess.class));
+        verifyAuditEvent(AuditEventType.TRANSFER_STARTED, null);
     }
 
     @Test
@@ -342,7 +384,36 @@ class DataTransferAPIServiceTest {
 
         verify(transferProcessRepository).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_COMPLETED, null);
+    }
+
+    @Test
+    @DisplayName("completeTransfer retries with fresh entity read when first save throws OptimisticLockingFailureException")
+    void completeTransfer_oleOnFirstSave_retriesWithFreshRead() {
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class)))
+                .thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+
+        TransferProcess staleStarted = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED;
+
+        // First findById: stale entity used by completeTransfer() for message construction.
+        // Second findById: fresh entity fetched in the OLE retry path.
+        when(transferProcessRepository.findById(staleStarted.getId()))
+                .thenReturn(Optional.of(staleStarted))
+                .thenReturn(Optional.of(staleStarted));
+
+        // First save throws OLE; second save (the retry) succeeds.
+        when(transferProcessRepository.save(any()))
+                .thenThrow(new OptimisticLockingFailureException("version conflict"))
+                .thenAnswer(i -> i.getArgument(0));
+
+        // Must not throw — OLE must be caught and the retry must succeed.
+        assertDoesNotThrow(() -> apiService.completeTransfer(staleStarted.getId()));
+
+        // Two saves: the failing first attempt and the successful retry.
+        verify(transferProcessRepository, times(2)).save(argCaptorTransferProcess.capture());
+        assertEquals(TransferState.COMPLETED, argCaptorTransferProcess.getAllValues().get(1).getState());
     }
 
     @Test
@@ -353,7 +424,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_NOT_FOUND, null);
     }
 
     @ParameterizedTest
@@ -370,7 +441,7 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId());
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_STATE_TRANSITION_ERROR, null);
     }
 
     @Test
@@ -388,7 +459,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_FAILED, null);
     }
 
     @Test
@@ -399,12 +470,17 @@ class DataTransferAPIServiceTest {
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        when(transferArtifactStateRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
+                .thenReturn(Optional.empty());
 
         apiService.suspendTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 
         verify(transferProcessRepository).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
+        verify(publisher, times(2)).publishEvent(eventTypeCaptor.capture(), descriptionCaptor.capture(), argCaptorAuditEventDetails.capture());
+        List<AuditEventType> capturedEvents = eventTypeCaptor.getAllValues();
+        assertTrue(capturedEvents.contains(AuditEventType.TRANSFER_SUSPENDED));
+        assertTrue(capturedEvents.contains(AuditEventType.TRANSFER_PAUSED));
     }
 
     @Test
@@ -415,7 +491,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_NOT_FOUND, null);
     }
 
     @ParameterizedTest
@@ -432,7 +508,7 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId());
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_STATE_TRANSITION_ERROR, null);
     }
 
     @Test
@@ -450,7 +526,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_SUSPENDED, null);
     }
 
     @Test
@@ -466,7 +542,7 @@ class DataTransferAPIServiceTest {
 
         verify(transferProcessRepository).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_TERMINATED, null);
     }
 
     @Test
@@ -477,7 +553,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_NOT_FOUND, null);
     }
 
     @ParameterizedTest
@@ -494,7 +570,7 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository).findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED.getId());
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_STATE_TRANSITION_ERROR, null);
     }
 
     @Test
@@ -512,7 +588,7 @@ class DataTransferAPIServiceTest {
         verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
-        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, null);
+        verifyAuditEvent(AuditEventType.TRANSFER_TERMINATED, null);
     }
 
     @Test
@@ -847,5 +923,471 @@ class DataTransferAPIServiceTest {
                 Arguments.of("SUSPENDED", "suspendTransfer"),
                 Arguments.of("TERMINATED", "terminateTransfer")
         );
+    }
+
+    @Test
+    @DisplayName("suspendTransfer signals CancellationRegistry and records suspendedBy after successful peer response")
+    void suspendTransferSignalsCancellationRegistryAndRecordsSuspendedBy() {
+        TransferProcess tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED;
+        when(transferProcessRepository.findById(tp.getId())).thenReturn(Optional.of(tp));
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(okHttpRestClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(apiResponse);
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(transferArtifactStateRepository.findById(tp.getId())).thenReturn(Optional.empty());
+        when(transferArtifactStateRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        apiService.suspendTransfer(tp.getId());
+
+        verify(cancellationRegistry).signal(tp.getId());
+        verify(transferArtifactStateRepository).save(
+                argThat(s -> tp.getRole().equals(s.getSuspendedBy())));
+    }
+
+    @Test
+    @DisplayName("startTransfer rejects resume when suspendedBy does not match local role")
+    void startTransfer_resumeRejected_wrongRole() {
+        TransferProcess suspendedTp = TransferProcess.Builder.newInstance()
+                .id(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER.getId())
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .state(TransferState.SUSPENDED)
+                .format(DataTransferFormat.HTTP_PULL.format())
+                .build();
+
+        when(transferProcessRepository.findById(suspendedTp.getId())).thenReturn(Optional.of(suspendedTp));
+
+        TransferArtifactState artifactState = TransferArtifactState.Builder.newInstance()
+                .id(suspendedTp.getId())
+                .suspendedBy(IConstants.ROLE_PROVIDER)
+                .build();
+        when(transferArtifactStateRepository.findById(suspendedTp.getId()))
+                .thenReturn(Optional.of(artifactState));
+
+        assertThrows(DataTransferAPIException.class,
+                () -> apiService.startTransfer(suspendedTp.getId()));
+    }
+
+    @Test
+    @DisplayName("startTransfer on SUSPENDED process emits TRANSFER_RESUMED and triggers download when consumer resumes pull")
+    void startTransfer_onSuspended_emitsResumedAudit() {
+        TransferProcess suspendedTp = TransferProcess.Builder.newInstance()
+                .id(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER.getId())
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .state(TransferState.SUSPENDED)
+                .format(DataTransferFormat.HTTP_PULL.format())
+                .build();
+
+        when(transferProcessRepository.findById(suspendedTp.getId())).thenReturn(Optional.of(suspendedTp));
+
+        TransferArtifactState artifactState = TransferArtifactState.Builder.newInstance()
+                .id(suspendedTp.getId())
+                .suspendedBy(IConstants.ROLE_CONSUMER)
+                .build();
+        when(transferArtifactStateRepository.findById(suspendedTp.getId()))
+                .thenReturn(Optional.of(artifactState));
+
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(okHttpRestClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(apiResponse);
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        assertDoesNotThrow(() -> apiService.startTransfer(suspendedTp.getId()));
+
+        verify(publisher).publishEvent(eq(AuditEventType.TRANSFER_RESUMED), anyString(), any());
+    }
+
+    @Test
+    @DisplayName("downloadData handles TransferCancelledException by keeping checkpoint and resetting in-progress flag")
+    void downloadDataHandlesCancelledException() throws Exception {
+        TransferProcess tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED;
+        when(transferProcessRepository.findById(tp.getId())).thenReturn(Optional.of(tp));
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        when(transferStrategyFactory.getStrategy(any()))
+                .thenReturn(tProcess -> CompletableFuture.failedFuture(
+                        new java.util.concurrent.CompletionException(
+                                new TransferCancelledException(tp.getId()))));
+
+        assertDoesNotThrow(() -> apiService.downloadData(tp.getId()).get());
+
+        verify(transferProcessRepository, atLeastOnce())
+                .save(argThat(saved -> !saved.isDownloadInProgress()));
+        verify(cancellationRegistry).deregister(tp.getId());
+        verify(publisher).publishEvent(eq(AuditEventType.TRANSFER_PAUSED), anyString(), any());
+        verify(publisher, never()).publishEvent(eq(AuditEventType.TRANSFER_FAILED), anyString(), any());
+        verify(okHttpRestClient, never()).sendRequestProtocol(anyString(), any(), any());
+    }
+
+    @Test
+    @DisplayName("downloadData handles PresignedUrlExpiredException by sending 409 termination and emitting TRANSFER_URL_EXPIRED")
+    void downloadDataHandlesPresignedUrlExpiredException() throws Exception {
+        TransferProcess tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED;
+        when(transferProcessRepository.findById(tp.getId())).thenReturn(Optional.of(tp));
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        when(transferStrategyFactory.getStrategy(any()))
+                .thenReturn(tProcess -> CompletableFuture.failedFuture(
+                        new java.util.concurrent.CompletionException(
+                                new PresignedUrlExpiredException(tp.getId()))));
+
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(okHttpRestClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(apiResponse);
+
+        assertDoesNotThrow(() -> apiService.downloadData(tp.getId()).get());
+
+        verify(publisher).publishEvent(eq(AuditEventType.TRANSFER_URL_EXPIRED), anyString(), any());
+        verify(okHttpRestClient, atLeastOnce()).sendRequestProtocol(anyString(), any(), any());
+        verify(cancellationRegistry).deregister(tp.getId());
+        verify(transferProcessRepository, atLeastOnce())
+                .save(argThat(saved -> !saved.isDownloadInProgress()));
+    }
+
+    // -----------------------------------------------------------------------
+    // Race-condition tests: async upload completes while transfer is suspended
+    // -----------------------------------------------------------------------
+
+    /**
+     * HTTP-PULL / async-upload race — Fix A (whenComplete OLE prevention).
+     *
+     * <p>When an async S3 upload finishes AFTER {@code suspendTransfer()} has
+     * already advanced the MongoDB {@code @Version}, the old code attempted to
+     * save a stale entity and triggered an {@code OptimisticLockingFailureException}.
+     * The fix re-reads the entity inside {@code whenComplete} so the save always
+     * uses the current version. This test verifies that the re-read entity
+     * (SUSPENDED state) is what gets saved, not the stale STARTED entity.</p>
+     */
+    @Test
+    @DisplayName("downloadData HTTP-PULL async race: whenComplete re-reads entity to prevent OLE from concurrent suspend")
+    void downloadData_httpPull_asyncRace_whenCompleteReadsEntityFreshly_preventsOle() throws Exception {
+        TransferProcess startedPull = TransferProcess.Builder.newInstance()
+                .id(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId())
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .format(DataTransferFormat.HTTP_PULL.format())
+                .state(TransferState.STARTED)
+                .isDownloaded(false)
+                .isDownloadInProgress(false)
+                .build();
+
+        // Concurrent suspend ran while the async upload was in-flight: DB now
+        // holds SUSPENDED state at a higher @Version.
+        TransferProcess suspendedPull = TransferProcess.Builder.newInstance()
+                .id(startedPull.getId())
+                .consumerPid(startedPull.getConsumerPid())
+                .providerPid(startedPull.getProviderPid())
+                .dataAddress(startedPull.getDataAddress())
+                .agreementId(startedPull.getAgreementId())
+                .callbackAddress(startedPull.getCallbackAddress())
+                .role(startedPull.getRole())
+                .format(startedPull.getFormat())
+                .state(TransferState.SUSPENDED)
+                .isDownloaded(false)
+                .isDownloadInProgress(true)
+                .build();
+
+        // First call: downloadData() initial read → STARTED.
+        // Second+ calls: whenComplete re-read (and completeTransfer attempt) → SUSPENDED.
+        when(transferProcessRepository.findById(startedPull.getId()))
+                .thenReturn(Optional.of(startedPull))
+                .thenReturn(Optional.of(suspendedPull));
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(transferStrategyFactory.getStrategy(any()))
+                .thenReturn(tProcess -> CompletableFuture.completedFuture(null));
+
+        assertDoesNotThrow(() -> apiService.downloadData(startedPull.getId()).get());
+
+        // whenComplete must have triggered a fresh findById before saving.
+        verify(transferProcessRepository, atLeast(2)).findById(startedPull.getId());
+
+        // The completion save must carry the fresh entity's state (SUSPENDED),
+        // not the stale STARTED state — and must mark isDownloaded=true.
+        verify(transferProcessRepository, times(2)).save(argCaptorTransferProcess.capture());
+        TransferProcess savedOnCompletion = argCaptorTransferProcess.getAllValues().get(1);
+        assertTrue(savedOnCompletion.isDownloaded(), "isDownloaded must be true after upload completes");
+        assertFalse(savedOnCompletion.isDownloadInProgress(), "isDownloadInProgress must be cleared");
+        assertEquals(TransferState.SUSPENDED, savedOnCompletion.getState(),
+                "state must come from the fresh re-read (SUSPENDED), not the stale entity (STARTED)");
+    }
+
+    /**
+     * HTTP-PUSH / async-upload race — Fix A (whenComplete OLE prevention).
+     *
+     * <p>Same OLE-prevention guarantee as the PULL variant but exercised on the
+     * provider side with {@code HTTP_PUSH} format.</p>
+     */
+    @Test
+    @DisplayName("downloadData HTTP-PUSH async race: whenComplete re-reads entity to prevent OLE from concurrent suspend")
+    void downloadData_httpPush_asyncRace_whenCompleteReadsEntityFreshly_preventsOle() throws Exception {
+        TransferProcess startedPush = TransferProcess.Builder.newInstance()
+                .id(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId())
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .format(DataTransferFormat.HTTP_PUSH.format())
+                .state(TransferState.STARTED)
+                .isDownloaded(false)
+                .isDownloadInProgress(false)
+                .build();
+
+        TransferProcess suspendedPush = TransferProcess.Builder.newInstance()
+                .id(startedPush.getId())
+                .consumerPid(startedPush.getConsumerPid())
+                .providerPid(startedPush.getProviderPid())
+                .dataAddress(startedPush.getDataAddress())
+                .agreementId(startedPush.getAgreementId())
+                .callbackAddress(startedPush.getCallbackAddress())
+                .role(startedPush.getRole())
+                .format(startedPush.getFormat())
+                .state(TransferState.SUSPENDED)
+                .isDownloaded(false)
+                .isDownloadInProgress(true)
+                .build();
+
+        when(transferProcessRepository.findById(startedPush.getId()))
+                .thenReturn(Optional.of(startedPush))
+                .thenReturn(Optional.of(suspendedPush));
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(transferStrategyFactory.getStrategy(any()))
+                .thenReturn(tProcess -> CompletableFuture.completedFuture(null));
+
+        assertDoesNotThrow(() -> apiService.downloadData(startedPush.getId()).get());
+
+        verify(transferProcessRepository, atLeast(2)).findById(startedPush.getId());
+
+        verify(transferProcessRepository, times(2)).save(argCaptorTransferProcess.capture());
+        TransferProcess savedOnCompletion = argCaptorTransferProcess.getAllValues().get(1);
+        assertTrue(savedOnCompletion.isDownloaded(), "isDownloaded must be true after upload completes");
+        assertFalse(savedOnCompletion.isDownloadInProgress(), "isDownloadInProgress must be cleared");
+        assertEquals(TransferState.SUSPENDED, savedOnCompletion.getState(),
+                "state must come from the fresh re-read (SUSPENDED), not the stale entity (STARTED)");
+    }
+
+    /**
+     * HTTP-PULL resume after async race — Fix B (Case A shortcut).
+     *
+     * <p>When the consumer resumes a SUSPENDED transfer that already has
+     * {@code isDownloaded=true} (upload finished during the suspension window),
+     * {@code startTransfer()} must call {@code completeTransfer()} directly
+     * rather than triggering a redundant re-download.</p>
+     */
+    @Test
+    @DisplayName("startTransfer Case A HTTP-PULL async: isDownloaded=true skips re-download and completes transfer directly")
+    void startTransfer_caseA_httpPull_asyncScenario_alreadyDownloaded_completesDirectly() {
+        // PULL consumer, SUSPENDED, upload already finished during suspension
+        TransferProcess suspendedDownloadedPull = TransferProcess.Builder.newInstance()
+                .id(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER.getId())
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .format(DataTransferFormat.HTTP_PULL.format())
+                .state(TransferState.SUSPENDED)
+                .isDownloaded(true)
+                .build();
+
+        // After startTransfer() saves STARTED, completeTransfer() reads this entity.
+        TransferProcess startedPull = suspendedDownloadedPull.copyWithNewTransferState(TransferState.STARTED);
+
+        // First findById: startTransfer() reads SUSPENDED+downloaded.
+        // Second findById: completeTransfer() (via runAsync) reads the STARTED entity.
+        when(transferProcessRepository.findById(suspendedDownloadedPull.getId()))
+                .thenReturn(Optional.of(suspendedDownloadedPull))
+                .thenReturn(Optional.of(startedPull));
+        when(transferArtifactStateRepository.findById(suspendedDownloadedPull.getId()))
+                .thenReturn(Optional.empty());
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(okHttpRestClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(apiResponse);
+
+        assertDoesNotThrow(() -> apiService.startTransfer(suspendedDownloadedPull.getId()));
+
+        // Two protocol messages expected: one for the start handshake, one for completeTransfer().
+        verify(okHttpRestClient, timeout(2000).times(2)).sendRequestProtocol(anyString(), any(), any());
+        // No re-download: strategy must never be invoked.
+        verify(transferStrategyFactory, never()).getStrategy(anyString());
+    }
+
+    /**
+     * HTTP-PUSH resume after async race — Fix B (Case A shortcut).
+     *
+     * <p>Same as the PULL variant but for the provider side: when the provider
+     * resumes a SUSPENDED push transfer that has {@code isDownloaded=true},
+     * {@code completeTransfer()} must fire instead of a redundant re-upload.</p>
+     */
+    @Test
+    @DisplayName("startTransfer Case A HTTP-PUSH async: isDownloaded=true skips re-upload and completes transfer directly")
+    void startTransfer_caseA_httpPush_asyncScenario_alreadyDownloaded_completesDirectly() {
+        TransferProcess suspendedDownloadedPush = TransferProcess.Builder.newInstance()
+                .id(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER.getId())
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .format(DataTransferFormat.HTTP_PUSH.format())
+                .state(TransferState.SUSPENDED)
+                .isDownloaded(true)
+                .build();
+
+        TransferProcess startedPush = suspendedDownloadedPush.copyWithNewTransferState(TransferState.STARTED);
+
+        when(transferProcessRepository.findById(suspendedDownloadedPush.getId()))
+                .thenReturn(Optional.of(suspendedDownloadedPush))
+                .thenReturn(Optional.of(startedPush));
+        when(transferArtifactStateRepository.findById(suspendedDownloadedPush.getId()))
+                .thenReturn(Optional.empty());
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(okHttpRestClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(apiResponse);
+
+        assertDoesNotThrow(() -> apiService.startTransfer(suspendedDownloadedPush.getId()));
+
+        verify(okHttpRestClient, timeout(2000).times(2)).sendRequestProtocol(anyString(), any(), any());
+        verify(transferStrategyFactory, never()).getStrategy(anyString());
+    }
+
+    /**
+     * HTTP-PULL normal (sync) resume — regression guard.
+     *
+     * <p>When a PULL consumer resumes a transfer that has NOT yet downloaded
+     * ({@code isDownloaded=false}), the standard {@code downloadData()} path
+     * must be triggered — not the Case-A shortcut that calls
+     * {@code completeTransfer()} directly.</p>
+     */
+    @Test
+    @DisplayName("startTransfer Case A HTTP-PULL sync: isDownloaded=false triggers normal downloadData path")
+    void startTransfer_caseA_httpPull_syncScenario_notDownloaded_triggersDownload() {
+        TransferProcess suspendedPull = TransferProcess.Builder.newInstance()
+                .id(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER.getId())
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .format(DataTransferFormat.HTTP_PULL.format())
+                .state(TransferState.SUSPENDED)
+                .isDownloaded(false)
+                .build();
+
+        TransferArtifactState artifactState = TransferArtifactState.Builder.newInstance()
+                .id(suspendedPull.getId())
+                .suspendedBy(IConstants.ROLE_CONSUMER)
+                .build();
+
+        when(transferProcessRepository.findById(suspendedPull.getId())).thenReturn(Optional.of(suspendedPull));
+        when(transferArtifactStateRepository.findById(suspendedPull.getId()))
+                .thenReturn(Optional.of(artifactState));
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(okHttpRestClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(apiResponse);
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+
+        assertDoesNotThrow(() -> apiService.startTransfer(suspendedPull.getId()));
+
+        // downloadData() is triggered asynchronously: it calls findById again before invoking the strategy.
+        // Wait for that second call as proof that downloadData() fired (not completeTransfer()).
+        verify(transferProcessRepository, timeout(2000).atLeast(2)).findById(suspendedPull.getId());
+        // Only one protocol message (the start handshake): completeTransfer() was NOT called directly.
+        verify(okHttpRestClient, times(1)).sendRequestProtocol(anyString(), any(), any());
+    }
+
+    /**
+     * HTTP-PUSH normal (sync) resume — regression guard.
+     *
+     * <p>When a PUSH provider resumes a transfer that has NOT yet uploaded
+     * ({@code isDownloaded=false}), the standard {@code downloadData()} path
+     * must be triggered — not the Case-A shortcut.</p>
+     */
+    @Test
+    @DisplayName("startTransfer Case A HTTP-PUSH sync: isDownloaded=false triggers normal upload path")
+    void startTransfer_caseA_httpPush_syncScenario_notDownloaded_triggersUpload() {
+        TransferProcess suspendedPush = TransferProcess.Builder.newInstance()
+                .id(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER.getId())
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .format(DataTransferFormat.HTTP_PUSH.format())
+                .state(TransferState.SUSPENDED)
+                .isDownloaded(false)
+                .build();
+
+        when(transferProcessRepository.findById(suspendedPush.getId())).thenReturn(Optional.of(suspendedPush));
+        when(transferArtifactStateRepository.findById(suspendedPush.getId())).thenReturn(Optional.empty());
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(okHttpRestClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(apiResponse);
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+
+        assertDoesNotThrow(() -> apiService.startTransfer(suspendedPush.getId()));
+
+        verify(transferProcessRepository, timeout(2000).atLeast(2)).findById(suspendedPush.getId());
+        verify(okHttpRestClient, times(1)).sendRequestProtocol(anyString(), any(), any());
+    }
+
+    /**
+     * HTTP-PULL Case A resume — async upload still in flight.
+     *
+     * <p>When the consumer resumes a SUSPENDED HTTP-PULL transfer where
+     * {@code isDownloaded=false} but the first download is still registered in
+     * {@link it.eng.datatransfer.service.CancellationRegistry}, a redundant second
+     * {@code downloadData()} call must be suppressed. The in-flight download will call
+     * {@code completeTransfer()} on its own when it finishes.</p>
+     */
+    @Test
+    @DisplayName("startTransfer Case A HTTP-PULL async: download in progress suppresses redundant re-download")
+    void startTransfer_caseA_httpPull_asyncRace_downloadInFlight_suppressesReDownload() {
+        TransferProcess suspendedPull = TransferProcess.Builder.newInstance()
+                .id(DataTransferMockObjectUtil.TRANSFER_PROCESS_SUSPENDED_PROVIDER.getId())
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_CONSUMER)
+                .format(DataTransferFormat.HTTP_PULL.format())
+                .state(TransferState.SUSPENDED)
+                .isDownloaded(false)
+                .build();
+
+        when(transferProcessRepository.findById(suspendedPull.getId())).thenReturn(Optional.of(suspendedPull));
+        when(transferArtifactStateRepository.findById(suspendedPull.getId())).thenReturn(Optional.empty());
+        when(transferProcessRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(okHttpRestClient.sendRequestProtocol(anyString(), any(), any())).thenReturn(apiResponse);
+        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
+
+        // Simulate: first download is still registered in the cancellation registry (ASYNC upload in flight)
+        when(cancellationRegistry.isRegistered(suspendedPull.getId())).thenReturn(true);
+
+        assertDoesNotThrow(() -> apiService.startTransfer(suspendedPull.getId()));
+
+        // Must NOT trigger a second download — strategy must never be invoked
+        verify(transferStrategyFactory, never()).getStrategy(anyString());
+        // Only the start-handshake protocol message; completeTransfer() must NOT be called
+        verify(okHttpRestClient, times(1)).sendRequestProtocol(anyString(), any(), any());
     }
 }

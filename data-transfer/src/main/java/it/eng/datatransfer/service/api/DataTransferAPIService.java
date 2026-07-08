@@ -5,8 +5,11 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
+import it.eng.datatransfer.exceptions.PresignedUrlExpiredException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.model.*;
+import it.eng.datatransfer.repository.TransferArtifactStateRepository;
+import it.eng.datatransfer.service.CancellationRegistry;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.rest.protocol.DataTransferCallback;
@@ -16,6 +19,7 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.Artifact;
+import it.eng.tools.exceptions.TransferCancelledException;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.properties.S3Properties;
@@ -29,6 +33,7 @@ import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.codec.binary.Base64;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -59,6 +64,8 @@ public class DataTransferAPIService {
     private final DataTransferStrategyFactory dataTransferStrategyFactory;
     private final ArtifactTransferService artifactTransferService;
     private final TemporaryBucketUserService temporaryBucketUserService;
+    private final CancellationRegistry cancellationRegistry;
+    private final TransferArtifactStateRepository transferArtifactStateRepository;
 
     public DataTransferAPIService(TransferProcessRepository transferProcessRepository,
                                   OkHttpRestClient okHttpRestClient,
@@ -70,7 +77,9 @@ public class DataTransferAPIService {
                                   S3Properties s3Properties,
                                   DataTransferStrategyFactory dataTransferStrategyFactory,
                                   ArtifactTransferService artifactTransferService,
-                                  TemporaryBucketUserService temporaryBucketUserService) {
+                                  TemporaryBucketUserService temporaryBucketUserService,
+                                  CancellationRegistry cancellationRegistry,
+                                  TransferArtifactStateRepository transferArtifactStateRepository) {
         super();
         this.transferProcessRepository = transferProcessRepository;
         this.okHttpRestClient = okHttpRestClient;
@@ -83,6 +92,8 @@ public class DataTransferAPIService {
         this.dataTransferStrategyFactory = dataTransferStrategyFactory;
         this.artifactTransferService = artifactTransferService;
         this.temporaryBucketUserService = temporaryBucketUserService;
+        this.cancellationRegistry = cancellationRegistry;
+        this.transferArtifactStateRepository = transferArtifactStateRepository;
     }
 
     /**
@@ -91,7 +102,6 @@ public class DataTransferAPIService {
      */
     @PostConstruct
     void resetStaleDownloadingFlags() {
-//TODO remove or move when the suspend/resume logic is in place. Check also if cleanup is still needed for stale parts on S3 (download never finished) .
         List<TransferProcess> stale = transferProcessRepository.findAllByIsDownloadInProgressTrue();
         if (!stale.isEmpty()) {
             log.warn("Found {} transfer process(es) with stale isDownloadInProgress=true flag. Resetting on startup.", stale.size());
@@ -216,7 +226,7 @@ public class DataTransferAPIService {
 
                 transferProcessRepository.save(transferProcessForDB);
                 log.info("Transfer process {} saved", transferProcessForDB.getId());
-                publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
+                publisher.publishEvent(AuditEventType.TRANSFER_REQUESTED,
                         "Transfer process requested successfully",
                         auditMap("transferProcess", transferProcessForDB,
                                 "role", IConstants.ROLE_API,
@@ -244,7 +254,7 @@ public class DataTransferAPIService {
                 if (transferProcessInitialized.getProviderPid() != null) {
                     details.put("providerPid", transferProcessInitialized.getProviderPid());
                 }
-                publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
+                publisher.publishEvent(AuditEventType.TRANSFER_REQUESTED,
                         "Transfer process request failed",
                         details);
                 throw new DataTransferAPIException(transferError, "Error making request");
@@ -295,13 +305,22 @@ public class DataTransferAPIService {
         TransferProcess transferProcess = findTransferProcessById(transferProcessId);
 
         if (StringUtils.equals(IConstants.ROLE_CONSUMER, transferProcess.getRole()) && TransferState.REQUESTED.equals(transferProcess.getState())) {
-            throw new DataTransferAPIException("State transition aborted, consumer can not transit from " + transferProcess.getState().name()
-                    + " to " + TransferState.STARTED.name());
+            throw new DataTransferAPIException("Only the provider can send the initial TransferStartMessage. Consumer role is not allowed to start from REQUESTED state.");
         }
 
         stateTransitionCheck(TransferState.STARTED, transferProcess);
 
-        log.info("Sending TransferStartMessage to {}", transferProcess.getCallbackAddress());
+        // If resuming from SUSPENDED, only the suspending party may resume
+        if (TransferState.SUSPENDED.equals(transferProcess.getState())) {
+            TransferArtifactState artifactState = transferArtifactStateRepository
+                    .findById(transferProcess.getId()).orElse(null);
+            if (artifactState != null && artifactState.getSuspendedBy() != null
+                    && !artifactState.getSuspendedBy().equals(transferProcess.getRole())) {
+                throw new DataTransferAPIException(
+                        "Resume rejected: suspended by " + artifactState.getSuspendedBy()
+                        + " but this connector's role is " + transferProcess.getRole());
+            }
+        }
         String address = null;
         DataAddress dataAddress = null;
 
@@ -382,16 +401,94 @@ public class DataTransferAPIService {
                     .build();
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
-            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
+            publisher.publishEvent(AuditEventType.TRANSFER_STARTED,
                     "Transfer process started successfully",
                     auditMap("transferProcess", transferProcessStarted,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcessStarted.getConsumerPid(),
                             "providerPid", transferProcessStarted.getProviderPid()));
+            // Case A resume: active party sent the start — auto-trigger download on this JVM
+            if (TransferState.SUSPENDED.equals(transferProcess.getState())) {
+                boolean isPullConsumer = IConstants.ROLE_CONSUMER.equals(transferProcessStarted.getRole())
+                        && DataTransferFormat.HTTP_PULL.format().equals(transferProcessStarted.getFormat());
+                boolean isPushProvider = IConstants.ROLE_PROVIDER.equals(transferProcessStarted.getRole())
+                        && DataTransferFormat.HTTP_PUSH.format().equals(transferProcessStarted.getFormat());
+                if (isPullConsumer || isPushProvider) {
+                    final String tpIdForResume = transferProcessStarted.getId();
+                    if (transferProcessStarted.isDownloaded()) {
+                        // Upload completed while the transfer was suspended (fast async upload race):
+                        // isDownloaded=true but the transfer was never completed because
+                        // completeTransfer() could not run while the state was SUSPENDED.
+                        // Now that the state is STARTED, complete immediately without re-downloading.
+                        log.info("Case A resume for process {} — data already downloaded. Completing directly.", tpIdForResume);
+                        CompletableFuture.runAsync(() -> {
+                            try {
+                                completeTransfer(tpIdForResume);
+                            } catch (Exception e) {
+                                log.error("Auto-completion after Case A resume failed for process {}: {}",
+                                        tpIdForResume, e.getMessage());
+                            }
+                        });
+                    } else if (cancellationRegistry.isRegistered(tpIdForResume)) {
+                        // ASYNC upload is still in flight from before the suspension.
+                        // The in-progress download will call completeTransfer() when it finishes —
+                        // do not trigger a second download that would resume from the current
+                        // checkpoint offset (potentially past EOF) and produce HTTP 416.
+                        log.info("Case A resume for process {} — download in progress. Letting first download complete.", tpIdForResume);
+                    } else {
+                        log.info("Case A resume for process {}. Auto-triggering download.", tpIdForResume);
+                        CompletableFuture.runAsync(() -> {
+                            try {
+                                // Most async failures are swallowed internally by downloadData()'s own chain
+                                // (.exceptionally(t -> null) at the end). However, policyCheck() failure returns
+                                // CompletableFuture.failedFuture() directly, bypassing that terminal handler.
+                                // The .exceptionally() below catches that escaped failed-future.
+                                // The catch block handles any synchronous throw before downloadData() returns a future.
+                                downloadData(tpIdForResume)
+                                        .exceptionally(err -> {
+                                            log.error("Auto-triggered download failed after Case A resume for process {}: {}",
+                                                    tpIdForResume, err.getMessage());
+                                            return null;
+                                        });
+                            } catch (Exception e) {
+                                log.error("Auto-triggered download failed after Case A resume for process {}: {}",
+                                        tpIdForResume, e.getMessage());
+                            }
+                        });
+                    }
+                }
+                publisher.publishEvent(AuditEventType.TRANSFER_RESUMED,
+                        "Transfer resumed by " + transferProcessStarted.getRole()
+                                + " for process " + transferProcessStarted.getId(),
+                        Map.of("transferProcessId", transferProcessStarted.getId(),
+                                "role", transferProcessStarted.getRole(),
+                                "consumerPid", transferProcessStarted.getConsumerPid(),
+                                "providerPid", transferProcessStarted.getProviderPid()));
+            }
+            // Case B initial: provider sends initial TransferStartMessage for HTTP_PUSH
+            if (TransferState.REQUESTED.equals(transferProcess.getState())
+                    && IConstants.ROLE_PROVIDER.equals(transferProcessStarted.getRole())
+                    && DataTransferFormat.HTTP_PUSH.format().equals(transferProcessStarted.getFormat())) {
+                log.info("Initial HTTP_PUSH start for process {}. Auto-triggering upload.", transferProcessStarted.getId());
+                final String tpIdForUpload = transferProcessStarted.getId();
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        downloadData(tpIdForUpload)
+                                .exceptionally(err -> {
+                                    log.error("Auto-triggered upload failed for initial HTTP_PUSH process {}: {}",
+                                            tpIdForUpload, err.getMessage());
+                                    return null;
+                                });
+                    } catch (Exception e) {
+                        log.error("Auto-triggered upload failed for initial HTTP_PUSH process {}: {}",
+                                tpIdForUpload, e.getMessage());
+                    }
+                });
+            }
             return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
         } else {
             log.error("Error response received!");
-            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED,
+            publisher.publishEvent(AuditEventType.TRANSFER_STARTED,
                     "Transfer process start failed",
                     auditMap("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
@@ -438,9 +535,15 @@ public class DataTransferAPIService {
         log.info("Response received {}", response);
         if (response.isSuccess()) {
             TransferProcess transferProcessCompleted = transferProcess.copyWithNewTransferState(TransferState.COMPLETED);
-            transferProcessRepository.save(transferProcessCompleted);
+            try {
+                transferProcessRepository.save(transferProcessCompleted);
+            } catch (OptimisticLockingFailureException e) {
+                log.warn("OLE saving COMPLETED for process {}, retrying with fresh read", transferProcessId);
+                transferProcessRepository.findById(transferProcessId)
+                        .ifPresent(freshTp -> transferProcessRepository.save(freshTp.copyWithNewTransferState(TransferState.COMPLETED)));
+            }
             log.info("Transfer process {} saved", transferProcessCompleted.getId());
-            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED,
+            publisher.publishEvent(AuditEventType.TRANSFER_COMPLETED,
                     "Transfer process completed successfully",
                     auditMap("transferProcess", transferProcessCompleted,
                             "role", IConstants.ROLE_API,
@@ -455,7 +558,7 @@ public class DataTransferAPIService {
             return TransferSerializer.serializePlainJsonNode(transferProcessCompleted);
         } else {
             log.error("Error response received!");
-            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED,
+            publisher.publishEvent(AuditEventType.TRANSFER_FAILED,
                     "Transfer process completion failed",
                     auditMap("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
@@ -468,7 +571,7 @@ public class DataTransferAPIService {
 
     /**
      * Sends TransferSuspensionMessage.<br>
-     * Updates state for Transfer Process upon successful response to COMPLETED
+     * Updates state for Transfer Process upon successful response to SUSPENDED
      *
      * @param transferProcessId transfer process id
      * @return JsonNode representation of DataTransfer
@@ -504,19 +607,71 @@ public class DataTransferAPIService {
                         credentialUtils.getConnectorCredentials());
         log.info("Response received {}", response);
         if (response.isSuccess()) {
-            TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
-            transferProcessRepository.save(transferProcessStarted);
-            log.info("Transfer process {} saved", transferProcessStarted.getId());
-            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
+            // Signal AFTER peer confirms — safe to cancel the download now
+            cancellationRegistry.signal(transferProcess.getId());
+            // Record suspendedBy AFTER peer confirms
+            TransferArtifactState artifactState;
+            try {
+                artifactState = transferArtifactStateRepository.findById(transferProcess.getId())
+                        .orElseGet(() -> TransferArtifactState.Builder.newInstance()
+                                .id(transferProcess.getId()).build());
+                artifactState.setSuspendedBy(transferProcess.getRole());
+                transferArtifactStateRepository.save(artifactState);
+            } catch (DuplicateKeyException e) {
+                log.debug("Concurrent TransferArtifactState insert for {}; retrying after re-read",
+                        transferProcess.getId());
+                artifactState = transferArtifactStateRepository.findById(transferProcess.getId())
+                        .orElseThrow(() -> new DataTransferAPIException(
+                                "TransferArtifactState not found after concurrent insert for: "
+                                        + transferProcess.getId()));
+                artifactState.setSuspendedBy(transferProcess.getRole());
+                transferArtifactStateRepository.save(artifactState);
+            } catch (OptimisticLockingFailureException e) {
+                // The pull/push strategy's checkpoint writer concurrently updated the artifact state
+                // (e.g. saving a byte-range checkpoint) between our read and this save.
+                // Re-read the fresh entity and re-apply the suspendedBy field.
+                log.debug("Concurrent update to TransferArtifactState {} during suspension; retrying",
+                        transferProcess.getId());
+                artifactState = transferArtifactStateRepository.findById(transferProcess.getId())
+                        .orElseThrow(() -> new DataTransferAPIException(
+                                "TransferArtifactState not found after concurrent update for: "
+                                        + transferProcess.getId()));
+                artifactState.setSuspendedBy(transferProcess.getRole());
+                transferArtifactStateRepository.save(artifactState);
+            }
+
+            TransferProcess transferProcessSuspended = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
+            try {
+                transferProcessRepository.save(transferProcessSuspended);
+            } catch (OptimisticLockingFailureException e) {
+                // The download strategy's whenComplete handler concurrently updated TransferProcess
+                // (e.g. clearing isDownloadInProgress) between our read and this save.
+                // Re-read the fresh entity and re-apply the SUSPENDED state.
+                String tpId = transferProcessSuspended.getId();
+                log.debug("Concurrent update to TransferProcess {} during suspension; retrying with fresh read", tpId);
+                TransferProcess fresh = transferProcessRepository.findById(tpId)
+                        .orElseThrow(() -> new DataTransferAPIException(
+                                "TransferProcess not found after concurrent update for: " + tpId));
+                transferProcessSuspended = fresh.copyWithNewTransferState(TransferState.SUSPENDED);
+                transferProcessRepository.save(transferProcessSuspended);
+            }
+            log.info("Transfer process {} saved", transferProcessSuspended.getId());
+            publisher.publishEvent(AuditEventType.TRANSFER_SUSPENDED,
                     "Transfer process suspended successfully",
                     auditMap("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
                             "consumerPid", transferProcess.getConsumerPid(),
                             "providerPid", transferProcess.getProviderPid()));
-            return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
+            publisher.publishEvent(AuditEventType.TRANSFER_PAUSED,
+                    "Transfer paused by " + transferProcess.getRole() + " for process " + transferProcess.getId(),
+                    Map.of("transferProcessId", transferProcess.getId(),
+                            "suspendedBy", transferProcess.getRole(),
+                            "consumerPid", transferProcess.getConsumerPid(),
+                            "providerPid", transferProcess.getProviderPid()));
+            return TransferSerializer.serializePlainJsonNode(transferProcessSuspended);
         } else {
             log.error("Error response received!");
-            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED,
+            publisher.publishEvent(AuditEventType.TRANSFER_SUSPENDED,
                     "Transfer process suspension failed",
                     auditMap("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
@@ -568,7 +723,7 @@ public class DataTransferAPIService {
             TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
             transferProcessRepository.save(transferProcessStarted);
             log.info("Transfer process {} saved", transferProcessStarted.getId());
-            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED,
+            publisher.publishEvent(AuditEventType.TRANSFER_TERMINATED,
                     "Transfer process terminated successfully",
                     auditMap("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
@@ -583,7 +738,7 @@ public class DataTransferAPIService {
             return TransferSerializer.serializePlainJsonNode(transferProcessStarted);
         } else {
             log.error("Error response received!");
-            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED,
+            publisher.publishEvent(AuditEventType.TRANSFER_TERMINATED,
                     "Transfer process termination failed",
                     auditMap("transferProcess", transferProcess,
                             "role", IConstants.ROLE_API,
@@ -663,6 +818,7 @@ public class DataTransferAPIService {
         return transferFuture
                 .whenComplete((transfer, throwable) -> {
                     if (throwable == null) {
+                        cancellationRegistry.deregister(transferProcessId);
                         log.info("Download completed successfully for process {}", transferProcessId);
 
                         publisher.publishEvent(
@@ -670,40 +826,64 @@ public class DataTransferAPIService {
                                 "Download completed successfully for process " + transferProcessId,
                                 Map.of("transferProcessId", transferProcessId));
 
-                        TransferProcess transferProcessWithData = TransferProcess.Builder.newInstance()
-                                .id(transferProcessDownloading.getId())
-                                .agreementId(transferProcessDownloading.getAgreementId())
-                                .consumerPid(transferProcessDownloading.getConsumerPid())
-                                .providerPid(transferProcessDownloading.getProviderPid())
-                                .callbackAddress(transferProcessDownloading.getCallbackAddress())
-                                .dataAddress(transferProcessDownloading.getDataAddress())
-                                .isDownloaded(true)
-                                .isDownloadInProgress(false)
-                                .dataId(transferProcessDownloading.getId())
-                                .format(transferProcessDownloading.getFormat())
-                                .state(transferProcessDownloading.getState())
-                                .role(transferProcessDownloading.getRole())
-                                .datasetId(transferProcessDownloading.getDatasetId())
-                                .retryCount(transferProcessDownloading.getRetryCount())
-                                .created(transferProcessDownloading.getCreated())
-                                .createdBy(transferProcessDownloading.getCreatedBy())
-                                .modified(transferProcessDownloading.getModified())
-                                .lastModifiedBy(transferProcessDownloading.getLastModifiedBy())
-                                .version(transferProcessDownloading.getVersion())
-                                .build();
-
-                        transferProcessRepository.save(transferProcessWithData);
+                        // Re-read the current entity to avoid OptimisticLockingFailureException:
+                        // a concurrent suspendTransfer() may have incremented @Version after the
+                        // isDownloadInProgress=true save that produced transferProcessDownloading.
+                        // If save() threw OLE here, isDownloadInProgress would remain true in the DB,
+                        // blocking all subsequent downloadData() calls ("already in progress").
+                        transferProcessRepository.findById(transferProcessId)
+                                .ifPresent(tp -> transferProcessRepository.save(tp.withDownloadComplete()));
                     } else {
-                        log.error("Transfer process id - {} data transmission interrupted : {}", transferProcessId, throwable.getMessage());
-                        // Reset the in-progress flag so future downloads can be attempted.
-                        transferProcessRepository.save(transferProcessDownloading.withIsDownloadInProgress(false));
-                        publisher.publishEvent(AuditEventType.TRANSFER_FAILED,
-                                "Data transfer failed for process " + transferProcessDownloading.getId(),
-                                auditMap("role", IConstants.ROLE_PROTOCOL,
-                                        "transferProcess", transferProcessDownloading,
-                                        "consumerPid", transferProcessDownloading.getConsumerPid(),
-                                        "providerPid", transferProcessDownloading.getProviderPid(),
-                                        "errorMessage", throwable.getMessage()));
+                        // Unwrap any wrapper exception to find root cause
+                        Throwable cause = throwable;
+                        int depth = 0;
+                        while (cause.getCause() != null && depth++ < 20) {
+                            cause = cause.getCause();
+                        }
+
+                        // Always deregister the cancellation token on all failure paths
+                        cancellationRegistry.deregister(transferProcessId);
+
+                        if (cause instanceof TransferCancelledException) {
+                            log.info("Transfer {} stopped gracefully by suspension signal. Checkpoint retained.", transferProcessId);
+                            // Re-read the current entity to avoid OptimisticLockingFailureException:
+                            // concurrent suspend/resume operations may have changed @Version since we
+                            // captured transferProcessDownloading at download start.
+                            transferProcessRepository.findById(transferProcessId)
+                                    .ifPresent(tp -> transferProcessRepository.save(tp.withIsDownloadInProgress(false)));
+                            publisher.publishEvent(AuditEventType.TRANSFER_PAUSED,
+                                    "Transfer paused (download stopped) for process " + transferProcessId,
+                                    Map.of("transferProcessId", transferProcessId,
+                                            "consumerPid", transferProcessDownloading.getConsumerPid(),
+                                            "providerPid", transferProcessDownloading.getProviderPid()));
+                        } else if (cause instanceof PresignedUrlExpiredException) {
+                            log.warn("Presigned URL expired for process {}. Terminating transfer.", transferProcessId);
+                            transferProcessRepository.findById(transferProcessId)
+                                    .ifPresent(tp -> transferProcessRepository.save(tp.withIsDownloadInProgress(false)));
+                            publisher.publishEvent(AuditEventType.TRANSFER_URL_EXPIRED,
+                                    "Presigned URL expired for process " + transferProcessId,
+                                    Map.of("transferProcessId", transferProcessId,
+                                            "consumerPid", transferProcessDownloading.getConsumerPid(),
+                                            "providerPid", transferProcessDownloading.getProviderPid()));
+                            try {
+                                terminateTransferWithReason(transferProcessId, "409", "download URL expired");
+                            } catch (Exception te) {
+                                log.error("Failed to send termination after URL expiry for process {}: {}",
+                                        transferProcessId, te.getMessage());
+                            }
+                        } else {
+                            log.error("Transfer process {} data transmission interrupted: {}",
+                                    transferProcessId, cause.getMessage() != null ? cause.getMessage() : throwable.getMessage());
+                            transferProcessRepository.findById(transferProcessId)
+                                    .ifPresent(tp -> transferProcessRepository.save(tp.withIsDownloadInProgress(false)));
+                            publisher.publishEvent(AuditEventType.TRANSFER_FAILED,
+                                    "Data transfer failed for process " + transferProcessDownloading.getId(),
+                                    auditMap("role", IConstants.ROLE_API,
+                                            "transferProcess", transferProcessDownloading,
+                                            "consumerPid", transferProcessDownloading.getConsumerPid(),
+                                            "providerPid", transferProcessDownloading.getProviderPid(),
+                                            "errorMessage", cause.getMessage() != null ? cause.getMessage() : throwable.getMessage()));
+                        }
                     }
                 }).thenAccept(transfer -> {
                     // since the download is completed successfully, we can send the TransferCompletionMessage
@@ -795,7 +975,7 @@ public class DataTransferAPIService {
     public TransferProcess findTransferProcessById(String transferProcessId) {
         return transferProcessRepository.findById(transferProcessId)
                 .orElseThrow(() -> {
-                    publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND,
+                    publisher.publishEvent(AuditEventType.TRANSFER_NOT_FOUND,
                             "Transfer process with id " + transferProcessId + " not found",
                             Map.of("transferProcessId", transferProcessId,
                                     "role", IConstants.ROLE_API,
@@ -807,7 +987,7 @@ public class DataTransferAPIService {
 
     private void stateTransitionCheck(TransferState newState, TransferProcess transferProcess) {
         if (!transferProcess.getState().canTransitTo(newState)) {
-            publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_STATE_TRANSITION_ERROR,
+            publisher.publishEvent(AuditEventType.TRANSFER_STATE_TRANSITION_ERROR,
                     "Transfer process state transition error",
                     auditMap("transferProcess", transferProcess,
                             "currentState", transferProcess.getState(),
@@ -820,6 +1000,53 @@ public class DataTransferAPIService {
                     + " state can not transition to " + newState.name(),
                     transferProcess.getConsumerPid(),
                     transferProcess.getProviderPid());
+        }
+    }
+
+    /**
+     * Sends a {@link TransferTerminationMessage} to the peer
+     * and transitions the local TransferProcess to {@link TransferState#TERMINATED}.
+     *
+     * @param transferProcessId the internal MongoDB ID of the TransferProcess
+     * @param code              the termination code (e.g. {@code "409"})
+     * @param reason            human-readable reason string
+     */
+    private void terminateTransferWithReason(String transferProcessId, String code, String reason) {
+        TransferProcess transferProcess = transferProcessRepository.findById(transferProcessId)
+                .orElseThrow(() -> new DataTransferAPIException(
+                        "TransferProcess not found: " + transferProcessId));
+
+        TransferTerminationMessage msg = TransferTerminationMessage.Builder.newInstance()
+                .consumerPid(transferProcess.getConsumerPid())
+                .providerPid(transferProcess.getProviderPid())
+                .code(code)
+                .reason(List.of(reason))
+                .build();
+
+        String address;
+        if (IConstants.ROLE_CONSUMER.equals(transferProcess.getRole())) {
+            address = DataTransferCallback.getProviderDataTransferTermination(
+                    transferProcess.getCallbackAddress(), transferProcess.getProviderPid());
+        } else {
+            address = DataTransferCallback.getConsumerDataTransferTermination(
+                    transferProcess.getCallbackAddress(), transferProcess.getConsumerPid());
+        }
+
+        GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
+                address,
+                TransferSerializer.serializeProtocolJsonNode(msg),
+                credentialUtils.getConnectorCredentials());
+
+        if (response.isSuccess()) {
+            transferProcessRepository.save(transferProcess.copyWithNewTransferState(TransferState.TERMINATED));
+            log.info("Transfer process {} terminated after URL expiry.", transferProcessId);
+            publisher.publishEvent(AuditEventType.TRANSFER_TERMINATED,
+                    "Transfer terminated due to URL expiry for process " + transferProcessId,
+                    Map.of("transferProcessId", transferProcessId,
+                            "consumerPid", transferProcess.getConsumerPid(),
+                            "providerPid", transferProcess.getProviderPid()));
+        } else {
+            log.error("Failed to send termination for process {}: {}", transferProcessId, response.getMessage());
         }
     }
 

@@ -1,0 +1,7 @@
+services:
+  connector-a:
+    environment:
+      - S3_UPLOAD_MODE=ASYNC
+  connector-b:
+    environment:
+      - S3_UPLOAD_MODE=ASYNC

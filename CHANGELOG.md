@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.11-SNAPSHOT] - 24.04.2026.
+
+### Added
+- **Pause/resume support for HTTP-PULL and HTTP-PUSH transfers** — either party (consumer or provider) may suspend a transfer via `TransferSuspensionMessage`; only the party that suspended it may resume it via `TransferStartMessage`. Downloads and uploads resume from the exact byte offset where they paused using S3 Range headers.
+- `CancellationRegistry` — new Spring `@Component` (`data-transfer`) that holds a `ConcurrentHashMap<transferProcessId, AtomicBoolean>` cancellation token per in-progress transfer. Strategies poll the token during download/upload loops to detect a suspend signal.
+- `TransferCancelledException` — new unchecked exception in the `tools` module (avoids circular dependency); thrown by strategies when a cancellation token is signalled.
+- `PresignedUrlExpiredException` — new unchecked exception in `data-transfer`; thrown when a presigned URL returns HTTP 403. Triggers automatic `TransferTerminationMessage` with code `409` to the peer.
+- `UploadCheckpointCallback` interface — called by upload strategies after each completed multipart part with the total bytes uploaded so far; used to persist the resume cursor to `TransferArtifactState.downloadedBytes`.
+- `AuditEventType.TRANSFER_PAUSED`, `TRANSFER_RESUMED`, `TRANSFER_URL_EXPIRED` — three new audit event values emitted by `DataTransferAPIService` on the corresponding transfer lifecycle events.
+
+### Changed
+- `TransferArtifactState` — added `suspendedBy` field (persisted to MongoDB) recording the role (`consumer` or `provider`) that initiated the most recent suspension. Used by `startTransfer()` to authorise the resume: only the suspending party may resume. Cleared on successful resume.
+- `S3UploadStrategy` / `S3SyncUploadStrategy` / `S3AsyncUploadStrategy` — extended to accept a `CancellationRegistry` token and `UploadCheckpointCallback`; both strategies abort the multipart upload and throw `TransferCancelledException` when the token is signalled mid-upload.
+- `S3ClientService` / `S3ClientServiceImpl` — `uploadFile()` extended with cancellation-token and checkpoint-callback parameters (old 4-param signature preserved as a `default` delegation).
+- `HttpPullTransferStrategy` — adds `Range: bytes=N-` header when `TransferArtifactState.downloadedBytes > 0` (resume from checkpoint); accepts HTTP 206 Partial Content alongside 200 OK; maps HTTP 403 to `PresignedUrlExpiredException`; polls cancellation token per read buffer.
+- `HttpPushTransferStrategy` — same Range header, 206 acceptance, 403 mapping, and cancellation polling as the Pull strategy.
+- `AbstractDataTransferService` — `suspendDataTransfer()` now signals the `CancellationRegistry` and records `suspendedBy` as the remote party's role; `startDataTransfer()` validates `suspendedBy` matches the sender's role and auto-triggers `downloadData()` for Case A (consumer-pull or provider-push).
+- `DataTransferAPIService` — `suspendTransfer()` signals the registry and persists `suspendedBy` only after the peer confirms suspension; `startTransfer()` enforces `suspendedBy` authorisation check and auto-triggers download on SUSPENDED→STARTED; `downloadData().whenComplete()` deregisters the cancellation token on all exit paths and routes `TransferCancelledException` → `TRANSFER_PAUSED` audit and `PresignedUrlExpiredException` → `TRANSFER_URL_EXPIRED` audit + `terminateTransferWithReason("409")`.
+
 ## [0.6.11-SNAPSHOT] - 16.04.2026.
 
 ### Added

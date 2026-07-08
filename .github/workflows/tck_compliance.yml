@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Run docker container for DSPTRUEConnector as TCK profile
         run: docker compose -f ./ci/tck/docker-compose.yml up -d

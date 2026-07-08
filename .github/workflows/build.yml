@@ -20,10 +20,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -32,7 +32,7 @@ jobs:
         run: mvn -B clean verify --file pom.xml
 
       - name: Log in to the Container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -40,13 +40,13 @@ jobs:
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
       - name: Build and push Docker image
         id: push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./connector
           file: ./connector/Dockerfile
@@ -61,7 +61,7 @@ jobs:
     
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Run docker container for negotiation-api-without-counteroffer-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
@@ -72,13 +72,18 @@ jobs:
       - name: Check if the container is up and running
         run: docker ps -a
 
-      - uses: matt-ball/newman-action@v2.0.0
-        with:
-          collection: ./ci/docker/test-cases/negotiation-api-without-counteroffer-tests/negotiation-api-without-counteroffer-tests.json
+      - name: Run Newman tests
+        run: |
+          npm install -g newman@latest
+          newman run ./ci/docker/test-cases/negotiation-api-without-counteroffer-tests/negotiation-api-without-counteroffer-tests.json
 
       - name: Dump docker negotiation-api-without-counteroffer-tests
         if: failure()
-        uses: jwalton/gh-docker-logs@v2
+        run: |
+          for container in $(docker ps -aq); do
+            echo "=== Logs for $container ($(docker inspect --format='{{.Name}}' $container)) ==="
+            docker logs $container 2>&1 || true
+          done
 
       - name: Stop docker container negotiation-api-without-counteroffer-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
@@ -89,27 +94,107 @@ jobs:
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      - name: Generate large test data file for suspend/resume timing
+        run: bash ./ci/docker/generate-test-data.sh
 
       - name: Run docker container for datatransfer-api-http-pull-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
       - name: Wait for container starting
-        run: sleep 30
+        run: sleep 60
 
       - name: Check if the container is up and running
         run: docker ps -a
 
-      - uses: matt-ball/newman-action@v2.0.0
-        with:
-          collection: ./ci/docker/test-cases/datatransfer-api-http-pull-tests/datatransfer-api-http-pull-tests.json
+      - name: Run Newman tests
+        run: |
+          npm install -g newman@latest
+          newman run ./ci/docker/test-cases/datatransfer-api-http-pull-tests/datatransfer-api-http-pull-tests.json --timeout-script 25000 --export-environment /tmp/newman-env.json
+
+      - name: Verify presigned URL downloads
+        run: |
+          PRESIGNED_URL_1=$(jq -r '.values[] | select(.key=="presignedURL_1") | .value' /tmp/newman-env.json)
+          PRESIGNED_URL_2=$(jq -r '.values[] | select(.key=="presignedURL_2") | .value' /tmp/newman-env.json)
+          for N in 1 2; do
+            URL_VAR="PRESIGNED_URL_$N"
+            URL="${!URL_VAR}"
+            echo "=== Verifying presigned URL $N ==="
+            curl -f -o "/tmp/download_${N}.json" -D "/tmp/headers_${N}.txt" "$URL"
+            grep -i "content-type:.*application/json" "/tmp/headers_${N}.txt"
+            grep -i "content-disposition:.*ENG-employee.json" "/tmp/headers_${N}.txt"
+            FILE_SIZE=$(wc -c < "/tmp/download_${N}.json")
+            echo "File size: $FILE_SIZE bytes"
+            [ "$FILE_SIZE" -gt 104857600 ] || { echo "ERROR: File too small: $FILE_SIZE bytes"; exit 1; }
+            jq -e 'length > 0 and (.[0] | has("employee"))' "/tmp/download_${N}.json" > /dev/null
+            echo "Content verification passed for URL $N"
+          done
 
       - name: Dump docker datatransfer-api-http-pull-tests
         if: failure()
-        uses: jwalton/gh-docker-logs@v2
+        run: |
+          for container in $(docker ps -aq); do
+            echo "=== Logs for $container ($(docker inspect --format='{{.Name}}' $container)) ==="
+            docker logs $container 2>&1 || true
+          done
 
       - name: Stop docker container datatransfer-api-http-pull-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
+
+  datatransfer-api-http-pull-tests-async:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v6
+
+      - name: Generate large test data file for suspend/resume timing
+        run: bash ./ci/docker/generate-test-data.sh
+
+      - name: Run docker container for datatransfer-api-http-pull-tests-async
+        run: docker compose -f ./ci/docker/docker-compose.yml -f ./ci/docker/docker-compose-async-override.yml --env-file ./ci/docker/.env up -d
+
+      - name: Wait for container starting
+        run: sleep 60
+
+      - name: Check if the container is up and running
+        run: docker ps -a
+
+      - name: Run Newman tests
+        run: |
+          npm install -g newman@latest
+          newman run ./ci/docker/test-cases/datatransfer-api-http-pull-tests/datatransfer-api-http-pull-tests.json --timeout-script 25000 --export-environment /tmp/newman-env.json
+
+      - name: Verify presigned URL downloads
+        run: |
+          PRESIGNED_URL_1=$(jq -r '.values[] | select(.key=="presignedURL_1") | .value' /tmp/newman-env.json)
+          PRESIGNED_URL_2=$(jq -r '.values[] | select(.key=="presignedURL_2") | .value' /tmp/newman-env.json)
+          for N in 1 2; do
+            URL_VAR="PRESIGNED_URL_$N"
+            URL="${!URL_VAR}"
+            echo "=== Verifying presigned URL $N ==="
+            curl -f -o "/tmp/download_${N}.json" -D "/tmp/headers_${N}.txt" "$URL"
+            grep -i "content-type:.*application/json" "/tmp/headers_${N}.txt"
+            grep -i "content-disposition:.*ENG-employee.json" "/tmp/headers_${N}.txt"
+            FILE_SIZE=$(wc -c < "/tmp/download_${N}.json")
+            echo "File size: $FILE_SIZE bytes"
+            [ "$FILE_SIZE" -gt 104857600 ] || { echo "ERROR: File too small: $FILE_SIZE bytes"; exit 1; }
+            jq -e 'length > 0 and (.[0] | has("employee"))' "/tmp/download_${N}.json" > /dev/null
+            echo "Content verification passed for URL $N"
+          done
+
+      - name: Dump docker datatransfer-api-http-pull-tests-async
+        if: failure()
+        run: |
+          for container in $(docker ps -aq); do
+            echo "=== Logs for $container ($(docker inspect --format='{{.Name}}' $container)) ==="
+            docker logs $container 2>&1 || true
+          done
+
+      - name: Stop docker container datatransfer-api-http-pull-tests-async
+        run: docker compose -f ./ci/docker/docker-compose.yml -f ./ci/docker/docker-compose-async-override.yml --env-file ./ci/docker/.env down -v
 
   datatransfer-api-http-push-tests:
     needs: build-and-push-image
@@ -117,27 +202,107 @@ jobs:
     
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      - name: Generate large test data file for suspend/resume timing
+        run: bash ./ci/docker/generate-test-data.sh
 
       - name: Run docker container for datatransfer-api-http-push-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 
       - name: Wait for container starting
-        run: sleep 30
+        run: sleep 60
 
       - name: Check if the container is up and running
         run: docker ps -a
 
-      - uses: matt-ball/newman-action@v2.0.0
-        with:
-          collection: ./ci/docker/test-cases/datatransfer-api-http-push-tests/datatransfer-api-http-push-tests.json
+      - name: Run Newman tests
+        run: |
+          npm install -g newman@latest
+          newman run ./ci/docker/test-cases/datatransfer-api-http-push-tests/datatransfer-api-http-push-tests.json --timeout-script 25000 --export-environment /tmp/newman-env.json
+
+      - name: Verify presigned URL downloads
+        run: |
+          PRESIGNED_URL_1=$(jq -r '.values[] | select(.key=="presignedURL_1") | .value' /tmp/newman-env.json)
+          PRESIGNED_URL_2=$(jq -r '.values[] | select(.key=="presignedURL_2") | .value' /tmp/newman-env.json)
+          for N in 1 2; do
+            URL_VAR="PRESIGNED_URL_$N"
+            URL="${!URL_VAR}"
+            echo "=== Verifying presigned URL $N ==="
+            curl -f -o "/tmp/download_${N}.json" -D "/tmp/headers_${N}.txt" "$URL"
+            grep -i "content-type:.*application/json" "/tmp/headers_${N}.txt"
+            grep -i "content-disposition:.*ENG-employee.json" "/tmp/headers_${N}.txt"
+            FILE_SIZE=$(wc -c < "/tmp/download_${N}.json")
+            echo "File size: $FILE_SIZE bytes"
+            [ "$FILE_SIZE" -gt 104857600 ] || { echo "ERROR: File too small: $FILE_SIZE bytes"; exit 1; }
+            jq -e 'length > 0 and (.[0] | has("employee"))' "/tmp/download_${N}.json" > /dev/null
+            echo "Content verification passed for URL $N"
+          done
 
       - name: Dump docker datatransfer-api-http-push-tests
         if: failure()
-        uses: jwalton/gh-docker-logs@v2
+        run: |
+          for container in $(docker ps -aq); do
+            echo "=== Logs for $container ($(docker inspect --format='{{.Name}}' $container)) ==="
+            docker logs $container 2>&1 || true
+          done
 
       - name: Stop docker container datatransfer-api-http-push-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
+
+  datatransfer-api-http-push-tests-async:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v6
+
+      - name: Generate large test data file for suspend/resume timing
+        run: bash ./ci/docker/generate-test-data.sh
+
+      - name: Run docker container for datatransfer-api-http-push-tests-async
+        run: docker compose -f ./ci/docker/docker-compose.yml -f ./ci/docker/docker-compose-async-override.yml --env-file ./ci/docker/.env up -d
+
+      - name: Wait for container starting
+        run: sleep 60
+
+      - name: Check if the container is up and running
+        run: docker ps -a
+
+      - name: Run Newman tests
+        run: |
+          npm install -g newman@latest
+          newman run ./ci/docker/test-cases/datatransfer-api-http-push-tests/datatransfer-api-http-push-tests.json --timeout-script 25000 --export-environment /tmp/newman-env.json
+
+      - name: Verify presigned URL downloads
+        run: |
+          PRESIGNED_URL_1=$(jq -r '.values[] | select(.key=="presignedURL_1") | .value' /tmp/newman-env.json)
+          PRESIGNED_URL_2=$(jq -r '.values[] | select(.key=="presignedURL_2") | .value' /tmp/newman-env.json)
+          for N in 1 2; do
+            URL_VAR="PRESIGNED_URL_$N"
+            URL="${!URL_VAR}"
+            echo "=== Verifying presigned URL $N ==="
+            curl -f -o "/tmp/download_${N}.json" -D "/tmp/headers_${N}.txt" "$URL"
+            grep -i "content-type:.*application/json" "/tmp/headers_${N}.txt"
+            grep -i "content-disposition:.*ENG-employee.json" "/tmp/headers_${N}.txt"
+            FILE_SIZE=$(wc -c < "/tmp/download_${N}.json")
+            echo "File size: $FILE_SIZE bytes"
+            [ "$FILE_SIZE" -gt 104857600 ] || { echo "ERROR: File too small: $FILE_SIZE bytes"; exit 1; }
+            jq -e 'length > 0 and (.[0] | has("employee"))' "/tmp/download_${N}.json" > /dev/null
+            echo "Content verification passed for URL $N"
+          done
+
+      - name: Dump docker datatransfer-api-http-push-tests-async
+        if: failure()
+        run: |
+          for container in $(docker ps -aq); do
+            echo "=== Logs for $container ($(docker inspect --format='{{.Name}}' $container)) ==="
+            docker logs $container 2>&1 || true
+          done
+
+      - name: Stop docker container datatransfer-api-http-push-tests-async
+        run: docker compose -f ./ci/docker/docker-compose.yml -f ./ci/docker/docker-compose-async-override.yml --env-file ./ci/docker/.env down -v
 
   api-endpoints-tests:
     needs: build-and-push-image
@@ -145,7 +310,7 @@ jobs:
     
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Run docker container for api-endpoints-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
@@ -156,13 +321,18 @@ jobs:
       - name: Check if the container is up and running
         run: docker ps -a
 
-      - uses: matt-ball/newman-action@v2.0.0
-        with:
-          collection: ./ci/docker/test-cases/api-tests/api-endpoints-tests.json
+      - name: Run Newman tests
+        run: |
+          npm install -g newman@latest
+          newman run ./ci/docker/test-cases/api-tests/api-endpoints-tests.json
 
       - name: Dump docker api-endpoints-tests
         if: failure()
-        uses: jwalton/gh-docker-logs@v2
+        run: |
+          for container in $(docker ps -aq); do
+            echo "=== Logs for $container ($(docker inspect --format='{{.Name}}' $container)) ==="
+            docker logs $container 2>&1 || true
+          done
 
       - name: Stop docker container api-endpoints-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
@@ -174,7 +344,7 @@ jobs:
     
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Run docker container for dataset-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
@@ -185,13 +355,18 @@ jobs:
       - name: Check if the container is up and running
         run: docker ps -a
 
-      - uses: matt-ball/newman-action@v2.0.0
-        with:
-          collection: ./ci/docker/test-cases/dataset-api-tests/dataset-api-tests.json
+      - name: Run Newman tests
+        run: |
+          npm install -g newman@latest
+          newman run ./ci/docker/test-cases/dataset-api-tests/dataset-api-tests.json
 
       - name: Dump docker dataset-api-tests
         if: failure()
-        uses: jwalton/gh-docker-logs@v2
+        run: |
+          for container in $(docker ps -aq); do
+            echo "=== Logs for $container ($(docker inspect --format='{{.Name}}' $container)) ==="
+            docker logs $container 2>&1 || true
+          done
 
       - name: Stop docker container dataset-api-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
@@ -202,7 +377,7 @@ jobs:
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Run docker container for connector-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
@@ -213,13 +388,18 @@ jobs:
       - name: Check if the container is up and running
         run: docker ps -a
 
-      - uses: matt-ball/newman-action@v2.0.0
-        with:
-          collection: ./ci/docker/test-cases/connector-tests/connector-tests.json
+      - name: Run Newman tests
+        run: |
+          npm install -g newman@latest
+          newman run ./ci/docker/test-cases/connector-tests/connector-tests.json
 
       - name: Dump docker connector-tests
         if: failure()
-        uses: jwalton/gh-docker-logs@v2
+        run: |
+          for container in $(docker ps -aq); do
+            echo "=== Logs for $container ($(docker inspect --format='{{.Name}}' $container)) ==="
+            docker logs $container 2>&1 || true
+          done
 
       - name: Stop docker container connector-tests
         run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v

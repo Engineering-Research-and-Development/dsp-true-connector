@@ -1,11 +1,18 @@
 package it.eng.datatransfer.service.api.strategy;
 
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
+import it.eng.datatransfer.exceptions.PresignedUrlExpiredException;
+import org.springframework.dao.DuplicateKeyException;
 import it.eng.datatransfer.model.EndpointProperty;
 import it.eng.datatransfer.model.TransferProcess;
+import it.eng.datatransfer.model.TransferArtifactState;
+import it.eng.datatransfer.repository.TransferArtifactStateRepository;
+import it.eng.datatransfer.service.CancellationRegistry;
 import it.eng.datatransfer.service.api.DataTransferStrategy;
+import it.eng.tools.exceptions.TransferCancelledException;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.service.upload.UploadCheckpointCallback;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.FieldEncryptionService;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +29,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -33,6 +41,8 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
     private final S3ClientService s3ClientService;
     private final Executor transferExecutor;
     private final FieldEncryptionService fieldEncryptionService;
+    private final TransferArtifactStateRepository transferArtifactStateRepository;
+    private final CancellationRegistry cancellationRegistry;
     private static final int DEFAULT_CONNECT_TIMEOUT = 10000; // 10 seconds
     /**
      * Fallback read timeout (30 minutes) used before Content-Length is known.
@@ -41,6 +51,8 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
     private static final int FALLBACK_READ_TIMEOUT = 1_800_000; // 30 minutes
     /** Assumed minimum transfer speed in bytes/sec used for dynamic timeout (1 MB/s). */
     private static final long MIN_TRANSFER_SPEED_BYTES_PER_SEC = 1024L * 1024L;
+    /** HTTP 206 Partial Content — returned when a Range header was honoured. */
+    private static final int HTTP_PARTIAL_CONTENT = 206;
 
     /**
      * Creates an instance using the Spring-managed {@code httpPushTransferExecutor} bean.
@@ -49,22 +61,74 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
      * @param s3ClientService service for downloading and uploading data to S3
      * @param transferExecutor Spring-managed executor for running async transfer tasks
      * @param fieldEncryptionService service for decrypting sensitive fields stored in MongoDB
+     * @param transferArtifactStateRepository repository for managing transfer checkpoint state
+     * @param cancellationRegistry registry for managing transfer cancellation tokens
      */
     @Autowired
     public HttpPushTransferStrategy(S3Properties s3Properties,
                                     S3ClientService s3ClientService,
                                     @Qualifier("httpPushTransferExecutor") Executor transferExecutor,
-                                    FieldEncryptionService fieldEncryptionService) {
+                                    FieldEncryptionService fieldEncryptionService,
+                                    TransferArtifactStateRepository transferArtifactStateRepository,
+                                    CancellationRegistry cancellationRegistry) {
         this.s3Properties = s3Properties;
         this.s3ClientService = s3ClientService;
         this.transferExecutor = transferExecutor;
         this.fieldEncryptionService = fieldEncryptionService;
+        this.transferArtifactStateRepository = transferArtifactStateRepository;
+        this.cancellationRegistry = cancellationRegistry;
     }
 
     @Override
     public CompletableFuture<Void> transfer(TransferProcess transferProcess) {
-        // Convert endpoint properties to a map, decrypting the secretKey stored encrypted in MongoDB
-        Map<String, String> destinationS3Properties = transferProcess.getDataAddress().getEndpointProperties()
+        Map<String, String> destinationS3Properties = buildDestinationProperties(transferProcess);
+
+        TransferArtifactState checkpoint = transferArtifactStateRepository
+                .findById(transferProcess.getId())
+                .orElseGet(() -> TransferArtifactState.Builder.newInstance()
+                        .id(transferProcess.getId()).downloadedBytes(0).build());
+
+        long rangeStart = checkpoint.getDownloadedBytes();
+        if (rangeStart > 0) {
+            log.info("Resuming HTTP PUSH for process {} from byte offset {}", transferProcess.getId(), rangeStart);
+            checkpoint.setUploadId(null);
+        }
+        try {
+            transferArtifactStateRepository.save(checkpoint);
+        } catch (DuplicateKeyException e) {
+            // suspendDataTransfer() concurrently inserted the state document.
+            // Re-read to get the version assigned by the concurrent insert.
+            log.debug("Concurrent TransferArtifactState insert for {}; retrying after re-read", transferProcess.getId());
+            checkpoint = transferArtifactStateRepository.findById(transferProcess.getId())
+                    .orElseThrow(() -> new DataTransferAPIException(
+                            "TransferArtifactState not found after concurrent insert for: " + transferProcess.getId()));
+            rangeStart = checkpoint.getDownloadedBytes();
+        }
+
+        AtomicBoolean cancellationToken = cancellationRegistry.register(transferProcess.getId());
+
+        CheckpointCallbackImpl checkpointCallback = new CheckpointCallbackImpl(
+                checkpoint, rangeStart, transferArtifactStateRepository);
+
+        // Always generate a fresh presigned URL for PUSH (provider controls the source)
+        String presignedUrl = s3ClientService.generateGetPresignedUrl(
+                s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(1L));
+
+        return transfer(presignedUrl, destinationS3Properties, rangeStart, cancellationToken, checkpointCallback)
+                .thenAccept(key -> {
+                    checkpointCallback.flush();
+                    log.info("Pushed transfer process id - {} data!", key);
+                });
+    }
+
+    /**
+     * Builds destination S3 properties map from the transfer process.
+     * 
+     * @param transferProcess the transfer process containing endpoint properties
+     * @return map of destination S3 properties with decrypted secret keys
+     */
+    private Map<String, String> buildDestinationProperties(TransferProcess transferProcess) {
+        return transferProcess.getDataAddress().getEndpointProperties()
                 .stream()
                 .collect(Collectors.toMap(
                         EndpointProperty::getName,
@@ -72,13 +136,13 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
                                 ? fieldEncryptionService.decrypt(prop.getValue())
                                 : prop.getValue()
                 ));
-        String presignedUrl = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(1L));
-        return transfer(presignedUrl, destinationS3Properties)
-                .thenAccept(key ->
-                        log.info("Pushed transfer process id - {} data!", key));
     }
 
-    private CompletableFuture<String> transfer(String presignedUrl, Map<String, String> destinationS3Properties) {
+    private CompletableFuture<String> transfer(String presignedUrl,
+                                               Map<String, String> destinationS3Properties,
+                                               long rangeStart,
+                                               AtomicBoolean cancellationToken,
+                                               UploadCheckpointCallback checkpointCallback) {
         // AtomicReference allows the connection to be shared across two separate lambda stages
         // (supplyAsync and whenComplete) without violating Java's effectively-final capture rule.
         // The supplyAsync lambda opens the connection and stores it here; whenComplete reads it
@@ -86,6 +150,9 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
         AtomicReference<HttpURLConnection> connectionRef = new AtomicReference<>();
 
         return CompletableFuture.supplyAsync(() -> {
+            if (cancellationToken.get()) {
+                throw new TransferCancelledException("Transfer was cancelled before upload started");
+            }
             try {
                 URL url = new URL(presignedUrl);
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -97,6 +164,11 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
                 connection.setConnectTimeout(DEFAULT_CONNECT_TIMEOUT);
                 connection.setReadTimeout(FALLBACK_READ_TIMEOUT);
 
+                if (rangeStart > 0) {
+                    connection.setRequestProperty(HttpHeaders.RANGE, "bytes=" + rangeStart + "-");
+                    log.debug("Added Range header bytes={}- for push presignedUrl: {}", rangeStart, presignedUrl);
+                }
+
                 if (connection instanceof HttpsURLConnection) {
                     log.debug("Using HTTPS connection to: {}", presignedUrl);
                 } else {
@@ -104,14 +176,27 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
                 }
 
                 int responseCode = connection.getResponseCode();
-                if (responseCode != HttpURLConnection.HTTP_OK) {
+                if (responseCode == HttpURLConnection.HTTP_FORBIDDEN) {
+                    connection.disconnect();
+                    connectionRef.set(null);
+                    throw new PresignedUrlExpiredException(presignedUrl);
+                }
+                if (responseCode != HttpURLConnection.HTTP_OK && responseCode != HTTP_PARTIAL_CONTENT) {
                     // Disconnect eagerly on error response and clear the ref so whenComplete skips it
                     connection.disconnect();
                     connectionRef.set(null);
                     throw new DataTransferAPIException("Failed to get stream. HTTP response code: " + responseCode);
                 }
 
-                log.info("Presigned URL: {}", presignedUrl);
+                // Check for cancellation before committing to the upload — the suspension signal
+                // may have arrived while getResponseCode() was blocked waiting for response headers.
+                if (cancellationToken.get()) {
+                    connection.disconnect();
+                    connectionRef.set(null);
+                    throw new TransferCancelledException("Transfer was cancelled after response headers");
+                }
+
+                log.debug("Presigned URL: {}", presignedUrl);
                 log.info("HTTP response code: {}", responseCode);
 
                 // Refine read timeout now that response headers are available.
@@ -133,7 +218,13 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
                         connection.getInputStream(),
                         destinationS3Properties,
                         connection.getContentType(),
-                        connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION));
+                        connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION),
+                        cancellationToken,
+                        checkpointCallback);
+            } catch (PresignedUrlExpiredException | TransferCancelledException e) {
+                HttpURLConnection c = connectionRef.get();
+                if (c != null) c.disconnect();
+                throw e;
             } catch (IOException e) {
                 // Disconnect on IOException before the upload started (connection may or may not be open)
                 HttpURLConnection c = connectionRef.get();
@@ -167,4 +258,5 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
         long millis = seconds * 1000L;
         return (int) Math.min(millis, Integer.MAX_VALUE);
     }
+
 }
