@@ -273,7 +273,7 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
         contractNegotiationRepository.save(contractNegotiationUpdated);
 
         log.debug("Creating policy enforcement for agreementId {}", contractNegotiation.getAgreement().getId());
-        policyAdministrationPoint.createPolicyEnforcement(contractNegotiation.getAgreement().getId());
+        policyAdministrationPoint.createPolicyEnforcement(contractNegotiation.getAgreement().getId(), contractNegotiation.getTenantId());
         publisher.publishEvent(new InitializeTransferProcess(
                 contractNegotiationUpdated.getCallbackAddress(),
                 contractNegotiationUpdated.getAgreement().getId(),

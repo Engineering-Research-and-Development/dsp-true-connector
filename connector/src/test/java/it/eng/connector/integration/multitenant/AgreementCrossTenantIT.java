@@ -61,7 +61,7 @@ public class AgreementCrossTenantIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Same protocol agreement id can be persisted independently for two tenants")
-    void samAgreementId_persistsIndependently_forTwoTenants() {
+    void sameAgreementId_persistsIndependently_forTwoTenants() {
         String sharedAgreementId = createNewId();
 
         Agreement agreementForTenantA = buildAgreement(sharedAgreementId);
@@ -109,9 +109,8 @@ public class AgreementCrossTenantIT extends BaseIntegrationTest {
         contractNegotiationForTenantB.injectTenantId(TENANT_B);
         contractNegotiationRepository.save(contractNegotiationForTenantB);
 
-        // PolicyEnforcement lookup is not yet tenant-scoped in PolicyInformationPoint (tracked separately,
-        // see issue #273), so a single shared usage-count record is used here for both tenants.
-        policyEnforcementRepository.save(new PolicyEnforcement(createNewId(), sharedAgreementId, 0, null));
+        policyEnforcementRepository.save(new PolicyEnforcement(createNewId(), sharedAgreementId, 0, TENANT_A));
+        policyEnforcementRepository.save(new PolicyEnforcement(createNewId(), sharedAgreementId, 0, TENANT_B));
 
         TenantContextHolder.setTenantId(TENANT_A);
         assertDoesNotThrow(() -> agreementAPIService.enforceAgreement(sharedAgreementId));

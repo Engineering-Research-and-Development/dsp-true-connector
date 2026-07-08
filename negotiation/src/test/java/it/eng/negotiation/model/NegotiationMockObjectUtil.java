@@ -18,6 +18,7 @@ public class NegotiationMockObjectUtil {
     public static final String DATASET_ID = "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5";
     public static final String ASSIGNEE = "urn:uuid:ASSIGNEE_CONSUMER";
     public static final String ASSIGNER = "urn:uuid:ASSIGNER_PROVIDER";
+    public static final String TENANT_ID = "tenantId";
 
     // target for offer must be dataset_id
     public static final String TARGET = DATASET_ID;
@@ -238,6 +239,7 @@ public class NegotiationMockObjectUtil {
             .callbackAddress(CALLBACK_ADDRESS)
             .state(ContractNegotiationState.VERIFIED)
             .agreement(AGREEMENT)
+            .tenantId(TENANT_ID)
             .build();
 
     public static final ContractNegotiation CONTRACT_NEGOTIATION_FINALIZED = ContractNegotiation.Builder.newInstance()

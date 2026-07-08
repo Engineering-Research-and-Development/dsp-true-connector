@@ -34,6 +34,7 @@ All notable changes to this project will be documented in this file.
 - **MT3** — `POST /api/v1/tenants`: `bucketName` is now optional; the server auto-derives `dsp-{tenantId}` when absent. See [tools/doc/tenant-s3-provisioning.md](tools/doc/tenant-s3-provisioning.md).
 - **MT3** — `CatalogService`: three update-helper methods (`updateCatalogDatasetAfterSave`, `updateCatalogDataServiceAfterSave`, `updateCatalogDistributionAfterSave`) now assert tenantId consistency before writing cross-document references, rejecting cross-tenant links with HTTP 404.
 - **MT3** — `CatalogRepository`: `findCatalogByDatasetId` and `findCatalogByDataServiceId` are supplemented with tenantId-scoped variants (`findCatalogByDatasetIdAndTenantId`, `findCatalogByDataServiceIdAndTenantId`) used by the service-layer guards.
+- Updated policy enforcement and contract negotiation to use the tenant-scoped `AgreementRepository.findAgreementByIdAndTenantId` instead of the non-tenant-scoped `findAgreementById` to prevent cross-tenant agreement lookups.
 
 ### Security
 

@@ -30,8 +30,8 @@ public class AgreementAPIController {
      * @return ResponseEntity with a status message
      */
     @PostMapping(path = "/{agreementId}/enforce")
-    public ResponseEntity<GenericApiResponse<String>> enforceAgreement(@PathVariable("agreementId") String agreementId) {
-        log.info("Enforcing agreement");
+    public ResponseEntity<GenericApiResponse<String>> enforceAgreement(@PathVariable String agreementId) {
+        log.info("Enforcing agreement - DSP ID {}", agreementId);
         agreementAPIService.enforceAgreement(agreementId);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
