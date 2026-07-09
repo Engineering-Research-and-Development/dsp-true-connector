@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] — Multi-Tenant Support
+## [0.7.0] - 10.07.2026 - Multi-Tenant Support
 
 - **Updated java from 17 to 21**
 
@@ -68,6 +68,14 @@ All notable changes to this project will be documented in this file.
   - `AgreementRepository.findAgreementById(String id)` added for non-tenant-scoped lookups by the protocol `id` (distinct from the inherited `findById`, which now queries the technical id).
   - `AgreementAPIService.enforceAgreement()` and `PolicyEnforcementPoint.enforcePolicy()` updated to resolve `Agreement`/`ContractNegotiation` references using the appropriate id (protocol `id` vs. technical id) instead of assuming the two always matched.
   - New integration test `AgreementCrossTenantIT` covers persisting and enforcing agreements that share the same protocol `id` across two tenants.
+
+### Removed
+- Removed redundant PathVariable name from controllers
+- 
+## [0.6.12-SNAPSHOT] - 25.06.2026.
+
+### Added
+- Added files for agentic development approach
 
 ## [0.6.11-SNAPSHOT] - 16.04.2026.
 

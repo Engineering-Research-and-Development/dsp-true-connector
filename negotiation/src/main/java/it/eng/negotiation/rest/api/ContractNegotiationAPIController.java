@@ -224,7 +224,7 @@ public class ContractNegotiationAPIController {
      * @return ResponseEntity
      */
     @PutMapping(path = "/{contractNegotiationId}/terminate")
-    public ResponseEntity<GenericApiResponse<JsonNode>> sendContractNegotiationTerminationMessage(@PathVariable("contractNegotiationId") String contractNegotiationId) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> sendContractNegotiationTerminationMessage(@PathVariable String contractNegotiationId) {
         log.info("Handling contract negotiation approved");
         ContractNegotiation contractNegotiationTerminated = apiService.sendContractNegotiationTerminationMessage(contractNegotiationId);
 

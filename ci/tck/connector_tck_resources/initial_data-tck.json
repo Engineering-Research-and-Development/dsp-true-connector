@@ -10,7 +10,8 @@
       "enabled": true,
       "expired": false,
       "locked": false,
-      "role": "ADMIN"
+      "role": "ADMIN",
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.connector.model.User",
@@ -22,7 +23,8 @@
       "enabled": "true",
       "expired": false,
       "locked": false,
-      "role": "CONNECTOR"
+      "role": "CONNECTOR",
+      "tenantId": "engineering"
     }
   ],
   "catalogs": [
@@ -1037,7 +1039,7 @@
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "DSP TRUE Connector",
       "endpointDescription": "connector",
-      "endpointURL": "http://localhost:8090/",
+      "endpointURL": "http://localhost:8090/engineering",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0,
@@ -1096,8 +1098,7 @@
       "version": {
         "$numberLong": "0"
       },
-      "_class": "it.eng.tools.model.Artifact",
-      "tenantId": "engineering"
+      "_class": "it.eng.tools.model.Artifact"
     },
     {
       "_id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8",
@@ -1115,8 +1116,7 @@
       "version": {
         "$numberLong": "0"
       },
-      "_class": "it.eng.tools.model.Artifact",
-      "tenantId": "engineering"
+      "_class": "it.eng.tools.model.Artifact"
     }
   ],
   "application_properties": [
