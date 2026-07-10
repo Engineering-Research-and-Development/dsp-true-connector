@@ -17,7 +17,9 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
+import it.eng.negotiation.model.PolicyEnforcement;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
+import it.eng.negotiation.repository.PolicyEnforcementRepository;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.ArtifactType;
@@ -49,6 +51,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -88,6 +91,9 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
     private S3ClientService s3ClientService;
     @Autowired
     private TenantService tenantService;
+
+    @Autowired
+    private PolicyEnforcementRepository policyEnforcementRepository;
 
     private String providerBucketName;
     private String consumerBucketName;
@@ -211,6 +217,13 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
                 {"transferProcessId": "%s", "format": "%s"}
                 """.formatted(consumerTransferProcessId, DataTransferFormat.HTTP_PULL.format());
 
+        PolicyEnforcement peConsumer = policyEnforcementRepository.findByAgreementIdAndTenantId(agreementId, CONSUMER_TENANT)
+                .orElseThrow(() -> new IllegalStateException("No PolicyEnforcement found for consumer agreement " + agreementId));
+        log.info("Count from policy enforcement consumer {}", peConsumer.getCount());
+        PolicyEnforcement peProvider = policyEnforcementRepository.findByAgreementIdAndTenantId(agreementId, PROVIDER_TENANT)
+                .orElseThrow(() -> new IllegalStateException("No PolicyEnforcement found for provider agreement " + agreementId));
+        log.info("Count from policy enforcement provider {}", peProvider.getCount());
+
         ResultActions transferResult = mockMvc.perform(
                 post(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
                         .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, CONSUMER_TENANT)
@@ -235,6 +248,32 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
         // transfer process id, and NOT in the provider's bucket.
         assertTrue(s3ClientService.fileExists(consumerBucketName, consumerTransferProcessId),
                 "Artifact must exist in consumer tenant's S3 bucket after automatic HTTP-PULL download");
+
+        // simulate view artifact request from consumer API endpoint to verify that policyEnforcement will increase for consumer but not for provider
+        ResultActions viewConsumerArtifactResult = mockMvc.perform(
+                get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + completedConsumerTp.getId() + "/view")
+                        .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, CONSUMER_TENANT)
+                        .content(transferRequestBody)
+                        .contentType(MediaType.APPLICATION_JSON));
+
+        viewConsumerArtifactResult.andExpect(status().isOk());
+
+        // wait two seconds so that async event is processes - increase count access
+        try {
+            Thread.sleep(2000);
+            log.info("sleep over");
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        PolicyEnforcement policyEnforcementConsumerAfterView = policyEnforcementRepository.findByAgreementIdAndTenantId(agreementId, CONSUMER_TENANT)
+                .orElseThrow(() -> new IllegalStateException("No PolicyEnforcement CONSUMER found for consumer agreement " + agreementId));
+        PolicyEnforcement policyEnforcementProviderAfterView = policyEnforcementRepository.findByAgreementIdAndTenantId(agreementId, PROVIDER_TENANT)
+                .orElseThrow(() -> new IllegalStateException("No PolicyEnforcement PROVIDER found for consumer agreement " + agreementId));
+
+        assertEquals(2, policyEnforcementConsumerAfterView.getCount());
+        // Provider policyEnforcement should remain to 1 (default)
+         assertEquals(1, policyEnforcementProviderAfterView.getCount());
     }
 
     // ---- setup helpers ----
