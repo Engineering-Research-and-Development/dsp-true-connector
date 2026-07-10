@@ -65,8 +65,8 @@ public class PolicyInformationPoint {
         attributes.put(PolicyConstants.PURPOSE, getAccessPurpose());
         
 		attributes.put(PolicyConstants.CURRENT_COUNT,
-				policyEnforcementRepository.findByAgreementId(agreement.getId()).map(pe -> pe.getCount()).orElse(Integer.MAX_VALUE));
-        
+				policyEnforcementRepository.findByAgreementIdAndTenantId(agreement.getId(), agreement.getTenantId()).map(pe -> pe.getCount()).orElse(Integer.MAX_VALUE));
+        log.info("Prepared attributes for policy enforcement");
         return attributes;
     }
 	

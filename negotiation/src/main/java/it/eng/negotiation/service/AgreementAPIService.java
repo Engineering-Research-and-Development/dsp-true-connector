@@ -38,13 +38,13 @@ public class AgreementAPIService {
             agreement = agreementRepository.findByIdAndTenantId(agreementId, tenantId)
                     .orElseThrow(() -> new ContractNegotiationAPIException("Agreement with Id " + agreementId + " not found."));
         } else {
-            agreement = agreementRepository.findById(agreementId)
+            agreement = agreementRepository.findAgreementById(agreementId)
                     .orElseThrow(() -> new ContractNegotiationAPIException("Agreement with Id " + agreementId + " not found."));
         }
         // TODO add additional checks like contract dates
         //		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
         //		agreementStartDate.isBefore(LocalDateTime.now());
-
+        log.debug("Found Agreement with DSP id {}", agreementId);
         PolicyDecision policyDecision = policyEnforcementPoint.enforcePolicy(agreement, "enforceAgreement");
 
         if (policyDecision.isAllowed()) {

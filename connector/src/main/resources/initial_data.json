@@ -182,7 +182,7 @@
       "title": "DSP TRUE Connector",
       "tenantId": "engineering",
       "endpointDescription": "connector",
-      "endpointURL": "http://localhost:8090/",
+      "endpointURL": "http://localhost:8090/engineering",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0

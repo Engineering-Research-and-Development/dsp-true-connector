@@ -52,8 +52,8 @@ public class ProviderDataTransferController extends TenantAwareProtocolControlle
      * @return the serialized transfer process
      */
     @GetMapping(path = "/{providerPid}")
-    public ResponseEntity<JsonNode> getTransferProcessByProviderPid(@PathVariable("tenantId") String tenantId,
-                                                                    @PathVariable("providerPid") String providerPid) {
+    public ResponseEntity<JsonNode> getTransferProcessByProviderPid(@PathVariable String tenantId,
+                                                                    @PathVariable String providerPid) {
         log.info("Fetching TransferProcess for id {}", providerPid);
         resolveTenant(tenantId);
         TransferProcess transferProcess = dataTransferService.findTransferProcessByProviderPid(providerPid);
@@ -68,7 +68,7 @@ public class ProviderDataTransferController extends TenantAwareProtocolControlle
      * @return the created transfer process
      */
     @PostMapping(path = "/request")
-    public ResponseEntity<JsonNode> initiateDataTransfer(@PathVariable("tenantId") String tenantId,
+    public ResponseEntity<JsonNode> initiateDataTransfer(@PathVariable String tenantId,
                                                          @RequestBody JsonNode transferRequestMessageJsonNode) {
         resolveTenant(tenantId);
         TransferRequestMessage transferRequestMessage = TransferSerializer.deserializeProtocol(transferRequestMessageJsonNode, TransferRequestMessage.class);
@@ -93,8 +93,8 @@ public class ProviderDataTransferController extends TenantAwareProtocolControlle
      * @return empty response on success
      */
     @PostMapping(path = "/{providerPid}/start")
-    public ResponseEntity<Void> startDataTransfer(@PathVariable("tenantId") String tenantId,
-                                                  @PathVariable("providerPid") String providerPid,
+    public ResponseEntity<Void> startDataTransfer(@PathVariable String tenantId,
+                                                  @PathVariable String providerPid,
                                                   @RequestBody JsonNode transferStartMessageJsonNode) {
         resolveTenant(tenantId);
         TransferStartMessage transferStartMessage = TransferSerializer.deserializeProtocol(transferStartMessageJsonNode, TransferStartMessage.class);
@@ -113,8 +113,8 @@ public class ProviderDataTransferController extends TenantAwareProtocolControlle
      * @return empty response on success
      */
     @PostMapping(path = "/{providerPid}/completion")
-    public ResponseEntity<Void> completeDataTransfer(@PathVariable("tenantId") String tenantId,
-                                                     @PathVariable("providerPid") String providerPid,
+    public ResponseEntity<Void> completeDataTransfer(@PathVariable String tenantId,
+                                                     @PathVariable String providerPid,
                                                      @RequestBody JsonNode transferCompletionMessageJsonNode) {
         resolveTenant(tenantId);
         TransferCompletionMessage transferCompletionMessage = TransferSerializer.deserializeProtocol(transferCompletionMessageJsonNode, TransferCompletionMessage.class);
@@ -133,8 +133,8 @@ public class ProviderDataTransferController extends TenantAwareProtocolControlle
      * @return empty response on success
      */
     @PostMapping(path = "/{providerPid}/termination")
-    public ResponseEntity<Void> terminateDataTransfer(@PathVariable("tenantId") String tenantId,
-                                                      @PathVariable("providerPid") String providerPid,
+    public ResponseEntity<Void> terminateDataTransfer(@PathVariable String tenantId,
+                                                      @PathVariable String providerPid,
                                                       @RequestBody JsonNode transferTerminationMessageJsonNode) {
         resolveTenant(tenantId);
         TransferTerminationMessage transferTerminationMessage = TransferSerializer.deserializeProtocol(transferTerminationMessageJsonNode, TransferTerminationMessage.class);
@@ -153,8 +153,8 @@ public class ProviderDataTransferController extends TenantAwareProtocolControlle
      * @return empty response on success
      */
     @PostMapping(path = "/{providerPid}/suspension")
-    public ResponseEntity<Void> suspenseDataTransfer(@PathVariable("tenantId") String tenantId,
-                                                     @PathVariable("providerPid") String providerPid,
+    public ResponseEntity<Void> suspenseDataTransfer(@PathVariable String tenantId,
+                                                     @PathVariable String providerPid,
                                                      @RequestBody JsonNode transferSuspensionMessageJsonNode) {
         resolveTenant(tenantId);
         TransferSuspensionMessage transferSuspensionMessage = TransferSerializer.deserializeProtocol(transferSuspensionMessageJsonNode, TransferSuspensionMessage.class);

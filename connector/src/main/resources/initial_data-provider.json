@@ -182,7 +182,7 @@
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "DSP TRUE Connector",
       "endpointDescription": "connector",
-      "endpointURL": "http://localhost:8090/",
+      "endpointURL": "http://localhost:8090/engineering-provider",
       "tenantId": "engineering-provider",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
@@ -236,7 +236,6 @@
       "lastModifiedDate": {
         "$date": "2024-12-10T16:04:59.358Z"
       },
-      "tenantId": "engineering-provider",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": {

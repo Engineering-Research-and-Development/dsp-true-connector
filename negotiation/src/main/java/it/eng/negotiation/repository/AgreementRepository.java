@@ -15,4 +15,14 @@ public interface AgreementRepository extends MongoRepository<Agreement, String> 
 
     Optional<Agreement> findByIdAndTenantId(String id, String tenantId);
 
+    /**
+     * Finds an agreement by its DSP protocol {@code id}, independent of the MongoDB technical
+     * primary key. Intended for single-tenant/super-admin lookups where no tenant scoping applies;
+     * tenant-scoped lookups should use {@link #findByIdAndTenantId(String, String)} instead.
+     *
+     * @param id the DSP protocol agreement identifier
+     * @return the matching agreement, if any
+     */
+    Optional<Agreement> findAgreementById(String id);
+
 }

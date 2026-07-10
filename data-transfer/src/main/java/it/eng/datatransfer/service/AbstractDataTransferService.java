@@ -152,7 +152,10 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
      * @return TransferProcess with status REQUESTED
      */
     public TransferProcess initiateDataTransfer(TransferRequestMessage transferRequestMessage) {
-        TransferProcess transferProcessInitialized = transferProcessRepository.findByAgreementId(transferRequestMessage.getAgreementId())
+        String tenantId = TenantContextHolder.getTenantId();
+        TransferProcess transferProcessInitialized = (tenantId != null
+                ? transferProcessRepository.findByAgreementIdAndTenantId(transferRequestMessage.getAgreementId(), tenantId)
+                : transferProcessRepository.findByAgreementId(transferRequestMessage.getAgreementId()))
                 .orElseThrow(() ->
                 {
                     String errorMessage = "No agreement with id " + transferRequestMessage.getAgreementId() +
@@ -434,8 +437,11 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
      * @return TransferProcess
      */
     public TransferProcess findTransferProcess(String consumerPid, String providerPid) {
-        return transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
-                .orElseThrow(() ->
+        String tenantId = TenantContextHolder.getTenantId();
+        return (tenantId != null
+                ? transferProcessRepository.findByConsumerPidAndProviderPidAndTenantId(consumerPid, providerPid, tenantId)
+                : transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid))
+            .orElseThrow(() ->
                 {
                     publisher.publishEvent(
                             AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND,

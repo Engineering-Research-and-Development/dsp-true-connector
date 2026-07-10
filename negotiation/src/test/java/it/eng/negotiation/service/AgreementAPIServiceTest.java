@@ -47,7 +47,7 @@ class AgreementAPIServiceTest {
 	@Test
 	@DisplayName("Enforce agreement ok")
 	public void enforceAgreement() {
-		when(agreementRepository.findById(NegotiationMockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.of(NegotiationMockObjectUtil.AGREEMENT));
+		when(agreementRepository.findAgreementById(NegotiationMockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.of(NegotiationMockObjectUtil.AGREEMENT));
 //		when(policyEnforcementService.isAgreementValid(NegotiationMockObjectUtil.AGREEMENT)).thenReturn(true);
 		when(policyEnforcementPoint.enforcePolicy(NegotiationMockObjectUtil.AGREEMENT, "enforceAgreement"))
 			.thenReturn(policyDecisionAllowed);
@@ -57,7 +57,7 @@ class AgreementAPIServiceTest {
 	@Test
 	@DisplayName("Enforce agreement - not valid")
 	public void enforceAgreement_not_valid() {
-		when(agreementRepository.findById(NegotiationMockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.of(NegotiationMockObjectUtil.AGREEMENT));
+		when(agreementRepository.findAgreementById(NegotiationMockObjectUtil.AGREEMENT.getId())).thenReturn(Optional.of(NegotiationMockObjectUtil.AGREEMENT));
 //		when(policyEnforcementService.isAgreementValid(NegotiationMockObjectUtil.AGREEMENT)).thenReturn(false);
 		when(policyEnforcementPoint.enforcePolicy(NegotiationMockObjectUtil.AGREEMENT, "enforceAgreement"))
 			.thenReturn(policyDecisionDenied);

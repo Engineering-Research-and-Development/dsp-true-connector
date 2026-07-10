@@ -10,7 +10,8 @@
       "enabled": true,
       "expired": false,
       "locked": false,
-      "role": "ADMIN"
+      "role": "ADMIN",
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.connector.model.User",
@@ -22,7 +23,8 @@
       "enabled": "true",
       "expired": false,
       "locked": false,
-      "role": "CONNECTOR"
+      "role": "CONNECTOR",
+      "tenantId": "engineering"
     }
   ],
   "catalogs": [
@@ -1037,7 +1039,7 @@
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "DSP TRUE Connector",
       "endpointDescription": "connector",
-      "endpointURL": "http://localhost:8090/",
+      "endpointURL": "http://localhost:8090/engineering",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0
@@ -1095,8 +1097,7 @@
       "version": {
         "$numberLong": "0"
       },
-      "_class": "it.eng.tools.model.Artifact",
-      "tenantId": "engineering"
+      "_class": "it.eng.tools.model.Artifact"
     },
     {
       "_id": "urn:uuid:fdc45798-external-4955-8baf-vc3gh22qh3j8",
@@ -1114,8 +1115,7 @@
       "version": {
         "$numberLong": "0"
       },
-      "_class": "it.eng.tools.model.Artifact",
-      "tenantId": "engineering"
+      "_class": "it.eng.tools.model.Artifact"
     }
   ],
   "application_properties": [
@@ -1218,6 +1218,7 @@
     {
       "_id": "ATP0101",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATP0101",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1239,6 +1240,7 @@
     {
       "_id": "ATP0102",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATP0102",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1260,6 +1262,7 @@
     {
       "_id": "ATP0103",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATP0103",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1281,6 +1284,7 @@
     {
       "_id": "ATP0104",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATP0104",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1302,6 +1306,7 @@
     {
       "_id": "ATP0105",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATP0105",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1323,6 +1328,7 @@
     {
       "_id": "ATP0201",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATP0201",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1344,6 +1350,7 @@
     {
       "_id": "ATP0202",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATP0202",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1365,6 +1372,7 @@
     {
       "_id": "ATP0203",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATP0203",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1386,6 +1394,7 @@
     {
       "_id": "ATP0204",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATP0204",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1407,6 +1416,7 @@
     {
       "_id": "ATP0205",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATP0205",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1428,6 +1438,7 @@
     {
       "_id": "ATP0301",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATP0301",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1449,6 +1460,7 @@
     {
       "_id": "ATP0302",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATP0302",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1470,6 +1482,7 @@
     {
       "_id": "ATP0303",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATP0303",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1491,6 +1504,7 @@
     {
       "_id": "ATP0304",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATP0304",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1512,6 +1526,7 @@
     {
       "_id": "ATP0305",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATP0305",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1533,6 +1548,7 @@
     {
       "_id": "ATP0306",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATP0306",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1554,6 +1570,7 @@
     {
       "_id": "ATPC0101",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATPC0101",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1575,6 +1592,7 @@
     {
       "_id": "ATPC0102",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATPC0102",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1596,6 +1614,7 @@
     {
       "_id": "ATPC0103",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATPC0103",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1617,6 +1636,7 @@
     {
       "_id": "ATPC0104",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATPC0104",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1638,6 +1658,7 @@
     {
       "_id": "ATPC0105",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATPC0105",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1659,6 +1680,7 @@
     {
       "_id": "ATPC0201",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATPC0201",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1680,6 +1702,7 @@
     {
       "_id": "ATPC0202",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATPC0202",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1701,6 +1724,7 @@
     {
       "_id": "ATPC0203",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATPC0203",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1722,6 +1746,7 @@
     {
       "_id": "ATPC0204",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATPC0204",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1743,6 +1768,7 @@
     {
       "_id": "ATPC0205",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATPC0205",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1764,6 +1790,7 @@
     {
       "_id": "ATPC0301",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATPC0301",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1785,6 +1812,7 @@
     {
       "_id": "ATPC0302",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATPC0302",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1806,6 +1834,7 @@
     {
       "_id": "ATPC0303",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATPC0303",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1827,6 +1856,7 @@
     {
       "_id": "ATPC0304",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATPC0304",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1848,6 +1878,7 @@
     {
       "_id": "ATPC0305",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATPC0305",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1869,6 +1900,7 @@
     {
       "_id": "ATPC0306",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "ATPC0306",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2025-09-29T01:00:00Z",
       "assigner": "urn:tck",
@@ -1890,6 +1922,7 @@
     {
       "_id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2023-01-01T01:00:00Z",
       "assigner": "urn:tsdshhs636378",

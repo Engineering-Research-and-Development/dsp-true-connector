@@ -344,6 +344,7 @@
     {
       "_id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2023-01-01T01:00:00Z",
       "assigner": "urn:tsdshhs636378",
