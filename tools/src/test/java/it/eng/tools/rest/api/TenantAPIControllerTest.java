@@ -1,4 +1,4 @@
-package it.eng.connector.rest.api;
+package it.eng.tools.rest.api;
 
 import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.Tenant;
