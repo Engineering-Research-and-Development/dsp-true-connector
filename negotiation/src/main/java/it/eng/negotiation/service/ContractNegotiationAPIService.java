@@ -558,7 +558,7 @@ public class ContractNegotiationAPIService {
             ContractNegotiation contractNegotiationFinalized = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.FINALIZED);
             contractNegotiationRepository.save(contractNegotiationFinalized);
             // TODO remove this line once api/getArtifact is implemented on consumer side
-            policyAdministrationPoint.createPolicyEnforcement(contractNegotiation.getAgreement().getId());
+            policyAdministrationPoint.createPolicyEnforcement(contractNegotiation.getAgreement().getId(), contractNegotiation.getTenantId());
             auditEventPublisher.publishEvent(new InitializeTransferProcess(
                     contractNegotiationFinalized.getCallbackAddress(),
                     contractNegotiationFinalized.getAgreement().getId(),
@@ -661,7 +661,7 @@ public class ContractNegotiationAPIService {
                 credentialUtils.getConnectorCredentials());
         if (response.isSuccess()) {
             log.info("Updating status for negotiation {} to agreed", contractNegotiation.getId());
-            log.info("Saving agreement...{}", agreementMessage.getAgreement().getId());
+            log.info("Saving agreement...DSP ID: {}", agreementMessage.getAgreement().getId());
             Agreement agreementToSave = agreementMessage.getAgreement();
             if (contractNegotiation.getTenantId() != null) {
                 agreementToSave.injectTenantId(contractNegotiation.getTenantId());

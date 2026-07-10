@@ -3,6 +3,7 @@ package it.eng.connector.configuration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.ReplaceOptions;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
@@ -206,10 +207,23 @@ public class InitialDataLoader {
         createIndex("datasets",               new Document("tenantId", 1).append("_id", 1));
         createIndex("contract_negotiations",  new Document("tenantId", 1).append("state", 1).append("role", 1));
         createIndex("transfer_process",       new Document("tenantId", 1).append("state", 1).append("role", 1));
-        createIndex("agreements",             new Document("tenantId", 1).append("_id", 1));
+        // "agreements" is keyed by a tenant-independent technical _id (see Agreement.technicalId),
+        // because the DSP protocol "id" is legitimately shared between a provider's and a consumer's
+        // local copies of the same agreement. Index and enforce uniqueness on (tenantId, id) instead.
+        createIndex("agreements",             new Document("tenantId", 1).append("id", 1), true);
         createIndex("audit_events",           new Document("tenantId", 1).append("timestamp", 1));
         createIndex("application_properties", new Document("tenantId", 1).append("_id", 1));
         log.info("Compound MongoDB indexes created (or already exist).");
+    }
+
+    /**
+     * Creates a non-unique MongoDB index on the given collection with the given key document.
+     *
+     * @param collectionName the name of the MongoDB collection
+     * @param keys           the index key document
+     */
+    private void createIndex(String collectionName, Document keys) {
+        createIndex(collectionName, keys, false);
     }
 
     /**
@@ -219,10 +233,12 @@ public class InitialDataLoader {
      *
      * @param collectionName the name of the MongoDB collection
      * @param keys           the index key document
+     * @param unique         whether the index should enforce uniqueness on its key combination
      */
-    private void createIndex(String collectionName, Document keys) {
+    private void createIndex(String collectionName, Document keys, boolean unique) {
         try {
-            mongoTemplate.getCollection(collectionName).createIndex(keys);
+            mongoTemplate.getCollection(collectionName)
+                    .createIndex(keys, new IndexOptions().unique(unique));
             log.debug("Index ensured on collection '{}'", collectionName);
         } catch (Exception e) {
             log.warn("Could not create index on collection '{}': {}", collectionName, e.getMessage());

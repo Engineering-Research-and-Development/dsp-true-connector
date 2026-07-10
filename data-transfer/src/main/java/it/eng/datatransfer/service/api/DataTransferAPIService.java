@@ -317,6 +317,8 @@ public class DataTransferAPIService {
 
         stateTransitionCheck(TransferState.STARTED, transferProcess);
 
+        //TODO consider to add policy check before generating presignURL
+
         log.info("Sending TransferStartMessage to {}", transferProcess.getCallbackAddress());
         String address = null;
         DataAddress dataAddress = null;
@@ -765,7 +767,7 @@ public class DataTransferAPIService {
         try {
 //            TODO verify Duration does not exceed EndDateTime, if it is present
             String artifactURL = s3ClientService.generateGetPresignedUrl(bucketName, transferProcessId, Duration.ofDays(7L));
-            publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
+            publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId(), transferProcess.getTenantId()));
             publisher.publishEvent(AuditEventType.TRANSFER_VIEW,
                     "Transfer process (view) generated artifact URL",
                     auditMap("transferProcess", transferProcess,

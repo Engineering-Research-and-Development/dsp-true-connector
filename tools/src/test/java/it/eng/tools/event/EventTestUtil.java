@@ -27,6 +27,7 @@ public class EventTestUtil {
     public static final String TEST_DATASET_ID = "dataset-id-012";
     public static final String TEST_CALLBACK_ADDRESS = "https://callback.example.com";
     public static final String TEST_ROLE = "CONSUMER";
+    public static final String TENANT_ID = "tenant-id";
     
     public static final ApplicationProperty TEST_OLD_PROPERTY = ApplicationProperty.Builder.newInstance()
             .key("test.property")
@@ -66,7 +67,7 @@ public class EventTestUtil {
     }
     
     public static ArtifactConsumedEvent createTestArtifactConsumedEvent() throws Exception {
-        return new ArtifactConsumedEvent(TEST_AGREEMENT_ID);
+        return new ArtifactConsumedEvent(TEST_AGREEMENT_ID, TENANT_ID);
     }
     
     public static void setField(Object object, String fieldName, Object value) throws Exception {

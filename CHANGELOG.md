@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] — Multi-Tenant Support
+## [0.7.0] - 10.07.2026 - Multi-Tenant Support
 
 - **Updated java from 17 to 21**
 
@@ -34,6 +34,7 @@ All notable changes to this project will be documented in this file.
 - **MT3** — `POST /api/v1/tenants`: `bucketName` is now optional; the server auto-derives `dsp-{tenantId}` when absent. See [tools/doc/tenant-s3-provisioning.md](tools/doc/tenant-s3-provisioning.md).
 - **MT3** — `CatalogService`: three update-helper methods (`updateCatalogDatasetAfterSave`, `updateCatalogDataServiceAfterSave`, `updateCatalogDistributionAfterSave`) now assert tenantId consistency before writing cross-document references, rejecting cross-tenant links with HTTP 404.
 - **MT3** — `CatalogRepository`: `findCatalogByDatasetId` and `findCatalogByDataServiceId` are supplemented with tenantId-scoped variants (`findCatalogByDatasetIdAndTenantId`, `findCatalogByDataServiceIdAndTenantId`) used by the service-layer guards.
+- Updated policy enforcement and contract negotiation to use the tenant-scoped `AgreementRepository.findAgreementByIdAndTenantId` instead of the non-tenant-scoped `findAgreementById` to prevent cross-tenant agreement lookups.
 
 ### Security
 
@@ -60,6 +61,21 @@ All notable changes to this project will be documented in this file.
 - All DSP protocol controllers now extend `TenantAwareProtocolController` and include `tenantId` as first path variable and method parameter.
 - `ConnectorSecurityConfig` security matchers updated to cover `/{tenantId}/` prefixed patterns.
 - `initial_data.json` — all seed catalog, dataset, distribution, data-service, and artifact entries include `"tenantId": "engineering"`.
+
+### Fixed
+- **#277 — Agreement `_id` collision across tenants** — `Agreement` now has its own tenant-independent MongoDB technical primary key (`technicalId`, `@Id`), separate from the shared DSP protocol `id`. Previously `Agreement.id` (which is legitimately shared between a provider's and a consumer's local copies of the same agreement) was used directly as the MongoDB `_id`, so when both connectors ran against the same MongoDB instance the second party's save silently overwrote the first party's document.
+  - `agreements` collection now has a unique compound index on `(tenantId, id)` instead of `(tenantId, _id)`.
+  - `AgreementRepository.findAgreementById(String id)` added for non-tenant-scoped lookups by the protocol `id` (distinct from the inherited `findById`, which now queries the technical id).
+  - `AgreementAPIService.enforceAgreement()` and `PolicyEnforcementPoint.enforcePolicy()` updated to resolve `Agreement`/`ContractNegotiation` references using the appropriate id (protocol `id` vs. technical id) instead of assuming the two always matched.
+  - New integration test `AgreementCrossTenantIT` covers persisting and enforcing agreements that share the same protocol `id` across two tenants.
+
+### Removed
+- Removed redundant PathVariable name from controllers
+- 
+## [0.6.12-SNAPSHOT] - 25.06.2026.
+
+### Added
+- Added files for agentic development approach
 
 ## [0.6.11-SNAPSHOT] - 16.04.2026.
 

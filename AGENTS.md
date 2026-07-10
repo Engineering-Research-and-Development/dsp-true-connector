@@ -41,6 +41,21 @@ These apply to every change and must not be skipped:
 - **Module boundaries are respected**: `catalog`, `negotiation`, and `data-transfer` implement their protocol concern independently; shared logic goes in `tools`; `connector` only wires modules together. No cross-module reach-ins.
 - **Architecturally significant decisions require an ADR** in [`doc/decisions/`](doc/decisions/README.md) before implementation. Undocumented architectural drift is not acceptable.
 - **Security posture is actively maintained**: dependency upgrades addressing CVEs are documented in `CHANGELOG.md` under Security; run SpotBugs + Find Security Bugs via `spotbugs-scan.sh` / `spotbugs-scan.cmd` (see [`doc/spotbugs.md`](doc/spotbugs.md)).
+- **All `initial_data*.json` seed files must be updated together, in the same commit, whenever a change alters the shape, required fields, or referencing convention of any seeded document type** (model field renames/additions, `@Id`/technical-key changes, new `@NotNull` constraints, DBRef target changes, etc.). This repository seeds MongoDB from **12 separate files** across 5 directories, and none of them are generated from a single source of truth — each must be edited by hand:
+  - `connector/src/main/resources/initial_data.json`
+  - `connector/src/main/resources/initial_data-provider.json`
+  - `connector/src/main/resources/initial_data-consumer.json`
+  - `connector/src/main/resources/initial_data-tck.json`
+  - `connector/src/test/resources/initial_data.json`
+  - `connector/src/test/resources/initial_data-unittest.json`
+  - `connector/src/test/resources/initial_data-tck.json`
+  - `ci/docker/connector_a_resources/initial_data.json`
+  - `ci/docker/connector_b_resources/initial_data.json`
+  - `ci/tck/connector_tck_resources/initial_data-tck.json`
+  - `terraform/app-resources/connector_a_resources/initial_data.json`
+  - `terraform/app-resources/connector_b_resources/initial_data.json`
+
+  Before closing out any task that changes a seeded model (e.g. adding/renaming a field, splitting a technical id from a business id, changing what a `$ref`/`$id` DBRef points to), run `find . -iname "initial_data*.json" -not -path "*/target/*"` and `grep -rl "it.eng.<pkg>.model.<ModelName>" --include=*.json .` to enumerate every file containing that model, then apply the same structural change to each one. Skipping any file passes local `mvn clean verify` (Testcontainers use their own seed-free state) but fails the Docker Compose + Newman GitHub Actions suites (`ci/docker/test-cases/**`) and/or the TCK profile, because those load the on-disk seed files directly into a real MongoDB instance.
 
 ## Project Structure
 
@@ -212,7 +227,7 @@ Commit and push the feature branch, create a PR against `develop` with summary a
 | QA task finds a pre-existing bug outside its slice's impl tasks | Stop and comment on the QA issue describing the bug; the fix belongs in a new implementation task, not in the QA task itself |
 | Docs task needs product code to fix a typo in an embedded code snippet | Stop and comment; expand the task's scope explicitly or split off a tiny implementation task |
 | Implementation task touches `doc/architecture.md` or module API docs | Out of scope — move those updates into the slice's dedicated documentation task |
-| `initial_data*.json` seed files drift between provider/consumer profiles | Per-task verification fails — profile seeds must stay consistent with the configuration change |
+| `initial_data*.json` seed files drift between provider/consumer profiles | Blocking — per-task verification fails; update **all 12 seed files** listed in Non-Negotiable Constraints together, in the same commit as the model/schema change |
 | Agent creates files not in the issue | PR review catches scope creep; request removal |
 | Merge conflict on `develop` | Agent rebases feature branch, re-runs per-task verification |
 | Missing service function referenced in issue | Fail the task, comment on issue — missing function is an untracked dependency |

@@ -90,7 +90,8 @@
       "participantId": "urn:example:DataProviderA",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     }
   ],
   "datasets": [
@@ -152,7 +153,8 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     }
   ],
   "dataservices": [
@@ -179,10 +181,11 @@
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "DSP TRUE Connector",
       "endpointDescription": "connector",
-      "endpointURL": "http://connector-b:8090/",
+      "endpointURL": "http://connector-b:8090/engineering",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     }
   ],
   "distributions": [
@@ -199,7 +202,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     },
     {
       "_id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5",
@@ -214,7 +218,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     }
   ],
   "artifacts": [
@@ -330,17 +335,20 @@
       "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
       "state": "FINALIZED",
       "providerPid": "urn:uuid:3e370869-48ec-4475-bf51-ea0c37860d07",
-      "_class": "it.eng.negotiation.model.ContractNegotiation"
+      "_class": "it.eng.negotiation.model.ContractNegotiation",
+      "tenantId": "engineering"
     }
   ],
   "agreements": [
     {
       "_id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2023-01-01T01:00:00Z",
       "assigner": "urn:tsdshhs636378",
       "assignee": "urn:jashd766",
+      "tenantId": "engineering",
       "permission": [
         {
           "action": "use",
@@ -370,7 +378,8 @@
       "lastModifiedBy": "admin@mail.com",
       "issued": "2024-04-23T16:26:00.000Z",
       "modified": "2024-04-23T16:26:00.000Z",
-      "version": 0
+      "version": 0,
+      "tenantId": "engineering"
     }
   ],
   "transfer_start_messages": [],
@@ -379,7 +388,22 @@
       "_id": "urn:uuid:abc45800-pole-4932-8baf-ab7fd36ql4d9",
       "_class": "it.eng.negotiation.model.PolicyEnforcement",
       "agreementId": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
-      "count": "0"
+      "count": "0",
+      "tenantId": "engineering"
+    }
+  ],
+  "tenants": [
+    {
+      "_class": "it.eng.tools.model.Tenant",
+      "_id": "engineering",
+      "name": "Engineering",
+      "description": "Default Engineering tenant",
+      "participantId": "urn:connector:engineering",
+      "bucketName": "dsp-true-connector-consumer",
+      "enabled": true,
+      "automaticNegotiation": false,
+      "automaticTransfer": false,
+      "version": 0
     }
   ]
 }
