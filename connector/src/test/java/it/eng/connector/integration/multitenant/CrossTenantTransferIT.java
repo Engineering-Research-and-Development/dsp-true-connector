@@ -41,7 +41,12 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
-import java.io.ByteArrayInputStream;
+import java.io.*;
+import java.net.URI;
+import java.net.URL;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -124,6 +129,15 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
     @AfterEach
     public void cleanup() {
         TenantContextHolder.clear();
+
+        if (providerDataset != null && providerBucketName != null
+                && s3ClientService.fileExists(providerBucketName, providerDataset.getId())) {
+            s3ClientService.deleteFile(providerBucketName, providerDataset.getId());
+        }
+        if (consumerTransferProcessId != null && consumerBucketName != null
+                && s3ClientService.fileExists(consumerBucketName, consumerTransferProcessId)) {
+            s3ClientService.deleteFile(consumerBucketName, consumerTransferProcessId);
+        }
 
         if (consumerTransferProcessId != null) {
             transferProcessRepository.findByIdAndTenantId(consumerTransferProcessId, CONSUMER_TENANT)
@@ -253,18 +267,11 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
         ResultActions viewConsumerArtifactResult = mockMvc.perform(
                 get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + completedConsumerTp.getId() + "/view")
                         .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, CONSUMER_TENANT)
-                        .content(transferRequestBody)
-                        .contentType(MediaType.APPLICATION_JSON));
-
-        viewConsumerArtifactResult.andExpect(status().isOk());
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
 
         // wait two seconds so that async event is processes - increase count access
-        try {
-            Thread.sleep(2000);
-            log.info("sleep over");
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        Thread.sleep(2000);
 
         PolicyEnforcement policyEnforcementConsumerAfterView = policyEnforcementRepository.findByAgreementIdAndTenantId(agreementId, CONSUMER_TENANT)
                 .orElseThrow(() -> new IllegalStateException("No PolicyEnforcement CONSUMER found for consumer agreement " + agreementId));
@@ -273,7 +280,27 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
 
         assertEquals(2, policyEnforcementConsumerAfterView.getCount());
         // Provider policyEnforcement should remain to 1 (default)
-         assertEquals(1, policyEnforcementProviderAfterView.getCount());
+        assertEquals(1, policyEnforcementProviderAfterView.getCount());
+
+        // check if we can download file using presignURL response
+        String response = viewConsumerArtifactResult.andReturn().getResponse().getContentAsString();
+
+        // response is presignedUrl for download data
+        assertNotNull(response);
+        URL url = URI.create(response).toURL();
+
+        ReadableByteChannel readableByteChannel = Channels.newChannel(url.openStream());
+        ByteBuffer buffer = ByteBuffer.allocate(1024);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        while (readableByteChannel.read(buffer) != -1) {
+            buffer.flip();
+            out.write(buffer.array(), 0, buffer.limit());
+            buffer.clear();
+        }
+
+        String channelString = out.toString(StandardCharsets.UTF_8);
+        assertEquals("hello world", channelString);
     }
 
     // ---- setup helpers ----
