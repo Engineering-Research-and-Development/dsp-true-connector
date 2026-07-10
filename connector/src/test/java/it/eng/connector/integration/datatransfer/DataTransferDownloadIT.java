@@ -321,7 +321,7 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Download artifact - enforcmenet failed")
+    @DisplayName("Download artifact - enforcement failed")
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void downloadArtifact_fail_enforcement_failed() throws Exception {
         Dataset dataset = Dataset.Builder.newInstance()

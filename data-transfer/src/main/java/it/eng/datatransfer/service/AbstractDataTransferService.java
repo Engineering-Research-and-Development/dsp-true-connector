@@ -441,7 +441,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
         return (tenantId != null
                 ? transferProcessRepository.findByConsumerPidAndProviderPidAndTenantId(consumerPid, providerPid, tenantId)
                 : transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid))
-            .orElseThrow(() ->
+                .orElseThrow(() ->
                 {
                     publisher.publishEvent(
                             AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND,
