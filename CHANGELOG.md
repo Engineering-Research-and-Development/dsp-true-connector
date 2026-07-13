@@ -25,6 +25,11 @@ All notable changes to this project will be documented in this file.
   - **Cross-tenant isolation integration test** — `CrossTenantIsolationIT` verifies that catalog, dataset, and data-service resources owned by one tenant are not accessible to a different tenant.
   - ADR [D-TEC-005](doc/decisions/technical/D-TEC-005-programmatic-startup-indexes.md) — programmatic startup index creation rationale.
   - ADR [D-TEC-006](doc/decisions/technical/D-TEC-006-dbref-tenant-filter-mitigation.md) — @DBRef tenant-filter limitation and service-layer mitigation.
+- **MT4 — Cross-Tenant Transfer & Integration**
+  - **Async tenant context propagation** — `TenantContextTaskDecorator` (`tools`) propagates `TenantContextHolder` from the submitting thread to worker threads on every executor/scheduler that runs outside the HTTP request thread: the async Spring event executor, the negotiation retry scheduler, and the data-transfer `httpPullTransferExecutor`, `httpPushTransferExecutor`, and `transferTaskScheduler` beans. See [data-transfer/doc/data-transfer.md](data-transfer/doc/data-transfer.md#async-tenant-context-propagation).
+  - `CrossTenantTransferIT` — end-to-end integration test proving that a single connector instance running one tenant as provider and another as consumer completes automatic contract negotiation plus an HTTP-PULL transfer, using the `/{tenantId}/` protocol routing introduced in MT2.
+  - DSP TCK compliance re-verified at 65/65 with `/{tenantId}/` protocol routing in place.
+  - ADR [D-TEC-007](doc/decisions/technical/D-TEC-007-s3-admin-key-http-push-temp-user.md) — documents the accepted risk of using the S3 admin key for HTTP-PUSH temporary MinIO IAM user creation, since MinIO does not support delegated IAM user creation.
 
 ### Changed
 - **MT1** — `POST /api/v1/tenants`: `id` and `callbackAddress` in the request body are now ignored (server-generated). See [connector/documentation/users.md](connector/documentation/users.md) for the updated API reference.
