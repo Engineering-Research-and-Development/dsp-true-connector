@@ -203,3 +203,15 @@ http://localhost:8090/artifact/dXJuOnV1aWQ6Q09OU1VNRVJfUElEX1RSQU5TRkVSfHVybjp1d
 TODO:
  
  * add authorization logic for data endpoint - we might then have endpoint without encoded part; then we need to add creating credentials, storing credentials and checking then when consumer "clicks" download link.
+
+## Async Tenant Context Propagation
+
+In multi-tenant deployments, the active tenant is held in `TenantContextHolder`, a `ThreadLocal` set from the incoming request. HTTP-PULL and HTTP-PUSH transfers, and the automatic transfer retry loop, all hand off work to a Spring-managed executor or scheduler, which run on a separate worker thread. A plain `ThreadLocal` does not survive that hop — the worker thread would otherwise start with no tenant context.
+
+To fix this, `it.eng.tools.configuration.TenantContextTaskDecorator` (a `org.springframework.core.task.TaskDecorator`) is installed on every executor/scheduler bean defined in `DataTransferConfiguration`:
+
+- `httpPullTransferExecutor` — runs `HttpPullTransferStrategy` transfers
+- `httpPushTransferExecutor` — runs `HttpPushTransferStrategy` transfers
+- `transferTaskScheduler` — schedules the non-blocking retry delays used by `AutomaticDataTransferService` when a protocol message attempt fails and a retry is still within the configured retry budget
+
+The decorator captures the submitting thread's tenant ID, sets it on the worker thread before the delegated task runs, and clears it in a `finally` block afterwards so pooled threads never leak tenant context into an unrelated task. This keeps tenant-scoped repository lookups, S3 bucket resolution (`TenantBucketResolver.resolveBucketName(tenantId)`), and audit logging correct for transfers and retries that execute off the original request thread. See [doc/architecture.md](../../doc/architecture.md) for the broader multi-tenant runtime picture.
