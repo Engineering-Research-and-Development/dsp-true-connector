@@ -32,7 +32,7 @@ public class CredentialUtils {
 
 	/**
 	 * Retrieves connector credentials for connector-to-connector communication.
-	 * Uses JWT token from Keycloak/BASIC/DISABLED.
+	 * Uses JWT token from Keycloak/INTERNAL/DISABLED.
 	 *
 	 * @return Bearer token authorization header
 	 */
@@ -54,7 +54,7 @@ public class CredentialUtils {
 	 * {@code Authorization: Bearer} header value. Otherwise, Basic Auth credentials are
 	 * built using the {@code internal-service} username and the configured shared secret,
 	 * which maps to {@link it.eng.connector.configuration.InternalServiceAuthenticationProvider}
-	 * in BASIC mode. Using the internal-service account ensures the principal has
+	 * in INTERNAL mode. Using the internal-service account ensures the principal has
 	 * {@code tenantId=null}, allowing {@code ApiTenantContextFilter} to honour the
 	 * {@code X-Tenant-Id} request header for correct multi-tenant routing.
 	 *

@@ -5,7 +5,7 @@ import it.eng.connector.model.Role;
 import it.eng.connector.repository.UserRepository;
 import it.eng.tools.auth.AuthenticationMode;
 import it.eng.tools.auth.AuthenticationModeResolver;
-import it.eng.tools.auth.condition.BasicAuthenticationModeCondition;
+import it.eng.tools.auth.condition.InternalAuthenticationModeCondition;
 import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
 import it.eng.tools.controller.ApiEndpoints;
 import org.apache.commons.lang3.StringUtils;
@@ -64,8 +64,8 @@ import java.util.Arrays;
  * <pre>
  * provider=KEYCLOAK + dcp.enabled=false  → admin: Keycloak,  protocol: Keycloak
  * provider=KEYCLOAK + dcp.enabled=true   → admin: Keycloak,  protocol: DCP
- * provider=BASIC    + dcp.enabled=false  → admin: Basic Auth, protocol: Basic Auth
- * provider=BASIC    + dcp.enabled=true   → admin: Basic Auth, protocol: DCP
+ * provider=INTERNAL + dcp.enabled=false  → admin: Basic Auth, protocol: Basic Auth
+ * provider=INTERNAL + dcp.enabled=true   → admin: Basic Auth, protocol: DCP
  * provider=DISABLED                      → all endpoints: permitAll
  * </pre>
  */
@@ -119,15 +119,15 @@ public class ConnectorSecurityConfig {
      * All other {@code /api/**} endpoints require at minimum {@code ROLE_ADMIN}.
      * Disabled mode permits all requests.
      *
-     * <p>In BASIC mode, both {@link InternalServiceAuthenticationProvider} and
+     * <p>In INTERNAL mode, both {@link InternalServiceAuthenticationProvider} and
      * {@link DaoAuthenticationProvider} are registered so that internal machine-to-machine
      * calls authenticated as {@code internal-service} bypass tenant-scoped user lookup.
      *
      * @param http the HttpSecurity builder
      * @param keycloakFilter optional Keycloak filter, present when mode is KEYCLOAK
      * @param apiTenantContextFilter the tenant context filter for API requests
-     * @param daoAuthenticationProvider the DAO provider for normal user authentication (BASIC mode)
-     * @param internalServiceAuthProvider the internal-service provider (BASIC mode)
+     * @param daoAuthenticationProvider the DAO provider for normal user authentication (INTERNAL mode)
+     * @param internalServiceAuthProvider the internal-service provider (INTERNAL mode)
      * @return the configured filter chain
      * @throws Exception if the chain cannot be built
      */
@@ -160,7 +160,7 @@ public class ConnectorSecurityConfig {
                             .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         } else {
-            // BASIC: ApiTenantContextFilter must run AFTER BasicAuthenticationFilter so that
+            // INTERNAL: ApiTenantContextFilter must run AFTER BasicAuthenticationFilter so that
             // the Authentication is already populated in SecurityContextHolder when we read it.
             // InternalServiceAuthenticationProvider is checked first; unmatched usernames fall
             // through to DaoAuthenticationProvider for normal user login.
@@ -231,7 +231,7 @@ public class ConnectorSecurityConfig {
                     .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(Role.CONNECTOR.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         } else {
-            // BASIC
+            // INTERNAL
             http.anonymous(AbstractHttpConfigurer::disable)
                     .httpBasic(basic -> basic.authenticationEntryPoint(authEntryPoint))
                     .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(Role.CONNECTOR.name()))
@@ -306,31 +306,31 @@ public class ConnectorSecurityConfig {
     }
 
     // =========================================================================
-    // Conditional Basic Auth beans
+    // Conditional Internal Auth beans
     // =========================================================================
 
     /**
-     * Creates the {@link UserDetailsService} backed by MongoDB for Basic Auth mode.
+     * Creates the {@link UserDetailsService} backed by MongoDB for Internal Auth mode.
      *
      * @param userRepository the user repository
      * @return the user details service
      */
     @Bean
-    @Conditional(BasicAuthenticationModeCondition.class)
+    @Conditional(InternalAuthenticationModeCondition.class)
     UserDetailsService userDetailsService(UserRepository userRepository) {
         return username -> userRepository.findByEmail(username)
                 .orElseThrow(() -> new BadCredentialsException("Bad credentials"));
     }
 
     /**
-     * Creates the {@link DaoAuthenticationProvider} for Basic Auth mode.
+     * Creates the {@link DaoAuthenticationProvider} for Internal Auth mode.
      *
      * @param userDetailsService the user details service
      * @param passwordEncoder the password encoder
      * @return the configured DAO authentication provider
      */
     @Bean
-    @Conditional(BasicAuthenticationModeCondition.class)
+    @Conditional(InternalAuthenticationModeCondition.class)
     DaoAuthenticationProvider daoAuthenticationProvider(UserDetailsService userDetailsService,
             PasswordEncoder passwordEncoder) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
@@ -339,13 +339,13 @@ public class ConnectorSecurityConfig {
     }
 
     /**
-     * Creates the {@link AuthenticationManager} for Basic Auth mode.
+     * Creates the {@link AuthenticationManager} for Internal Auth mode.
      *
      * @param daoAuthenticationProvider the DAO authentication provider
      * @return the authentication manager
      */
     @Bean
-    @Conditional(BasicAuthenticationModeCondition.class)
+    @Conditional(InternalAuthenticationModeCondition.class)
     AuthenticationManager authenticationManager(DaoAuthenticationProvider daoAuthenticationProvider) {
         return new ProviderManager(daoAuthenticationProvider);
     }
