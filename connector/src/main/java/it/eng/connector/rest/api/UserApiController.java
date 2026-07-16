@@ -3,7 +3,7 @@ package it.eng.connector.rest.api;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.connector.model.UserDTO;
 import it.eng.connector.service.UserService;
-import it.eng.tools.auth.condition.BasicOrDisabledAuthenticationModeCondition;
+import it.eng.tools.auth.condition.InternalOrDisabledAuthenticationModeCondition;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.exception.BadRequestException;
 import it.eng.tools.response.GenericApiResponse;
@@ -25,7 +25,7 @@ import java.util.Collection;
 @RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
 path = ApiEndpoints.USERS_V1)
 @Slf4j
-@Conditional(BasicOrDisabledAuthenticationModeCondition.class)
+@Conditional(InternalOrDisabledAuthenticationModeCondition.class)
 public class UserApiController {
 	
 	private final UserService userService;

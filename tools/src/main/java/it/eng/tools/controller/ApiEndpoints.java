@@ -65,4 +65,9 @@ public interface ApiEndpoints {
      * Tools module - v1 API endpoint for tenant management.
      */
     public static final String TENANTS_V1 = "/api/v1/tenants";
+
+    /**
+     * Connector module - v1 API endpoint for the unified auth contract (login/refresh/logout).
+     */
+    public static final String AUTH_V1 = "/api/v1/auth";
 }
