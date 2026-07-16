@@ -5,6 +5,7 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.context.annotation.Conditional;
@@ -60,6 +61,12 @@ public class JwtService {
 
     private static final int MIN_SECRET_BYTES = 32;
 
+    // Claim names set directly by baseTokenBuilder; extraClaims must not collide with any of
+    // these, since JWTCreator.Builder#withPayload silently overwrites already-set claims rather
+    // than performing a safe no-clobber merge.
+    private static final Set<String> RESERVED_CLAIM_NAMES =
+            Set.of("sub", EMAIL_CLAIM, ROLES_CLAIM, TENANT_ID_CLAIM, "iat", "exp", "jti", TOKEN_TYPE_CLAIM);
+
     private final JwtProperties jwtProperties;
 
     /**
@@ -101,6 +108,11 @@ public class JwtService {
      *                    {@value #TENANT_ID_CLAIM} claim
      * @param extraClaims additional claims merged into both tokens; may be {@code null} or empty
      * @return the issued {@link TokenPair}
+     * @throws IllegalArgumentException if {@code extraClaims} contains a key that collides with
+     *                                    a reserved claim name ({@code sub}, {@value #EMAIL_CLAIM},
+     *                                    {@value #ROLES_CLAIM}, {@value #TENANT_ID_CLAIM},
+     *                                    {@code iat}, {@code exp}, {@code jti}, or
+     *                                    {@value #TOKEN_TYPE_CLAIM})
      */
     public TokenPair issueTokenPair(String subject, String email, List<String> roles, String tenantId,
             Map<String, Object> extraClaims) {
@@ -143,7 +155,15 @@ public class JwtService {
                 .withExpiresAt(Date.from(expiresAt))
                 .withJWTId(UUID.randomUUID().toString());
         if (extraClaims != null && !extraClaims.isEmpty()) {
-            // Merges caller-supplied claims without requiring any change to this class.
+            // Merges caller-supplied claims without requiring any change to this class. Reject
+            // any key colliding with a reserved claim, since withPayload silently overwrites
+            // already-set claims rather than performing a safe no-clobber merge.
+            for (String key : extraClaims.keySet()) {
+                if (RESERVED_CLAIM_NAMES.contains(key)) {
+                    throw new IllegalArgumentException(
+                            "extraClaims must not contain reserved claim name '" + key + "'");
+                }
+            }
             builder.withPayload(extraClaims);
         }
         return builder;

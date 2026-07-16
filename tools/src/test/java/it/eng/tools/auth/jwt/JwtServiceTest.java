@@ -73,6 +73,19 @@ class JwtServiceTest {
     }
 
     @Test
+    @DisplayName("Should reject extraClaims that collide with a reserved claim name")
+    void extraClaimsCollidingWithReservedNamesAreRejected() {
+        assertThrows(IllegalArgumentException.class, () -> jwtService.issueTokenPair("user-1",
+                "user@example.com", List.of("ROLE_ADMIN"), "tenant-a", Map.of(JwtService.ROLES_CLAIM,
+                        List.of("ROLE_SUPER_ADMIN"))));
+        assertThrows(IllegalArgumentException.class, () -> jwtService.issueTokenPair("user-1",
+                "user@example.com", List.of("ROLE_ADMIN"), "tenant-a", Map.of("exp", 9_999_999_999L)));
+        assertThrows(IllegalArgumentException.class, () -> jwtService.issueTokenPair("user-1",
+                "user@example.com", List.of("ROLE_ADMIN"), "tenant-a",
+                Map.of(JwtService.TOKEN_TYPE_CLAIM, JwtService.REFRESH_TOKEN_TYPE)));
+    }
+
+    @Test
     @DisplayName("Should reject an expired token with a clear exception")
     void expiredTokenIsRejected() {
         jwtProperties.setAccessExpirationMs(-1_000L);
