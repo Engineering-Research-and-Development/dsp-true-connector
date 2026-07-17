@@ -24,7 +24,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.AccountExpiredException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.CredentialsExpiredException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.test.web.servlet.MockMvc;
@@ -81,11 +83,15 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("Login with bad password, disabled account, and locked account return identical 401 bodies")
+    @DisplayName("Login with bad password, disabled, locked, expired, or credentials-expired accounts "
+            + "return identical 401 bodies")
     void loginFailuresReturnIdentical401Body() throws Exception {
         when(authService.login("bad@test.com", "wrong")).thenThrow(new BadCredentialsException("bad credentials"));
         when(authService.login("disabled@test.com", "password")).thenThrow(new DisabledException("disabled"));
         when(authService.login("locked@test.com", "password")).thenThrow(new LockedException("locked"));
+        when(authService.login("expired@test.com", "password")).thenThrow(new AccountExpiredException("expired"));
+        when(authService.login("credexpired@test.com", "password"))
+                .thenThrow(new CredentialsExpiredException("credentials expired"));
 
         MvcResult badCredentials = performLogin("bad@test.com", "wrong")
                 .andExpect(status().isUnauthorized())
@@ -96,13 +102,23 @@ class AuthControllerTest {
         MvcResult locked = performLogin("locked@test.com", "password")
                 .andExpect(status().isUnauthorized())
                 .andReturn();
+        MvcResult expired = performLogin("expired@test.com", "password")
+                .andExpect(status().isUnauthorized())
+                .andReturn();
+        MvcResult credentialsExpired = performLogin("credexpired@test.com", "password")
+                .andExpect(status().isUnauthorized())
+                .andReturn();
 
         String bodyWithoutTimestamp1 = stripTimestamp(badCredentials.getResponse().getContentAsString());
         String bodyWithoutTimestamp2 = stripTimestamp(disabled.getResponse().getContentAsString());
         String bodyWithoutTimestamp3 = stripTimestamp(locked.getResponse().getContentAsString());
+        String bodyWithoutTimestamp4 = stripTimestamp(expired.getResponse().getContentAsString());
+        String bodyWithoutTimestamp5 = stripTimestamp(credentialsExpired.getResponse().getContentAsString());
 
         assertEquals(bodyWithoutTimestamp1, bodyWithoutTimestamp2);
         assertEquals(bodyWithoutTimestamp2, bodyWithoutTimestamp3);
+        assertEquals(bodyWithoutTimestamp3, bodyWithoutTimestamp4);
+        assertEquals(bodyWithoutTimestamp4, bodyWithoutTimestamp5);
     }
 
     @Test
