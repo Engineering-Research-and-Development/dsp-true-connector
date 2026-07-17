@@ -1,9 +1,5 @@
 package it.eng.tools.auth.jwt;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import java.util.List;
 import java.util.Map;
 
@@ -16,6 +12,8 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.SignatureVerificationException;
 import com.auth0.jwt.exceptions.TokenExpiredException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Unit tests for {@link JwtService}.
@@ -50,9 +48,9 @@ class JwtServiceTest {
         assertEquals(List.of("ROLE_ADMIN"), accessClaims.getClaim(JwtService.ROLES_CLAIM).asList(String.class));
         assertEquals("tenant-a", accessClaims.getClaim(JwtService.TENANT_ID_CLAIM).asString());
         assertTrue(accessClaims.getClaim(JwtService.TOKEN_TYPE_CLAIM).isMissing());
-        assertTrue(accessClaims.getIssuedAt() != null);
-        assertTrue(accessClaims.getExpiresAt() != null);
-        assertTrue(accessClaims.getId() != null && !accessClaims.getId().isEmpty());
+        assertNotNull(accessClaims.getIssuedAt());
+        assertNotNull(accessClaims.getExpiresAt());
+        assertNotNull(accessClaims.getId());
 
         DecodedJWT refreshClaims = jwtService.verifyAndDecode(tokenPair.refreshToken());
         assertEquals("user-1", refreshClaims.getSubject());
@@ -70,6 +68,17 @@ class JwtServiceTest {
         DecodedJWT decoded = jwtService.verifyAndDecode(tokenPair.accessToken());
         assertEquals("enabled", decoded.getClaim("newFeatureFlag").asString());
         assertEquals(3, decoded.getClaim("loginCount").asInt());
+    }
+
+    @Test
+    @DisplayName("Should fail on missing required fields")
+    void missingRequiredFields() {
+        assertThrows(NullPointerException.class, () -> jwtService.issueTokenPair(null, "user@example.com",
+                List.of("ROLE_ADMIN"), "tenant-a", Map.of()));
+        assertThrows(NullPointerException.class, () -> jwtService.issueTokenPair("user-1", null,
+                List.of("ROLE_ADMIN"), "tenant-a", Map.of()));
+        assertThrows(NullPointerException.class, () -> jwtService.issueTokenPair("user-1", "user@example.com",
+                null, "tenant-a", Map.of()));
     }
 
     @Test

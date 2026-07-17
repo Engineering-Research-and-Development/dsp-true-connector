@@ -2,11 +2,7 @@ package it.eng.tools.auth.jwt;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Component;
@@ -108,6 +104,7 @@ public class JwtService {
         }
         log.info("JwtService initialized with access TTL {}ms and refresh TTL {}ms",
                 jwtProperties.getAccessExpirationMs(), jwtProperties.getRefreshExpirationMs());
+    }
 
     /**
      * Issues a new access/refresh token pair for the given subject.
@@ -127,10 +124,9 @@ public class JwtService {
      */
     public TokenPair issueTokenPair(String subject, String email, List<String> roles, String tenantId,
             Map<String, Object> extraClaims) {
-        java.util.Objects.requireNonNull(subject, "subject must not be null");
-        java.util.Objects.requireNonNull(email, "email must not be null");
-        java.util.Objects.requireNonNull(roles, "roles must not be null");
-        java.util.Objects.requireNonNull(tenantId, "tenantId must not be null");
+        Objects.requireNonNull(subject, "subject must not be null");
+        Objects.requireNonNull(email, "email must not be null");
+        Objects.requireNonNull(roles, "roles must not be null");
         Algorithm algorithm = signingAlgorithm();
         Instant now = Instant.now();
         Instant accessExpiry = now.plusMillis(jwtProperties.getAccessExpirationMs());
