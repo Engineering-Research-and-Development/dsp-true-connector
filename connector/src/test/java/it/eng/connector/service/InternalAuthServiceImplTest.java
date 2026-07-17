@@ -13,7 +13,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -97,7 +99,7 @@ class InternalAuthServiceImplTest {
 		assertEquals("access-token", tokens.accessToken());
 		assertEquals("refresh-id-1", tokens.refreshToken());
 		assertEquals(900L, tokens.expiresInSeconds());
-		verify(jwtService).issueTokenPair(USER_ID, EMAIL, List.of(Role.ADMIN.authorityName()), TENANT_ID, java.util.Map.of());
+		verify(jwtService).issueTokenPair(USER_ID, EMAIL, List.of(Role.ADMIN.authorityName()), TENANT_ID, Map.of());
 	}
 
 	@Test
@@ -140,7 +142,7 @@ class InternalAuthServiceImplTest {
 	@Test
 	@DisplayName("refresh() with a valid refresh token id returns a new access token and rotates the refresh id")
 	void refreshWithValidTokenRotatesAndReturnsNewAccessToken() {
-		RefreshTokenRecord rotated = new RefreshTokenRecord("new-refresh-id", USER_ID, java.time.Instant.now());
+		RefreshTokenRecord rotated = new RefreshTokenRecord("new-refresh-id", USER_ID, Instant.now());
 		when(refreshTokenStore.rotate("old-refresh-id")).thenReturn(Optional.of(rotated));
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
 		TokenPair tokenPair = new TokenPair("new-access-token", "unused-refresh-jwt", 900L);
@@ -177,6 +179,10 @@ class InternalAuthServiceImplTest {
 	void logoutOnUnknownIdDoesNotThrow() {
 		authService.logout("unknown-id");
 
-		assertDoesNotThrow(() -> authService.logout("unknown-id"));
+		assertDoesNotThrow(() -> {
+			authService.logout("unknown-id");
+			authService.logout("unknown-id");
+		});
+		verify(refreshTokenStore, times(2)).revoke("unknown-id");
 	}
 }
