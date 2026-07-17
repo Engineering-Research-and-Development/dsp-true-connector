@@ -2,13 +2,10 @@ package it.eng.connector.exception;
 
 import it.eng.connector.rest.api.AuthController;
 import java.time.ZonedDateTime;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AccountStatusException;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -24,21 +21,34 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  * {@link org.springframework.core.Ordered#HIGHEST_PRECEDENCE} (the minimum possible order value), so
  * it is always evaluated first for controllers in its {@code basePackages}
  * ({@code it.eng.connector.rest.api} / {@code it.eng.tools.rest.api}), which includes
- * {@link AuthController}. This advice therefore only declares handlers for exception types
- * {@code ExceptionAPIAdvice} does not already declare a handler for (so those specific types are
- * not intercepted upstream), but it cannot out-rank {@code ExceptionAPIAdvice} for exception types
- * that class already handles (for example {@code HttpMessageNotReadableException} on malformed
- * request bodies), since no advice can be ordered ahead of
- * {@link org.springframework.core.Ordered#HIGHEST_PRECEDENCE}. That residual overlap is a known,
- * pre-existing limitation of the shared {@code ExceptionAPIAdvice} ordering and is out of scope for
- * this controller.
+ * {@link AuthController}, and no advice can be ordered ahead of it. This advice therefore only
+ * declares handlers for exception types {@code ExceptionAPIAdvice} does not already declare a
+ * handler for, so those types are never intercepted upstream:
+ *
+ * <ul>
+ *   <li>{@link BadCredentialsException} / {@link AccountStatusException} — {@code ExceptionAPIAdvice}
+ *       has no mapping for either, so this advice always wins for authentication failures.</li>
+ *   <li>{@link AuthValidationException} — {@link AuthController} validates its request DTOs
+ *       manually and raises this dedicated exception type instead of relying on {@code @Valid}
+ *       (which would raise {@code MethodArgumentNotValidException}, a type
+ *       {@code ExceptionAPIAdvice} inherits a handler for via {@code ResponseEntityExceptionHandler}
+ *       and would therefore always intercept first). Because {@code ExceptionAPIAdvice} has no
+ *       mapping for {@link AuthValidationException}, this advice always wins for validation
+ *       failures too.</li>
+ * </ul>
+ *
+ * <p>A residual, out-of-scope overlap remains for {@code HttpMessageNotReadableException} (malformed
+ * JSON request bodies): {@code ExceptionAPIAdvice} overrides {@code handleHttpMessageNotReadable}, so
+ * malformed bodies on {@code /api/v1/auth/**} are still handled by that shared advice rather than
+ * this one. Resolving that fully would require narrowing {@code ExceptionAPIAdvice}'s scope, which
+ * is shared across every connector API controller and out of scope for this controller.
  *
  * <p>Authentication failures ({@link BadCredentialsException} and any {@link AccountStatusException}
  * — covering {@code DisabledException}, {@code LockedException}, {@code AccountExpiredException},
  * and {@code CredentialsExpiredException}) all map to an identical, generic {@code 401} body so that
  * clients cannot distinguish a wrong password from a disabled, locked, or expired account.
- * Bean-validation failures map to {@code 400}. Any other unexpected exception maps to a masked
- * {@code 500} that never leaks internal exception detail.
+ * {@link AuthValidationException} maps to {@code 400}. Any other unexpected exception maps to a
+ * masked {@code 500} that never leaks internal exception detail.
  */
 @RestControllerAdvice(assignableTypes = AuthController.class)
 public class AuthExceptionAdvice extends ResponseEntityExceptionHandler {
@@ -61,6 +71,18 @@ public class AuthExceptionAdvice extends ResponseEntityExceptionHandler {
     }
 
     /**
+     * Maps manual bean-validation failures raised by {@link AuthController} to {@code 400}.
+     *
+     * @param ex      the validation exception, carrying the constraint violation message(s)
+     * @param request the web request
+     * @return {@code 400 Bad Request} with an error body describing the violation(s)
+     */
+    @ExceptionHandler(value = {AuthValidationException.class})
+    protected ResponseEntity<Object> handleAuthValidationFailure(AuthValidationException ex, WebRequest request) {
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /**
      * Maps any other unexpected exception raised from {@link AuthController} to a masked
      * {@code 500} response that does not leak internal exception detail such as stack trace text
      * or class names.
@@ -72,12 +94,6 @@ public class AuthExceptionAdvice extends ResponseEntityExceptionHandler {
     @ExceptionHandler(value = {Exception.class})
     protected ResponseEntity<Object> handleUnexpectedException(Exception ex, WebRequest request) {
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, GENERIC_SERVER_ERROR_MESSAGE);
-    }
-
-    @Override
-    protected ResponseEntity<Object> handleMethodArgumentNotValid(
-            MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Invalid request body");
     }
 
     private ResponseEntity<Object> buildErrorResponse(HttpStatus status, String message) {

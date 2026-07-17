@@ -16,6 +16,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.connector.exception.AuthExceptionAdvice;
 import it.eng.connector.service.AuthService;
 import it.eng.connector.service.AuthService.AuthTokens;
+import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.exception.ExceptionAPIAdvice;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
 import java.util.Map;
 import java.util.TreeMap;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,13 +40,18 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 /**
  * Unit tests for {@link AuthController} and {@link AuthExceptionAdvice}.
+ *
+ * <p>Registers both {@link AuthExceptionAdvice} and the shared {@link ExceptionAPIAdvice} in the
+ * standalone {@link MockMvc} setup (matching the real application context, where both advices are
+ * active for controllers under {@code it.eng.connector.rest.api}), so these tests exercise the real
+ * advice-resolution interaction rather than only the narrower advice in isolation.
  */
 @ExtendWith(MockitoExtension.class)
 class AuthControllerTest {
 
-    private static final String LOGIN_PATH = "/api/v1/auth/login";
-    private static final String REFRESH_PATH = "/api/v1/auth/refresh";
-    private static final String LOGOUT_PATH = "/api/v1/auth/logout";
+    private static final String LOGIN_PATH = ApiEndpoints.AUTH_V1 + "/login";
+    private static final String REFRESH_PATH = ApiEndpoints.AUTH_V1 + "/refresh";
+    private static final String LOGOUT_PATH = ApiEndpoints.AUTH_V1 + "/logout";
 
     @Mock
     private AuthService authService;
@@ -53,9 +62,10 @@ class AuthControllerTest {
 
     @BeforeEach
     void setUp() {
-        AuthController controller = new AuthController(authService);
+        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+        AuthController controller = new AuthController(authService, validator);
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
-                .setControllerAdvice(new AuthExceptionAdvice())
+                .setControllerAdvice(new ExceptionAPIAdvice(), new AuthExceptionAdvice())
                 .build();
     }
 
@@ -122,27 +132,35 @@ class AuthControllerTest {
     }
 
     @Test
-    @DisplayName("Login with blank email returns 400")
+    @DisplayName("Login with blank email returns 400 with the dedicated AuthErrorResponse shape")
     void loginBlankEmailReturns400() throws Exception {
         mockMvc.perform(post(LOGIN_PATH)
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "email", "",
                                 "password", "password"))))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.success").doesNotExist());
 
         verify(authService, never()).login(anyString(), anyString());
     }
 
     @Test
-    @DisplayName("Login with malformed email returns 400")
+    @DisplayName("Login with malformed email returns 400 with the dedicated AuthErrorResponse shape")
     void loginMalformedEmailReturns400() throws Exception {
         mockMvc.perform(post(LOGIN_PATH)
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "email", "not-an-email",
                                 "password", "password"))))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.success").doesNotExist());
 
         verify(authService, never()).login(anyString(), anyString());
     }

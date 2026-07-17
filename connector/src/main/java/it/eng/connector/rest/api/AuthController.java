@@ -1,5 +1,6 @@
 package it.eng.connector.rest.api;
 
+import it.eng.connector.exception.AuthValidationException;
 import it.eng.connector.model.LoginRequest;
 import it.eng.connector.model.LoginResponse;
 import it.eng.connector.model.LogoutRequest;
@@ -7,7 +8,10 @@ import it.eng.connector.model.RefreshRequest;
 import it.eng.connector.service.AuthService;
 import it.eng.tools.auth.condition.InternalAuthenticationModeCondition;
 import it.eng.tools.controller.ApiEndpoints;
-import jakarta.validation.Valid;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.http.MediaType;
@@ -29,6 +33,14 @@ import org.springframework.web.bind.annotation.RestController;
  * {@link AuthService} implementation ({@code InternalAuthServiceImpl}) currently registered under
  * that same condition; a future Keycloak-backed {@code AuthService} (AUTH3) is expected to widen
  * this condition when it is implemented.
+ *
+ * <p>Request DTOs are validated manually (via an injected {@link Validator}) rather than with
+ * {@code @Valid}, so that validation failures raise {@link AuthValidationException} instead of
+ * {@link org.springframework.web.bind.MethodArgumentNotValidException}. The shared
+ * {@code ExceptionAPIAdvice} (in {@code tools}) is ordered at
+ * {@link org.springframework.core.Ordered#HIGHEST_PRECEDENCE} and applies to this controller's
+ * package, so it would otherwise always intercept {@code MethodArgumentNotValidException} before
+ * the dedicated {@code AuthExceptionAdvice} is ever consulted.
  */
 @RestController
 @RequestMapping(
@@ -40,14 +52,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final Validator validator;
 
     /**
-     * Creates the controller with its required service dependency.
+     * Creates the controller with its required service dependencies.
      *
      * @param authService the unified login/refresh/logout service
+     * @param validator    the bean validator used to manually validate request DTOs
      */
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, Validator validator) {
         this.authService = authService;
+        this.validator = validator;
     }
 
     /**
@@ -57,7 +72,8 @@ public class AuthController {
      * @return 200 OK with the issued {@link LoginResponse}
      */
     @PostMapping(path = "/login")
-    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+        validate(request);
         log.debug("Login attempt for email {}", request.email());
         AuthService.AuthTokens tokens = authService.login(request.email(), request.password());
         return ResponseEntity.ok(
@@ -71,7 +87,8 @@ public class AuthController {
      * @return 200 OK with a newly issued {@link LoginResponse}
      */
     @PostMapping(path = "/refresh")
-    public ResponseEntity<LoginResponse> refresh(@Valid @RequestBody RefreshRequest request) {
+    public ResponseEntity<LoginResponse> refresh(@RequestBody RefreshRequest request) {
+        validate(request);
         AuthService.AuthTokens tokens = authService.refresh(request.refreshToken());
         return ResponseEntity.ok(
                 LoginResponse.bearer(tokens.accessToken(), tokens.refreshToken(), tokens.expiresInSeconds()));
@@ -85,8 +102,26 @@ public class AuthController {
      * @return 200 OK with an empty body
      */
     @PostMapping(path = "/logout")
-    public ResponseEntity<Void> logout(@Valid @RequestBody LogoutRequest request) {
+    public ResponseEntity<Void> logout(@RequestBody LogoutRequest request) {
+        validate(request);
         authService.logout(request.refreshToken());
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Validates the given request DTO, raising {@link AuthValidationException} on failure.
+     *
+     * @param request the request DTO to validate
+     * @param <T>     the request DTO type
+     * @throws AuthValidationException if bean validation reports one or more violations
+     */
+    private <T> void validate(T request) {
+        Set<ConstraintViolation<T>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            String message = violations.stream()
+                    .map(ConstraintViolation::getMessage)
+                    .collect(Collectors.joining(", "));
+            throw new AuthValidationException(message);
+        }
     }
 }
