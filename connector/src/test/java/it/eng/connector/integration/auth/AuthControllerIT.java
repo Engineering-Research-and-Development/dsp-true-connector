@@ -1,11 +1,13 @@
 package it.eng.connector.integration.auth;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.connector.integration.BaseIntegrationTest;
+import it.eng.connector.model.Role;
 import it.eng.tools.controller.ApiEndpoints;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
@@ -20,6 +22,11 @@ import org.junit.jupiter.api.Test;
  * {@code AuthExceptionAdvice}, crashing with
  * {@code IllegalStateException: getInputStream() has already been called for this request}
  * instead of returning a clean {@code 401}.
+ *
+ * <p>Requests are authenticated with {@code user(...).roles(ADMIN)} so the tests exercise
+ * {@code AuthController}'s own logic independently of whether {@code /api/v1/auth/**} is
+ * additionally configured as {@code permitAll()} in {@code ConnectorSecurityConfig} — that
+ * unauthenticated-reachability concern is tracked separately.
  */
 class AuthControllerIT extends BaseIntegrationTest {
 
@@ -33,6 +40,7 @@ class AuthControllerIT extends BaseIntegrationTest {
     @DisplayName("Login with valid credentials returns 200 with an access token")
     void loginWithValidCredentialsReturns200() throws Exception {
         mockMvc.perform(post(LOGIN_PATH)
+                        .with(user("probe").roles(Role.ADMIN.name()))
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "email", EXISTING_USER_EMAIL,
@@ -47,6 +55,7 @@ class AuthControllerIT extends BaseIntegrationTest {
     @DisplayName("Login for a non-existent email returns a clean 401 AuthErrorResponse, not a 500 crash")
     void loginWithNonExistentEmailReturns401() throws Exception {
         mockMvc.perform(post(LOGIN_PATH)
+                        .with(user("probe").roles(Role.ADMIN.name()))
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "email", "does-not-exist@mail.com",
@@ -62,6 +71,7 @@ class AuthControllerIT extends BaseIntegrationTest {
     @DisplayName("Login with a wrong password for an existing user returns a clean 401 AuthErrorResponse")
     void loginWithWrongPasswordReturns401() throws Exception {
         mockMvc.perform(post(LOGIN_PATH)
+                        .with(user("probe").roles(Role.ADMIN.name()))
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "email", EXISTING_USER_EMAIL,
