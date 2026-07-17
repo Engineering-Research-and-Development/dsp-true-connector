@@ -1,9 +1,6 @@
 package it.eng.tools.auth.jwt;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -101,7 +98,7 @@ class InMemoryRefreshTokenStoreTest {
                 return store.rotate(tokenId);
             };
 
-            List<Future<Optional<RefreshTokenRecord>>> futures = new java.util.ArrayList<>();
+            List<Future<Optional<RefreshTokenRecord>>> futures = new ArrayList<>();
             for (int i = 0; i < concurrentCallers; i++) {
                 futures.add(executor.submit(task));
             }
