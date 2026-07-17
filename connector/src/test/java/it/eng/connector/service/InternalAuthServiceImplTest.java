@@ -177,7 +177,6 @@ class InternalAuthServiceImplTest {
 	@Test
 	@DisplayName("logout() on an already-revoked/unknown id does not throw")
 	void logoutOnUnknownIdDoesNotThrow() {
-		authService.logout("unknown-id");
 
 		assertDoesNotThrow(() -> {
 			authService.logout("unknown-id");
