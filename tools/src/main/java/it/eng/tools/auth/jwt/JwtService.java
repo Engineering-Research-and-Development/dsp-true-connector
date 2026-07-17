@@ -94,9 +94,20 @@ public class JwtService {
                             + MIN_SECRET_BYTES + " bytes (256 bits) of raw UTF-8 data; found "
                             + secretBytes + " byte(s).");
         }
+        if (jwtProperties.getAccessExpirationMs() <= 0L) {
+            throw new IllegalStateException(
+                    "Property 'application.security.jwt.access-expiration-ms' must be > 0.");
+        }
+        if (jwtProperties.getRefreshExpirationMs() <= 0L) {
+            throw new IllegalStateException(
+                    "Property 'application.security.jwt.refresh-expiration-ms' must be > 0.");
+        }
+        if (jwtProperties.getRefreshExpirationMs() < jwtProperties.getAccessExpirationMs()) {
+            throw new IllegalStateException(
+                    "Property 'application.security.jwt.refresh-expiration-ms' must be >= 'application.security.jwt.access-expiration-ms'.");
+        }
         log.info("JwtService initialized with access TTL {}ms and refresh TTL {}ms",
                 jwtProperties.getAccessExpirationMs(), jwtProperties.getRefreshExpirationMs());
-    }
 
     /**
      * Issues a new access/refresh token pair for the given subject.
@@ -116,6 +127,10 @@ public class JwtService {
      */
     public TokenPair issueTokenPair(String subject, String email, List<String> roles, String tenantId,
             Map<String, Object> extraClaims) {
+        java.util.Objects.requireNonNull(subject, "subject must not be null");
+        java.util.Objects.requireNonNull(email, "email must not be null");
+        java.util.Objects.requireNonNull(roles, "roles must not be null");
+        java.util.Objects.requireNonNull(tenantId, "tenantId must not be null");
         Algorithm algorithm = signingAlgorithm();
         Instant now = Instant.now();
         Instant accessExpiry = now.plusMillis(jwtProperties.getAccessExpirationMs());
@@ -140,6 +155,9 @@ public class JwtService {
      *                                    signed with a different secret
      */
     public DecodedJWT verifyAndDecode(String token) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException("token must not be null or blank");
+        }
         return JWT.require(signingAlgorithm()).build().verify(token);
     }
 
