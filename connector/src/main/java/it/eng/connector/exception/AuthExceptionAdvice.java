@@ -1,7 +1,10 @@
 package it.eng.connector.exception;
 
+import it.eng.connector.configuration.DataspaceProtocolEndpointsExceptionHandler;
 import it.eng.connector.rest.api.AuthController;
 import java.time.ZonedDateTime;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AccountStatusException;
@@ -43,6 +46,29 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  * this one. Resolving that fully would require narrowing {@code ExceptionAPIAdvice}'s scope, which
  * is shared across every connector API controller and out of scope for this controller.
  *
+ * <p><b>Explicit {@code @Order}</b>: this advice also competes with
+ * {@link DataspaceProtocolEndpointsExceptionHandler}, a separate, deliberately <em>unscoped</em>
+ * {@code @ControllerAdvice} that maps {@code AuthenticationException} to DSP-protocol-shaped error
+ * bodies. It must stay unscoped because it is also invoked for filter-chain-level authentication
+ * rejections (missing/invalid bearer token or Basic auth header), where Spring Security's
+ * {@code ExceptionTranslationFilter} calls the resolver with a {@code null} handler — and a
+ * {@code basePackageClasses}/{@code assignableTypes}-scoped advice can never match a {@code null}
+ * handler (see {@code HandlerTypePredicate.test}), so scoping it would silently break authentication
+ * on every other protocol/admin endpoint. Since both advices default to
+ * {@link Ordered#LOWEST_PRECEDENCE} when {@code @Order} is unspecified, they previously tied, and the
+ * winner depended on non-deterministic controller-advice bean registration order — in practice,
+ * {@code DataspaceProtocolEndpointsExceptionHandler} sometimes won for {@link AuthController}'s
+ * in-controller authentication failures (e.g. login for a non-existent user), crashing with
+ * {@code IllegalStateException: getInputStream() has already been called for this request} because
+ * it unconditionally re-reads the request body via {@code HttpServletRequest.getReader()} — safe
+ * only when the body has not yet been consumed by {@code @RequestBody} argument resolution, which is
+ * never the case once a controller method has already run. Declaring {@code @Order(0)} here — lower
+ * than {@code LOWEST_PRECEDENCE} but higher (less precedent) than {@code HIGHEST_PRECEDENCE} — makes
+ * this advice deterministically win that tie for {@link AuthController}, while
+ * {@code DataspaceProtocolEndpointsExceptionHandler} remains the correct fallback for the
+ * {@code null}-handler, filter-chain-level case, which never reaches this advice at all
+ * ({@code assignableTypes} cannot match a {@code null} handler either).
+ *
  * <p>Authentication failures ({@link BadCredentialsException} and any {@link AccountStatusException}
  * — covering {@code DisabledException}, {@code LockedException}, {@code AccountExpiredException},
  * and {@code CredentialsExpiredException}) all map to an identical, generic {@code 401} body so that
@@ -51,6 +77,7 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  * masked {@code 500} that never leaks internal exception detail.
  */
 @RestControllerAdvice(assignableTypes = AuthController.class)
+@Order(0)
 public class AuthExceptionAdvice extends ResponseEntityExceptionHandler {
 
     private static final String GENERIC_AUTH_FAILURE_MESSAGE = "Invalid credentials";
