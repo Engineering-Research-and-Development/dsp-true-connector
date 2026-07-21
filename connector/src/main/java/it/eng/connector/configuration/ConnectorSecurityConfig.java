@@ -22,7 +22,6 @@ import org.springframework.core.env.Environment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
@@ -32,6 +31,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -312,6 +312,13 @@ public class ConnectorSecurityConfig {
     /**
      * Creates the {@link UserDetailsService} backed by MongoDB for Internal Auth mode.
      *
+     * <p>Throws {@link UsernameNotFoundException} on a missing user, per the
+     * {@code UserDetailsService.loadUserByUsername} contract. {@link DaoAuthenticationProvider}
+     * only recognizes this exception type in {@code retrieveUser()}; any other exception type is
+     * wrapped as an {@code InternalAuthenticationServiceException}, which would incorrectly surface
+     * a missing user as an internal server error to callers such as {@code AuthController} instead
+     * of a clean authentication failure.
+     *
      * @param userRepository the user repository
      * @return the user details service
      */
@@ -319,7 +326,7 @@ public class ConnectorSecurityConfig {
     @Conditional(InternalAuthenticationModeCondition.class)
     UserDetailsService userDetailsService(UserRepository userRepository) {
         return username -> userRepository.findByEmail(username)
-                .orElseThrow(() -> new BadCredentialsException("Bad credentials"));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 
     /**
