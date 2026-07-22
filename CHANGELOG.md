@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.13-SNAPSHOT] - 22.07.2026.
+
+### Added
+- Apache2 license file to root directory.
+
+## [0.6.12-SNAPSHOT] - 25.06.2026.
+
+### Added
+- Added files for agentic development approach
+
 ## [0.6.11-SNAPSHOT] - 16.04.2026.
 
 ### Added
