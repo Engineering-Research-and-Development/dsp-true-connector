@@ -133,6 +133,102 @@
 			"value": "{{PROVIDER}}/api/v1/artifacts",
 			"type": "default",
 			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_BASE_URL",
+			"value": "http://localhost:8180",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_REALM",
+			"value": "dsp-connector",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_TOKEN_URL",
+			"value": "{{KEYCLOAK_BASE_URL}}/realms/{{KEYCLOAK_REALM}}/protocol/openid-connect/token",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_CLIENT_ID_UI",
+			"value": "dsp-connector-ui",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_CLIENT_ID_PROVIDER_BACKEND",
+			"value": "dsp-connector-provider-backend",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_CLIENT_SECRET_PROVIDER",
+			"value": "dsp-connector-provider-secret",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_CLIENT_ID_CONSUMER_BACKEND",
+			"value": "dsp-connector-consumer-backend",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_CLIENT_SECRET_CONSUMER",
+			"value": "dsp-connector-consumer-secret",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_USERNAME_ADMIN",
+			"value": "admin@test.com",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_PASSWORD_ADMIN",
+			"value": "admin123",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_USERNAME_USER",
+			"value": "user@test.com",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_PASSWORD_USER",
+			"value": "user123",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_USERNAME_CONNECTOR",
+			"value": "connector@test.com",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_PASSWORD_CONNECTOR",
+			"value": "connector123",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_ACCESS_TOKEN",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_REFRESH_TOKEN",
+			"value": "",
+			"type": "default",
+			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",

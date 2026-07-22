@@ -9,6 +9,7 @@ import it.eng.tools.property.ApplicationPropertyKeys;
 import it.eng.tools.repository.ApplicationPropertiesRepository;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.serializer.ToolsSerializer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -34,6 +35,13 @@ public class ApplicationPropertyIT extends BaseIntegrationTest {
     @Autowired
     private ApplicationPropertiesRepository repository;
 
+    @AfterEach
+    public void cleanup() {
+        // Only delete the test-specific property; do not call deleteAll() as the system
+        // relies on pre-loaded application properties.
+        repository.deleteById(TEST_KEY);
+    }
+
     @Test
     @WithUserDetails(TestUtil.ADMIN_USER)
     public void getPropertiesSuccessfulTest() throws Exception {
@@ -56,7 +64,7 @@ public class ApplicationPropertyIT extends BaseIntegrationTest {
 
         result =
                 mockMvc.perform(
-                        get(ApiEndpoints.PROPERTIES_V1 + "/?key_prefix=" + ApplicationPropertyKeys.DAPS_PREFIX)
+                        get(ApiEndpoints.PROPERTIES_V1 + "/?key_prefix=" + ApplicationPropertyKeys.PROTOCOL_AUTHENTICATION)
                                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                                 .accept(MediaType.APPLICATION_JSON_VALUE));
         result.andExpect(status().isOk())
@@ -66,7 +74,7 @@ public class ApplicationPropertyIT extends BaseIntegrationTest {
         apiResp = ToolsSerializer.deserializePlain(json, typeRef);
 
         assertNotNull(apiResp.getData());
-        Optional<ApplicationProperty> shouldBeEmpty = apiResp.getData().stream().filter(prop -> !prop.getKey().contains(ApplicationPropertyKeys.DAPS_PREFIX)).findAny();
+        Optional<ApplicationProperty> shouldBeEmpty = apiResp.getData().stream().filter(prop -> !prop.getKey().contains(ApplicationPropertyKeys.PROTOCOL_AUTHENTICATION)).findAny();
         assertTrue(shouldBeEmpty.isEmpty());
     }
 
@@ -104,7 +112,6 @@ public class ApplicationPropertyIT extends BaseIntegrationTest {
         GenericApiResponse<List<ApplicationProperty>> apiResp = ToolsSerializer.deserializePlain(json, typeRef);
 
         assertNotNull(apiResp.getData());
-        repository.deleteById(changedProperty.getKey());
     }
 
 }

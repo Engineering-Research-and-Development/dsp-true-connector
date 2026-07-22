@@ -1,5 +1,7 @@
 package it.eng.negotiation.service;
 
+import it.eng.negotiation.event.AutoNegotiationAcceptedEvent;
+import it.eng.negotiation.event.AutoNegotiationVerifyEvent;
 import it.eng.negotiation.exception.*;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.policy.service.PolicyAdministrationPoint;
@@ -101,6 +103,10 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
                         DSpaceConstants.OFFER, contractNegotiation.getOffer(),
                         "role", IConstants.ROLE_CONSUMER))
                 .build());
+        if (properties.isAutomaticNegotiation()) {
+            log.debug("CONSUMER - Auto negotiation: firing AutoNegotiationAcceptedEvent for CN {}", contractNegotiation.getId());
+            publisher.publishEvent(new AutoNegotiationAcceptedEvent(contractNegotiation.getId()));
+        }
         return contractNegotiation;
     }
 
@@ -217,20 +223,11 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
                         "agreement", contractAgreementMessage.getAgreement(),
                         "role", IConstants.ROLE_CONSUMER))
                 .build());
-
+        if (properties.isAutomaticNegotiation()) {
+            log.debug("CONSUMER - Auto negotiation: firing AutoNegotiationVerifyEvent for CN {}", contractNegotiationAgreed.getId());
+            publisher.publishEvent(new AutoNegotiationVerifyEvent(contractNegotiationAgreed.getId()));
+        }
         return contractNegotiationAgreed;
-        // sends verification message to provider
-        // TODO add error handling in case not correct
-//        if (properties.isAutomaticNegotiation()) {
-//            log.debug("Automatic negotiation - processing sending ContractAgreementVerificationMessage");
-//            ContractAgreementVerificationMessage verificationMessage = ContractAgreementVerificationMessage.Builder.newInstance()
-//                    .consumerPid(contractAgreementMessage.getConsumerPid())
-//                    .providerPid(contractAgreementMessage.getProviderPid())
-//                    .build();
-//            publisher.publishEvent(verificationMessage);
-//        } else {
-//            log.debug("Sending only 200 if agreement is valid, ContractAgreementVerificationMessage must be manually sent");
-//        }
     }
 
     /**

@@ -3,10 +3,7 @@ package it.eng.catalog.service;
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.model.*;
 import it.eng.catalog.repository.CatalogRepository;
-import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
@@ -23,7 +20,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -48,8 +44,6 @@ public class CatalogServiceTest {
     @Mock
     private S3ClientService s3ClientService;
 
-    @Captor
-    private ArgumentCaptor<ContractNegotiationOfferResponseEvent> argCaptorContractNegotiationOfferResponse;
 
     @Captor
     private ArgumentCaptor<Catalog> argCaptorCatalog;
@@ -158,49 +152,6 @@ public class CatalogServiceTest {
         verify(repository).save(any(Catalog.class));
     }
 
-    @Test
-    public void providedOfferExists() {
-        Offer offer = Offer.Builder.newInstance()
-                .id(catalog.getDataset().stream().findFirst().get().getHasPolicy().stream().findFirst().get().getId())
-                .target(catalog.getDataset().stream().findFirst().get().getId())
-                .permission(catalog.getDataset().stream().findFirst().get().getHasPolicy().stream().findFirst().get().getPermission())
-                .build();
-
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
-        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
-        when(s3ClientService.listFiles(BUCKET_NAME))
-                .thenReturn(catalog.getDataset().stream()
-                        .map(Dataset::getId).collect(Collectors.toList()));
-        ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(CatalogMockObjectUtil.CONSUMER_PID,
-                CatalogMockObjectUtil.PROVIDER_PID,
-                CatalogSerializer.serializeProtocolJsonNode(offer));
-        service.validateOffer(offerRequest);
-
-        verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
-        assertTrue(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());
-    }
-
-    @Test
-    public void providedOfferNotFound() {
-        Offer differentOffer = Offer.Builder.newInstance()
-                .id("urn:offer_id")
-                .target(CatalogMockObjectUtil.TARGET)
-                .permission(Set.of(CatalogMockObjectUtil.PERMISSION_ANONYMIZE))
-                .build();
-
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
-        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
-        when(s3ClientService.listFiles(BUCKET_NAME))
-                .thenReturn(catalog.getDataset().stream()
-                        .map(Dataset::getId).collect(Collectors.toList()));
-
-        ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(CatalogMockObjectUtil.CONSUMER_PID,
-                CatalogMockObjectUtil.PROVIDER_PID, CatalogSerializer.serializeProtocolJsonNode(differentOffer));
-        service.validateOffer(offerRequest);
-
-        verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
-        assertFalse(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());
-    }
 
     @Test
     @DisplayName("Offer valid")

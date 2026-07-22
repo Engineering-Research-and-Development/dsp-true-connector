@@ -72,4 +72,12 @@ public interface TransferProcessRepository extends MongoRepository<TransferProce
      */
     List<TransferProcess> findByIsDownloaded(boolean isDownloaded);
 
+    /**
+     * Finds all transfer processes where a download is currently flagged as in progress.
+     * Used at startup to reset stale {@code isDownloadInProgress=true} records left by a previous crash.
+     *
+     * @return a list of transfer processes with {@code isDownloadInProgress} set to {@code true}
+     */
+    List<TransferProcess> findAllByIsDownloadInProgressTrue();
+
 }

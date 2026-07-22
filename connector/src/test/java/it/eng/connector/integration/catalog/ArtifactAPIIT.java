@@ -12,6 +12,7 @@ import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.serializer.ToolsSerializer;
 import org.bson.types.ObjectId;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +35,11 @@ public class ArtifactAPIIT extends BaseIntegrationTest {
 
     @InjectWireMock
     private WireMockServer wiremock;
+
+    @AfterEach
+    public void cleanup() {
+        artifactRepository.deleteAll();
+    }
 
     @Test
     @DisplayName("Artifact API - get")
@@ -108,8 +114,5 @@ public class ArtifactAPIIT extends BaseIntegrationTest {
         assertNull(apiRespFail.getData());
         assertFalse(apiRespFail.isSuccess());
         assertNotNull(apiRespFail.getMessage());
-
-        // cleanup
-        artifactRepository.deleteAll();
     }
 }

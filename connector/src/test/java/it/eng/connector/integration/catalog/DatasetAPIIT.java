@@ -20,7 +20,7 @@ import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,7 +71,7 @@ public class DatasetAPIIT extends BaseIntegrationTest {
     @InjectWireMock
     private WireMockServer wiremock;
 
-    @BeforeEach
+    @AfterEach
     public void cleanup() {
         catalogRepository.deleteAll();
         artifactRepository.deleteAll();

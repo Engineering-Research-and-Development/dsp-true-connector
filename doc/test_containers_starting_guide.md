@@ -6,7 +6,7 @@ We need Docker installed on our machine to run the MongoDB container.
 
 ## Usage - MongoDB container
 
-This is a starting reference for adding test containers to the project (probably needed when we add DAPS to integration tests).
+This is a starting reference for adding test containers to the project.
 
 First add these dependencies to the connector module, since the integration tests are there:
 
@@ -93,7 +93,7 @@ public class AppTestContainerTest extends TestContainersBase {
 }
 ```
 
-For a generic container(DAPS) you should use:
+For a generic container you should use:
 
 ```
 static GenericContainer<?> container = new GenericContainer(DockerImageName.parse("jboss/wildfly:9.0.1.Final"))
