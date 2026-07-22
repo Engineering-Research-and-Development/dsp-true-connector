@@ -8,6 +8,8 @@
   <a href="https://eclipse-dataspace-protocol-base.github.io/DataspaceProtocol/2025-1/"><img alt="Dataspace protocol" src="https://img.shields.io/badge/Dataspace%20protocol-2025--1-blue" /></a>
 </p>
 
+"DSP TRUE Connector is licensed under the Apache 2.0 License - see the [LICENSE file](LICENSE) for details."
+
 ## Development requirements
 
  - IDE : Eclipse STS, IntelliJ, VS Code etc.
