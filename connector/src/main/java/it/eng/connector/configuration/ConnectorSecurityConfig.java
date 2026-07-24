@@ -207,8 +207,7 @@ SecurityFilterChain adminFilterChain(HttpSecurity http,
     @Order(2)
     SecurityFilterChain protocolFilterChain(HttpSecurity http,
             ObjectProvider<KeycloakAuthenticationFilter> keycloakFilter,
-            ObjectProvider<DcpAuthenticationFilter> dcpFilter,
-                                            ObjectProvider<InternalJwtAuthenticationFilter> jwtAuthFilter) throws Exception {
+            ObjectProvider<DcpAuthenticationFilter> dcpFilter) throws Exception {
         applyCommonConfiguration(http);
         // Tenant-prefixed paths (/{tenantId}/catalog/request etc.) — added in Phase 1.
         // Legacy non-prefixed catalog paths have been removed; the catalog controller
@@ -240,7 +239,6 @@ SecurityFilterChain adminFilterChain(HttpSecurity http,
         } else {
             // INTERNAL
             http.anonymous(AbstractHttpConfigurer::disable)
-                    .addFilterBefore(jwtAuthFilter.getObject(), BasicAuthenticationFilter.class)
                     .httpBasic(basic -> basic.authenticationEntryPoint(authEntryPoint))
                     .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(Role.CONNECTOR.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));

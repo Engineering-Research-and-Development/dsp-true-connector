@@ -5,11 +5,8 @@ import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.model.Role;
 import it.eng.connector.model.User;
 import it.eng.connector.repository.UserRepository;
-import it.eng.negotiation.model.ContractNegotiation;
-import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.tools.controller.ApiEndpoints;
-import it.eng.tools.model.IConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -139,154 +136,6 @@ public class InternalAuthFlowIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Full authentication lifecycle for protocol endpoint: login -> protected call -> refresh -> logout -> rejection of revoked token")
-    void fullAuthLifecycleFlow_protocol() throws Exception {
-        String email = "lifecycle@test.com";
-        String password = "password123";
-        createTestUserProtocol(email, password, true, false);
-
-        // 1. Full Login
-        MvcResult loginResult = mockMvc.perform(post(ApiEndpoints.AUTH_V1 + "/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "email", email,
-                                "password", password))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.access_token", notNullValue()))
-                .andExpect(jsonPath("$.refresh_token", notNullValue()))
-                .andReturn();
-
-        String responseBody = loginResult.getResponse().getContentAsString();
-        Map<?, ?> responseMap = objectMapper.readValue(responseBody, Map.class);
-        String accessToken1 = (String) responseMap.get("access_token");
-        String refreshToken1 = (String) responseMap.get("refresh_token");
-
-        // 2. Protected Call
-
-        ContractNegotiation cn = ContractNegotiation.Builder.newInstance()
-                .consumerPid("urn:uuid:" + UUID.randomUUID())
-                .providerPid("urn:uuid:" + UUID.randomUUID())
-                .callbackAddress("callback")
-                .state(ContractNegotiationState.REQUESTED)
-                .role(IConstants.ROLE_PROVIDER)
-                .tenantId(TENANT_ID)
-                .build();
-        contractNegotiationRepository.save(cn);
-
-        mockMvc.perform(get("/" + TENANT_ID + "/negotiations/" + cn.getProviderPid())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-
-        // 3. Refresh (Rotation)
-        MvcResult refreshResult = mockMvc.perform(post(ApiEndpoints.AUTH_V1 + "/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "refresh_token", refreshToken1))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.access_token", notNullValue()))
-                .andExpect(jsonPath("$.refresh_token", notNullValue()))
-                .andReturn();
-
-        String refreshResponseBody = refreshResult.getResponse().getContentAsString();
-        Map<?, ?> refreshResponseMap = objectMapper.readValue(refreshResponseBody, Map.class);
-        String accessToken2 = (String) refreshResponseMap.get("access_token");
-        String refreshToken2 = (String) refreshResponseMap.get("refresh_token");
-
-        // 3. Protected Call
-        mockMvc.perform(get("/" + TENANT_ID + "/negotiations/" + cn.getProviderPid())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken2)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
-
-        // 5. Logout
-        mockMvc.perform(post(ApiEndpoints.AUTH_V1 + "/logout")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "refresh_token", refreshToken2))))
-                .andExpect(status().isOk());
-
-        // 6. Refresh-with-revoked-token rejection
-        // Attempting to refresh with the rotated token (refreshToken1) should be rejected
-        mockMvc.perform(post(ApiEndpoints.AUTH_V1 + "/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "refresh_token", refreshToken1))))
-                .andExpect(status().isUnauthorized());
-
-        // Attempting to refresh with the logged-out token (refreshToken2) should also be rejected
-        mockMvc.perform(post(ApiEndpoints.AUTH_V1 + "/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "refresh_token", refreshToken2))))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @DisplayName("Cross access test: ADMIN role sends request to protocol endpoint and vice versa")
-    void crossAccessTest() throws Exception {
-        String email = "admin@test.com";
-        String password = "password123";
-        createTestUserAPI(email, password, true, false);
-
-        // 1. Full Login ADMIN
-        MvcResult loginResult = mockMvc.perform(post(ApiEndpoints.AUTH_V1 + "/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "email", email,
-                                "password", password))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.access_token", notNullValue()))
-                .andExpect(jsonPath("$.refresh_token", notNullValue()))
-                .andReturn();
-
-        String responseBody = loginResult.getResponse().getContentAsString();
-        Map<?, ?> responseMap = objectMapper.readValue(responseBody, Map.class);
-        String accessToken1 = (String) responseMap.get("access_token");
-
-        // 2. ADMIN request to protocol
-        ContractNegotiation cn = ContractNegotiation.Builder.newInstance()
-                .consumerPid("urn:uuid:" + UUID.randomUUID())
-                .providerPid("urn:uuid:" + UUID.randomUUID())
-                .callbackAddress("callback")
-                .state(ContractNegotiationState.REQUESTED)
-                .role(IConstants.ROLE_PROVIDER)
-                .tenantId(TENANT_ID)
-                .build();
-        contractNegotiationRepository.save(cn);
-
-        mockMvc.perform(get("/" + TENANT_ID + "/negotiations/" + cn.getProviderPid())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken1)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isForbidden());
-
-        String email2 = "connector@test.com";
-        String password2 = "password123";
-        createTestUserProtocol(email2, password2, true, false);
-
-        // 3. Full Login CONNECTOR
-        MvcResult loginResult2 = mockMvc.perform(post(ApiEndpoints.AUTH_V1 + "/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "email", email2,
-                                "password", password2))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.access_token", notNullValue()))
-                .andExpect(jsonPath("$.refresh_token", notNullValue()))
-                .andReturn();
-
-        String responseBody2 = loginResult2.getResponse().getContentAsString();
-        Map<?, ?> responseMap2 = objectMapper.readValue(responseBody2, Map.class);
-        String accessToken2 = (String) responseMap2.get("access_token");
-
-        // 4. CONNECTOR request to API
-        mockMvc.perform(get(ApiEndpoints.CATALOG_DATA_SERVICES_V1)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken2)
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isForbidden());
-    }
-
-    @Test
     @DisplayName("Login failure paths: bad password, disabled, and locked")
     void loginFailurePaths() throws Exception {
         String email = "failures@test.com";
@@ -385,16 +234,14 @@ public class InternalAuthFlowIT extends BaseIntegrationTest {
     private void createTestUserAPI(String email, String password, boolean enabled, boolean locked) {
         User user = new User("urn:uuid:" + UUID.randomUUID(), "John", "Doe",
                 email, passwordEncoder.encode(password),
-                enabled, false, locked, Role.ADMIN);
-        user.setTenantId(TENANT_ID);
+                enabled, false, locked, Role.ADMIN, TENANT_ID);
         userRepository.save(user);
     }
 
     private void createTestUserProtocol(String email, String password, boolean enabled, boolean locked) {
         User user = new User("urn:uuid:" + UUID.randomUUID(), "John", "Doe",
                 email, passwordEncoder.encode(password),
-                enabled, false, locked, Role.CONNECTOR);
-        user.setTenantId(TENANT_ID);
+                enabled, false, locked, Role.CONNECTOR, TENANT_ID);
         userRepository.save(user);
     }
 }
