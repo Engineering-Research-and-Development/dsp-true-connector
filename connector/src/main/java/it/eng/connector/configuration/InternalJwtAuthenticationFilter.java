@@ -69,6 +69,9 @@ public class InternalJwtAuthenticationFilter extends OncePerRequestFilter {
         log.debug("Found Bearer token, attempting to decode...");
 
         try {
+            //TODO find a way to simplify this JWT handling. Either return org.springframework.security.oauth2.jwt.Jwt from JwtService
+            // or use a common library to decode and validate the token. Currently, we are using Auth0's JWT library for decoding and validation,
+            // but Spring Security has its own JWT handling that could be leveraged to avoid this duplication.
             DecodedJWT decodedJWT = jwtService.verifyAndDecode(tokenValue);
 
             // Access token validation: reject if it contains token_type = refresh
