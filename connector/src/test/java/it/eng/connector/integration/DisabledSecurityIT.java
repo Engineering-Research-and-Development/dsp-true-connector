@@ -139,6 +139,19 @@ class DisabledSecurityIT extends BaseIntegrationTest {
         assertFalse(catalogResponse.getDataset().isEmpty());
     }
 
+    @Test
+    @DisplayName("Should not expose /auth controller")
+    void authControllerShouldNotBeExposed() throws Exception {
+        mockMvc.perform(get(ApiEndpoints.AUTH_V1 + "/login"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get(ApiEndpoints.AUTH_V1 + "/refresh"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get(ApiEndpoints.AUTH_V1 + "/logout"))
+                .andExpect(status().isNotFound());
+    }
+
     private void populateCatalog() {
         Catalog catalog = CatalogMockObjectUtil.createNewCatalog();
         catalog.injectTenantId(TENANT_ID);

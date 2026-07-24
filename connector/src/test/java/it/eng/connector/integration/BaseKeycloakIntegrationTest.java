@@ -58,6 +58,11 @@ public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
         registry.add("application.keycloak.backend.client-secret", () -> KEYCLOAK_BACKEND_CLIENT_SECRET);
         registry.add("application.keycloak.backend.token-url",
                 () -> realmUrl() + "/protocol/openid-connect/token");
+        registry.add("application.keycloak.login.client-id", () -> KEYCLOAK_UI_CLIENT_ID);
+        registry.add("application.keycloak.login.token-url",
+                () -> realmUrl() + "/protocol/openid-connect/token");
+        registry.add("application.keycloak.login.logout-url",
+                () -> realmUrl() + "/protocol/openid-connect/logout");
         registry.add("application.callback.address", () -> "http://localhost:8080/");
         registry.add("application.automatic.negotiation", () -> "false");
         registry.add("application.encryption.key", () -> "5xplehys9mtcatb");

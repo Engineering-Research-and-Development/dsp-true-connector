@@ -61,7 +61,7 @@ public class KeycloakAuthServiceImpl implements AuthService {
 
             // Return the JSON payload containing access_token, refresh_token, etc.
             Map<String, Object> tokenResponse = new ObjectMapper().readValue(response.body().string(), Map.class);
-
+            log.info("Token response from Keycloak received");
             return tokenResponse != null ? new AuthTokens(
                     tokenResponse.get("access_token").toString(),
                     tokenResponse.get("refresh_token").toString(),
@@ -101,7 +101,7 @@ public class KeycloakAuthServiceImpl implements AuthService {
 
             // Return the JSON payload containing access_token, refresh_token, etc.
             Map<String, Object> tokenResponse = new ObjectMapper().readValue(response.body().string(), Map.class);
-
+            log.info("Token response from Keycloak received - refreshToken flow");
             return tokenResponse != null ? new AuthTokens(
                     tokenResponse.get("access_token").toString(),
                     tokenResponse.get("refresh_token").toString(),
@@ -139,7 +139,6 @@ public class KeycloakAuthServiceImpl implements AuthService {
                 log.error("Logout failed. Server response: {} | Body: {}", response, response.body());
                 throw new BadCredentialsException("Unable to logout from Keycloak using refresh token");
             }
-
             log.info("Logout successful! Status code: {}", response.code());
         }
     }

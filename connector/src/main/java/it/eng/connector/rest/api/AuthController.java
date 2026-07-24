@@ -6,7 +6,7 @@ import it.eng.connector.model.LoginResponse;
 import it.eng.connector.model.LogoutRequest;
 import it.eng.connector.model.RefreshRequest;
 import it.eng.connector.service.AuthService;
-import it.eng.tools.auth.condition.InternalAuthenticationModeCondition;
+import it.eng.tools.auth.condition.InternalOrKeycloakAuthenticationModeCondition;
 import it.eng.tools.controller.ApiEndpoints;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -48,7 +48,7 @@ import org.springframework.web.bind.annotation.RestController;
         produces = MediaType.APPLICATION_JSON_VALUE,
         path = ApiEndpoints.AUTH_V1)
 @Slf4j
-@Conditional(InternalAuthenticationModeCondition.class)
+@Conditional(InternalOrKeycloakAuthenticationModeCondition.class)
 public class AuthController {
 
     private final AuthService authService;
