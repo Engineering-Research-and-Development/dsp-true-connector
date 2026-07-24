@@ -7,6 +7,7 @@ import it.eng.tools.auth.AuthenticationMode;
 import it.eng.tools.auth.AuthenticationModeResolver;
 import it.eng.tools.auth.condition.InternalAuthenticationModeCondition;
 import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
+import it.eng.tools.auth.jwt.JwtService;
 import it.eng.tools.controller.ApiEndpoints;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
@@ -62,11 +63,11 @@ import java.util.Arrays;
  *
  * <p>Supported authentication matrix:
  * <pre>
- * provider=KEYCLOAK + dcp.enabled=false  → admin: Keycloak,  protocol: Keycloak
- * provider=KEYCLOAK + dcp.enabled=true   → admin: Keycloak,  protocol: DCP
- * provider=INTERNAL + dcp.enabled=false  → admin: Basic Auth, protocol: Basic Auth
- * provider=INTERNAL + dcp.enabled=true   → admin: Basic Auth, protocol: DCP
- * provider=DISABLED                      → all endpoints: permitAll
+ * provider=KEYCLOAK + dcp.enabled=false → admin: Keycloak, protocol: Keycloak
+ * provider=KEYCLOAK + dcp.enabled=true → admin: Keycloak, protocol: DCP
+ * provider=INTERNAL + dcp.enabled=false → admin: Basic Auth/JWT, protocol: Basic Auth
+ * provider=INTERNAL + dcp.enabled=true → admin: Basic Auth/JWT, protocol: DCP
+ * provider=DISABLED → all endpoints: permitAll
  * </pre>
  */
 @Configuration
@@ -128,63 +129,68 @@ public class ConnectorSecurityConfig {
      * @param apiTenantContextFilter the tenant context filter for API requests
      * @param daoAuthenticationProvider the DAO provider for normal user authentication (INTERNAL mode)
      * @param internalServiceAuthProvider the internal-service provider (INTERNAL mode)
+     * @param jwtAuthFilter the JWT authentication filter for human logins (INTERNAL mode)
      * @return the configured filter chain
      * @throws Exception if the chain cannot be built
      */
-    @Bean
-    @Order(1)
-    SecurityFilterChain adminFilterChain(HttpSecurity http,
-            ObjectProvider<KeycloakAuthenticationFilter> keycloakFilter,
-            ObjectProvider<ApiTenantContextFilter> apiTenantContextFilter,
-            ObjectProvider<DaoAuthenticationProvider> daoAuthenticationProvider,
-            ObjectProvider<InternalServiceAuthenticationProvider> internalServiceAuthProvider) throws Exception {
-        applyCommonConfiguration(http);
-        http.securityMatcher("/api/**", "/actuator/**", "/env");
+@Bean
+@Order(1)
+SecurityFilterChain adminFilterChain(HttpSecurity http,
+                                     ObjectProvider<KeycloakAuthenticationFilter> keycloakFilter,
+                                     ObjectProvider<ApiTenantContextFilter> apiTenantContextFilter,
+                                     ObjectProvider<DaoAuthenticationProvider> daoAuthenticationProvider,
+                                     ObjectProvider<InternalServiceAuthenticationProvider> internalServiceAuthProvider,
+                                     ObjectProvider<InternalJwtAuthenticationFilter> jwtAuthFilter) throws Exception {
+    applyCommonConfiguration(http);
+    http.securityMatcher("/api/**", "/actuator/**", "/env");
 
-        if (authMode == AuthenticationMode.DISABLED) {
-            http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
-        } else if (authMode == AuthenticationMode.KEYCLOAK) {
-            http.anonymous(AbstractHttpConfigurer::disable)
-                    .addFilterBefore(keycloakFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
-                    .addFilterAfter(apiTenantContextFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
-                    .authorizeHttpRequests(auth -> auth
-                            .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
-                            .requestMatchers(HttpMethod.GET,  ApiEndpoints.USERS_V1 + "/me")
-                                .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
-                            .requestMatchers(HttpMethod.PUT,  ApiEndpoints.USERS_V1 + "/*/update")
-                                .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
-                            .requestMatchers(HttpMethod.PUT,  ApiEndpoints.USERS_V1 + "/*/password")
-                                .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
-                            .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
-                            .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
-                            .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
-                    .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
-        } else {
-            // INTERNAL: ApiTenantContextFilter must run AFTER BasicAuthenticationFilter so that
-            // the Authentication is already populated in SecurityContextHolder when we read it.
-            // InternalServiceAuthenticationProvider is checked first; unmatched usernames fall
-            // through to DaoAuthenticationProvider for normal user login.
-            http.anonymous(AbstractHttpConfigurer::disable)
-                    .httpBasic(basic -> basic.authenticationEntryPoint(authEntryPoint))
-                    .authenticationManager(new ProviderManager(
-                            internalServiceAuthProvider.getObject(),
-                            daoAuthenticationProvider.getObject()))
-                    .addFilterAfter(apiTenantContextFilter.getObject(), BasicAuthenticationFilter.class)
-                    .authorizeHttpRequests(auth -> auth
-                            .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
-                            .requestMatchers(HttpMethod.GET,  ApiEndpoints.USERS_V1 + "/me")
-                                .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
-                            .requestMatchers(HttpMethod.PUT,  ApiEndpoints.USERS_V1 + "/*/update")
-                                .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
-                            .requestMatchers(HttpMethod.PUT,  ApiEndpoints.USERS_V1 + "/*/password")
-                                .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
-                            .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
-                            .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
-                            .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
-                    .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
-        }
-        return http.build();
+    if (authMode == AuthenticationMode.DISABLED) {
+        http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+    } else if (authMode == AuthenticationMode.KEYCLOAK) {
+        http.anonymous(AbstractHttpConfigurer::disable)
+                .addFilterBefore(keycloakFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(apiTenantContextFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                        .requestMatchers(HttpMethod.GET, ApiEndpoints.USERS_V1 + "/me")
+                        .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                        .requestMatchers(HttpMethod.PUT, ApiEndpoints.USERS_V1 + "/*/update")
+                        .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                        .requestMatchers(HttpMethod.PUT, ApiEndpoints.USERS_V1 + "/*/password")
+                        .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                        .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                        .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                        .requestMatchers(ApiEndpoints.AUTH_V1 + "/**").permitAll()
+                        .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
+    } else {
+        // INTERNAL: ApiTenantContextFilter must run AFTER BasicAuthenticationFilter so that
+        // the Authentication is already populated in SecurityContextHolder when we read it.
+        // InternalServiceAuthenticationProvider is checked first; unmatched usernames fall
+        // through to DaoAuthenticationProvider for normal user login.
+        http.anonymous(AbstractHttpConfigurer::disable)
+                .httpBasic(basic -> basic.authenticationEntryPoint(authEntryPoint))
+                .authenticationManager(new ProviderManager(
+                        internalServiceAuthProvider.getObject(),
+                        daoAuthenticationProvider.getObject()))
+                .addFilterBefore(jwtAuthFilter.getObject(), BasicAuthenticationFilter.class)
+                .addFilterAfter(apiTenantContextFilter.getObject(), BasicAuthenticationFilter.class)
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                        .requestMatchers(HttpMethod.GET, ApiEndpoints.USERS_V1 + "/me")
+                        .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                        .requestMatchers(HttpMethod.PUT, ApiEndpoints.USERS_V1 + "/*/update")
+                        .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                        .requestMatchers(HttpMethod.PUT, ApiEndpoints.USERS_V1 + "/*/password")
+                        .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                        .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                        .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                        .requestMatchers(ApiEndpoints.AUTH_V1 + "/**").permitAll()
+                        .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
     }
+    return http.build();
+}
 
     /**
      * Protocol security filter chain covering DSP endpoints.
@@ -309,25 +315,38 @@ public class ConnectorSecurityConfig {
     // Conditional Internal Auth beans
     // =========================================================================
 
-    /**
-     * Creates the {@link UserDetailsService} backed by MongoDB for Internal Auth mode.
-     *
-     * <p>Throws {@link UsernameNotFoundException} on a missing user, per the
-     * {@code UserDetailsService.loadUserByUsername} contract. {@link DaoAuthenticationProvider}
-     * only recognizes this exception type in {@code retrieveUser()}; any other exception type is
-     * wrapped as an {@code InternalAuthenticationServiceException}, which would incorrectly surface
-     * a missing user as an internal server error to callers such as {@code AuthController} instead
-     * of a clean authentication failure.
-     *
-     * @param userRepository the user repository
-     * @return the user details service
-     */
-    @Bean
-    @Conditional(InternalAuthenticationModeCondition.class)
-    UserDetailsService userDetailsService(UserRepository userRepository) {
-        return username -> userRepository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
-    }
+/**
+ * Creates the JWT authentication filter for INTERNAL mode.
+ * Active only in INTERNAL mode.
+ *
+ * @param jwtService the JwtService for validating and decoding tokens
+ * @return a new {@link InternalJwtAuthenticationFilter}
+ */
+@Bean
+@Conditional(InternalAuthenticationModeCondition.class)
+public InternalJwtAuthenticationFilter jwtAuthenticationFilter(JwtService jwtService) {
+    return new InternalJwtAuthenticationFilter(jwtService);
+}
+
+/**
+ * Creates the {@link UserDetailsService} backed by MongoDB for Internal Auth mode.
+ *
+ * <p>Throws {@link UsernameNotFoundException} on a missing user, per the
+ * {@code UserDetailsService.loadUserByUsername} contract. {@link DaoAuthenticationProvider}
+ * only recognizes this exception type in {@code retrieveUser()}; any other exception type is
+ * wrapped as an {@code InternalAuthenticationServiceException}, which would incorrectly surface
+ * a missing user as an internal server error to callers such as {@code AuthController} instead
+ * of a clean authentication failure.
+ *
+ * @param userRepository the user repository
+ * @return the user details service
+ */
+@Bean
+@Conditional(InternalAuthenticationModeCondition.class)
+UserDetailsService userDetailsService(UserRepository userRepository) {
+    return username -> userRepository.findByEmail(username)
+            .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+}
 
     /**
      * Creates the {@link DaoAuthenticationProvider} for Internal Auth mode.
@@ -340,7 +359,8 @@ public class ConnectorSecurityConfig {
     @Conditional(InternalAuthenticationModeCondition.class)
     DaoAuthenticationProvider daoAuthenticationProvider(UserDetailsService userDetailsService,
             PasswordEncoder passwordEncoder) {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
         return provider;
     }
