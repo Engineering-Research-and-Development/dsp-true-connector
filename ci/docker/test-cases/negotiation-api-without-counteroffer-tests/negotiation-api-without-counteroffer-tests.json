@@ -1174,11 +1174,11 @@
     },
     {
       "key": "CONSUMER_SERVER_API_TRANSFERS",
-      "value": "http://localhost:8080/api/v1/transfers"
+      "value": "http://172.17.0.1:8080/api/v1/transfers"
     },
     {
       "key": "PROVIDER_SERVER_API_TRANSFERS",
-      "value": "http://localhost:8090/api/v1/transfers"
+      "value": "http://172.17.0.1:8090/api/v1/transfers"
     },
     {
       "key": "consumer_contractNegotiationId",
@@ -1206,11 +1206,7 @@
     },
     {
       "key": "CONSUMER_AUTH_LOGIN",
-      "value": ""
-    },
-    {
-      "key": "access_token",
-      "value": ""
+      "value": "http://172.17.0.1:8080/api/v1/auth/login"
     },
     {
       "key": "access_token_provider",
@@ -1234,7 +1230,7 @@
     },
     {
       "key": "PROVIDER_AUTH_LOGIN",
-      "value": ""
+      "value": "http://172.17.0.1:8090/api/v1/auth/login"
     }
   ]
 }
