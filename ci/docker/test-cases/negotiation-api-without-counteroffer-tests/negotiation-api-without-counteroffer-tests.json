@@ -1,6 +1,6 @@
 {
   "info": {
-    "_postman_id": "02201eca-1063-49e2-b860-09cfd99e1f29",
+    "_postman_id": "bf246679-45a8-4aa5-821b-ec3722092d55",
     "name": "Negotiation tests without counteroffer",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "36278855"
@@ -9,6 +9,166 @@
     {
       "name": "Negotiation",
       "item": [
+        {
+          "name": "[C] Login - API",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "//extract the access_token and refresh_token from the response body and store them in environment variables.\r",
+                  "pm.test(\"Retrieve access_token\", function () {\r",
+                  "    var jsonData = pm.response.json();\r",
+                  "    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{CONSUMER_AUTH_LOGIN}}",
+              "host": [
+                "{{CONSUMER_AUTH_LOGIN}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[C] Login - CONNECTOR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "//extract the access_token and refresh_token from the response body and store them in environment variables.\r",
+                  "pm.test(\"Retrieve access_token\", function () {\r",
+                  "    var jsonData = pm.response.json();\r",
+                  "    pm.collectionVariables.set(\"access_token_consumer_connector\", jsonData[\"access_token\"])\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\": \"connector@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{CONSUMER_AUTH_LOGIN}}",
+              "host": [
+                "{{CONSUMER_AUTH_LOGIN}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[P] Login  - API",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "//extract the access_token and refresh_token from the response body and store them in environment variables.\r",
+                  "pm.test(\"Retrieve access_token\", function () {\r",
+                  "    var jsonData = pm.response.json();\r",
+                  "    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{PROVIDER_AUTH_LOGIN}}",
+              "host": [
+                "{{PROVIDER_AUTH_LOGIN}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "[P] Login  - CONNECTOR",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "//extract the access_token and refresh_token from the response body and store them in environment variables.\r",
+                  "pm.test(\"Retrieve access_token\", function () {\r",
+                  "    var jsonData = pm.response.json();\r",
+                  "    pm.collectionVariables.set(\"access_token_provider_connector\", jsonData[\"access_token_provider\"])\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\": \"connector@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{PROVIDER_AUTH_LOGIN}}",
+              "host": [
+                "{{PROVIDER_AUTH_LOGIN}}"
+              ]
+            }
+          },
+          "response": []
+        },
         {
           "name": "[C] Send Contract Request Message",
           "event": [
@@ -42,6 +202,16 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token_consumer_api}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
             "header": [],
             "body": {
@@ -83,11 +253,22 @@
                   ""
                 ],
                 "type": "text/javascript",
-                "packages": {}
+                "packages": {},
+                "requests": {}
               }
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token_provider_api}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [
               {
@@ -155,6 +336,16 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token_consumer_api}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [
               {
@@ -200,6 +391,16 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token_provider_api}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [
               {
@@ -243,6 +444,16 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token_provider_api}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "PUT",
             "header": [
               {
@@ -251,7 +462,7 @@
               },
               {
                 "key": "Authorization",
-                "value": "Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ="
+                "value": ""
               },
               {
                 "key": "Cookie",
@@ -317,6 +528,16 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token_consumer_api}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [
               {
@@ -363,6 +584,16 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token_provider_api}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [
               {
@@ -395,11 +626,22 @@
                   "});"
                 ],
                 "type": "text/javascript",
-                "packages": {}
+                "packages": {},
+                "requests": {}
               }
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token_consumer_api}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "PUT",
             "header": [
               {
@@ -466,6 +708,16 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token_consumer_api}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [
               {
@@ -512,6 +764,16 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token_provider_api}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [
               {
@@ -544,11 +806,22 @@
                   "});"
                 ],
                 "type": "text/javascript",
-                "packages": {}
+                "packages": {},
+                "requests": {}
               }
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token_provider_api}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "PUT",
             "header": [
               {
@@ -620,6 +893,16 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token_consumer_api}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [
               {
@@ -671,6 +954,16 @@
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token_provider_api}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [
               {
@@ -713,11 +1006,22 @@
                   "});"
                 ],
                 "type": "text/javascript",
-                "packages": {}
+                "packages": {},
+                "requests": {}
               }
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token_consumer_api}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [
               {
@@ -767,11 +1071,22 @@
                   "});"
                 ],
                 "type": "text/javascript",
-                "packages": {}
+                "packages": {},
+                "requests": {}
               }
             }
           ],
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token_provider_api}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [
               {
@@ -803,16 +1118,11 @@
     }
   ],
   "auth": {
-    "type": "basic",
-    "basic": [
+    "type": "bearer",
+    "bearer": [
       {
-        "key": "password",
-        "value": "password",
-        "type": "string"
-      },
-      {
-        "key": "username",
-        "value": "admin@mail.com",
+        "key": "token",
+        "value": "{{access_token}}",
         "type": "string"
       }
     ]
@@ -823,6 +1133,7 @@
       "script": {
         "type": "text/javascript",
         "packages": {},
+        "requests": {},
         "exec": [
           ""
         ]
@@ -833,6 +1144,7 @@
       "script": {
         "type": "text/javascript",
         "packages": {},
+        "requests": {},
         "exec": [
           ""
         ]
@@ -842,38 +1154,31 @@
   "variable": [
     {
       "key": "CONSUMER_API_ENDPOINT",
-      "value": "http://localhost:8080/api/v1/negotiations",
-      "type": "string"
+      "value": "http://localhost:8080/api/v1/negotiations"
     },
     {
       "key": "PROVIDER_API_ENDPOINT",
-      "value": "http://localhost:8090/api/v1/negotiations",
-      "type": "string"
+      "value": "http://localhost:8090/api/v1/negotiations"
     },
     {
       "key": "CONSUMER_PROTOCOL_ENDPOINT",
-      "value": "http://172.17.0.1:8080/connector_a_tenant_id",
-      "type": "string"
+      "value": "http://172.17.0.1:8080/connector_a_tenant_id"
     },
     {
       "key": "PROVIDER_PROTOCOL_ENDPOINT",
-      "value": "http://172.17.0.1:8090/connector_b_tenant_id",
-      "type": "string"
+      "value": "http://172.17.0.1:8090/connector_b_tenant_id"
     },
     {
       "key": "datasetId",
-      "value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-      "type": "string"
+      "value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
     },
     {
       "key": "CONSUMER_SERVER_API_TRANSFERS",
-      "value": "http://localhost:8080/api/v1/transfers",
-      "type": "default"
+      "value": "http://localhost:8080/api/v1/transfers"
     },
     {
       "key": "PROVIDER_SERVER_API_TRANSFERS",
-      "value": "http://localhost:8090/api/v1/transfers",
-      "type": "default"
+      "value": "http://localhost:8090/api/v1/transfers"
     },
     {
       "key": "consumer_contractNegotiationId",
@@ -897,6 +1202,38 @@
     },
     {
       "key": "provider_agreementId",
+      "value": ""
+    },
+    {
+      "key": "CONSUMER_AUTH_LOGIN",
+      "value": ""
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "access_token_provider",
+      "value": ""
+    },
+    {
+      "key": "access_token_consumer_api",
+      "value": ""
+    },
+    {
+      "key": "access_token_consumer_connector",
+      "value": ""
+    },
+    {
+      "key": "access_token_provider_connector",
+      "value": ""
+    },
+    {
+      "key": "access_token_provider_api",
+      "value": ""
+    },
+    {
+      "key": "PROVIDER_AUTH_LOGIN",
       "value": ""
     }
   ]

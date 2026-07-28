@@ -1,6 +1,5 @@
 package it.eng.tools.util;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import it.eng.tools.auth.AuthenticationCache;
@@ -13,13 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class CredentialUtils {
 
-	/** Username used by internal services for machine-to-machine API calls. */
-	static final String INTERNAL_SERVICE_USERNAME = "internal-service";
-
 	private final AuthenticationCache authenticationCache;
-
-	@Value("${application.internal.secret:}")
-	private String internalSecret;
 
 	/**
 	 * Constructs the credential utils with the required authentication cache.
@@ -37,7 +30,7 @@ public class CredentialUtils {
 	 * @return Bearer token authorization header
 	 */
 	public String getConnectorCredentials() {
-		String token = authenticationCache.getToken();
+		String token = authenticationCache.getToken("ROLE_CONNECTOR");
 		if (token == null || AuthenticationCache.DUMMY_TOKEN_VALUE.equals(token)) {
 			// Fall back to basic auth if no token is available
 			log.info("getConnectorCredentials() - No valid token available, falling back to Basic Auth");
@@ -62,14 +55,10 @@ public class CredentialUtils {
 	 */
 	public String getAPICredentials() {
 		log.info("getAPICredentials() - Requesting credentials for internal API call");
-		String token = authenticationCache.getToken();
+		String token = authenticationCache.getToken("ROLE_ADMIN");
 		log.info("getAPICredentials() - Token from cache: {}", token == null ? "null" :
 			(AuthenticationCache.DUMMY_TOKEN_VALUE.equals(token) ? "DUMMY_TOKEN" : "JWT token (length: " + token.length() + ")"));
 
-		if (token == null || AuthenticationCache.DUMMY_TOKEN_VALUE.equals(token)) {
-			log.info("getAPICredentials() - Using internal service credentials");
-			return okhttp3.Credentials.basic(INTERNAL_SERVICE_USERNAME, internalSecret);
-		}
 		log.info("getAPICredentials() - Using Bearer token for authentication");
 		return "Bearer " + token;
 	}

@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -141,7 +142,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .build();
 
         WireMock.stubFor(WireMock.post("/" + TENANT_ID + "/transfers/request")
-                .withBasicAuth("connector@mail.com", "password")
+                .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(WireMock.containing("TransferRequestMessage"))
                 .willReturn(
                         aResponse().withHeader("Content-Type", "application/json")
@@ -199,7 +200,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .build();
 
         WireMock.stubFor(WireMock.post("/" + TENANT_ID + "/transfers/request")
-                .withBasicAuth("connector@mail.com", "password")
+                .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(WireMock.containing("TransferRequestMessage"))
                 .willReturn(
                         aResponse().withHeader("Content-Type", "application/json")
@@ -253,7 +254,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .build();
 
         WireMock.stubFor(WireMock.post("/" + TENANT_ID + "/transfers/request")
-                .withBasicAuth("connector@mail.com", "password")
+                .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(WireMock.containing("TransferRequestMessage"))
                 .willReturn(
                         aResponse().withHeader("Content-Type", "application/json")
