@@ -41,7 +41,6 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -127,8 +126,6 @@ public class ConnectorSecurityConfig {
      * @param http the HttpSecurity builder
      * @param keycloakFilter optional Keycloak filter, present when mode is KEYCLOAK
      * @param apiTenantContextFilter the tenant context filter for API requests
-     * @param daoAuthenticationProvider the DAO provider for normal user authentication (INTERNAL mode)
-     * @param internalServiceAuthProvider the internal-service provider (INTERNAL mode)
      * @param jwtAuthFilter the JWT authentication filter for human logins (INTERNAL mode)
      * @return the configured filter chain
      * @throws Exception if the chain cannot be built
@@ -138,8 +135,6 @@ public class ConnectorSecurityConfig {
     SecurityFilterChain adminFilterChain(HttpSecurity http,
                                          ObjectProvider<KeycloakAuthenticationFilter> keycloakFilter,
                                          ObjectProvider<ApiTenantContextFilter> apiTenantContextFilter,
-                                         ObjectProvider<DaoAuthenticationProvider> daoAuthenticationProvider,
-                                         ObjectProvider<InternalServiceAuthenticationProvider> internalServiceAuthProvider,
                                          ObjectProvider<InternalJwtAuthenticationFilter> jwtAuthFilter) throws Exception {
         applyCommonConfiguration(http);
         http.securityMatcher("/api/**", "/actuator/**", "/env");
@@ -164,17 +159,15 @@ public class ConnectorSecurityConfig {
                             .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         } else {
-            // INTERNAL: ApiTenantContextFilter must run AFTER BasicAuthenticationFilter so that
+            // INTERNAL: ApiTenantContextFilter must run AFTER UsernamePasswordAuthenticationFilter so that
             // the Authentication is already populated in SecurityContextHolder when we read it.
             // InternalServiceAuthenticationProvider is checked first; unmatched usernames fall
             // through to DaoAuthenticationProvider for normal user login.
             http.anonymous(AbstractHttpConfigurer::disable)
-                    .httpBasic(basic -> basic.authenticationEntryPoint(authEntryPoint))
-                    .authenticationManager(new ProviderManager(
-                            internalServiceAuthProvider.getObject(),
-                            daoAuthenticationProvider.getObject()))
-                    .addFilterBefore(jwtAuthFilter.getObject(), BasicAuthenticationFilter.class)
-                    .addFilterAfter(apiTenantContextFilter.getObject(), BasicAuthenticationFilter.class)
+//                    .httpBasic(basic -> basic.authenticationEntryPoint(authEntryPoint))
+//                    .authenticationManager(new ProviderManager(internalServiceAuthProvider.getObject()))
+                    .addFilterBefore(jwtAuthFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
+                    .addFilterAfter(apiTenantContextFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth
                             .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
                             .requestMatchers(HttpMethod.GET, ApiEndpoints.USERS_V1 + "/me")
@@ -241,7 +234,7 @@ public class ConnectorSecurityConfig {
         } else {
             // INTERNAL
             http.anonymous(AbstractHttpConfigurer::disable)
-                    .addFilterBefore(jwtAuthFilter.getObject(), BasicAuthenticationFilter.class)
+                    .addFilterBefore(jwtAuthFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(Role.CONNECTOR.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         }

@@ -6,6 +6,7 @@ import it.eng.connector.model.User;
 import it.eng.connector.model.UserDTO;
 import it.eng.connector.repository.UserRepository;
 import it.eng.connector.util.TestUtil;
+import it.eng.tools.auth.jwt.JwtService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.serializer.ToolsSerializer;
 import org.junit.jupiter.api.AfterEach;
@@ -53,6 +54,8 @@ public class UserIT extends BaseIntegrationTest {
     private UserRepository userRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
+    @Autowired
+    private JwtService jwtService;
 
     @AfterEach
     public void cleanup() {
@@ -216,9 +219,9 @@ public class UserIT extends BaseIntegrationTest {
         userRepository.save(userObj);
 
         UserDTO userDTO = new UserDTO("FirstNameTestUpdate", "LastNameTestUpdate", null, "password", "NewUpdPass123!", Role.SUPER_ADMIN, null);
-
+        String jwt = jwtService.issueTokenPair(userObj.getEmail(), userObj.getEmail(), List.of(Role.SUPER_ADMIN.authorityName()), null, null).accessToken();
         HttpHeaders headers = new HttpHeaders();
-        headers.setBasicAuth("otherUser1@mail.com", "password");
+        headers.add("Authorization", "Bearer " + jwt);
 
         final ResultActions result = mockMvc.perform(put(ApiEndpoints.USERS_V1 + "/" + userObj.getId() + "/password")
                 .headers(headers)
