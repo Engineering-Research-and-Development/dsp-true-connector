@@ -611,11 +611,15 @@
               "});"
             ],
             "type": "text/javascript",
-            "packages": {}
+            "packages": {},
+            "requests": {}
           }
         }
       ],
       "request": {
+        "auth": {
+          "type": "noauth"
+        },
         "method": "GET",
         "header": [
           {
@@ -764,14 +768,7 @@
       ],
       "request": {
         "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{access_token_consumer_api}}",
-              "type": "string"
-            }
-          ]
+          "type": "noauth"
         },
         "method": "GET",
         "header": [

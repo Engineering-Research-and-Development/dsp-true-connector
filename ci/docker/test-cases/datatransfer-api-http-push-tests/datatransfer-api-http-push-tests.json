@@ -1,7 +1,7 @@
 {
   "info": {
-    "_postman_id": "4c32a731-e742-4505-8b8a-c0c37aa70b4a",
-    "name": "Data Transfer API - http-pull test",
+    "_postman_id": "f520a2ac-7b8d-42c8-9ff1-698cf3f7b4f2",
+    "name": "Data Transfer API - http-push test",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "36278855"
   },
@@ -110,27 +110,16 @@
               "});"
             ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "packages": {}
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{access_token_consumer_api}}",
-              "type": "string"
-            }
-          ]
-        },
         "method": "POST",
         "header": [],
         "body": {
           "mode": "raw",
-          "raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PULL\"\r\n}",
+          "raw": "{\r\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\r\n    \"format\": \"HttpData-PUSH\"\r\n}",
           "options": {
             "raw": {
               "language": "json"
@@ -281,22 +270,11 @@
               "});"
             ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "packages": {}
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{access_token_consumer_api}}",
-              "type": "string"
-            }
-          ]
-        },
         "method": "PUT",
         "header": [
           {
@@ -339,22 +317,11 @@
               "});"
             ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "packages": {}
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{access_token_consumer_api}}",
-              "type": "string"
-            }
-          ]
-        },
         "method": "GET",
         "header": [
           {
@@ -388,22 +355,11 @@
               "});"
             ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "packages": {}
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{access_token_consumer_api}}",
-              "type": "string"
-            }
-          ]
-        },
         "method": "GET",
         "header": [
           {
@@ -426,7 +382,7 @@
       "response": []
     },
     {
-      "name": "[C] Start transfer",
+      "name": "[P] Start transfer",
       "event": [
         {
           "listen": "test",
@@ -434,6 +390,8 @@
             "exec": [
               "pm.test(\"Check if status code is 200\", function () {\r",
               "    pm.response.to.have.status(200);\r",
+              "    var jsonData = pm.response.json();\r",
+              "    pm.collectionVariables.set(\"presignedURL\", jsonData[\"data\"][\"dataAddress\"][\"endpoint\"])\r",
               "});"
             ],
             "type": "text/javascript",
@@ -448,7 +406,7 @@
           "bearer": [
             {
               "key": "token",
-              "value": "{{access_token_consumer_api}}",
+              "value": "{{access_token_provider_api}}",
               "type": "string"
             }
           ]
@@ -471,12 +429,12 @@
           }
         },
         "url": {
-          "raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/start",
+          "raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/start",
           "host": [
-            "{{CONSUMER_API_TRANSFERS}}"
+            "{{PROVIDER_API_TRANSFERS}}"
           ],
           "path": [
-            "{{consumer_transferProcessId}}",
+            "{{provider_transferProcessId}}",
             "start"
           ]
         }
@@ -484,7 +442,7 @@
       "response": []
     },
     {
-      "name": "[C] Download data",
+      "name": "[P] Push data",
       "event": [
         {
           "listen": "test",
@@ -506,7 +464,7 @@
           "bearer": [
             {
               "key": "token",
-              "value": "{{access_token_consumer_api}}",
+              "value": "{{access_token_provider_api}}",
               "type": "string"
             }
           ]
@@ -520,12 +478,12 @@
           }
         ],
         "url": {
-          "raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+          "raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/download",
           "host": [
-            "{{CONSUMER_API_TRANSFERS}}"
+            "{{PROVIDER_API_TRANSFERS}}"
           ],
           "path": [
-            "{{consumer_transferProcessId}}",
+            "{{provider_transferProcessId}}",
             "download"
           ]
         }
@@ -547,8 +505,7 @@
               "});"
             ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "packages": {}
           }
         },
         {
@@ -560,22 +517,135 @@
               ""
             ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "packages": {}
           }
         }
       ],
       "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{access_token_consumer_api}}",
-              "type": "string"
-            }
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
+          "host": [
+            "{{CONSUMER_API_TRANSFERS}}"
+          ],
+          "path": [
+            "{{consumer_transferProcessId}}",
+            "view"
           ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "[C] Use presignedURL to download actual data",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check expected response\", ()=> {\r",
+              "    pm.response.to.have.status(200);\r",
+              "    var jsonData = pm.response.json();\r",
+              "    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{presignedURL}}",
+          "host": [
+            "{{presignedURL}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "[C] Complete transfer",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check if status code is 400, means that transfer is completed as it shoud be\", function () {\r",
+              "    pm.response.to.have.status(400);\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
         },
+        "url": {
+          "raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/complete",
+          "host": [
+            "{{CONSUMER_API_TRANSFERS}}"
+          ],
+          "path": [
+            "{{consumer_transferProcessId}}",
+            "complete"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "[C] View data",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Check expected response\", ()=> {\r",
+              "    pm.response.to.have.status(200);\r",
+              "    var response = pm.response.text();\r",
+              "    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-a\");\r",
+              "    pm.collectionVariables.set(\"presignedURL\", response)\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
         "method": "GET",
         "header": [
           {
@@ -636,165 +706,18 @@
         }
       },
       "response": []
-    },
-    {
-      "name": "[C] Complete transfer",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test(\"Check if status code is 400, means that transfer is completed as it shoud be\", function () {\r",
-              "    pm.response.to.have.status(400);\r",
-              "});"
-            ],
-            "type": "text/javascript",
-            "packages": {},
-            "requests": {}
-          }
-        }
-      ],
-      "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{access_token_consumer_api}}",
-              "type": "string"
-            }
-          ]
-        },
-        "method": "PUT",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        },
-        "url": {
-          "raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/complete",
-          "host": [
-            "{{CONSUMER_API_TRANSFERS}}"
-          ],
-          "path": [
-            "{{consumer_transferProcessId}}",
-            "complete"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "[C] View data",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test(\"Check expected response\", ()=> {\r",
-              "    pm.response.to.have.status(200);\r",
-              "    var response = pm.response.text();\r",
-              "    pm.expect(response).to.include(\"http://172.17.0.1:9000/dsp-true-connector-a\");\r",
-              "    pm.collectionVariables.set(\"presignedURL\", response)\r",
-              "});"
-            ],
-            "type": "text/javascript",
-            "packages": {},
-            "requests": {}
-          }
-        }
-      ],
-      "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{access_token_consumer_api}}",
-              "type": "string"
-            }
-          ]
-        },
-        "method": "GET",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
-          }
-        ],
-        "url": {
-          "raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
-          "host": [
-            "{{CONSUMER_API_TRANSFERS}}"
-          ],
-          "path": [
-            "{{consumer_transferProcessId}}",
-            "view"
-          ]
-        }
-      },
-      "response": []
-    },
-    {
-      "name": "[C] Use presignedURL to download actual data",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "pm.test(\"Check expected response\", ()=> {\r",
-              "    pm.response.to.have.status(200);\r",
-              "    var jsonData = pm.response.json();\r",
-              "    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
-              "});"
-            ],
-            "type": "text/javascript",
-            "packages": {},
-            "requests": {}
-          }
-        }
-      ],
-      "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{access_token_consumer_api}}",
-              "type": "string"
-            }
-          ]
-        },
-        "method": "GET",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
-          }
-        ],
-        "url": {
-          "raw": "{{presignedURL}}",
-          "host": [
-            "{{presignedURL}}"
-          ]
-        }
-      },
-      "response": []
     }
   ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token_consumer_api}}",
+        "type": "string"
+      }
+    ]
+  },
   "event": [
     {
       "listen": "prerequest",
@@ -837,15 +760,11 @@
       "value": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5"
     },
     {
-      "key": "transactionId",
+      "key": "presignedURL",
       "value": ""
     },
     {
       "key": "provider_transferProcessId",
-      "value": ""
-    },
-    {
-      "key": "presignedURL",
       "value": ""
     },
     {
