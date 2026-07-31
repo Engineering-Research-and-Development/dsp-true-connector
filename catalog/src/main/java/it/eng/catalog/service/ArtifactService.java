@@ -2,12 +2,14 @@ package it.eng.catalog.service;
 
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantBucketResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -27,14 +29,17 @@ public class ArtifactService {
     private final S3ClientService s3ClientService;
     private final S3Properties s3Properties;
     private final TenantBucketResolver tenantBucketResolver;
+    private final AuditEventPublisher auditEventPublisher;
 
     public ArtifactService(ArtifactRepository artifactRepository, S3ClientService s3ClientService,
-                           S3Properties s3Properties, TenantBucketResolver tenantBucketResolver) {
+                           S3Properties s3Properties, TenantBucketResolver tenantBucketResolver,
+                           AuditEventPublisher auditEventPublisher) {
         super();
         this.artifactRepository = artifactRepository;
         this.s3ClientService = s3ClientService;
         this.s3Properties = s3Properties;
         this.tenantBucketResolver = tenantBucketResolver;
+        this.auditEventPublisher = auditEventPublisher;
     }
 
     public List<Artifact> getArtifacts(String artifactId) {
@@ -71,6 +76,8 @@ public class ArtifactService {
         }
         artifact = artifactRepository.save(artifact);
         log.info("Inserted Artifact {}", artifact.getFilename() != null ? artifact.getFilename() : artifact.getValue());
+        auditEventPublisher.publishEvent(
+                AuditEventType.ARTIFACT_UPLOADED, "Artifact uploaded", Map.of("artifactId", artifact.getId()));
         return artifact;
     }
 
@@ -92,6 +99,8 @@ public class ArtifactService {
                 break;
         }
         artifactRepository.delete(oldArtifact);
+        auditEventPublisher.publishEvent(
+                AuditEventType.ARTIFACT_DELETED, "Artifact deleted", Map.of("artifactId", oldArtifact.getId()));
     }
 
     public void deleteArtifact(Artifact artifact) {
@@ -112,6 +121,8 @@ public class ArtifactService {
                 break;
         }
         artifactRepository.delete(artifact);
+        auditEventPublisher.publishEvent(
+                AuditEventType.ARTIFACT_DELETED, "Artifact deleted", Map.of("artifactId", artifact.getId()));
     }
 
     private void storeFile(String fileId, MultipartFile file) {

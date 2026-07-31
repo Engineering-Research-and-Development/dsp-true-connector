@@ -3,9 +3,12 @@ package it.eng.connector.rest.api;
 import static org.hamcrest.Matchers.blankOrNullString;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -17,7 +20,9 @@ import it.eng.connector.exception.AuthExceptionAdvice;
 import it.eng.connector.service.AuthService;
 import it.eng.connector.service.AuthService.AuthTokens;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.exception.ExceptionAPIAdvice;
+import it.eng.tools.service.AuditEventPublisher;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import java.util.Map;
@@ -56,6 +61,9 @@ class AuthControllerTest {
     @Mock
     private AuthService authService;
 
+    @Mock
+    private AuditEventPublisher auditEventPublisher;
+
     private MockMvc mockMvc;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -63,7 +71,7 @@ class AuthControllerTest {
     @BeforeEach
     void setUp() {
         Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
-        AuthController controller = new AuthController(authService, validator);
+        AuthController controller = new AuthController(authService, validator, auditEventPublisher, "INTERNAL");
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new ExceptionAPIAdvice(), new AuthExceptionAdvice())
                 .build();
@@ -90,6 +98,8 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.email").doesNotExist())
                 .andExpect(jsonPath("$.roles").doesNotExist())
                 .andExpect(jsonPath("$.tenantId").doesNotExist());
+
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.APPLICATION_LOGIN), anyString(), any());
     }
 
     @Test
@@ -129,6 +139,9 @@ class AuthControllerTest {
         assertEquals(bodyWithoutTimestamp2, bodyWithoutTimestamp3);
         assertEquals(bodyWithoutTimestamp3, bodyWithoutTimestamp4);
         assertEquals(bodyWithoutTimestamp4, bodyWithoutTimestamp5);
+
+        verify(auditEventPublisher, times(5))
+                .publishEvent(eq(AuditEventType.APPLICATION_LOGIN_FAILED), anyString(), any());
     }
 
     @Test
@@ -178,6 +191,9 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.access_token").value("new-access-token"))
                 .andExpect(jsonPath("$.refresh_token").value("new-refresh-token"))
                 .andExpect(jsonPath("$.token_type").value("Bearer"));
+
+        verify(auditEventPublisher)
+                .publishEvent(eq(AuditEventType.APPLICATION_TOKEN_REFRESHED), anyString(), any());
     }
 
     @Test
@@ -189,6 +205,9 @@ class AuthControllerTest {
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(Map.of("refresh_token", "bad-refresh-token"))))
                 .andExpect(status().isUnauthorized());
+
+        verify(auditEventPublisher)
+                .publishEvent(eq(AuditEventType.APPLICATION_TOKEN_REFRESH_FAILED), anyString(), any());
     }
 
     @Test
@@ -200,6 +219,7 @@ class AuthControllerTest {
                 .andExpect(status().isOk());
 
         verify(authService).logout("unknown-token");
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.APPLICATION_LOGOUT), anyString(), any());
     }
 
     @Test

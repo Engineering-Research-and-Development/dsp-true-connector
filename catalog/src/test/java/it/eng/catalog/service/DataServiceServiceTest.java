@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,6 +27,8 @@ import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.repository.DataServiceRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.tools.event.AuditEventType;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantContextHolder;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,6 +41,9 @@ public class DataServiceServiceTest {
 
     @Mock
     private CatalogService catalogService;
+
+    @Mock
+    private AuditEventPublisher auditEventPublisher;
     
     @Captor
 	private ArgumentCaptor<DataService> argCaptorDataService;
@@ -95,6 +102,7 @@ public class DataServiceServiceTest {
         assertEquals(dataService.getId(), result.getId());
         verify(repository).save(dataService);
         verify(catalogService).updateCatalogDataServiceAfterSave(dataService);
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATA_SERVICE_CREATED), anyString(), any());
     }
 
     @Test
@@ -107,6 +115,7 @@ public class DataServiceServiceTest {
         verify(repository).findByIdAndTenantId(dataService.getId(), TENANT_ID);
         verify(repository).deleteById(dataService.getId());
         verify(catalogService).updateCatalogDataServiceAfterDelete(dataService);
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATA_SERVICE_DELETED), anyString(), any());
     }
 
     @Test
@@ -136,5 +145,6 @@ public class DataServiceServiceTest {
         assertTrue(argCaptorDataService.getValue().getCreator().contains("update"));
         assertTrue(argCaptorDataService.getValue().getTitle().contains("update"));
         assertTrue(argCaptorDataService.getValue().getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATA_SERVICE_UPDATED), anyString(), any());
     }
 }

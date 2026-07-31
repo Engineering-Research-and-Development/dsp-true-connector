@@ -2,10 +2,12 @@ package it.eng.catalog.service;
 
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantBucketResolver;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,6 +44,8 @@ public class ArtifactServiceTest {
     private MultipartFile file;
     @Mock
     private ArtifactRepository artifactRepository;
+    @Mock
+    private AuditEventPublisher auditEventPublisher;
     @InjectMocks
     private ArtifactService artifactService;
 
@@ -95,6 +99,7 @@ public class ArtifactServiceTest {
 
         assertEquals(CatalogMockObjectUtil.ARTIFACT_FILE, artifact);
         verify(s3ClientService).uploadFile(eq(inputStream), anyMap(), eq(MediaType.APPLICATION_JSON_VALUE), anyString());
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.ARTIFACT_UPLOADED), anyString(), any());
     }
 
     @Test
@@ -140,6 +145,7 @@ public class ArtifactServiceTest {
 
         verify(s3ClientService).deleteFile("test-bucket", CatalogMockObjectUtil.ARTIFACT_FILE.getValue());
         verify(artifactRepository).delete(CatalogMockObjectUtil.ARTIFACT_FILE);
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.ARTIFACT_DELETED), anyString(), any());
     }
 
     @Test
