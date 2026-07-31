@@ -58,7 +58,7 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
                 ContractNegotiationCallback.getContractTerminationCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid()),
                 NegotiationSerializer.serializeProtocolJsonNode(negotiationTerminatedEventMessage),
-                credentialUtils.getConnectorCredentials());
+                credentialUtils::getConnectorCredentials);
         if (response.isSuccess()) {
             log.info("Updating status for negotiation {} to terminated", contractNegotiation.getId());
             ContractNegotiation contractNegotiationTerminated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.TERMINATED);
@@ -98,7 +98,7 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
         log.info("Sending verification message to provider to {}", callbackAddress);
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(callbackAddress,
                 NegotiationSerializer.serializeProtocolJsonNode(verificationMessage),
-                credentialUtils.getConnectorCredentials());
+                credentialUtils::getConnectorCredentials);
 
         if (response.isSuccess()) {
             log.info("Updating status for negotiation {} to verified", contractNegotiation.getId());

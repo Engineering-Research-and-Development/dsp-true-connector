@@ -41,6 +41,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -219,8 +220,7 @@ class DataTransferAPIServiceTest {
     @DisplayName("Request transfer process success")
     public void startNegotiation_success() {
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
-        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.getData()).thenReturn(TransferSerializer.serializeProtocol(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
         when(apiResponse.isSuccess()).thenReturn(true);
         when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
@@ -238,8 +238,7 @@ class DataTransferAPIServiceTest {
     @DisplayName("Request transfer process failed")
     public void startNegotiation_failed() {
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
-        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.getData()).thenReturn(TransferSerializer.serializeProtocol(DataTransferMockObjectUtil.TRANSFER_ERROR));
         when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
 
@@ -255,8 +254,7 @@ class DataTransferAPIServiceTest {
     @DisplayName("Request transfer process json exception")
     public void startNegotiation_jsonException() {
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
-        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.getData()).thenReturn("not a JSON");
         when(apiResponse.isSuccess()).thenReturn(true);
         when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
@@ -270,8 +268,7 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Start transfer process success")
     public void startTransfer_success_requestedState() {
-        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
@@ -288,7 +285,7 @@ class DataTransferAPIServiceTest {
     public void startTransfer_failedNegotiationNotFound() {
         assertThrows(DataTransferAPIException.class, () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()));
 
-        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
@@ -314,8 +311,7 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Start transfer process failed - bad request")
     public void startTransfer_failedBadRequest() {
-        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(false);
         when(apiResponse.getMessage()).thenReturn("error");
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()))
@@ -323,7 +319,7 @@ class DataTransferAPIServiceTest {
 
         assertThrows(DataTransferAPIException.class, () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()));
 
-        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, null);
@@ -332,8 +328,7 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Complete transfer process success")
     public void completeTransfer_success_requestedState() {
-        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
@@ -350,7 +345,7 @@ class DataTransferAPIServiceTest {
     public void completeTransfer_failedNegotiationNotFound() {
         assertThrows(DataTransferAPIException.class, () -> apiService.completeTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
@@ -376,8 +371,7 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Complete transfer process failed - bad request")
     public void completeTransfer_failedBadRequest() {
-        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(false);
         when(apiResponse.getMessage()).thenReturn("error");
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
@@ -385,7 +379,7 @@ class DataTransferAPIServiceTest {
 
         assertThrows(DataTransferAPIException.class, () -> apiService.completeTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED, null);
@@ -394,8 +388,7 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Suspend transfer process success")
     public void suspendTransfer_success_requestedState() {
-        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
@@ -412,7 +405,7 @@ class DataTransferAPIServiceTest {
     public void suspendTransfer_failedNegotiationNotFound() {
         assertThrows(DataTransferAPIException.class, () -> apiService.suspendTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
@@ -438,8 +431,7 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Suspend transfer process failed - bad request")
     public void suspendTransfer_failedBadRequest() {
-        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(false);
         when(apiResponse.getMessage()).thenReturn("error");
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
@@ -447,7 +439,7 @@ class DataTransferAPIServiceTest {
 
         assertThrows(DataTransferAPIException.class, () -> apiService.suspendTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
@@ -456,8 +448,7 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Terminate transfer process success")
     public void terminateTransfer_success_requestedState() {
-        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
@@ -474,7 +465,7 @@ class DataTransferAPIServiceTest {
     public void terminateTransfer_failedNegotiationNotFound() {
         assertThrows(DataTransferAPIException.class, () -> apiService.terminateTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
@@ -500,8 +491,7 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Terminate transfer process failed - bad request")
     public void terminateTransfer_failedBadRequest() {
-        when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(false);
         when(apiResponse.getMessage()).thenReturn("Terminate transfer process failed");
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
@@ -509,7 +499,7 @@ class DataTransferAPIServiceTest {
 
         assertThrows(DataTransferAPIException.class, () -> apiService.terminateTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, null);

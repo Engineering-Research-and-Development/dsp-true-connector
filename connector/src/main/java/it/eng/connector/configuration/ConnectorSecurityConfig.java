@@ -53,7 +53,7 @@ import java.util.Arrays;
  * <p>Defines three {@link SecurityFilterChain} beans matched by URL zone:
  * <ol>
  *   <li><b>Admin chain</b> ({@code /api/**, /actuator/**, /env}) — requires {@code ROLE_ADMIN}.
- *       Keycloak or Basic Auth depending on {@code application.auth.provider}.</li>
+ *       Keycloak or self-issued JWT depending on {@code application.auth.provider}.</li>
  *   <li><b>Protocol chain</b> ({@code /connector/**, /catalog/**, /negotiations/**, /transfers/**})
  *       — requires {@code ROLE_CONNECTOR}. Uses DCP when {@code application.auth.dcp.enabled=true},
  *       otherwise follows the configured provider.</li>
@@ -64,8 +64,8 @@ import java.util.Arrays;
  * <pre>
  * provider=KEYCLOAK + dcp.enabled=false → admin: Keycloak, protocol: Keycloak
  * provider=KEYCLOAK + dcp.enabled=true → admin: Keycloak, protocol: DCP
- * provider=INTERNAL + dcp.enabled=false → admin: Basic Auth/JWT, protocol: Basic Auth
- * provider=INTERNAL + dcp.enabled=true → admin: Basic Auth/JWT, protocol: DCP
+ * provider=INTERNAL + dcp.enabled=false → admin: self-issued JWT, protocol: self-issued JWT
+ * provider=INTERNAL + dcp.enabled=true → admin: self-issued JWT, protocol: DCP
  * provider=DISABLED → all endpoints: permitAll
  * </pre>
  */

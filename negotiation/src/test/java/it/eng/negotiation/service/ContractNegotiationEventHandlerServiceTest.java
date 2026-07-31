@@ -24,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -57,9 +58,8 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@Test
 	@DisplayName("Handle agreement verification message success")
 	public void contractAgreementVerificationMessage_success() {
-		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_AGREED));
-		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
 
 		handlerService.verifyNegotiation(NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID);
@@ -88,9 +88,8 @@ public class ContractNegotiationEventHandlerServiceTest {
 	@Test
 	@DisplayName("Handle agreement verification message - bad request")
 	public void contractAgreementVerificationMessage_badRequest() {
-		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
 		when(repository.findByProviderPidAndConsumerPid(any(String.class), any(String.class))).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_AGREED));
-		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
 		
 		assertThrows(ContractNegotiationAPIException.class, 
 				() -> handlerService.verifyNegotiation(NegotiationMockObjectUtil.CONSUMER_PID, NegotiationMockObjectUtil.PROVIDER_PID));
@@ -101,8 +100,7 @@ public class ContractNegotiationEventHandlerServiceTest {
 	public void terminateNegotiation() {
 		String contractNegotaitionId = UUID.randomUUID().toString(); 
 		when(repository.findById(contractNegotaitionId)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
-		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(true);
 		
 		handlerService.handleContractNegotiationTerminated(contractNegotaitionId);
@@ -129,8 +127,7 @@ public class ContractNegotiationEventHandlerServiceTest {
 	public void terminateNegotiation_consumer_error() {
 		String contractNegotaitionId = UUID.randomUUID().toString(); 
 		when(repository.findById(contractNegotaitionId)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
-		when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+		when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
 		when(apiResponse.isSuccess()).thenReturn(false);
 
 		assertThrows(ContractNegotiationAPIException.class,

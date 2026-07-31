@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -47,9 +48,8 @@ class AgreementServiceTest {
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         when(transferProcessRepository.findByConsumerPidAndProviderPid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
-        when(credentialUtils.getAPICredentials()).thenReturn("credentials");
         when(connectorProperties.getConnectorURL()).thenReturn("http://test.localhost:8080");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), any(String.class), isNull()))
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), any(Supplier.class), isNull()))
                 .thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
 
@@ -63,9 +63,8 @@ class AgreementServiceTest {
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         when(transferProcessRepository.findByConsumerPidAndProviderPid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
-        when(credentialUtils.getAPICredentials()).thenReturn("credentials");
         when(connectorProperties.getConnectorURL()).thenReturn("http://test.localhost:8080");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), any(String.class), isNull()))
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), any(Supplier.class), isNull()))
                 .thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(false);
 
