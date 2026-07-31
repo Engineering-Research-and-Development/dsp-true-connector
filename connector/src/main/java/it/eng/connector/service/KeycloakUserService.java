@@ -89,7 +89,7 @@ public class KeycloakUserService {
      */
     public Collection<JsonNode> findUsers(String email) {
         try {
-            String token = keycloakAuthService.fetchToken();
+            String token = keycloakAuthService.fetchToken("ROLE_ADMIN");
             String url = (adminServerUrl.endsWith("/") ? adminServerUrl.substring(0, adminServerUrl.length() - 1) : adminServerUrl)
                     + "/admin/realms/" + adminRealm + "/users";
             if (email != null && !email.isBlank()) {
@@ -124,7 +124,7 @@ public class KeycloakUserService {
      */
     public JsonNode createUser(UserDTO userDTO) {
         try {
-            String token = keycloakAuthService.fetchToken();
+            String token = keycloakAuthService.fetchToken("ROLE_ADMIN");
             String url = (adminServerUrl.endsWith("/") ? adminServerUrl.substring(0, adminServerUrl.length() - 1) : adminServerUrl)
                     + "/admin/realms/" + adminRealm + "/users";
 

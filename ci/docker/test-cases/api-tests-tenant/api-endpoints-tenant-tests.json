@@ -1,46 +1,80 @@
 {
   "info": {
+    "_postman_id": "a1e47b71-466d-4f3e-9819-fef0ddfc77ff",
     "name": "api-endpoints-tenant-tests",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "36278855"
   },
-  "auth": {
-    "type": "basic",
-    "basic": [
-      {
-        "key": "username",
-        "value": "superadmin@mail.com",
-        "type": "string"
-      },
-      {
-        "key": "password",
-        "value": "password",
-        "type": "string"
-      }
-    ]
-  },
-  "variable": [
-    {
-      "key": "CONSUMER",
-      "value": "http://localhost:8080",
-      "type": "string"
-    },
-    {
-      "key": "NEW_TENANT_ID",
-      "value": "test-tenant-crud-id",
-      "type": "string"
-    },
-    {
-      "key": "MISSING_TENANT_ID",
-      "value": "non_existing_tenant_xyz_404",
-      "type": "string"
-    }
-  ],
   "item": [
+    {
+      "name": "Login",
+      "item": [
+        {
+          "name": "Auth login SUPERADMIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "//extract the access_token and refresh_token from the response body and store them in environment variables.\r",
+                  "pm.test(\"Retrieve access_token\", function () {\r",
+                  "    var jsonData = pm.response.json();\r",
+                  "    pm.collectionVariables.set(\"auth_jwt_superadmin\", jsonData[\"access_token\"])\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\": \"superadmin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{CONSUMER_AUTH_LOGIN}}",
+              "host": [
+                "{{CONSUMER_AUTH_LOGIN}}"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
     {
       "name": "Create tenant",
       "item": [
         {
           "name": "Create new tenant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response has data', function () {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.data).to.exist;",
+                  "  pm.expect(jsonData.data.id).to.exist;",
+                  "  pm.expect(jsonData.data.name).to.eql('Test Tenant');",
+                  "  pm.expect(jsonData.data.enabled).to.be.false;",
+                  "  pm.collectionVariables.set('NEW_TENANT_ID', jsonData.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -70,43 +104,10 @@
               ]
             }
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Response has data', function () {",
-                  "  var jsonData = pm.response.json();",
-                  "  pm.expect(jsonData.data).to.exist;",
-                  "  pm.expect(jsonData.data.id).to.exist;",
-                  "  pm.expect(jsonData.data.name).to.eql('Test Tenant');",
-                  "  pm.expect(jsonData.data.enabled).to.be.false;",
-                  "  pm.collectionVariables.set('NEW_TENANT_ID', jsonData.data.id);",
-                  "});"
-                ]
-              }
-            }
-          ]
+          "response": []
         },
         {
           "name": "Get all tenants - new tenant present",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{CONSUMER}}/api/v1/tenants",
-              "host": [
-                "{{CONSUMER}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "tenants"
-              ]
-            }
-          },
           "event": [
             {
               "listen": "test",
@@ -123,26 +124,26 @@
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "Get tenant by id",
+          ],
           "request": {
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{CONSUMER}}/api/v1/tenants/{{NEW_TENANT_ID}}",
+              "raw": "{{CONSUMER}}/api/v1/tenants",
               "host": [
                 "{{CONSUMER}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "tenants",
-                "{{NEW_TENANT_ID}}"
+                "tenants"
               ]
             }
           },
+          "response": []
+        },
+        {
+          "name": "Get tenant by id",
           "event": [
             {
               "listen": "test",
@@ -159,23 +160,10 @@
                 ]
               }
             }
-          ]
-        }
-      ]
-    },
-    {
-      "name": "Update tenant",
-      "item": [
-        {
-          "name": "Update tenant name and description",
+          ],
           "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
+            "method": "GET",
+            "header": [],
             "url": {
               "raw": "{{CONSUMER}}/api/v1/tenants/{{NEW_TENANT_ID}}",
               "host": [
@@ -187,17 +175,17 @@
                 "tenants",
                 "{{NEW_TENANT_ID}}"
               ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Updated Tenant Name\",\n  \"description\": \"Updated by automated test\",\n  \"automaticNegotiation\": true,\n  \"automaticTransfer\": false,\n  \"id\": \"{{NEW_TENANT_ID}}\",\n  \"participantId\": \"urn:test:connector\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
             }
           },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Update tenant",
+      "item": [
+        {
+          "name": "Update tenant name and description",
           "event": [
             {
               "listen": "test",
@@ -215,10 +203,57 @@
                 ]
               }
             }
-          ]
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Tenant Name\",\n  \"description\": \"Updated by automated test\",\n  \"automaticNegotiation\": true,\n  \"automaticTransfer\": false,\n  \"id\": \"{{NEW_TENANT_ID}}\",\n  \"participantId\": \"urn:test:connector\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{CONSUMER}}/api/v1/tenants/{{NEW_TENANT_ID}}",
+              "host": [
+                "{{CONSUMER}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants",
+                "{{NEW_TENANT_ID}}"
+              ]
+            }
+          },
+          "response": []
         },
         {
           "name": "Verify update persisted",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Updated values are persisted', function () {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.data.name).to.eql('Updated Tenant Name');",
+                  "  pm.expect(jsonData.data.automaticNegotiation).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -235,22 +270,7 @@
               ]
             }
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Updated values are persisted', function () {",
-                  "  var jsonData = pm.response.json();",
-                  "  pm.expect(jsonData.data.name).to.eql('Updated Tenant Name');",
-                  "  pm.expect(jsonData.data.automaticNegotiation).to.be.true;",
-                  "});"
-                ]
-              }
-            }
-          ]
+          "response": []
         }
       ]
     },
@@ -259,6 +279,21 @@
       "item": [
         {
           "name": "Enable tenant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Tenant is enabled', function () {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.data.enabled).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "PUT",
             "header": [],
@@ -276,6 +311,10 @@
               ]
             }
           },
+          "response": []
+        },
+        {
+          "name": "Verify enabled state",
           "event": [
             {
               "listen": "test",
@@ -283,17 +322,13 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Tenant is enabled', function () {",
-                  "  var jsonData = pm.response.json();",
-                  "  pm.expect(jsonData.data.enabled).to.be.true;",
+                  "pm.test('Enabled flag is true', function () {",
+                  "  pm.expect(pm.response.json().data.enabled).to.be.true;",
                   "});"
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "Verify enabled state",
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -310,6 +345,10 @@
               ]
             }
           },
+          "response": []
+        },
+        {
+          "name": "Disable tenant",
           "event": [
             {
               "listen": "test",
@@ -317,16 +356,14 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Enabled flag is true', function () {",
-                  "  pm.expect(pm.response.json().data.enabled).to.be.true;",
+                  "pm.test('Tenant is disabled', function () {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.data.enabled).to.be.false;",
                   "});"
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "Disable tenant",
+          ],
           "request": {
             "method": "PUT",
             "header": [],
@@ -344,6 +381,10 @@
               ]
             }
           },
+          "response": []
+        },
+        {
+          "name": "Verify disabled state",
           "event": [
             {
               "listen": "test",
@@ -351,17 +392,13 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Tenant is disabled', function () {",
-                  "  var jsonData = pm.response.json();",
-                  "  pm.expect(jsonData.data.enabled).to.be.false;",
+                  "pm.test('Enabled flag is false', function () {",
+                  "  pm.expect(pm.response.json().data.enabled).to.be.false;",
                   "});"
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "Verify disabled state",
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -378,6 +415,10 @@
               ]
             }
           },
+          "response": []
+        },
+        {
+          "name": "Re-enable tenant",
           "event": [
             {
               "listen": "test",
@@ -385,16 +426,13 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Enabled flag is false', function () {",
-                  "  pm.expect(pm.response.json().data.enabled).to.be.false;",
+                  "pm.test('Tenant is re-enabled', function () {",
+                  "  pm.expect(pm.response.json().data.enabled).to.be.true;",
                   "});"
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "Re-enable tenant",
+          ],
           "request": {
             "method": "PUT",
             "header": [],
@@ -412,20 +450,7 @@
               ]
             }
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Tenant is re-enabled', function () {",
-                  "  pm.expect(pm.response.json().data.enabled).to.be.true;",
-                  "});"
-                ]
-              }
-            }
-          ]
+          "response": []
         }
       ]
     },
@@ -434,6 +459,21 @@
       "item": [
         {
           "name": "Delete tenant",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response confirms deletion', function () {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "DELETE",
             "header": [],
@@ -450,24 +490,25 @@
               ]
             }
           },
+          "response": []
+        },
+        {
+          "name": "Verify tenant is deleted - expect 404",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
-                  "pm.test('Response confirms deletion', function () {",
+                  "pm.test('Status code is 404 after deletion', function () { pm.response.to.have.status(404); });",
+                  "pm.test('Error message returned', function () {",
                   "  var jsonData = pm.response.json();",
-                  "  pm.expect(jsonData.success).to.be.true;",
+                  "  pm.expect(jsonData.success).to.be.false;",
                   "});"
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "Verify tenant is deleted - expect 404",
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -484,21 +525,7 @@
               ]
             }
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 404 after deletion', function () { pm.response.to.have.status(404); });",
-                  "pm.test('Error message returned', function () {",
-                  "  var jsonData = pm.response.json();",
-                  "  pm.expect(jsonData.success).to.be.false;",
-                  "});"
-                ]
-              }
-            }
-          ]
+          "response": []
         }
       ]
     },
@@ -507,6 +534,21 @@
       "item": [
         {
           "name": "Get non-existing tenant - 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 404', function () { pm.response.to.have.status(404); });",
+                  "pm.test('Error response returned', function () {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.success).to.be.false;",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [],
@@ -523,6 +565,10 @@
               ]
             }
           },
+          "response": []
+        },
+        {
+          "name": "Update non-existing tenant - 404",
           "event": [
             {
               "listen": "test",
@@ -537,10 +583,7 @@
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "Update non-existing tenant - 404",
+          ],
           "request": {
             "method": "PUT",
             "header": [
@@ -549,6 +592,15 @@
                 "value": "application/json"
               }
             ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Should Not Update\",\n  \"id\": \"{{MISSING_TENANT_ID}}\",\n  \"participantId\": \"urn:test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
             "url": {
               "raw": "{{CONSUMER}}/api/v1/tenants/{{MISSING_TENANT_ID}}",
               "host": [
@@ -560,17 +612,12 @@
                 "tenants",
                 "{{MISSING_TENANT_ID}}"
               ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Should Not Update\",\n  \"id\": \"{{MISSING_TENANT_ID}}\",\n  \"participantId\": \"urn:test\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
             }
           },
+          "response": []
+        },
+        {
+          "name": "Enable non-existing tenant - 404",
           "event": [
             {
               "listen": "test",
@@ -579,16 +626,12 @@
                 "exec": [
                   "pm.test('Status code is 404', function () { pm.response.to.have.status(404); });",
                   "pm.test('Error response returned', function () {",
-                  "  var jsonData = pm.response.json();",
-                  "  pm.expect(jsonData.success).to.be.false;",
+                  "  pm.expect(pm.response.json().success).to.be.false;",
                   "});"
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "Enable non-existing tenant - 404",
+          ],
           "request": {
             "method": "PUT",
             "header": [],
@@ -606,6 +649,10 @@
               ]
             }
           },
+          "response": []
+        },
+        {
+          "name": "Disable non-existing tenant - 404",
           "event": [
             {
               "listen": "test",
@@ -619,10 +666,7 @@
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "Disable non-existing tenant - 404",
+          ],
           "request": {
             "method": "PUT",
             "header": [],
@@ -640,6 +684,10 @@
               ]
             }
           },
+          "response": []
+        },
+        {
+          "name": "Delete non-existing tenant - 404",
           "event": [
             {
               "listen": "test",
@@ -653,10 +701,7 @@
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "Delete non-existing tenant - 404",
+          ],
           "request": {
             "method": "DELETE",
             "header": [],
@@ -673,20 +718,7 @@
               ]
             }
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 404', function () { pm.response.to.have.status(404); });",
-                  "pm.test('Error response returned', function () {",
-                  "  pm.expect(pm.response.json().success).to.be.false;",
-                  "});"
-                ]
-              }
-            }
-          ]
+          "response": []
         }
       ]
     },
@@ -695,6 +727,21 @@
       "item": [
         {
           "name": "Create tenant with missing required fields - 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400 for missing required fields', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Error response returned', function () {",
+                  "  var jsonData = pm.response.json();",
+                  "  pm.expect(jsonData.success).to.be.false;",
+                  "});"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -724,24 +771,24 @@
               ]
             }
           },
+          "response": []
+        },
+        {
+          "name": "Create tenant with missing name - 400",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status code is 400 for missing required fields', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Status code is 400 for missing name', function () { pm.response.to.have.status(400); });",
                   "pm.test('Error response returned', function () {",
-                  "  var jsonData = pm.response.json();",
-                  "  pm.expect(jsonData.success).to.be.false;",
+                  "  pm.expect(pm.response.json().success).to.be.false;",
                   "});"
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "Create tenant with missing name - 400",
+          ],
           "request": {
             "method": "POST",
             "header": [
@@ -771,20 +818,7 @@
               ]
             }
           },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 400 for missing name', function () { pm.response.to.have.status(400); });",
-                  "pm.test('Error response returned', function () {",
-                  "  pm.expect(pm.response.json().success).to.be.false;",
-                  "});"
-                ]
-              }
-            }
-          ]
+          "response": []
         }
       ]
     },
@@ -793,27 +827,6 @@
       "item": [
         {
           "name": "Get tenants without authentication - 401",
-          "auth": {
-            "type": "noauth"
-          },
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{CONSUMER}}/api/v1/tenants",
-              "host": [
-                "{{CONSUMER}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "tenants"
-              ]
-            },
-            "auth": {
-              "type": "noauth"
-            }
-          },
           "event": [
             {
               "listen": "test",
@@ -824,26 +837,11 @@
                 ]
               }
             }
-          ]
-        },
-        {
-          "name": "Get tenants with regular admin - 403",
-          "auth": {
-            "type": "basic",
-            "basic": [
-              {
-                "key": "username",
-                "value": "admin@mail.com",
-                "type": "string"
-              },
-              {
-                "key": "password",
-                "value": "password",
-                "type": "string"
-              }
-            ]
-          },
+          ],
           "request": {
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "header": [],
             "url": {
@@ -856,36 +854,145 @@
                 "v1",
                 "tenants"
               ]
-            },
-            "auth": {
-              "type": "basic",
-              "basic": [
-                {
-                  "key": "username",
-                  "value": "admin@mail.com",
-                  "type": "string"
-                },
-                {
-                  "key": "password",
-                  "value": "password",
-                  "type": "string"
-                }
-              ]
             }
           },
+          "response": []
+        },
+        {
+          "name": "Auth login ADMIN",
           "event": [
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status code is 403 for ROLE_ADMIN', function () { pm.response.to.have.status(403); });"
-                ]
+                  "//extract the access_token and refresh_token from the response body and store them in environment variables.\r",
+                  "pm.test(\"Retrieve access_token\", function () {\r",
+                  "    var jsonData = pm.response.json();\r",
+                  "    pm.collectionVariables.set(\"auth_jwt_admin\", jsonData[\"access_token\"])\r",
+                  "});"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
               }
             }
-          ]
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{CONSUMER_AUTH_LOGIN}}",
+              "host": [
+                "{{CONSUMER_AUTH_LOGIN}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get tenants with regular admin - 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 403 for ROLE_ADMIN', function () { pm.response.to.have.status(403); });"
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{auth_jwt_admin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{CONSUMER}}/api/v1/tenants",
+              "host": [
+                "{{CONSUMER}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "tenants"
+              ]
+            }
+          },
+          "response": []
         }
       ]
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_jwt_superadmin}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "CONSUMER",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "NEW_TENANT_ID",
+      "value": "test-tenant-crud-id"
+    },
+    {
+      "key": "MISSING_TENANT_ID",
+      "value": "non_existing_tenant_xyz_404"
+    },
+    {
+      "key": "CONSUMER_AUTH_LOGIN",
+      "value": "{{CONSUMER}}/api/v1/auth/login"
     }
   ]
 }

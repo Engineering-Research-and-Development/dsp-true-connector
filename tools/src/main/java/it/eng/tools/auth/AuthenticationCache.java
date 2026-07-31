@@ -39,10 +39,11 @@ public class AuthenticationCache {
 
 	/**
 	 * Retrieves an authentication token, either from cache or by fetching a new one.
+	 * @param role the role for which the token is requested
 	 *
 	 * @return the authentication token, or a dummy token if no provider is configured
 	 */
-	public String getToken() {
+	public String getToken(String role) {
 		log.info("Requesting outbound authentication token");
 
 		AuthProvider authProvider = selectAuthenticationProvider();
@@ -60,7 +61,7 @@ public class AuthenticationCache {
 			synchronized (this) {
 				if (cachedToken == null || LocalDateTime.now().isAfter(expirationTime)) {
 					log.info("Fetching new token");
-					cachedToken = authProvider.fetchToken();
+					cachedToken = authProvider.fetchToken(role);
 					if (cachedToken != null) {
 						try {
 							expirationTime = JWT.decode(cachedToken).getExpiresAt()
@@ -79,7 +80,7 @@ public class AuthenticationCache {
 			}
 		} else {
 			// Always fetch a fresh token
-			return authProvider.fetchToken();
+			return authProvider.fetchToken(role);
 		}
 	}
 
@@ -113,7 +114,7 @@ public class AuthenticationCache {
 					.findFirst()
 					.orElse(null);
 		}
-		return null;
+		return authenticationProviders.getFirst();
 	}
 
 	/**

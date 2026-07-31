@@ -1,7 +1,9 @@
 package it.eng.connector.integration.negotiation;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -44,6 +46,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -95,10 +98,6 @@ public class AutomaticNegotiationIT {
      * Used as {@code Forward-To} when the consumer routes protocol messages through WireMock.
      */
     private static final String WIREMOCK_PROTOCOL_URL = "http://localhost:" + WIREMOCK_PORT + "/" + TENANT_ID;
-
-    // Basic auth credentials matching initial_data.json
-    private static final String ADMIN_CREDENTIALS =
-            Base64.getEncoder().encodeToString("admin@mail.com:password".getBytes(StandardCharsets.UTF_8));
 
     private static final int POLL_TIMEOUT_SECONDS = 30;
     private static final int POLL_INTERVAL_MS     = 500;
@@ -329,6 +328,23 @@ public class AutomaticNegotiationIT {
                 dataset.getId(), s3Properties.getBucketName());
     }
 
+    private String fetchAdminJwt() throws IOException, InterruptedException {
+
+        String requestBody = """
+                {"email": "admin@mail.com", "password": "password"}
+                """;
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(CONSUMER_BASE_URL + ApiEndpoints.AUTH_V1 + "/login"))
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+        String httpResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString()).body().toString();
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode jsonNode = objectMapper.readTree(httpResponse);
+        return jsonNode.get("access_token").asText();
+    }
+
     // ── test ──────────────────────────────────────────────────────────────────────
 
     @Test
@@ -359,7 +375,7 @@ public class AutomaticNegotiationIT {
         HttpResponse<String> initiateResponse = postAsTenant(
                 CONSUMER_BASE_URL + ApiEndpoints.NEGOTIATION_V1 + "/request",
                 NegotiationSerializer.serializePlain(requestBody),
-                ADMIN_CREDENTIALS, TENANT_ID);
+                fetchAdminJwt(), TENANT_ID);
 
         assertEquals(200, initiateResponse.statusCode(),
                 "Consumer initiate request failed: " + initiateResponse.body());
@@ -378,7 +394,7 @@ public class AutomaticNegotiationIT {
         // Poll consumer until FINALIZED
         ContractNegotiation finalConsumerCn = pollUntilState(
                 CONSUMER_BASE_URL + ApiEndpoints.NEGOTIATION_V1 + "/" + consumerCnId,
-                ADMIN_CREDENTIALS, ContractNegotiationState.FINALIZED, "consumer");
+                fetchAdminJwt(), ContractNegotiationState.FINALIZED, "consumer");
 
         // Poll provider until FINALIZED (look up by providerPid stored on consumer side)
         String providerPid = finalConsumerCn.getProviderPid();
@@ -468,7 +484,7 @@ public class AutomaticNegotiationIT {
         HttpResponse<String> initiateResponse = postAsTenant(
                 WIREMOCK_CONSUMER_BASE_URL + ApiEndpoints.NEGOTIATION_V1 + "/request",
                 NegotiationSerializer.serializePlain(requestBody),
-                ADMIN_CREDENTIALS, TENANT_ID);
+                fetchAdminJwt(), TENANT_ID);
 
         assertEquals(200, initiateResponse.statusCode(),
                 "WireMock-consumer initiate request failed: " + initiateResponse.body());
@@ -602,7 +618,7 @@ public class AutomaticNegotiationIT {
         HttpResponse<String> initiateResponse = postAsTenant(
                 CONSUMER_BASE_URL + ApiEndpoints.NEGOTIATION_V1 + "/request",
                 NegotiationSerializer.serializePlain(requestBody),
-                ADMIN_CREDENTIALS, TENANT_ID);
+                fetchAdminJwt(), TENANT_ID);
 
         assertEquals(200, initiateResponse.statusCode(),
                 "Consumer initiate request failed: " + initiateResponse.body());
@@ -657,20 +673,20 @@ public class AutomaticNegotiationIT {
      * expected {@code targetState} or the timeout is exceeded.
      *
      * @param url         the API endpoint to poll
-     * @param credentials Base64-encoded Basic Auth credentials
+     * @param jwt         the JWT token for authorization
      * @param targetState the {@link ContractNegotiationState} to wait for
      * @param label       human-readable label used in log messages
      * @return the {@link ContractNegotiation} once it reaches {@code targetState}
      * @throws Exception if polling times out or an HTTP/parse error occurs
      */
-    private ContractNegotiation pollUntilState(String url, String credentials,
+    private ContractNegotiation pollUntilState(String url, String jwt,
                                                ContractNegotiationState targetState, String label)
             throws Exception {
         long deadline = System.currentTimeMillis() + (POLL_TIMEOUT_SECONDS * 1000L);
         var javaType = jsonMapper.getTypeFactory()
                 .constructParametricType(GenericApiResponse.class, ContractNegotiation.class);
         while (System.currentTimeMillis() < deadline) {
-            HttpResponse<String> response = get(url, credentials);
+            HttpResponse<String> response = get(url, jwt);
             if (response.statusCode() == 200) {
                 GenericApiResponse<ContractNegotiation> apiResponse =
                         jsonMapper.readValue(response.body(), javaType);
@@ -735,42 +751,42 @@ public class AutomaticNegotiationIT {
     }
 
     /**
-     * Sends an HTTP POST request with JSON body and Basic Auth.
+     * Sends an HTTP POST request with JSON body and Bearer token.
      *
      * @param url         the target URL
      * @param body        the JSON request body
-     * @param credentials Base64-encoded Basic Auth credentials
+     * @param jwt         the JWT token for authorization
      * @return the HTTP response
      * @throws Exception on I/O or interrupt errors
      */
-    private HttpResponse<String> post(String url, String body, String credentials) throws Exception {
+    private HttpResponse<String> post(String url, String body, String jwt) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .header(HttpHeaders.AUTHORIZATION, "Basic " + credentials)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
     }
 
     /**
-     * Sends an HTTP POST request with JSON body, Basic Auth, and an {@code X-Tenant-Id}
+     * Sends an HTTP POST request with JSON body, Bearer token, and an {@code X-Tenant-Id}
      * header.  The header allows a super-admin (null tenantId user) to act on behalf of
      * a specific tenant so that created entities are stored with the correct tenantId.
      *
      * @param url         the target URL
      * @param body        the JSON request body
-     * @param credentials Base64-encoded Basic Auth credentials
+     * @param jwt         the JWT token for authorization
      * @param tenantId    the tenant identifier to set in the {@code X-Tenant-Id} header
      * @return the HTTP response
      * @throws Exception on I/O or interrupt errors
      */
-    private HttpResponse<String> postAsTenant(String url, String body, String credentials,
+    private HttpResponse<String> postAsTenant(String url, String body, String jwt,
             String tenantId) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .header(HttpHeaders.AUTHORIZATION, "Basic " + credentials)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt)
                 .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, tenantId)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
@@ -789,7 +805,7 @@ public class AutomaticNegotiationIT {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .header(HttpHeaders.AUTHORIZATION, "Basic " + credentials)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + credentials)
                 .GET()
                 .build();
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
