@@ -135,6 +135,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 .assigner(NegotiationMockObjectUtil.ASSIGNER)
                 .target(mockDataset.getId())
                 .timestamp(Instant.now().toString())
+                .tenantId(TENANT_ID)
                 .permission(Collections.singletonList(Permission.Builder.newInstance()
                         .action(Action.USE)
                         .constraint(Collections.singletonList(Constraint.Builder.newInstance()
@@ -147,7 +148,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
 
         agreementRepository.save(agreement);
 
-        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0, null);
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0, TENANT_ID);
 
         policyEnforcementRepository.save(policyEnforcement);
 
@@ -246,11 +247,12 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                                 .rightOperand("5")
                                 .build()))
                         .build()))
+                .tenantId(TENANT_ID)
                 .build();
 
         agreementRepository.save(agreement);
 
-        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0, null);
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0, TENANT_ID);
 
         policyEnforcementRepository.save(policyEnforcement);
 
@@ -453,6 +455,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 .agreement(agreement)
                 .consumerPid(consumerPid)
                 .providerPid(providerPid)
+                .tenantId(TENANT_ID)
                 .state(ContractNegotiationState.FINALIZED)
                 .build();
         contractNegotiationRepository.save(contractNegotiation);
@@ -471,7 +474,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
             throws InterruptedException {
         long deadline = System.currentTimeMillis() + timeoutMs;
         while (System.currentTimeMillis() < deadline) {
-            TransferProcess tp = transferProcessRepository.findById(transferProcessId).orElseThrow();
+            TransferProcess tp = transferProcessRepository.findByIdAndTenantId(transferProcessId, TENANT_ID).orElseThrow();
             if (expectedState.equals(tp.getState())) {
                 return tp;
             }

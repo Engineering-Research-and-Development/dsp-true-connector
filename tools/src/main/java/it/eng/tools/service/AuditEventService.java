@@ -22,7 +22,19 @@ public class AuditEventService {
         this.auditEventRepository = auditEventRepository;
     }
 
+    /**
+     * Fetch all audit events based on filter passed.
+     * Tenant aware method; will apply tenantId to filter only tenant related audit events
+     *
+     * @param filters Filters used in request
+     * @param pageable page
+     * @return List of audit events
+     */
     public Page<AuditEvent> getAuditEvents(Map<String, Object> filters, Pageable pageable) {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            filters.put("details.tenantId", tenantId);
+        }
         return auditEventRepository.findWithDynamicFilters(filters, AuditEvent.class, pageable);
     }
 

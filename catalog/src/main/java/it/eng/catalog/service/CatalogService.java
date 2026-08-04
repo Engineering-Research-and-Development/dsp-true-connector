@@ -136,6 +136,7 @@ public class CatalogService {
                 catalog.injectTenantId(tenantId);
             }
             storedCatalog = repository.save(catalog);
+            publisher.publishEvent(AuditEventType.CATALOG_CREATED, "Catalog created", Map.of("catalogId", storedCatalog.getId()));
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             throw new InternalServerErrorAPIException("Catalog could not be saved");

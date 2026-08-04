@@ -19,6 +19,7 @@
       "lastName": "Role",
       "email": "admin@mail.com",
       "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
+      "tenantId": "engineering",
       "enabled": true,
       "expired": false,
       "locked": false,
@@ -31,7 +32,8 @@
       "lastName": "Role",
       "email": "connector@mail.com",
       "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
-      "enabled": "true",
+      "tenantId": "engineering",
+      "enabled": true,
       "expired": false,
       "locked": false,
       "role": "CONNECTOR"

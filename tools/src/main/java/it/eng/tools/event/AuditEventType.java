@@ -59,6 +59,7 @@ public enum AuditEventType {
     USER_UPDATED("User updated"),
     USER_PASSWORD_CHANGED("User password changed"),
 
+    CATALOG_CREATED("Catalog created"),
     CATALOG_UPDATED("Catalog updated"),
     CATALOG_DELETED("Catalog deleted"),
     DATASET_CREATED("Dataset created"),
