@@ -18,7 +18,7 @@ import lombok.extern.slf4j.Slf4j;
  * #getAPICredentials()}.
  *
  * <p>Replaces the former {@code InternalAuthenticationService}, which incorrectly passed the raw
- * {@code application.internal.secret} value into {@link JwtService}'s {@code email} parameter —
+ * {@code aapplication.security.jwt.secret} value into {@link JwtService}'s {@code email} parameter —
  * since JWT payloads are base64url-encoded, not encrypted, this leaked the shared secret in
  * cleartext inside the {@code email} claim of every minted internal-service token. This class
  * never embeds the secret in any claim: the secret is used only as a local, non-Mongo minting gate
@@ -49,12 +49,12 @@ public class InternalServiceTokenIssuer {
 	 * Constructs the issuer.
 	 *
 	 * @param jwtService     the shared JWT signing/verification service
-	 * @param internalSecret the shared secret read from {@code application.internal.secret};
+	 * @param internalSecret the shared secret read from {@code application.security.jwt.secret};
 	 *                       defaults to an empty string when the property is absent, which fails
 	 *                       {@link #init()}'s startup check
 	 */
 	public InternalServiceTokenIssuer(JwtService jwtService,
-			@Value("${application.internal.secret:}") String internalSecret) {
+			@Value("${application.security.jwt.secret:}") String internalSecret) {
 		this.jwtService = jwtService;
 		this.internalSecret = internalSecret;
 	}
@@ -63,13 +63,13 @@ public class InternalServiceTokenIssuer {
 	 * Validates that the internal-service secret is configured at application startup, matching
 	 * the minting gate previously enforced by {@code InternalServiceAuthenticationProvider}.
 	 *
-	 * @throws IllegalStateException if {@code application.internal.secret} is blank
+	 * @throws IllegalStateException if {@code application.security.jwt.secret} is blank
 	 */
 	@PostConstruct
 	public void init() {
 		if (internalSecret == null || internalSecret.isBlank()) {
 			throw new IllegalStateException(
-					"Property 'application.internal.secret' must be configured with a non-blank value "
+					"Property 'application.security.jwt.secret' must be configured with a non-blank value "
 							+ "when 'application.auth.provider=INTERNAL' is active.");
 		}
 	}

@@ -119,10 +119,6 @@ public class ConnectorSecurityConfig {
      * All other {@code /api/**} endpoints require at minimum {@code ROLE_ADMIN}.
      * Disabled mode permits all requests.
      *
-     * <p>In INTERNAL mode, both {@link InternalServiceAuthenticationProvider} and
-     * {@link DaoAuthenticationProvider} are registered so that internal machine-to-machine
-     * calls authenticated as {@code internal-service} bypass tenant-scoped user lookup.
-     *
      * @param http the HttpSecurity builder
      * @param keycloakFilter optional Keycloak filter, present when mode is KEYCLOAK
      * @param apiTenantContextFilter the tenant context filter for API requests
@@ -161,11 +157,7 @@ public class ConnectorSecurityConfig {
         } else {
             // INTERNAL: ApiTenantContextFilter must run AFTER UsernamePasswordAuthenticationFilter so that
             // the Authentication is already populated in SecurityContextHolder when we read it.
-            // InternalServiceAuthenticationProvider is checked first; unmatched usernames fall
-            // through to DaoAuthenticationProvider for normal user login.
             http.anonymous(AbstractHttpConfigurer::disable)
-//                    .httpBasic(basic -> basic.authenticationEntryPoint(authEntryPoint))
-//                    .authenticationManager(new ProviderManager(internalServiceAuthProvider.getObject()))
                     .addFilterBefore(jwtAuthFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .addFilterAfter(apiTenantContextFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth

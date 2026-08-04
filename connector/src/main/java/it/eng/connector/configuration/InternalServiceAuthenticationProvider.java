@@ -26,8 +26,9 @@ import lombok.extern.slf4j.Slf4j;
  * modes this provider is not registered.
  */
 @Slf4j
-@Component
-@Conditional(InternalAuthenticationModeCondition.class)
+//@Component
+//@Conditional(InternalAuthenticationModeCondition.class)
+@Deprecated(forRemoval = true)
 public class InternalServiceAuthenticationProvider implements AuthenticationProvider {
 
     /** Username used by internal services for machine-to-machine API calls. */
