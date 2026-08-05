@@ -66,11 +66,11 @@ public class CredentialUtils {
 			}
 		}
 		String token = authenticationCache.getToken("ROLE_CONNECTOR");
-		if (token == null || AuthenticationCache.DUMMY_TOKEN_VALUE.equals(token)) {
+		if (token == null) {
 			// Fall back to basic auth if no token is available
-			log.info("getConnectorCredentials() - No valid token available, falling back to Basic Auth");
+			log.info("getConnectorCredentials() - No valid token available");
 			//TODO consider to move users from connector to tools module so user can be loaded from Mongo and not hardcoded.
-			return okhttp3.Credentials.basic("connector@mail.com", "password");
+			return null;
 		}
 		return "Bearer " + token;
 	}
@@ -97,10 +97,7 @@ public class CredentialUtils {
 			}
 		}
 		String token = authenticationCache.getToken("ROLE_ADMIN");
-		log.info("getAPICredentials() - Token from cache: {}", token == null ? "null" :
-			(AuthenticationCache.DUMMY_TOKEN_VALUE.equals(token) ? "DUMMY_TOKEN" : "JWT token (length: " + token.length() + ")"));
-
-		log.info("getAPICredentials() - Using token for authentication");
+		log.info("getAPICredentials() - Token from cache: {}", token);
 		return "Bearer " + token;
 	}
 
