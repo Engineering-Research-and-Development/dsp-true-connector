@@ -33,7 +33,7 @@ public class AuditEventService {
     public Page<AuditEvent> getAuditEvents(Map<String, Object> filters, Pageable pageable) {
         String tenantId = TenantContextHolder.getTenantId();
         if (tenantId != null) {
-            filters.put("details.tenantId", tenantId);
+            filters.put("tenantId", tenantId);
         }
         return auditEventRepository.findWithDynamicFilters(filters, AuditEvent.class, pageable);
     }
