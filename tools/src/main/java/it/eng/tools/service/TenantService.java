@@ -8,10 +8,11 @@ import it.eng.tools.repository.TenantRepository;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -85,12 +86,15 @@ public class TenantService {
     }
 
     /**
-     * Returns all tenants.
+     * Find tenants based on generic filter criteria.
+     * Supports any field with automatic type detection and conversion.
      *
-     * @return list of all tenants
+     * @param filters  Map of field names to filter values. All values are pre-validated and converted.
+     * @param pageable Pageable
+     * @return page of Tenant
      */
-    public List<Tenant> findAll() {
-        return tenantRepository.findAll();
+    public Page<Tenant> findAll(Map<String, Object> filters, Pageable pageable) {
+        return tenantRepository.findWithDynamicFilters(filters, Tenant.class, pageable);
     }
 
     /**

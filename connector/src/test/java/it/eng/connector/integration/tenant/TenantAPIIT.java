@@ -75,8 +75,8 @@ public class TenantAPIIT extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.message").exists());
+                .andExpect(jsonPath("$.response.success").value(true))
+                .andExpect(jsonPath("$.response.message").exists());
     }
 
     @Test
