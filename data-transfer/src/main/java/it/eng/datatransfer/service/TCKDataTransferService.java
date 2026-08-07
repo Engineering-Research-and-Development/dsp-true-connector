@@ -104,7 +104,7 @@ public class TCKDataTransferService extends AbstractDataTransferService {
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
                 DataTransferCallback.getConsumerDataTransferRequest(transferProcessInitialized.getCallbackAddress()),
                 TransferSerializer.serializeProtocolJsonNode(transferRequestMessage),
-                credentialUtils.getConnectorCredentials());
+                credentialUtils::getConnectorCredentials);
         log.info("Response received {}", response);
 
         TransferProcess transferProcessForDB;

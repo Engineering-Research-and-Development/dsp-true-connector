@@ -13,17 +13,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -42,6 +43,9 @@ class TenantServiceTest {
 
     @Mock
     private S3BucketProvisionService s3BucketProvisionService;
+
+    @Mock
+    private Pageable pageable;
 
     private TenantService tenantService;
 
@@ -103,12 +107,17 @@ class TenantServiceTest {
     @Test
     @DisplayName("findAll returns all tenants")
     void findAll_returnsList() {
+        Map<String, Object> emptyFilters = new HashMap<>();
+
         List<Tenant> tenants = Arrays.asList(buildTenant(true), buildTenant(false));
-        when(tenantRepository.findAll()).thenReturn(tenants);
+        when(tenantRepository.findWithDynamicFilters(eq(emptyFilters), eq(Tenant.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(tenants));
 
-        List<Tenant> result = tenantService.findAll();
+        Page<Tenant> response = tenantService.findAll(emptyFilters, pageable);
 
-        assertEquals(2, result.size());
+        assertNotNull(response);
+        assertEquals(2, response.getTotalElements());
+        verify(tenantRepository).findWithDynamicFilters(anyMap(), eq(Tenant.class), any(Pageable.class));
     }
 
     @Test

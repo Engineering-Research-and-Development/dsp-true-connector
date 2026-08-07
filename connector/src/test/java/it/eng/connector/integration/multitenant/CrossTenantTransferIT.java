@@ -8,9 +8,11 @@ import it.eng.catalog.repository.DataServiceRepository;
 import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
-import it.eng.connector.filter.ApiTenantContextFilter;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
+import it.eng.connector.model.Role;
+import it.eng.connector.model.User;
+import it.eng.connector.repository.UserRepository;
+import it.eng.connector.service.AuthService;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
@@ -38,7 +40,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.io.*;
@@ -51,10 +53,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -110,6 +109,12 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
     private String providerPid;
     private String agreementId;
     private String consumerTransferProcessId;
+    @Autowired
+    private UserRepository userRepository;
+    @Autowired
+    private AuthService authService;
+    @Autowired
+    private PasswordEncoder encoder;
 
     @BeforeEach
     public void seedTenantsAndProviderCatalog() throws Exception {
@@ -120,8 +125,18 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
 
         providerBucketName = ensureTenant(PROVIDER_TENANT);
         consumerBucketName = ensureTenant(CONSUMER_TENANT);
-        assertTrue(!providerBucketName.equals(consumerBucketName),
-                "Provider and consumer bucket names must be distinct");
+        assertNotEquals(providerBucketName, consumerBucketName, "Provider and consumer bucket names must be distinct");
+
+        userRepository.save(User.builder()
+                .id("consumer@example.com")
+                .firstName("consumer first name")
+                .lastName("consumer last name")
+                .email("consumer@example.com")
+                .password(encoder.encode("secret"))
+                .enabled(true)
+                .role(Role.ADMIN)
+                .tenantId(CONSUMER_TENANT)
+                .build());
 
         seedProviderCatalog();
     }
@@ -173,12 +188,13 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
 
         tenantRepository.deleteById(PROVIDER_TENANT);
         tenantRepository.deleteById(CONSUMER_TENANT);
+
+        userRepository.deleteById("consumer@example.com");
     }
 
     @Test
     @DisplayName("Two tenants on a single connector instance complete automatic negotiation "
             + "and automatic HTTP-PULL transfer; artifact lands in consumer's S3 bucket")
-    @WithUserDetails(TestUtil.ADMIN_USER)
     void crossTenantAutomaticNegotiationAndHttpPullTransfer_completesEndToEnd() throws Exception {
         // Consumer builds an offer that matches the provider's catalog offer exactly,
         // so it passes the provider's offer validation unchanged.
@@ -195,9 +211,11 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
         negotiationRequest.put("Forward-To", "http://localhost:8080/" + PROVIDER_TENANT);
         negotiationRequest.put("offer", NegotiationSerializer.serializePlainJsonNode(offer));
 
+        String jwt = authService.login("consumer@example.com", "secret").accessToken();
+
         ResultActions negotiationResult = mockMvc.perform(
                 post(ApiEndpoints.NEGOTIATION_V1 + "/request")
-                        .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, CONSUMER_TENANT)
+                        .header("Authorization", "Bearer " + jwt)
                         .content(NegotiationSerializer.serializePlain(negotiationRequest))
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -240,7 +258,8 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
 
         ResultActions transferResult = mockMvc.perform(
                 post(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
-                        .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, CONSUMER_TENANT)
+//                        .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, CONSUMER_TENANT)
+                        .header("Authorization", "Bearer " + jwt)
                         .content(transferRequestBody)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -266,7 +285,8 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
         // simulate view artifact request from consumer API endpoint to verify that policyEnforcement will increase for consumer but not for provider
         ResultActions viewConsumerArtifactResult = mockMvc.perform(
                 get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + completedConsumerTp.getId() + "/view")
-                        .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, CONSUMER_TENANT)
+//                        .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, CONSUMER_TENANT)
+                        .header("Authorization", "Bearer " + jwt)
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
 

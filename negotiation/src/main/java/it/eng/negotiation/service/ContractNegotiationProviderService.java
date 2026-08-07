@@ -103,7 +103,7 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(connectorProperties.getConnectorURL()
                         + ApiEndpoints.CATALOG_OFFERS_V1 + "/validate",
                 NegotiationSerializer.serializePlainJsonNode(contractRequestMessage.getOffer()),
-                credentialUtils.getAPICredentials(),
+                credentialUtils::getAPICredentials,
                 TenantContextHolder.getTenantId());
 
         if (!response.isSuccess()) {

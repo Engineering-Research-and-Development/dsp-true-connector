@@ -195,7 +195,7 @@ public class DataTransferAPIService {
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
                 DataTransferCallback.getConsumerDataTransferRequest(transferProcessInitialized.getCallbackAddress()),
                 TransferSerializer.serializeProtocolJsonNode(transferRequestMessage),
-                credentialUtils.getConnectorCredentials());
+                credentialUtils::getConnectorCredentials);
         log.info("Response received {}", response);
 
         TransferProcess transferProcessForDB;
@@ -376,7 +376,7 @@ public class DataTransferAPIService {
         GenericApiResponse<String> response = okHttpRestClient
                 .sendRequestProtocol(address,
                         TransferSerializer.serializeProtocolJsonNode(transferStartMessage),
-                        credentialUtils.getConnectorCredentials());
+                        credentialUtils::getConnectorCredentials);
         log.info("Response received {}", response);
         if (response.isSuccess()) {
             TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
@@ -453,7 +453,7 @@ public class DataTransferAPIService {
         GenericApiResponse<String> response = okHttpRestClient
                 .sendRequestProtocol(address,
                         TransferSerializer.serializeProtocolJsonNode(transferCompletionMessage),
-                        credentialUtils.getConnectorCredentials());
+                        credentialUtils::getConnectorCredentials);
         log.info("Response received {}", response);
         if (response.isSuccess()) {
             TransferProcess transferProcessCompleted = transferProcess.copyWithNewTransferState(TransferState.COMPLETED);
@@ -520,7 +520,7 @@ public class DataTransferAPIService {
         GenericApiResponse<String> response = okHttpRestClient
                 .sendRequestProtocol(address,
                         TransferSerializer.serializeProtocolJsonNode(transferSuspensionMessage),
-                        credentialUtils.getConnectorCredentials());
+                        credentialUtils::getConnectorCredentials);
         log.info("Response received {}", response);
         if (response.isSuccess()) {
             TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.SUSPENDED);
@@ -581,7 +581,7 @@ public class DataTransferAPIService {
         GenericApiResponse<String> response = okHttpRestClient
                 .sendRequestProtocol(address,
                         TransferSerializer.serializeProtocolJsonNode(transferTerminationMessage),
-                        credentialUtils.getConnectorCredentials());
+                        credentialUtils::getConnectorCredentials);
         log.info("Response received {}", response);
         if (response.isSuccess()) {
             TransferProcess transferProcessStarted = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);

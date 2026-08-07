@@ -1,6 +1,7 @@
 package it.eng.tools.client.rest;
 
 import java.io.IOException;
+import java.util.function.Supplier;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,7 +25,12 @@ import okhttp3.Response;
 @Service
 @Slf4j
 public class OkHttpRestClient {
-	
+
+	// HTTP status that triggers a single cached-M2M-credential invalidation + retry, since a 401
+	// on an outbound INTERNAL-mode M2M call typically means the cached JWT expired or its signing
+	// secret was rotated.
+	private static final int HTTP_UNAUTHORIZED = 401;
+
 	private final String serverPort;
 	private final boolean sslEnabled;
 	private final OkHttpClient okHttpClient;
@@ -73,6 +79,55 @@ public class OkHttpRestClient {
 	 * @return GenericApiResponse
 	 */
 	public GenericApiResponse<String> sendRequestProtocol(String targetAddress, JsonNode jsonNode, String authorization, String tenantId) {
+		return executeProtocolRequest(targetAddress, jsonNode, authorization, tenantId).response();
+	}
+
+	/**
+	 * Sends a protocol/internal request whose Authorization header is produced by {@code
+	 * authorizationSupplier}, retrying exactly once if the first attempt is rejected with HTTP 401.
+	 *
+	 * <p>On a 401, {@link CredentialUtils#invalidateCachedCredentials()} evicts any cached
+	 * {@code INTERNAL}-mode M2M token before {@code authorizationSupplier} is invoked a second
+	 * time, so the retry presents a freshly minted token. If the retry also returns 401, that
+	 * failure is surfaced as-is — no further retries are attempted.
+	 *
+	 * @param targetAddress          destination URL
+	 * @param jsonNode               request body (may be {@code null})
+	 * @param authorizationSupplier  supplies the Authorization header value; invoked once, and
+	 *                               again on retry after a 401
+	 * @return GenericApiResponse
+	 */
+	public GenericApiResponse<String> sendRequestProtocol(String targetAddress, JsonNode jsonNode,
+			Supplier<String> authorizationSupplier) {
+		return sendRequestProtocol(targetAddress, jsonNode, authorizationSupplier, null);
+	}
+
+	/**
+	 * Sends a protocol/internal request whose Authorization header is produced by {@code
+	 * authorizationSupplier}, optionally scoped to a tenant, retrying exactly once on HTTP 401 as
+	 * described in {@link #sendRequestProtocol(String, JsonNode, Supplier)}.
+	 *
+	 * @param targetAddress          destination URL
+	 * @param jsonNode               request body (may be {@code null})
+	 * @param authorizationSupplier  supplies the Authorization header value
+	 * @param tenantId               tenant to act on behalf of; {@code null} means super-admin/global
+	 * @return GenericApiResponse
+	 */
+	public GenericApiResponse<String> sendRequestProtocol(String targetAddress, JsonNode jsonNode,
+			Supplier<String> authorizationSupplier, String tenantId) {
+		ProtocolResult result = executeProtocolRequest(targetAddress, jsonNode, authorizationSupplier.get(), tenantId);
+		if (result.statusCode() == HTTP_UNAUTHORIZED) {
+			log.info("Received 401 from {} - invalidating cached M2M credentials and retrying once", targetAddress);
+			credentialUtils.invalidateCachedCredentials();
+			result = executeProtocolRequest(targetAddress, jsonNode, authorizationSupplier.get(), tenantId);
+		}
+		return result.response();
+	}
+
+	// Core implementation shared by every sendRequestProtocol overload; captures the raw HTTP
+	// status code (0 on IOException) alongside the API-facing response so retry-on-401 can be
+	// decided without expanding GenericApiResponse's public shape to also carry a status code.
+	private ProtocolResult executeProtocolRequest(String targetAddress, JsonNode jsonNode, String authorization, String tenantId) {
 		// send response to targetAddress
 		Request.Builder requestBuilder = new Request.Builder().url(targetAddress);
         RequestBody body;
@@ -99,14 +154,18 @@ public class OkHttpRestClient {
             }
             log.info("Response received: {}", resp);
 			if(response.isSuccessful()) { // code in 200..299
-				return GenericApiResponse.success(resp, "Response received from " + targetAddress);
+				return new ProtocolResult(code, GenericApiResponse.success(resp, "Response received from " + targetAddress));
 			} else {
-                return GenericApiResponse.error(resp, "Error while making request: " + resp);
+                return new ProtocolResult(code, GenericApiResponse.error(resp, "Error while making request: " + resp));
 			}
 		} catch (IOException e) {
 			log.error(e.getLocalizedMessage());
-			return GenericApiResponse.error(e.getLocalizedMessage());
+			return new ProtocolResult(0, GenericApiResponse.error(e.getLocalizedMessage()));
 		}
+	}
+
+	// Pairs the raw HTTP status code with the API-facing response; see executeProtocolRequest.
+	private record ProtocolResult(int statusCode, GenericApiResponse<String> response) {
 	}
 	
 	/**
@@ -181,6 +240,19 @@ public class OkHttpRestClient {
         }
 	}
 
+	/**
+	 * Sends an internal (loopback) request authorized via {@link CredentialUtils#getAPICredentials()},
+	 * retrying exactly once if the first attempt is rejected with HTTP 401. On a 401, {@link
+	 * CredentialUtils#invalidateCachedCredentials()} evicts any cached {@code INTERNAL}-mode M2M
+	 * token before {@code getAPICredentials()} is called again, so the retry presents a freshly
+	 * minted token. If the retry also returns 401, that failure is surfaced as-is (the caller
+	 * receives whatever body the second attempt returned).
+	 *
+	 * @param contextAddress the request path, appended to the loopback base URL
+	 * @param method         the HTTP method
+	 * @param jsonBody       request body (may be {@code null})
+	 * @return the response body, or {@code null} on an {@link IOException}
+	 */
 	public String sendInternalRequest(String contextAddress, HttpMethod method, JsonNode jsonBody) {
 		
 		 String connectorAddress;
@@ -191,15 +263,32 @@ public class OkHttpRestClient {
 			}
 		
 		String targetAddress = connectorAddress + serverPort + contextAddress;
-		Request.Builder requestBuilder = new Request.Builder()
-				.url(targetAddress);
-		requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, credentialUtils.getAPICredentials());
 		// Propagate tenant context so the receiving thread applies correct tenant filtering.
 		String tenantId = TenantContextHolder.getTenantId();
+		if (StringUtils.isBlank(tenantId)) {
+			log.debug("sendInternalRequest: no tenant context set — request will run as super-admin");
+		}
+
+		InternalResult result = executeInternalRequest(targetAddress, method, jsonBody,
+				credentialUtils.getAPICredentials(), tenantId);
+		if (result.statusCode() == HTTP_UNAUTHORIZED) {
+			log.info("Received 401 from {} - invalidating cached M2M credentials and retrying once", targetAddress);
+			credentialUtils.invalidateCachedCredentials();
+			result = executeInternalRequest(targetAddress, method, jsonBody,
+					credentialUtils.getAPICredentials(), tenantId);
+		}
+		return result.body();
+	}
+
+	// Core implementation shared by both attempts of sendInternalRequest; captures the raw HTTP
+	// status code (0 on IOException) alongside the response body so retry-on-401 can be decided.
+	private InternalResult executeInternalRequest(String targetAddress, HttpMethod method, JsonNode jsonBody,
+			String authorization, String tenantId) {
+		Request.Builder requestBuilder = new Request.Builder()
+				.url(targetAddress);
+		requestBuilder.addHeader(HttpHeaders.AUTHORIZATION, authorization);
 		if (StringUtils.isNotBlank(tenantId)) {
 			requestBuilder.addHeader(TenantContextHolder.HEADER_X_TENANT_ID, tenantId);
-		} else {
-			log.debug("sendInternalRequest: no tenant context set — request will run as super-admin");
 		}
 		if(HttpMethod.GET.equals(method)) {
 			// performing get
@@ -225,10 +314,14 @@ public class OkHttpRestClient {
 			// TODO see to pass GenericApiResponse<X> as parameter and then 
 			// TypeReference<GenericApiResponse<List<String>>> typeRef = new TypeReference<GenericApiResponse<List<String>>>() {};
 			// GenericApiResponse<List<String>> apiResp =  objectMapper.readValue(resp, typeRef);
-			return resp;
+			return new InternalResult(code, resp);
         } catch (IOException e) {
 			log.error(e.getLocalizedMessage());
-			return null;
+			return new InternalResult(0, null);
 		}
+	}
+
+	// Pairs the raw HTTP status code with the response body; see executeInternalRequest.
+	private record InternalResult(int statusCode, String body) {
 	}
 }

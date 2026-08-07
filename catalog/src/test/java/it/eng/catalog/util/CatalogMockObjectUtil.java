@@ -38,6 +38,8 @@ public class CatalogMockObjectUtil {
     public static final String FILE_ID = "some_file";
     public static final Instant NOW = Instant.now();
 
+    public static final String TENANT_ID = "engineering";
+
 
     public static final Multilanguage MULTILANGUAGE =
             Multilanguage.Builder.newInstance().language("en").value("For test").build();
@@ -59,6 +61,7 @@ public class CatalogMockObjectUtil {
             .endpointURL(ENDPOINT_URL + " update")
             .createdBy("admin@mail.com")
             .lastModifiedBy("admin@mail.com")
+            .tenantId(TENANT_ID)
             .build();
 
     public static final DataService DATA_SERVICE = DataService.Builder.newInstance()
@@ -74,6 +77,7 @@ public class CatalogMockObjectUtil {
             .title(TITLE)
             .endpointURL("http://dataservice.com")
             .endpointDescription("endpoint description")
+            .tenantId(TENANT_ID)
             .build();
 
     public static final Constraint CONSTRAINT = Constraint.Builder.newInstance()
@@ -149,6 +153,7 @@ public class CatalogMockObjectUtil {
             .format("HTTP:PULL")
             .hasPolicy(Stream.of(OFFER).collect(Collectors.toCollection(HashSet::new)))
             .accessService(DATA_SERVICE)
+            .tenantId(TENANT_ID)
             .build();
 
     public static final Distribution DISTRIBUTION_FOR_UPDATE = Distribution.Builder.newInstance()
@@ -160,6 +165,7 @@ public class CatalogMockObjectUtil {
             .accessService(DATA_SERVICE)
             .createdBy("admin@mail.com")
             .lastModifiedBy("admin@mail.com")
+            .tenantId(TENANT_ID)
             .build();
 
     public static final Collection<Distribution> DISTRIBUTIONS = Collections.singletonList(DISTRIBUTION);
@@ -176,6 +182,7 @@ public class CatalogMockObjectUtil {
             .theme(Stream.of("white", "blue", "aqua").collect(Collectors.toCollection(HashSet::new)))
             .title(TITLE)
             .hasPolicy(Stream.of(OFFER).collect(Collectors.toCollection(HashSet::new)))
+            .tenantId(TENANT_ID)
             .build();
 
     public static final Dataset DATASET_WITH_ARTIFACT = Dataset.Builder.newInstance()
@@ -192,6 +199,7 @@ public class CatalogMockObjectUtil {
             .theme(Stream.of("white", "blue", "aqua").collect(Collectors.toCollection(HashSet::new)))
             .title(TITLE)
             .hasPolicy(Stream.of(OFFER).collect(Collectors.toCollection(HashSet::new)))
+            .tenantId(TENANT_ID)
             .build();
 
     public static final Dataset DATASET_FOR_UPDATE = Dataset.Builder.newInstance()
@@ -210,6 +218,7 @@ public class CatalogMockObjectUtil {
             .lastModifiedBy("admin@mail.com")
             .issued(ISSUED)
             .modified(MODIFIED)
+            .tenantId(TENANT_ID)
             .build();
 
     public static final Set<Dataset> DATASETS = Stream.of(DATASET).collect(Collectors.toCollection(HashSet::new));
@@ -229,6 +238,7 @@ public class CatalogMockObjectUtil {
             .dataset(Stream.of(DATASET).collect(Collectors.toCollection(HashSet::new)))
             .distribution(Stream.of(DISTRIBUTION).collect(Collectors.toCollection(HashSet::new)))
             .hasPolicy(Stream.of(OFFER).collect(Collectors.toCollection(HashSet::new)))
+            .tenantId(TENANT_ID)
             .build();
 
     /**

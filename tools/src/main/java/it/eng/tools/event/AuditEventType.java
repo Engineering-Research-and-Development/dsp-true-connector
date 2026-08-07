@@ -11,7 +11,13 @@ public enum AuditEventType {
     APPLICATION_START("Application start"),
     APPLICATION_STOP("Application stop"),
     APPLICATION_LOGIN("Login"),
+    APPLICATION_LOGIN_FAILED("Login failed"),
     APPLICATION_LOGOUT("Logout"),
+    APPLICATION_LOGOUT_FAILED("Logout failed"),
+    APPLICATION_TOKEN_REFRESHED("Token refreshed"),
+    APPLICATION_TOKEN_REFRESH_FAILED("Token refresh failed"),
+    M2M_TOKEN_ISSUED("Machine-to-machine token issued"),
+    M2M_TOKEN_ISSUE_FAILED("Machine-to-machine token issue failed"),
     PROTOCOL_CATALOG_CATALOG_NOT_FOUND("Catalog not found"),
     PROTOCOL_CATALOG_DATASET_NOT_FOUND("Dataset not found"),
     PROTOCOL_NEGOTIATION_CONTRACT_NEGOTIATION("Contract negotiation"),
@@ -47,7 +53,26 @@ public enum AuditEventType {
     TENANT_ENABLED("Tenant enabled"),
     TENANT_DISABLED("Tenant disabled"),
     TENANT_UPDATED("Tenant updated"),
-    TENANT_NOT_FOUND("Tenant not found");
+    TENANT_NOT_FOUND("Tenant not found"),
+
+    USER_CREATED("User created"),
+    USER_UPDATED("User updated"),
+    USER_PASSWORD_CHANGED("User password changed"),
+
+    CATALOG_CREATED("Catalog created"),
+    CATALOG_UPDATED("Catalog updated"),
+    CATALOG_DELETED("Catalog deleted"),
+    DATASET_CREATED("Dataset created"),
+    DATASET_UPDATED("Dataset updated"),
+    DATASET_DELETED("Dataset deleted"),
+    ARTIFACT_UPLOADED("Artifact uploaded"),
+    ARTIFACT_DELETED("Artifact deleted"),
+    DATA_SERVICE_CREATED("Data service created"),
+    DATA_SERVICE_UPDATED("Data service updated"),
+    DATA_SERVICE_DELETED("Data service deleted"),
+    DISTRIBUTION_CREATED("Distribution created"),
+    DISTRIBUTION_UPDATED("Distribution updated"),
+    DISTRIBUTION_DELETED("Distribution deleted");
 
     private final String auditEventType;
     private static final Map<String, AuditEventType> BY_LABEL;

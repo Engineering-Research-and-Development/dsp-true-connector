@@ -114,4 +114,14 @@ public class AuditEvent {
         }
     }
 
+    /**
+     * Directly sets the tenant identifier on this instance, bypassing the builder.
+     * Used by the service layer to stamp tenant ownership before persisting.
+     *
+     * @param tenantId the tenant ID to associate with this catalog
+     */
+    public void injectTenantId(String tenantId) {
+        this.tenantId = tenantId;
+    }
+
 }

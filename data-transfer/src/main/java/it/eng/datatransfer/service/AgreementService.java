@@ -44,7 +44,7 @@ public class AgreementService {
 			GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(connectorProperties.getConnectorURL() 
 					+ ApiEndpoints.NEGOTIATION_AGREEMENTS_V1 + "/" + agreementId + "/enforce", 
 					null, 
-					credentialUtils.getAPICredentials(),
+					credentialUtils::getAPICredentials,
 					TenantContextHolder.getTenantId());
 			if (!response.isSuccess()) {
 				log.info("Agreement is not valid");

@@ -1,6 +1,6 @@
 {
   "info": {
-    "_postman_id": "a1e47b71-466d-4f3e-9819-fef0ddfc77ff",
+    "_postman_id": "c3872b8b-e191-4d32-b7f1-efcd74a40708",
     "name": "api-endpoints-tenant-tests",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "36278855"
@@ -112,16 +112,18 @@
             {
               "listen": "test",
               "script": {
-                "type": "text/javascript",
                 "exec": [
                   "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
                   "pm.test('New tenant appears in list', function () {",
                   "  var jsonData = pm.response.json();",
-                  "  pm.expect(jsonData.data).to.be.an('array');",
-                  "  var found = jsonData.data.some(function(t) { return t.id === pm.collectionVariables.get('NEW_TENANT_ID'); });",
+                  "  var tenants = jsonData.response.data.content;",
+                  "  var found = tenants.some(function(t) { return t.id === pm.collectionVariables.get('NEW_TENANT_ID'); });",
                   "  pm.expect(found).to.be.true;",
                   "});"
-                ]
+                ],
+                "type": "text/javascript",
+                "packages": {},
+                "requests": {}
               }
             }
           ],
@@ -993,6 +995,10 @@
     {
       "key": "CONSUMER_AUTH_LOGIN",
       "value": "{{CONSUMER}}/api/v1/auth/login"
+    },
+    {
+      "key": "auth_jwt_superadmin",
+      "value": ""
     }
   ]
 }

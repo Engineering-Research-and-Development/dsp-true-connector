@@ -136,6 +136,7 @@ public class CatalogService {
                 catalog.injectTenantId(tenantId);
             }
             storedCatalog = repository.save(catalog);
+            publisher.publishEvent(AuditEventType.CATALOG_CREATED, "Catalog created", Map.of("catalogId", storedCatalog.getId()));
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             throw new InternalServerErrorAPIException("Catalog could not be saved");
@@ -167,6 +168,7 @@ public class CatalogService {
         getCatalogById(id);
         try {
             repository.deleteById(id);
+            publisher.publishEvent(AuditEventType.CATALOG_DELETED, "Catalog deleted", Map.of("catalogId", id));
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             throw new InternalServerErrorAPIException("Catalog could not be deleted");
@@ -177,7 +179,9 @@ public class CatalogService {
         Catalog existingCatalog = getCatalogByIdForApi(id);
         try {
             Catalog updatedCatalog = existingCatalog.updateInstance(cat);
-            return repository.save(updatedCatalog);
+            Catalog saved = repository.save(updatedCatalog);
+            publisher.publishEvent(AuditEventType.CATALOG_UPDATED, "Catalog updated", Map.of("catalogId", id));
+            return saved;
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             throw new InternalServerErrorAPIException("Catalog could not be updated");

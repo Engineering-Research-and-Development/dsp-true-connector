@@ -53,7 +53,7 @@ import java.util.Arrays;
  * <p>Defines three {@link SecurityFilterChain} beans matched by URL zone:
  * <ol>
  *   <li><b>Admin chain</b> ({@code /api/**, /actuator/**, /env}) — requires {@code ROLE_ADMIN}.
- *       Keycloak or Basic Auth depending on {@code application.auth.provider}.</li>
+ *       Keycloak or self-issued JWT depending on {@code application.auth.provider}.</li>
  *   <li><b>Protocol chain</b> ({@code /connector/**, /catalog/**, /negotiations/**, /transfers/**})
  *       — requires {@code ROLE_CONNECTOR}. Uses DCP when {@code application.auth.dcp.enabled=true},
  *       otherwise follows the configured provider.</li>
@@ -64,8 +64,8 @@ import java.util.Arrays;
  * <pre>
  * provider=KEYCLOAK + dcp.enabled=false → admin: Keycloak, protocol: Keycloak
  * provider=KEYCLOAK + dcp.enabled=true → admin: Keycloak, protocol: DCP
- * provider=INTERNAL + dcp.enabled=false → admin: Basic Auth/JWT, protocol: Basic Auth
- * provider=INTERNAL + dcp.enabled=true → admin: Basic Auth/JWT, protocol: DCP
+ * provider=INTERNAL + dcp.enabled=false → admin: self-issued JWT, protocol: self-issued JWT
+ * provider=INTERNAL + dcp.enabled=true → admin: self-issued JWT, protocol: DCP
  * provider=DISABLED → all endpoints: permitAll
  * </pre>
  */
@@ -119,10 +119,6 @@ public class ConnectorSecurityConfig {
      * All other {@code /api/**} endpoints require at minimum {@code ROLE_ADMIN}.
      * Disabled mode permits all requests.
      *
-     * <p>In INTERNAL mode, both {@link InternalServiceAuthenticationProvider} and
-     * {@link DaoAuthenticationProvider} are registered so that internal machine-to-machine
-     * calls authenticated as {@code internal-service} bypass tenant-scoped user lookup.
-     *
      * @param http the HttpSecurity builder
      * @param keycloakFilter optional Keycloak filter, present when mode is KEYCLOAK
      * @param apiTenantContextFilter the tenant context filter for API requests
@@ -161,11 +157,7 @@ public class ConnectorSecurityConfig {
         } else {
             // INTERNAL: ApiTenantContextFilter must run AFTER UsernamePasswordAuthenticationFilter so that
             // the Authentication is already populated in SecurityContextHolder when we read it.
-            // InternalServiceAuthenticationProvider is checked first; unmatched usernames fall
-            // through to DaoAuthenticationProvider for normal user login.
             http.anonymous(AbstractHttpConfigurer::disable)
-//                    .httpBasic(basic -> basic.authenticationEntryPoint(authEntryPoint))
-//                    .authenticationManager(new ProviderManager(internalServiceAuthProvider.getObject()))
                     .addFilterBefore(jwtAuthFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .addFilterAfter(apiTenantContextFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth

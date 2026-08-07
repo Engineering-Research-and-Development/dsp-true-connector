@@ -22,8 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class AuthenticationCache {
 
-	public static final String DUMMY_TOKEN_VALUE = "DummyTokenValue";
-
 	private final List<AuthProvider> authenticationProviders;
 	private final KeycloakAuthenticationProperties keycloakProperties;
 
@@ -54,7 +52,7 @@ public class AuthenticationCache {
 
 		if (authProvider == null) {
 			log.info("No authentication provider configured - continuing with dummy token");
-			return DUMMY_TOKEN_VALUE;
+			return null;
 		}
 
 		if (tokenCachingEnabled) {

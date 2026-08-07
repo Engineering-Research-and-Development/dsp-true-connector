@@ -18,10 +18,13 @@ import it.eng.connector.model.User;
 import it.eng.connector.model.UserDTO;
 import it.eng.connector.repository.UserRepository;
 import it.eng.tools.auth.condition.InternalOrDisabledAuthenticationModeCondition;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.exception.BadRequestException;
 import it.eng.tools.exception.ResourceNotFoundException;
 import it.eng.tools.serializer.ToolsSerializer;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantService;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -39,22 +42,26 @@ public class UserService {
 	private final PasswordEncoder encoder;
 	private final PasswordCheckValidator passwordValidator;
 	private final TenantService tenantService;
+	private final AuditEventPublisher auditEventPublisher;
 
 	/**
 	 * Creates the service with its required dependencies.
 	 *
-	 * @param userRepository    the user repository
-	 * @param encoder           the password encoder
-	 * @param passwordValidator the password-strength validator
-	 * @param tenantService     the tenant service used to validate tenant existence
+	 * @param userRepository      the user repository
+	 * @param encoder             the password encoder
+	 * @param passwordValidator   the password-strength validator
+	 * @param tenantService       the tenant service used to validate tenant existence
+	 * @param auditEventPublisher publisher used to record user CRUD audit events
 	 */
 	public UserService(UserRepository userRepository, PasswordEncoder encoder,
-			PasswordCheckValidator passwordValidator, TenantService tenantService) {
+			PasswordCheckValidator passwordValidator, TenantService tenantService,
+			AuditEventPublisher auditEventPublisher) {
 		super();
 		this.userRepository = userRepository;
 		this.encoder = encoder;
 		this.passwordValidator = passwordValidator;
 		this.tenantService = tenantService;
+		this.auditEventPublisher = auditEventPublisher;
 	}
 
 	/**
@@ -117,6 +124,8 @@ public class UserService {
 					true, false, false, userDTO.getRole());
 			user.setTenantId(userDTO.getTenantId());
 			User saved = userRepository.save(user);
+			auditEventPublisher.publishEvent(
+					AuditEventType.USER_CREATED, "User created", Map.of("email", user.getEmail()));
 			return ToolsSerializer.serializePlainJsonNode(saved);
 		} else {
 			throw new BadRequestException(
@@ -141,6 +150,8 @@ public class UserService {
 			user.setFirstName(userDTO.getFirstName() != null ? userDTO.getFirstName() : user.getFirstName());
 			user.setLastName(userDTO.getLastName() != null ? userDTO.getLastName() : user.getLastName());
 			userRepository.save(user);
+			auditEventPublisher.publishEvent(
+					AuditEventType.USER_UPDATED, "User updated", Map.of("email", user.getEmail()));
 			return ToolsSerializer.serializePlainJsonNode(user);
 		} else {
 			log.error("Not allowed to change other user email");
@@ -169,6 +180,9 @@ public class UserService {
 				if (validationResult.isValid()) {
 					user.setPassword(encoder.encode(userDTO.getNewPassword()));
 					userRepository.save(user);
+					auditEventPublisher.publishEvent(
+							AuditEventType.USER_PASSWORD_CHANGED, "User password changed",
+							Map.of("email", user.getEmail()));
 					return ToolsSerializer.serializePlainJsonNode(user);
 				} else {
 					log.warn("Password not valid with strength check");

@@ -1,6 +1,7 @@
 package it.eng.catalog.service;
 
 import java.util.Collection;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
@@ -8,6 +9,8 @@ import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.repository.DataServiceRepository;
+import it.eng.tools.event.AuditEventType;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -20,10 +23,13 @@ public class DataServiceService {
 
     private final DataServiceRepository repository;
     private final CatalogService catalogService;
+    private final AuditEventPublisher auditEventPublisher;
 
-    public DataServiceService(DataServiceRepository repository, CatalogService catalogService) {
+    public DataServiceService(DataServiceRepository repository, CatalogService catalogService,
+                              AuditEventPublisher auditEventPublisher) {
         this.repository = repository;
         this.catalogService = catalogService;
+        this.auditEventPublisher = auditEventPublisher;
     }
 
     /**
@@ -76,6 +82,9 @@ public class DataServiceService {
 			throw new InternalServerErrorAPIException("Data service could not be saved");
 		}
         catalogService.updateCatalogDataServiceAfterSave(savedDataService);
+        auditEventPublisher.publishEvent(
+                AuditEventType.DATA_SERVICE_CREATED, "Data service created",
+                Map.of("dataServiceId", savedDataService.getId()));
         return dataService;
     }
 
@@ -95,6 +104,8 @@ public class DataServiceService {
 			throw new InternalServerErrorAPIException("Data service could not be deleted");
 		}
         catalogService.updateCatalogDataServiceAfterDelete(existingDataService);
+        auditEventPublisher.publishEvent(
+                AuditEventType.DATA_SERVICE_DELETED, "Data service deleted", Map.of("dataServiceId", id));
     }
 
     /**
@@ -117,6 +128,8 @@ public class DataServiceService {
 			throw new InternalServerErrorAPIException("Data service could not be updated");
 		}
 
+        auditEventPublisher.publishEvent(
+                AuditEventType.DATA_SERVICE_UPDATED, "Data service updated", Map.of("dataServiceId", id));
         return storedDataService;
     }
 }
