@@ -11,7 +11,8 @@ import java.util.Optional;
  * MongoDB repository for {@link Tenant} documents.
  */
 @Repository
-public interface TenantRepository extends MongoRepository<Tenant, String> {
+public interface TenantRepository extends MongoRepository<Tenant, String>,
+        GenericDynamicFilterRepository<Tenant, String>{
 
     /**
      * Finds all tenants matching the given enabled state.

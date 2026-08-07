@@ -10,8 +10,6 @@ import it.eng.tools.auth.condition.InternalOrKeycloakAuthenticationModeCondition
 import it.eng.tools.controller.ApiEndpoints;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
-import java.util.Set;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.http.MediaType;
@@ -20,6 +18,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * REST controller exposing the unified admin-zone authentication contract:

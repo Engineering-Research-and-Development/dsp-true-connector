@@ -68,17 +68,6 @@ class CredentialUtilsTest {
     }
 
     @Test
-    @DisplayName("getConnectorCredentials: should fall back to Basic Auth when no token is available anywhere")
-    void getConnectorCredentials_noTokenAnywhere_fallsBackToBasicAuth() {
-        when(connectorCredentialProviderObjectProvider.getIfAvailable()).thenReturn(null);
-        when(authenticationCache.getToken("ROLE_CONNECTOR")).thenReturn(AuthenticationCache.DUMMY_TOKEN_VALUE);
-
-        String result = credentialUtils.getConnectorCredentials();
-
-        assertEquals(okhttp3.Credentials.basic("connector@mail.com", "password"), result);
-    }
-
-    @Test
     @DisplayName("getConnectorCredentials: should fall back to Keycloak when provider is present but yields no token")
     void getConnectorCredentials_providerPresentButNoToken_fallsBackToKeycloak() {
         when(connectorCredentialProviderObjectProvider.getIfAvailable()).thenReturn(connectorCredentialProvider);

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -31,10 +32,12 @@ import it.eng.connector.model.User;
 import it.eng.connector.model.UserDTO;
 import it.eng.connector.repository.UserRepository;
 import it.eng.connector.util.TestUtil;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.exception.BadRequestException;
 import it.eng.tools.exception.ResourceNotFoundException;
 import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.Tenant;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantService;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,6 +55,8 @@ class UserServiceTest {
 	private PasswordCheckValidator passwordValidator;
 	@Mock
 	private TenantService tenantService;
+	@Mock
+	private AuditEventPublisher auditEventPublisher;
 
 	@InjectMocks
 	private UserService userService;
@@ -120,6 +125,7 @@ class UserServiceTest {
 
 		verify(tenantService).findEnabledTenantById(TENANT_ID);
 		verify(userRepository).save(any(User.class));
+		verify(auditEventPublisher).publishEvent(eq(AuditEventType.USER_CREATED), anyString(), any());
 	}
 
 	@Test
@@ -189,6 +195,7 @@ class UserServiceTest {
 		userService.updateUser(USER_ID, TestUtil.USER.getEmail(), userDTO);
 
 		verify(userRepository).save(any(User.class));
+		verify(auditEventPublisher).publishEvent(eq(AuditEventType.USER_UPDATED), anyString(), any());
 	}
 
 	@Test
@@ -239,6 +246,7 @@ class UserServiceTest {
 		userService.updatePassword(USER_ID, TestUtil.USER.getEmail(), userDTO);
 
 		verify(userRepository).save(any(User.class));
+		verify(auditEventPublisher).publishEvent(eq(AuditEventType.USER_PASSWORD_CHANGED), anyString(), any());
 	}
 
 	@Test

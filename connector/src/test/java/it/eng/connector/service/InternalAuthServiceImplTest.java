@@ -1,37 +1,5 @@
 package it.eng.connector.service;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.authentication.AccountExpiredException;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.DisabledException;
-import org.springframework.security.authentication.LockedException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-
 import it.eng.connector.model.Role;
 import it.eng.connector.model.User;
 import it.eng.connector.repository.UserRepository;
@@ -40,6 +8,25 @@ import it.eng.tools.auth.jwt.JwtService;
 import it.eng.tools.auth.jwt.RefreshTokenRecord;
 import it.eng.tools.auth.jwt.RefreshTokenStore;
 import it.eng.tools.auth.jwt.TokenPair;
+import it.eng.tools.event.AuditEventType;
+import it.eng.tools.service.AuditEventPublisher;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.*;
+import org.springframework.security.core.Authentication;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for {@link InternalAuthServiceImpl}.
@@ -62,6 +49,8 @@ class InternalAuthServiceImplTest {
 	private RefreshTokenStore refreshTokenStore;
 	@Mock
 	private Authentication authentication;
+	@Mock
+	private AuditEventPublisher auditEventPublisher;
 
 	private InternalAuthServiceImpl authService;
 	private User user;
@@ -69,7 +58,7 @@ class InternalAuthServiceImplTest {
 	@BeforeEach
 	void setUp() {
 		authService = new InternalAuthServiceImpl(authenticationManager, userRepository, jwtService,
-				refreshTokenStore);
+				refreshTokenStore, auditEventPublisher);
 		user = User.builder()
 				.id(USER_ID)
 				.email(EMAIL)
@@ -100,6 +89,8 @@ class InternalAuthServiceImplTest {
 		assertEquals("refresh-id-1", tokens.refreshToken());
 		assertEquals(900L, tokens.expiresInSeconds());
 		verify(jwtService).issueTokenPair(USER_ID, EMAIL, List.of(Role.ADMIN.authorityName()), TENANT_ID, Map.of());
+		verify(auditEventPublisher).publishEvent(
+				argThat(event -> event.getEventType() == AuditEventType.APPLICATION_LOGIN));
 	}
 
 	@Test
@@ -110,6 +101,9 @@ class InternalAuthServiceImplTest {
 
 		assertThrows(BadCredentialsException.class, () -> authService.login(EMAIL, "wrong-password"));
 		verify(userRepository, never()).findByEmail(anyString());
+		verify(jwtService, never()).issueTokenPair(anyString(), anyString(), anyList(), anyString(), anyMap());
+		verify(auditEventPublisher).publishEvent(
+				argThat(event -> event.getEventType() == AuditEventType.APPLICATION_LOGIN_FAILED));
 	}
 
 	@Test
@@ -119,6 +113,10 @@ class InternalAuthServiceImplTest {
 				.thenThrow(new DisabledException("User is disabled"));
 
 		assertThrows(DisabledException.class, () -> authService.login(EMAIL, PASSWORD));
+		verify(userRepository, never()).findByEmail(anyString());
+		verify(jwtService, never()).issueTokenPair(anyString(), anyString(), anyList(), anyString(), anyMap());
+		verify(auditEventPublisher).publishEvent(
+				argThat(event -> event.getEventType() == AuditEventType.APPLICATION_LOGIN_FAILED));
 	}
 
 	@Test
@@ -128,6 +126,10 @@ class InternalAuthServiceImplTest {
 				.thenThrow(new LockedException("User is locked"));
 
 		assertThrows(LockedException.class, () -> authService.login(EMAIL, PASSWORD));
+		verify(userRepository, never()).findByEmail(anyString());
+		verify(jwtService, never()).issueTokenPair(anyString(), anyString(), anyList(), anyString(), anyMap());
+		verify(auditEventPublisher).publishEvent(
+				argThat(event -> event.getEventType() == AuditEventType.APPLICATION_LOGIN_FAILED));
 	}
 
 	@Test
@@ -137,6 +139,10 @@ class InternalAuthServiceImplTest {
 				.thenThrow(new AccountExpiredException("Account expired"));
 
 		assertThrows(AccountExpiredException.class, () -> authService.login(EMAIL, PASSWORD));
+		verify(userRepository, never()).findByEmail(anyString());
+		verify(jwtService, never()).issueTokenPair(anyString(), anyString(), anyList(), anyString(), anyMap());
+		verify(auditEventPublisher).publishEvent(
+				argThat(event -> event.getEventType() == AuditEventType.APPLICATION_LOGIN_FAILED));
 	}
 
 	@Test
@@ -154,6 +160,8 @@ class InternalAuthServiceImplTest {
 		assertEquals("new-access-token", tokens.accessToken());
 		assertEquals("new-refresh-id", tokens.refreshToken());
 		assertEquals(900L, tokens.expiresInSeconds());
+		verify(auditEventPublisher).publishEvent(
+				argThat(event -> event.getEventType() == AuditEventType.APPLICATION_TOKEN_REFRESHED));
 	}
 
 	@Test
@@ -164,6 +172,8 @@ class InternalAuthServiceImplTest {
 		assertThrows(BadCredentialsException.class, () -> authService.refresh("unknown-id"));
 		verify(userRepository, never()).findById(anyString());
 		verify(jwtService, never()).issueTokenPair(anyString(), anyString(), anyList(), anyString(), anyMap());
+		verify(auditEventPublisher).publishEvent(
+				argThat(event -> event.getEventType() == AuditEventType.APPLICATION_TOKEN_REFRESH_FAILED));
 	}
 
 	@Test
@@ -172,6 +182,8 @@ class InternalAuthServiceImplTest {
 		authService.logout("refresh-id-1");
 
 		verify(refreshTokenStore, times(1)).revoke("refresh-id-1");
+		verify(auditEventPublisher).publishEvent(
+				argThat(event -> event.getEventType() == AuditEventType.APPLICATION_LOGOUT));
 	}
 
 	@Test
@@ -183,5 +195,7 @@ class InternalAuthServiceImplTest {
 			authService.logout("unknown-id");
 		});
 		verify(refreshTokenStore, times(2)).revoke("unknown-id");
+		verify(auditEventPublisher, times(2)).publishEvent(
+				argThat(event -> event.getEventType() == AuditEventType.APPLICATION_LOGOUT));
 	}
 }

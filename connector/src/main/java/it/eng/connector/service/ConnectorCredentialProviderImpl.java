@@ -6,6 +6,9 @@ import org.springframework.stereotype.Component;
 
 import it.eng.tools.auth.ConnectorCredentialProvider;
 import it.eng.tools.auth.condition.InternalAuthenticationModeCondition;
+import it.eng.tools.event.AuditEventType;
+import it.eng.tools.service.AuditEventPublisher;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -32,25 +35,37 @@ public class ConnectorCredentialProviderImpl implements ConnectorCredentialProvi
 	private static final String CONNECTOR_PASSWORD = "password";
 
 	private final AuthService authService;
+	private final AuditEventPublisher auditEventPublisher;
 
 	/**
 	 * Constructs the adapter.
 	 *
-	 * @param authService the active {@link AuthService} bean, which resolves to {@code
-	 *                     InternalAuthServiceImpl} whenever this adapter's own {@code INTERNAL}-mode
-	 *                     condition is satisfied
+	 * @param authService         the active {@link AuthService} bean, which resolves to {@code
+	 *                            InternalAuthServiceImpl} whenever this adapter's own {@code
+	 *                            INTERNAL}-mode condition is satisfied
+	 * @param auditEventPublisher publisher used to record M2M token issuance audit events
 	 */
-	public ConnectorCredentialProviderImpl(AuthService authService) {
+	public ConnectorCredentialProviderImpl(AuthService authService, AuditEventPublisher auditEventPublisher) {
 		this.authService = authService;
+		this.auditEventPublisher = auditEventPublisher;
 	}
 
 	@Override
 	public String issueConnectorToken() {
 		try {
-			return authService.login(CONNECTOR_EMAIL, CONNECTOR_PASSWORD).accessToken();
+			String token = authService.login(CONNECTOR_EMAIL, CONNECTOR_PASSWORD).accessToken();
+			auditEventPublisher.publishEvent(
+					AuditEventType.M2M_TOKEN_ISSUED,
+					"Machine-to-machine connector token issued",
+					Map.of("email", CONNECTOR_EMAIL));
+			return token;
 		} catch (AuthenticationException e) {
 			log.error("issueConnectorToken() - Failed to authenticate seeded connector user '{}': {}",
 					CONNECTOR_EMAIL, e.getMessage());
+			auditEventPublisher.publishEvent(
+					AuditEventType.M2M_TOKEN_ISSUE_FAILED,
+					"Machine-to-machine connector token issuance failed",
+					Map.of("email", CONNECTOR_EMAIL, "error", e.getMessage()));
 			return null;
 		}
 	}

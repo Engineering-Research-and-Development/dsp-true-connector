@@ -113,7 +113,15 @@ public class CatalogTest {
         Catalog catalog = CatalogMockObjectUtil.CATALOG;
         String ss = CatalogSerializer.serializeProtocol(catalog);
         Catalog catalog2 = CatalogSerializer.deserializeProtocol(ss, Catalog.class);
-        assertThat(catalog).usingRecursiveComparison().isEqualTo(catalog2);
+
+        // protocol serialization does not include tenantId, so we need to remove it from the original catalog before comparison
+        catalog.injectTenantId(null);
+        catalog.getDataset().forEach(dataset -> dataset.injectTenantId(null));
+        catalog.getDistribution().forEach(distribution -> distribution.injectTenantId(null));
+        catalog.getService().forEach(service -> service.injectTenantId(null));
+
+        assertThat(catalog).usingRecursiveComparison()
+                .isEqualTo(catalog2);
     }
 
     public void validateDataset(Dataset javaObj) {

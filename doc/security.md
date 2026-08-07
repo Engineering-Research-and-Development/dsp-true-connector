@@ -234,10 +234,7 @@ application.security.jwt.refresh-expiration-ms=604800000
 > **`application.security.jwt.secret` must be identical across every connector instance that
 > needs to trust each other's tokens** (e.g. connector A and connector B in a docker-compose or
 > Kubernetes deployment). A mismatched secret causes every cross-connector protocol call to fail
-> JWT signature validation with a 401. This is a *different* secret from
-> `application.internal.secret` below — see the callout in
-> [Internal Service Account](#internal-service-account-m2m) for why the two must never be
-> confused or merged.
+> JWT signature validation with a 401.
 
 ### What Happens in Internal Mode
 
@@ -301,23 +298,13 @@ to a secret rotation or a stale cache entry without requiring a restart.
 **Configuration:**
 
 ```properties
-# Can be overridden via APPLICATION_INTERNAL_SECRET environment variable.
-# Startup fails fast (IllegalStateException) if this is blank while INTERNAL mode is active.
-application.internal.secret=${APPLICATION_INTERNAL_SECRET:internal-service-secret-change-in-prod}
+# APPLICATION_SECURITY_JWT_SECRET env var; never commit a real production secret here.
+application.security.jwt.secret=${APPLICATION_SECURITY_JWT_SECRET:connector-jwt-dev-secret-change-in-prod-min-32-bytes}
 ```
 
-> **`application.internal.secret` vs. `application.security.jwt.secret` — two distinct secrets for
-> two distinct purposes, never to be confused or merged:**
 > - `application.security.jwt.secret` is the HMAC key that **signs and verifies every JWT** issued
 >   in INTERNAL mode (admin login, protocol login, and both M2M paths above). It must be identical
 >   across every connector instance that needs to validate each other's tokens.
-> - `application.internal.secret` is a startup guard consumed only by `InternalServiceTokenIssuer`
->   to confirm INTERNAL mode is intentionally configured (it fails fast if blank); it is **never**
->   embedded in any JWT claim. An earlier version of this internal-service token issuer
->   (`InternalAuthenticationService`, now removed) incorrectly passed this secret into the JWT's
->   `email` claim, leaking it in cleartext to any recipient of the token — this has been fixed and
->   is covered by a regression test (`InternalServiceTokenIssuerTest`) asserting the secret never
->   appears in any minted token.
 
 **In Keycloak mode** (`application.auth.provider=KEYCLOAK`), neither of these two components is
 active; `CredentialUtils` instead falls back to the existing Keycloak-backed paths

@@ -2,6 +2,10 @@ package it.eng.connector.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -13,6 +17,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.BadCredentialsException;
 
 import it.eng.connector.service.AuthService.AuthTokens;
+import it.eng.tools.event.AuditEventType;
+import it.eng.tools.service.AuditEventPublisher;
 
 /**
  * Unit tests for {@link ConnectorCredentialProviderImpl}.
@@ -23,11 +29,14 @@ class ConnectorCredentialProviderImplTest {
     @Mock
     private AuthService authService;
 
+    @Mock
+    private AuditEventPublisher auditEventPublisher;
+
     private ConnectorCredentialProviderImpl provider;
 
     @BeforeEach
     void setUp() {
-        provider = new ConnectorCredentialProviderImpl(authService);
+        provider = new ConnectorCredentialProviderImpl(authService, auditEventPublisher);
     }
 
     @Test
@@ -39,6 +48,7 @@ class ConnectorCredentialProviderImplTest {
         String token = provider.issueConnectorToken();
 
         assertEquals("access-token", token);
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.M2M_TOKEN_ISSUED), anyString(), any());
     }
 
     @Test
@@ -50,5 +60,6 @@ class ConnectorCredentialProviderImplTest {
         String token = provider.issueConnectorToken();
 
         assertNull(token);
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.M2M_TOKEN_ISSUE_FAILED), anyString(), any());
     }
 }

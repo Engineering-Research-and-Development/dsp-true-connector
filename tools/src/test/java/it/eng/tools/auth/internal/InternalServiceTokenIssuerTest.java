@@ -33,7 +33,7 @@ class InternalServiceTokenIssuerTest {
     private JwtService jwtService;
 
     @Test
-    @DisplayName("Should fail startup when application.internal.secret is blank")
+    @DisplayName("Should fail startup when application.security.jwt.secret is blank")
     void blankSecretFailsStartup() {
         InternalServiceTokenIssuer issuer = new InternalServiceTokenIssuer(jwtService, "");
 
@@ -42,7 +42,7 @@ class InternalServiceTokenIssuerTest {
     }
 
     @Test
-    @DisplayName("Should fail startup when application.internal.secret is null")
+    @DisplayName("Should fail startup when application.security.jwt.secret is null")
     void nullSecretFailsStartup() {
         InternalServiceTokenIssuer issuer = new InternalServiceTokenIssuer(jwtService, null);
 
@@ -50,7 +50,7 @@ class InternalServiceTokenIssuerTest {
     }
 
     @Test
-    @DisplayName("Should succeed startup when application.internal.secret is configured")
+    @DisplayName("Should succeed startup when application.security.jwt.secret is configured")
     void configuredSecretPassesStartup() {
         InternalServiceTokenIssuer issuer = new InternalServiceTokenIssuer(jwtService, INTERNAL_SECRET);
 

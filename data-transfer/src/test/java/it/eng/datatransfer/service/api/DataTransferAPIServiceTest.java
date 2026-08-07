@@ -75,8 +75,6 @@ class DataTransferAPIServiceTest {
     @Mock
     private HttpPullTransferStrategy httpPullTransferStrategy;
     @Mock
-    private ArtifactTransferService artifactTransferService;
-    @Mock
     private Pageable pageable;
 
     @Captor

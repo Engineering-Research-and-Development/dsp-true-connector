@@ -3,22 +3,31 @@ package it.eng.tools.rest.api;
 import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.service.GenericFilterBuilder;
 import it.eng.tools.service.TenantService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,8 +40,20 @@ class TenantAPIControllerTest {
     @Mock
     private TenantService tenantService;
 
+    @Mock
+    private Pageable pageable;
+    @Mock
+    private PagedResourcesAssembler<Tenant> pagedResourcesAssembler;
+    @Mock
+    private PlainTenantAssembler plainAssembler;
+    @Mock
+    private GenericFilterBuilder filterBuilder;
+
     @InjectMocks
     private TenantAPIController controller;
+
+    PagedModel.PageMetadata metadata = new PagedModel.PageMetadata(20, 0, 2, 1);
+    private Page<Tenant> tenantPage;
 
     private Tenant buildTenant() {
         return Tenant.Builder.newInstance()
@@ -46,13 +67,26 @@ class TenantAPIControllerTest {
     @Test
     @DisplayName("Get all tenants returns list")
     void getAllTenants_returnsList() {
-        List<Tenant> tenants = Collections.singletonList(buildTenant());
-        when(tenantService.findAll()).thenReturn(tenants);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        List<EntityModel<Tenant>> content = Collections.singletonList(EntityModel.of(buildTenant()));
+        PagedModel<EntityModel<Tenant>> pagedModel = PagedModel.of(content, metadata);
+        tenantPage = new PageImpl<>(Collections.singletonList(buildTenant()), pageable, 1);
 
-        ResponseEntity<GenericApiResponse<List<Tenant>>> response = controller.getAllTenants();
+        when(filterBuilder.buildFromRequest(any(HttpServletRequest.class)))
+                .thenReturn(Map.of());
+        when(tenantService.findAll(anyMap(), any(Pageable.class))).thenReturn(tenantPage);
 
+        when(pagedResourcesAssembler.toModel(tenantPage, plainAssembler)).thenReturn((PagedModel) pagedModel);
+
+        ResponseEntity<PagedAPIResponse> response =
+                controller.getAllTenants(request, 0, 20, new String[]{"timestamp", "desc"});
+
+        assertNotNull(response);
         assertNotNull(response.getBody());
-        assertEquals(1, response.getBody().getData().size());
+        assertTrue(response.getBody().getResponse().isSuccess());
+        assertFalse(response.getBody().getResponse().getData().getContent().isEmpty());
+
+        verify(tenantService).findAll(any(Map.class), any(Pageable.class));
     }
 
     @Test

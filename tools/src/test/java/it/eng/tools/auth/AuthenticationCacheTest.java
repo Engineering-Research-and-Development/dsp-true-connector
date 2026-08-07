@@ -37,26 +37,20 @@ class AuthenticationCacheTest {
     }
 
     @Test
-    @DisplayName("Should return dummy token when no providers are configured")
-    void noProvidersReturnsDummyToken() {
+    @DisplayName("Should return null token when no providers are configured")
+    void noProvidersReturnsNulloken() {
         AuthenticationCache cache = new AuthenticationCache(List.of(), null);
-        assertEquals(AuthenticationCache.DUMMY_TOKEN_VALUE, cache.getToken("ROLE_CONNECTOR"));
+        assertNull(cache.getToken("ROLE_CONNECTOR"));
     }
 
-    @Test
-    @DisplayName("Should return dummy token when providers list is null")
-    void nullProvidersReturnsDummyToken() {
-        AuthenticationCache cache = new AuthenticationCache(null, null);
-        assertEquals(AuthenticationCache.DUMMY_TOKEN_VALUE, cache.getToken("ROLE_CONNECTOR"));
-    }
 
     @Test
-    @DisplayName("Should return dummy token when Keycloak properties are not configured")
+    @DisplayName("Should return null token when Keycloak properties are not configured")
     //TODO check if this test makes sense
-    void noKeycloakPropertiesReturnsDummyToken() {
+    void noKeycloakPropertiesReturnsNullToken() {
         AuthenticationCache cache = new AuthenticationCache(List.of(keycloakAuthService), null);
-        when(keycloakAuthService.fetchToken("ROLE_CONNECTOR")).thenReturn(AuthenticationCache.DUMMY_TOKEN_VALUE);
-        assertEquals(AuthenticationCache.DUMMY_TOKEN_VALUE, cache.getToken("ROLE_CONNECTOR"));
+        when(keycloakAuthService.fetchToken("ROLE_CONNECTOR")).thenReturn(null);
+        assertNull(cache.getToken("ROLE_CONNECTOR"));
         verify(keycloakAuthService, times(1)).fetchToken("ROLE_CONNECTOR");
     }
 
