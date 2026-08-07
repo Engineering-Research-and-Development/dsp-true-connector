@@ -5,6 +5,9 @@ import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.RequestInfo;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -42,6 +45,13 @@ public class AuditEventPublisher {
     }
 
     public void publishEvent(AuditEvent auditEvent) {
+
+        // Add tenant context if available
+        String tenantId = TenantContextHolder.getTenantId();
+        if (auditEvent.getTenantId() == null && tenantId != null) {
+            auditEvent.injectTenantId(tenantId);
+        }
+
         applicationEventPublisher.publishEvent(auditEvent);
     }
 
@@ -68,10 +78,17 @@ public class AuditEventPublisher {
                 .eventType(eventType)
                 .details(details);
 
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null
+                && authentication.isAuthenticated()
+                && authentication.getPrincipal() instanceof Jwt) {
+            Jwt jwt = (Jwt) authentication.getPrincipal();
+            auditEventBuilder.username(jwt.getClaimAsString("email"));
+        }
+
         // Add request information if available
         if (requestInfo != null) {
             auditEventBuilder.ipAddress(requestInfo.getRemoteAddress())
-                    .username(requestInfo.getUsername())
                     .source(requestInfo.getRemoteHost());
         }
         // Add tenant context if available

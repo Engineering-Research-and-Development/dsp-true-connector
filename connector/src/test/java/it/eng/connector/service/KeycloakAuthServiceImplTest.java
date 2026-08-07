@@ -2,6 +2,8 @@ package it.eng.connector.service;
 
 import it.eng.tools.auth.keycloak.KeycloakLoginProperties;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.event.AuditEventType;
+import it.eng.tools.service.AuditEventPublisher;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.junit.jupiter.api.DisplayName;
@@ -14,6 +16,8 @@ import org.springframework.security.authentication.BadCredentialsException;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -23,6 +27,8 @@ class KeycloakAuthServiceImplTest {
     private KeycloakLoginProperties keycloakLoginProperties;
     @Mock
     private OkHttpRestClient okHttpRestClient;
+    @Mock
+    private AuditEventPublisher auditEventPublisher;
 
     @Mock
     private Response response;
@@ -48,6 +54,7 @@ class KeycloakAuthServiceImplTest {
         assertNotNull(authTokens.accessToken());
         assertNotNull(authTokens.refreshToken());
         assertEquals(3600, authTokens.expiresInSeconds());
+        verify(auditEventPublisher).publishEvent(argThat(event -> event.getEventType() == AuditEventType.APPLICATION_LOGIN));
     }
 
     @Test
@@ -63,6 +70,7 @@ class KeycloakAuthServiceImplTest {
         assertThrows(BadCredentialsException.class, () -> {
             keycloakAuthServiceImpl.login("admin", "admin");
         });
+        verify(auditEventPublisher).publishEvent(argThat(event -> event.getEventType() == AuditEventType.APPLICATION_LOGIN_FAILED));
     }
 
     @Test
@@ -83,6 +91,7 @@ class KeycloakAuthServiceImplTest {
         assertNotNull(authTokens.accessToken());
         assertNotNull(authTokens.refreshToken());
         assertEquals(3600, authTokens.expiresInSeconds());
+        verify(auditEventPublisher).publishEvent(argThat(event -> event.getEventType() == AuditEventType.APPLICATION_TOKEN_REFRESHED));
     }
 
     @Test
@@ -100,6 +109,7 @@ class KeycloakAuthServiceImplTest {
         assertThrows(BadCredentialsException.class, () -> {
             keycloakAuthServiceImpl.refresh("dummy-refresh-token");
         });
+        verify(auditEventPublisher).publishEvent(argThat(event -> event.getEventType() == AuditEventType.APPLICATION_TOKEN_REFRESH_FAILED));
     }
 
     @Test
@@ -115,6 +125,7 @@ class KeycloakAuthServiceImplTest {
         assertDoesNotThrow(() -> {
             keycloakAuthServiceImpl.logout("dummy-refresh-token");
         });
+        verify(auditEventPublisher).publishEvent(argThat(event -> event.getEventType() == AuditEventType.APPLICATION_LOGOUT));
     }
 
     @Test
@@ -132,5 +143,6 @@ class KeycloakAuthServiceImplTest {
         assertThrows(BadCredentialsException.class, () -> {
             keycloakAuthServiceImpl.logout("dummy-refresh-token-invalid");
         });
+        verify(auditEventPublisher).publishEvent(argThat(event -> event.getEventType() == AuditEventType.APPLICATION_LOGOUT_FAILED));
     }
 }
