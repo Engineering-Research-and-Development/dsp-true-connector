@@ -139,7 +139,8 @@ public class TenantAPIController {
             @PathVariable String id,
             @RequestBody TenantUpdateRequest request) {
         log.info("Updating tenant: {}", id);
-        Tenant updated = tenantService.updateTenant(id, request.toTenantUpdates(), request.toCredentialsRequest());
+        Tenant existingTenant = tenantService.findById(id);
+        Tenant updated = tenantService.updateTenant(id, request.toTenantUpdates(existingTenant), request.toCredentialsRequest());
         return ResponseEntity.ok(GenericApiResponse.success(updated, "Tenant updated"));
     }
 

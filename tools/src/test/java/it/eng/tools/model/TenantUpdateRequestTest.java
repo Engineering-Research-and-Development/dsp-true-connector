@@ -18,13 +18,23 @@ class TenantUpdateRequestTest {
                 .automaticNegotiation(true)
                 .automaticTransfer(false)
                 .build();
+        Tenant existing = Tenant.Builder.newInstance()
+                .id("tenant-id")
+                .name("Existing name")
+                .participantId("urn:connector:tenant")
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .enabled(true)
+                .build();
 
-        Tenant updates = request.toTenantUpdates();
+        Tenant updates = request.toTenantUpdates(existing);
 
         assertEquals("Updated tenant", updates.getName());
         assertEquals("Updated description", updates.getDescription());
         assertTrue(updates.isAutomaticNegotiation());
         assertFalse(updates.isAutomaticTransfer());
+        assertEquals("tenant-id", updates.getId());
+        assertEquals("urn:connector:tenant", updates.getParticipantId());
     }
 
     @Test
@@ -55,5 +65,28 @@ class TenantUpdateRequestTest {
         TenantBucketCredentialsRequest credentialsRequest = request.toCredentialsRequest();
 
         assertFalse(credentialsRequest.isVerifyConnection());
+    }
+
+    @Test
+    @DisplayName("TenantUpdateRequest toTenantUpdates keeps existing name when omitted")
+    void toTenantUpdates_withoutName_preservesExistingName() {
+        Tenant existing = Tenant.Builder.newInstance()
+                .id("tenant-id")
+                .name("Existing name")
+                .participantId("urn:connector:tenant")
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .enabled(true)
+                .build();
+        TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance()
+                .description("Only description changes")
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .build();
+
+        Tenant updates = request.toTenantUpdates(existing);
+
+        assertEquals("Existing name", updates.getName());
+        assertEquals("Only description changes", updates.getDescription());
     }
 }

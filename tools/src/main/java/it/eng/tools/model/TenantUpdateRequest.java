@@ -28,13 +28,14 @@ public class TenantUpdateRequest {
     /**
      * Converts this request to tenant updates consumed by {@link it.eng.tools.service.TenantService}.
      *
+     * @param existingTenant existing tenant used to preserve immutable and required fields
      * @return tenant containing the mutable, non-bucket update fields
      */
-    public Tenant toTenantUpdates() {
+    public Tenant toTenantUpdates(Tenant existingTenant) {
         return Tenant.Builder.newInstance()
-                .id("update-request")
-                .name(name)
-                .participantId("update-request")
+                .id(existingTenant.getId())
+                .name(name != null ? name : existingTenant.getName())
+                .participantId(existingTenant.getParticipantId())
                 .description(description)
                 .automaticNegotiation(automaticNegotiation)
                 .automaticTransfer(automaticTransfer)

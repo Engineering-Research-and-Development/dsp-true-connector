@@ -186,7 +186,9 @@ class TenantAPIControllerTest {
         TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance()
                 .name("Updated Name")
                 .build();
+        Tenant existing = buildTenant();
         Tenant updated = buildTenant();
+        when(tenantService.findById(TENANT_ID)).thenReturn(existing);
         when(tenantService.updateTenant(eq(TENANT_ID), any(Tenant.class), any(TenantBucketCredentialsRequest.class)))
                 .thenReturn(updated);
 
@@ -203,8 +205,7 @@ class TenantAPIControllerTest {
         TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance()
                 .name("Updated Name")
                 .build();
-        when(tenantService.updateTenant(eq(TENANT_ID), any(Tenant.class), any(TenantBucketCredentialsRequest.class)))
-                .thenThrow(new TenantNotFoundException("Not found"));
+        when(tenantService.findById(TENANT_ID)).thenThrow(new TenantNotFoundException("Not found"));
 
         assertThrows(TenantNotFoundException.class, () -> controller.updateTenant(TENANT_ID, request));
     }
