@@ -2,6 +2,8 @@ package it.eng.tools.rest.api;
 
 import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.Tenant;
+import it.eng.tools.model.TenantBucketCredentialsRequest;
+import it.eng.tools.model.TenantCreateRequest;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.GenericFilterBuilder;
 import it.eng.tools.service.TenantService;
@@ -113,12 +115,22 @@ class TenantAPIControllerTest {
     @DisplayName("Create tenant persists and returns it")
     void createTenant_success() {
         Tenant tenant = buildTenant();
-        when(tenantService.saveTenant(tenant)).thenReturn(tenant);
+        TenantCreateRequest request = TenantCreateRequest.Builder.newInstance()
+                .id(tenant.getId())
+                .name(tenant.getName())
+                .description(tenant.getDescription())
+                .participantId(tenant.getParticipantId())
+                .automaticNegotiation(tenant.isAutomaticNegotiation())
+                .automaticTransfer(tenant.isAutomaticTransfer())
+                .enabled(tenant.isEnabled())
+                .build();
+        when(tenantService.saveTenant(any(Tenant.class), any(TenantBucketCredentialsRequest.class))).thenReturn(tenant);
 
-        ResponseEntity<GenericApiResponse<Tenant>> response = controller.createTenant(tenant);
+        ResponseEntity<GenericApiResponse<Tenant>> response = controller.createTenant(request);
 
         assertNotNull(response.getBody());
         assertEquals(TENANT_ID, response.getBody().getData().getId());
+        verify(tenantService).saveTenant(any(Tenant.class), any(TenantBucketCredentialsRequest.class));
     }
 
     @Test

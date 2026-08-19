@@ -2,6 +2,7 @@ package it.eng.tools.rest.api;
 
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Tenant;
+import it.eng.tools.model.TenantCreateRequest;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.GenericFilterBuilder;
 import it.eng.tools.service.TenantService;
@@ -111,13 +112,14 @@ public class TenantAPIController {
     /**
      * Creates a new tenant.
      *
-     * @param tenant the tenant to create
+     * @param request the tenant create request
      * @return 200 OK with the created tenant
      */
     @PostMapping
-    public ResponseEntity<GenericApiResponse<Tenant>> createTenant(@RequestBody Tenant tenant) {
+    public ResponseEntity<GenericApiResponse<Tenant>> createTenant(@RequestBody TenantCreateRequest request) {
+        Tenant tenant = request.toTenant();
         log.info("Creating tenant: {}", tenant.getId());
-        Tenant saved = tenantService.saveTenant(tenant);
+        Tenant saved = tenantService.saveTenant(tenant, request.toCredentialsRequest());
         return ResponseEntity.ok(GenericApiResponse.success(saved, "Tenant created"));
     }
 

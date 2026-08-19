@@ -1,24 +1,30 @@
 # Tenant S3 Provisioning
 
-This document describes how S3 buckets are provisioned for tenants in TRUE Connector,
-including the bucket auto-derivation rule added in the MT3 slice.
+This document describes how S3 buckets are provisioned for tenants in TRUE Connector.
 
-## Bucket auto-derivation
+## Tenant creation bucket modes (`POST /api/v1/tenants`)
 
-When a tenant is created via `POST /api/v1/tenants`, the bucket name is **always** programmatically
-derived using the rule:
+Tenant creation supports three input modes resolved from the optional
+`bucketName`/`accessKey`/`secretKey` fields:
+
+| Input fields | Resolved mode | Behavior |
+|---|---|---|
+| no bucket fields supplied | `AUTOMATIC` | Bucket is auto-derived as `dsp-{tenantId}` and provisioned via `ensureBucketCredentials` |
+| `bucketName` only | `EXISTING_BUCKET` | Supplied bucket name is used; credentials are ensured/generated via `ensureBucketCredentials(bucketName)` |
+| `bucketName` + `accessKey` + `secretKey` | `EXTERNAL_CREDENTIALS` | Supplied credentials are persisted as-is via `BucketCredentialsService.saveBucketCredentials`; auto-provisioning is skipped |
+
+For `EXTERNAL_CREDENTIALS`, `verifyConnection=true` enforces a pre-flight `HeadBucket`
+check through `BucketConnectionVerificationService` before any credentials or tenant data
+are persisted. If verification fails, tenant creation is rejected with HTTP 400 and no
+tenant or bucket-credentials record is created.
+
+In `AUTOMATIC` mode, the bucket name derivation rule remains:
 
 ```
 bucketName = "dsp-" + tenantId.toLowerCase()
 ```
 
 **Example**: a tenant with `id = "acme-corp"` receives bucket name `"dsp-acme-corp"`.
-
-Any `bucketName` field present in the request body is silently ignored.
-
-The auto-derived name is immediately provisioned in S3/MinIO before the tenant document
-is persisted. If the derived name is already owned by a different tenant, `saveTenant()`
-throws `IllegalArgumentException` and returns HTTP 409.
 
 ### Bucket name validation
 
@@ -70,9 +76,9 @@ encryption details.
 
 ## Bring-Your-Own-Bucket Foundation (TB1)
 
-> **Status**: foundation only. The classes described below are not yet wired into
-> `POST`/`PUT /api/v1/tenants`. Wiring into tenant creation and update is tracked by the
-> sibling slices TB2 and TB3 under [#322](https://github.com/Engineering-Research-and-Development/dsp-true-connector/issues/322).
+> **Status**:
+> - `POST /api/v1/tenants` wiring is implemented (TB2).
+> - `PUT /api/v1/tenants/{id}` wiring is tracked separately by TB3 under [#322](https://github.com/Engineering-Research-and-Development/dsp-true-connector/issues/322).
 
 To let an admin optionally supply an existing bucket and/or external credentials instead of
 always relying on automatic provisioning, the following shared contract exists in `tools`:
