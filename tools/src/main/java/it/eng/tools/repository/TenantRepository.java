@@ -32,6 +32,17 @@ public interface TenantRepository extends MongoRepository<Tenant, String>,
     Optional<Tenant> findByBucketName(String bucketName);
 
     /**
+     * Finds a tenant by bucket name excluding the provided tenant id.
+     * Used during tenant updates to detect ownership conflicts while allowing
+     * a tenant to keep or reconfirm its own bucket.
+     *
+     * @param bucketName the S3 bucket name to search for
+     * @param id the tenant id to exclude from the lookup
+     * @return an optional containing the conflicting tenant, if any
+     */
+    Optional<Tenant> findByBucketNameAndIdNot(String bucketName, String id);
+
+    /**
      * Finds a tenant by its DSP participant identity.
      * Used to enforce uniqueness of participant IDs across tenants.
      *

@@ -189,18 +189,49 @@ Create-tenant validation errors return HTTP 400 in these cases:
 
 `PUT /api/v1/tenants/{id}`
 
-Mutable fields: `name`, `description`, `participantId`, `automaticNegotiation`, `automaticTransfer`, `bucketName`.
+Mutable fields: `name`, `description`, `automaticNegotiation`, `automaticTransfer`, and optional
+bucket-rotation/migration inputs (`bucketName`, `accessKey`, `secretKey`, `verifyConnection`).
 
-The `enabled` state is **not** changed by this endpoint — use the dedicated enable/disable endpoints instead.
+The `participantId` and `enabled` state are immutable in this endpoint.
 
 ```json
 {
   "name"                 : "Updated Tenant Name",
-  "participantId"        : "urn:connector:my-tenant-v2",
   "automaticNegotiation" : true,
   "automaticTransfer"    : true
 }
 ```
+
+Bucket migration (existing bucket mode):
+
+```json
+{
+  "name"                 : "Updated Tenant Name",
+  "automaticNegotiation" : true,
+  "automaticTransfer"    : true,
+  "bucketName"           : "existing-bucket-name"
+}
+```
+
+Credential rotation / migration with external credentials:
+
+```json
+{
+  "name"                 : "Updated Tenant Name",
+  "automaticNegotiation" : true,
+  "automaticTransfer"    : true,
+  "bucketName"           : "external-bucket-name",
+  "accessKey"            : "external-access-key",
+  "secretKey"            : "external-secret-key",
+  "verifyConnection"     : true
+}
+```
+
+Update validation errors return HTTP 400 in these cases:
+
+- invalid bucket-field combinations (for example only `accessKey`, or `bucketName` + `accessKey` without `secretKey`)
+- `bucketName` already owned by another tenant (self-reconfirm is allowed)
+- `verifyConnection=true` with external credentials that fail bucket connectivity verification
 
 ### Enable / disable tenant
 

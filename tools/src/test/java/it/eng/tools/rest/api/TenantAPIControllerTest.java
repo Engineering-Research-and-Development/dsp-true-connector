@@ -4,6 +4,7 @@ import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.model.TenantBucketCredentialsRequest;
 import it.eng.tools.model.TenantCreateRequest;
+import it.eng.tools.model.TenantUpdateRequest;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.GenericFilterBuilder;
 import it.eng.tools.service.TenantService;
@@ -182,31 +183,30 @@ class TenantAPIControllerTest {
     @Test
     @DisplayName("Update tenant returns updated tenant")
     void updateTenant_success() {
-        Tenant updates = Tenant.Builder.newInstance()
-                .id(TENANT_ID)
+        TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance()
                 .name("Updated Name")
-                .participantId("urn:connector:updated")
                 .build();
         Tenant updated = buildTenant();
-        when(tenantService.updateTenant(TENANT_ID, updates)).thenReturn(updated);
+        when(tenantService.updateTenant(eq(TENANT_ID), any(Tenant.class), any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(updated);
 
-        ResponseEntity<GenericApiResponse<Tenant>> response = controller.updateTenant(TENANT_ID, updates);
+        ResponseEntity<GenericApiResponse<Tenant>> response = controller.updateTenant(TENANT_ID, request);
 
         assertNotNull(response.getBody());
         assertEquals(TENANT_ID, response.getBody().getData().getId());
+        verify(tenantService).updateTenant(eq(TENANT_ID), any(Tenant.class), any(TenantBucketCredentialsRequest.class));
     }
 
     @Test
     @DisplayName("Update tenant throws when not found")
     void updateTenant_notFound() {
-        Tenant updates = Tenant.Builder.newInstance()
-                .id(TENANT_ID)
+        TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance()
                 .name("Updated Name")
-                .participantId("urn:connector:updated")
                 .build();
-        when(tenantService.updateTenant(TENANT_ID, updates)).thenThrow(new TenantNotFoundException("Not found"));
+        when(tenantService.updateTenant(eq(TENANT_ID), any(Tenant.class), any(TenantBucketCredentialsRequest.class)))
+                .thenThrow(new TenantNotFoundException("Not found"));
 
-        assertThrows(TenantNotFoundException.class, () -> controller.updateTenant(TENANT_ID, updates));
+        assertThrows(TenantNotFoundException.class, () -> controller.updateTenant(TENANT_ID, request));
     }
 
     @Test

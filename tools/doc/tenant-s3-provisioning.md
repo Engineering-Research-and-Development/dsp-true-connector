@@ -33,12 +33,28 @@ Validation is enforced inside `S3BucketProvisionService` before any S3 operation
 
 ## Tenant update
 
-`PUT /api/v1/tenants/{tenantId}` (via `TenantService.updateTenant()`) allows updating
-name, description, automaticNegotiation, and automaticTransfer.
+`PUT /api/v1/tenants/{tenantId}` (via `TenantService.updateTenant()`) supports the same
+three bucket-input modes as tenant creation, resolved from optional
+`bucketName`/`accessKey`/`secretKey` fields:
 
-The `bucketName` is **immutable** after tenant creation. Any `bucketName` value in the
-update body is silently ignored and the existing bucket name is always preserved.
-The `participantId` and `enabled` state are similarly immutable via this endpoint.
+| Input fields | Resolved mode | Behavior |
+|---|---|---|
+| no bucket fields supplied | `AUTOMATIC` | Existing `bucketName` and credentials are preserved (ordinary update) |
+| `bucketName` only | `EXISTING_BUCKET` | Reconfirm current bucket or migrate to a different existing bucket via `ensureBucketCredentials(bucketName)` |
+| `bucketName` + `accessKey` + `secretKey` | `EXTERNAL_CREDENTIALS` | Rotate credentials for the current bucket or migrate to a different bucket and persist supplied credentials |
+
+Additional update-path rules:
+
+- `participantId` and `enabled` remain immutable via this endpoint.
+- `verifyConnection=true` in `EXTERNAL_CREDENTIALS` mode enforces a pre-persistence
+  `HeadBucket` check through `BucketConnectionVerificationService`.
+- Bucket ownership conflicts are checked with `findByBucketNameAndIdNot(...)`, so a tenant
+  can reconfirm its own bucket but cannot migrate to a bucket already owned by another tenant.
+- Audit events keep using `TENANT_UPDATED` and add `details.changeType` with one of:
+  `ORDINARY_UPDATE`, `CREDENTIALS_ROTATED`, or `BUCKET_MIGRATED`.
+- Bucket data from a previous bucket is not deleted automatically after migration; this is
+  a deliberate safety choice aligned with tenant-deletion behavior. Clean up old buckets
+  manually when migration is complete.
 
 ## Per-tenant bucket isolation
 
