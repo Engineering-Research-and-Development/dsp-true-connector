@@ -4,19 +4,29 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.jayway.jsonpath.JsonPath;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.model.TenantCreateRequest;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.TenantRepository;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.model.BucketCredentialsEntity;
+import it.eng.tools.s3.repository.BucketCredentialsRepository;
+import it.eng.tools.s3.service.BucketCredentialsService;
+import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.serializer.ToolsSerializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
+import org.junit.jupiter.api.extension.ExtendWith;
 
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -31,6 +41,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+@ExtendWith(OutputCaptureExtension.class)
 public class TenantAPIIT extends BaseIntegrationTest {
 
     private static final String NEW_TENANT_ID = "test-tenant-it";
@@ -39,12 +50,22 @@ public class TenantAPIIT extends BaseIntegrationTest {
 
     /** Tracks the server-generated UUID from API-created tenants for @AfterEach cleanup. */
     private String generatedTenantId;
+    private final Set<String> createdBuckets = new HashSet<>();
 
     @Value("${application.callback.address:http://localhost:8080/}")
     private String baseCallbackAddress;
 
     @Autowired
     private TenantRepository tenantRepository;
+
+    @Autowired
+    private S3BucketProvisionService s3BucketProvisionService;
+
+    @Autowired
+    private BucketCredentialsService bucketCredentialsService;
+
+    @Autowired
+    private BucketCredentialsRepository bucketCredentialsRepository;
 
     @AfterEach
     public void cleanup() {
@@ -53,6 +74,10 @@ public class TenantAPIIT extends BaseIntegrationTest {
             tenantRepository.deleteById(generatedTenantId);
             generatedTenantId = null;
         }
+        for (String createdBucket : createdBuckets) {
+            bucketCredentialsRepository.deleteById(createdBucket);
+        }
+        createdBuckets.clear();
     }
 
     private Tenant buildNewTenant() {
@@ -61,6 +86,18 @@ public class TenantAPIIT extends BaseIntegrationTest {
                 .name("Test Tenant IT")
                 .description("Integration test tenant")
                 .participantId("urn:connector:test-it")
+                .enabled(true)
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .build();
+    }
+
+    private TenantCreateRequest buildTenantCreateRequest(String tenantId, String participantId) {
+        return TenantCreateRequest.Builder.newInstance()
+                .id(tenantId)
+                .name("Tenant " + tenantId)
+                .description("Integration test tenant")
+                .participantId(participantId)
                 .enabled(true)
                 .automaticNegotiation(false)
                 .automaticTransfer(false)
@@ -112,15 +149,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
     @Test
     @DisplayName("POST /api/v1/tenants as SUPER_ADMIN creates a tenant and returns 200 with client-supplied id")
     public void createTenant_asSuperAdmin_returns200() throws Exception {
-        Tenant newTenant = Tenant.Builder.newInstance()
-                .id(NEW_TENANT_ID)
-                .name("Test Tenant IT")
-                .description("Integration test tenant")
-                .participantId("urn:connector:test-it")
-                .enabled(true)
-                .automaticNegotiation(false)
-                .automaticTransfer(false)
-                .build();
+        TenantCreateRequest newTenant = buildTenantCreateRequest(NEW_TENANT_ID, "urn:connector:test-it");
 
         MvcResult result = mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
                         .with(user("super").roles("SUPER_ADMIN"))
@@ -130,7 +159,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.data.name").value("Test Tenant IT"))
+                .andExpect(jsonPath("$.data.name").value("Tenant " + NEW_TENANT_ID))
                 .andExpect(jsonPath("$.data.id").value(NEW_TENANT_ID))
                 .andReturn();
 
@@ -142,12 +171,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
     @DisplayName("POST /api/v1/tenants - server uses client-supplied id")
     public void createTenant_usesClientSuppliedId() throws Exception {
         String clientId = "my-custom-tenant-id";
-        Tenant request = Tenant.Builder.newInstance()
-                .id(clientId)
-                .name("Custom ID Test")
-                .participantId("urn:connector:custom-id-test")
-                .enabled(true)
-                .build();
+        TenantCreateRequest request = buildTenantCreateRequest(clientId, "urn:connector:custom-id-test");
 
         MvcResult result = mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
                         .with(user("super").roles("SUPER_ADMIN"))
@@ -164,12 +188,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
     @DisplayName("POST /api/v1/tenants - callbackAddress is derived from base URL and tenant id")
     public void createTenant_derivesCallbackAddressFromBaseUrl() throws Exception {
         String tenantId = "callback-test-tenant";
-        Tenant request = Tenant.Builder.newInstance()
-                .id(tenantId)
-                .name("CallbackAddress Derivation Test")
-                .participantId("urn:connector:callback-test")
-                .enabled(true)
-                .build();
+        TenantCreateRequest request = buildTenantCreateRequest(tenantId, "urn:connector:callback-test");
 
         mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
                         .with(user("super").roles("SUPER_ADMIN"))
@@ -192,12 +211,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
     public void createTenant_duplicateId_returns400() throws Exception {
         tenantRepository.save(buildNewTenant());
 
-        Tenant duplicate = Tenant.Builder.newInstance()
-                .id(NEW_TENANT_ID)
-                .name("Duplicate ID Tenant")
-                .participantId("urn:connector:different")
-                .enabled(true)
-                .build();
+        TenantCreateRequest duplicate = buildTenantCreateRequest(NEW_TENANT_ID, "urn:connector:different");
 
         mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
                         .with(user("super").roles("SUPER_ADMIN"))
@@ -216,12 +230,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
         tenantRepository.save(buildNewTenant());
 
         // Attempt to create a second tenant with the same participantId
-        Tenant duplicate = Tenant.Builder.newInstance()
-                .id("different-id")
-                .name("Duplicate ParticipantId Tenant")
-                .participantId("urn:connector:test-it")
-                .enabled(true)
-                .build();
+        TenantCreateRequest duplicate = buildTenantCreateRequest("different-id", "urn:connector:test-it");
 
         mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
                         .with(user("super").roles("SUPER_ADMIN"))
@@ -231,6 +240,209 @@ public class TenantAPIIT extends BaseIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/tenants with bucketName only returns 200 and keeps supplied bucket name")
+    public void createTenant_withBucketNameOnly_returns200() throws Exception {
+        String tenantId = "bucket-only-tenant";
+        String bucketName = "tb2-existing-bucket-name-only";
+        TenantCreateRequest request = TenantCreateRequest.Builder.newInstance()
+                .id(tenantId)
+                .name("Bucket Only Tenant")
+                .participantId("urn:connector:tb2-existing-bucket")
+                .enabled(true)
+                .bucketName(bucketName)
+                .build();
+
+        mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.bucketName").value(bucketName));
+
+        BucketCredentialsEntity credentials = bucketCredentialsService.getBucketCredentials(bucketName);
+        assertNotNull(credentials);
+        createdBuckets.add(bucketName);
+        generatedTenantId = tenantId;
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/tenants with external credentials and verifyConnection false returns 200")
+    public void createTenant_externalCredentialsVerifyFalse_returns200() throws Exception {
+        String tenantId = "external-no-verify-tenant";
+        String bucketName = "tb2-external-no-verify";
+        String accessKey = "provided-access-key";
+        String secretKey = "provided-secret-key";
+        TenantCreateRequest request = TenantCreateRequest.Builder.newInstance()
+                .id(tenantId)
+                .name("External Credentials Tenant")
+                .participantId("urn:connector:tb2-external-no-verify")
+                .enabled(true)
+                .bucketName(bucketName)
+                .accessKey(accessKey)
+                .secretKey(secretKey)
+                .verifyConnection(false)
+                .build();
+
+        mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.bucketName").value(bucketName));
+
+        BucketCredentialsEntity stored = bucketCredentialsService.getBucketCredentials(bucketName);
+        assertThat(stored.getAccessKey()).isEqualTo(accessKey);
+        assertThat(stored.getSecretKey()).isEqualTo(secretKey);
+        createdBuckets.add(bucketName);
+        generatedTenantId = tenantId;
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/tenants with external credentials and verifyConnection true valid returns 200")
+    public void createTenant_externalCredentialsVerifyTrueValid_returns200() throws Exception {
+        String tenantId = "external-verify-valid-tenant";
+        String bucketName = "tb2-external-verify-valid";
+        s3BucketProvisionService.ensureBucketCredentials(bucketName);
+        createdBuckets.add(bucketName);
+        BucketCredentialsEntity candidate = bucketCredentialsService.getBucketCredentials(bucketName);
+        bucketCredentialsRepository.deleteById(bucketName);
+
+        TenantCreateRequest request = TenantCreateRequest.Builder.newInstance()
+                .id(tenantId)
+                .name("External Verified Tenant")
+                .participantId("urn:connector:tb2-external-verify-valid")
+                .enabled(true)
+                .bucketName(bucketName)
+                .accessKey(candidate.getAccessKey())
+                .secretKey(candidate.getSecretKey())
+                .verifyConnection(true)
+                .build();
+
+        mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.bucketName").value(bucketName));
+
+        generatedTenantId = tenantId;
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/tenants with external credentials and verifyConnection true invalid returns 400 and does not persist tenant")
+    public void createTenant_externalCredentialsVerifyTrueInvalid_returns400(CapturedOutput output) throws Exception {
+        String tenantId = "external-verify-invalid-tenant";
+        String bucketName = "tb2-external-verify-invalid";
+        String secretKey = "invalid-secret-key-should-not-leak";
+        TenantCreateRequest request = TenantCreateRequest.Builder.newInstance()
+                .id(tenantId)
+                .name("External Invalid Tenant")
+                .participantId("urn:connector:tb2-external-verify-invalid")
+                .enabled(true)
+                .bucketName(bucketName)
+                .accessKey("invalid-access-key")
+                .secretKey(secretKey)
+                .verifyConnection(true)
+                .build();
+
+        MvcResult result = mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        assertThat(responseBody).doesNotContain(secretKey);
+        assertThat(output.getAll()).doesNotContain(secretKey);
+        assertThat(tenantRepository.findById(tenantId)).isEmpty();
+        assertThat(bucketCredentialsRepository.findById(bucketName)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/tenants with external credentials invalid bucket name returns 400 and does not persist")
+    public void createTenant_externalCredentialsInvalidBucketName_returns400() throws Exception {
+        String tenantId = "external-invalid-bucket-format-tenant";
+        String bucketName = "Invalid_Bucket_Name";
+        TenantCreateRequest request = TenantCreateRequest.Builder.newInstance()
+                .id(tenantId)
+                .name("External Invalid Bucket Format Tenant")
+                .participantId("urn:connector:tb2-external-invalid-bucket-format")
+                .enabled(true)
+                .bucketName(bucketName)
+                .accessKey("provided-access-key")
+                .secretKey("provided-secret-key")
+                .verifyConnection(false)
+                .build();
+
+        mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").exists());
+
+        assertThat(tenantRepository.findById(tenantId)).isEmpty();
+        assertThat(bucketCredentialsRepository.findById(bucketName)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/tenants with bucketName conflict returns 400 for existing and external modes")
+    public void createTenant_bucketNameConflict_returns400_forBothModes() throws Exception {
+        String conflictingBucket = "tb2-conflict-bucket";
+        Tenant existing = Tenant.Builder.newInstance()
+                .id("existing-owner-tenant")
+                .name("Existing Owner")
+                .participantId("urn:connector:existing-owner")
+                .enabled(true)
+                .bucketName(conflictingBucket)
+                .build();
+        tenantRepository.save(existing);
+
+        TenantCreateRequest existingBucketRequest = TenantCreateRequest.Builder.newInstance()
+                .id("conflict-existing-mode")
+                .name("Conflict Existing Mode")
+                .participantId("urn:connector:conflict-existing-mode")
+                .enabled(true)
+                .bucketName(conflictingBucket)
+                .build();
+
+        mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(existingBucketRequest))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+
+        TenantCreateRequest externalCredentialsRequest = TenantCreateRequest.Builder.newInstance()
+                .id("conflict-external-mode")
+                .name("Conflict External Mode")
+                .participantId("urn:connector:conflict-external-mode")
+                .enabled(true)
+                .bucketName(conflictingBucket)
+                .accessKey("provided-access")
+                .secretKey("provided-secret")
+                .verifyConnection(false)
+                .build();
+
+        mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(externalCredentialsRequest))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+
+        tenantRepository.deleteById(existing.getId());
+        assertThat(tenantRepository.findById("conflict-existing-mode")).isEmpty();
+        assertThat(tenantRepository.findById("conflict-external-mode")).isEmpty();
     }
 
     @Test

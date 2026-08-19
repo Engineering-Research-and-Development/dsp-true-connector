@@ -117,13 +117,45 @@ POST request
 > - `id` is **chosen by the caller** and must consist only of alphanumeric characters and hyphens (e.g. `my-tenant`). The server does not auto-generate it.
 > - `participantId` is the DSP participant identity for this tenant and must be unique across all tenants.
 > - `callbackAddress` is **not** a stored field — it is derived at runtime as `${application.callback.address}/{id}`.
+> - Bucket onboarding supports three request shapes:
+>   - no bucket fields: fully automatic bucket provisioning (`dsp-{tenantId}`)
+>   - `bucketName` only: reuse an existing bucket and ensure credentials for that name
+>   - `bucketName` + `accessKey` + `secretKey`: persist externally supplied credentials (optionally with `verifyConnection=true`)
 
 ```json
 {
   "id"           : "my-tenant",
   "name"         : "My Tenant",
   "description"  : "Optional tenant description",
-  "participantId": "urn:connector:my-tenant"
+  "participantId": "urn:connector:my-tenant",
+  "automaticNegotiation": false,
+  "automaticTransfer": false,
+  "enabled": true
+}
+```
+
+Existing-bucket mode:
+
+```json
+{
+  "id"           : "my-tenant-existing-bucket",
+  "name"         : "My Tenant Existing Bucket",
+  "participantId": "urn:connector:my-tenant-existing-bucket",
+  "bucketName"   : "existing-bucket-name"
+}
+```
+
+External-credentials mode:
+
+```json
+{
+  "id"               : "my-tenant-external-credentials",
+  "name"             : "My Tenant External Credentials",
+  "participantId"    : "urn:connector:my-tenant-external-credentials",
+  "bucketName"       : "external-bucket-name",
+  "accessKey"        : "external-access-key",
+  "secretKey"        : "external-secret-key",
+  "verifyConnection" : true
 }
 ```
 
@@ -146,6 +178,12 @@ Example response:
 ```
 
 A newly created tenant is **disabled** by default. Call `PUT /api/v1/tenants/{id}/enable` to activate it before assigning users.
+
+Create-tenant validation errors return HTTP 400 in these cases:
+
+- invalid bucket-field combinations (for example only `accessKey`, or `bucketName` + `accessKey` without `secretKey`)
+- `bucketName` already owned by another tenant
+- `verifyConnection=true` with external credentials that fail bucket connectivity verification
 
 ### Update tenant
 
