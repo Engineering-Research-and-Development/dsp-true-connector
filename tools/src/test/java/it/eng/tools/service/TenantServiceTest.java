@@ -588,4 +588,26 @@ class TenantServiceTest {
         verify(bucketConnectionVerificationService, never()).verify(anyString(), anyString(), anyString());
         verify(bucketCredentialsService, never()).saveBucketCredentials(any(BucketCredentialsEntity.class));
     }
+
+    @Test
+    @DisplayName("saveTenant with EXTERNAL_CREDENTIALS rejects invalid bucket name before persistence")
+    void saveTenant_externalCredentials_invalidBucketNameThrows() {
+        Tenant input = buildTenant(true);
+        TenantBucketCredentialsRequest request = TenantBucketCredentialsRequest.Builder.newInstance()
+                .bucketName("Invalid_Bucket_Name")
+                .accessKey("provided-access")
+                .secretKey("provided-secret")
+                .build();
+        when(bucketProvisioningModeResolver.resolve(request)).thenReturn(BucketProvisioningMode.EXTERNAL_CREDENTIALS);
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.empty());
+        when(tenantRepository.findByParticipantId(input.getParticipantId())).thenReturn(Optional.empty());
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> tenantService.saveTenant(input, request));
+
+        assertTrue(ex.getMessage().contains("invalid"));
+        verify(tenantRepository, never()).save(any(Tenant.class));
+        verify(bucketCredentialsService, never()).saveBucketCredentials(any(BucketCredentialsEntity.class));
+        verify(s3BucketProvisionService, never()).ensureBucketCredentials(anyString());
+    }
 }

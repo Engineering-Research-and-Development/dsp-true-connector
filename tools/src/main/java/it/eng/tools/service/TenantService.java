@@ -30,6 +30,8 @@ public class TenantService {
 
     private static final Pattern TENANT_ID_PATTERN =
             Pattern.compile("^[a-zA-Z0-9-]+$");
+    private static final Pattern BUCKET_NAME_PATTERN =
+            Pattern.compile("^[a-z0-9][a-z0-9\\-]{1,61}[a-z0-9]$");
 
     /** Prefix used when auto-deriving an S3 bucket name from the tenant identifier. */
     static final String BUCKET_NAME_PREFIX = "dsp-";
@@ -171,6 +173,7 @@ public class TenantService {
                 });
 
         String effectiveBucketName = resolveEffectiveBucketName(tenantId, credentialsRequest, provisioningMode);
+        validateBucketNameFormat(effectiveBucketName);
 
         Tenant tenantToSave = Tenant.Builder.newInstance()
                 .id(tenantId)
@@ -351,6 +354,13 @@ public class TenantService {
                     throw new IllegalArgumentException(
                             "Bucket '" + bucketName + "' is already assigned to tenant: " + existing.getId());
                 });
+    }
+
+    private void validateBucketNameFormat(String bucketName) {
+        if (!BUCKET_NAME_PATTERN.matcher(bucketName).matches()) {
+            throw new IllegalArgumentException(
+                    "Bucket name '" + bucketName + "' is invalid.");
+        }
     }
 
     private void applyBucketProvisioning(

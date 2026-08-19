@@ -367,6 +367,34 @@ public class TenantAPIIT extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("POST /api/v1/tenants with external credentials invalid bucket name returns 400 and does not persist")
+    public void createTenant_externalCredentialsInvalidBucketName_returns400() throws Exception {
+        String tenantId = "external-invalid-bucket-format-tenant";
+        String bucketName = "Invalid_Bucket_Name";
+        TenantCreateRequest request = TenantCreateRequest.Builder.newInstance()
+                .id(tenantId)
+                .name("External Invalid Bucket Format Tenant")
+                .participantId("urn:connector:tb2-external-invalid-bucket-format")
+                .enabled(true)
+                .bucketName(bucketName)
+                .accessKey("provided-access-key")
+                .secretKey("provided-secret-key")
+                .verifyConnection(false)
+                .build();
+
+        mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").exists());
+
+        assertThat(tenantRepository.findById(tenantId)).isEmpty();
+        assertThat(bucketCredentialsRepository.findById(bucketName)).isEmpty();
+    }
+
+    @Test
     @DisplayName("POST /api/v1/tenants with bucketName conflict returns 400 for existing and external modes")
     public void createTenant_bucketNameConflict_returns400_forBothModes() throws Exception {
         String conflictingBucket = "tb2-conflict-bucket";
