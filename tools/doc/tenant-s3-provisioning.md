@@ -68,6 +68,52 @@ See the S3 Architecture reference instruction (`.github/instructions/s3-architec
 for the full admin-client vs bucket-scoped-client distinction and for the `BucketCredentialsEntity`
 encryption details.
 
+## Bring-Your-Own-Bucket Foundation (TB1)
+
+> **Status**: foundation only. The classes described below are not yet wired into
+> `POST`/`PUT /api/v1/tenants`. Wiring into tenant creation and update is tracked by the
+> sibling slices TB2 and TB3 under [#322](https://github.com/Engineering-Research-and-Development/dsp-true-connector/issues/322).
+
+To let an admin optionally supply an existing bucket and/or external credentials instead of
+always relying on automatic provisioning, the following shared contract exists in `tools`:
+
+- **`TenantBucketCredentialsRequest`** (`it.eng.tools.model`) — a request-only carrier for
+  `bucketName`, `accessKey`, `secretKey`, and `verifyConnection` (defaults to `false`). It has
+  no Spring Data annotations and is **never** persisted or returned from any controller —
+  responses and the persisted `Tenant` document never carry raw credentials.
+- **`BucketProvisioningMode`** (`it.eng.tools.model`) — an enum describing the resolved intent:
+  `AUTOMATIC`, `EXISTING_BUCKET`, or `EXTERNAL_CREDENTIALS`.
+- **`BucketProvisioningModeResolver`** (`it.eng.tools.service`) — classifies a
+  `TenantBucketCredentialsRequest` into exactly one `BucketProvisioningMode`, using this
+  partial-input matrix:
+
+  | `bucketName` | `accessKey` | `secretKey` | Resolved mode |
+  |---|---|---|---|
+  | absent | absent | absent | `AUTOMATIC` |
+  | present | absent | absent | `EXISTING_BUCKET` |
+  | present | present | present | `EXTERNAL_CREDENTIALS` |
+  | any other combination | | | throws `IllegalArgumentException` |
+
+- **`BucketConnectionVerificationService`** (`it.eng.tools.s3.service`) — an opt-in
+  (`verifyConnection=true`) pre-flight check that probes a candidate `bucketName` +
+  `accessKey` + `secretKey` with a `HeadBucket` request via `S3ClientProvider`, returning
+  `true`/`false` without ever calling `BucketCredentialsService.saveBucketCredentials()`.
+  The ad-hoc client used for the probe is evicted from `S3ClientProvider`'s cache
+  (`clearBucketCache`) after use, on both the success and failure paths, so a
+  rejected/candidate credential set can never linger and be reused by a later call for the
+  same bucket name.
+
+These two services compose directly: `BucketProvisioningModeResolver.resolve()` output for
+`EXTERNAL_CREDENTIALS` mode feeds the same `bucketName`/`accessKey`/`secretKey` values
+straight into `BucketConnectionVerificationService.verify(...)`, with no adapter needed.
+Invalid combinations are rejected by the resolver before any S3 call would ever be attempted.
+
+**Reusable pattern**: separating a request-only "intent" carrier
+(`TenantBucketCredentialsRequest`) from the persisted/response domain model (`Tenant`) is the
+safe way to accept sensitive optional input without touching the existing Jackson-serialized
+response shape. Future "bring your own X" admin-input features should follow this same
+separation.
+
 ## Related
 
 - [s3_configuration.md](../../doc/s3_configuration.md) — S3 property reference

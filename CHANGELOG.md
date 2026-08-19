@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **TB1 — Tenant Bucket Credential Request Contract & Verification** (foundation only; not yet wired into `POST`/`PUT /api/v1/tenants`)
+  - `TenantBucketCredentialsRequest` (`tools`) — a request-only carrier for optional `bucketName`/`accessKey`/`secretKey`/`verifyConnection` fields, never persisted and never returned from any controller.
+  - `BucketProvisioningMode` (`AUTOMATIC`/`EXISTING_BUCKET`/`EXTERNAL_CREDENTIALS`) and `BucketProvisioningModeResolver` (`tools`) — classify the optional fields above into one of the three valid provisioning modes, or reject invalid combinations with `IllegalArgumentException`.
+  - `BucketConnectionVerificationService` (`tools`) — verifies candidate external bucket credentials against S3/MinIO via a `HeadBucket` probe, with no persistence side effects, backing the opt-in `verifyConnection` pre-flight check. See [tools/doc/tenant-s3-provisioning.md](tools/doc/tenant-s3-provisioning.md#bring-your-own-bucket-foundation-tb1).
+
 ## [0.7.0] - 10.07.2026 - Multi-Tenant Support
 
 - **Updated java from 17 to 21**
