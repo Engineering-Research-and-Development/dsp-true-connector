@@ -17,6 +17,15 @@ All notable changes to this project will be documented in this file.
     - `EXTERNAL_CREDENTIALS`: persists supplied credentials with `BucketCredentialsService` and skips auto-provisioning.
   - `verifyConnection=true` in external-credentials mode now enforces a pre-persistence bucket connectivity check through `BucketConnectionVerificationService`; failed verification rejects creation with HTTP 400 and no tenant/credentials persistence.
   - Added unit coverage for all three modes, conflict handling, and both `verifyConnection` outcomes (`TenantServiceTest`, `TenantCreateRequestTest`, `TenantAPIControllerTest`), plus end-to-end `TenantAPIIT` coverage for automatic, existing-bucket, external-credentials, verification success/failure, and bucket-conflict scenarios.
+- **TB3 — Tenant Update Bucket Rotation/Migration**
+  - `PUT /api/v1/tenants/{id}` now accepts optional `bucketName`/`accessKey`/`secretKey`/`verifyConnection` fields via `TenantUpdateRequest` and routes through `TenantService.updateTenant(id, updates, credentialsRequest)`.
+  - `TenantService.updateTenant(...)` now resolves `BucketProvisioningMode` and supports:
+    - ordinary update (`AUTOMATIC`) with unchanged bucket/credentials,
+    - bucket reconfirm or migration (`EXISTING_BUCKET`) with ownership-conflict checks excluding the tenant being updated,
+    - credential rotation or migration (`EXTERNAL_CREDENTIALS`) with optional `verifyConnection=true` pre-check.
+  - `BucketCredentialsService.saveBucketCredentials(...)` now carries forward the stored `@Version` on repeated writes to the same bucket, so sequential credential rotations update the existing document instead of failing on duplicate-key insert.
+  - `TENANT_UPDATED` audit details now include `changeType` (`ORDINARY_UPDATE`, `CREDENTIALS_ROTATED`, `BUCKET_MIGRATED`).
+  - Added unit and integration coverage for update-path reconfirm/migration/rotation flows, verification failures with no partial persistence, and double-rotation regression.
 
 ## [0.7.0] - 10.07.2026 - Multi-Tenant Support
 

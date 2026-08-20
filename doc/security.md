@@ -266,6 +266,22 @@ All other `/api/**` endpoints require at minimum `ROLE_ADMIN`.
 
 **DISABLED mode**: The `DISABLED` authentication mode permits all requests including management endpoints. It is intended only for local development and must **not** be used in production.
 
+### Tenant S3 credential rotation guidance
+
+`PUT /api/v1/tenants/{id}` can rotate a tenant's S3 credentials (or migrate its bucket) when
+called by a `ROLE_SUPER_ADMIN` user with:
+
+- `bucketName` + `accessKey` + `secretKey`
+- and optionally `verifyConnection=true`
+
+For production operations, prefer `verifyConnection=true` so the connector validates the
+candidate credential set against the target bucket before persisting it. A failed verification
+returns HTTP 400 and leaves the existing tenant/bucket credential state unchanged.
+
+When migration moves a tenant to a new bucket, the connector intentionally does not delete data
+from the previous bucket automatically. Perform old-bucket cleanup as a separate, explicit
+operator step after confirming that no active transfers or artifact reads still depend on it.
+
 ### User Model (Internal Mode)
 
 Three distinct user roles are used in `initial_data.json` and at runtime:

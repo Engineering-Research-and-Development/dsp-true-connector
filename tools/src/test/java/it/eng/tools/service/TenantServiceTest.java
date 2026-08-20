@@ -80,6 +80,16 @@ class TenantServiceTest {
                 .build();
     }
 
+    private Tenant buildTenantWithBucket(boolean enabled, String bucketName) {
+        return Tenant.Builder.newInstance()
+                .id(TENANT_ID)
+                .name("Engineering")
+                .participantId("urn:connector:engineering")
+                .enabled(enabled)
+                .bucketName(bucketName)
+                .build();
+    }
+
     @Test
     @DisplayName("findEnabledTenantById returns tenant when present and enabled")
     void findEnabledTenantById_success() {
@@ -318,6 +328,8 @@ class TenantServiceTest {
         Tenant existing = buildTenant(true);
         when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(BucketProvisioningMode.AUTOMATIC);
 
         String existingParticipantId = existing.getParticipantId();
 
@@ -339,10 +351,12 @@ class TenantServiceTest {
     @Test
     @DisplayName("updateTenant preserves existing bucketName, silently ignoring any bucketName in update body")
     void updateTenant_bucketNameIsImmutable() {
-        Tenant existing = buildTenant(true);
+        Tenant existing = buildTenantWithBucket(true, "existing-bucket");
         String existingBucket = existing.getBucketName();
         when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(BucketProvisioningMode.AUTOMATIC);
 
         Tenant updates = Tenant.Builder.newInstance()
                 .id(TENANT_ID)
@@ -358,6 +372,151 @@ class TenantServiceTest {
         assertEquals(existingBucket, result.getBucketName(),
                 "bucketName must remain unchanged regardless of update body");
         verify(s3BucketProvisionService, never()).ensureBucketCredentials(any());
+    }
+
+    @Test
+    @DisplayName("updateTenant with EXISTING_BUCKET same bucket reconfirms and keeps bucket")
+    void updateTenant_existingBucket_sameBucket_reconfirm() {
+        Tenant existing = buildTenantWithBucket(true, "existing-bucket");
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Tenant updates = Tenant.Builder.newInstance()
+                .id(TENANT_ID)
+                .name("New Name")
+                .participantId(existing.getParticipantId())
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .build();
+        TenantBucketCredentialsRequest request = TenantBucketCredentialsRequest.Builder.newInstance()
+                .bucketName("existing-bucket")
+                .build();
+        when(bucketProvisioningModeResolver.resolve(request)).thenReturn(BucketProvisioningMode.EXISTING_BUCKET);
+        when(tenantRepository.findByBucketNameAndIdNot("existing-bucket", TENANT_ID)).thenReturn(Optional.empty());
+
+        Tenant result = tenantService.updateTenant(TENANT_ID, updates, request);
+
+        assertEquals("existing-bucket", result.getBucketName());
+        verify(s3BucketProvisionService).ensureBucketCredentials("existing-bucket");
+    }
+
+    @Test
+    @DisplayName("updateTenant with EXISTING_BUCKET different bucket migrates")
+    void updateTenant_existingBucket_differentBucket_migrates() {
+        Tenant existing = buildTenantWithBucket(true, "old-bucket");
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Tenant updates = Tenant.Builder.newInstance()
+                .id(TENANT_ID)
+                .name("New Name")
+                .participantId(existing.getParticipantId())
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .build();
+        TenantBucketCredentialsRequest request = TenantBucketCredentialsRequest.Builder.newInstance()
+                .bucketName("new-bucket")
+                .build();
+        when(bucketProvisioningModeResolver.resolve(request)).thenReturn(BucketProvisioningMode.EXISTING_BUCKET);
+        when(tenantRepository.findByBucketNameAndIdNot("new-bucket", TENANT_ID)).thenReturn(Optional.empty());
+
+        Tenant result = tenantService.updateTenant(TENANT_ID, updates, request);
+
+        assertEquals("new-bucket", result.getBucketName());
+        verify(s3BucketProvisionService).ensureBucketCredentials("new-bucket");
+        ArgumentCaptor<AuditEvent> eventCaptor = ArgumentCaptor.forClass(AuditEvent.class);
+        verify(auditEventPublisher).publishEvent(eventCaptor.capture());
+        assertEquals("BUCKET_MIGRATED", eventCaptor.getValue().getDetails().get("changeType"));
+    }
+
+    @Test
+    @DisplayName("updateTenant with bucket conflict throws IllegalArgumentException")
+    void updateTenant_bucketConflict_throwsIllegalArgumentException() {
+        Tenant existing = buildTenantWithBucket(true, "old-bucket");
+        Tenant conflicting = Tenant.Builder.newInstance()
+                .id("other-tenant")
+                .name("Other")
+                .participantId("urn:connector:other")
+                .enabled(true)
+                .bucketName("shared-bucket")
+                .build();
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
+        when(tenantRepository.findByBucketNameAndIdNot("shared-bucket", TENANT_ID))
+                .thenReturn(Optional.of(conflicting));
+
+        Tenant updates = Tenant.Builder.newInstance()
+                .id(TENANT_ID)
+                .name("New Name")
+                .participantId(existing.getParticipantId())
+                .build();
+        TenantBucketCredentialsRequest request = TenantBucketCredentialsRequest.Builder.newInstance()
+                .bucketName("shared-bucket")
+                .build();
+        when(bucketProvisioningModeResolver.resolve(request)).thenReturn(BucketProvisioningMode.EXISTING_BUCKET);
+
+        assertThrows(IllegalArgumentException.class, () -> tenantService.updateTenant(TENANT_ID, updates, request));
+        verify(tenantRepository, never()).save(any(Tenant.class));
+    }
+
+    @Test
+    @DisplayName("updateTenant with EXTERNAL_CREDENTIALS verifyConnection false rotates credentials")
+    void updateTenant_externalCredentials_verifyFalse_rotatesCredentials() {
+        Tenant existing = buildTenantWithBucket(true, "existing-bucket");
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(bucketCredentialsService.saveBucketCredentials(any(BucketCredentialsEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Tenant updates = Tenant.Builder.newInstance()
+                .id(TENANT_ID)
+                .name("New Name")
+                .participantId(existing.getParticipantId())
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .build();
+        TenantBucketCredentialsRequest request = TenantBucketCredentialsRequest.Builder.newInstance()
+                .bucketName("existing-bucket")
+                .accessKey("rotated-access")
+                .secretKey("rotated-secret")
+                .verifyConnection(false)
+                .build();
+        when(bucketProvisioningModeResolver.resolve(request)).thenReturn(BucketProvisioningMode.EXTERNAL_CREDENTIALS);
+        when(tenantRepository.findByBucketNameAndIdNot("existing-bucket", TENANT_ID)).thenReturn(Optional.empty());
+
+        tenantService.updateTenant(TENANT_ID, updates, request);
+
+        verify(bucketCredentialsService).saveBucketCredentials(any(BucketCredentialsEntity.class));
+        verify(bucketConnectionVerificationService, never()).verify(anyString(), anyString(), anyString());
+        ArgumentCaptor<AuditEvent> eventCaptor = ArgumentCaptor.forClass(AuditEvent.class);
+        verify(auditEventPublisher).publishEvent(eventCaptor.capture());
+        assertEquals("CREDENTIALS_ROTATED", eventCaptor.getValue().getDetails().get("changeType"));
+    }
+
+    @Test
+    @DisplayName("updateTenant with EXTERNAL_CREDENTIALS verifyConnection true fails before persistence")
+    void updateTenant_externalCredentials_verifyTrue_failure() {
+        Tenant existing = buildTenantWithBucket(true, "existing-bucket");
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
+
+        Tenant updates = Tenant.Builder.newInstance()
+                .id(TENANT_ID)
+                .name("New Name")
+                .participantId(existing.getParticipantId())
+                .build();
+        TenantBucketCredentialsRequest request = TenantBucketCredentialsRequest.Builder.newInstance()
+                .bucketName("existing-bucket")
+                .accessKey("invalid-access")
+                .secretKey("invalid-secret")
+                .verifyConnection(true)
+                .build();
+        when(bucketProvisioningModeResolver.resolve(request)).thenReturn(BucketProvisioningMode.EXTERNAL_CREDENTIALS);
+        when(tenantRepository.findByBucketNameAndIdNot("existing-bucket", TENANT_ID)).thenReturn(Optional.empty());
+        when(bucketConnectionVerificationService.verify("existing-bucket", "invalid-access", "invalid-secret"))
+                .thenReturn(false);
+
+        assertThrows(IllegalArgumentException.class, () -> tenantService.updateTenant(TENANT_ID, updates, request));
+        verify(tenantRepository, never()).save(any(Tenant.class));
+        verify(bucketCredentialsService, never()).saveBucketCredentials(any(BucketCredentialsEntity.class));
     }
 
     @Test

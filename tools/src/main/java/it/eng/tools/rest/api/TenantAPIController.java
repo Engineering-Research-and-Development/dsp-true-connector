@@ -3,6 +3,7 @@ package it.eng.tools.rest.api;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.model.TenantCreateRequest;
+import it.eng.tools.model.TenantUpdateRequest;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.GenericFilterBuilder;
 import it.eng.tools.service.TenantService;
@@ -130,15 +131,16 @@ public class TenantAPIController {
      * body is silently ignored and the stored value is preserved.
      *
      * @param id      the tenant identifier
-     * @param updates the tenant body with the fields to update
+     * @param request the update request body
      * @return 200 OK with the updated tenant
      */
     @PutMapping(path = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GenericApiResponse<Tenant>> updateTenant(
             @PathVariable String id,
-            @RequestBody Tenant updates) {
+            @RequestBody TenantUpdateRequest request) {
         log.info("Updating tenant: {}", id);
-        Tenant updated = tenantService.updateTenant(id, updates);
+        Tenant existingTenant = tenantService.findById(id);
+        Tenant updated = tenantService.updateTenant(id, request.toTenantUpdates(existingTenant), request.toCredentialsRequest());
         return ResponseEntity.ok(GenericApiResponse.success(updated, "Tenant updated"));
     }
 

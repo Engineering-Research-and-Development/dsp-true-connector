@@ -4,8 +4,12 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.jayway.jsonpath.JsonPath;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.event.AuditEvent;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.TenantCreateRequest;
 import it.eng.tools.model.Tenant;
+import it.eng.tools.model.TenantUpdateRequest;
+import it.eng.tools.repository.AuditEventRepository;
 import it.eng.tools.repository.TenantRepository;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
@@ -25,6 +29,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -50,6 +55,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
 
     /** Tracks the server-generated UUID from API-created tenants for @AfterEach cleanup. */
     private String generatedTenantId;
+    private final Set<String> createdTenantIds = new HashSet<>();
     private final Set<String> createdBuckets = new HashSet<>();
 
     @Value("${application.callback.address:http://localhost:8080/}")
@@ -67,6 +73,9 @@ public class TenantAPIIT extends BaseIntegrationTest {
     @Autowired
     private BucketCredentialsRepository bucketCredentialsRepository;
 
+    @Autowired
+    private AuditEventRepository auditEventRepository;
+
     @AfterEach
     public void cleanup() {
         tenantRepository.deleteById(NEW_TENANT_ID);
@@ -74,6 +83,10 @@ public class TenantAPIIT extends BaseIntegrationTest {
             tenantRepository.deleteById(generatedTenantId);
             generatedTenantId = null;
         }
+        for (String createdTenantId : createdTenantIds) {
+            tenantRepository.deleteById(createdTenantId);
+        }
+        createdTenantIds.clear();
         for (String createdBucket : createdBuckets) {
             bucketCredentialsRepository.deleteById(createdBucket);
         }
@@ -99,6 +112,15 @@ public class TenantAPIIT extends BaseIntegrationTest {
                 .description("Integration test tenant")
                 .participantId(participantId)
                 .enabled(true)
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .build();
+    }
+
+    private TenantUpdateRequest buildTenantUpdateRequest(String name, String description) {
+        return TenantUpdateRequest.Builder.newInstance()
+                .name(name)
+                .description(description)
                 .automaticNegotiation(false)
                 .automaticTransfer(false)
                 .build();
@@ -469,11 +491,9 @@ public class TenantAPIIT extends BaseIntegrationTest {
     public void updateTenant_asSuperAdmin_returns200() throws Exception {
         tenantRepository.save(buildNewTenant());
 
-        Tenant updates = Tenant.Builder.newInstance()
-                .id(NEW_TENANT_ID)
+        TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance()
                 .name("Updated Name")
                 .description("Updated description")
-                .participantId("urn:connector:updated")
                 .automaticNegotiation(true)
                 .automaticTransfer(false)
                 .build();
@@ -481,7 +501,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
         mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/" + NEW_TENANT_ID)
                         .with(user("super").roles("SUPER_ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(updates))))
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
@@ -492,18 +512,334 @@ public class TenantAPIIT extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("PUT /api/v1/tenants/{id} with no bucket fields keeps existing bucket and credentials")
+    public void updateTenant_withoutBucketFields_preservesBucketAndCredentials() throws Exception {
+        String tenantId = "tb3-ordinary-update";
+        String originalBucket = "tb3-ordinary-update-bucket";
+        s3BucketProvisionService.ensureBucketCredentials(originalBucket);
+        createdBuckets.add(originalBucket);
+        BucketCredentialsEntity originalCredentials = bucketCredentialsService.getBucketCredentials(originalBucket);
+        Tenant existing = Tenant.Builder.newInstance()
+                .id(tenantId)
+                .name("Ordinary Update")
+                .participantId("urn:connector:tb3-ordinary-update")
+                .enabled(true)
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .bucketName(originalBucket)
+                .build();
+        tenantRepository.save(existing);
+        createdTenantIds.add(tenantId);
+
+        TenantUpdateRequest request = buildTenantUpdateRequest("Ordinary Update Renamed", "Updated");
+        mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/" + tenantId)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.bucketName").value(originalBucket));
+
+        BucketCredentialsEntity afterUpdate = bucketCredentialsService.getBucketCredentials(originalBucket);
+        assertThat(afterUpdate.getAccessKey()).isEqualTo(originalCredentials.getAccessKey());
+        assertThat(afterUpdate.getSecretKey()).isEqualTo(originalCredentials.getSecretKey());
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/tenants/{id} with bucketName only migrates to available bucket")
+    public void updateTenant_bucketNameOnly_migrates() throws Exception {
+        String tenantId = "tb3-migrate-tenant";
+        String oldBucket = "tb3-migrate-old";
+        String newBucket = "tb3-migrate-new";
+        s3BucketProvisionService.ensureBucketCredentials(oldBucket);
+        s3BucketProvisionService.ensureBucketCredentials(newBucket);
+        createdBuckets.add(oldBucket);
+        createdBuckets.add(newBucket);
+        tenantRepository.save(Tenant.Builder.newInstance()
+                .id(tenantId)
+                .name("Migrate Tenant")
+                .participantId("urn:connector:tb3-migrate-tenant")
+                .enabled(true)
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .bucketName(oldBucket)
+                .build());
+        createdTenantIds.add(tenantId);
+
+        TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance()
+                .name("Migrate Tenant")
+                .description("Migrated")
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .bucketName(newBucket)
+                .build();
+
+        mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/" + tenantId)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.bucketName").value(newBucket));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/tenants/{id} with bucket owned by another tenant returns 400 and preserves original bucket")
+    public void updateTenant_bucketConflict_returns400() throws Exception {
+        String ownerTenantId = "tb3-owner-tenant";
+        String targetTenantId = "tb3-target-tenant";
+        String ownerBucket = "tb3-owner-bucket";
+        String targetBucket = "tb3-target-bucket";
+        s3BucketProvisionService.ensureBucketCredentials(ownerBucket);
+        s3BucketProvisionService.ensureBucketCredentials(targetBucket);
+        createdBuckets.add(ownerBucket);
+        createdBuckets.add(targetBucket);
+        tenantRepository.save(Tenant.Builder.newInstance()
+                .id(ownerTenantId)
+                .name("Owner")
+                .participantId("urn:connector:tb3-owner")
+                .enabled(true)
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .bucketName(ownerBucket)
+                .build());
+        tenantRepository.save(Tenant.Builder.newInstance()
+                .id(targetTenantId)
+                .name("Target")
+                .participantId("urn:connector:tb3-target")
+                .enabled(true)
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .bucketName(targetBucket)
+                .build());
+        createdTenantIds.add(ownerTenantId);
+        createdTenantIds.add(targetTenantId);
+
+        TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance()
+                .name("Target")
+                .description("Conflict")
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .bucketName(ownerBucket)
+                .build();
+
+        mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/" + targetTenantId)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isBadRequest());
+
+        Tenant reloaded = tenantRepository.findById(targetTenantId).orElseThrow();
+        assertThat(reloaded.getBucketName()).isEqualTo(targetBucket);
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/tenants/{id} with external credentials verifyConnection false rotates credentials")
+    public void updateTenant_externalCredentialsVerifyFalse_rotatesCredentials() throws Exception {
+        String tenantId = "tb3-rotate-no-verify";
+        String bucket = "tb3-rotate-no-verify-bucket";
+        s3BucketProvisionService.ensureBucketCredentials(bucket);
+        createdBuckets.add(bucket);
+        tenantRepository.save(Tenant.Builder.newInstance()
+                .id(tenantId)
+                .name("Rotate No Verify")
+                .participantId("urn:connector:tb3-rotate-no-verify")
+                .enabled(true)
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .bucketName(bucket)
+                .build());
+        createdTenantIds.add(tenantId);
+
+        TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance()
+                .name("Rotate No Verify")
+                .description("Rotate")
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .bucketName(bucket)
+                .accessKey("rotated-access")
+                .secretKey("rotated-secret")
+                .verifyConnection(false)
+                .build();
+
+        mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/" + tenantId)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.bucketName").value(bucket));
+
+        BucketCredentialsEntity rotated = bucketCredentialsService.getBucketCredentials(bucket);
+        assertThat(rotated.getAccessKey()).isEqualTo("rotated-access");
+        assertThat(rotated.getSecretKey()).isEqualTo("rotated-secret");
+
+        List<AuditEvent> events = auditEventRepository.findAll().stream()
+                .filter(event -> event.getEventType() == AuditEventType.TENANT_UPDATED)
+                .toList();
+        assertThat(events).isNotEmpty();
+        AuditEvent latest = events.get(events.size() - 1);
+        assertThat(latest.getDetails()).containsEntry("changeType", "CREDENTIALS_ROTATED");
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/tenants/{id} with external credentials verifyConnection true valid succeeds")
+    public void updateTenant_externalCredentialsVerifyTrue_valid_returns200() throws Exception {
+        String tenantId = "tb3-verify-valid";
+        String bucket = "tb3-verify-valid-bucket";
+        s3BucketProvisionService.ensureBucketCredentials(bucket);
+        createdBuckets.add(bucket);
+        BucketCredentialsEntity candidate = bucketCredentialsService.getBucketCredentials(bucket);
+        tenantRepository.save(Tenant.Builder.newInstance()
+                .id(tenantId)
+                .name("Verify Valid")
+                .participantId("urn:connector:tb3-verify-valid")
+                .enabled(true)
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .bucketName(bucket)
+                .build());
+        createdTenantIds.add(tenantId);
+
+        TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance()
+                .name("Verify Valid")
+                .description("Rotate")
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .bucketName(bucket)
+                .accessKey(candidate.getAccessKey())
+                .secretKey(candidate.getSecretKey())
+                .verifyConnection(true)
+                .build();
+
+        mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/" + tenantId)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.bucketName").value(bucket));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/tenants/{id} with external credentials verifyConnection true invalid returns 400 and does not leak secret")
+    public void updateTenant_externalCredentialsVerifyTrue_invalid_returns400(CapturedOutput output) throws Exception {
+        String tenantId = "tb3-verify-invalid";
+        String bucket = "tb3-verify-invalid-bucket";
+        s3BucketProvisionService.ensureBucketCredentials(bucket);
+        createdBuckets.add(bucket);
+        BucketCredentialsEntity before = bucketCredentialsService.getBucketCredentials(bucket);
+        tenantRepository.save(Tenant.Builder.newInstance()
+                .id(tenantId)
+                .name("Verify Invalid")
+                .participantId("urn:connector:tb3-verify-invalid")
+                .enabled(true)
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .bucketName(bucket)
+                .build());
+        createdTenantIds.add(tenantId);
+        String secretKey = "invalid-secret-key-should-not-leak";
+
+        TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance()
+                .name("Verify Invalid")
+                .description("Rotate")
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .bucketName(bucket)
+                .accessKey("invalid-access")
+                .secretKey(secretKey)
+                .verifyConnection(true)
+                .build();
+
+        MvcResult result = mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/" + tenantId)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isBadRequest())
+                .andReturn();
+
+        assertThat(result.getResponse().getContentAsString()).doesNotContain(secretKey);
+        assertThat(output.getAll()).doesNotContain(secretKey);
+        List<AuditEvent> events = auditEventRepository.findAll().stream()
+                .filter(event -> event.getEventType() == AuditEventType.TENANT_UPDATED)
+                .toList();
+        if (!events.isEmpty()) {
+            String detailsString = Objects.toString(events.get(events.size() - 1).getDetails(), "");
+            assertThat(detailsString).doesNotContain(secretKey);
+        }
+
+        BucketCredentialsEntity after = bucketCredentialsService.getBucketCredentials(bucket);
+        assertThat(after.getAccessKey()).isEqualTo(before.getAccessKey());
+        assertThat(after.getSecretKey()).isEqualTo(before.getSecretKey());
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/tenants/{id} rotates credentials twice for same bucket")
+    public void updateTenant_externalCredentials_doubleRotation_succeeds() throws Exception {
+        String tenantId = "tb3-double-rotation";
+        String bucket = "tb3-double-rotation-bucket";
+        s3BucketProvisionService.ensureBucketCredentials(bucket);
+        createdBuckets.add(bucket);
+        BucketCredentialsEntity firstCandidate = bucketCredentialsService.getBucketCredentials(bucket);
+        tenantRepository.save(Tenant.Builder.newInstance()
+                .id(tenantId)
+                .name("Double Rotation")
+                .participantId("urn:connector:tb3-double-rotation")
+                .enabled(true)
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .bucketName(bucket)
+                .build());
+        createdTenantIds.add(tenantId);
+
+        TenantUpdateRequest firstRotation = TenantUpdateRequest.Builder.newInstance()
+                .name("Double Rotation")
+                .description("First rotation")
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .bucketName(bucket)
+                .accessKey(firstCandidate.getAccessKey())
+                .secretKey(firstCandidate.getSecretKey())
+                .verifyConnection(true)
+                .build();
+
+        mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/" + tenantId)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(firstRotation))))
+                .andExpect(status().isOk());
+
+        BucketCredentialsEntity afterFirstRotation = bucketCredentialsService.getBucketCredentials(bucket);
+
+        TenantUpdateRequest secondRotation = TenantUpdateRequest.Builder.newInstance()
+                .name("Double Rotation")
+                .description("Second rotation")
+                .automaticNegotiation(false)
+                .automaticTransfer(false)
+                .bucketName(bucket)
+                .accessKey("second-rotated-access")
+                .secretKey("second-rotated-secret")
+                .verifyConnection(false)
+                .build();
+
+        mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/" + tenantId)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(secondRotation))))
+                .andExpect(status().isOk());
+
+        BucketCredentialsEntity afterSecondRotation = bucketCredentialsService.getBucketCredentials(bucket);
+        assertThat(afterSecondRotation.getAccessKey()).isEqualTo("second-rotated-access");
+        assertThat(afterSecondRotation.getSecretKey()).isEqualTo("second-rotated-secret");
+        assertThat(afterSecondRotation.getVersion()).isGreaterThanOrEqualTo(afterFirstRotation.getVersion());
+    }
+
+    @Test
     @DisplayName("PUT /api/v1/tenants/{id} on non-existing tenant returns 404")
     public void updateTenant_nonExisting_returns404() throws Exception {
-        Tenant updates = Tenant.Builder.newInstance()
-                .id(NON_EXISTING_TENANT_ID)
-                .name("Should Not Update")
-                .participantId("urn:connector:test")
-                .build();
+        TenantUpdateRequest request = buildTenantUpdateRequest("Should Not Update", "Missing tenant");
 
         mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/" + NON_EXISTING_TENANT_ID)
                         .with(user("super").roles("SUPER_ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(updates))))
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(false))
@@ -653,19 +989,20 @@ public class TenantAPIIT extends BaseIntegrationTest {
         tenantRepository.save(original);
         String originalParticipantId = original.getParticipantId();
 
-        Tenant updates = Tenant.Builder.newInstance()
-                .id(original.getId())
-                .name("Updated Name")
-                .description("Updated description")
-                .participantId("urn:connector:changed")
-                .automaticNegotiation(false)
-                .automaticTransfer(false)
-                .build();
+        String body = """
+                {
+                  "name": "Updated Name",
+                  "description": "Updated description",
+                  "participantId": "urn:connector:changed",
+                  "automaticNegotiation": false,
+                  "automaticTransfer": false
+                }
+                """;
 
         mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/" + original.getId())
                         .with(user("super").roles("SUPER_ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(updates))))
+                        .content(body))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.participantId").value(originalParticipantId));

@@ -679,6 +679,111 @@
               "response": []
             },
             {
+              "name": "Update Tenant - Bucket Migration",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/tenants/acme-corp",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tenants",
+                    "acme-corp"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"ACME Corporation Updated\",\n  \"description\": \"Migrate tenant bucket\",\n  \"automaticNegotiation\": true,\n  \"automaticTransfer\": false,\n  \"bucketName\": \"existing-bucket-name\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Update a tenant and migrate to another existing bucket."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Tenant - Credential Rotation",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/tenants/acme-corp",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tenants",
+                    "acme-corp"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"ACME Corporation Updated\",\n  \"description\": \"Rotate tenant credentials\",\n  \"automaticNegotiation\": true,\n  \"automaticTransfer\": false,\n  \"bucketName\": \"existing-bucket-name\",\n  \"accessKey\": \"rotated-access-key\",\n  \"secretKey\": \"rotated-secret-key\",\n  \"verifyConnection\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Update a tenant and rotate bucket credentials with pre-flight verification."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Tenant - Bucket Conflict (expected 400)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/tenants/acme-corp",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tenants",
+                    "acme-corp"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"ACME Corporation Updated\",\n  \"description\": \"Expected conflict\",\n  \"automaticNegotiation\": true,\n  \"automaticTransfer\": false,\n  \"bucketName\": \"already-owned-bucket\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Negative example: migration to a bucket already owned by another tenant should return HTTP 400."
+              },
+              "response": []
+            },
+            {
               "name": "Enable Tenant",
               "request": {
                 "method": "PUT",
