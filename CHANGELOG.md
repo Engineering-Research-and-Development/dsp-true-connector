@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **TB1 — Tenant Bucket Credential Request Contract & Verification**
+  - `TenantBucketCredentialsRequest` (`tools`) — a request-only carrier for optional `bucketName`/`accessKey`/`secretKey`/`verifyConnection` fields, never persisted and never returned from any controller.
+  - `BucketProvisioningMode` (`AUTOMATIC`/`EXISTING_BUCKET`/`EXTERNAL_CREDENTIALS`) and `BucketProvisioningModeResolver` (`tools`) — classify the optional fields above into one of the three valid provisioning modes, or reject invalid combinations with `IllegalArgumentException`.
+  - `BucketConnectionVerificationService` (`tools`) — verifies candidate external bucket credentials against S3/MinIO via a `HeadBucket` probe, with no persistence side effects, backing the opt-in `verifyConnection` pre-flight check. See [tools/doc/tenant-s3-provisioning.md](tools/doc/tenant-s3-provisioning.md#bring-your-own-bucket-foundation-tb1).
+- **TB2 — Tenant Creation Bring-Your-Own-Bucket Onboarding**
+  - `POST /api/v1/tenants` now accepts optional `bucketName`/`accessKey`/`secretKey`/`verifyConnection` fields via `TenantCreateRequest`, and routes to `TenantService.saveTenant(Tenant, TenantBucketCredentialsRequest)`.
+  - `TenantService.saveTenant(...)` now resolves `BucketProvisioningMode`:
+    - `AUTOMATIC`: keeps existing `dsp-{tenantId}` derivation and `ensureBucketCredentials` provisioning.
+    - `EXISTING_BUCKET`: uses supplied `bucketName` and reuses `ensureBucketCredentials(bucketName)`.
+    - `EXTERNAL_CREDENTIALS`: persists supplied credentials with `BucketCredentialsService` and skips auto-provisioning.
+  - `verifyConnection=true` in external-credentials mode now enforces a pre-persistence bucket connectivity check through `BucketConnectionVerificationService`; failed verification rejects creation with HTTP 400 and no tenant/credentials persistence.
+  - Added unit coverage for all three modes, conflict handling, and both `verifyConnection` outcomes (`TenantServiceTest`, `TenantCreateRequestTest`, `TenantAPIControllerTest`), plus end-to-end `TenantAPIIT` coverage for automatic, existing-bucket, external-credentials, verification success/failure, and bucket-conflict scenarios.
+- **TB3 — Tenant Update Bucket Rotation/Migration**
+  - `PUT /api/v1/tenants/{id}` now accepts optional `bucketName`/`accessKey`/`secretKey`/`verifyConnection` fields via `TenantUpdateRequest` and routes through `TenantService.updateTenant(id, updates, credentialsRequest)`.
+  - `TenantService.updateTenant(...)` now resolves `BucketProvisioningMode` and supports:
+    - ordinary update (`AUTOMATIC`) with unchanged bucket/credentials,
+    - bucket reconfirm or migration (`EXISTING_BUCKET`) with ownership-conflict checks excluding the tenant being updated,
+    - credential rotation or migration (`EXTERNAL_CREDENTIALS`) with optional `verifyConnection=true` pre-check.
+  - `BucketCredentialsService.saveBucketCredentials(...)` now carries forward the stored `@Version` on repeated writes to the same bucket, so sequential credential rotations update the existing document instead of failing on duplicate-key insert.
+  - `TENANT_UPDATED` audit details now include `changeType` (`ORDINARY_UPDATE`, `CREDENTIALS_ROTATED`, `BUCKET_MIGRATED`).
+  - Added unit and integration coverage for update-path reconfirm/migration/rotation flows, verification failures with no partial persistence, and double-rotation regression.
+
 ## [0.7.0] - 10.07.2026 - Multi-Tenant Support
 
 - **Updated java from 17 to 21**

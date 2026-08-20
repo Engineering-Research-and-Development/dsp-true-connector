@@ -2,6 +2,9 @@ package it.eng.tools.rest.api;
 
 import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.Tenant;
+import it.eng.tools.model.TenantBucketCredentialsRequest;
+import it.eng.tools.model.TenantCreateRequest;
+import it.eng.tools.model.TenantUpdateRequest;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.GenericFilterBuilder;
 import it.eng.tools.service.TenantService;
@@ -123,12 +126,22 @@ class TenantAPIControllerTest {
     @DisplayName("Create tenant persists and returns it")
     void createTenant_success() {
         Tenant tenant = buildTenant();
-        when(tenantService.saveTenant(tenant)).thenReturn(tenant);
+        TenantCreateRequest request = TenantCreateRequest.Builder.newInstance()
+                .id(tenant.getId())
+                .name(tenant.getName())
+                .description(tenant.getDescription())
+                .participantId(tenant.getParticipantId())
+                .automaticNegotiation(tenant.isAutomaticNegotiation())
+                .automaticTransfer(tenant.isAutomaticTransfer())
+                .enabled(tenant.isEnabled())
+                .build();
+        when(tenantService.saveTenant(any(Tenant.class), any(TenantBucketCredentialsRequest.class))).thenReturn(tenant);
 
-        ResponseEntity<GenericApiResponse<Tenant>> response = controller.createTenant(tenant);
+        ResponseEntity<GenericApiResponse<Tenant>> response = controller.createTenant(request);
 
         assertNotNull(response.getBody());
         assertEquals(TENANT_ID, response.getBody().getData().getId());
+        verify(tenantService).saveTenant(any(Tenant.class), any(TenantBucketCredentialsRequest.class));
     }
 
     @Test
@@ -180,31 +193,31 @@ class TenantAPIControllerTest {
     @Test
     @DisplayName("Update tenant returns updated tenant")
     void updateTenant_success() {
-        Tenant updates = Tenant.Builder.newInstance()
-                .id(TENANT_ID)
+        TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance()
                 .name("Updated Name")
-                .participantId("urn:connector:updated")
                 .build();
+        Tenant existing = buildTenant();
         Tenant updated = buildTenant();
-        when(tenantService.updateTenant(TENANT_ID, updates)).thenReturn(updated);
+        when(tenantService.findById(TENANT_ID)).thenReturn(existing);
+        when(tenantService.updateTenant(eq(TENANT_ID), any(Tenant.class), any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(updated);
 
-        ResponseEntity<GenericApiResponse<Tenant>> response = controller.updateTenant(TENANT_ID, updates);
+        ResponseEntity<GenericApiResponse<Tenant>> response = controller.updateTenant(TENANT_ID, request);
 
         assertNotNull(response.getBody());
         assertEquals(TENANT_ID, response.getBody().getData().getId());
+        verify(tenantService).updateTenant(eq(TENANT_ID), any(Tenant.class), any(TenantBucketCredentialsRequest.class));
     }
 
     @Test
     @DisplayName("Update tenant throws when not found")
     void updateTenant_notFound() {
-        Tenant updates = Tenant.Builder.newInstance()
-                .id(TENANT_ID)
+        TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance()
                 .name("Updated Name")
-                .participantId("urn:connector:updated")
                 .build();
-        when(tenantService.updateTenant(TENANT_ID, updates)).thenThrow(new TenantNotFoundException("Not found"));
+        when(tenantService.findById(TENANT_ID)).thenThrow(new TenantNotFoundException("Not found"));
 
-        assertThrows(TenantNotFoundException.class, () -> controller.updateTenant(TENANT_ID, updates));
+        assertThrows(TenantNotFoundException.class, () -> controller.updateTenant(TENANT_ID, request));
     }
 
     @Test
