@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -289,5 +290,14 @@ public class TenantService {
                 .enabled(enabled)
                 .bucketName(source.getBucketName())
                 .build();
+    }
+
+    /**
+     * Returns all tenants as a list needed for user creation.
+     *
+     * @return list of all tenants
+     */
+    public List<Tenant> findAllAsList() {
+        return tenantRepository.findAll();
     }
 }

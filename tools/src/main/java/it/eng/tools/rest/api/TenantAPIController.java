@@ -42,9 +42,9 @@ public class TenantAPIController {
      * Constructs the controller with its service dependency.
      *
      * @param filterBuilder the filter builder
-     * @param tenantService the tenant service
      * @param pagedResourcesAssembler the paged resources assembler
      * @param plainAssembler the plain tenant assembler
+     * @param tenantService the tenant service
      * */
     public TenantAPIController(GenericFilterBuilder filterBuilder, PagedResourcesAssembler<Tenant> pagedResourcesAssembler,
                                PlainTenantAssembler plainAssembler, TenantService tenantService) {
@@ -93,6 +93,18 @@ public class TenantAPIController {
                 .body(PagedAPIResponse.of(pagedModel,
                         "Tenants - Page " + page + " of " + tenants.getTotalPages() + ", Size: " + size +
                                 ", Sort: " + sorting + ", Filters: [" + filterString + "]"));
+    }
+
+    /**
+     * Returns all tenants as a list needed for user creation.
+     *
+     * @return 200 OK with the list of tenants
+     */
+    @GetMapping(path = "/list")
+    public ResponseEntity<GenericApiResponse<List<Tenant>>> getAllTenants() {
+        log.info("Fetching all tenants");
+        List<Tenant> tenants = tenantService.findAllAsList();
+        return ResponseEntity.ok(GenericApiResponse.success(tenants, "Fetching all tenants"));
     }
 
     /**

@@ -23,4 +23,7 @@ public class UserDTO {
 	private Role role;
 	/** The tenant this user belongs to.  Optional only for the {@code SUPER_ADMIN} role. */
 	private String tenantId;
+	private boolean enabled;
+	private boolean expired;
+	private boolean locked;
 }

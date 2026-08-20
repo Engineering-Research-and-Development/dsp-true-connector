@@ -1,31 +1,7 @@
 package it.eng.connector.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Optional;
-
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
-
 import com.fasterxml.jackson.databind.JsonNode;
-
+import it.eng.connector.exception.UserNotFoundException;
 import it.eng.connector.model.PasswordValidationResult;
 import it.eng.connector.model.Role;
 import it.eng.connector.model.User;
@@ -39,6 +15,21 @@ import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantService;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -99,11 +90,11 @@ class UserServiceTest {
 	}
 
 	@Test
-	@DisplayName("findCurrentUser throws BadRequestException for unknown email")
+	@DisplayName("findCurrentUser throws UserNotFoundException for unknown email")
 	void findCurrentUser_notFound_throws() {
 		when(userRepository.findByEmail("unknown@mail.com")).thenReturn(Optional.empty());
 
-		assertThrows(BadRequestException.class,
+		assertThrows(UserNotFoundException.class,
 				() -> userService.findCurrentUser("unknown@mail.com"));
 	}
 
@@ -191,23 +182,12 @@ class UserServiceTest {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
 		when(userDTO.getFirstName()).thenReturn("First Name update");
 		when(userDTO.getLastName()).thenReturn("Last Name update");
+		when(userDTO.getRole()).thenReturn(Role.ADMIN);
 
-		userService.updateUser(USER_ID, TestUtil.USER.getEmail(), userDTO);
+		userService.updateUser(USER_ID, userDTO);
 
 		verify(userRepository).save(any(User.class));
 		verify(auditEventPublisher).publishEvent(eq(AuditEventType.USER_UPDATED), anyString(), any());
-	}
-
-	@Test
-	@DisplayName("Update user without logged in principal in disabled mode")
-	void updateUser_withoutLoggedInUser() {
-		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
-		when(userDTO.getFirstName()).thenReturn("First Name update");
-		when(userDTO.getLastName()).thenReturn("Last Name update");
-
-		userService.updateUser(USER_ID, null, userDTO);
-
-		verify(userRepository).save(any(User.class));
 	}
 
 	@Test
@@ -215,19 +195,79 @@ class UserServiceTest {
 	void updateUser_not_found() {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
 
-		assertThrows(BadRequestException.class,
-				() -> userService.updateUser(USER_ID, TestUtil.USER.getEmail(), userDTO));
+		assertThrows(UserNotFoundException.class,
+				() -> userService.updateUser(USER_ID, userDTO));
 
 		verify(userRepository, times(0)).save(any(User.class));
 	}
 
 	@Test
 	@DisplayName("Update user - updating other user than own")
-	void updateUser_other_user() {
+	void updateUser_other() {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
 
 		assertThrows(BadRequestException.class,
-				() -> userService.updateUser(USER_ID, "otheruser@mail.com", userDTO));
+				() -> userService.updateUser(USER_ID, userDTO));
+
+		verify(userRepository, times(0)).save(any(User.class));
+	}
+
+	@Test
+	@DisplayName("Update user - updating other with existing email")
+	void updateUser_other_with_existing_email() {
+		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
+		when(userDTO.getEmail()).thenReturn("existingemail@mail.com");
+		when(userRepository.findByEmail("existingemail@mail.com")).thenReturn(Optional.of(TestUtil.USER));
+
+		assertThrows(BadRequestException.class,
+				() -> userService.updateUser(USER_ID, userDTO));
+
+		verify(userRepository, times(0)).save(any(User.class));
+	}
+
+	@Test
+	@DisplayName("Update user")
+	void updateUserNames() {
+		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
+		when(userDTO.getFirstName()).thenReturn("First Name update");
+		when(userDTO.getLastName()).thenReturn("Last Name update");
+
+		userService.updateUserNames(USER_ID, TestUtil.USER.getEmail(), userDTO);
+
+		verify(userRepository).save(any(User.class));
+		verify(auditEventPublisher).publishEvent(eq(AuditEventType.USER_UPDATED), anyString(), any());
+	}
+
+	@Test
+	@DisplayName("Update user without logged in principal in disabled mode")
+	void updateUser_withoutLoggedInUserNames() {
+		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
+		when(userDTO.getFirstName()).thenReturn("First Name update");
+		when(userDTO.getLastName()).thenReturn("Last Name update");
+
+		userService.updateUserNames(USER_ID, null, userDTO);
+
+		verify(userRepository).save(any(User.class));
+	}
+
+	@Test
+	@DisplayName("Update user - user not found")
+	void updateUser_Names_not_found() {
+		when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
+
+		assertThrows(UserNotFoundException.class,
+				() -> userService.updateUserNames(USER_ID, TestUtil.USER.getEmail(), userDTO));
+
+		verify(userRepository, times(0)).save(any(User.class));
+	}
+
+	@Test
+	@DisplayName("Update user - updating other user than own")
+	void updateUser_other_userNames() {
+		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
+
+		assertThrows(BadRequestException.class,
+				() -> userService.updateUserNames(USER_ID, "otheruser@mail.com", userDTO));
 
 		verify(userRepository, times(0)).save(any(User.class));
 	}
@@ -270,7 +310,7 @@ class UserServiceTest {
 	void updatePassword_not_found() {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
 
-		assertThrows(BadRequestException.class,
+		assertThrows(UserNotFoundException.class,
 				() -> userService.updatePassword(USER_ID, USER, userDTO));
 
 		verify(userRepository, times(0)).save(any(User.class));

@@ -47,7 +47,7 @@ public class UserIT extends BaseIntegrationTest {
     private static final String KNOWN_TENANT_ID = "engineering";
     private static final String UNKNOWN_TENANT_ID = "non-existent-tenant-xyz";
 
-    // updateUser test creates a duplicate entry under the super-admin email; track by ID for safe cleanup.
+    // updateUserNames test creates a duplicate entry under the super-admin email; track by ID for safe cleanup.
     private String savedTestSuperAdminDuplicateId;
 
     @Autowired
@@ -76,12 +76,6 @@ public class UserIT extends BaseIntegrationTest {
         result.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
         // TODO when user serialization is fixed, check if user is there
-
-        result = mockMvc.perform(get(ApiEndpoints.USERS_V1 + "/" + TestUtil.ADMIN_USER)
-                .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
-                .contentType(MediaType.APPLICATION_JSON));
-        result.andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
         result = mockMvc.perform(get(ApiEndpoints.USERS_V1 + "/" + "not_found@user.com")
                 .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))

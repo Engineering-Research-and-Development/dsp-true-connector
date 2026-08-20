@@ -1,17 +1,7 @@
 package it.eng.connector.service;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.context.annotation.Conditional;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-
 import com.fasterxml.jackson.databind.JsonNode;
-
+import it.eng.connector.exception.UserNotFoundException;
 import it.eng.connector.model.PasswordValidationResult;
 import it.eng.connector.model.Role;
 import it.eng.connector.model.User;
@@ -24,8 +14,19 @@ import it.eng.tools.exception.ResourceNotFoundException;
 import it.eng.tools.serializer.ToolsSerializer;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantService;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Service for managing MongoDB-based users.
@@ -65,6 +66,31 @@ public class UserService {
 	}
 
 	/**
+	 * Finds a user by ID regardless of its enabled state.
+	 *
+	 * @param userId the user identifier
+	 * @return the user
+	 * @throws UserNotFoundException if the user does not exist
+	 */
+	public User findById(String userId) {
+		return userRepository.findById(userId)
+				.orElseThrow(() -> new UserNotFoundException("User not found: " + userId));
+	}
+
+	/**
+	 * Returns the authenticated user's own record by e-mail.
+	 *
+	 * @param email the e-mail of the authenticated principal
+	 * @return the user as a serialized JSON node
+	 * @throws UserNotFoundException if no user with the given e-mail exists
+	 */
+	public JsonNode findCurrentUser(String email) {
+		User user = userRepository.findByEmail(email)
+				.orElseThrow(() -> new UserNotFoundException("User not found: " + email));
+		return ToolsSerializer.serializePlainJsonNode(user);
+	}
+
+	/**
 	 * Returns all users, or only the user matching the given e-mail when {@code email} is non-blank.
 	 *
 	 * @param email optional e-mail filter; may be {@code null} or blank
@@ -83,16 +109,15 @@ public class UserService {
 	}
 
 	/**
-	 * Returns the authenticated user's own record by e-mail.
+	 * Find users based on generic filter criteria.
+	 * Supports any field with automatic type detection and conversion.
 	 *
-	 * @param email the e-mail of the authenticated principal
-	 * @return the user as a serialized JSON node
-	 * @throws BadRequestException if no user with the given e-mail exists
+	 * @param filters  Map of field names to filter values. All values are pre-validated and converted.
+	 * @param pageable Pageable
+	 * @return page of User
 	 */
-	public JsonNode findCurrentUser(String email) {
-		User user = userRepository.findByEmail(email)
-				.orElseThrow(() -> new BadRequestException("User not found"));
-		return ToolsSerializer.serializePlainJsonNode(user);
+	public Page<User> findAll(Map<String, Object> filters, Pageable pageable) {
+		return userRepository.findWithDynamicFilters(filters, User.class, pageable);
 	}
 
 	/**
@@ -115,14 +140,18 @@ public class UserService {
 		PasswordValidationResult validationResult = passwordValidator.isValid(userDTO.getPassword());
 		if (validationResult.isValid()) {
 			// SUPER_ADMIN users are not bound to a specific tenant.
-			if (StringUtils.isNotBlank(userDTO.getTenantId())
-					&& userDTO.getRole() != Role.SUPER_ADMIN) {
+			if (StringUtils.isNotBlank(userDTO.getTenantId())) {
 				tenantService.findEnabledTenantById(userDTO.getTenantId());
 			}
-			User user = new User(createNewPid(), userDTO.getFirstName(), userDTO.getLastName(),
-					userDTO.getEmail(), encoder.encode(userDTO.getPassword()),
-					true, false, false, userDTO.getRole());
-			user.setTenantId(userDTO.getTenantId());
+			User user = new User(createNewPid(),
+					userDTO.getFirstName(),
+					userDTO.getLastName(),
+					userDTO.getEmail(),
+					encoder.encode(userDTO.getPassword()),
+					true, false, false,
+					// If tenantId is provided, assign ADMIN role; otherwise, assign SUPER_ADMIN role.
+					StringUtils.isNotBlank(userDTO.getTenantId()) ? Role.ADMIN : Role.SUPER_ADMIN,
+					userDTO.getTenantId());
 			User saved = userRepository.save(user);
 			auditEventPublisher.publishEvent(
 					AuditEventType.USER_CREATED, "User created", Map.of("email", user.getEmail()));
@@ -134,17 +163,59 @@ public class UserService {
 	}
 
 	/**
+	 * Updates the user data.
+	 * @param id           the user identifier
+	 * @param userDTO      the new field values
+	 * @return the updated user as a serialized JSON node
+	 * @throws UserNotFoundException if the user is not found
+	 */
+	public JsonNode updateUser(String id, UserDTO userDTO) {
+		User user = userRepository.findById(id)
+				.orElseThrow(() -> new UserNotFoundException("User not found: " + id));
+
+		user.setFirstName(userDTO.getFirstName() != null ? userDTO.getFirstName() : user.getFirstName());
+		user.setLastName(userDTO.getLastName() != null ? userDTO.getLastName() : user.getLastName());
+		if (StringUtils.isNotBlank(userDTO.getEmail()) && !userDTO.getEmail().equals(user.getEmail())) {
+			userRepository.findByEmail(userDTO.getEmail())
+					.ifPresent(u -> {
+						throw new BadRequestException("User with email already exists");
+					});
+			user.setEmail(userDTO.getEmail());
+		}
+
+		if (StringUtils.isNotBlank(userDTO.getPassword())) {
+			PasswordValidationResult validationResult = passwordValidator.isValid(userDTO.getPassword());
+			if (validationResult.isValid()) {
+				user.setPassword(encoder.encode(userDTO.getPassword()));
+			} else {
+				throw new BadRequestException(
+						validationResult.getViolations().stream().collect(Collectors.joining(", ")));
+			}
+		}
+
+		user.setEnabled(userDTO.isEnabled());
+		user.setExpired(userDTO.isExpired());
+		user.setLocked(userDTO.isLocked());
+
+		userRepository.save(user);
+		auditEventPublisher.publishEvent(
+				AuditEventType.USER_UPDATED, "User updated", Map.of("email", user.getEmail()));
+		return ToolsSerializer.serializePlainJsonNode(user);
+	}
+
+	/**
 	 * Updates the first name and last name of the given user.
 	 *
 	 * @param id           the user identifier
 	 * @param loggedInUser the e-mail of the authenticated principal, or {@code null} in disabled mode
 	 * @param userDTO      the new field values
 	 * @return the updated user as a serialized JSON node
-	 * @throws BadRequestException if the user is not found or the caller tries to update another user
+	 * @throws UserNotFoundException if the user is not found
+	 * @throws BadRequestException if the caller tries to update another user
 	 */
-	public JsonNode updateUser(String id, String loggedInUser, UserDTO userDTO) {
+	public JsonNode updateUserNames(String id, String loggedInUser, UserDTO userDTO) {
 		User user = userRepository.findById(id)
-				.orElseThrow(() -> new BadRequestException("User not found"));
+				.orElseThrow(() -> new UserNotFoundException("User not found: " + id));
 
 		if (loggedInUser == null || user.getEmail().equals(loggedInUser)) {
 			user.setFirstName(userDTO.getFirstName() != null ? userDTO.getFirstName() : user.getFirstName());
@@ -167,12 +238,12 @@ public class UserService {
 	 * @param userDTO      must contain the current password in {@code password} and the new password
 	 *                     in {@code newPassword}
 	 * @return the updated user as a serialized JSON node
-	 * @throws BadRequestException if the user is not found, the current password does not match,
-	 *                             or the new password fails strength validation
+	 * @throws UserNotFoundException if the user is not found
+	 * @throws BadRequestException if the current password does not match or the new password fails strength validation
 	 */
 	public JsonNode updatePassword(String id, String loggedInUser, UserDTO userDTO) {
 		User user = userRepository.findById(id)
-				.orElseThrow(() -> new BadRequestException("User not found"));
+				.orElseThrow(() -> new UserNotFoundException("User not found: " + id));
 
 		if (loggedInUser == null || user.getEmail().equals(loggedInUser)) {
 			if (encoder.matches(userDTO.getPassword(), user.getPassword())) {
