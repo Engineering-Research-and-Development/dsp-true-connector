@@ -1,8 +1,7 @@
 package it.eng.connector.rest.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import it.eng.connector.model.User;
-import it.eng.connector.model.UserDTO;
+import it.eng.connector.model.*;
 import it.eng.connector.service.UserService;
 import it.eng.tools.auth.condition.InternalOrDisabledAuthenticationModeCondition;
 import it.eng.tools.controller.ApiEndpoints;
@@ -140,53 +139,53 @@ public class UserAPIController {
 
 	/**
 	 * Create new user.
-	 * @param userDTO
+	 * @param request the user create request
 	 * @return GenericApiResponse
 	 */
 	@PostMapping
-	public ResponseEntity<GenericApiResponse<JsonNode>> createUser(@RequestBody UserDTO userDTO) {
-		JsonNode newUser = userService.createUser(userDTO);
+	public ResponseEntity<GenericApiResponse<JsonNode>> createUser(@RequestBody UserCreateRequest request) {
+		JsonNode newUser = userService.createUser(request);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(GenericApiResponse.success(newUser, "New user created"));
 	}
 
 	/**
 	 * Update user data.
-	 * @param id
-	 * @param userDTO
+	 * @param id      the user identifier
+	 * @param request the user update request
 	 * @return GenericApiResponse
 	 */
 	@PutMapping(path = "/{id}")
-	public ResponseEntity<GenericApiResponse<JsonNode>> updateUser(@PathVariable String id, @RequestBody UserDTO userDTO) {
-		JsonNode updatedUser = userService.updateUser(id, userDTO);
+	public ResponseEntity<GenericApiResponse<JsonNode>> updateUser(@PathVariable String id, @RequestBody UserUpdateRequest request) {
+		JsonNode updatedUser = userService.updateUser(id, request);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(GenericApiResponse.success(updatedUser, "User updated"));
 	}
 	
 	/**
-	 * Update first name, last name and role.
-	 * @param id
-	 * @param userDTO
-	 * @param principal
+	 * Update first name and last name.
+	 * @param id        the user identifier
+	 * @param request   the names update request
+	 * @param principal the authenticated principal
 	 * @return GenericApiResponse
 	 */
 	@PutMapping(path = "/{id}/updateNames")
-	public ResponseEntity<GenericApiResponse<JsonNode>> updateUserNames(@PathVariable String id, @RequestBody UserDTO userDTO, Principal principal) {
-		JsonNode updatedUser = userService.updateUserNames(id, resolvePrincipalName(principal), userDTO);
+	public ResponseEntity<GenericApiResponse<JsonNode>> updateUserNames(@PathVariable String id, @RequestBody UserNamesUpdateRequest request, Principal principal) {
+		JsonNode updatedUser = userService.updateUserNames(id, resolvePrincipalName(principal), request);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(GenericApiResponse.success(updatedUser, "User updated"));
 	}
 	
 	/**
-	 * Update password for privided user.
-	 * @param id
-	 * @param userDTO
-	 * @param principal
+	 * Update password for provided user.
+	 * @param id        the user identifier
+	 * @param request   the password update request
+	 * @param principal the authenticated principal
 	 * @return GenericApiResponse
 	 */
 	@PutMapping(path = "/{id}/password")
-	public ResponseEntity<GenericApiResponse<JsonNode>> updatePassword(@PathVariable String id, @RequestBody UserDTO userDTO, Principal principal) {
-		JsonNode updatedUser = userService.updatePassword(id, resolvePrincipalName(principal), userDTO);
+	public ResponseEntity<GenericApiResponse<JsonNode>> updatePassword(@PathVariable String id, @RequestBody UserPasswordUpdateRequest request, Principal principal) {
+		JsonNode updatedUser = userService.updatePassword(id, resolvePrincipalName(principal), request);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(GenericApiResponse.success(updatedUser, "Password updated"));
 	}
