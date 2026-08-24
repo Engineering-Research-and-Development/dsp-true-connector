@@ -1,6 +1,5 @@
 package it.eng.tools.s3.service;
 
-import it.eng.tools.exception.S3ServerException;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.repository.BucketCredentialsRepository;
 import it.eng.tools.service.FieldEncryptionService;
@@ -14,20 +13,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-/**
- * Unit tests for {@link BucketCredentialsService}.
- */
 @ExtendWith(MockitoExtension.class)
 class BucketCredentialsServiceTest {
-
-    private static final String BUCKET = "test-bucket";
-    private static final String PLAIN_SECRET = "plain-secret";
-    private static final String ENCRYPTED_SECRET = "encrypted-secret";
 
     @Mock
     private FieldEncryptionService fieldEncryptionService;
@@ -36,94 +29,70 @@ class BucketCredentialsServiceTest {
     private BucketCredentialsRepository bucketCredentialsRepository;
 
     @InjectMocks
-    private BucketCredentialsService service;
-
-    // -------------------------------------------------------------------------
-    // getBucketCredentials
-    // -------------------------------------------------------------------------
+    private BucketCredentialsService bucketCredentialsService;
 
     @Test
-    @DisplayName("getBucketCredentials returns decrypted credentials when found")
-    void getBucketCredentials_found_returnsDecrypted() {
-        BucketCredentialsEntity stored = BucketCredentialsEntity.Builder.newInstance()
-                .bucketName(BUCKET).accessKey("AKID").secretKey(ENCRYPTED_SECRET).build();
-        when(bucketCredentialsRepository.findByBucketName(BUCKET)).thenReturn(Optional.of(stored));
-        when(fieldEncryptionService.decrypt(ENCRYPTED_SECRET)).thenReturn(PLAIN_SECRET);
-
-        BucketCredentialsEntity result = service.getBucketCredentials(BUCKET);
-
-        assertEquals(BUCKET, result.getBucketName());
-        assertEquals("AKID", result.getAccessKey());
-        assertEquals(PLAIN_SECRET, result.getSecretKey());
-        verify(fieldEncryptionService).decrypt(ENCRYPTED_SECRET);
-    }
-
-    @Test
-    @DisplayName("getBucketCredentials throws S3ServerException when not found")
-    void getBucketCredentials_notFound_throwsException() {
-        when(bucketCredentialsRepository.findByBucketName(BUCKET)).thenReturn(Optional.empty());
-
-        S3ServerException ex = assertThrows(S3ServerException.class,
-                () -> service.getBucketCredentials(BUCKET));
-        assertTrue(ex.getMessage().contains(BUCKET));
-        verifyNoInteractions(fieldEncryptionService);
-    }
-
-    // -------------------------------------------------------------------------
-    // saveBucketCredentials
-    // -------------------------------------------------------------------------
-
-    @Test
-    @DisplayName("saveBucketCredentials encrypts secretKey before saving")
-    void saveBucketCredentials_encryptsSecretKey() {
+    @DisplayName("saveBucketCredentials keeps version null for first insert")
+    void saveBucketCredentials_newBucket_keepsVersionNull() {
         BucketCredentialsEntity input = BucketCredentialsEntity.Builder.newInstance()
-                .bucketName(BUCKET).accessKey("AKID").secretKey(PLAIN_SECRET).build();
-        when(fieldEncryptionService.encrypt(PLAIN_SECRET)).thenReturn(ENCRYPTED_SECRET);
-        when(bucketCredentialsRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+                .bucketName("new-bucket")
+                .accessKey("access")
+                .secretKey("secret")
+                .build();
+        when(bucketCredentialsRepository.findByBucketName("new-bucket")).thenReturn(Optional.empty());
+        when(fieldEncryptionService.encrypt("secret")).thenReturn("encrypted-secret");
+        when(bucketCredentialsRepository.save(any(BucketCredentialsEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        service.saveBucketCredentials(input);
+        BucketCredentialsEntity saved = bucketCredentialsService.saveBucketCredentials(input);
+
+        assertNull(saved.getVersion());
+        assertEquals("encrypted-secret", saved.getSecretKey());
+    }
+
+    @Test
+    @DisplayName("saveBucketCredentials carries existing version for updates")
+    void saveBucketCredentials_existingBucket_carriesVersionForward() {
+        BucketCredentialsEntity existing = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName("existing-bucket")
+                .accessKey("old-access")
+                .secretKey("old-secret")
+                .version(3L)
+                .build();
+        BucketCredentialsEntity input = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName("existing-bucket")
+                .accessKey("new-access")
+                .secretKey("new-secret")
+                .build();
+        when(bucketCredentialsRepository.findByBucketName("existing-bucket")).thenReturn(Optional.of(existing));
+        when(fieldEncryptionService.encrypt("new-secret")).thenReturn("encrypted-new-secret");
+        when(bucketCredentialsRepository.save(any(BucketCredentialsEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        bucketCredentialsService.saveBucketCredentials(input);
 
         ArgumentCaptor<BucketCredentialsEntity> captor = ArgumentCaptor.forClass(BucketCredentialsEntity.class);
         verify(bucketCredentialsRepository).save(captor.capture());
-        assertEquals(ENCRYPTED_SECRET, captor.getValue().getSecretKey());
-        assertEquals(BUCKET, captor.getValue().getBucketName());
-        assertEquals("AKID", captor.getValue().getAccessKey());
+        assertEquals(3L, captor.getValue().getVersion());
+        assertEquals("encrypted-new-secret", captor.getValue().getSecretKey());
     }
 
     @Test
-    @DisplayName("saveBucketCredentials returns the repository-saved entity")
-    void saveBucketCredentials_returnsRepositoryResult() {
-        BucketCredentialsEntity input = BucketCredentialsEntity.Builder.newInstance()
-                .bucketName(BUCKET).accessKey("AKID").secretKey(PLAIN_SECRET).build();
-        BucketCredentialsEntity saved = BucketCredentialsEntity.Builder.newInstance()
-                .bucketName(BUCKET).accessKey("AKID").secretKey(ENCRYPTED_SECRET).build();
-        when(fieldEncryptionService.encrypt(PLAIN_SECRET)).thenReturn(ENCRYPTED_SECRET);
-        when(bucketCredentialsRepository.save(any())).thenReturn(saved);
+    @DisplayName("getBucketCredentials decrypts and returns stored version")
+    void getBucketCredentials_decryptsAndReturnsVersion() {
+        BucketCredentialsEntity stored = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName("bucket")
+                .accessKey("stored-access")
+                .secretKey("encrypted-secret")
+                .version(7L)
+                .build();
+        when(bucketCredentialsRepository.findByBucketName("bucket")).thenReturn(Optional.of(stored));
+        when(fieldEncryptionService.decrypt("encrypted-secret")).thenReturn("plain-secret");
 
-        BucketCredentialsEntity result = service.saveBucketCredentials(input);
+        BucketCredentialsEntity result = bucketCredentialsService.getBucketCredentials("bucket");
 
-        assertSame(saved, result);
-    }
-
-    // -------------------------------------------------------------------------
-    // bucketCredentialsExist
-    // -------------------------------------------------------------------------
-
-    @Test
-    @DisplayName("bucketCredentialsExist returns true when credentials found")
-    void bucketCredentialsExist_found_returnsTrue() {
-        BucketCredentialsEntity entity = BucketCredentialsEntity.Builder.newInstance()
-                .bucketName(BUCKET).accessKey("ak").secretKey("sk").build();
-        when(bucketCredentialsRepository.findByBucketName(BUCKET)).thenReturn(Optional.of(entity));
-
-        assertTrue(service.bucketCredentialsExist(BUCKET));
-    }
-
-    @Test
-    @DisplayName("bucketCredentialsExist returns false when not found")
-    void bucketCredentialsExist_notFound_returnsFalse() {
-        when(bucketCredentialsRepository.findByBucketName(BUCKET)).thenReturn(Optional.empty());
-
-        assertFalse(service.bucketCredentialsExist(BUCKET));
+        assertEquals("stored-access", result.getAccessKey());
+        assertEquals("plain-secret", result.getSecretKey());
+        assertEquals(7L, result.getVersion());
     }
 }

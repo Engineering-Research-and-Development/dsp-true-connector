@@ -10,7 +10,7 @@ import org.springframework.util.StringUtils;
  * Resolves the active authentication mode from application properties.
  *
  * <p>The {@code application.auth.provider} property controls the authentication mode.
- * Supported values are {@code KEYCLOAK}, {@code BASIC}, and {@code DISABLED}.
+ * Supported values are {@code KEYCLOAK}, {@code INTERNAL}, and {@code DISABLED}.
  *
  * <p>When {@code application.auth.dcp.enabled=true}, protocol endpoints use DCP authentication
  * instead of the configured provider. This flag is invalid when combined with {@code DISABLED}
@@ -61,10 +61,10 @@ public final class AuthenticationModeResolver {
     private static AuthenticationMode parseProvider(String configuredProvider) {
         return switch (configuredProvider.trim().toUpperCase(Locale.ROOT)) {
             case "KEYCLOAK" -> AuthenticationMode.KEYCLOAK;
-            case "BASIC" -> AuthenticationMode.BASIC;
+            case "INTERNAL" -> AuthenticationMode.INTERNAL;
             case "DISABLED" -> AuthenticationMode.DISABLED;
             default -> throw new IllegalStateException(
-                    "Unsupported value '%s' for property '%s'. Supported values are KEYCLOAK, BASIC and DISABLED."
+                    "Unsupported value '%s' for property '%s'. Supported values are KEYCLOAK, INTERNAL and DISABLED."
                             .formatted(configuredProvider, AUTH_PROVIDER_PROPERTY)
             );
         };

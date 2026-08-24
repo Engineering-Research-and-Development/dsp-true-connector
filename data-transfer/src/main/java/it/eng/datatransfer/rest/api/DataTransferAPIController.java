@@ -68,7 +68,8 @@ public class DataTransferAPIController {
      * @return GenericApiResponse response with success message.
      */
     @GetMapping(path = {"/{transferProcessId}/download"})
-    public ResponseEntity<GenericApiResponse<String>> downloadData(@PathVariable String transferProcessId) {
+    public ResponseEntity<GenericApiResponse<String>> downloadData(
+            @PathVariable String transferProcessId) {
         log.info("Downloading transfer process id - {} data", transferProcessId);
         apiService.downloadData(transferProcessId)
                 .exceptionally(throwable -> {
@@ -91,7 +92,8 @@ public class DataTransferAPIController {
      * @return GenericApiResponse response with artifact URL
      */
     @GetMapping(path = {"/{transferProcessId}/view"})
-    public ResponseEntity<String> viewData(@PathVariable String transferProcessId) {
+    public ResponseEntity<String> viewData(
+            @PathVariable String transferProcessId) {
         log.info("Accessing transfer process id - {} data", transferProcessId);
         String artifactURL = apiService.viewData(transferProcessId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)

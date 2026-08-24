@@ -10,7 +10,7 @@
       "enabled": true,
       "expired": false,
       "locked": false,
-      "role": "ROLE_ADMIN",
+      "role": "ADMIN",
       "tenantId": "engineering-provider"
     },
     {
@@ -23,7 +23,7 @@
       "enabled": "true",
       "expired": false,
       "locked": false,
-      "role": "ROLE_CONNECTOR",
+      "role": "CONNECTOR",
       "tenantId": "engineering-provider"
     },
     {
@@ -36,7 +36,7 @@
       "enabled": true,
       "expired": false,
       "locked": false,
-      "role": "ROLE_SUPER_ADMIN"
+      "role": "SUPER_ADMIN"
     }
   ],
   "catalogs": [
@@ -284,7 +284,6 @@
       "lastModifiedDate": {
         "$date": "2024-12-10T16:04:59.358Z"
       },
-      "tenantId": "engineering-provider",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": {
@@ -626,8 +625,7 @@
       "_id": "engineering-provider",
       "name": "Engineering",
       "description": "Default Engineering Provider tenant",
-      "connectorId": "urn:connector:engineering-provider",
-      "callbackAddress": "http://localhost:8090/engineering-provider",
+      "participantId": "urn:connector:engineering-provider",
       "bucketName": "dsp-true-connector-provider",
       "enabled": true,
       "automaticNegotiation": false,

@@ -34,7 +34,7 @@ public class CatalogAPIController {
     }
 
     @GetMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<JsonNode>> getCatalogById(@PathVariable("id") String id) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> getCatalogById(@PathVariable String id) {
         log.info("Fetching catalog with id '" + id + "'");
 
         Catalog catalog = catalogService.getCatalogById(id);
@@ -56,7 +56,7 @@ public class CatalogAPIController {
     }
 
     @DeleteMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<Void>> deleteCatalog(@PathVariable("id") String id) {
+    public ResponseEntity<GenericApiResponse<Void>> deleteCatalog(@PathVariable String id) {
         log.info("Deleting catalog with id: " + id);
 
         catalogService.deleteCatalog(id);
@@ -65,7 +65,7 @@ public class CatalogAPIController {
     }
 
     @PutMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<JsonNode>> updateCatalog(@PathVariable("id") String id, @RequestBody String catalog) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> updateCatalog(@PathVariable String id, @RequestBody String catalog) {
         Catalog c = CatalogSerializer.deserializePlain(catalog, Catalog.class);
 
         log.info("Updating catalog with id: " + id);

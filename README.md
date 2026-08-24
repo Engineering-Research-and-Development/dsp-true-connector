@@ -44,6 +44,15 @@ Project is structured as multi-module maven project:
 * data-plane/data-plane-http-push - HTTP-PUSH Data Plane service (uploads artifact from provider S3 to consumer S3 using temporary credentials)
 * data-plane/data-plane-grpc - gRPC streaming Data Plane service (provider prepare + consumer stream download via DPS)
 
+## Documentation
+
+* [Documentation index](doc/README.md) — map of all guides (security, configuration, identity, testing, deployment)
+* [Architecture overview](doc/architecture.md) — module map, layering, protocol flows
+* [Contributing guide](CONTRIBUTING.md) — prerequisites, build/test commands, workflow, Definition of Done
+* [Agent instructions](AGENTS.md) — rules and the GitHub-integrated AI task workflow for AI coding agents
+* [Architecture decisions](doc/decisions/README.md) — ADRs
+* [Glossary](doc/glossary.md) — DSP and dataspace terminology
+
 ## GUI tool for DSP TRUEConnector
 
 * [GUI frontend](https://github.com/Engineering-Research-and-Development/dsp-true-connector-ui)

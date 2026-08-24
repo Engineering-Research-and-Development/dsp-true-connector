@@ -158,6 +158,7 @@ public class DatasetService {
         catalogService.updateCatalogDatasetAfterSave(savedDataSet);
         applicationEventPublisher.publishEvent(CatalogStructureChangedEvent.fullReconcile("dataset-saved"));
         log.info("Inserted Dataset with id {}", savedDataSet.getId());
+        publisher.publishEvent(AuditEventType.DATASET_CREATED, "Dataset created", Map.of("datasetId", savedDataSet.getId()));
         return savedDataSet;
     }
 
@@ -201,6 +202,7 @@ public class DatasetService {
             throw new InternalServerErrorAPIException("Dataset could not be updated");
         }
         applicationEventPublisher.publishEvent(CatalogStructureChangedEvent.fullReconcile("dataset-updated"));
+        publisher.publishEvent(AuditEventType.DATASET_UPDATED, "Dataset updated", Map.of("datasetId", id));
         return storedDataset;
     }
 
@@ -222,6 +224,7 @@ public class DatasetService {
         }
         catalogService.updateCatalogDatasetAfterDelete(ds);
         applicationEventPublisher.publishEvent(CatalogStructureChangedEvent.fullReconcile("dataset-deleted"));
+        publisher.publishEvent(AuditEventType.DATASET_DELETED, "Dataset deleted", Map.of("datasetId", id));
     }
 
     public List<String> getFormatsFromDataset(String id) {

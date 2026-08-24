@@ -110,4 +110,10 @@ public interface ApiEndpoints {
      * Used in Spring Security {@code requestMatchers} to permit these endpoints without authentication.
      */
     public static final String DATAFLOW_CALLBACKS_PATTERN = TRANSFER_DATATRANSFER_V1 + "/*/dataflow/*";
+
+    /**
+     * Connector module - v1 API endpoint for the unified auth contract (login/refresh/logout).
+     */
+    public static final String AUTH_V1 = "/api/v1/auth";
+
 }

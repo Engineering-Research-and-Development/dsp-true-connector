@@ -103,6 +103,15 @@ class DisabledSecurityIT extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/tenants without authentication returns 200 in disabled mode")
+    void getTenantsWithoutAuthenticationReturnsOk() throws Exception {
+        mockMvc.perform(get(ApiEndpoints.TENANTS_V1)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    @Test
     @DisplayName("GET /actuator/env without authentication returns 200 in disabled mode")
     void getActuatorEnvWithoutAuthenticationReturnsOk() throws Exception {
         mockMvc.perform(get("/actuator/env"))
@@ -128,6 +137,19 @@ class DisabledSecurityIT extends BaseIntegrationTest {
         );
         assertNotNull(catalogResponse);
         assertFalse(catalogResponse.getDataset().isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should not expose /auth controller")
+    void authControllerShouldNotBeExposed() throws Exception {
+        mockMvc.perform(get(ApiEndpoints.AUTH_V1 + "/login"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get(ApiEndpoints.AUTH_V1 + "/refresh"))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get(ApiEndpoints.AUTH_V1 + "/logout"))
+                .andExpect(status().isNotFound());
     }
 
     private void populateCatalog() {

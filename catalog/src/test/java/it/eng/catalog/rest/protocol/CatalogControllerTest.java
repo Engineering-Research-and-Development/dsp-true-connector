@@ -44,8 +44,7 @@ public class CatalogControllerTest {
     private final Tenant tenant = Tenant.Builder.newInstance()
             .id(TENANT_ID)
             .name("Engineering")
-            .connectorId("connector-1")
-            .callbackAddress("http://engineering.example.com/callback")
+            .participantId("connector-1")
             .enabled(true)
             .build();
 

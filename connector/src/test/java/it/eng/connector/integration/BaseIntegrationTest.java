@@ -163,8 +163,7 @@ public class BaseIntegrationTest {
             tenantRepository.save(Tenant.Builder.newInstance()
                     .id(TENANT_ID)
                     .name("Engineering")
-                    .connectorId("connector-engineering")
-                    .callbackAddress("http://engineering.example.com/callback")
+                    .participantId("connector-engineering")
                     .bucketName(s3Properties.getBucketName())
                     .enabled(true)
                     .build());

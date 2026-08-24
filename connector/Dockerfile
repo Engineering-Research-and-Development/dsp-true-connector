@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jre-jammy
+FROM eclipse-temurin:21-jre-alpine
 
 RUN mkdir -p /home/nobody/ftp && mkdir -p /home/nobody/data/log/tc
 

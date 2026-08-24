@@ -22,6 +22,46 @@ Implementation-specific behavior in this repository:
 
 ### Template distribution vs materialized distributions
 
+## Tenant isolation and @DBRef cascade safety
+
+### Risk: unfiltered @DBRef resolution
+
+`Catalog`, `Dataset`, and `Distribution` documents use Spring Data MongoDB `@DBRef` to store
+cross-document references. Spring Data resolves a `@DBRef` by raw OID lookup — it does not
+apply any tenant filter. In a multi-tenant deployment this means a `Catalog` owned by
+tenant A could theoretically reference a `Dataset` owned by tenant B if the service layer
+does not guard against it.
+
+### Mitigation: service-layer tenantId consistency assertion
+
+`CatalogService` applies a tenantId guard at every point where a cross-document reference
+is written or updated. The guard is implemented by:
+
+1. **Tenantid-scoped repository queries** — `CatalogRepository` exposes
+   `findCatalogByDatasetIdAndTenantId` and `findCatalogByDataServiceIdAndTenantId`.
+   These variants include `AND tenantId = :tenantId` in their query derivation, so the
+   lookup only matches catalogs owned by the same tenant.
+
+2. **`CatalogService.assertSameTenant()`** — called inside each update helper before any
+   reference is persisted:
+   - `updateCatalogDatasetAfterSave`
+   - `updateCatalogDataServiceAfterSave`
+   - `updateCatalogDistributionAfterSave`
+
+   If the referenced entity belongs to a different tenant the method throws
+   `CatalogErrorException`, which the `CatalogExceptionAdvice` maps to HTTP 404.
+
+3. **Cross-tenant isolation integration test** — `CrossTenantIsolationIT` verifies that
+   a tenant's catalog, datasets, and data services are not visible to a different tenant.
+
+### Pattern for future development
+
+Any service method that writes a `@DBRef`-backed cross-document link **must** call
+`assertSameTenant()` before persisting. See ADR
+[D-TEC-006](../../doc/decisions/technical/D-TEC-006-dbref-tenant-filter-mitigation.md)
+for the full rationale and alternatives considered.
+
+---
 The repository treats a dataset distribution as a template plus runtime capability expansion:
 
 1. `CatalogDataPlaneFormatSyncService.resolveSupportedFormats()` takes the union of

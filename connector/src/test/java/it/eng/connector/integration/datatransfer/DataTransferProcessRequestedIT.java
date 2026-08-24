@@ -40,7 +40,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 // Consumer -> REQUESTED
 
-
     @Autowired
     private AgreementRepository agreementRepository;
     @Autowired
@@ -58,6 +57,9 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
     private Dataset dataset;
     private Distribution distribution;
     private Distribution distributionHttpPush;
+
+    // from initial_data
+    private static final String TENANT_ID = "engineering";
 
     @BeforeEach
     public void populateCatalog() {
@@ -113,6 +115,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .assigner("assigner")
                 .target("test_dataset")
                 .permission(Collections.singletonList(permission))
+                .tenantId(TENANT_ID)
                 .build();
         agreementRepository.save(agreement);
 
@@ -124,6 +127,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .agreement(agreement)
                 .state(ContractNegotiationState.FINALIZED)
                 .role(IConstants.ROLE_PROVIDER)
+                .tenantId(TENANT_ID)
                 .build();
         contractNegotiationRepository.save(contractNegotiationFinalized);
 
@@ -134,6 +138,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .agreementId(agreement.getId())
                 .state(TransferState.INITIALIZED)
                 .datasetId(dataset.getId())
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessInitialized);
 
@@ -351,6 +356,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .assigner("assigner")
                 .target("test_dataset")
                 .permission(Collections.singletonList(Permission.Builder.newInstance().action(Action.USE).build()))
+                .tenantId(TENANT_ID)
                 .build();
         agreementRepository.save(agreement);
 
@@ -361,6 +367,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .agreement(agreement)
                 .state(ContractNegotiationState.FINALIZED)
                 .role(IConstants.ROLE_PROVIDER)
+                .tenantId(TENANT_ID)
                 .build();
         contractNegotiationRepository.save(contractNegotiation);
 
@@ -371,6 +378,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .agreementId(agreement.getId())
                 .state(TransferState.INITIALIZED)
                 .datasetId(dataset.getId())
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessInitialized);
 

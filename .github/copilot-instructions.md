@@ -133,6 +133,13 @@
 ## Available repository skills
 
 - The scoped instruction content above is also available as repository skills under `.github/skills/`.
+- For workflow orchestration in Copilot-first sessions, prefer the Copilot-native workflow skills under `.github/skills/` as the primary entry point. Imported `.claude/skills/` files are secondary compatibility mirrors of the staged workflow.
+- Copilot-native workflow skills:
+  - `functional-slicing`
+  - `task-decomposition`
+  - `task-implementation`
+  - `slice-implementation`
+  - `playwright-cli`
 - Java and workflow guidance skills:
   - `java-development`
   - `junit-5-tests`

@@ -41,8 +41,8 @@ public class ContractNegotiationProviderController extends TenantAwareProtocolCo
      * @return the serialized contract negotiation
      */
     @GetMapping(path = "/{providerPid}")
-    public ResponseEntity<JsonNode> getNegotiationByProviderPid(@PathVariable("tenantId") String tenantId,
-                                                                @PathVariable("providerPid") String providerPid) {
+    public ResponseEntity<JsonNode> getNegotiationByProviderPid(@PathVariable String tenantId,
+                                                                @PathVariable String providerPid) {
         log.info("Get negotiation by provider pid");
         resolveTenant(tenantId);
         ContractNegotiation contractNegotiation = providerService.getNegotiationByProviderPid(providerPid);
@@ -59,8 +59,8 @@ public class ContractNegotiationProviderController extends TenantAwareProtocolCo
      * @return 201 Created with the serialized contract negotiation
      */
     @PostMapping(path = "/request")
-    public ResponseEntity<JsonNode> handleContractRequestMessage(@PathVariable("tenantId") String tenantId,
-                                                                  @RequestBody JsonNode contractRequestMessageJsonNode) {
+    public ResponseEntity<JsonNode> handleContractRequestMessage(@PathVariable String tenantId,
+                                                                 @RequestBody JsonNode contractRequestMessageJsonNode) {
         log.info("Creating negotiation");
         resolveTenant(tenantId);
         ContractRequestMessage crm = NegotiationSerializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
@@ -85,9 +85,9 @@ public class ContractNegotiationProviderController extends TenantAwareProtocolCo
      * @return 200 OK with the serialized contract negotiation
      */
     @PostMapping(path = "/{providerPid}/request")
-    public ResponseEntity<JsonNode> handleContractRequestMessageAsCounteroffer(@PathVariable("tenantId") String tenantId,
-                                                                                @PathVariable("providerPid") String providerPid,
-                                                                                @RequestBody JsonNode contractRequestMessageJsonNode) {
+    public ResponseEntity<JsonNode> handleContractRequestMessageAsCounteroffer(@PathVariable String tenantId,
+                                                                               @PathVariable String providerPid,
+                                                                               @RequestBody JsonNode contractRequestMessageJsonNode) {
         log.info("Processing consumer counter-offer");
         resolveTenant(tenantId);
         ContractRequestMessage crm = NegotiationSerializer.deserializeProtocol(contractRequestMessageJsonNode, ContractRequestMessage.class);
@@ -108,9 +108,9 @@ public class ContractNegotiationProviderController extends TenantAwareProtocolCo
      * @return 200 OK with the serialized contract negotiation
      */
     @PostMapping(path = "/{providerPid}/events")
-    public ResponseEntity<JsonNode> handleContractNegotiationEventMessageAccepted(@PathVariable("tenantId") String tenantId,
-                                                                                   @PathVariable("providerPid") String providerPid,
-                                                                                   @RequestBody JsonNode contractNegotiationEventMessageJsonNode) {
+    public ResponseEntity<JsonNode> handleContractNegotiationEventMessageAccepted(@PathVariable String tenantId,
+                                                                                  @PathVariable String providerPid,
+                                                                                  @RequestBody JsonNode contractNegotiationEventMessageJsonNode) {
         resolveTenant(tenantId);
         ContractNegotiationEventMessage contractNegotiationEventMessage = NegotiationSerializer.deserializeProtocol(contractNegotiationEventMessageJsonNode, ContractNegotiationEventMessage.class);
         log.info(contractNegotiationEventMessage.toString());
@@ -132,8 +132,8 @@ public class ContractNegotiationProviderController extends TenantAwareProtocolCo
      * @return 200 OK
      */
     @PostMapping(path = "/{providerPid}/agreement/verification")
-    public ResponseEntity<Void> handleContractAgreementVerificationMessage(@PathVariable("tenantId") String tenantId,
-                                                                           @PathVariable("providerPid") String providerPid,
+    public ResponseEntity<Void> handleContractAgreementVerificationMessage(@PathVariable String tenantId,
+                                                                           @PathVariable String providerPid,
                                                                            @RequestBody JsonNode contractAgreementVerificationMessageJsonNode) {
         resolveTenant(tenantId);
         ContractAgreementVerificationMessage cavm =
@@ -157,8 +157,8 @@ public class ContractNegotiationProviderController extends TenantAwareProtocolCo
      * @return 200 OK
      */
     @PostMapping(path = "/{providerPid}/termination")
-    public ResponseEntity<Void> handleContractNegotiationTerminationMessage(@PathVariable("tenantId") String tenantId,
-                                                                            @PathVariable("providerPid") String providerPid,
+    public ResponseEntity<Void> handleContractNegotiationTerminationMessage(@PathVariable String tenantId,
+                                                                            @PathVariable String providerPid,
                                                                             @RequestBody JsonNode contractNegotiationTerminationMessageJsonNode) {
         resolveTenant(tenantId);
         ContractNegotiationTerminationMessage contractNegotiationTerminationMessage =

@@ -10,7 +10,8 @@
       "enabled": true,
       "expired": false,
       "locked": false,
-      "role": "ROLE_ADMIN"
+      "role": "ADMIN",
+      "tenantId": "engineering"
     },
     {
       "_class": "it.eng.connector.model.User",
@@ -22,7 +23,8 @@
       "enabled": "true",
       "expired": false,
       "locked": false,
-      "role": "ROLE_CONNECTOR"
+      "role": "CONNECTOR",
+      "tenantId": "engineering"
     }
   ],
   "catalogs": [
@@ -1037,7 +1039,7 @@
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "DSP TRUE Connector",
       "endpointDescription": "connector",
-      "endpointURL": "http://dsp-tc-connector:8080/engineering",
+      "endpointURL": "http://localhost:8090/engineering",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0,
@@ -1915,7 +1917,7 @@
       "_id": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5",
       "_class": "it.eng.datatransfer.model.TransferProcess",
       "consumerPid": "temporary_consumer_pid",
-      "callbackAddress": "http://dsp-tc-connector:8080/engineering",
+      "callbackAddress": "http://localhost:8090/engineering",
       "agreementId": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "state": "INITIALIZED",
       "role": "provider",
@@ -2470,9 +2472,9 @@
       "_id": "engineering",
       "name": "Engineering",
       "description": "Engineering tenant",
-      "connectorId": "urn:connector:engineering",
-      "callbackAddress": "http://dsp-tc-connector:8080/engineering",
+      "participantId": "urn:connector:engineering",
       "enabled": true,
+      "bucketName": "dsp-engineering",
       "automaticNegotiation": false,
       "automaticTransfer": false,
       "version": 0

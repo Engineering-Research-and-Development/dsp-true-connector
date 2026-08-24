@@ -8,6 +8,7 @@ import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
@@ -201,6 +202,7 @@ public class DatasetServiceTest {
         assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), argCaptorDataset.getValue().getArtifact().getValue());
         assertEquals(CatalogMockObjectUtil.DATASET.getId(), argCaptorDataset.getValue().getId());
         assertPublishedCatalogStructureChangedEvent("dataset-saved");
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATASET_CREATED), anyString(), any());
 
     }
 
@@ -238,6 +240,7 @@ public class DatasetServiceTest {
         assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getId(), argCaptorDataset.getValue().getArtifact().getId());
         assertEquals(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), argCaptorDataset.getValue().getArtifact().getValue());
         assertEquals(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), argCaptorDataset.getValue().getId());
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATASET_UPDATED), anyString(), any());
         assertPublishedCatalogStructureChangedEvent("dataset-updated");
     }
 
@@ -254,6 +257,7 @@ public class DatasetServiceTest {
         verify(repository).deleteById(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId());
         verify(catalogService).updateCatalogDatasetAfterDelete(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
         assertPublishedCatalogStructureChangedEvent("dataset-deleted");
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATASET_DELETED), anyString(), any());
     }
 
     @Test

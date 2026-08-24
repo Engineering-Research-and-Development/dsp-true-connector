@@ -10,7 +10,7 @@
     <description>Dataspace protocol implementation of the TRUE Connector</description>
 
     <properties>
-        <revision>0.6.12-SNAPSHOT</revision>
+        <revision>0.6.13-SNAPSHOT</revision>
         <java.version>21</java.version>
         <build.sourceEncoding>UTF-8</build.sourceEncoding>
         <maven.compiler.release>${java.version}</maven.compiler.release>
@@ -28,6 +28,12 @@
         <protobuf.version>3.25.0</protobuf.version>
         <!-- Commons Lang3 - override Boot BOM (CVE-2025-48924; SB 3.5.14 has 3.17.0) -->
         <commons-lang3.version>3.18.0</commons-lang3.version>
+        <!-- AssertJ - override Boot BOM (CVE-2026-24400 XXE in isXmlEqualTo) -->
+        <assertj.version>3.27.7</assertj.version>
+        <!-- HttpClient5 - override Boot BOM (CVE-2025-27820 domain check bypass) -->
+        <httpclient5.version>5.4.3</httpclient5.version>
+        <!-- json-smart - override Boot BOM (CVE-2024-57699 uncontrolled recursion DoS) -->
+        <json-smart.version>2.5.2</json-smart.version>
         <!-- Nimbus JOSE+JWT - override Boot BOM (CVE-2025-53864 deeply nested JSON DoS) -->
         <nimbus-jose-jwt.version>10.0.2</nimbus-jose-jwt.version>
         <!-- AWS SDK -->
@@ -198,7 +204,29 @@
                 <version>${failsafe.version}</version>
             </dependency>
 
-            <!-- Jackson - managed by Spring Boot BOM via jackson-bom 2.21.2 (GHSA-72hv-8253-57qq fixed in 2.15+) -->
+            <!-- Jackson JSR310 -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.datatype</groupId>
+                <artifactId>jackson-datatype-jsr310</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <!-- Jackson core suite - override Boot BOM (GHSA-72hv-8253-57qq) -->
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
 
             <!-- Tomcat - override Boot BOM (CVE-2025-24813 and others) -->
             <dependency>
@@ -266,11 +294,27 @@
                 <version>${commons-lang3.version}</version>
             </dependency>
 
-            <!-- AssertJ - SB 3.5.14 bundles 3.27.7 which already fixes CVE-2026-24400 -->
+            <!-- AssertJ - override Boot BOM (CVE-2026-24400 XXE in isXmlEqualTo) -->
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>${assertj.version}</version>
+                <scope>test</scope>
+            </dependency>
 
-            <!-- HttpClient5 - SB 3.5.14 bundles 5.5.2 which already fixes CVE-2025-27820 -->
+            <!-- HttpClient5 - override Boot BOM (CVE-2025-27820 domain check bypass) -->
+            <dependency>
+                <groupId>org.apache.httpcomponents.client5</groupId>
+                <artifactId>httpclient5</artifactId>
+                <version>${httpclient5.version}</version>
+            </dependency>
 
-            <!-- json-smart - SB 3.5.14 bundles 2.5.2 which already fixes CVE-2024-57699 -->
+            <!-- json-smart - override Boot BOM (CVE-2024-57699 uncontrolled recursion DoS) -->
+            <dependency>
+                <groupId>net.minidev</groupId>
+                <artifactId>json-smart</artifactId>
+                <version>${json-smart.version}</version>
+            </dependency>
 
             <!-- Nimbus JOSE+JWT - override Boot BOM (CVE-2025-53864 deeply nested JSON DoS) -->
             <dependency>

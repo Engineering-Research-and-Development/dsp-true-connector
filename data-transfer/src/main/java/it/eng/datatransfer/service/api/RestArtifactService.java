@@ -71,7 +71,7 @@ public class RestArtifactService {
                 log.error("Wrong artifact type: {}", artifact.getArtifactType());
                 throw new DownloadException("Error while downloading data", HttpStatus.INTERNAL_SERVER_ERROR);
         }
-        publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
+        publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId(), transferProcess.getTenantId()));
     }
 
     private void getExternalData(String value, String authorization, HttpServletResponse response) {

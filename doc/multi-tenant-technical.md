@@ -183,7 +183,7 @@ Three user roles participate in the multi-tenant security model:
 
 When a module makes an internal management API call on behalf of the current request (e.g., negotiation module validates an offer against the catalog), the call uses a synthetic **internal service account**:
 
-- **BASIC mode**: `InternalServiceAuthenticationProvider` authenticates `internal-service:<secret>` without a MongoDB lookup. The synthetic user has `ROLE_ADMIN` and `tenantId=null`, so `ApiTenantContextFilter` reads `X-Tenant-Id` from the forwarded header.
+- **INTERNAL mode**: `InternalServiceTokenIssuer` authenticates `internal-service:<secret>` without a MongoDB lookup. The synthetic user has `ROLE_ADMIN` and `tenantId=null`, so `ApiTenantContextFilter` reads `X-Tenant-Id` from the forwarded header.
 - **KEYCLOAK mode**: the backend client credentials JWT is used. The service account must not have a `tenantId` claim so tenant context is read from `X-Tenant-Id`.
 
 The forwarded `X-Tenant-Id` value comes from `TenantContextHolder.getTenantId()` captured on the originating request thread.

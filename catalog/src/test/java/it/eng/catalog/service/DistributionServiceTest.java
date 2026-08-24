@@ -3,6 +3,8 @@ package it.eng.catalog.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,6 +28,8 @@ import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Distribution;
 import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.tools.event.AuditEventType;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantContextHolder;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,6 +42,9 @@ public class DistributionServiceTest {
 
     @Mock
     private CatalogService catalogService;
+
+    @Mock
+    private AuditEventPublisher auditEventPublisher;
 
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
@@ -100,6 +107,7 @@ public class DistributionServiceTest {
         assertEquals(distribution.getId(), result.getId());
         verify(repository).save(distribution);
         verify(catalogService).updateCatalogDistributionAfterSave(distribution);
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.DISTRIBUTION_CREATED), anyString(), any());
         assertPublishedCatalogStructureChangedEvent("distribution-saved");
     }
 
@@ -113,6 +121,7 @@ public class DistributionServiceTest {
         verify(repository).findByIdAndTenantId(distribution.getId(), TENANT_ID);
         verify(repository).deleteById(distribution.getId());
         verify(catalogService).updateCatalogDistributionAfterDelete(distribution);
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.DISTRIBUTION_DELETED), anyString(), any());
         assertPublishedCatalogStructureChangedEvent("distribution-deleted");
     }
 
@@ -139,6 +148,7 @@ public class DistributionServiceTest {
         assertEquals(distribution.getId(), result.getId());
         verify(repository).findByIdAndTenantId(distribution.getId(), TENANT_ID);
         verify(repository).save(any(Distribution.class));
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.DISTRIBUTION_UPDATED), anyString(), any());
         assertPublishedCatalogStructureChangedEvent("distribution-updated");
     }
 

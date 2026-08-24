@@ -49,7 +49,7 @@ class ApiTenantContextFilterTest {
         User user = User.builder()
                 .id("user-1")
                 .email("admin@mail.com")
-                .role(Role.ROLE_ADMIN)
+                .role(Role.ADMIN)
                 .tenantId("engineering")
                 .enabled(true)
                 .build();
@@ -71,7 +71,7 @@ class ApiTenantContextFilterTest {
         User superAdmin = User.builder()
                 .id("super-1")
                 .email("superadmin@mail.com")
-                .role(Role.ROLE_ADMIN)
+                .role(Role.ADMIN)
                 .tenantId(null)
                 .enabled(true)
                 .build();
@@ -97,7 +97,7 @@ class ApiTenantContextFilterTest {
         User user = User.builder()
                 .id("user-2")
                 .email("user@mail.com")
-                .role(Role.ROLE_ADMIN)
+                .role(Role.ADMIN)
                 .tenantId("engineering")
                 .enabled(true)
                 .build();
@@ -123,7 +123,7 @@ class ApiTenantContextFilterTest {
         User superAdmin = User.builder()
                 .id("super-2")
                 .email("superadmin@mail.com")
-                .role(Role.ROLE_ADMIN)
+                .role(Role.ADMIN)
                 .tenantId(null)
                 .enabled(true)
                 .build();

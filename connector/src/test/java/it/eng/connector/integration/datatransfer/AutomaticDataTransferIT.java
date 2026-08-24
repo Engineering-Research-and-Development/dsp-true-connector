@@ -1,5 +1,7 @@
 package it.eng.connector.integration.datatransfer;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -13,6 +15,7 @@ import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.ApplicationConnector;
 import it.eng.datatransfer.model.DataPlaneRegistration;
+import it.eng.connector.filter.ApiTenantContextFilter;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
@@ -44,6 +47,7 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -86,10 +90,6 @@ public class AutomaticDataTransferIT {
     private static final String WIREMOCK_CONSUMER_BASE_URL = "http://localhost:" + WIREMOCK_CONSUMER_PORT;
     /** Default tenant — used as the DSP protocol base path segment. */
     private static final String TENANT_ID = "engineering";
-
-    // Basic auth credentials matching initial_data.json
-    private static final String ADMIN_CREDENTIALS =
-            Base64.getEncoder().encodeToString("admin@mail.com:password".getBytes(StandardCharsets.UTF_8));
 
     private static final int POLL_TIMEOUT_SECONDS = 60;
     private static final int POLL_INTERVAL_MS     = 500;
@@ -178,7 +178,7 @@ public class AutomaticDataTransferIT {
 
         // ── Consumer — real connector instance with MinIO for HTTP-PUSH temp user creation ──
         consumerCtx = startInstance(mongoHost, mongoPort, CONSUMER_PORT,
-                "consumer", "consumer_db", CONSUMER_BASE_URL + "/" + TENANT_ID,
+                "consumer", "consumer_db", CONSUMER_BASE_URL,
                 minIOContainer.getS3URL(), minIOContainer.getUserName(), minIOContainer.getPassword(),
                 "consumer-bucket");
 
@@ -188,8 +188,8 @@ public class AutomaticDataTransferIT {
         wiremockConsumerCtx = startInstance(mongoHost, mongoPort, WIREMOCK_CONSUMER_PORT,
                 "consumer-wiremock", "consumer_wiremock_db",
                 "http://localhost:" + WIREMOCK_PORT + "/" + TENANT_ID,
-                null, null, null,
-                null);
+                consumerMinIO.getS3URL(), consumerMinIO.getUserName(), consumerMinIO.getPassword(),
+                "consumer-bucket");
 
         populateProviderCatalog();
 
@@ -386,6 +386,28 @@ public class AutomaticDataTransferIT {
         Dataset updatedDataset = dataset.updateInstance(datasetWithBothDists);
         datasetRepository.save(updatedDataset);
         log.info("Added HTTP_PUSH distribution to dataset '{}'", datasetId);
+
+        // Upload artifact to provider MinIO with key = datasetId
+        // (DataTransferAPIService.startTransfer generates a presigned URL using this key)
+        Map<String, String> destinationS3Properties = Map.of(
+                S3Utils.OBJECT_KEY,        datasetId,
+                S3Utils.BUCKET_NAME,       s3Properties.getBucketName(),
+                S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
+                S3Utils.REGION,            s3Properties.getRegion(),
+                S3Utils.ACCESS_KEY,        s3Properties.getAccessKey(),
+                S3Utils.SECRET_KEY,        s3Properties.getSecretKey()
+        );
+
+        try {
+            var content = new ByteArrayInputStream("artifact-content".getBytes(StandardCharsets.UTF_8));
+            s3ClientService.uploadFile(content, destinationS3Properties,
+                    MediaType.TEXT_PLAIN_VALUE,
+                    ContentDisposition.attachment().filename("artifact.txt").build().toString()).get();
+            log.info("Provider artifact uploaded to S3 with key '{}'", datasetId);
+            Thread.sleep(2000); // wait for S3 upload to complete
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to upload provider artifact to MinIO", e);
+        }
     }
 
     // ── fixture helper ────────────────────────────────────────────────────────────
@@ -456,6 +478,23 @@ public class AutomaticDataTransferIT {
         return consumerTp.getId();
     }
 
+    private String fetchAdminJwt() throws IOException, InterruptedException {
+
+        String requestBody = """
+                {"email": "admin@mail.com", "password": "password"}
+                """;
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(CONSUMER_BASE_URL + ApiEndpoints.AUTH_V1 + "/login"))
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+        String httpResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString()).body().toString();
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode jsonNode = objectMapper.readTree(httpResponse);
+        return jsonNode.get("access_token").asText();
+    }
+
     // ── tests ─────────────────────────────────────────────────────────────────────
 
     @Test
@@ -478,9 +517,9 @@ public class AutomaticDataTransferIT {
                 {"transferProcessId": "%s", "format": "HttpData-PULL"}
                 """.formatted(consumerTpId);
 
-        HttpResponse<String> response = post(
+        HttpResponse<String> response = postAsTenant(
                 CONSUMER_BASE_URL + ApiEndpoints.TRANSFER_DATATRANSFER_V1,
-                requestBody, ADMIN_CREDENTIALS);
+                requestBody, fetchAdminJwt(), TENANT_ID);
 
         assertEquals(200, response.statusCode(),
                 "Consumer requestTransfer API failed: " + response.body());
@@ -515,6 +554,13 @@ public class AutomaticDataTransferIT {
         assertNotNull(completedConsumerTp.getDataId(),
                 "Consumer TP dataId must be set after successful download");
 
+        // Verify artifact landed in Consumer's MinIO.
+        // HttpPullTransferStrategy stores the artifact with key = transferProcess.getId() = consumerTpId.
+        var consumerS3      = consumerCtx.getBean(S3ClientService.class);
+        var consumerS3Props = consumerCtx.getBean(S3Properties.class);
+        assertTrue(consumerS3.fileExists(consumerS3Props.getBucketName(), consumerTpId),
+                "Artifact must exist in Consumer MinIO after download");
+
         log.info("Automatic HTTP_PULL transfer completed successfully — agreementId='{}'", agreementId);
     }
 
@@ -545,9 +591,9 @@ public class AutomaticDataTransferIT {
                 {"transferProcessId": "%s", "format": "HttpData-PUSH"}
                 """.formatted(consumerTpId);
 
-        HttpResponse<String> response = post(
+        HttpResponse<String> response = postAsTenant(
                 CONSUMER_BASE_URL + ApiEndpoints.TRANSFER_DATATRANSFER_V1,
-                requestBody, ADMIN_CREDENTIALS);
+                requestBody, fetchAdminJwt(), TENANT_ID);
 
         assertEquals(200, response.statusCode(),
                 "Consumer requestTransfer API failed: " + response.body());
@@ -587,6 +633,14 @@ public class AutomaticDataTransferIT {
                 "Consumer TP isDownloaded must be true after HTTP_PUSH (set by completeDataTransfer)");
         assertNotNull(completedConsumerTp.getDataId(),
                 "Consumer TP dataId must be set after HTTP_PUSH");
+
+        // For HTTP_PUSH the provider pushes the artifact directly into consumer MinIO.
+        // DataTransferAPIService.requestTransfer sets objectKey = consumerTpId (the
+        // INITIALIZED TP's MongoDB id), so that is the key under which the file lands.
+        var consumerS3      = consumerCtx.getBean(S3ClientService.class);
+        var consumerS3Props = consumerCtx.getBean(S3Properties.class);
+        assertTrue(consumerS3.fileExists(consumerS3Props.getBucketName(), consumerTpId),
+                "Artifact must exist in Consumer MinIO after HTTP_PUSH");
 
         log.info("Automatic HTTP_PUSH transfer completed successfully — agreementId='{}'", agreementId);
     }
@@ -631,9 +685,9 @@ public class AutomaticDataTransferIT {
                 {"transferProcessId": "%s", "format": "HttpData-PULL"}
                 """.formatted(wmConsumerTpId);
 
-        HttpResponse<String> response = post(
+        HttpResponse<String> response = postAsTenant(
                 WIREMOCK_CONSUMER_BASE_URL + ApiEndpoints.TRANSFER_DATATRANSFER_V1,
-                requestBody, ADMIN_CREDENTIALS);
+                requestBody, fetchAdminJwt(), TENANT_ID);
 
         assertEquals(200, response.statusCode(),
                 "WireMock-consumer requestTransfer API failed: " + response.body());
@@ -800,15 +854,38 @@ public class AutomaticDataTransferIT {
      *
      * @param url         the target URL
      * @param body        the JSON request body
-     * @param credentials Base64-encoded Basic Auth credentials
+     * @param jwt         the JWT to set in the {@code Authorization} header
      * @return the HTTP response
      * @throws Exception on I/O or interrupt errors
      */
-    private HttpResponse<String> post(String url, String body, String credentials) throws Exception {
+    private HttpResponse<String> post(String url, String body, String jwt) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .header(HttpHeaders.AUTHORIZATION, "Basic " + credentials)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt)
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+        return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    /**
+     * Sends an HTTP POST with Basic Auth and an {@code X-Tenant-ID} header so that
+     * {@link it.eng.connector.filter.ApiTenantContextFilter} can resolve the tenant context
+     * for the request, enabling per-tenant callback address computation.
+     *
+     * @param url         the target URL
+     * @param body        the JSON request body
+     * @param jwt         the JWT to set in the {@code Authorization} header
+     * @param tenantId    the tenant identifier to set in the {@code X-Tenant-ID} header
+     * @return the HTTP response
+     */
+    private HttpResponse<String> postAsTenant(String url, String body, String jwt,
+            String tenantId) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt)
+                .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, tenantId)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
