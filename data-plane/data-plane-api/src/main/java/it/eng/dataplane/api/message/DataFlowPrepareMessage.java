@@ -15,6 +15,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,9 +40,10 @@ public class DataFlowPrepareMessage {
     private String dataspaceContext;
     private String agreementId;
     private String datasetId;
+    private String transferType;
     private String callbackAddress;
-    private Map<String, String> dataAddress;
     private Map<String, String> claims;
+    private Map<String, Object> metadata;
 
     /** Builder for {@link DataFlowPrepareMessage}. */
     @JsonPOJOBuilder(withPrefix = "")
@@ -114,6 +116,14 @@ public class DataFlowPrepareMessage {
         public Builder datasetId(String datasetId) { message.datasetId = datasetId; return this; }
 
         /**
+         * Sets the transfer type.
+         *
+         * @param transferType the transport profile identifier
+         * @return this builder
+         */
+        public Builder transferType(String transferType) { message.transferType = transferType; return this; }
+
+        /**
          * Sets the callback address for status callbacks.
          *
          * @param callbackAddress URL for Control Plane status callbacks
@@ -122,12 +132,23 @@ public class DataFlowPrepareMessage {
         public Builder callbackAddress(String callbackAddress) { message.callbackAddress = callbackAddress; return this; }
 
         /**
-         * Sets the data address properties.
+         * Sets schema-aligned metadata.
          *
-         * @param dataAddress map of data address properties
+         * @param metadata structured metadata grouped by section
          * @return this builder
          */
-        public Builder dataAddress(Map<String, String> dataAddress) { message.dataAddress = dataAddress; return this; }
+        public Builder metadata(Map<String, Object> metadata) { message.metadata = metadata; return this; }
+
+        /**
+         * Rejects the legacy top-level prepare-time {@code dataAddress} field.
+         *
+         * @param ignored ignored legacy payload
+         * @return never returns normally
+         */
+        @JsonProperty("dataAddress")
+        public Builder legacyPrepareDataAddress(Object ignored) {
+            throw new ValidationException("DataFlowPrepareMessage does not accept top-level dataAddress; use metadata");
+        }
 
         /**
          * Sets the claims.

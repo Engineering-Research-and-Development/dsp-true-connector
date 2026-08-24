@@ -1,6 +1,6 @@
 package it.eng.tools.s3.service.upload;
 
-import it.eng.tools.s3.configuration.S3ClientProvider;
+import it.eng.tools.s3.configuration.S3ClientFactory;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
 import lombok.extern.slf4j.Slf4j;
@@ -34,11 +34,17 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
      */
     private static final int MAX_PARALLEL_PARTS = 4;
 
-    private final S3ClientProvider s3ClientProvider;
+    private final S3ClientFactory s3ClientFactory;
     private final S3Properties s3Properties;
 
-    public S3AsyncUploadStrategy(S3ClientProvider s3ClientProvider, S3Properties s3Properties) {
-        this.s3ClientProvider = s3ClientProvider;
+    /**
+     * Creates the asynchronous upload strategy.
+     *
+     * @param s3ClientFactory factory for obtaining S3 async clients (static or dynamic)
+     * @param s3Properties    S3 properties, used for chunk size configuration
+     */
+    public S3AsyncUploadStrategy(S3ClientFactory s3ClientFactory, S3Properties s3Properties) {
+        this.s3ClientFactory = s3ClientFactory;
         this.s3Properties = s3Properties;
     }
 
@@ -49,7 +55,7 @@ public class S3AsyncUploadStrategy implements S3UploadStrategy {
                                                String objectKey,
                                                String contentType,
                                                String contentDisposition) {
-        S3AsyncClient s3AsyncClient = s3ClientProvider.s3AsyncClient(s3ClientRequest);
+        S3AsyncClient s3AsyncClient = s3ClientFactory.getAsyncClient(s3ClientRequest);
 
         CreateMultipartUploadRequest createMultipartUploadRequest = CreateMultipartUploadRequest.builder()
                 .bucket(bucketName)

@@ -1,10 +1,21 @@
 package it.eng.dataplane.httppush.integration;
 
+import it.eng.dataplane.api.DataPlaneConstants;
+import it.eng.dataplane.api.message.DataAddress;
+import it.eng.dataplane.api.message.DataFlowStartMessage;
+import it.eng.dataplane.api.message.EndpointProperty;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.CreateBucketRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
+import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -49,8 +60,19 @@ class TransferE2EIT extends BaseHttpPushIT {
         uploadToTestMinIO(E2E_SOURCE_KEY, E2E_SOURCE_CONTENT);
     }
 
+    private void createDestinationBucket(String bucketName) {
+            try (S3Client s3 = buildAdminS3Client()) {
+                try {
+                    s3.createBucket(CreateBucketRequest.builder().bucket(bucketName).build());
+                } catch (Exception ignored) {
+                    // Bucket already exists — expected after DataPlaneS3StartupBean ran
+                }
+        }
+    }
+
     @Test
     @DisplayName("E2E (prepare → start): artifact is pushed to provider bucket; content matches source")
+    @Disabled("Check if this test makes sense, there is other test that does from provider to consumer bucket")
     void pushTransfer_viaPrepareEndpoint_fileIsPushedWithMatchingContent() throws Exception {
         String processId = newId();
 
@@ -74,7 +96,7 @@ class TransferE2EIT extends BaseHttpPushIT {
                 "processId", processId,
                 "transferType", TRANSFER_TYPE_PUSH,
                 "datasetId", E2E_SOURCE_KEY,
-                "dataAddress", dataAddress
+                "dataAddress", toStartDataAddress(processId, dataAddress)
         );
         mockMvc.perform(withApiKey(post("/dataflows/start"))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -82,8 +104,8 @@ class TransferE2EIT extends BaseHttpPushIT {
                 .andExpect(status().isCreated());
 
         // Step 3: wait for async push to complete, then verify
-        awaitObjectExists(processId, 15);
-        String actualContent = downloadContentFromMinIO(processId);
+        awaitObjectExists(processId, 15, TEST_BUCKET_NAME_DESTINATION);
+        String actualContent = downloadContentFromMinIO(processId, TEST_BUCKET_NAME_DESTINATION);
         assertEquals(E2E_SOURCE_CONTENT, actualContent,
                 "Pushed file content must match the source artifact");
     }
@@ -93,25 +115,91 @@ class TransferE2EIT extends BaseHttpPushIT {
     void pushTransfer_viaDirectTempUser_fileIsPushedWithMatchingContent() throws Exception {
         String processId = newId();
 
-        // Step 1: create temp user directly via admin MinIO client (mirrors consumer CP behaviour)
-        Map<String, String> credentials = createTempUserAndPolicy(processId, TEST_BUCKET_NAME, processId);
+        // Step 1: create temp user directly via admin MinIO client (mirrors consumer CP behavior)
+        createDestinationBucket(TEST_BUCKET_NAME_DESTINATION);
+        Map<String, String> credentials = createTempUserAndPolicy(processId, TEST_BUCKET_NAME_DESTINATION, processId);
 
         // Step 2: start — supply credentials from helper; DP generates presigned URL for source
-        Map<String, Object> startBody = Map.of(
-                "processId", processId,
-                "transferType", TRANSFER_TYPE_PUSH,
-                "datasetId", E2E_SOURCE_KEY,
-                "dataAddress", credentials
-        );
+        Map<String, Object> s3SectionDestination = new LinkedHashMap<>();
+        s3SectionDestination.put(DataPlaneConstants.METADATA_S3_BUCKET_NAME, TEST_BUCKET_NAME_DESTINATION);
+        s3SectionDestination.put(DataPlaneConstants.METADATA_S3_OBJECT_KEY, processId);
+        s3SectionDestination.put(DataPlaneConstants.METADATA_S3_ACCESS_KEY, credentials.get("accessKey"));
+        s3SectionDestination.put(DataPlaneConstants.METADATA_S3_SECRET_KEY, credentials.get("secretKey"));
+        s3SectionDestination.put(DataPlaneConstants.METADATA_S3_REGION,  "us-east-1");
+        s3SectionDestination.put(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, minIOContainer.getS3URL());
+
+        Map<String, Object> s3SourceSection = new LinkedHashMap<>();
+        s3SourceSection.put(DataPlaneConstants.METADATA_S3_BUCKET_NAME, TEST_BUCKET_NAME);
+        s3SourceSection.put(DataPlaneConstants.METADATA_S3_OBJECT_KEY, E2E_SOURCE_KEY);
+        s3SourceSection.put(DataPlaneConstants.METADATA_S3_ACCESS_KEY, minIOContainer.getUserName());
+        s3SourceSection.put(DataPlaneConstants.METADATA_S3_SECRET_KEY, minIOContainer.getPassword());
+        s3SourceSection.put(DataPlaneConstants.METADATA_S3_REGION,  "us-east-1");
+        s3SourceSection.put(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, minIOContainer.getS3URL());
+        DataFlowStartMessage dataFlowStartMessage = DataFlowStartMessage.Builder.newInstance()
+                .processId(processId)
+                .transferType(TRANSFER_TYPE_PUSH)
+                .metadata(Map.of("sink", Map.of("s3", s3SectionDestination),
+                            "source", Map.of("s3", s3SourceSection)))
+                .dataAddress(DataAddress.Builder.newInstance()
+//                        .endpoint(endpoint)
+                        .endpointType("https://w3id.org/idsa/v4.1/HTTP")
+                        .endpointProperties(List.of(
+                                EndpointProperty.Builder.newInstance().name(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME).value(TEST_BUCKET_NAME).build(),
+                                EndpointProperty.Builder.newInstance().name(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY).value(processId).build(),
+                                EndpointProperty.Builder.newInstance().name(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION).value("us-east-1").build(),
+                                EndpointProperty.Builder.newInstance().name(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY).value(credentials.get("accessKey")).build(),
+                                EndpointProperty.Builder.newInstance().name(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY).value(credentials.get("secretKey")).build(),
+                                EndpointProperty.Builder.newInstance().name(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE).value(minIOContainer.getS3URL()).build()
+                        ))
+                        .build())
+                .build();
+
         mockMvc.perform(withApiKey(post("/dataflows/start"))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(startBody)))
+                .content(objectMapper.writeValueAsString(dataFlowStartMessage)))
                 .andExpect(status().isCreated());
 
         // Step 3: wait and verify
-        awaitObjectExists(processId, 15);
-        String actualContent = downloadContentFromMinIO(processId);
+        awaitObjectExists(processId, 15, TEST_BUCKET_NAME_DESTINATION);
+        String actualContent = downloadContentFromMinIO(processId, TEST_BUCKET_NAME_DESTINATION);
         assertEquals(E2E_SOURCE_CONTENT, actualContent,
                 "Pushed file content must match the source artifact");
+    }
+
+    /**
+     * Converts flat prepare/direct-temp-user credentials into the schema-aligned start {@code DataAddress}.
+     *
+     * @param processId the transfer process ID
+     * @param sinkDataAddress flat sink credential map from prepare or helper
+     * @return JSON-ready schema-aligned data address map
+     */
+    private Map<String, Object> toStartDataAddress(String processId, Map<String, String> sinkDataAddress) {
+        Map<String, String> sourceProperties = new LinkedHashMap<>();
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_BUCKET_NAME, TEST_BUCKET_NAME);
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_OBJECT_KEY, E2E_SOURCE_KEY);
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_REGION, "us-east-1");
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_ACCESS_KEY, minIOContainer.getUserName());
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_SECRET_KEY, minIOContainer.getPassword());
+        sourceProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SOURCE_ENDPOINT_OVERRIDE, minIOContainer.getS3URL());
+
+        Map<String, String> sinkProperties = new LinkedHashMap<>();
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_BUCKET_NAME, sinkDataAddress.get("bucketName"));
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_OBJECT_KEY,
+                sinkDataAddress.getOrDefault("objectKey", processId));
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_REGION, sinkDataAddress.get("region"));
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ACCESS_KEY, sinkDataAddress.get("accessKey"));
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_SECRET_KEY, sinkDataAddress.get("secretKey"));
+        sinkProperties.put(DataPlaneConstants.DATA_ADDRESS_PROPERTY_SINK_ENDPOINT_OVERRIDE,
+                sinkDataAddress.get("endpointOverride"));
+
+        List<Map<String, String>> endpointProperties = java.util.stream.Stream
+                .concat(sourceProperties.entrySet().stream(), sinkProperties.entrySet().stream())
+                .map(entry -> Map.of("name", entry.getKey(), "value", entry.getValue()))
+                .toList();
+
+        return Map.of(
+                "endpointType", "https://w3id.org/idsa/v4.1/HTTP",
+                "endpointProperties", endpointProperties
+        );
     }
 }

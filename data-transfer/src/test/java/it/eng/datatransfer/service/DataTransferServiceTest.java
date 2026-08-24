@@ -13,10 +13,12 @@ import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
+import it.eng.datatransfer.client.DataPlaneClient;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
@@ -40,9 +42,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import org.mockito.InOrder;
+
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -60,6 +63,8 @@ public class DataTransferServiceTest {
     private DataTransferProperties transferProperties;
     @Mock
     private TemporaryBucketUserService temporaryBucketUserService;
+    @Mock
+    private DataPlaneClient dataPlaneClient;
 
     @InjectMocks
     private DataTransferService service;
@@ -285,6 +290,58 @@ public class DataTransferServiceTest {
     }
 
     @Test
+    @DisplayName("StartDataTransfer from REQUESTED - consumer callback preserves existing HTTP-PUSH dataAddress when start message has none")
+    public void startDataTransfer_fromRequested_consumer_httpPushPreservesExistingDataAddress() {
+        DataAddress pushDataAddress = DataAddress.Builder.newInstance()
+                .endpointProperties(List.of(
+                        EndpointProperty.Builder.newInstance().name("bucketName").value("consumer-bucket").build(),
+                        EndpointProperty.Builder.newInstance().name("objectKey").value("tp-1").build(),
+                        EndpointProperty.Builder.newInstance().name("accessKey").value("access").build(),
+                        EndpointProperty.Builder.newInstance().name("secretKey").value("secret").build()))
+                .build();
+
+        TransferProcess requestedConsumerPush = TransferProcess.Builder.newInstance()
+                .id(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER.getId())
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(pushDataAddress)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .format(DataTransferFormat.HTTP_PUSH.format())
+                .state(TransferState.REQUESTED)
+                .role(IConstants.ROLE_CONSUMER)
+                .datasetId(DataTransferMockObjectUtil.DATASET_ID)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .modified(DataTransferMockObjectUtil.MODIFIED)
+                .build();
+
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+                .thenReturn(Optional.of(requestedConsumerPush));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        TransferProcess transferProcessStarted = service.startDataTransfer(
+                DataTransferMockObjectUtil.TRANSFER_START_MESSAGE,
+                DataTransferMockObjectUtil.CONSUMER_PID,
+                null);
+
+        assertEquals(TransferState.STARTED, transferProcessStarted.getState());
+        assertNotNull(transferProcessStarted.getDataAddress());
+        assertEquals("consumer-bucket", transferProcessStarted.getDataAddress().getEndpointProperties().stream()
+                .filter(p -> "bucketName".equals(p.getName()))
+                .findFirst()
+                .map(EndpointProperty::getValue)
+                .orElse(null));
+        verify(transferProcessRepository).save(argTransferProcess.capture());
+        assertNotNull(argTransferProcess.getValue().getDataAddress());
+        assertEquals("consumer-bucket", argTransferProcess.getValue().getDataAddress().getEndpointProperties().stream()
+                .filter(p -> "bucketName".equals(p.getName()))
+                .findFirst()
+                .map(EndpointProperty::getValue)
+                .orElse(null));
+    }
+
+    @Test
     @DisplayName("StartDataTransfer from SUSPENDED - provider")
     public void startDataTransfer_fromSuspended_provider() {
         when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
@@ -423,27 +480,99 @@ public class DataTransferServiceTest {
     }
 
     @Test
-    @DisplayName("HTTP-PUSH consumer completion cleans up temporary IAM credentials")
-    public void completeDataTransfer_httpPush_consumer_deletesTemporaryUser() {
+    @DisplayName("HTTP-PUSH consumer protocol-callback completion must NOT directly delete temp user — cleanup is DP-owned")
+    public void completeDataTransfer_httpPush_consumer_doesNotDirectlyDeleteTemporaryUser() {
         when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH));
 
         service.completeDataTransfer(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE,
                 DataTransferMockObjectUtil.CONSUMER_PID, null);
 
-        verify(temporaryBucketUserService).deleteTemporaryUser(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH.getId());
+        // Ownership of temp-user cleanup belongs to the Data Plane (HttpPushTransferProtocol.terminateTransfer).
+        // The CP protocol-callback path must NOT call deleteTemporaryUser directly.
+        verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
     }
 
     @Test
-    @DisplayName("HTTP-PUSH consumer termination cleans up temporary IAM credentials")
-    public void terminateDataTransfer_httpPush_consumer_deletesTemporaryUser() {
+    @DisplayName("completeDataTransfer preserves transportProfile on the completed process")
+    public void completeDataTransfer_preservesTransportProfile() {
+        TransferProcess startedWithProfile = TransferProcess.Builder.newInstance()
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .datasetId(DataTransferMockObjectUtil.DATASET_ID)
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .state(TransferState.STARTED)
+                .format(DataTransferFormat.HTTP_PULL.name())
+                .transportProfile("stream:grpc")
+                .build();
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(), any()))
+                .thenReturn(Optional.of(startedWithProfile));
+
+        service.completeDataTransfer(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE,
+                null, DataTransferMockObjectUtil.PROVIDER_PID);
+
+        verify(transferProcessRepository).save(argTransferProcess.capture());
+        assertEquals("stream:grpc", argTransferProcess.getValue().getTransportProfile(),
+                "transportProfile must be preserved on the completed TransferProcess");
+    }
+
+    @Test
+    @DisplayName("completeDataTransfer clears sticky assignment for the completed process")
+    public void completeDataTransfer_clearsStickyAssignment() {
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(), any()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        service.completeDataTransfer(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE,
+                null, DataTransferMockObjectUtil.PROVIDER_PID);
+
+        verify(dataPlaneClient).clearStickyAssignment(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+    }
+
+    @Test
+    @DisplayName("terminateDataTransfer clears sticky assignment for the terminated process")
+    public void terminateDataTransfer_clearsStickyAssignment() {
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(), any()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+
+        service.terminateDataTransfer(DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE,
+                null, DataTransferMockObjectUtil.PROVIDER_PID);
+
+        verify(dataPlaneClient).clearStickyAssignment(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
+    }
+
+    @Test
+    @DisplayName("HTTP-PUSH consumer termination without DP endpoint must NOT directly delete temporary user — cleanup is DP-owned")
+    public void terminateDataTransfer_httpPush_consumer_noDataplane_doesNotDirectlyDeleteTemporaryUser() {
         when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH));
 
         service.terminateDataTransfer(DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE,
                 DataTransferMockObjectUtil.CONSUMER_PID, null);
 
-        verify(temporaryBucketUserService).deleteTemporaryUser(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH.getId());
+        // No DP endpoint assigned — no DP terminate call, and CP must NOT call deleteTemporaryUser directly.
+        verify(dataPlaneClient, never()).terminate(any(), any(), any());
+        verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
+    }
+
+    @Test
+    @DisplayName("HTTP-PUSH consumer termination with assigned DP endpoint delegates cleanup to Data Plane")
+    public void terminateDataTransfer_httpPush_consumer_withDataplane_delegatesToDp() {
+        TransferProcess tp = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH_WITH_DATAPLANE;
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+                .thenReturn(Optional.of(tp));
+
+        service.terminateDataTransfer(DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE,
+                DataTransferMockObjectUtil.CONSUMER_PID, null);
+
+        InOrder order = inOrder(dataPlaneClient);
+        order.verify(dataPlaneClient).restoreStickyAssignment(tp.getId(), "http://dp-push:9090");
+        order.verify(dataPlaneClient).terminate(eq(tp.getId()), eq(DataTransferFormat.HTTP_PUSH.format()), isNull());
+        // CP must NOT call deleteTemporaryUser directly — that belongs to the Data Plane.
+        verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
     }
 
     // suspend
@@ -620,5 +749,73 @@ public class DataTransferServiceTest {
         verify(publisher).publishEvent(eventTypeCaptor.capture(), any(String.class), argCaptorAuditEventDetails.capture());
         assertEquals(eventType, eventTypeCaptor.getValue());
         assertNotNull(argCaptorAuditEventDetails.getValue());
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Task 5 – CP gRPC orchestration
+    // ──────────────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("startDataTransfer - consumer gRPC with automaticTransfer enabled fires AutoTransferDownloadEvent")
+    public void startDataTransfer_grpc_consumer_autoDownloadFires() {
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER_GRPC));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(transferProperties.isAutomaticTransfer()).thenReturn(true);
+
+        service.startDataTransfer(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE,
+                DataTransferMockObjectUtil.CONSUMER_PID, null);
+
+        // AutoTransferDownloadEvent must be published for stream:grpc consumer start
+        verify(publisher).publishEvent((Object) argThat(evt ->
+                evt instanceof it.eng.datatransfer.event.AutoTransferDownloadEvent));
+    }
+
+    @Test
+    @DisplayName("startDataTransfer - consumer gRPC with automaticTransfer disabled does NOT fire AutoTransferDownloadEvent")
+    public void startDataTransfer_grpc_consumer_autoDownloadNotFiredWhenDisabled() {
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER_GRPC));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(transferProperties.isAutomaticTransfer()).thenReturn(false);
+
+        service.startDataTransfer(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE,
+                DataTransferMockObjectUtil.CONSUMER_PID, null);
+
+        // No AutoTransferDownloadEvent when automatic transfer is disabled
+        verify(publisher, never()).publishEvent((Object) argThat(evt ->
+                evt instanceof it.eng.datatransfer.event.AutoTransferDownloadEvent));
+    }
+
+    @Test
+    @DisplayName("startDataTransfer - consumer Kafka with automaticTransfer enabled fires AutoTransferDownloadEvent")
+    public void startDataTransfer_kafka_consumer_autoDownloadFires() {
+        TransferProcess requestedConsumerKafka = TransferProcess.Builder.newInstance()
+                .id(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_CONSUMER.getId())
+                .agreementId(DataTransferMockObjectUtil.AGREEMENT_ID)
+                .consumerPid(DataTransferMockObjectUtil.CONSUMER_PID)
+                .providerPid(DataTransferMockObjectUtil.PROVIDER_PID)
+                .dataAddress(DataTransferMockObjectUtil.DATA_ADDRESS)
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .format("stream:kafka")
+                .state(TransferState.REQUESTED)
+                .role(IConstants.ROLE_CONSUMER)
+                .datasetId(DataTransferMockObjectUtil.DATASET_ID)
+                .tenantId(DataTransferMockObjectUtil.TENANT_ID)
+                .modified(DataTransferMockObjectUtil.MODIFIED)
+                .build();
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(any(String.class), any(String.class)))
+                .thenReturn(Optional.of(requestedConsumerKafka));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(transferProperties.isAutomaticTransfer()).thenReturn(true);
+
+        service.startDataTransfer(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE,
+                DataTransferMockObjectUtil.CONSUMER_PID, null);
+
+        verify(publisher).publishEvent((Object) argThat(evt ->
+                evt instanceof it.eng.datatransfer.event.AutoTransferDownloadEvent));
     }
 }

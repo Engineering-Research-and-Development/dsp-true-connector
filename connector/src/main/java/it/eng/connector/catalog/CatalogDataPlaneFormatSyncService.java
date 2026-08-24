@@ -1,0 +1,282 @@
+package it.eng.connector.catalog;
+
+import it.eng.catalog.model.Dataset;
+import it.eng.catalog.model.Distribution;
+import it.eng.catalog.repository.DatasetRepository;
+import it.eng.catalog.repository.DistributionRepository;
+import it.eng.datatransfer.model.DataPlaneRegistration;
+import it.eng.datatransfer.service.DataPlaneRegistrationService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.Comparator;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * Reconciles dataset and catalog distributions against the transfer formats exposed by registered Data Planes.
+ */
+@Service
+@Slf4j
+@RequiredArgsConstructor
+public class CatalogDataPlaneFormatSyncService {
+
+    private final DataPlaneRegistrationService dataPlaneRegistrationService;
+    private final DatasetRepository datasetRepository;
+    private final DistributionRepository distributionRepository;
+
+    /**
+     * Resolves the supported transfer formats from all registered Data Planes.
+     *
+     * @return the union of advertised supported transfer types
+     */
+    public Set<String> resolveSupportedFormats() {
+        return dataPlaneRegistrationService.findAll().stream()
+                .map(DataPlaneRegistration::getSupportedTransferTypes)
+                .filter(Objects::nonNull)
+                .flatMap(Set::stream)
+                .filter(StringUtils::isNotBlank)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    /**
+     * Reconciles dataset distributions and refreshes catalog distribution references.
+     */
+    public void reconcileCatalogDistributions() {
+        List<Dataset> datasets = datasetRepository.findAll();
+        reconcileDatasets(datasets, resolveSupportedFormats(), resolveSharedDistributionIds(datasets), null);
+    }
+
+    /**
+     * Reconciles dataset distributions for a single tenant.
+     *
+     * @param tenantId the tenant identifier whose datasets should be reconciled
+     */
+    public void reconcileTenant(String tenantId) {
+        List<Dataset> tenantDatasets = datasetRepository.findAllByTenantId(tenantId);
+        Set<String> sharedDistributionIds = resolveSharedDistributionIds(datasetRepository.findAll());
+        reconcileDatasets(tenantDatasets, resolveSupportedFormats(), sharedDistributionIds, tenantId);
+    }
+
+    private void reconcileDatasets(List<Dataset> datasets, Set<String> supportedFormats,
+                                   Set<String> sharedDistributionIds, String tenantId) {
+        int deletedDistributionCount = 0;
+        for (Dataset dataset : datasets) {
+            DatasetReconciliation result = reconcileDataset(dataset, supportedFormats, sharedDistributionIds);
+            if (!result.desiredDistributions().isEmpty()) {
+                distributionRepository.saveAll(result.desiredDistributions());
+            }
+            datasetRepository.save(result.dataset());
+            if (!result.staleDistributionIds().isEmpty()) {
+                distributionRepository.deleteAllById(result.staleDistributionIds());
+                deletedDistributionCount += result.staleDistributionIds().size();
+            }
+        }
+        if (tenantId == null && !sharedDistributionIds.isEmpty()) {
+            List<String> orphanedSharedDistributionIds = resolveOrphanedSharedDistributionIds(sharedDistributionIds);
+            if (!orphanedSharedDistributionIds.isEmpty()) {
+                distributionRepository.deleteAllById(orphanedSharedDistributionIds);
+                deletedDistributionCount += orphanedSharedDistributionIds.size();
+            }
+        }
+
+        if (tenantId == null) {
+            log.info("Reconciled {} datasets, {} active formats and {} stale distributions",
+                    datasets.size(), supportedFormats.size(), deletedDistributionCount);
+        } else {
+            log.info("Reconciled {} datasets for tenant {}, {} active formats and {} stale distributions",
+                    datasets.size(), tenantId, supportedFormats.size(), deletedDistributionCount);
+        }
+    }
+
+    private DatasetReconciliation reconcileDataset(Dataset dataset, Set<String> supportedFormats,
+                                                   Set<String> sharedDistributionIds) {
+        Set<Distribution> currentDistributions = safeSet(dataset.getDistribution());
+        if (supportedFormats.isEmpty()) {
+            return normalizeDatasetToTemplateDistribution(dataset, currentDistributions, sharedDistributionIds);
+        }
+        Map<String, Distribution> distributionsByFormat = currentDistributions.stream()
+                .filter(Objects::nonNull)
+                .filter(distribution -> StringUtils.isNotBlank(distribution.getFormat()))
+                .collect(Collectors.toMap(Distribution::getFormat, distribution -> distribution,
+                        this::preferMostRecentDistribution, LinkedHashMap::new));
+        Distribution template = currentDistributions.stream()
+                .filter(Objects::nonNull)
+                .max(this::compareByRecency)
+                .orElse(null);
+
+        Set<Distribution> reconciledDistributions = new LinkedHashSet<>();
+        for (String supportedFormat : supportedFormats) {
+            Distribution existingDistribution = distributionsByFormat.get(supportedFormat);
+            Distribution templateSource = template != null ? template : existingDistribution;
+            if (existingDistribution == null && templateSource == null) {
+                continue;
+            }
+            Distribution reusableDistribution = isSharedDistribution(existingDistribution, sharedDistributionIds)
+                    ? null : existingDistribution;
+            Distribution distribution = materializeDistribution(
+                    templateSource != null ? templateSource : existingDistribution,
+                    supportedFormat,
+                    reusableDistribution);
+            reconciledDistributions.add(distribution);
+        }
+
+        Set<String> reconciledIds = reconciledDistributions.stream()
+                .map(Distribution::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        List<String> staleDistributionIds = currentDistributions.stream()
+                .map(Distribution::getId)
+                .filter(Objects::nonNull)
+                .filter(id -> !reconciledIds.contains(id))
+                .filter(id -> !sharedDistributionIds.contains(id))
+                .toList();
+
+        return new DatasetReconciliation(copyDataset(dataset, reconciledDistributions),
+                reconciledDistributions, staleDistributionIds);
+    }
+
+    private DatasetReconciliation normalizeDatasetToTemplateDistribution(Dataset dataset,
+                                                                         Set<Distribution> currentDistributions,
+                                                                         Set<String> sharedDistributionIds) {
+        Distribution template = currentDistributions.stream()
+                .filter(Objects::nonNull)
+                .max(this::compareByRecency)
+                .orElse(null);
+        if (template == null) {
+            return new DatasetReconciliation(dataset, Collections.emptySet(), List.of());
+        }
+
+        Distribution normalizedDistribution = materializeDistribution(template, null,
+                isSharedDistribution(template, sharedDistributionIds) ? null : template);
+        List<String> staleDistributionIds = currentDistributions.stream()
+                .map(Distribution::getId)
+                .filter(Objects::nonNull)
+                .filter(id -> !Objects.equals(id, normalizedDistribution.getId()))
+                .filter(id -> !sharedDistributionIds.contains(id))
+                .toList();
+        Set<Distribution> normalizedDistributions = new LinkedHashSet<>(Set.of(normalizedDistribution));
+        return new DatasetReconciliation(copyDataset(dataset, normalizedDistributions),
+                normalizedDistributions, staleDistributionIds);
+    }
+
+    private Dataset copyDataset(Dataset dataset, Set<Distribution> distributions) {
+        return Dataset.Builder.newInstance()
+                .id(dataset.getId())
+                .keyword(dataset.getKeyword())
+                .theme(dataset.getTheme())
+                .conformsTo(dataset.getConformsTo())
+                .creator(dataset.getCreator())
+                .description(dataset.getDescription())
+                .identifier(dataset.getIdentifier())
+                .issued(dataset.getIssued())
+                .modified(dataset.getModified())
+                .title(dataset.getTitle())
+                .hasPolicy(dataset.getHasPolicy())
+                .distribution(distributions)
+                .artifact(dataset.getArtifact())
+                .tenantId(dataset.getTenantId())
+                .createdBy(dataset.getCreatedBy())
+                .lastModifiedBy(dataset.getLastModifiedBy())
+                .version(dataset.getVersion())
+                .build();
+    }
+
+    private Distribution materializeDistribution(Distribution template, String format, Distribution existingDistribution) {
+        return Distribution.Builder.newInstance()
+                .id(existingDistribution != null ? existingDistribution.getId() : null)
+                .title(template.getTitle())
+                .description(template.getDescription())
+                .issued(template.getIssued())
+                .modified(template.getModified())
+                .hasPolicy(template.getHasPolicy())
+                .format(format)
+                .tenantId(existingDistribution != null ? existingDistribution.getTenantId() : template.getTenantId())
+                .createdBy(existingDistribution != null ? existingDistribution.getCreatedBy() : template.getCreatedBy())
+                .lastModifiedBy(existingDistribution != null ? existingDistribution.getLastModifiedBy() : template.getLastModifiedBy())
+                .version(existingDistribution != null ? existingDistribution.getVersion() : null)
+                .accessService(template.getAccessService())
+                .build();
+    }
+
+    private Distribution preferMostRecentDistribution(Distribution left, Distribution right) {
+        return compareByRecency(left, right) >= 0 ? left : right;
+    }
+
+    private int compareByRecency(Distribution left, Distribution right) {
+        return Comparator.comparing(this::recencyOf)
+                .thenComparing(this::stableDistributionId, Comparator.nullsFirst(String::compareTo))
+                .compare(left, right);
+    }
+
+    private Instant recencyOf(Distribution distribution) {
+        if (distribution == null) {
+            return Instant.MIN;
+        }
+        if (distribution.getModified() != null) {
+            return distribution.getModified();
+        }
+        if (distribution.getIssued() != null) {
+            return distribution.getIssued();
+        }
+        return Instant.MIN;
+    }
+
+    private String stableDistributionId(Distribution distribution) {
+        return distribution != null ? distribution.getId() : null;
+    }
+
+    private Set<String> resolveSharedDistributionIds(List<Dataset> datasets) {
+        return datasets.stream()
+                .filter(Objects::nonNull)
+                .map(Dataset::getDistribution)
+                .filter(Objects::nonNull)
+                .flatMap(Set::stream)
+                .filter(Objects::nonNull)
+                .map(Distribution::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.groupingBy(id -> id, LinkedHashMap::new, Collectors.counting()))
+                .entrySet().stream()
+                .filter(entry -> entry.getValue() > 1)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private boolean isSharedDistribution(Distribution distribution, Set<String> sharedDistributionIds) {
+        return distribution != null
+                && distribution.getId() != null
+                && sharedDistributionIds.contains(distribution.getId());
+    }
+
+    private List<String> resolveOrphanedSharedDistributionIds(Set<String> sharedDistributionIds) {
+        Set<String> referencedDistributionIds = datasetRepository.findAll().stream()
+                .filter(Objects::nonNull)
+                .map(Dataset::getDistribution)
+                .filter(Objects::nonNull)
+                .flatMap(Set::stream)
+                .filter(Objects::nonNull)
+                .map(Distribution::getId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return sharedDistributionIds.stream()
+                .filter(id -> !referencedDistributionIds.contains(id))
+                .toList();
+    }
+
+    private <T> Set<T> safeSet(Set<T> values) {
+        return values != null ? values : Collections.emptySet();
+    }
+
+    private record DatasetReconciliation(Dataset dataset, Set<Distribution> desiredDistributions,
+                                         List<String> staleDistributionIds) {
+    }
+}

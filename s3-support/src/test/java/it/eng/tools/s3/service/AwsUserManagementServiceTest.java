@@ -6,6 +6,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Unit tests for {@link AwsUserManagementService}.
@@ -37,20 +38,27 @@ class AwsUserManagementServiceTest {
     }
 
     @Test
-    @DisplayName("attachTemporaryPolicy does not throw (no-op in AWS mode)")
-    void attachTemporaryPolicy_noOp_doesNotThrow() {
-        assertDoesNotThrow(() -> service.attachTemporaryPolicy("ak", "policy-name", "{}"));
+    @DisplayName("attachTemporaryPolicy throws until AWS temp-user redesign is implemented")
+    void attachTemporaryPolicy_throwsUnsupportedOperationException() {
+        BucketCredentialsEntity creds = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName("my-bucket").accessKey("ak").secretKey("sk").build();
+        assertThrows(UnsupportedOperationException.class,
+                () -> service.attachTemporaryPolicy(creds, "ak", "policy-name", "{}"));
     }
 
     @Test
-    @DisplayName("deleteUser does not throw (no-op in AWS mode)")
-    void deleteUser_noOp_doesNotThrow() {
-        assertDoesNotThrow(() -> service.deleteUser("ak"));
+    @DisplayName("deleteUser throws until AWS temp-user redesign is implemented")
+    void deleteUser_throwsUnsupportedOperationException() {
+        BucketCredentialsEntity creds = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName("my-bucket").accessKey("ak").secretKey("sk").build();
+        assertThrows(UnsupportedOperationException.class, () -> service.deleteUser(creds, "ak"));
     }
 
     @Test
-    @DisplayName("deletePolicy does not throw (no-op in AWS mode)")
-    void deletePolicy_noOp_doesNotThrow() {
-        assertDoesNotThrow(() -> service.deletePolicy("my-policy"));
+    @DisplayName("deletePolicy throws until AWS temp-user redesign is implemented")
+    void deletePolicy_throwsUnsupportedOperationException() {
+        BucketCredentialsEntity creds = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName("my-bucket").accessKey("ak").secretKey("sk").build();
+        assertThrows(UnsupportedOperationException.class, () -> service.deletePolicy(creds, "my-policy"));
     }
 }

@@ -70,22 +70,31 @@ class MinioUserManagementServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("attachPolicyToUser creates policy and attaches it to user")
+    @DisplayName("attachPolicyToUser attaches built-in consoleAdmin policy to user")
     void attachPolicyToUser_success() throws Exception {
-        doNothing().when(minioAdminClient).addCannedPolicy(anyString(), anyString());
         doNothing().when(minioAdminClient).setPolicy(anyString(), eq(false), anyString());
 
         assertDoesNotThrow(() -> service.attachPolicyToUser(creds("my-bucket")));
 
-        verify(minioAdminClient).addCannedPolicy(eq("policy-my-bucket"), anyString());
-        verify(minioAdminClient).setPolicy(eq("test-user"), eq(false), eq("policy-my-bucket"));
+        verify(minioAdminClient).setPolicy(eq("test-user"), eq(false), eq("consoleAdmin"));
+    }
+
+    @Test
+    @DisplayName("attachPolicyToUser uses consoleAdmin instead of a generated canned policy")
+    void attachPolicyToUser_usesConsoleAdminPolicy() throws Exception {
+        doNothing().when(minioAdminClient).setPolicy(anyString(), eq(false), anyString());
+
+        service.attachPolicyToUser(creds("tenant-bucket"));
+
+        verify(minioAdminClient, never()).addCannedPolicy(anyString(), anyString());
+        verify(minioAdminClient).setPolicy(eq("test-user"), eq(false), eq("consoleAdmin"));
     }
 
     @Test
     @DisplayName("attachPolicyToUser throws S3ServerException when MinIO call fails")
     void attachPolicyToUser_minioError_throwsS3ServerException() throws Exception {
         doThrow(new RuntimeException("policy error")).when(minioAdminClient)
-                .addCannedPolicy(anyString(), anyString());
+                .setPolicy(anyString(), eq(false), anyString());
 
         assertThrows(S3ServerException.class, () -> service.attachPolicyToUser(creds("my-bucket")));
     }
@@ -100,7 +109,8 @@ class MinioUserManagementServiceTest {
         doNothing().when(minioAdminClient).addCannedPolicy(anyString(), anyString());
         doNothing().when(minioAdminClient).setPolicy(anyString(), eq(false), anyString());
 
-        assertDoesNotThrow(() -> service.attachTemporaryPolicy("tp-user", "tp-policy", "{\"Version\":\"2012-10-17\"}"));
+        assertDoesNotThrow(() -> service.attachTemporaryPolicy(creds("tenant-bucket"), "tp-user",
+                "tp-policy", "{\"Version\":\"2012-10-17\"}"));
 
         verify(minioAdminClient).addCannedPolicy(eq("tp-policy"), anyString());
         verify(minioAdminClient).setPolicy(eq("tp-user"), eq(false), eq("tp-policy"));
@@ -113,7 +123,7 @@ class MinioUserManagementServiceTest {
                 .addCannedPolicy(anyString(), anyString());
 
         assertThrows(S3ServerException.class,
-                () -> service.attachTemporaryPolicy("tp-user", "tp-policy", "{}"));
+                () -> service.attachTemporaryPolicy(creds("tenant-bucket"), "tp-user", "tp-policy", "{}"));
     }
 
     // -------------------------------------------------------------------------
@@ -125,7 +135,7 @@ class MinioUserManagementServiceTest {
     void deleteUser_success() throws Exception {
         doNothing().when(minioAdminClient).deleteUser("test-user");
 
-        assertDoesNotThrow(() -> service.deleteUser("test-user"));
+        assertDoesNotThrow(() -> service.deleteUser(creds("tenant-bucket"), "test-user"));
         verify(minioAdminClient).deleteUser("test-user");
     }
 
@@ -134,7 +144,7 @@ class MinioUserManagementServiceTest {
     void deleteUser_failure_throwsS3ServerException() throws Exception {
         doThrow(new RuntimeException("delete error")).when(minioAdminClient).deleteUser("test-user");
 
-        assertThrows(S3ServerException.class, () -> service.deleteUser("test-user"));
+        assertThrows(S3ServerException.class, () -> service.deleteUser(creds("tenant-bucket"), "test-user"));
     }
 
     // -------------------------------------------------------------------------
@@ -146,7 +156,7 @@ class MinioUserManagementServiceTest {
     void deletePolicy_success() throws Exception {
         doNothing().when(minioAdminClient).removeCannedPolicy("my-policy");
 
-        assertDoesNotThrow(() -> service.deletePolicy("my-policy"));
+        assertDoesNotThrow(() -> service.deletePolicy(creds("tenant-bucket"), "my-policy"));
         verify(minioAdminClient).removeCannedPolicy("my-policy");
     }
 
@@ -155,6 +165,6 @@ class MinioUserManagementServiceTest {
     void deletePolicy_failure_throwsS3ServerException() throws Exception {
         doThrow(new RuntimeException("remove error")).when(minioAdminClient).removeCannedPolicy("my-policy");
 
-        assertThrows(S3ServerException.class, () -> service.deletePolicy("my-policy"));
+        assertThrows(S3ServerException.class, () -> service.deletePolicy(creds("tenant-bucket"), "my-policy"));
     }
 }

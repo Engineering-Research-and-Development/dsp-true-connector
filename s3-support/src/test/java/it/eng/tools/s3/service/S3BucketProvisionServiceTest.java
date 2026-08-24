@@ -50,6 +50,31 @@ public class S3BucketProvisionServiceTest {
     }
 
     @Test
+    @DisplayName("ensureBucketCredentials - existing credentials are reconciled before returning")
+    void ensureBucketCredentials_whenCredentialsAlreadyExist_reconcilesManagementPolicy() {
+        String bucketName = "tenant-bucket";
+        BucketCredentialsEntity existing = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName(bucketName)
+                .accessKey("tenant-manager")
+                .secretKey("tenant-manager-secret")
+                .build();
+
+        when(bucketCredentialsService.bucketCredentialsExist(bucketName)).thenReturn(true);
+        when(bucketCredentialsService.getBucketCredentials(bucketName)).thenReturn(existing);
+        when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
+                .thenReturn(GetBucketPolicyResponse.builder().policy("{}").build());
+        when(s3Client.putBucketPolicy(any(PutBucketPolicyRequest.class)))
+                .thenReturn(PutBucketPolicyResponse.builder().build());
+
+        BucketCredentialsEntity result = s3BucketProvisionService.ensureBucketCredentials(bucketName);
+
+        assertSame(existing, result);
+        verify(iamUserManagementService).createUser(existing);
+        verify(iamUserManagementService).attachPolicyToUser(existing);
+        verify(s3ClientProvider).clearBucketCache(bucketName);
+    }
+
+    @Test
     @DisplayName("createSecureBucket - should create a new bucket with policy and credentials")
     void createSecureBucket_WithNoExistingPolicy_ShouldCreateNewPolicy() {
         // Arrange
@@ -619,6 +644,10 @@ public class S3BucketProvisionServiceTest {
 
         when(bucketCredentialsService.bucketCredentialsExist(bucketName)).thenReturn(true);
         when(bucketCredentialsService.getBucketCredentials(bucketName)).thenReturn(existingCredentials);
+        when(s3Client.getBucketPolicy(any(GetBucketPolicyRequest.class)))
+                .thenReturn(GetBucketPolicyResponse.builder().policy("{}").build());
+        when(s3Client.putBucketPolicy(any(PutBucketPolicyRequest.class)))
+                .thenReturn(PutBucketPolicyResponse.builder().build());
 
         // Act
         BucketCredentialsEntity result = s3BucketProvisionService.ensureBucketCredentials(bucketName);
@@ -627,7 +656,9 @@ public class S3BucketProvisionServiceTest {
         assertEquals(existingCredentials, result);
         verify(bucketCredentialsService).bucketCredentialsExist(bucketName);
         verify(bucketCredentialsService).getBucketCredentials(bucketName);
-        verify(s3ClientProvider, never()).adminS3Client();
+        verify(iamUserManagementService).createUser(existingCredentials);
+        verify(iamUserManagementService).attachPolicyToUser(existingCredentials);
+        verify(s3ClientProvider).clearBucketCache(bucketName);
     }
 
     @Test

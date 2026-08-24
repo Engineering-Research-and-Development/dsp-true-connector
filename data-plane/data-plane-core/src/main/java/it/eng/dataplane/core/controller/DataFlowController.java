@@ -6,10 +6,8 @@ import it.eng.dataplane.api.message.DataFlowStartMessage;
 import it.eng.dataplane.api.message.DataFlowStatusMessage;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.core.model.DataFlowEntity;
-import it.eng.dataplane.core.model.DataPlaneAuditEventType;
-import it.eng.dataplane.core.registry.DataTransferProtocolRegistry;
+import it.eng.dataplane.core.service.DataFlowConflictException;
 import it.eng.dataplane.core.service.DataFlowService;
-import it.eng.dataplane.core.service.DataPlaneAuditEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -27,8 +25,6 @@ import org.springframework.web.bind.annotation.*;
 public class DataFlowController {
 
     private final DataFlowService dataFlowService;
-    private final DataTransferProtocolRegistry protocolRegistry;
-    private final DataPlaneAuditEventService auditEventService;
 
     /**
      * Initiates a new data transfer based on a Control Plane request.
@@ -45,8 +41,11 @@ public class DataFlowController {
             DataFlow dataFlow = toDataFlow(message);
             dataFlowService.start(dataFlow);
             return ResponseEntity.status(HttpStatus.CREATED).build();
+        } catch (DataFlowConflictException e) {
+            log.error("DataFlow lifecycle conflict for processId {}: {}", message.getProcessId(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
         } catch (IllegalStateException e) {
-            // DataFlow for this processId already exists — treat as idempotent OK.
+            // DataFlow for this processId already exists in an in-flight state — treat as idempotent OK.
             // This can happen when the Control Plane retries the start call (e.g. [P] Push data
             // manual trigger after DPS auto-start). Returning 200 prevents false error propagation.
             log.info("DataFlow already exists for processId {}, returning OK (idempotent)", message.getProcessId());
@@ -60,44 +59,30 @@ public class DataFlowController {
     /**
      * Handles a prepare request from the Control Plane.
      *
-     * <p>Delegates to the registered {@link it.eng.dataplane.api.spi.DataTransferProtocol}
-     * implementation so the Data Plane can allocate resources (e.g. temporary IAM credentials
-     * for HTTP-PUSH, or generate a pre-signed URL for HTTP-PULL) before the DSP transfer
-     * messages are exchanged between connectors.</p>
+     * <p>Delegates to {@link DataFlowService#prepare(DataFlowPrepareMessage)} which resolves the
+     * registered {@link it.eng.dataplane.api.spi.DataTransferProtocol}, allocates resources
+     * (e.g. temporary IAM credentials for HTTP-PUSH, or a pre-signed URL for HTTP-PULL), and
+     * persists a {@link it.eng.dataplane.api.model.DataFlowState#PREPARED} entity keyed by
+     * processId so that a later {@code terminate} can clean up those resources.</p>
      *
      * @param message the DataFlowPrepareMessage from the Control Plane
-     * @return 200 OK with {@link DataFlowPrepareResponse} containing protocol-specific addressing data
+     * @return 200 OK with {@link DataFlowPrepareResponse} containing protocol-specific addressing data,
+     *         400 BAD REQUEST if the protocol rejects the request (e.g. unknown sourceType),
+     *         or 409 CONFLICT if the process already exists in an incompatible state
      */
     @PostMapping("/prepare")
     public ResponseEntity<DataFlowPrepareResponse> prepareDataFlow(@RequestBody DataFlowPrepareMessage message) {
         log.info("Received prepare request for processId={}", message.getProcessId());
-        String transferType = message.getDataAddress() != null
-                ? message.getDataAddress().getOrDefault("transferType", "")
-                : "";
-        var protocol = protocolRegistry.getProtocol(transferType);
-        if (protocol == null) {
-            // Each DP container hosts exactly one protocol — fall back to it when the
-            // Control Plane does not embed transferType in the prepare message dataAddress.
-            var supported = protocolRegistry.getSupportedProtocols();
-            if (!supported.isEmpty()) {
-                String fallback = supported.iterator().next();
-                protocol = protocolRegistry.getProtocol(fallback);
-                log.info("No transferType in prepare message; using single registered protocol '{}'", fallback);
-            }
+        try {
+            DataFlowPrepareResponse response = dataFlowService.prepare(message);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            log.error("Invalid prepare request for processId={}: {}", message.getProcessId(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (IllegalStateException e) {
+            log.info("Prepare conflict for processId {}: {}", message.getProcessId(), e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
         }
-        DataFlowPrepareResponse response;
-        if (protocol != null) {
-            response = protocol.prepare(message);
-        } else {
-            log.warn("No protocol registered; returning empty prepare response for processId={}", message.getProcessId());
-            response = DataFlowPrepareResponse.Builder.newInstance()
-                    .processId(message.getProcessId())
-                    .build();
-        }
-        auditEventService.saveEvent(DataPlaneAuditEventType.DATAFLOW_PREPARE_REQUESTED,
-                message.getProcessId(), transferType,
-                "Data flow prepare requested", null);
-        return ResponseEntity.ok(response);
     }
 
     /**
@@ -205,7 +190,8 @@ public class DataFlowController {
             .agreementId(message.getAgreementId())
             .datasetId(message.getDatasetId())
             .callbackAddress(message.getCallbackAddress())
-            .dataAddress(message.getDataAddress())
+            .dataAddress(message.getDataAddress() == null ? null : message.getDataAddress().toPropertyMap())
+            .metadata(message.getMetadata())
             .participantId(message.getParticipantId())
             .counterPartyId(message.getCounterPartyId())
             .build();

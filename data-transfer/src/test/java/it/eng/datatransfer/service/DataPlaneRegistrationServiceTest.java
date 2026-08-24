@@ -1,5 +1,6 @@
 package it.eng.datatransfer.service;
 
+import it.eng.datatransfer.event.DataPlaneRegistrationChangedEvent;
 import it.eng.datatransfer.exceptions.DataPlaneNotFoundException;
 import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.datatransfer.repository.DataPlaneRegistrationRepository;
@@ -8,9 +9,12 @@ import it.eng.tools.service.AuditEventPublisher;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,11 +34,22 @@ public class DataPlaneRegistrationServiceTest {
     @Mock
     private AuditEventPublisher auditEventPublisher;
 
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
+
+    @Captor
+    private ArgumentCaptor<DataPlaneRegistrationChangedEvent> dataPlaneRegistrationChangedEventCaptor;
+
     @InjectMocks
     private DataPlaneRegistrationService service;
 
     private DataPlaneRegistration buildRegistration() {
+        return buildRegistration(null);
+    }
+
+    private DataPlaneRegistration buildRegistration(String id) {
         return DataPlaneRegistration.Builder.newInstance()
+                .id(id)
                 .endpoint("http://dataplane.example.com")
                 .supportedTransferTypes(Set.of("HttpData-PULL"))
                 .build();
@@ -43,7 +58,7 @@ public class DataPlaneRegistrationServiceTest {
     @Test
     @DisplayName("register saves and returns the registration")
     public void registerSavesAndReturns() {
-        DataPlaneRegistration reg = buildRegistration();
+        DataPlaneRegistration reg = buildRegistration("registered-id");
         when(repository.save(any(DataPlaneRegistration.class))).thenReturn(reg);
 
         DataPlaneRegistration result = service.register(reg);
@@ -52,6 +67,26 @@ public class DataPlaneRegistrationServiceTest {
         assertEquals(reg.getEndpoint(), result.getEndpoint());
         verify(repository).save(reg);
         verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATAPLANE_REGISTERED), any(String.class), any());
+        assertPublishedRegistrationChangedEvent(DataPlaneRegistrationChangedEvent.ChangeType.REGISTERED,
+                reg.getId(), reg.getEndpoint());
+    }
+
+    @Test
+    @DisplayName("register publishes registration changed event when updating an existing endpoint")
+    public void registerExistingEndpointPublishesUpdatedEvent() {
+        DataPlaneRegistration existing = buildRegistration("existing-id");
+        DataPlaneRegistration incoming = buildRegistration("new-id");
+        when(repository.findByEndpoint(existing.getEndpoint())).thenReturn(Optional.of(existing));
+        when(repository.save(any(DataPlaneRegistration.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        DataPlaneRegistration result = service.register(incoming);
+
+        assertNotNull(result);
+        assertEquals(incoming.getId(), result.getId());
+        verify(repository).deleteById(existing.getId());
+        verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATAPLANE_REGISTRATION_UPDATED), any(String.class), any());
+        assertPublishedRegistrationChangedEvent(DataPlaneRegistrationChangedEvent.ChangeType.REGISTERED,
+                incoming.getId(), incoming.getEndpoint());
     }
 
     @Test
@@ -72,7 +107,7 @@ public class DataPlaneRegistrationServiceTest {
     @DisplayName("deregister calls deleteById with the given id")
     public void deregisterDeletesById() {
         String id = "test-id-123";
-        DataPlaneRegistration reg = buildRegistration();
+        DataPlaneRegistration reg = buildRegistration(id);
         when(repository.findById(id)).thenReturn(Optional.of(reg));
         doNothing().when(repository).deleteById(id);
 
@@ -80,6 +115,8 @@ public class DataPlaneRegistrationServiceTest {
 
         verify(repository).deleteById(id);
         verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATAPLANE_DEREGISTERED), any(String.class), any());
+        assertPublishedRegistrationChangedEvent(DataPlaneRegistrationChangedEvent.ChangeType.DEREGISTERED,
+                reg.getId(), reg.getEndpoint());
     }
 
     @Test
@@ -107,5 +144,15 @@ public class DataPlaneRegistrationServiceTest {
 
         assertEquals(2, results.size());
         verify(repository).findAll();
+    }
+
+    private void assertPublishedRegistrationChangedEvent(DataPlaneRegistrationChangedEvent.ChangeType expectedChangeType,
+                                                         String expectedDataplaneId,
+                                                         String expectedEndpoint) {
+        verify(applicationEventPublisher).publishEvent(dataPlaneRegistrationChangedEventCaptor.capture());
+        DataPlaneRegistrationChangedEvent event = dataPlaneRegistrationChangedEventCaptor.getValue();
+        assertEquals(expectedChangeType, event.changeType());
+        assertEquals(expectedDataplaneId, event.dataplaneId());
+        assertEquals(expectedEndpoint, event.endpoint());
     }
 }

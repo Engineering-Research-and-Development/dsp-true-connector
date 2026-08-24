@@ -40,11 +40,12 @@ public class DataTransferProtocolRegistry {
     }
 
     /**
-     * Returns all registered protocol IDs.
+     * Returns an immutable snapshot of all registered protocol IDs.
+     * Callers cannot mutate the registry through the returned set.
      *
-     * @return set of protocol identifiers
+     * @return immutable set of protocol identifiers
      */
     public Set<String> getSupportedProtocols() {
-        return protocols.keySet();
+        return Set.copyOf(protocols.keySet());
     }
 }

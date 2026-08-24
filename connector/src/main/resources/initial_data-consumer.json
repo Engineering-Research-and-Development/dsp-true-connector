@@ -73,6 +73,14 @@
         {
           "$ref": "distributions",
           "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-grpc-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-kafka-4932-8baf-ab7fd66ql4d5"
         }
       ],
       "dataset": [
@@ -145,6 +153,14 @@
         {
           "$ref": "distributions",
           "$id": "urn:uuid:1dc45797-push-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-grpc-4932-8baf-ab7fd66ql4d5"
+        },
+        {
+          "$ref": "distributions",
+          "$id": "urn:uuid:1dc45797-kafka-4932-8baf-ab7fd66ql4d5"
         }
       ],
       "artifact": {
@@ -181,7 +197,7 @@
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "DSP TRUE Connector",
       "endpointDescription": "connector",
-      "endpointURL": "http://localhost:8080/",
+      "endpointURL": "http://localhost:8080/engineering",
       "tenantId": "engineering",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
@@ -210,6 +226,38 @@
       "_class": "it.eng.catalog.model.Distribution",
       "title": "HTTP Data PUSH",
       "format": "HttpData-PUSH",
+      "accessService": {
+        "$ref": "dataservices",
+        "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
+      },
+      "tenantId": "engineering",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:1dc45797-grpc-4932-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.catalog.model.Distribution",
+      "title": "gRPC Streaming",
+      "format": "stream:grpc",
+      "accessService": {
+        "$ref": "dataservices",
+        "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
+      },
+      "tenantId": "engineering",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "issued": "2024-04-23T16:26:00.000Z",
+      "modified": "2024-04-23T16:26:00.000Z",
+      "version": 0
+    },
+    {
+      "_id": "urn:uuid:1dc45797-kafka-4932-8baf-ab7fd66ql4d5",
+      "_class": "it.eng.catalog.model.Distribution",
+      "title": "Kafka Streaming",
+      "format": "stream:kafka",
       "accessService": {
         "$ref": "dataservices",
         "$id": "urn:uuid:1dc45797-4444-conn-8baf-ab7fd66ac4d5"
@@ -321,6 +369,254 @@
       "issued": "2025-09-15T16:26:00.000Z",
       "modified": "2025-09-15T16:26:00.000Z",
       "version": 0
+    }
+  ],
+  "contract_negotiations": [
+    {
+      "_id": "urn:uuid:cn-pull-1111-1111-4111-8111-111111111111",
+      "callbackAddress": "http://localhost:8080/engineering/consumer",
+      "assigner": "urn:connector:engineering-provider",
+      "role": "consumer",
+      "agreement": {
+        "$ref": "agreements",
+        "$id": "urn:uuid:agreement-pull-1111-1111-4111-8111-111111111111"
+      },
+      "consumerPid": "urn:uuid:51111111-1111-4111-8111-111111111111",
+      "state": "FINALIZED",
+      "providerPid": "urn:uuid:61111111-1111-4111-8111-111111111111",
+      "_class": "it.eng.negotiation.model.ContractNegotiation",
+      "tenantId": "engineering"
+    },
+    {
+      "_id": "urn:uuid:cn-push-2222-2222-4222-8222-222222222222",
+      "callbackAddress": "http://localhost:8080/engineering/consumer",
+      "assigner": "urn:connector:engineering-provider",
+      "role": "consumer",
+      "agreement": {
+        "$ref": "agreements",
+        "$id": "urn:uuid:agreement-push-2222-2222-4222-8222-222222222222"
+      },
+      "consumerPid": "urn:uuid:52222222-2222-4222-8222-222222222222",
+      "state": "FINALIZED",
+      "providerPid": "urn:uuid:62222222-2222-4222-8222-222222222222",
+      "_class": "it.eng.negotiation.model.ContractNegotiation",
+      "tenantId": "engineering"
+    },
+    {
+      "_id": "urn:uuid:cn-grpc-3333-3333-4333-8333-333333333333",
+      "callbackAddress": "http://localhost:8080/engineering/consumer",
+      "assigner": "urn:connector:engineering-provider",
+      "role": "consumer",
+      "agreement": {
+        "$ref": "agreements",
+        "$id": "urn:uuid:agreement-grpc-3333-3333-4333-8333-333333333333"
+      },
+      "consumerPid": "urn:uuid:53333333-3333-4333-8333-333333333333",
+      "state": "FINALIZED",
+      "providerPid": "urn:uuid:63333333-3333-4333-8333-333333333333",
+      "_class": "it.eng.negotiation.model.ContractNegotiation",
+      "tenantId": "engineering"
+    },
+    {
+      "_id": "urn:uuid:cn-kafka-4444-4444-4444-8444-444444444444",
+      "callbackAddress": "http://localhost:8080/engineering/consumer",
+      "assigner": "urn:connector:engineering-provider",
+      "role": "consumer",
+      "agreement": {
+        "$ref": "agreements",
+        "$id": "urn:uuid:agreement-kafka-4444-4444-4444-8444-444444444444"
+      },
+      "consumerPid": "urn:uuid:54444444-4444-4444-8444-444444444444",
+      "state": "FINALIZED",
+      "providerPid": "urn:uuid:64444444-4444-4444-8444-444444444444",
+      "_class": "it.eng.negotiation.model.ContractNegotiation",
+      "tenantId": "engineering"
+    }
+  ],
+  "agreements": [
+    {
+      "_id": "urn:uuid:agreement-pull-1111-1111-4111-8111-111111111111",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "tenantId": "engineering",
+      "target": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "timestamp": "2026-01-01T00:00:00Z",
+      "assigner": "urn:connector:engineering-provider",
+      "assignee": "urn:connector:engineering",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "count",
+              "operator": "lteq",
+              "rightOperand": "5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "urn:uuid:agreement-push-2222-2222-4222-8222-222222222222",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "tenantId": "engineering",
+      "target": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "timestamp": "2026-01-01T00:00:00Z",
+      "assigner": "urn:connector:engineering-provider",
+      "assignee": "urn:connector:engineering",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "count",
+              "operator": "lteq",
+              "rightOperand": "5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "urn:uuid:agreement-grpc-3333-3333-4333-8333-333333333333",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "tenantId": "engineering",
+      "target": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "timestamp": "2026-01-01T00:00:00Z",
+      "assigner": "urn:connector:engineering-provider",
+      "assignee": "urn:connector:engineering",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "count",
+              "operator": "lteq",
+              "rightOperand": "5"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "urn:uuid:agreement-kafka-4444-4444-4444-8444-444444444444",
+      "_class": "it.eng.negotiation.model.Agreement",
+      "tenantId": "engineering",
+      "target": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "timestamp": "2026-01-01T00:00:00Z",
+      "assigner": "urn:connector:engineering-provider",
+      "assignee": "urn:connector:engineering",
+      "permission": [
+        {
+          "action": "use",
+          "constraint": [
+            {
+              "leftOperand": "count",
+              "operator": "lteq",
+              "rightOperand": "5"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "transfer_request_messages": [],
+  "transfer_process": [
+    {
+      "_id": "urn:uuid:tp-pull-1111-1111-4111-8111-111111111111",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "urn:uuid:51111111-1111-4111-8111-111111111111",
+      "providerPid": "temporary_provider_pid",
+      "callbackAddress": "http://localhost:8090/engineering-provider",
+      "agreementId": "urn:uuid:agreement-pull-1111-1111-4111-8111-111111111111",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "format": "HttpData-PULL",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0,
+      "tenantId": "engineering"
+    },
+    {
+      "_id": "urn:uuid:tp-push-2222-2222-4222-8222-222222222222",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "urn:uuid:52222222-2222-4222-8222-222222222222",
+      "providerPid": "temporary_provider_pid",
+      "callbackAddress": "http://localhost:8090/engineering-provider",
+      "agreementId": "urn:uuid:agreement-push-2222-2222-4222-8222-222222222222",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "format": "HttpData-PUSH",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0,
+      "tenantId": "engineering"
+    },
+    {
+      "_id": "urn:uuid:tp-grpc-3333-3333-4333-8333-333333333333",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "urn:uuid:53333333-3333-4333-8333-333333333333",
+      "providerPid": "temporary_provider_pid",
+      "callbackAddress": "http://localhost:8090/engineering-provider",
+      "agreementId": "urn:uuid:agreement-grpc-3333-3333-4333-8333-333333333333",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "format": "stream:grpc",
+      "transportProfile": "stream:grpc",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0,
+      "tenantId": "engineering"
+    },
+    {
+      "_id": "urn:uuid:tp-kafka-4444-4444-4444-8444-444444444444",
+      "_class": "it.eng.datatransfer.model.TransferProcess",
+      "consumerPid": "urn:uuid:54444444-4444-4444-8444-444444444444",
+      "providerPid": "temporary_provider_pid",
+      "callbackAddress": "http://localhost:8090/engineering-provider",
+      "agreementId": "urn:uuid:agreement-kafka-4444-4444-4444-8444-444444444444",
+      "state": "INITIALIZED",
+      "role": "consumer",
+      "datasetId": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+      "format": "stream:kafka",
+      "transportProfile": "stream:kafka",
+      "createdBy": "admin@mail.com",
+      "lastModifiedBy": "admin@mail.com",
+      "version": 0,
+      "tenantId": "engineering"
+    }
+  ],
+  "transfer_start_messages": [],
+  "policy_enforcements": [
+    {
+      "_id": "urn:uuid:a1111111-1111-4111-8111-111111111111",
+      "_class": "it.eng.negotiation.model.PolicyEnforcement",
+      "agreementId": "urn:uuid:agreement-pull-1111-1111-4111-8111-111111111111",
+      "tenantId": "engineering",
+      "count": "0"
+    },
+    {
+      "_id": "urn:uuid:a2222222-2222-4222-8222-222222222222",
+      "_class": "it.eng.negotiation.model.PolicyEnforcement",
+      "agreementId": "urn:uuid:agreement-push-2222-2222-4222-8222-222222222222",
+      "tenantId": "engineering",
+      "count": "0"
+    },
+    {
+      "_id": "urn:uuid:a3333333-3333-4333-8333-333333333333",
+      "_class": "it.eng.negotiation.model.PolicyEnforcement",
+      "agreementId": "urn:uuid:agreement-grpc-3333-3333-4333-8333-333333333333",
+      "tenantId": "engineering",
+      "count": "0"
+    },
+    {
+      "_id": "urn:uuid:a4444444-4444-4444-8444-444444444444",
+      "_class": "it.eng.negotiation.model.PolicyEnforcement",
+      "agreementId": "urn:uuid:agreement-kafka-4444-4444-4444-8444-444444444444",
+      "tenantId": "engineering",
+      "count": "0"
     }
   ],
   "tenants": [

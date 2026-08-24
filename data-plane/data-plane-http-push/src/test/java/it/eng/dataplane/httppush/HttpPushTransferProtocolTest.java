@@ -1,15 +1,19 @@
 package it.eng.dataplane.httppush;
 
-import com.sun.net.httpserver.HttpServer;
+import it.eng.dataplane.api.DataPlaneConstants;
+import it.eng.dataplane.api.io.SourceContext;
+import it.eng.dataplane.api.io.SourceOpenResult;
+import it.eng.dataplane.api.message.DataFlowPrepareMessage;
+import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.core.client.ControlPlaneClient;
-import it.eng.tools.s3.properties.S3Properties;
+import it.eng.dataplane.s3.io.S3SourceReader;
+import it.eng.tools.s3.model.BucketCredentialsEntity;
+import it.eng.tools.s3.model.TemporaryBucketUser;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.util.S3Utils;
-import it.eng.dataplane.s3.service.TenantBucketResolver;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,9 +21,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
-import java.net.http.HttpClient;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -30,12 +34,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
-import org.mockito.ArgumentCaptor;
 
 /**
  * Unit tests for {@link HttpPushTransferProtocol}.
@@ -48,42 +52,24 @@ class HttpPushTransferProtocolTest {
     @Mock
     private TemporaryBucketUserService temporaryBucketUserService;
     @Mock
-    private TenantBucketResolver tenantBucketResolver;
-    @Mock
-    private S3Properties s3Properties;
+    private S3SourceReader s3SourceReader;
     @Mock
     private ControlPlaneClient controlPlaneClient;
 
     private HttpPushTransferProtocol protocol;
-    private HttpServer testHttpServer;
 
     // Synchronous executor for testing — runs tasks immediately in the calling thread
     private final Executor syncExecutor = Runnable::run;
-
-    // Plain HTTP/1.1 client for tests — test server uses plain HTTP, no TLS needed
-    private final HttpClient testHttpClient = HttpClient.newBuilder()
-            .version(HttpClient.Version.HTTP_1_1)
-            .connectTimeout(Duration.ofSeconds(5))
-            .build();
 
     @BeforeEach
     void setUp() {
         protocol = new HttpPushTransferProtocol(
             s3ClientService,
-            s3Properties,
             temporaryBucketUserService,
-            tenantBucketResolver,
+            s3SourceReader,
             syncExecutor,
-            testHttpClient,
             controlPlaneClient
         );
-    }
-
-    @AfterEach
-    void tearDown() {
-        if (testHttpServer != null) {
-            testHttpServer.stop(0);
-        }
     }
 
     @Test
@@ -93,37 +79,338 @@ class HttpPushTransferProtocolTest {
     }
 
     @Test
-    @DisplayName("initiateTransfer returns failure when dataAddress is empty (no bucketName)")
-    void initiateTransfer_failsWhenDataAddressEmpty() throws Exception {
-        DataFlow dataFlow = DataFlow.Builder.newInstance()
-            .processId("tp-1")
-            .transferType("HttpData-PUSH")
-            .dataAddress(Map.of())
-            .build();
+    @DisplayName("prepare uses sink.s3 management credentials when creating temporary upload credentials")
+    void prepare_usesSinkS3ManagementCredentialsForTemporaryUserCreation() {
+        TemporaryBucketUser tempUser = TemporaryBucketUser.Builder.newInstance()
+                .transferProcessId("tp-prepare")
+                .bucketName("tenant-bucket")
+                .objectKey("tp-prepare")
+                .accessKey("temp-access")
+                .secretKey("temp-secret")
+                .build();
+        when(temporaryBucketUserService.createTemporaryUser(
+                eq("tp-prepare"),
+                any(BucketCredentialsEntity.class),
+                eq("tenant-bucket"),
+                eq("tp-prepare")))
+                .thenReturn(tempUser);
 
-        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
+        DataFlowPrepareMessage prepareMessage = DataFlowPrepareMessage.Builder.newInstance()
+                .processId("tp-prepare")
+                .transferType("HttpData-PUSH")
+                .metadata(Map.of(
+                        DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "tenant-bucket",
+                                        DataPlaneConstants.METADATA_S3_ACCESS_KEY, "cp-minioadmin",
+                                        DataPlaneConstants.METADATA_S3_SECRET_KEY, "cp-minioadmin-secret",
+                                        DataPlaneConstants.METADATA_S3_REGION, "us-east-1",
+                                        DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://minio:9000"))))
+                .build();
 
-        assertThat(result.isSuccess()).isFalse();
-        assertThat(result.getErrorMessage()).contains("bucketName");
-        // No CP callbacks when validation fails before transfer starts
-        verify(controlPlaneClient, never()).sendStarted(any(), any(), any());
+        DataFlowPrepareResponse response = protocol.prepare(prepareMessage);
+
+        assertThat(response.getDataAddress())
+                .containsEntry(S3Utils.BUCKET_NAME, "tenant-bucket")
+                .containsEntry(S3Utils.OBJECT_KEY, "tp-prepare")
+                .containsEntry(S3Utils.REGION, "us-east-1")
+                .containsEntry(S3Utils.ACCESS_KEY, "temp-access")
+                .containsEntry(S3Utils.SECRET_KEY, "temp-secret")
+                .containsEntry(S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000");
+        verify(temporaryBucketUserService).createTemporaryUser(
+                eq("tp-prepare"),
+                argThat(credentials -> "cp-minioadmin".equals(credentials.getAccessKey())
+                        && "cp-minioadmin-secret".equals(credentials.getSecretKey())
+                        && "tenant-bucket".equals(credentials.getBucketName())),
+                eq("tenant-bucket"),
+                eq("tp-prepare"));
+    }
+
+    @Test
+    @DisplayName("prepare reads endpointOverride from metadata.sink.s3 — not from local s3.endpoint or s3.externalPresignedEndpoint")
+    void prepare_usesSinkInternalEndpointNotExternalPresignedEndpoint() {
+        TemporaryBucketUser tempUser = TemporaryBucketUser.Builder.newInstance()
+                .transferProcessId("tp-internal")
+                .bucketName("tenant-bucket")
+                .objectKey("tp-internal")
+                .accessKey("temp-access")
+                .secretKey("temp-secret")
+                .build();
+        when(temporaryBucketUserService.createTemporaryUser(
+                eq("tp-internal"),
+                any(BucketCredentialsEntity.class),
+                eq("tenant-bucket"),
+                eq("tp-internal")))
+                .thenReturn(tempUser);
+
+        DataFlowPrepareMessage prepareMessage = DataFlowPrepareMessage.Builder.newInstance()
+                .processId("tp-internal")
+                .transferType("HttpData-PUSH")
+                .metadata(Map.of(
+                        DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "tenant-bucket",
+                                        DataPlaneConstants.METADATA_S3_ACCESS_KEY, "cp-minioadmin",
+                                        DataPlaneConstants.METADATA_S3_SECRET_KEY, "cp-minioadmin-secret",
+                                        DataPlaneConstants.METADATA_S3_REGION, "us-east-1",
+                                        DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://minio:9000"))))
+                .build();
+
+        DataFlowPrepareResponse response = protocol.prepare(prepareMessage);
+
+        // Server-side upload must use the internal/container-reachable endpoint from metadata
+        assertThat(response.getDataAddress())
+                .containsEntry(S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000")
+                .doesNotContainEntry(S3Utils.ENDPOINT_OVERRIDE, "http://172.17.0.1:9000");
+    }
+
+    @Test
+    @DisplayName("prepare view mode uses sink.s3 bucket metadata when generating presigned URL")
+    void prepare_viewMode_usesSinkS3BucketMetadataForPresignedUrl() {
+        Map<String, String> expectedSinkProperties = Map.of(
+                S3Utils.BUCKET_NAME, "tenant-bucket",
+                S3Utils.OBJECT_KEY, "tp-view",
+                S3Utils.ACCESS_KEY, "bucket-access",
+                S3Utils.SECRET_KEY, "bucket-secret",
+                S3Utils.REGION, "us-east-1",
+                S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000",
+                S3Utils.PUBLIC_PRESIGNED_ENDPOINT, "http://downloads.example.com");
+        when(s3ClientService.generateGetPresignedUrl(expectedSinkProperties, Duration.ofDays(7L)))
+                .thenReturn("http://presigned/view");
+
+        DataFlowPrepareMessage prepareMessage = DataFlowPrepareMessage.Builder.newInstance()
+                .processId("tp-view")
+                .transferType("HttpData-PUSH")
+                .metadata(Map.of(
+                        DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                                DataPlaneConstants.METADATA_FIELD_MODE, "VIEW",
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "tenant-bucket",
+                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "tp-view",
+                                        DataPlaneConstants.METADATA_S3_ACCESS_KEY, "bucket-access",
+                                        DataPlaneConstants.METADATA_S3_SECRET_KEY, "bucket-secret",
+                                        DataPlaneConstants.METADATA_S3_REGION, "us-east-1",
+                                        DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE, "http://minio:9000",
+                                        DataPlaneConstants.METADATA_S3_PUBLIC_PRESIGNED_ENDPOINT,
+                                                "http://downloads.example.com"))))
+                .build();
+
+        DataFlowPrepareResponse response = protocol.prepare(prepareMessage);
+
+        assertThat(response.getDataAddress()).containsEntry(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY, "http://presigned/view");
+        verify(s3ClientService).generateGetPresignedUrl(expectedSinkProperties, Duration.ofDays(7L));
+        verify(temporaryBucketUserService, never()).createTemporaryUser(anyString(), any(BucketCredentialsEntity.class),
+                anyString(), anyString());
     }
 
     @Test
     @DisplayName("initiateTransfer returns failure when dataAddress is null")
     void initiateTransfer_failsWhenDataAddressNull() throws Exception {
         DataFlow dataFlow = DataFlow.Builder.newInstance()
-            .processId("tp-2")
-            .transferType("HttpData-PUSH")
-            .dataAddress(null)
-            .build();
+                .processId("tp-null")
+                .transferType("HttpData-PUSH")
+                .dataAddress(null)
+                // no metadata.sink.s3 present — triggers bucketName validation
+                .build();
 
         DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
 
         assertThat(result.isSuccess()).isFalse();
-        assertThat(result.getErrorMessage()).contains("bucketName");
-        // No CP callbacks when validation fails before transfer starts
+        assertThat(result.getErrorMessage()).contains("metadata.sink.s3.bucketName");
         verify(controlPlaneClient, never()).sendStarted(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("initiateTransfer returns failure when metadata.sink.s3.bucketName is missing")
+    void initiateTransfer_failsWhenSinkBucketNameMissing() throws Exception {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-missing-sink")
+                .transferType("HttpData-PUSH")
+                .metadata(Map.of(DataPlaneConstants.METADATA_SECTION_SOURCE, Map.of(
+                        DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                DataPlaneConstants.METADATA_S3_BUCKET_NAME, "provider-bucket"))))
+                // no metadata.sink.s3 — should fail
+                .build();
+
+        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("metadata.sink.s3.bucketName");
+        verify(controlPlaneClient, never()).sendStarted(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("initiateTransfer returns failure when metadata.source.s3.bucketName is missing")
+    void initiateTransfer_failsWhenSourceBucketNameMissing() throws Exception {
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-missing-source")
+                .transferType("HttpData-PUSH")
+                .metadata(Map.of(DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                        DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                DataPlaneConstants.METADATA_S3_BUCKET_NAME, "consumer-bucket"))))
+                // no metadata.source.s3 — should fail
+                .build();
+
+        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("metadata.source.s3.bucketName");
+        verify(controlPlaneClient, never()).sendStarted(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("initiateTransfer converts IllegalArgumentException from source-open into failure and sends sendErrored callback")
+    void initiateTransfer_convertsSourceOpenIllegalArgumentExceptionToFailure() throws Exception {
+        when(s3SourceReader.open(any(SourceContext.class)))
+            .thenThrow(new IllegalArgumentException("region is required"));
+
+        // source.s3 has no region — triggers IllegalArgumentException from s3SourceReader
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-illegal-arg")
+                .transferType("HttpData-PUSH")
+                .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
+                .datasetId("dataset-1")
+                .metadata(Map.of(
+                        DataPlaneConstants.METADATA_SECTION_SOURCE, Map.of(
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "provider-bucket",
+                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "dataset-1",
+                                        DataPlaneConstants.METADATA_S3_ACCESS_KEY, "src-access",
+                                        DataPlaneConstants.METADATA_S3_SECRET_KEY, "src-secret")),
+                        DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "consumer-bucket",
+                                        DataPlaneConstants.METADATA_S3_ACCESS_KEY, "consumer-access",
+                                        DataPlaneConstants.METADATA_S3_SECRET_KEY, "plain-secret",
+                                        DataPlaneConstants.METADATA_S3_REGION, "us-east-1"))))
+                .build();
+
+        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("region is required");
+        // Verify CP received sendStarted followed by sendErrored
+        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-illegal-arg"), anyMap());
+        verify(controlPlaneClient).sendErrored(eq("http://cp:8080"), eq("tp-illegal-arg"), anyString());
+    }
+
+    @Test
+    @DisplayName("initiateTransfer returns failure when S3 source open fails")
+    void initiateTransfer_returnsFailureWhenSourceOpenFails() throws Exception {
+        when(s3SourceReader.open(any(SourceContext.class)))
+            .thenReturn(SourceOpenResult.failure("S3 error: access denied on source object"));
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-403")
+                .transferType("HttpData-PUSH")
+                .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
+                .datasetId("dataset-403")
+                .metadata(Map.of(
+                        DataPlaneConstants.METADATA_SECTION_SOURCE, Map.of(
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "provider-bucket",
+                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "dataset-403",
+                                        DataPlaneConstants.METADATA_S3_ACCESS_KEY, "src-access",
+                                        DataPlaneConstants.METADATA_S3_SECRET_KEY, "src-secret",
+                                        DataPlaneConstants.METADATA_S3_REGION, "us-east-1")),
+                        DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "consumer-bucket",
+                                        DataPlaneConstants.METADATA_S3_ACCESS_KEY, "consumer-access",
+                                        DataPlaneConstants.METADATA_S3_SECRET_KEY, "plain-secret",
+                                        DataPlaneConstants.METADATA_S3_REGION, "us-east-1"))))
+                .build();
+
+        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("access denied on source object");
+        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-403"), anyMap());
+        verify(controlPlaneClient).sendErrored(eq("http://cp:8080"), eq("tp-403"), anyString());
+    }
+
+    @Test
+    @DisplayName("initiateTransfer pushes artifact to consumer S3 using CP-provided source and sink metadata")
+    void initiateTransfer_successfulPushToConsumerS3() throws Exception {
+        when(s3SourceReader.open(any(SourceContext.class)))
+            .thenReturn(SourceOpenResult.success(
+                new ByteArrayInputStream("artifact-content".getBytes()),
+                "application/octet-stream", 16L, true));
+        when(s3ClientService.uploadFile(any(), any(), any(), any()))
+            .thenReturn(CompletableFuture.completedFuture("etag-xyz"));
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+            .processId("tp-3")
+            .transferType("HttpData-PUSH")
+            .tenantId("tenant-1")
+            .callbackAddress("http://cp:8080")
+            .datasetId("dataset-1")
+            .metadata(Map.of(
+                    DataPlaneConstants.METADATA_SECTION_SOURCE, Map.of(
+                            DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                    DataPlaneConstants.METADATA_S3_BUCKET_NAME, "provider-bucket",
+                                    DataPlaneConstants.METADATA_S3_OBJECT_KEY, "dataset-1",
+                                    DataPlaneConstants.METADATA_S3_ACCESS_KEY, "src-access",
+                                    DataPlaneConstants.METADATA_S3_SECRET_KEY, "src-secret",
+                                    DataPlaneConstants.METADATA_S3_REGION, "us-east-1")),
+                    DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                            DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                    DataPlaneConstants.METADATA_S3_BUCKET_NAME, "consumer-bucket",
+                                    DataPlaneConstants.METADATA_S3_OBJECT_KEY, "tp-obj-key",
+                                    DataPlaneConstants.METADATA_S3_ACCESS_KEY, "consumer-access",
+                                    DataPlaneConstants.METADATA_S3_SECRET_KEY, "plain-secret",
+                                    DataPlaneConstants.METADATA_S3_REGION, "us-east-1"))))
+            .build();
+
+        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-3"), anyMap());
+        verify(controlPlaneClient).sendCompleted(eq("http://cp:8080"), eq("tp-3"), anyMap());
+        verify(controlPlaneClient, never()).sendErrored(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("initiateTransfer closes provider source stream when uploadFile throws synchronously")
+    void initiateTransfer_closesProviderStreamWhenUploadThrowsSynchronously() throws Exception {
+        CloseTrackingInputStream artifactStream = new CloseTrackingInputStream("artifact-content".getBytes());
+        when(s3SourceReader.open(any(SourceContext.class)))
+                .thenReturn(SourceOpenResult.success(artifactStream,
+                        "application/octet-stream", 16L, true));
+        when(s3ClientService.uploadFile(any(), any(), any(), any()))
+                .thenThrow(new IllegalStateException("sync upload failure"));
+
+        DataFlow dataFlow = DataFlow.Builder.newInstance()
+                .processId("tp-sync-upload-failure")
+                .transferType("HttpData-PUSH")
+                .tenantId("tenant-1")
+                .callbackAddress("http://cp:8080")
+                .datasetId("dataset-1")
+                .metadata(Map.of(
+                        DataPlaneConstants.METADATA_SECTION_SOURCE, Map.of(
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "provider-bucket",
+                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "dataset-1",
+                                        DataPlaneConstants.METADATA_S3_ACCESS_KEY, "src-access",
+                                        DataPlaneConstants.METADATA_S3_SECRET_KEY, "src-secret",
+                                        DataPlaneConstants.METADATA_S3_REGION, "us-east-1")),
+                        DataPlaneConstants.METADATA_SECTION_SINK, Map.of(
+                                DataPlaneConstants.METADATA_SECTION_S3, Map.of(
+                                        DataPlaneConstants.METADATA_S3_BUCKET_NAME, "consumer-bucket",
+                                        DataPlaneConstants.METADATA_S3_OBJECT_KEY, "tp-obj-key",
+                                        DataPlaneConstants.METADATA_S3_ACCESS_KEY, "consumer-access",
+                                        DataPlaneConstants.METADATA_S3_SECRET_KEY, "plain-secret",
+                                        DataPlaneConstants.METADATA_S3_REGION, "us-east-1"))))
+                .build();
+
+        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.getErrorMessage()).contains("sync upload failure");
+        assertThat(artifactStream.isClosed()).isTrue();
+        verify(controlPlaneClient).sendErrored(eq("http://cp:8080"), eq("tp-sync-upload-failure"), anyString());
     }
 
     @Test
@@ -145,6 +432,27 @@ class HttpPushTransferProtocolTest {
     }
 
     @Test
+    @DisplayName("completeTransfer deletes temporary bucket user to release credentials after a successful push")
+    void completeTransfer_deletesTemporaryUser() throws Exception {
+        DataFlowResult result = protocol.completeTransfer("tp-push-complete").get();
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(temporaryBucketUserService).deleteTemporaryUser("tp-push-complete");
+    }
+
+    @Test
+    @DisplayName("completeTransfer returns success even when temp user deletion fails (best-effort cleanup)")
+    void completeTransfer_returnsSucessEvenWhenDeletionFails() throws Exception {
+        doThrow(new RuntimeException("IAM user not found")).when(temporaryBucketUserService)
+                .deleteTemporaryUser("tp-push-missing");
+
+        DataFlowResult result = protocol.completeTransfer("tp-push-missing").get();
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(temporaryBucketUserService).deleteTemporaryUser("tp-push-missing");
+    }
+
+    @Test
     @DisplayName("terminateTransfer returns success without throwing")
     void terminateTransfer_returnsSuccess() throws Exception {
         DataFlowResult result = protocol.terminateTransfer("df-1").get();
@@ -153,236 +461,47 @@ class HttpPushTransferProtocolTest {
     }
 
     @Test
-    @DisplayName("initiateTransfer returns failure when presigned URL returns non-200 status")
-    void initiateTransfer_returnsFailureOnNon200PresignedResponse() throws Exception {
-        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
-        testHttpServer.createContext("/artifact-403", exchange -> {
-            exchange.sendResponseHeaders(403, -1);
-            exchange.close();
-        });
-        testHttpServer.start();
-
-        int port = testHttpServer.getAddress().getPort();
-        String presignedUrl = "http://localhost:" + port + "/artifact-403";
-
-        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
-        when(s3ClientService.generateGetPresignedUrl(eq("provider-bucket"), anyString(), any(Duration.class)))
-            .thenReturn(presignedUrl);
-
-        Map<String, String> dataAddress = new HashMap<>();
-        dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
-        dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
-        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
-        dataAddress.put(S3Utils.REGION, "us-east-1");
-
-        DataFlow dataFlow = DataFlow.Builder.newInstance()
-                .processId("tp-403")
-                .transferType("HttpData-PUSH")
-                .tenantId("tenant-1")
-                .callbackAddress("http://cp:8080")
-                .datasetId("dataset-403")
-                .dataAddress(dataAddress)
-                .build();
-
-        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
-
-        assertThat(result.isSuccess()).isFalse();
-        assertThat(result.getErrorMessage()).contains("403");
-        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-403"), anyMap());
-        verify(controlPlaneClient).sendErrored(eq("http://cp:8080"), eq("tp-403"), anyString());
-    }
-
-    @Test
-    @DisplayName("initiateTransfer pushes artifact to consumer S3 and sends started/completed callbacks")
-    void initiateTransfer_successfulPushToConsumerS3() throws Exception {
-        // Serve dummy artifact content from a local HTTP server
-        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
-        testHttpServer.createContext("/artifact", exchange -> {
-            byte[] body = "artifact-content".getBytes();
-            exchange.sendResponseHeaders(200, body.length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(body);
-            }
-        });
-        testHttpServer.start();
-
-        int port = testHttpServer.getAddress().getPort();
-        String presignedUrl = "http://localhost:" + port + "/artifact";
-
-        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
-        when(s3ClientService.generateGetPresignedUrl(eq("provider-bucket"), anyString(), any(Duration.class)))
-            .thenReturn(presignedUrl);
-        when(s3ClientService.uploadFile(any(), any(), any(), any()))
-            .thenReturn(CompletableFuture.completedFuture("etag-xyz"));
-
-        Map<String, String> dataAddress = new HashMap<>();
-        dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
-        dataAddress.put(S3Utils.OBJECT_KEY, "tp-obj-key");
-        dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
-        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
-        dataAddress.put(S3Utils.ENDPOINT_OVERRIDE, "http://consumer-minio:9000");
-        dataAddress.put(S3Utils.REGION, "us-east-1");
-
-        DataFlow dataFlow = DataFlow.Builder.newInstance()
-            .processId("tp-3")
-            .transferType("HttpData-PUSH")
-            .tenantId("tenant-1")
-            .callbackAddress("http://cp:8080")
-            .datasetId("dataset-1")
-            .dataAddress(dataAddress)
-            .build();
-
-        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
+    @DisplayName("terminateTransfer deletes temporary bucket user to prevent credential leak on prepare/request failure")
+    void terminateTransfer_deletesTemporaryBucketUser() throws Exception {
+        DataFlowResult result = protocol.terminateTransfer("tp-cleanup").get();
 
         assertThat(result.isSuccess()).isTrue();
-        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-3"), anyMap());
-        verify(controlPlaneClient).sendCompleted(eq("http://cp:8080"), eq("tp-3"), anyMap());
-        verify(controlPlaneClient, never()).sendErrored(any(), any(), any());
-        verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
+        verify(temporaryBucketUserService).deleteTemporaryUser("tp-cleanup");
     }
 
     @Test
-    @DisplayName("initiateTransfer sends started/completed callbacks and uses processId as S3 objectKey when objectKey is absent from dataAddress")
-    void initiateTransfer_usesProcessIdAsObjectKeyFallback() throws Exception {
-        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
-        testHttpServer.createContext("/artifact", exchange -> {
-            byte[] body = "artifact-content".getBytes();
-            exchange.sendResponseHeaders(200, body.length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(body);
-            }
-        });
-        testHttpServer.start();
+    @DisplayName("terminateTransfer returns success even when temp user deletion fails (best-effort cleanup)")
+    void terminateTransfer_returnsSucessEvenWhenDeletionFails() throws Exception {
+        doThrow(new RuntimeException("IAM user not found")).when(temporaryBucketUserService).deleteTemporaryUser("tp-missing");
 
-        int port = testHttpServer.getAddress().getPort();
-        String presignedUrl = "http://localhost:" + port + "/artifact";
-
-        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
-        when(s3ClientService.generateGetPresignedUrl(anyString(), anyString(), any(Duration.class)))
-            .thenReturn(presignedUrl);
-        when(s3ClientService.uploadFile(any(), any(), any(), any()))
-            .thenReturn(CompletableFuture.completedFuture("etag-xyz"));
-
-        Map<String, String> dataAddress = new HashMap<>();
-        dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
-        dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
-        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
-        dataAddress.put(S3Utils.REGION, "us-east-1");
-
-        DataFlow dataFlow = DataFlow.Builder.newInstance()
-            .processId("tp-4")
-            .transferType("HttpData-PUSH")
-            .tenantId("tenant-1")
-            .callbackAddress("http://cp:8080")
-            .datasetId("dataset-1")
-            .dataAddress(dataAddress)
-            .build();
-
-        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
+        DataFlowResult result = protocol.terminateTransfer("tp-missing").get();
 
         assertThat(result.isSuccess()).isTrue();
-        // Verify processId was used as the S3 objectKey since it was absent from dataAddress
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<Map<String, String>> s3PropsCaptor = ArgumentCaptor.forClass(Map.class);
-        verify(s3ClientService).uploadFile(any(), s3PropsCaptor.capture(), any(), any());
-        assertThat(s3PropsCaptor.getValue()).containsEntry(S3Utils.OBJECT_KEY, "tp-4");
-        // Cleanup of temporary credentials is handled by the consumer CP, not the provider-side push DP
-        verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
-        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-4"), anyMap());
-        verify(controlPlaneClient).sendCompleted(eq("http://cp:8080"), eq("tp-4"), anyMap());
+        verify(temporaryBucketUserService).deleteTemporaryUser("tp-missing");
     }
 
-    @Test
-    @DisplayName("initiateTransfer does not clean up temporary credentials on upload failure — consumer CP handles cleanup")
-    void initiateTransfer_cleansUpCredentialsOnUploadFailure() throws Exception {
-        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
-        testHttpServer.createContext("/artifact", exchange -> {
-            byte[] body = "artifact-content".getBytes();
-            exchange.sendResponseHeaders(200, body.length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(body);
-            }
-        });
-        testHttpServer.start();
+    private static final class CloseTrackingInputStream extends InputStream {
 
-        int port = testHttpServer.getAddress().getPort();
-        String presignedUrl = "http://localhost:" + port + "/artifact";
+        private final ByteArrayInputStream delegate;
+        private boolean closed;
 
-        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
-        when(s3ClientService.generateGetPresignedUrl(anyString(), anyString(), any(Duration.class)))
-            .thenReturn(presignedUrl);
-        // Simulate upload failure
-        when(s3ClientService.uploadFile(any(), any(), any(), any()))
-            .thenReturn(CompletableFuture.failedFuture(new RuntimeException("S3 auth failure")));
+        private CloseTrackingInputStream(byte[] payload) {
+            this.delegate = new ByteArrayInputStream(payload);
+        }
 
-        Map<String, String> dataAddress = new HashMap<>();
-        dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
-        dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
-        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
-        dataAddress.put(S3Utils.REGION, "us-east-1");
+        @Override
+        public int read() {
+            return delegate.read();
+        }
 
-        DataFlow dataFlow = DataFlow.Builder.newInstance()
-            .processId("tp-5")
-            .transferType("HttpData-PUSH")
-            .tenantId("tenant-1")
-            .callbackAddress("http://cp:8080")
-            .datasetId("dataset-1")
-            .dataAddress(dataAddress)
-            .build();
+        @Override
+        public void close() throws IOException {
+            closed = true;
+            delegate.close();
+        }
 
-        DataFlowResult result = protocol.initiateTransfer(dataFlow).get();
-
-        assertThat(result.isSuccess()).isFalse();
-        assertThat(result.getErrorMessage()).contains("S3 auth failure");
-        // Cleanup of temporary credentials is the consumer CP's responsibility,
-        // not the provider-side push DP — even when upload fails.
-        verify(temporaryBucketUserService, never()).deleteTemporaryUser(any());
-        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-5"), anyMap());
-        verify(controlPlaneClient).sendErrored(eq("http://cp:8080"), eq("tp-5"), anyString());
-        verify(controlPlaneClient, never()).sendCompleted(any(), any(), any());
-    }
-
-    @Test
-    @DisplayName("initiateTransfer sends sendStarted then sendCompleted callbacks on successful push transfer")
-    void initiateTransfer_sendsStartedThenCompletedCallbacks() throws Exception {
-        testHttpServer = HttpServer.create(new InetSocketAddress(0), 0);
-        testHttpServer.createContext("/artifact", exchange -> {
-            byte[] body = "artifact-content".getBytes();
-            exchange.sendResponseHeaders(200, body.length);
-            try (OutputStream os = exchange.getResponseBody()) {
-                os.write(body);
-            }
-        });
-        testHttpServer.start();
-
-        int port = testHttpServer.getAddress().getPort();
-        String presignedUrl = "http://localhost:" + port + "/artifact";
-
-        when(tenantBucketResolver.resolveBucketName(anyString())).thenReturn("provider-bucket");
-        when(s3ClientService.generateGetPresignedUrl(eq("provider-bucket"), anyString(), any(Duration.class)))
-            .thenReturn(presignedUrl);
-        when(s3ClientService.uploadFile(any(), any(), any(), any()))
-            .thenReturn(CompletableFuture.completedFuture("etag-ok"));
-
-        Map<String, String> dataAddress = new HashMap<>();
-        dataAddress.put(S3Utils.BUCKET_NAME, "consumer-bucket");
-        dataAddress.put(S3Utils.ACCESS_KEY, "consumer-access");
-        dataAddress.put(S3Utils.SECRET_KEY, "plain-secret");
-        dataAddress.put(S3Utils.REGION, "us-east-1");
-
-        DataFlow dataFlow = DataFlow.Builder.newInstance()
-                .processId("tp-1")
-                .transferType("HttpData-PUSH")
-                .tenantId("tenant-1")
-                .callbackAddress("http://cp:8080")
-                .datasetId("dataset-1")
-                .dataAddress(dataAddress)
-                .build();
-
-        protocol.initiateTransfer(dataFlow).join();
-
-        verify(controlPlaneClient).sendStarted(eq("http://cp:8080"), eq("tp-1"), anyMap());
-        verify(controlPlaneClient).sendCompleted(eq("http://cp:8080"), eq("tp-1"), anyMap());
-        verify(controlPlaneClient, never()).sendErrored(any(), any(), any());
+        private boolean isClosed() {
+            return closed;
+        }
     }
 }

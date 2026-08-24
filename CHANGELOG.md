@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] — Streaming Data Planes
+
+### Added
+- `data-plane-grpc` module — standalone gRPC streaming Data Plane Spring Boot application
+  (REST 9094, gRPC 9095). The provider DP prepares a stream session and exposes transport
+  metadata (`host`, `port`, `sessionId`, `mode`); the consumer DP starts the stream and writes
+  the received payload into the consumer bucket.
+- `data-plane-kafka` module — standalone Kafka-backed streaming Data Plane Spring Boot
+  application (REST 9098). The provider DP prepares Kafka transport metadata
+  (`bootstrapServers`, `topic`, `groupId`, `mode`), publishes the source stream into a broker
+  topic, and the consumer DP drains that topic into the consumer bucket.
+- Docker Compose profiles for streaming dataplanes:
+  - `--profile grpc` starts the consumer/provider gRPC dataplanes
+  - `--profile kafka` starts the consumer/provider Kafka dataplanes plus the shared Kafka broker
+
+### Changed
+- Streaming transfer orchestration now supports both `stream:grpc` and `stream:kafka` transport
+  profiles through DPS `prepare` + admin-triggered consumer `downloadData()` flow. The provider
+  CP persists transport metadata and sticky dataplane assignment so follow-up lifecycle calls hit
+  the same prepared dataplane instance.
+- `doc/data-plane-signaling-user-guide.md` and `doc/data-plane-signaling-technical.md` now
+  document the gRPC and Kafka dataplane deployment, transfer flow, and operator troubleshooting.
+
 ## [Unreleased] — Dataplane Signaling Protocol
 
 ### Added

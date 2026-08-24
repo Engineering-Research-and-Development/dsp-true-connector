@@ -53,24 +53,38 @@ public interface DataTransferProtocol {
     /**
      * Suspends an active data transfer.
      *
-     * @param dataFlowId the ID of the data flow to suspend
+     * @param processId the transfer process ID of the data flow to suspend
      * @return future with the result of the suspension
      */
-    CompletableFuture<DataFlowResult> suspendTransfer(String dataFlowId);
+    CompletableFuture<DataFlowResult> suspendTransfer(String processId);
 
     /**
      * Resumes a suspended data transfer.
      *
-     * @param dataFlowId the ID of the data flow to resume
+     * @param processId the transfer process ID of the data flow to resume
      * @return future with the result of the resumption
      */
-    CompletableFuture<DataFlowResult> resumeTransfer(String dataFlowId);
+    CompletableFuture<DataFlowResult> resumeTransfer(String processId);
+
+    /**
+     * Completes protocol-specific cleanup after a successful transfer.
+     *
+     * <p>This hook runs after the transfer itself has completed successfully but before the
+     * dataplane runtime persists {@code COMPLETED}. Protocols can override it to release
+     * temporary credentials or other runtime resources.</p>
+     *
+     * @param processId the transfer process ID of the data flow to complete
+     * @return future with the result of the cleanup step
+     */
+    default CompletableFuture<DataFlowResult> completeTransfer(String processId) {
+        return CompletableFuture.completedFuture(DataFlowResult.success());
+    }
 
     /**
      * Terminates a data transfer.
      *
-     * @param dataFlowId the ID of the data flow to terminate
+     * @param processId the transfer process ID of the data flow to terminate
      * @return future with the result of the termination
      */
-    CompletableFuture<DataFlowResult> terminateTransfer(String dataFlowId);
+    CompletableFuture<DataFlowResult> terminateTransfer(String processId);
 }

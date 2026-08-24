@@ -9,14 +9,18 @@ import static org.mockito.Mockito.when;
 
 import java.util.Optional;
 
+import it.eng.catalog.event.CatalogStructureChangedEvent;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Distribution;
@@ -34,6 +38,12 @@ public class DistributionServiceTest {
 
     @Mock
     private CatalogService catalogService;
+
+    @Mock
+    private ApplicationEventPublisher applicationEventPublisher;
+
+    @Captor
+    private ArgumentCaptor<CatalogStructureChangedEvent> catalogStructureChangedEventCaptor;
 
     @InjectMocks
     private DistributionService distributionService;
@@ -90,6 +100,7 @@ public class DistributionServiceTest {
         assertEquals(distribution.getId(), result.getId());
         verify(repository).save(distribution);
         verify(catalogService).updateCatalogDistributionAfterSave(distribution);
+        assertPublishedCatalogStructureChangedEvent("distribution-saved");
     }
 
     @Test
@@ -102,6 +113,7 @@ public class DistributionServiceTest {
         verify(repository).findByIdAndTenantId(distribution.getId(), TENANT_ID);
         verify(repository).deleteById(distribution.getId());
         verify(catalogService).updateCatalogDistributionAfterDelete(distribution);
+        assertPublishedCatalogStructureChangedEvent("distribution-deleted");
     }
 
     @Test
@@ -127,5 +139,13 @@ public class DistributionServiceTest {
         assertEquals(distribution.getId(), result.getId());
         verify(repository).findByIdAndTenantId(distribution.getId(), TENANT_ID);
         verify(repository).save(any(Distribution.class));
+        assertPublishedCatalogStructureChangedEvent("distribution-updated");
+    }
+
+    private void assertPublishedCatalogStructureChangedEvent(String expectedReason) {
+        verify(applicationEventPublisher).publishEvent(catalogStructureChangedEventCaptor.capture());
+        CatalogStructureChangedEvent event = catalogStructureChangedEventCaptor.getValue();
+        assertEquals(CatalogStructureChangedEvent.Scope.FULL_RECONCILE, event.scope());
+        assertEquals(expectedReason, event.reason());
     }
 }

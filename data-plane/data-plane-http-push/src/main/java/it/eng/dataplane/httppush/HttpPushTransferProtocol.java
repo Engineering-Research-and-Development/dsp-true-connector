@@ -1,29 +1,29 @@
 package it.eng.dataplane.httppush;
 
+import it.eng.dataplane.api.DataPlaneConstants;
+import it.eng.dataplane.api.io.SourceContext;
+import it.eng.dataplane.api.io.SourceOpenResult;
 import it.eng.dataplane.api.message.DataFlowPrepareMessage;
+import it.eng.dataplane.api.message.DataFlowPrepareMetadata;
+import it.eng.dataplane.api.message.DataFlowPrepareMetadataSection;
 import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.dataplane.api.model.DataFlow;
 import it.eng.dataplane.api.model.DataFlowResult;
 import it.eng.dataplane.api.spi.DataTransferProtocol;
 import it.eng.dataplane.core.client.ControlPlaneClient;
-import it.eng.tools.s3.properties.S3Properties;
+import it.eng.dataplane.s3.io.S3SourceReader;
+import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.util.S3Utils;
-import it.eng.dataplane.s3.service.TenantBucketResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,10 +32,9 @@ import java.util.concurrent.Executor;
 
 /**
  * HTTP-PUSH transfer protocol implementation.
- * Acting as the provider side: downloads the artifact from its own presigned URL,
- * then pushes the data to the consumer's S3 bucket using the credentials provided
- * in the DataFlow's dataAddress. After a successful transfer the temporary consumer
- * IAM credentials are cleaned up.
+ * Acting as the provider side: opens the source artifact using CP-provided {@code source.*}
+ * credentials via {@link S3SourceReader}, then pushes the data to the consumer's S3 bucket
+ * using CP-provided {@code sink.*} credentials from the DataFlow's dataAddress.
  */
 @Component
 @Slf4j
@@ -43,21 +42,11 @@ import java.util.concurrent.Executor;
 public class HttpPushTransferProtocol implements DataTransferProtocol {
 
     private final S3ClientService s3ClientService;
-    private final S3Properties s3Properties;
     private final TemporaryBucketUserService temporaryBucketUserService;
-    private final TenantBucketResolver tenantBucketResolver;
+    private final S3SourceReader s3SourceReader;
     @Qualifier("transferExecutor")
     private final Executor transferExecutor;
-    @Qualifier("dataPlaneHttpClient")
-    private final HttpClient httpClient;
     private final ControlPlaneClient controlPlaneClient;
-
-    /**
-     * Request timeout (30 minutes) used for all artifact downloads.
-     * java.net.http.HttpClient requires the timeout to be set before sending,
-     * so a generous fallback is applied to all requests regardless of file size.
-     */
-    private static final int REQUEST_TIMEOUT_MS = 1_800_000; // 30 minutes
 
     /**
      * Returns the unique identifier for this transfer protocol.
@@ -69,17 +58,14 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
         return "HttpData-PUSH";
     }
 
-    /** Data address key indicating the calling mode (VIEW for consumer viewData). */
-    private static final String MODE_KEY = "mode";
     /** Mode value for consumer viewData requests — returns a pre-signed URL for the pushed file. */
     private static final String MODE_VIEW = "VIEW";
-    /** Data address key carrying the pre-signed URL in the prepare response. */
-    private static final String PRESIGNED_URL_KEY = "presignedUrl";
 
     /**
      * Prepares the consumer-side bucket for an HTTP-PUSH transfer by creating a temporary
-     * IAM user with write-only access to the consumer's bucket, or generates a presigned
-     * GET URL when called with {@code dataAddress.mode = VIEW} (consumer viewData request).
+     * IAM user with write-only access to the consumer's bucket, using CP-provided management
+     * credentials from {@code metadata.sink.s3}. Generates a presigned GET URL when called
+     * with {@code metadata.sink.mode = VIEW} (consumer viewData request).
      *
      * <p>Normal flow: the consumer Control Plane calls this before sending the DSP
      * {@code TransferRequestMessage} to the provider, so the temporary credentials can be
@@ -87,42 +73,65 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
      * to push the artifact directly into the consumer's bucket.</p>
      *
      * <p>VIEW mode: the consumer Control Plane calls this after a completed transfer to obtain
-     * a presigned GET URL for the file that was pushed to the consumer's bucket
-     * (stored under key {@code processId}).</p>
+     * a presigned GET URL for the file that was pushed to the consumer's bucket. All S3
+     * credentials must be present in {@code metadata.sink.s3}.</p>
+     *
+     * <p>All S3 coordinates (bucket, region, endpoint, credentials) are read exclusively from
+     * {@code metadata.sink.s3}. No DP-local {@code s3.endpoint} or {@code s3.bucketName}
+     * fallback is performed.</p>
      *
      * @param message the prepare message; {@code processId} is used as the S3 object key
-     * @return response with {@code dataAddress} containing S3 credentials/bucket info or presigned URL
+     * @return response with {@code dataAddress} containing temporary upload credentials or presigned URL
      */
     @Override
     public DataFlowPrepareResponse prepare(DataFlowPrepareMessage message) {
         String processId = message.getProcessId();
-        String bucketName = s3Properties.getBucketName();
+        DataFlowPrepareMetadata metadata = DataFlowPrepareMetadata.from(message);
 
-        Map<String, String> incoming = message.getDataAddress();
-        if (incoming != null && MODE_VIEW.equals(incoming.get(MODE_KEY))) {
-            log.info("Preparing viewData presigned URL for processId={} in bucket={}", processId, bucketName);
-            String presignedUrl = s3ClientService.generateGetPresignedUrl(bucketName, processId, Duration.ofDays(7L));
+        String mode = metadata.getSinkSection()
+                .getString(DataPlaneConstants.METADATA_FIELD_MODE);
+        if (MODE_VIEW.equals(mode)) {
+            log.info("Preparing viewData presigned URL for processId={}", processId);
+            DataFlowPrepareMetadataSection sinkS3Section = metadata.getSinkSection()
+                    .getSection(DataPlaneConstants.METADATA_SECTION_S3);
+            String presignedUrl = s3ClientService.generateGetPresignedUrl(sinkS3Section.toScalarMap(), Duration.ofDays(7L));
             log.debug("Generated presigned URL for pushed file, objectKey='{}'", processId);
             return DataFlowPrepareResponse.Builder.newInstance()
                     .processId(processId)
-                    .dataAddress(Map.of(PRESIGNED_URL_KEY, presignedUrl))
+                    .dataAddress(Map.of(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY, presignedUrl))
                     .build();
         }
 
-        log.info("Preparing HTTP-PUSH temp user for processId={} in bucket={}", processId, bucketName);
+        DataFlowPrepareMetadataSection sinkS3Section = metadata.getSinkSection()
+                .getSection(DataPlaneConstants.METADATA_SECTION_S3);
+        String bucketName = sinkS3Section.getString(DataPlaneConstants.METADATA_S3_BUCKET_NAME);
+        String endpointOverride = sinkS3Section.getString(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE);
+        BucketCredentialsEntity managementCredentials = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName(bucketName)
+                .accessKey(sinkS3Section.getString(DataPlaneConstants.METADATA_S3_ACCESS_KEY))
+                .secretKey(sinkS3Section.getString(DataPlaneConstants.METADATA_S3_SECRET_KEY))
+                .endpointOverride(endpointOverride)
+                .build();
 
-        var tempUser = temporaryBucketUserService.createTemporaryUser(processId, bucketName, processId);
+        log.info("Preparing HTTP-PUSH temp user for processId={} in bucket={}", processId, bucketName);
+        var tempUser = temporaryBucketUserService.createTemporaryUser(
+                processId,
+                managementCredentials,
+                bucketName,
+                processId);
         log.info("Created temporary IAM user '{}' for processId={}", tempUser.getAccessKey(), processId);
 
         Map<String, String> dataAddress = new HashMap<>();
         dataAddress.put(S3Utils.BUCKET_NAME, bucketName);
-        dataAddress.put(S3Utils.REGION, s3Properties.getRegion());
         dataAddress.put(S3Utils.OBJECT_KEY, processId);
         dataAddress.put(S3Utils.ACCESS_KEY, tempUser.getAccessKey());
         dataAddress.put(S3Utils.SECRET_KEY, tempUser.getSecretKey());
-        String endpointOverride = StringUtils.isNotBlank(s3Properties.getExternalPresignedEndpoint())
-                ? s3Properties.getExternalPresignedEndpoint()
-                : s3Properties.getEndpoint();
+        String region = sinkS3Section.getString(DataPlaneConstants.METADATA_S3_REGION);
+        if (StringUtils.isNotBlank(region)) {
+            dataAddress.put(S3Utils.REGION, region);
+        }
+        // endpointOverride from CP metadata — internal/container-reachable endpoint for server-side uploads.
+        // The external presigned URL endpoint is a CP concern and must not be embedded here.
         if (StringUtils.isNotBlank(endpointOverride)) {
             dataAddress.put(S3Utils.ENDPOINT_OVERRIDE, endpointOverride);
         }
@@ -135,25 +144,34 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
 
     /**
      * Initiates an HTTP-PUSH data transfer for the given data flow.
-     * Generates a presigned GET URL for the provider artifact, downloads the artifact,
-     * and pushes it to the consumer's S3 bucket using credentials from the data address.
+     * Opens the provider artifact using CP-provided {@code metadata.source.s3} credentials via
+     * {@link S3SourceReader} and pushes it to the consumer's S3 bucket using the
+     * CP-provided {@code metadata.sink.s3} credentials.
      * Notifies the Control Plane via explicit {@code sendStarted}, {@code sendCompleted},
      * or {@code sendErrored} callbacks so the CP can drive DSP state transitions directly.
      *
-     * @param dataFlow the data flow to initiate; its dataAddress must contain consumer S3 credentials
+     * @param dataFlow the data flow to initiate; its metadata must contain both source and sink S3 sections
      * @return future with the result of the transfer
      */
     @Override
     public CompletableFuture<DataFlowResult> initiateTransfer(DataFlow dataFlow) {
         log.info("Initiating HTTP-PUSH transfer for data flow {}", dataFlow.getDataFlowId());
 
-        Map<String, String> dataAddress = dataFlow.getDataAddress();
-        if (dataAddress == null || !dataAddress.containsKey(S3Utils.BUCKET_NAME)) {
+        DataFlowPrepareMetadata metadata = DataFlowPrepareMetadata.fromMap(dataFlow.getMetadata());
+        DataFlowPrepareMetadataSection sinkS3 = metadata.getSinkSection().getSection(DataPlaneConstants.METADATA_SECTION_S3);
+        if (StringUtils.isBlank(sinkS3.getString(DataPlaneConstants.METADATA_S3_BUCKET_NAME))) {
             return CompletableFuture.completedFuture(
-                DataFlowResult.failure("dataAddress.bucketName is required for HttpData-PUSH")
+                DataFlowResult.failure("metadata.sink.s3.bucketName (consumer bucketName) is required for HttpData-PUSH")
+            );
+        }
+        DataFlowPrepareMetadataSection sourceS3 = metadata.getSourceSection().getSection(DataPlaneConstants.METADATA_SECTION_S3);
+        if (StringUtils.isBlank(sourceS3.getString(DataPlaneConstants.METADATA_S3_BUCKET_NAME))) {
+            return CompletableFuture.completedFuture(
+                DataFlowResult.failure("metadata.source.s3.bucketName (provider bucketName) is required for HttpData-PUSH")
             );
         }
 
+        Map<String, String> dataAddress = dataFlow.getDataAddress() != null ? dataFlow.getDataAddress() : Map.of();
         // Notify CP that the DP has started processing — provider CP can now update DSP state
         controlPlaneClient.sendStarted(dataFlow.getCallbackAddress(), dataFlow.getProcessId(), dataAddress);
 
@@ -200,9 +218,40 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     }
 
     /**
-     * Terminates a data transfer.
-     * Temporary IAM credentials created by the consumer CP for HTTP-PUSH transfers are cleaned up
-     * by the consumer CP when it receives the termination event, not by this provider-side DP.
+     * Completes the HTTP-PUSH transfer by deleting the temporary IAM credentials that were
+     * created during {@link #prepare}. This cleanup runs on the success path, before the
+     * dataplane runtime persists {@code COMPLETED}.
+     *
+     * <p>Cleanup is best-effort: if the temporary user has already been deleted or was never
+     * created, the failure is logged as a warning and the method still returns success.</p>
+     *
+     * @param processId the DPS transfer process ID
+     * @return future with success result
+     */
+    @Override
+    public CompletableFuture<DataFlowResult> completeTransfer(String processId) {
+        log.info("Completing HttpData-PUSH transfer for processId={}, cleaning up temporary IAM user", processId);
+        try {
+            temporaryBucketUserService.deleteTemporaryUser(processId);
+            log.info("Deleted temporary IAM user for processId={}", processId);
+        } catch (Exception e) {
+            log.warn("Best-effort cleanup on complete: failed to delete temporary IAM user for processId={}: {}",
+                    processId, e.getMessage());
+        }
+        return CompletableFuture.completedFuture(DataFlowResult.success());
+    }
+
+    /**
+     * Terminates a data transfer and cleans up the temporary IAM credentials created by
+     * {@link #prepare} for the consumer's upload bucket.
+     *
+     * <p>This handles the error/cancel path. On the success path, cleanup is performed by
+     * {@link #completeTransfer} before the dataplane marks the flow {@code COMPLETED}.</p>
+     *
+     * <p>Cleanup is best-effort: if the temporary user has already been deleted or was never
+     * created (e.g., prepare failed before credential creation), the failure is logged as a
+     * warning and the method still returns success so that the Control Plane can continue
+     * its own lifecycle transitions.</p>
      *
      * @param processId the DPS transfer process ID
      * @return future with success result
@@ -210,69 +259,61 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     @Override
     public CompletableFuture<DataFlowResult> terminateTransfer(String processId) {
         log.info("Terminating HttpData-PUSH transfer for processId={}", processId);
+        try {
+            temporaryBucketUserService.deleteTemporaryUser(processId);
+            log.info("Deleted temporary IAM user for processId={}", processId);
+        } catch (Exception e) {
+            log.warn("Best-effort cleanup: failed to delete temporary IAM user for processId={}: {}", processId, e.getMessage());
+        }
         return CompletableFuture.completedFuture(DataFlowResult.success());
     }
 
     /**
-     * Performs the actual push: generates a presigned provider URL, streams the artifact,
-     * and uploads to the consumer bucket. Uses {@link java.net.http.HttpClient} which
-     * negotiates HTTP/2 on TLS connections and falls back to HTTP/1.1 for plain HTTP.
+     * Performs the actual push: opens the provider source artifact using CP-provided
+     * {@code metadata.source.s3} credentials via {@link S3SourceReader}, then streams the artifact
+     * to the consumer bucket using CP-provided {@code metadata.sink.s3} properties.
      *
      * @param dataFlow the data flow with provider and consumer metadata
      * @return future with transfer result
      */
     private CompletableFuture<DataFlowResult> pushArtifactToConsumer(DataFlow dataFlow) {
-        // Resolve provider bucket and generate presigned URL before entering async lambda
-        String providerBucket = tenantBucketResolver.resolveBucketName(dataFlow.getTenantId());
-        String datasetId = dataFlow.getDatasetId();
-        String presignedUrl = s3ClientService.generateGetPresignedUrl(providerBucket, datasetId, Duration.ofDays(1L));
+        // Open provider source using CP-provided metadata.source.s3 credentials directly
+        SourceContext sourceContext = buildSourceContext(dataFlow);
+        SourceOpenResult sourceResult;
+        try {
+            sourceResult = s3SourceReader.open(sourceContext);
+        } catch (RuntimeException e) {
+            log.error("Failed to open provider source for data flow {} due to synchronous open failure: {}",
+                    dataFlow.getDataFlowId(), e.getMessage());
+            return CompletableFuture.completedFuture(
+                    DataFlowResult.failure("Failed to open provider artifact: " + e.getMessage()));
+        }
+        if (!sourceResult.isSuccess()) {
+            log.error("Failed to open provider source for data flow {}: {}",
+                    dataFlow.getDataFlowId(), sourceResult.getErrorMessage());
+            return CompletableFuture.completedFuture(
+                    DataFlowResult.failure("Failed to open provider artifact: " + sourceResult.getErrorMessage()));
+        }
 
-        // Build consumer S3 properties, decrypting secretKey stored encrypted in MongoDB
-        Map<String, String> dataAddress = dataFlow.getDataAddress();
-        Map<String, String> consumerS3Properties = buildConsumerS3Properties(dataAddress, dataFlow.getProcessId());
+        // Build consumer S3 properties from CP-provided metadata.sink.s3 section
+        Map<String, String> consumerS3Properties = buildConsumerS3Properties(dataFlow);
+        InputStream artifactStream = sourceResult.getStream();
 
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create(presignedUrl))
-                        .GET()
-                        .timeout(Duration.ofMillis(REQUEST_TIMEOUT_MS))
-                        .build();
-
-                log.debug("Sending GET request to provider artifact: {}", presignedUrl);
-                HttpResponse<InputStream> response = httpClient.send(
-                        request, HttpResponse.BodyHandlers.ofInputStream());
-
-                int statusCode = response.statusCode();
-                if (statusCode != 200) {
-                    closeQuietly(response.body());
-                    throw new RuntimeException("Failed to get provider artifact. HTTP response code: " + statusCode);
+        return CompletableFuture.supplyAsync(() ->
+            {
+                try {
+                    return s3ClientService.uploadFile(
+                            artifactStream,
+                            consumerS3Properties,
+                            sourceResult.getContentType(),
+                            null
+                    ).whenComplete((etag, ex) -> closeQuietly(artifactStream));
+                } catch (RuntimeException exception) {
+                    closeQuietly(artifactStream);
+                    throw exception;
                 }
-
-                log.info("HTTP response code: {}", statusCode);
-                response.headers().firstValueAsLong("content-length").ifPresent(len ->
-                        log.debug("Content-Length: {} bytes", len));
-
-                String contentType = response.headers().firstValue(HttpHeaders.CONTENT_TYPE).orElse(null);
-                String contentDisposition = response.headers().firstValue(HttpHeaders.CONTENT_DISPOSITION).orElse(null);
-
-                // uploadFile is non-blocking. The response body InputStream is closed after
-                // the upload future completes on all paths.
-                return s3ClientService.uploadFile(
-                        response.body(),
-                        consumerS3Properties,
-                        contentType,
-                        contentDisposition
-                ).whenComplete((etag, ex) -> closeQuietly(response.body()));
-            } catch (IOException e) {
-                log.error("Failed to download provider artifact from presigned URL: {}", presignedUrl, e);
-                throw new RuntimeException(e.getMessage());
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.error("Download interrupted from presigned URL: {}", presignedUrl, e);
-                throw new RuntimeException("Transfer interrupted: " + e.getMessage());
-            }
-        }, transferExecutor)
+            },
+        transferExecutor)
         .thenCompose(uploadFuture -> uploadFuture)
         .handle((etag, throwable) -> {
             if (throwable != null) {
@@ -287,40 +328,77 @@ public class HttpPushTransferProtocol implements DataTransferProtocol {
     }
 
     /**
-     * Builds the consumer S3 properties map from the data address.
-     * The secretKey is passed as plain text — the consumer CP creates the temporary IAM user
-     * and places the unencrypted secretKey into the {@code DataFlowStartMessage.dataAddress}
-     * that it sends to the provider CP, which forwards it to this DP unchanged.
+     * Builds a {@link SourceContext} from CP-provided {@code metadata.source.s3} section.
+     * Falls back to {@code datasetId} when {@code source.s3.objectKey} is absent.
      *
-     * @param dataAddress the data address map from the DataFlow
-     * @param processId   the transfer process ID used as object key fallback
+     * @param dataFlow the data flow containing transfer metadata
+     * @return source context ready for {@link S3SourceReader#open(SourceContext)}
+     */
+    private SourceContext buildSourceContext(DataFlow dataFlow) {
+        DataFlowPrepareMetadataSection s3Section = DataFlowPrepareMetadata.fromMap(dataFlow.getMetadata())
+                .getSourceSection()
+                .getSection(DataPlaneConstants.METADATA_SECTION_S3);
+        Map<String, String> props = new HashMap<>();
+        props.put(S3Utils.BUCKET_NAME, s3Section.getString(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        String objectKey = s3Section.getString(DataPlaneConstants.METADATA_S3_OBJECT_KEY);
+        props.put(S3Utils.OBJECT_KEY, StringUtils.isNotBlank(objectKey) ? objectKey : dataFlow.getDatasetId());
+        putIfNotBlank(props, S3Utils.ACCESS_KEY, s3Section.getString(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        putIfNotBlank(props, S3Utils.SECRET_KEY, s3Section.getString(DataPlaneConstants.METADATA_S3_SECRET_KEY));
+        putIfNotBlank(props, S3Utils.REGION, s3Section.getString(DataPlaneConstants.METADATA_S3_REGION));
+        putIfNotBlank(props, S3Utils.ENDPOINT_OVERRIDE, s3Section.getString(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+        return SourceContext.Builder.newInstance().properties(props).build();
+    }
+
+    /**
+     * Builds the consumer S3 properties map from CP-provided {@code metadata.sink.s3} section.
+     * Falls back to {@code processId} when {@code sink.s3.objectKey} is absent.
+     * The secretKey arrives as plain text from the consumer CP via the DataFlowStartMessage.
+     *
+     * @param dataFlow the data flow containing transfer metadata
      * @return map of S3 properties ready for use by S3ClientService
      */
-    private Map<String, String> buildConsumerS3Properties(Map<String, String> dataAddress, String processId) {
+    private Map<String, String> buildConsumerS3Properties(DataFlow dataFlow) {
+        DataFlowPrepareMetadataSection s3Section = DataFlowPrepareMetadata.fromMap(dataFlow.getMetadata())
+                .getSinkSection()
+                .getSection(DataPlaneConstants.METADATA_SECTION_S3);
         Map<String, String> props = new HashMap<>();
-        props.put(S3Utils.BUCKET_NAME, dataAddress.get(S3Utils.BUCKET_NAME));
-
-        String objectKey = dataAddress.getOrDefault(S3Utils.OBJECT_KEY, processId);
-        props.put(S3Utils.OBJECT_KEY, objectKey);
-
-        props.put(S3Utils.ACCESS_KEY, dataAddress.get(S3Utils.ACCESS_KEY));
-
+        props.put(S3Utils.BUCKET_NAME, s3Section.getString(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        String objectKey = s3Section.getString(DataPlaneConstants.METADATA_S3_OBJECT_KEY);
+        props.put(S3Utils.OBJECT_KEY, StringUtils.isNotBlank(objectKey) ? objectKey : dataFlow.getProcessId());
+        putIfNotBlank(props, S3Utils.ACCESS_KEY, s3Section.getString(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
         // The secretKey arrives as plain text — set directly without decryption.
-        // The consumer CP creates the temp user, places the plain secretKey in the DataFlowStartMessage
-        // dataAddress, and the provider CP forwards it here without encrypting.
-        props.put(S3Utils.SECRET_KEY, dataAddress.get(S3Utils.SECRET_KEY));
-
-        String endpointOverride = dataAddress.get(S3Utils.ENDPOINT_OVERRIDE);
-        if (StringUtils.isNotBlank(endpointOverride)) {
-            props.put(S3Utils.ENDPOINT_OVERRIDE, endpointOverride);
-        }
-
-        String region = dataAddress.get(S3Utils.REGION);
-        if (StringUtils.isNotBlank(region)) {
-            props.put(S3Utils.REGION, region);
-        }
-
+        putIfNotBlank(props, S3Utils.SECRET_KEY, s3Section.getString(DataPlaneConstants.METADATA_S3_SECRET_KEY));
+        putIfNotBlank(props, S3Utils.ENDPOINT_OVERRIDE, s3Section.getString(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+        putIfNotBlank(props, S3Utils.REGION, s3Section.getString(DataPlaneConstants.METADATA_S3_REGION));
         return props;
+    }
+
+    /**
+     * Builds the VIEW presign properties from the CP-provided {@code sink.s3} metadata section.
+     *
+     * <p>The dataplane preserves both the internal {@code endpointOverride} used for S3 access
+     * and the optional {@code publicPresignedEndpoint} used for the returned URL.</p>
+     *
+     * @param s3Section the sink.s3 metadata section
+     * @return S3 properties for shared presigned URL generation
+     */
+    private Map<String, String> buildViewS3Properties(DataFlowPrepareMetadataSection s3Section) {
+        Map<String, String> props = new HashMap<>();
+        putIfNotBlank(props, S3Utils.BUCKET_NAME, s3Section.getString(DataPlaneConstants.METADATA_S3_BUCKET_NAME));
+        putIfNotBlank(props, S3Utils.OBJECT_KEY, s3Section.getString(DataPlaneConstants.METADATA_S3_OBJECT_KEY));
+        putIfNotBlank(props, S3Utils.ACCESS_KEY, s3Section.getString(DataPlaneConstants.METADATA_S3_ACCESS_KEY));
+        putIfNotBlank(props, S3Utils.SECRET_KEY, s3Section.getString(DataPlaneConstants.METADATA_S3_SECRET_KEY));
+        putIfNotBlank(props, S3Utils.ENDPOINT_OVERRIDE, s3Section.getString(DataPlaneConstants.METADATA_S3_ENDPOINT_OVERRIDE));
+        putIfNotBlank(props, S3Utils.PUBLIC_PRESIGNED_ENDPOINT,
+                s3Section.getString(DataPlaneConstants.METADATA_S3_PUBLIC_PRESIGNED_ENDPOINT));
+        putIfNotBlank(props, S3Utils.REGION, s3Section.getString(DataPlaneConstants.METADATA_S3_REGION));
+        return props;
+    }
+
+    private void putIfNotBlank(Map<String, String> target, String key, String value) {
+        if (StringUtils.isNotBlank(value)) {
+            target.put(key, value);
+        }
     }
 
     /**

@@ -1,6 +1,6 @@
 package it.eng.tools.s3.service;
 
-import it.eng.tools.s3.configuration.S3ClientProvider;
+import it.eng.tools.s3.configuration.S3ClientFactory;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.model.S3UploadMode;
@@ -46,7 +46,7 @@ import java.util.concurrent.CompletableFuture;
 @Slf4j
 public class S3ClientServiceImpl implements S3ClientService {
 
-    private final S3ClientProvider s3ClientProvider;
+    private final S3ClientFactory s3ClientFactory;
     private final S3Properties s3Properties;
     private final BucketCredentialsService bucketCredentialsService;
     private final S3UploadStrategyFactory uploadStrategyFactory;
@@ -57,7 +57,7 @@ public class S3ClientServiceImpl implements S3ClientService {
     /**
      * Constructor for S3ClientServiceImpl.
      *
-     * @param s3ClientProvider         provider for S3 client (sync and async)
+     * @param s3ClientFactory          factory for S3 clients (static or dynamic depending on context)
      * @param s3Properties             the S3 properties
      * @param bucketCredentialsService service for managing bucket credentials
      * @param uploadStrategyFactory    factory for creating upload strategy instances
@@ -65,12 +65,12 @@ public class S3ClientServiceImpl implements S3ClientService {
      *                                 may be {@code null} in Data Plane context
      */
     @Autowired
-    public S3ClientServiceImpl(S3ClientProvider s3ClientProvider,
+    public S3ClientServiceImpl(S3ClientFactory s3ClientFactory,
                                S3Properties s3Properties,
                                BucketCredentialsService bucketCredentialsService,
                                S3UploadStrategyFactory uploadStrategyFactory,
                                @Nullable ApplicationPropertyReader propertyReader) {
-        this.s3ClientProvider = s3ClientProvider;
+        this.s3ClientFactory = s3ClientFactory;
         this.s3Properties = s3Properties;
         this.bucketCredentialsService = bucketCredentialsService;
         this.uploadStrategyFactory = uploadStrategyFactory;
@@ -217,7 +217,7 @@ public class S3ClientServiceImpl implements S3ClientService {
         S3ClientRequest s3ClientRequest = S3ClientRequest.from(s3Properties.getRegion(),
                 s3Properties.getEndpoint(),
                 bucketCredentials);
-        return s3ClientProvider.s3Client(s3ClientRequest);
+        return s3ClientFactory.getClient(s3ClientRequest);
     }
 
     @Override
@@ -227,17 +227,55 @@ public class S3ClientServiceImpl implements S3ClientService {
             throw new IllegalArgumentException("Object key cannot be null or empty");
         }
         BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(bucketName);
+        String region = s3Properties.getRegion();
+        String endpoint = resolvePresignedEndpoint(bucketName, null, region);
+        return generateGetPresignedUrl(bucketName, objectKey, expiration, bucketCredentials, region, endpoint,
+                s3Properties.getEndpoint());
+    }
 
-        String externalEndpoint = resolveExternalEndpoint(bucketName);
-        boolean isAws = isAwsEndpoint(externalEndpoint);
+    @Override
+    public String generateGetPresignedUrl(Map<String, String> sourceS3Properties, Duration expiration) {
+        String bucketName = requireProperty(sourceS3Properties, S3Utils.BUCKET_NAME);
+        validateBucketName(bucketName);
+        String objectKey = requireProperty(sourceS3Properties, S3Utils.OBJECT_KEY);
+        String accessKey = requireProperty(sourceS3Properties, S3Utils.ACCESS_KEY);
+        String secretKey = requireProperty(sourceS3Properties, S3Utils.SECRET_KEY);
+        String region = requireProperty(sourceS3Properties, S3Utils.REGION);
+        String internalEndpointOverride = sourceS3Properties.get(S3Utils.ENDPOINT_OVERRIDE);
+        String publicPresignedEndpoint = sourceS3Properties.get(S3Utils.PUBLIC_PRESIGNED_ENDPOINT);
+
+        BucketCredentialsEntity bucketCredentials = BucketCredentialsEntity.Builder.newInstance()
+                .bucketName(bucketName)
+                .accessKey(accessKey)
+                .secretKey(secretKey)
+                .build();
+
+        String presignedEndpointOverride = publicPresignedEndpoint;
+        if (presignedEndpointOverride == null || presignedEndpointOverride.isBlank()) {
+            presignedEndpointOverride = internalEndpointOverride;
+        }
+
+        String presignedEndpoint = resolvePresignedEndpoint(bucketName, presignedEndpointOverride, region);
+        return generateGetPresignedUrl(bucketName, objectKey, expiration, bucketCredentials, region,
+                presignedEndpoint, internalEndpointOverride);
+    }
+
+    private String generateGetPresignedUrl(String bucketName,
+                                           String objectKey,
+                                           Duration expiration,
+                                           BucketCredentialsEntity bucketCredentials,
+                                           String region,
+                                           String presignedEndpoint,
+                                           String clientEndpointOverride) {
+        boolean isAws = isAwsEndpoint(presignedEndpoint);
 
         log.debug("Generating presigned URL - AWS mode: {}, endpoint: {}, bucket: {}, key: {}",
-                isAws, externalEndpoint, bucketName, objectKey);
+                isAws, presignedEndpoint, bucketName, objectKey);
 
         S3Presigner.Builder presignerBuilder = S3Presigner.builder()
                 .credentialsProvider(StaticCredentialsProvider.create(
                         AwsBasicCredentials.create(bucketCredentials.getAccessKey(), bucketCredentials.getSecretKey())))
-                .region(Region.of(s3Properties.getRegion()));
+                .region(Region.of(region));
 
         if (isAws) {
             presignerBuilder.serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
@@ -245,7 +283,7 @@ public class S3ClientServiceImpl implements S3ClientService {
                     .build());
         } else {
             presignerBuilder
-                    .endpointOverride(URI.create(externalEndpoint))
+                    .endpointOverride(URI.create(presignedEndpoint))
                     .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
                             .pathStyleAccessEnabled(true)
                             .build());
@@ -253,7 +291,7 @@ public class S3ClientServiceImpl implements S3ClientService {
 
         try (S3Presigner presigner = presignerBuilder.build()) {
 
-            S3Client s3Client = getS3Client(bucketName);
+            S3Client s3Client = getS3Client(region, clientEndpointOverride, bucketCredentials);
 
             // First, get the object's metadata
             HeadObjectRequest headObjectRequest = HeadObjectRequest.builder()
@@ -290,20 +328,26 @@ public class S3ClientServiceImpl implements S3ClientService {
         }
     }
 
-    private String resolveExternalEndpoint(String bucketName) {
+    private String resolvePresignedEndpoint(String bucketName) {
+        return resolvePresignedEndpoint(bucketName, null, s3Properties.getRegion());
+    }
+
+    private String resolvePresignedEndpoint(String bucketName, String endpointOverride, String region) {
+        if (endpointOverride != null && !endpointOverride.isBlank()) {
+            return endpointOverride;
+        }
+
         String externalEndpoint = s3Properties.getExternalPresignedEndpoint();
         if (externalEndpoint != null && !externalEndpoint.isBlank()) {
             return externalEndpoint;
         }
-        // No explicit external endpoint — check if s3.endpoint is a custom (MinIO) endpoint
+
         String s3Endpoint = s3Properties.getEndpoint();
         if (s3Endpoint != null && !s3Endpoint.isBlank() && !isAwsEndpoint(s3Endpoint)) {
-            // MinIO/custom S3: presigned URLs embedded with the same endpoint consumers must use
             log.debug("Using s3.endpoint as presigned URL base: {}", s3Endpoint);
             return s3Endpoint;
         }
-        // AWS mode: derive virtual-hosted-style endpoint from region and bucket name
-        String region = s3Properties.getRegion();
+
         if (region == null || region.isBlank()) {
             throw new IllegalStateException("S3 region must be configured when externalPresignedEndpoint is blank");
         }
@@ -316,11 +360,24 @@ public class S3ClientServiceImpl implements S3ClientService {
         return externalEndpoint;
     }
 
+    private S3Client getS3Client(String region, String endpointOverride, BucketCredentialsEntity bucketCredentials) {
+        S3ClientRequest s3ClientRequest = S3ClientRequest.from(region, endpointOverride, bucketCredentials);
+        return s3ClientFactory.getClient(s3ClientRequest);
+    }
+
+    private String requireProperty(Map<String, String> properties, String key) {
+        String value = properties.get(key);
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(key + " is required");
+        }
+        return value;
+    }
+
     @Override
     public List<String> listFiles(String bucketName) {
         validateBucketName(bucketName);
         try {
-            S3Client s3Client = s3ClientProvider.adminS3Client();
+            S3Client s3Client = s3ClientFactory.adminClient();
 
             ListObjectsV2Request request = ListObjectsV2Request.builder()
                     .bucket(bucketName)

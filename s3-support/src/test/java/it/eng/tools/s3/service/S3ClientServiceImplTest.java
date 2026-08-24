@@ -1,6 +1,6 @@
 package it.eng.tools.s3.service;
 
-import it.eng.tools.s3.configuration.S3ClientProvider;
+import it.eng.tools.s3.configuration.S3ClientFactory;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -44,7 +45,7 @@ public class S3ClientServiceImplTest {
     private static final String CONTENT_DISPOSITION = "attachment; filename=test-file.txt";
     private static final InputStream INPUT_STREAM = new ByteArrayInputStream("test content".getBytes());
     @Mock
-    private S3ClientProvider s3ClientProvider;
+    private S3ClientFactory s3ClientFactory;
 
     @Mock
     private S3Client s3Client;
@@ -92,9 +93,9 @@ public class S3ClientServiceImplTest {
                 .bucketName(bucketName)
                 .build();
         lenient().when(bucketCredentialsService.getBucketCredentials(any())).thenReturn(bucketCredentials);
-        lenient().when(s3ClientProvider.s3Client(any(S3ClientRequest.class))).thenReturn(s3Client);
-        lenient().when(s3ClientProvider.s3AsyncClient(any(S3ClientRequest.class))).thenReturn(s3AsyncClient);
-        lenient().when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+        lenient().when(s3ClientFactory.getClient(any(S3ClientRequest.class))).thenReturn(s3Client);
+        lenient().when(s3ClientFactory.getAsyncClient(any(S3ClientRequest.class))).thenReturn(s3AsyncClient);
+        lenient().when(s3ClientFactory.adminClient()).thenReturn(s3Client);
         // Default to ASYNC mode for backward compatibility with existing tests
         lenient().when(s3Properties.getUploadMode()).thenReturn("ASYNC");
         lenient().when(propertyReader.getPropertyValue(any())).thenReturn(java.util.Optional.empty());
@@ -729,7 +730,7 @@ public class S3ClientServiceImplTest {
                 S3Object.builder().key("file2.txt").build(),
                 S3Object.builder().key("file3.txt").build()
         );
-        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+        when(s3ClientFactory.adminClient()).thenReturn(s3Client);
         when(s3Client.listObjectsV2(any(ListObjectsV2Request.class)))
                 .thenReturn(ListObjectsV2Response.builder()
                         .contents(s3Objects)
@@ -751,7 +752,7 @@ public class S3ClientServiceImplTest {
     void listFiles_EmptyBucket() {
         // Arrange
         String bucketName = "empty-bucket";
-        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+        when(s3ClientFactory.adminClient()).thenReturn(s3Client);
         when(s3Client.listObjectsV2(any(ListObjectsV2Request.class)))
                 .thenReturn(ListObjectsV2Response.builder()
                         .contents(new ArrayList<>())
@@ -772,7 +773,7 @@ public class S3ClientServiceImplTest {
     void listFiles_WhenListingFails() {
         // Arrange
         String bucketName = "test-bucket";
-        when(s3ClientProvider.adminS3Client()).thenReturn(s3Client);
+        when(s3ClientFactory.adminClient()).thenReturn(s3Client);
         when(s3Client.listObjectsV2(any(ListObjectsV2Request.class)))
                 .thenThrow(S3Exception.builder()
                         .message("Failed to list objects")
@@ -944,4 +945,78 @@ public class S3ClientServiceImplTest {
 
         assertDoesNotThrow(() -> s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofMinutes(5)));
     }
+
+    @Test
+    @DisplayName("generateGetPresignedUrl uses endpointOverride for S3 access and publicPresignedEndpoint for returned URL")
+    void generateGetPresignedUrl_SplitsInternalAndPublicEndpoints() {
+        Map<String, String> sourceS3Properties = Map.of(
+                S3Utils.BUCKET_NAME, "test-bucket",
+                S3Utils.OBJECT_KEY, "test-key",
+                S3Utils.ACCESS_KEY, "accessKey",
+                S3Utils.SECRET_KEY, "secretKey",
+                S3Utils.REGION, "us-east-1",
+                S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000",
+                S3Utils.PUBLIC_PRESIGNED_ENDPOINT, "http://downloads.example.com");
+        when(s3Client.headObject(any(HeadObjectRequest.class)))
+                .thenReturn(HeadObjectResponse.builder()
+                        .contentType("text/plain")
+                        .contentDisposition("attachment; filename=test.txt")
+                        .build());
+
+        String result = s3ClientService.generateGetPresignedUrl(sourceS3Properties, Duration.ofMinutes(5));
+
+        ArgumentCaptor<S3ClientRequest> requestCaptor = ArgumentCaptor.forClass(S3ClientRequest.class);
+        verify(s3ClientFactory).getClient(requestCaptor.capture());
+        assertEquals("http://minio:9000", requestCaptor.getValue().endpointOverride());
+        assertTrue(result.contains("downloads.example.com"), "presigned URL must use the public host");
+    }
+
+    @Test
+    @DisplayName("generateGetPresignedUrl falls back to endpointOverride when publicPresignedEndpoint is absent")
+    void generateGetPresignedUrl_FallsBackToEndpointOverrideWhenPublicPresignedEndpointAbsent() {
+        Map<String, String> sourceS3Properties = Map.of(
+                S3Utils.BUCKET_NAME, "test-bucket",
+                S3Utils.OBJECT_KEY, "test-key",
+                S3Utils.ACCESS_KEY, "accessKey",
+                S3Utils.SECRET_KEY, "secretKey",
+                S3Utils.REGION, "us-east-1",
+                S3Utils.ENDPOINT_OVERRIDE, "http://minio:9000");
+        when(s3Client.headObject(any(HeadObjectRequest.class)))
+                .thenReturn(HeadObjectResponse.builder()
+                        .contentType("text/plain")
+                        .contentDisposition("attachment; filename=test.txt")
+                        .build());
+
+        String result = s3ClientService.generateGetPresignedUrl(sourceS3Properties, Duration.ofMinutes(5));
+
+        ArgumentCaptor<S3ClientRequest> requestCaptor = ArgumentCaptor.forClass(S3ClientRequest.class);
+        verify(s3ClientFactory).getClient(requestCaptor.capture());
+        assertEquals("http://minio:9000", requestCaptor.getValue().endpointOverride());
+        assertTrue(result.contains("minio:9000"), "presigned URL must reuse the request endpointOverride");
+    }
+
+    @Test
+    @DisplayName("generateGetPresignedUrl falls back to externalPresignedEndpoint when request endpoint is absent")
+    void generateGetPresignedUrl_FallsBackToExternalEndpointWhenRequestEndpointAbsent() {
+        Map<String, String> sourceS3Properties = Map.of(
+                S3Utils.BUCKET_NAME, "test-bucket",
+                S3Utils.OBJECT_KEY, "test-key",
+                S3Utils.ACCESS_KEY, "accessKey",
+                S3Utils.SECRET_KEY, "secretKey",
+                S3Utils.REGION, "us-east-1");
+        when(s3Properties.getExternalPresignedEndpoint()).thenReturn("http://172.17.0.1:9000");
+        when(s3Client.headObject(any(HeadObjectRequest.class)))
+                .thenReturn(HeadObjectResponse.builder()
+                        .contentType("text/plain")
+                        .contentDisposition("attachment; filename=test.txt")
+                        .build());
+
+        String result = s3ClientService.generateGetPresignedUrl(sourceS3Properties, Duration.ofMinutes(5));
+
+        ArgumentCaptor<S3ClientRequest> requestCaptor = ArgumentCaptor.forClass(S3ClientRequest.class);
+        verify(s3ClientFactory).getClient(requestCaptor.capture());
+        assertNull(requestCaptor.getValue().endpointOverride());
+        assertTrue(result.contains("172.17.0.1"), "presigned URL must use the external endpoint fallback");
+    }
+
 }

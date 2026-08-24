@@ -85,6 +85,50 @@ public class DataPlaneClient {
     }
 
     /**
+     * Sends a {@link DataFlowStartMessage} to the selected Data Plane using profile-aware sticky routing.
+     *
+     * <p>The target Data Plane is selected using {@link DataPlaneRouter#selectDataPlane(String, String, String)}
+     * with the message's {@code processId} as the sticky key and the given {@code transportProfile}.
+     * The message is POSTed to {@code {dpEndpoint}/dataflows/start}.</p>
+     *
+     * @param startMessage     the start message to forward
+     * @param transportProfile the required transport profile (e.g. {@code "stream:grpc"}),
+     *                         or {@code null} for profile-independent selection
+     * @throws IllegalStateException if the router throws because no Data Plane supports the profile
+     */
+    public void start(DataFlowStartMessage startMessage, String transportProfile) {
+        DataPlaneRegistration dp = selectOrThrow(startMessage.getTransferType(),
+                startMessage.getProcessId(), transportProfile);
+        String url = dp.getEndpoint() + "/dataflows/start";
+        log.info("Sending DataFlowStartMessage (profile='{}') to '{}'", transportProfile, url);
+        post(url, startMessage, dp.getApiKey());
+    }
+
+    /**
+     * Sends a {@link DataFlowPrepareMessage} to the selected Data Plane using profile-aware sticky routing
+     * and returns the {@link DataFlowPrepareResponse}.
+     *
+     * <p>The target Data Plane is selected using {@link DataPlaneRouter#selectDataPlane(String, String, String)}
+     * with the message's {@code processId} as the sticky key and the given {@code transportProfile}.
+     * The message is POSTed to {@code {dpEndpoint}/dataflows/prepare}.</p>
+     *
+     * @param prepareMessage   the prepare message to forward
+     * @param transferType     the transfer type used for Data Plane selection
+     * @param transportProfile the required transport profile (e.g. {@code "stream:grpc"}),
+     *                         or {@code null} for profile-independent selection
+     * @return the response from the Data Plane with protocol-specific addressing data
+     * @throws IllegalStateException if the router throws because no Data Plane supports the profile
+     */
+    public DataFlowPrepareResponse prepare(DataFlowPrepareMessage prepareMessage,
+                                           String transferType,
+                                           String transportProfile) {
+        DataPlaneRegistration dp = selectOrThrow(transferType, prepareMessage.getProcessId(), transportProfile);
+        String url = dp.getEndpoint() + "/dataflows/prepare";
+        log.info("Sending DataFlowPrepareMessage (profile='{}') to '{}'", transportProfile, url);
+        return postForResponse(url, prepareMessage, dp.getApiKey(), DataFlowPrepareResponse.class);
+    }
+
+    /**
      * Sends a termination request for the given process to the selected Data Plane.
      *
      * <p>DELETEs {@code {dpEndpoint}/dataflows/{processId}/terminate} using the canonical path.</p>
@@ -135,8 +179,115 @@ public class DataPlaneClient {
         post(url, null, dp.getApiKey());
     }
 
+    /**
+     * Sends a termination request for the given process to the selected Data Plane using profile-aware sticky routing.
+     *
+     * <p>The target Data Plane is selected using {@link DataPlaneRouter#selectDataPlane(String, String, String)}
+     * with the {@code processId} as the sticky key and the given {@code transportProfile}. This ensures the
+     * termination reaches the same Data Plane instance that was originally selected for this process.</p>
+     *
+     * @param processId        the transfer process ID to terminate
+     * @param transferType     the transfer type used to select the target Data Plane
+     * @param transportProfile the required transport profile (e.g. {@code "stream:grpc"}),
+     *                         or {@code null} for profile-independent selection
+     * @throws IllegalStateException    if no Data Plane supports the profile
+     * @throws DataPlaneClientException if the request fails due to an I/O error
+     */
+    public void terminate(String processId, String transferType, String transportProfile) {
+        DataPlaneRegistration dp = selectOrThrow(transferType, processId, transportProfile);
+        String url = dp.getEndpoint() + "/dataflows/" + processId + "/terminate";
+        log.info("Sending terminate request (profile='{}') for process '{}' to '{}'", transportProfile, processId, url);
+        delete(url, dp);
+    }
+
+    /**
+     * Sends a suspend request for the given process to the selected Data Plane using profile-aware sticky routing.
+     *
+     * <p>The target Data Plane is selected using {@link DataPlaneRouter#selectDataPlane(String, String, String)}
+     * with the {@code processId} as the sticky key and the given {@code transportProfile}.</p>
+     *
+     * @param processId        the transfer process ID to suspend
+     * @param transferType     the transfer type used to select the target Data Plane
+     * @param transportProfile the required transport profile (e.g. {@code "stream:grpc"}),
+     *                         or {@code null} for profile-independent selection
+     * @throws IllegalStateException    if no Data Plane supports the profile
+     * @throws DataPlaneClientException if the request fails due to an I/O error
+     */
+    public void suspend(String processId, String transferType, String transportProfile) {
+        DataPlaneRegistration dp = selectOrThrow(transferType, processId, transportProfile);
+        String url = dp.getEndpoint() + "/dataflows/" + processId + "/suspend";
+        log.info("Sending suspend request (profile='{}') for process '{}' to '{}'", transportProfile, processId, url);
+        post(url, null, dp.getApiKey());
+    }
+
+    /**
+     * Sends a resume request for the given process to the selected Data Plane using profile-aware sticky routing.
+     *
+     * <p>The target Data Plane is selected using {@link DataPlaneRouter#selectDataPlane(String, String, String)}
+     * with the {@code processId} as the sticky key and the given {@code transportProfile}.</p>
+     *
+     * @param processId        the transfer process ID to resume
+     * @param transferType     the transfer type used to select the target Data Plane
+     * @param transportProfile the required transport profile (e.g. {@code "stream:grpc"}),
+     *                         or {@code null} for profile-independent selection
+     * @throws IllegalStateException    if no Data Plane supports the profile
+     * @throws DataPlaneClientException if the request fails due to an I/O error
+     */
+    public void resume(String processId, String transferType, String transportProfile) {
+        DataPlaneRegistration dp = selectOrThrow(transferType, processId, transportProfile);
+        String url = dp.getEndpoint() + "/dataflows/" + processId + "/resume";
+        log.info("Sending resume request (profile='{}') for process '{}' to '{}'", transportProfile, processId, url);
+        post(url, null, dp.getApiKey());
+    }
+
+    /**
+     * Clears the sticky Data Plane assignment for the given transfer process.
+     *
+     * <p>Delegates to {@link DataPlaneRouter#clearStickyAssignment(String)}. Call this when a transfer
+     * reaches a terminal state (COMPLETED or TERMINATED) to release the in-memory routing entry.</p>
+     *
+     * @param processId the transfer process ID whose sticky assignment should be cleared
+     */
+    public void clearStickyAssignment(String processId) {
+        router.clearStickyAssignment(processId);
+    }
+
+    /**
+     * Returns the in-memory sticky endpoint for the given process, if any.
+     *
+     * <p>Use this immediately after a {@code start} call to read back the selected endpoint
+     * so it can be persisted in the {@code TransferProcess} for restart-safe routing.</p>
+     *
+     * @param processId the transfer process ID
+     * @return the pinned Data Plane endpoint, or {@link java.util.Optional#empty()} if none
+     */
+    public java.util.Optional<String> getStickyEndpoint(String processId) {
+        return router.getStickyEndpoint(processId);
+    }
+
+    /**
+     * Restores a persisted sticky assignment from durable storage into the in-memory map.
+     *
+     * <p>Call this at the start of any lifecycle operation (terminate, suspend, resume) when the
+     * {@code TransferProcess} carries a persisted {@code assignedDataplaneEndpoint} but the
+     * in-memory map was cleared by a CP restart. Re-seeding the map ensures the next routing
+     * call reaches the original Data Plane instance.</p>
+     *
+     * @param processId the transfer process ID
+     * @param endpoint  the Data Plane base URL to restore
+     */
+    public void restoreStickyAssignment(String processId, String endpoint) {
+        router.restoreStickyAssignment(processId, endpoint);
+    }
+
     private DataPlaneRegistration selectOrThrow(String transferType) {
         return router.selectDataPlane(transferType)
+                .orElseThrow(() -> new IllegalStateException(
+                        "No Data Plane registered for transfer type: " + transferType));
+    }
+
+    private DataPlaneRegistration selectOrThrow(String transferType, String processId, String transportProfile) {
+        return router.selectDataPlane(transferType, processId, transportProfile)
                 .orElseThrow(() -> new IllegalStateException(
                         "No Data Plane registered for transfer type: " + transferType));
     }

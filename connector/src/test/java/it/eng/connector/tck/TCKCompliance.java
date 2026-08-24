@@ -47,11 +47,11 @@ public class TCKCompliance extends BaseIntegrationTest {
         properties.put("dataspacetck.launcher", "org.eclipse.dataspacetck.dsp.system.DspSystemLauncher");
         properties.put("dataspacetck.dsp.local.connector", "false");
         properties.put("dataspacetck.dsp.connector.agent.id", "CONNECTOR_UNDER_TEST");
-        properties.put("dataspacetck.dsp.connector.http.url", "http://localhost:8080");
+        properties.put("dataspacetck.dsp.connector.http.url", "http://localhost:8080/engineering");
         properties.put("dataspacetck.dsp.connector.http.base.url", "http://localhost:8080");
         properties.put("dataspacetck.dsp.connector.http.headers.authorization", "Basic Y29ubmVjdG9yQG1haWwuY29tOnBhc3N3b3Jk");
-        properties.put("dataspacetck.dsp.connector.negotiation.initiate.url", "http://localhost:8080/consumer/negotiations/tck");
-        properties.put("dataspacetck.dsp.connector.transfer.initiate.url", "http://localhost:8080/consumer/transfers/tck");
+        properties.put("dataspacetck.dsp.connector.negotiation.initiate.url", "http://localhost:8080/engineering/consumer/negotiations/tck");
+        properties.put("dataspacetck.dsp.connector.transfer.initiate.url", "http://localhost:8080/engineering/consumer/transfers/tck");
 
 
         // Sets the dataset and offer ids to use for contract negotiation scenarios

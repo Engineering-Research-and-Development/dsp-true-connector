@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.github.tomakehurst.wiremock.WireMockServer;
 import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.datatransfer.model.DataTransferFormat;
@@ -80,7 +81,7 @@ public class BaseIntegrationTest {
 
     /** WireMock server shared across all integration tests for stubbing external HTTP calls. */
     @InjectWireMock
-    protected com.github.tomakehurst.wiremock.WireMockServer wireMock;
+    protected WireMockServer wireMock;
 
     @Autowired
     protected MockMvc mockMvc;

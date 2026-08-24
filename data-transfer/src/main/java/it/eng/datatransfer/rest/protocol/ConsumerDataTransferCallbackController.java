@@ -38,7 +38,7 @@ public class ConsumerDataTransferCallbackController extends TenantAwareProtocolC
      * @return the serialized transfer process
      */
     @PostMapping("/tck")
-    public ResponseEntity<JsonNode> initiateDataTransfer(@PathVariable("tenantId") String tenantId,
+    public ResponseEntity<JsonNode> initiateDataTransfer(@PathVariable String tenantId,
                                                          @RequestBody TCKRequest tckRequest) {
         log.info("Received TCK request for agreementId {}, format {} from connector {}",
                 tckRequest.getAgreementId(), tckRequest.getFormat(), tckRequest.getConnectorAddress());
@@ -56,8 +56,8 @@ public class ConsumerDataTransferCallbackController extends TenantAwareProtocolC
      * @return the serialized transfer process
      */
     @GetMapping("/{consumerPid}")
-    public ResponseEntity<String> getTransferProcessByConsumerPid(@PathVariable("tenantId") String tenantId,
-                                                                  @PathVariable("consumerPid") String consumerPid) {
+    public ResponseEntity<String> getTransferProcessByConsumerPid(@PathVariable String tenantId,
+                                                                  @PathVariable String consumerPid) {
         resolveTenant(tenantId);
         TransferProcess transferProcess = dataTransferService.findTransferProcessByConsumerPid(consumerPid);
         return ResponseEntity.ok(TransferSerializer.serializeProtocol(transferProcess));
@@ -72,8 +72,8 @@ public class ConsumerDataTransferCallbackController extends TenantAwareProtocolC
      * @return empty response on success
      */
     @PostMapping(path = "/{consumerPid}/start")
-    public ResponseEntity<Void> startDataTransfer(@PathVariable("tenantId") String tenantId,
-                                                  @PathVariable("consumerPid") String consumerPid,
+    public ResponseEntity<Void> startDataTransfer(@PathVariable String tenantId,
+                                                  @PathVariable String consumerPid,
                                                   @RequestBody JsonNode transferStartMessageJsonNode) {
         resolveTenant(tenantId);
         TransferStartMessage transferStartMessage = TransferSerializer.deserializeProtocol(transferStartMessageJsonNode, TransferStartMessage.class);
@@ -92,8 +92,8 @@ public class ConsumerDataTransferCallbackController extends TenantAwareProtocolC
      * @return empty response on success
      */
     @PostMapping(path = "/{consumerPid}/completion")
-    public ResponseEntity<Void> completeDataTransfer(@PathVariable("tenantId") String tenantId,
-                                                     @PathVariable("consumerPid") String consumerPid,
+    public ResponseEntity<Void> completeDataTransfer(@PathVariable String tenantId,
+                                                     @PathVariable String consumerPid,
                                                      @RequestBody JsonNode transferCompletionMessageJsonNode) {
         resolveTenant(tenantId);
         TransferCompletionMessage transferCompletionMessage = TransferSerializer.deserializeProtocol(transferCompletionMessageJsonNode, TransferCompletionMessage.class);
@@ -112,8 +112,8 @@ public class ConsumerDataTransferCallbackController extends TenantAwareProtocolC
      * @return empty response on success
      */
     @PostMapping(path = "/{consumerPid}/termination")
-    public ResponseEntity<Void> terminateDataTransfer(@PathVariable("tenantId") String tenantId,
-                                                      @PathVariable("consumerPid") String consumerPid,
+    public ResponseEntity<Void> terminateDataTransfer(@PathVariable String tenantId,
+                                                      @PathVariable String consumerPid,
                                                       @RequestBody JsonNode transferTerminationMessageJsonNode) {
         resolveTenant(tenantId);
         TransferTerminationMessage transferTerminationMessage = TransferSerializer.deserializeProtocol(transferTerminationMessageJsonNode, TransferTerminationMessage.class);
@@ -132,8 +132,8 @@ public class ConsumerDataTransferCallbackController extends TenantAwareProtocolC
      * @return empty response on success
      */
     @PostMapping(path = "/{consumerPid}/suspension")
-    public ResponseEntity<Void> suspenseDataTransfer(@PathVariable("tenantId") String tenantId,
-                                                     @PathVariable("consumerPid") String consumerPid,
+    public ResponseEntity<Void> suspenseDataTransfer(@PathVariable String tenantId,
+                                                     @PathVariable String consumerPid,
                                                      @RequestBody JsonNode transferSuspensionMessageJsonNode) {
         resolveTenant(tenantId);
         TransferSuspensionMessage transferSuspensionMessage = TransferSerializer.deserializeProtocol(transferSuspensionMessageJsonNode, TransferSuspensionMessage.class);

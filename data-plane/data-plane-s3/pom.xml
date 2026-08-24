@@ -15,6 +15,11 @@
     <description>Data Plane S3 bridge — provides TenantBucketResolver and OkHttpClientConfiguration for DP context, depends on shared s3-support</description>
     <dependencies>
         <dependency>
+            <groupId>it.eng.dataplane</groupId>
+            <artifactId>data-plane-api</artifactId>
+            <version>${revision}</version>
+        </dependency>
+        <dependency>
             <groupId>it.eng</groupId>
             <artifactId>s3-support</artifactId>
         </dependency>

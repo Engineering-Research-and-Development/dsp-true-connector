@@ -68,6 +68,7 @@ public class BaseHttpPushIT {
      * The bucket is provisioned by {@code DataPlaneS3StartupBean} on {@code ApplicationReadyEvent}.
      */
     public static final String TEST_BUCKET_NAME = "dsp-true-connector-provider";
+    public static final String TEST_BUCKET_NAME_DESTINATION = "dsp-true-connector-consumer";
 
     /** Shared MongoDB container — started once per module via static init. */
     protected static final MongoDBContainer mongoDBContainer =
@@ -155,9 +156,9 @@ public class BaseHttpPushIT {
      * @param key the S3 object key to check
      * @return {@code true} if the object exists, {@code false} otherwise
      */
-    protected static boolean objectExistsInMinIO(String key) {
+    protected static boolean objectExistsInMinIO(String key, String bucketName) {
         try (S3Client s3 = buildAdminS3Client()) {
-            s3.headObject(HeadObjectRequest.builder().bucket(TEST_BUCKET_NAME).key(key).build());
+            s3.headObject(HeadObjectRequest.builder().bucket(bucketName).key(key).build());
             return true;
         } catch (Exception e) {
             return false;
@@ -171,9 +172,9 @@ public class BaseHttpPushIT {
      * @return the object content as a UTF-8 string
      * @throws IOException if the object content cannot be read
      */
-    protected static String downloadContentFromMinIO(String key) throws IOException {
+    protected static String downloadContentFromMinIO(String key, String bucketName) throws IOException {
         try (S3Client s3 = buildAdminS3Client()) {
-            var response = s3.getObject(GetObjectRequest.builder().bucket(TEST_BUCKET_NAME).key(key).build());
+            var response = s3.getObject(GetObjectRequest.builder().bucket(bucketName).key(key).build());
             return new String(response.readAllBytes(), StandardCharsets.UTF_8);
         }
     }
@@ -185,15 +186,15 @@ public class BaseHttpPushIT {
      * @param timeoutSeconds maximum seconds to wait before failing the test
      * @throws InterruptedException if the polling thread is interrupted
      */
-    protected static void awaitObjectExists(String key, int timeoutSeconds) throws InterruptedException {
+    protected static void awaitObjectExists(String key, int timeoutSeconds, String bucketName) throws InterruptedException {
         long deadline = System.currentTimeMillis() + timeoutSeconds * 1000L;
         while (System.currentTimeMillis() < deadline) {
-            if (objectExistsInMinIO(key)) {
+            if (objectExistsInMinIO(key, bucketName)) {
                 return;
             }
             Thread.sleep(300);
         }
-        fail("Object '" + key + "' did not appear in bucket '" + TEST_BUCKET_NAME + "' within " + timeoutSeconds + "s");
+        fail("Object '" + key + "' did not appear in bucket '" + bucketName + "' within " + timeoutSeconds + "s");
     }
 
     /**

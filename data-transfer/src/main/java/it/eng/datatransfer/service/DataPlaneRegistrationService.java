@@ -1,5 +1,6 @@
 package it.eng.datatransfer.service;
 
+import it.eng.datatransfer.event.DataPlaneRegistrationChangedEvent;
 import it.eng.datatransfer.exceptions.DataPlaneNotFoundException;
 import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.datatransfer.repository.DataPlaneRegistrationRepository;
@@ -9,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -25,6 +27,7 @@ public class DataPlaneRegistrationService {
 
     private final DataPlaneRegistrationRepository repository;
     private final AuditEventPublisher auditEventPublisher;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     /**
      * Registers a new Data Plane instance or updates an existing registration with the same endpoint.
@@ -53,6 +56,7 @@ public class DataPlaneRegistrationService {
                             .id(idToUse)
                             .endpoint(registration.getEndpoint())
                             .supportedTransferTypes(registration.getSupportedTransferTypes())
+                            .transportProfiles(registration.getTransportProfiles())
                             .apiKey(registration.getApiKey())
                             .build();
                     DataPlaneRegistration saved = repository.save(updated);
@@ -60,6 +64,7 @@ public class DataPlaneRegistrationService {
                             "Data Plane registration updated for endpoint " + registration.getEndpoint(),
                             Map.of("endpoint", registration.getEndpoint(),
                                     "transferTypes", registration.getSupportedTransferTypes().toString()));
+                    publishRegistrationChangedEvent(saved, DataPlaneRegistrationChangedEvent.ChangeType.REGISTERED);
                     return saved;
                 })
                 .orElseGet(() -> {
@@ -68,6 +73,7 @@ public class DataPlaneRegistrationService {
                             "Data Plane registered at endpoint " + registration.getEndpoint(),
                             Map.of("endpoint", registration.getEndpoint(),
                                     "transferTypes", registration.getSupportedTransferTypes().toString()));
+                    publishRegistrationChangedEvent(saved, DataPlaneRegistrationChangedEvent.ChangeType.REGISTERED);
                     return saved;
                 });
     }
@@ -106,6 +112,7 @@ public class DataPlaneRegistrationService {
         auditEventPublisher.publishEvent(AuditEventType.DATAPLANE_DEREGISTERED,
                 "Data Plane deregistered at endpoint " + existing.getEndpoint(),
                 Map.of("id", id, "endpoint", existing.getEndpoint()));
+        publishRegistrationChangedEvent(existing, DataPlaneRegistrationChangedEvent.ChangeType.DEREGISTERED);
     }
 
     /**
@@ -126,5 +133,11 @@ public class DataPlaneRegistrationService {
     public Optional<DataPlaneRegistration> findByApiKey(String apiKey) {
         log.debug("Looking up Data Plane by API key");
         return repository.findByApiKey(apiKey);
+    }
+
+    private void publishRegistrationChangedEvent(DataPlaneRegistration registration,
+                                                 DataPlaneRegistrationChangedEvent.ChangeType changeType) {
+        applicationEventPublisher.publishEvent(
+                new DataPlaneRegistrationChangedEvent(changeType, registration.getId(), registration.getEndpoint()));
     }
 }

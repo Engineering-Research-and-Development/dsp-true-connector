@@ -78,4 +78,23 @@ class DataTransferProtocolRegistryTest {
         assertTrue(supportedProtocols.contains("HttpData-PULL"));
         assertTrue(supportedProtocols.contains("HttpData-PUSH"));
     }
+
+    /**
+     * Verifies that the set returned by getSupportedProtocols is immutable so that
+     * callers cannot mutate the internal registry state through it.
+     */
+    @Test
+    void getSupportedProtocolsReturnsImmutableSet() {
+        // Given
+        Set<String> supportedProtocols = registry.getSupportedProtocols();
+
+        // Then – any attempt to mutate the returned set must throw
+        assertThrows(UnsupportedOperationException.class, () -> supportedProtocols.add("rogue-protocol"));
+        assertThrows(UnsupportedOperationException.class, () -> supportedProtocols.remove("HttpData-PULL"));
+
+        // And – the registry itself is unaffected
+        assertEquals(2, registry.getSupportedProtocols().size());
+        assertTrue(registry.getSupportedProtocols().contains("HttpData-PULL"));
+        assertTrue(registry.getSupportedProtocols().contains("HttpData-PUSH"));
+    }
 }

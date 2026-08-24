@@ -1,6 +1,7 @@
 package it.eng.datatransfer.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import it.eng.datatransfer.client.DataPlaneClient;
 import it.eng.datatransfer.event.AutoTransferDownloadEvent;
 import it.eng.datatransfer.event.AutoTransferStartEvent;
 import it.eng.datatransfer.event.TransferProcessChangeEvent;
@@ -18,7 +19,6 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
@@ -39,20 +39,20 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
     // Consider this for removal
     private final TransferRequestMessageRepository transferRequestMessageRepository;
     private final DataTransferProperties transferProperties;
-    private final TemporaryBucketUserService temporaryBucketUserService;
+    private final DataPlaneClient dataPlaneClient;
 
     protected AbstractDataTransferService(TransferProcessRepository transferProcessRepository,
                                           AuditEventPublisher publisher,
                                           OkHttpRestClient okHttpRestClient,
                                           TransferRequestMessageRepository transferRequestMessageRepository,
                                           DataTransferProperties transferProperties,
-                                          TemporaryBucketUserService temporaryBucketUserService) {
+                                          DataPlaneClient dataPlaneClient) {
         this.transferProcessRepository = transferProcessRepository;
         this.publisher = publisher;
         this.okHttpRestClient = okHttpRestClient;
         this.transferRequestMessageRepository = transferRequestMessageRepository;
         this.transferProperties = transferProperties;
-        this.temporaryBucketUserService = temporaryBucketUserService;
+        this.dataPlaneClient = dataPlaneClient;
     }
 
     /**
@@ -237,13 +237,17 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
 
         stateTransitionCheck(transferProcessRequested, TransferState.STARTED);
 
+        DataAddress finalDataAddress = transferStartMessage.getDataAddress() != null
+                ? transferStartMessage.getDataAddress()
+                : transferProcessRequested.getDataAddress();
+
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
                 .id(transferProcessRequested.getId())
                 .agreementId(transferProcessRequested.getAgreementId())
                 .consumerPid(transferProcessRequested.getConsumerPid())
                 .providerPid(transferProcessRequested.getProviderPid())
                 .callbackAddress(transferProcessRequested.getCallbackAddress())
-                .dataAddress(transferStartMessage.getDataAddress())
+                .dataAddress(finalDataAddress)
                 .format(transferProcessRequested.getFormat())
                 .state(TransferState.STARTED)
                 .role(transferProcessRequested.getRole())
@@ -272,7 +276,9 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
         // Automatic download trigger
         if (transferProcessStarted.getRole().equals(IConstants.ROLE_CONSUMER)
                 && transferProperties.isAutomaticTransfer()
-                && DataTransferFormat.HTTP_PULL.format().equals(transferProcessStarted.getFormat())) {
+                && (DataTransferFormat.HTTP_PULL.format().equals(transferProcessStarted.getFormat())
+                        || TransportProfile.STREAM_GRPC.equals(transferProcessStarted.getFormat())
+                        || TransportProfile.STREAM_KAFKA.equals(transferProcessStarted.getFormat()))) {
             publisher.publishEvent(new AutoTransferDownloadEvent(transferProcessStarted.getId()));
         }
         return transferProcessStarted;
@@ -309,6 +315,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .role(transferProcessStarted.getRole())
                 .datasetId(transferProcessStarted.getDatasetId())
                 .tenantId(transferProcessStarted.getTenantId())
+                .transportProfile(transferProcessStarted.getTransportProfile())
                 .created(transferProcessStarted.getCreated())
                 .createdBy(transferProcessStarted.getCreatedBy())
                 .modified(transferProcessStarted.getModified())
@@ -317,17 +324,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .build();
 
         saveTransferProcess(transferProcessCompleted);
-        if (IConstants.ROLE_CONSUMER.equals(transferProcessCompleted.getRole())
-                && DataTransferFormat.HTTP_PUSH.format().equals(transferProcessCompleted.getFormat())) {
-            try {
-                temporaryBucketUserService.deleteTemporaryUser(transferProcessCompleted.getId());
-                log.info("Cleaned up temporary IAM credentials for HTTP-PUSH consumer transfer process {}",
-                        transferProcessCompleted.getId());
-            } catch (Exception e) {
-                log.warn("Failed to clean up temporary IAM credentials for process {}: {}",
-                        transferProcessCompleted.getId(), e.getMessage());
-            }
-        }
+        dataPlaneClient.clearStickyAssignment(transferProcessCompleted.getId());
         publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
                 .oldTransferProcess(transferProcessStarted)
                 .newTransferProcess(transferProcessCompleted)
@@ -363,16 +360,21 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
         TransferProcess transferProcessTerminated = transferProcess.copyWithNewTransferState(TransferState.TERMINATED);
         saveTransferProcess(transferProcessTerminated);
         if (IConstants.ROLE_CONSUMER.equals(transferProcessTerminated.getRole())
-                && DataTransferFormat.HTTP_PUSH.format().equals(transferProcessTerminated.getFormat())) {
+                && DataTransferFormat.HTTP_PUSH.format().equals(transferProcessTerminated.getFormat())
+                && transferProcessTerminated.getAssignedDataplaneEndpoint() != null) {
+            dataPlaneClient.restoreStickyAssignment(transferProcessTerminated.getId(),
+                    transferProcessTerminated.getAssignedDataplaneEndpoint());
             try {
-                temporaryBucketUserService.deleteTemporaryUser(transferProcessTerminated.getId());
-                log.info("Cleaned up temporary IAM credentials for terminated HTTP-PUSH consumer transfer process {}",
+                dataPlaneClient.terminate(transferProcessTerminated.getId(),
+                        DataTransferFormat.HTTP_PUSH.format(), null);
+                log.info("Signalled Data Plane to clean up HTTP-PUSH consumer transfer process {}",
                         transferProcessTerminated.getId());
             } catch (Exception e) {
-                log.warn("Failed to clean up temporary IAM credentials for process {}: {}",
+                log.warn("DP terminate call failed for HTTP-PUSH consumer process {} (best-effort): {}",
                         transferProcessTerminated.getId(), e.getMessage());
             }
         }
+        dataPlaneClient.clearStickyAssignment(transferProcessTerminated.getId());
         publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
                 .oldTransferProcess(transferProcess)
                 .newTransferProcess(transferProcessTerminated)

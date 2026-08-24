@@ -31,6 +31,7 @@ public class DataFlow {
     private String callbackAddress;
     private DataFlowState state;
     private Map<String, String> dataAddress;
+    private Map<String, Object> metadata;
     private String tenantId;
     private String participantId;
     private String counterPartyId;
@@ -113,6 +114,14 @@ public class DataFlow {
          * @return this builder
          */
         public Builder dataAddress(Map<String, String> addr) { instance.dataAddress = addr; return this; }
+
+        /**
+         * Sets structured runtime metadata.
+         *
+         * @param metadata structured metadata grouped by section
+         * @return this builder
+         */
+        public Builder metadata(Map<String, Object> metadata) { instance.metadata = metadata; return this; }
 
         /**
          * Sets the tenant ID.

@@ -17,8 +17,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * The CatalogService class provides methods to interact with catalog data, including saving, retrieving, and deleting catalogs.
@@ -71,6 +74,9 @@ public class CatalogService {
         allCatalogs.forEach(catalog -> catalog.getDataset().removeIf(
                 dataset -> dataset.getArtifact().getArtifactType() == ArtifactType.FILE
                         && !files.contains(dataset.getId())));
+        allCatalogs = allCatalogs.stream()
+                .map(this::refreshCatalogDistributions)
+                .toList();
 
         try {
             validateCatalog(allCatalogs);
@@ -84,6 +90,65 @@ public class CatalogService {
 
         }
         return allCatalogs.get(0);
+    }
+
+    private Catalog refreshCatalogDistributions(Catalog catalog) {
+        Set<Dataset> datasets = catalog.getDataset();
+        if (datasets == null) {
+            return Catalog.Builder.newInstance()
+                    .id(catalog.getId())
+                    .keyword(catalog.getKeyword())
+                    .theme(catalog.getTheme())
+                    .conformsTo(catalog.getConformsTo())
+                    .creator(catalog.getCreator())
+                    .description(catalog.getDescription())
+                    .identifier(catalog.getIdentifier())
+                    .issued(catalog.getIssued())
+                    .modified(catalog.getModified())
+                    .title(catalog.getTitle())
+                    .distribution(catalog.getDistribution())
+                    .hasPolicy(catalog.getHasPolicy())
+                    .dataset(null)
+                    .service(catalog.getService())
+                    .participantId(catalog.getParticipantId())
+                    .tenantId(catalog.getTenantId())
+                    .createdBy(catalog.getCreatedBy())
+                    .lastModifiedBy(catalog.getLastModifiedBy())
+                    .version(catalog.getVersion())
+                    .build();
+        }
+        Set<Distribution> refreshedDistributions = datasets.stream()
+                .filter(Objects::nonNull)
+                .map(Dataset::getDistribution)
+                .filter(Objects::nonNull)
+                .flatMap(Set::stream)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<DataService> refreshedServices = refreshedDistributions.stream()
+                .map(Distribution::getAccessService)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return Catalog.Builder.newInstance()
+                .id(catalog.getId())
+                .keyword(catalog.getKeyword())
+                .theme(catalog.getTheme())
+                .conformsTo(catalog.getConformsTo())
+                .creator(catalog.getCreator())
+                .description(catalog.getDescription())
+                .identifier(catalog.getIdentifier())
+                .issued(catalog.getIssued())
+                .modified(catalog.getModified())
+                .title(catalog.getTitle())
+                .distribution(refreshedDistributions)
+                .hasPolicy(catalog.getHasPolicy())
+                .dataset(datasets)
+                .service(refreshedServices)
+                .participantId(catalog.getParticipantId())
+                .tenantId(catalog.getTenantId())
+                .createdBy(catalog.getCreatedBy())
+                .lastModifiedBy(catalog.getLastModifiedBy())
+                .version(catalog.getVersion())
+                .build();
     }
 
     /* ******** API ***********/
@@ -108,7 +173,7 @@ public class CatalogService {
         if (allCatalogs.isEmpty()) {
             throw new ResourceNotFoundAPIException("Catalog not found");
         } else {
-            return allCatalogs.get(0);
+            return refreshCatalogDistributions(allCatalogs.get(0));
         }
     }
 
@@ -135,7 +200,7 @@ public class CatalogService {
             if (tenantId != null && catalog.getTenantId() == null) {
                 catalog.injectTenantId(tenantId);
             }
-            storedCatalog = repository.save(catalog);
+            storedCatalog = repository.save(refreshCatalogDistributions(catalog));
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             throw new InternalServerErrorAPIException("Catalog could not be saved");
@@ -153,9 +218,12 @@ public class CatalogService {
         String tenantId = TenantContextHolder.getTenantId();
         if (tenantId != null) {
             return repository.findByIdAndTenantId(id, tenantId)
+                    .map(this::refreshCatalogDistributions)
                     .orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id" + id + " not found"));
         }
-        return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id" + id + " not found"));
+        return repository.findById(id)
+                .map(this::refreshCatalogDistributions)
+                .orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id" + id + " not found"));
     }
 
     /**
@@ -176,7 +244,7 @@ public class CatalogService {
     public Catalog updateCatalog(String id, Catalog cat) {
         Catalog existingCatalog = getCatalogByIdForApi(id);
         try {
-            Catalog updatedCatalog = existingCatalog.updateInstance(cat);
+            Catalog updatedCatalog = refreshCatalogDistributions(existingCatalog.updateInstance(cat));
             return repository.save(updatedCatalog);
         } catch (Exception e) {
             log.error(e.getMessage(), e);

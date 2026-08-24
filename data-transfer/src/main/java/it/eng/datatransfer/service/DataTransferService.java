@@ -1,5 +1,6 @@
 package it.eng.datatransfer.service;
 
+import it.eng.datatransfer.client.DataPlaneClient;
 import it.eng.datatransfer.model.TCKRequest;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
@@ -7,7 +8,6 @@ import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
@@ -23,9 +23,9 @@ public class DataTransferService extends AbstractDataTransferService {
                                AuditEventPublisher publisher,
                                OkHttpRestClient okHttpRestClient,
                                DataTransferProperties transferProperties,
-                               TemporaryBucketUserService temporaryBucketUserService) {
+                               DataPlaneClient dataPlaneClient) {
         super(transferProcessRepository, publisher, okHttpRestClient, transferRequestMessageRepository, transferProperties,
-                temporaryBucketUserService);
+                dataPlaneClient);
     }
 
     /**

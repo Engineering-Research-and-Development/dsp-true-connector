@@ -1,5 +1,6 @@
 package it.eng.catalog.service;
 
+import it.eng.catalog.event.CatalogStructureChangedEvent;
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
@@ -17,6 +18,7 @@ import it.eng.tools.service.TenantContextHolder;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -38,15 +40,18 @@ public class DatasetService {
     private final S3ClientService s3ClientService;
     private final TenantBucketResolver tenantBucketResolver;
     private final AuditEventPublisher publisher;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public DatasetService(DatasetRepository repository, CatalogService catalogService, ArtifactService artifactService,
-                          S3ClientService s3ClientService, TenantBucketResolver tenantBucketResolver, AuditEventPublisher publisher) {
+                          S3ClientService s3ClientService, TenantBucketResolver tenantBucketResolver, AuditEventPublisher publisher,
+                          ApplicationEventPublisher applicationEventPublisher) {
         this.repository = repository;
         this.catalogService = catalogService;
         this.artifactService = artifactService;
         this.s3ClientService = s3ClientService;
         this.tenantBucketResolver = tenantBucketResolver;
         this.publisher = publisher;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     /********* PROTOCOL ***********/
@@ -151,6 +156,7 @@ public class DatasetService {
             throw new InternalServerErrorAPIException("Dataset could not be saved");
         }
         catalogService.updateCatalogDatasetAfterSave(savedDataSet);
+        applicationEventPublisher.publishEvent(CatalogStructureChangedEvent.fullReconcile("dataset-saved"));
         log.info("Inserted Dataset with id {}", savedDataSet.getId());
         return savedDataSet;
     }
@@ -194,7 +200,7 @@ public class DatasetService {
             log.error(e.getMessage(), e);
             throw new InternalServerErrorAPIException("Dataset could not be updated");
         }
-
+        applicationEventPublisher.publishEvent(CatalogStructureChangedEvent.fullReconcile("dataset-updated"));
         return storedDataset;
     }
 
@@ -215,6 +221,7 @@ public class DatasetService {
             throw new InternalServerErrorAPIException("Dataset could not be deleted");
         }
         catalogService.updateCatalogDatasetAfterDelete(ds);
+        applicationEventPublisher.publishEvent(CatalogStructureChangedEvent.fullReconcile("dataset-deleted"));
     }
 
     public List<String> getFormatsFromDataset(String id) {

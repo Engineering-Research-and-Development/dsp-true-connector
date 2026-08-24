@@ -48,7 +48,7 @@ public class DataPlaneRegistrationController {
      * @return 204 No Content
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deregister(@PathVariable("id") String id) {
+    public ResponseEntity<Void> deregister(@PathVariable String id) {
         log.info("Deregistering Data Plane with id {}", id);
         service.deregister(id);
         return ResponseEntity.noContent().build();
