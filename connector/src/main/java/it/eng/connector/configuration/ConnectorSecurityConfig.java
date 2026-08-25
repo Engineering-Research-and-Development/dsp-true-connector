@@ -142,6 +142,8 @@ public class ConnectorSecurityConfig {
                     .addFilterBefore(keycloakFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .addFilterAfter(apiTenantContextFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth
+                            // Health endpoint is unauthenticated for CI/CD and orchestration health checks
+                            .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                             .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
                             .requestMatchers(HttpMethod.GET, ApiEndpoints.USERS_V1 + "/me")
                             .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
@@ -167,6 +169,8 @@ public class ConnectorSecurityConfig {
                     .addFilterBefore(jwtAuthFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .addFilterAfter(apiTenantContextFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth
+                            // Health endpoint is unauthenticated for CI/CD and orchestration health checks
+                            .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                             .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
                             .requestMatchers(HttpMethod.GET, ApiEndpoints.USERS_V1 + "/me")
                             .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
