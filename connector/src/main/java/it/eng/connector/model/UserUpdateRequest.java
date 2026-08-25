@@ -24,8 +24,9 @@ public class UserUpdateRequest {
     private String email;
     private String password;
     private boolean enabled;
-    private boolean expired;
-    private boolean locked;
+//    enable when functionality is implemented
+//    private boolean expired;
+//    private boolean locked;
 
     /**
      * Builder for {@link UserUpdateRequest}.
@@ -103,28 +104,28 @@ public class UserUpdateRequest {
             request.enabled = enabled;
             return this;
         }
-
-        /**
-         * Sets expired flag.
-         *
-         * @param expired expired flag
-         * @return this builder
-         */
-        public Builder expired(boolean expired) {
-            request.expired = expired;
-            return this;
-        }
-
-        /**
-         * Sets locked flag.
-         *
-         * @param locked locked flag
-         * @return this builder
-         */
-        public Builder locked(boolean locked) {
-            request.locked = locked;
-            return this;
-        }
+//         enable when functionality is implemented
+//        /**
+//         * Sets expired flag.
+//         *
+//         * @param expired expired flag
+//         * @return this builder
+//         */
+//        public Builder expired(boolean expired) {
+//            request.expired = expired;
+//            return this;
+//        }
+//
+//        /**
+//         * Sets locked flag.
+//         *
+//         * @param locked locked flag
+//         * @return this builder
+//         */
+//        public Builder locked(boolean locked) {
+//            request.locked = locked;
+//            return this;
+//        }
 
         /**
          * Builds request instance.

@@ -176,7 +176,7 @@ public class UserIT extends BaseIntegrationTest {
         UserUpdateRequest userDTO = UserUpdateRequest.Builder.newInstance()
                 .firstName("FirstNameTestUpdate").lastName("LastNameTestUpdate").build();
 
-        final ResultActions result = mockMvc.perform(put(ApiEndpoints.USERS_V1 + "/" + userObj.getId() + "/update")
+        final ResultActions result = mockMvc.perform(put(ApiEndpoints.USERS_V1 + "/" + userObj.getId())
                 .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
                 .content(ToolsSerializer.serializePlain(userDTO))
                 .contentType(MediaType.APPLICATION_JSON));
@@ -198,7 +198,7 @@ public class UserIT extends BaseIntegrationTest {
         UserUpdateRequest userDTO = UserUpdateRequest.Builder.newInstance()
                 .firstName("FirstNameTestUpdate").lastName("LastNameTestUpdate").build();
 
-        final ResultActions result = mockMvc.perform(put(ApiEndpoints.USERS_V1 + "/" + userObj.getId() + "/update")
+        final ResultActions result = mockMvc.perform(put(ApiEndpoints.USERS_V1 + "/" + userObj.getId() + "/updateNames")
                 .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
                 .content(ToolsSerializer.serializePlain(userDTO))
                 .contentType(MediaType.APPLICATION_JSON));

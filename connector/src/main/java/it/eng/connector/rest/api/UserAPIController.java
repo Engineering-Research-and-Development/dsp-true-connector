@@ -86,12 +86,12 @@ public class UserAPIController {
 	 * @return the current user as a {@link GenericApiResponse}
 	 */
 	@GetMapping(path = "/me")
-	public ResponseEntity<GenericApiResponse<JsonNode>> getCurrentUser(Principal principal) {
+	public ResponseEntity<GenericApiResponse<UserCurrentUserResponse>> getCurrentUser(Principal principal) {
 		if (principal == null) {
 			throw new BadRequestException("No authenticated user in current context");
 		}
 		log.info("Fetching current user profile for principal '{}'", principal.getName());
-		JsonNode user = userService.findCurrentUser(principal.getName());
+		UserCurrentUserResponse user = userService.findCurrentUser(principal.getName());
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
 				.body(GenericApiResponse.success(user, "Current user"));
 	}

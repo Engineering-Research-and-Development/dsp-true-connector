@@ -78,9 +78,9 @@ public class InternalAuthServiceImpl implements AuthService {
 			User user = userRepository.findByEmail(authentication.getName())
 					.orElseThrow(() -> new BadCredentialsException("Bad credentials"));
 
-			TokenPair tokenPair = jwtService.issueTokenPair(user.getId(), user.getEmail(),
+			TokenPair tokenPair = jwtService.issueTokenPair(user.getEmail(), user.getEmail(),
 					List.of(user.getRole().authorityName()), user.getTenantId(), Map.of());
-			String refreshTokenId = refreshTokenStore.issue(user.getId());
+			String refreshTokenId = refreshTokenStore.issue(user.getEmail());
 
 			log.info("User '{}' logged in successfully", user.getEmail());
 			publisher.publishEvent(AuditEvent.Builder.newInstance()
@@ -110,10 +110,10 @@ public class InternalAuthServiceImpl implements AuthService {
 		try {
 			RefreshTokenRecord rotated = refreshTokenStore.rotate(refreshTokenId)
 					.orElseThrow(() -> new BadCredentialsException("Bad credentials"));
-			User user = userRepository.findById(rotated.subject())
+			User user = userRepository.findByEmail(rotated.subject())
 					.orElseThrow(() -> new BadCredentialsException("Bad credentials"));
 
-			TokenPair tokenPair = jwtService.issueTokenPair(user.getId(), user.getEmail(),
+			TokenPair tokenPair = jwtService.issueTokenPair(user.getEmail(), user.getEmail(),
 					List.of(user.getRole().authorityName()), user.getTenantId(), Map.of());
 
 			log.info("Refresh token rotated successfully for user '{}'", user.getEmail());
@@ -145,7 +145,7 @@ public class InternalAuthServiceImpl implements AuthService {
 			Optional<RefreshTokenRecord> rotated = refreshTokenStore.rotate(refreshTokenId);
 			Optional<User> user = Optional.empty();
 			if (rotated.isPresent()) {
-				user = userRepository.findById(rotated.get().subject());
+				user = userRepository.findByEmail(rotated.get().subject());
 			}
 			refreshTokenStore.revoke(refreshTokenId);
 			log.info("Refresh token revoked on logout");

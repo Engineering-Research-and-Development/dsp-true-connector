@@ -20,10 +20,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -76,16 +73,23 @@ public class UserService {
 	}
 
 	/**
-	 * Returns the authenticated user's own record by e-mail.
+	 * Returns the authenticated user's own record by email.
 	 *
-	 * @param email the e-mail of the authenticated principal
+	 * @param email the email of the authenticated principal
 	 * @return the user as a serialized JSON node
-	 * @throws UserNotFoundException if no user with the given e-mail exists
+	 * @throws UserNotFoundException if no user with the given email exists
 	 */
-	public JsonNode findCurrentUser(String email) {
-		User user = userRepository.findByEmail(email)
+	public UserCurrentUserResponse findCurrentUser(String email) {
+		UserCurrentUserResponse user = userRepository.findByEmail(email)
+				.map(u -> UserCurrentUserResponse.Builder.newInstance()
+						.firstName(u.getFirstName())
+						.lastName(u.getLastName())
+						.email(u.getEmail())
+						.tenantId(u.getTenantId())
+						.role(u.getRole().name())
+						.build())
 				.orElseThrow(() -> new UserNotFoundException("User not found: " + email));
-		return ToolsSerializer.serializePlainJsonNode(user);
+		return user;
 	}
 
 	/**
@@ -109,13 +113,30 @@ public class UserService {
 	/**
 	 * Find users based on generic filter criteria.
 	 * Supports any field with automatic type detection and conversion.
+	 * Always excludes users with Role.CONNECTOR.
 	 *
 	 * @param filters  Map of field names to filter values. All values are pre-validated and converted.
 	 * @param pageable Pageable
 	 * @return page of User
 	 */
 	public Page<User> findAll(Map<String, Object> filters, Pageable pageable) {
-		return userRepository.findWithDynamicFilters(filters, User.class, pageable);
+		Map<String, Object> filterMap = new HashMap<>(filters != null ? filters : Collections.emptyMap());
+
+		Object roleFilter = filterMap.get("role");
+
+		if (roleFilter == null || (roleFilter instanceof String str && str.isBlank())) {
+			// "All Roles" selected: include all roles except CONNECTOR
+			List<Role> allowedRoles = Arrays.stream(Role.values())
+					.filter(role -> role != Role.CONNECTOR)
+					.toList();
+			filterMap.put("role", allowedRoles);
+		} else if (Role.CONNECTOR.equals(roleFilter)
+				|| Role.CONNECTOR.name().equalsIgnoreCase(String.valueOf(roleFilter))) {
+			// CONNECTOR explicitly requested: return no results
+			filterMap.put("role", Collections.emptyList());
+		}
+
+		return userRepository.findWithDynamicFilters(filterMap, User.class, pageable);
 	}
 
 	/**
@@ -192,8 +213,9 @@ public class UserService {
 		}
 
 		user.setEnabled(request.isEnabled());
-		user.setExpired(request.isExpired());
-		user.setLocked(request.isLocked());
+//		enable when functionality is implemented
+//		user.setExpired(request.isExpired());
+//		user.setLocked(request.isLocked());
 
 		userRepository.save(user);
 		auditEventPublisher.publishEvent(

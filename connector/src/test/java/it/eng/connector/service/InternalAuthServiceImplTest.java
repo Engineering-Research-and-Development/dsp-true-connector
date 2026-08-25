@@ -79,16 +79,16 @@ class InternalAuthServiceImplTest {
 		when(authentication.getName()).thenReturn(EMAIL);
 		when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 		TokenPair tokenPair = new TokenPair("access-token", "unused-refresh-jwt", 900L);
-		when(jwtService.issueTokenPair(eq(USER_ID), eq(EMAIL), anyList(), eq(TENANT_ID), anyMap()))
+		when(jwtService.issueTokenPair(eq(EMAIL), eq(EMAIL), anyList(), eq(TENANT_ID), anyMap()))
 				.thenReturn(tokenPair);
-		when(refreshTokenStore.issue(USER_ID)).thenReturn("refresh-id-1");
+		when(refreshTokenStore.issue(EMAIL)).thenReturn("refresh-id-1");
 
 		AuthTokens tokens = authService.login(EMAIL, PASSWORD);
 
 		assertEquals("access-token", tokens.accessToken());
 		assertEquals("refresh-id-1", tokens.refreshToken());
 		assertEquals(900L, tokens.expiresInSeconds());
-		verify(jwtService).issueTokenPair(USER_ID, EMAIL, List.of(Role.ADMIN.authorityName()), TENANT_ID, Map.of());
+		verify(jwtService).issueTokenPair(EMAIL, EMAIL, List.of(Role.ADMIN.authorityName()), TENANT_ID, Map.of());
 		verify(auditEventPublisher).publishEvent(
 				argThat(event -> event.getEventType() == AuditEventType.APPLICATION_LOGIN));
 	}
@@ -148,11 +148,11 @@ class InternalAuthServiceImplTest {
 	@Test
 	@DisplayName("refresh() with a valid refresh token id returns a new access token and rotates the refresh id")
 	void refreshWithValidTokenRotatesAndReturnsNewAccessToken() {
-		RefreshTokenRecord rotated = new RefreshTokenRecord("new-refresh-id", USER_ID, Instant.now());
+		RefreshTokenRecord rotated = new RefreshTokenRecord("new-refresh-id", EMAIL, Instant.now());
 		when(refreshTokenStore.rotate("old-refresh-id")).thenReturn(Optional.of(rotated));
-		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+		when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 		TokenPair tokenPair = new TokenPair("new-access-token", "unused-refresh-jwt", 900L);
-		when(jwtService.issueTokenPair(eq(USER_ID), eq(EMAIL), anyList(), eq(TENANT_ID), anyMap()))
+		when(jwtService.issueTokenPair(eq(EMAIL), eq(EMAIL), anyList(), eq(TENANT_ID), anyMap()))
 				.thenReturn(tokenPair);
 
 		AuthTokens tokens = authService.refresh("old-refresh-id");
@@ -170,7 +170,7 @@ class InternalAuthServiceImplTest {
 		when(refreshTokenStore.rotate("unknown-id")).thenReturn(Optional.empty());
 
 		assertThrows(BadCredentialsException.class, () -> authService.refresh("unknown-id"));
-		verify(userRepository, never()).findById(anyString());
+		verify(userRepository, never()).findByEmail(anyString());
 		verify(jwtService, never()).issueTokenPair(anyString(), anyString(), anyList(), anyString(), anyMap());
 		verify(auditEventPublisher).publishEvent(
 				argThat(event -> event.getEventType() == AuditEventType.APPLICATION_TOKEN_REFRESH_FAILED));
