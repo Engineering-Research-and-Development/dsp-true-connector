@@ -152,6 +152,12 @@ public class ConnectorSecurityConfig {
                             .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
                             .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
                             .requestMatchers(ApiEndpoints.AUTH_V1 + "/**").permitAll()
+                            // Data Plane callbacks authenticate themselves via X-Api-Key
+                            // (see DataFlowCallbackController#authenticate) instead of a JWT,
+                            // so they must be excluded from the ROLE_ADMIN requirement below.
+                            .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACKS_PATTERN).permitAll()
+                            .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE).permitAll()
+                            .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACK_ERROR).permitAll()
                             .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         } else {
@@ -171,6 +177,12 @@ public class ConnectorSecurityConfig {
                             .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
                             .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
                             .requestMatchers(ApiEndpoints.AUTH_V1 + "/**").permitAll()
+                            // Data Plane callbacks authenticate themselves via X-Api-Key
+                            // (see DataFlowCallbackController#authenticate) instead of a JWT,
+                            // so they must be excluded from the ROLE_ADMIN requirement below.
+                            .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACKS_PATTERN).permitAll()
+                            .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE).permitAll()
+                            .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACK_ERROR).permitAll()
                             .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         }

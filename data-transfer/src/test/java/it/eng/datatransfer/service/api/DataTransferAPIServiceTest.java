@@ -1657,7 +1657,7 @@ class DataTransferAPIServiceTest {
         assertEquals("http://dp-http-push:9090", savedTransferProcess.getAssignedDataplaneEndpoint(),
                 "assignedDataplaneEndpoint must be persisted after HTTP-PUSH prepare");
 
-        verify(okHttpRestClient).sendRequestProtocol(any(), any(), any());
+        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
     }
 
     @Test
@@ -1878,7 +1878,7 @@ class DataTransferAPIServiceTest {
 
         when(transferProcessRepository.findById(startedGrpc.getId())).thenReturn(Optional.of(startedGrpc));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(), any(), any())).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
 
         apiService.terminateTransfer(startedGrpc.getId());
@@ -1893,7 +1893,7 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(), any(), any())).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
 
         apiService.terminateTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
@@ -1908,7 +1908,7 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(), any(), any())).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
 
         apiService.completeTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
@@ -1965,7 +1965,7 @@ class DataTransferAPIServiceTest {
 
         when(transferProcessRepository.findById(startedGrpc.getId())).thenReturn(Optional.of(startedGrpc));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(), any(), any())).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
 
         apiService.suspendTransfer(startedGrpc.getId());
@@ -1991,7 +1991,7 @@ class DataTransferAPIServiceTest {
 
         when(transferProcessRepository.findById(startedGrpc.getId())).thenReturn(Optional.of(startedGrpc));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(), any(), any())).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         doThrow(new DataPlaneClientException("DP unreachable"))
                 .when(dataPlaneClient).terminate(startedGrpc.getId(), TransportProfile.STREAM_GRPC, TransportProfile.STREAM_GRPC);
@@ -2025,7 +2025,7 @@ class DataTransferAPIServiceTest {
 
         when(transferProcessRepository.findById(startedGrpc.getId())).thenReturn(Optional.of(startedGrpc));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(), any(), any())).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         doThrow(new DataPlaneClientException("DP unreachable"))
                 .when(dataPlaneClient).suspend(startedGrpc.getId(), TransportProfile.STREAM_GRPC, TransportProfile.STREAM_GRPC);
@@ -2097,7 +2097,7 @@ class DataTransferAPIServiceTest {
 
         when(transferProcessRepository.findById(startedGrpc.getId())).thenReturn(Optional.of(startedGrpc));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(), any(), any())).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
 
         apiService.terminateTransfer(startedGrpc.getId());
@@ -2128,7 +2128,7 @@ class DataTransferAPIServiceTest {
 
         when(transferProcessRepository.findById(startedGrpc.getId())).thenReturn(Optional.of(startedGrpc));
         when(credentialUtils.getConnectorCredentials()).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(), any(), any())).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.save(any(TransferProcess.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));

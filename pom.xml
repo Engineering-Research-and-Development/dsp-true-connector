@@ -32,6 +32,8 @@
         <assertj.version>3.27.7</assertj.version>
         <!-- HttpClient5 - override Boot BOM (CVE-2025-27820 domain check bypass) -->
         <httpclient5.version>5.4.3</httpclient5.version>
+        <!-- Jackson - override Boot BOM (GHSA-72hv-8253-57qq DoS in async parser) -->
+        <jackson.version>2.18.6</jackson.version>
         <!-- json-smart - override Boot BOM (CVE-2024-57699 uncontrolled recursion DoS) -->
         <json-smart.version>2.5.2</json-smart.version>
         <!-- Nimbus JOSE+JWT - override Boot BOM (CVE-2025-53864 deeply nested JSON DoS) -->

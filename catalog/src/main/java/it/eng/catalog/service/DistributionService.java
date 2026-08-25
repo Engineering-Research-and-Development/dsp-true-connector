@@ -30,7 +30,7 @@ public class DistributionService {
     private final AuditEventPublisher auditEventPublisher;
 
     public DistributionService(DistributionRepository repository, CatalogService catalogService,
-                               ApplicationEventPublisher applicationEventPublisher) {
+                               ApplicationEventPublisher applicationEventPublisher, AuditEventPublisher auditEventPublisher) {
         this.repository = repository;
         this.catalogService = catalogService;
         this.applicationEventPublisher = applicationEventPublisher;

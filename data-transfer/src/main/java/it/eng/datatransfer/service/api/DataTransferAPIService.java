@@ -1105,7 +1105,7 @@ public class DataTransferAPIService {
             // Terminate the PREPARED record and clear the sticky entry so neither accumulates indefinitely.
             cleanupPreparedDataPlaneSession(transferProcess.getId(),  transferProcess.getFormat(), null,
                     viewStickyEndpoint, "VIEW DP terminate failed (best-effort)");
-            publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId()));
+            publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId(), transferProcess.getTenantId()));
             publisher.publishEvent(AuditEventType.TRANSFER_VIEW,
                     "Transfer process (view) generated artifact URL",
                     auditMap("transferProcess", transferProcess,

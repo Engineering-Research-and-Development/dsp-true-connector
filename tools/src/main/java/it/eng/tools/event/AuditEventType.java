@@ -60,8 +60,6 @@ public enum AuditEventType {
     DATAPLANE_DEREGISTERED("Data Plane deregistered"),
     DATAPLANE_REGISTRATION_NOT_FOUND("Data Plane registration not found"),
 
-    TENANT_NOT_FOUND("Tenant not found"),
-
     USER_CREATED("User created"),
     USER_UPDATED("User updated"),
     USER_PASSWORD_CHANGED("User password changed"),

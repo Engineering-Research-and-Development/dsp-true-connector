@@ -183,12 +183,16 @@ public class AutomaticDataTransferIT {
                 "consumer-bucket");
 
         // ── WireMock consumer — callbackAddress points to WireMock ────────────────
+        // application.callback.address must be the bare root URL: DataTransferProperties
+        // .consumerCallbackAddress() / Tenant.getCallbackAddress() append "/{tenantId}/consumer"
+        // themselves. Pre-appending "/" + TENANT_ID here would double the tenant segment
+        // (http://localhost:9100/engineering/engineering/consumer/...) and break WireMock matching.
         // Provider sends TransferStartMessage to http://localhost:WIREMOCK_PORT/engineering/consumer/transfers/{pid}/start.
         // WireMock intercepts and returns HTTP 500 → triggers provider's retry loop.
         wiremockConsumerCtx = startInstance(mongoHost, mongoPort, WIREMOCK_CONSUMER_PORT,
                 "consumer-wiremock", "consumer_wiremock_db",
-                "http://localhost:" + WIREMOCK_PORT + "/" + TENANT_ID,
-                consumerMinIO.getS3URL(), consumerMinIO.getUserName(), consumerMinIO.getPassword(),
+                "http://localhost:" + WIREMOCK_PORT,
+                minIOContainer.getS3URL(), minIOContainer.getUserName(), minIOContainer.getPassword(),
                 "consumer-bucket");
 
         populateProviderCatalog();
@@ -253,11 +257,13 @@ public class AutomaticDataTransferIT {
             // automaticNegotiation=true, and automaticTransfer=true since those now
             // override the @Value fallback.
             TenantService tenantSvc = ctx.getBean(TenantService.class);
+            // participantId is immutable and always preserved from the existing tenant by
+            // TenantService.updateTenant(); it is only supplied here to satisfy Tenant.Builder's
+            // @NotNull validation on build().
             Tenant tenantUpdate = Tenant.Builder.newInstance()
                     .id(TENANT_ID)
                     .name("Engineering")
-                    .connectorId("urn:connector:engineering")
-                    .callbackAddress(callbackAddress)
+                    .participantId("urn:connector:engineering")
                     .automaticNegotiation(true)
                     .automaticTransfer(true)
                     .enabled(true)
@@ -531,8 +537,10 @@ public class AutomaticDataTransferIT {
                 consumerTpRepo, consumerTpId, "consumer");
 
         // ── Simulate DP completion callback ──────────────────────────────────────
-        // The DP would normally POST to /api/v1/dataflows/complete after finishing the transfer.
-        // We simulate this manually because the WireMock DP doesn't execute real S3 operations.
+        // The DP would normally download via the presigned URL and upload into the Consumer's
+        // MinIO before POSTing to /api/v1/dataflows/complete. We simulate both steps manually
+        // because the WireMock DP only fakes the DPS signaling exchange, not real S3 operations.
+        simulateDpArtifactDelivery(downloadingConsumerTp.getId());
         int cbStatus = postDpCallback(CONSUMER_BASE_URL, downloadingConsumerTp.getId());
         assertEquals(200, cbStatus, "DP callback to consumer should succeed");
 
@@ -608,8 +616,11 @@ public class AutomaticDataTransferIT {
         Thread.sleep(500);
 
         // ── Simulate DP completion callback to provider ───────────────────────────
-        // The DP (running on the provider side) would normally POST back to the provider CP when done.
-        // We simulate this manually because the WireMock DP doesn't execute real S3 operations.
+        // The DP (running on the provider side) would normally download from the Provider's
+        // MinIO and push into the Consumer's MinIO (objectKey = consumerTpId) before POSTing
+        // back to the provider CP. We simulate both steps manually because the WireMock DP
+        // only fakes the DPS signaling exchange, not real S3 operations.
+        simulateDpArtifactDelivery(consumerTpId);
         int cbStatus = postDpCallback(PROVIDER_BASE_URL, startedProviderTp.getId());
         assertEquals(200, cbStatus, "DP callback to provider should succeed");
 
@@ -742,6 +753,40 @@ public class AutomaticDataTransferIT {
             Thread.sleep(POLL_INTERVAL_MS);
         }
         throw new AssertionError("[" + label + "] download did not start within 30s");
+    }
+
+    /**
+     * Simulates the real Data Plane's data-movement side effect by uploading a test artifact
+     * directly into the Consumer's MinIO bucket, keyed by {@code objectKey}.
+     *
+     * <p>The WireMock Data Plane used by this test only fakes the DPS signaling exchange
+     * ({@code /dataflows/prepare}, {@code /dataflows/start}) — it never performs the actual
+     * S3 download/upload that a real HTTP-PULL or HTTP-PUSH Data Plane would. Since the
+     * control plane no longer performs that data movement itself (it is now delegated to the
+     * external Data Plane per the DPS split), the test must perform this step manually before
+     * simulating the DP's completion callback, or the "artifact exists in Consumer MinIO"
+     * assertions can never pass.
+     *
+     * @param objectKey the S3 object key the real Data Plane would have used — the internal
+     *                  Consumer {@link TransferProcess} id for both HTTP_PULL and HTTP_PUSH
+     * @throws Exception on S3 upload failure
+     */
+    private static void simulateDpArtifactDelivery(String objectKey) throws Exception {
+        var consumerS3      = consumerCtx.getBean(S3ClientService.class);
+        var consumerS3Props = consumerCtx.getBean(S3Properties.class);
+        Map<String, String> destProps = Map.of(
+                S3Utils.OBJECT_KEY,        objectKey,
+                S3Utils.BUCKET_NAME,       consumerS3Props.getBucketName(),
+                S3Utils.ENDPOINT_OVERRIDE, consumerS3Props.getEndpoint(),
+                S3Utils.REGION,            consumerS3Props.getRegion(),
+                S3Utils.ACCESS_KEY,        consumerS3Props.getAccessKey(),
+                S3Utils.SECRET_KEY,        consumerS3Props.getSecretKey());
+        try (InputStream is = new ByteArrayInputStream("artifact-content".getBytes(StandardCharsets.UTF_8))) {
+            consumerS3.uploadFile(is, destProps, MediaType.TEXT_PLAIN_VALUE,
+                    ContentDisposition.attachment().filename("artifact.txt").build().toString()).get();
+        }
+        log.info("Simulated Data Plane artifact delivery — bucket='{}', key='{}'",
+                consumerS3Props.getBucketName(), objectKey);
     }
 
     /**
