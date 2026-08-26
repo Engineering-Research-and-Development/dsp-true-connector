@@ -85,4 +85,17 @@ public class DataPlaneRegistrationTest {
         assertNotNull(reg);
         assertNull(reg.getTransportProfiles());
     }
+
+    @Test
+    @DisplayName("Build with apiKey and apiKeyHint retains both")
+    public void buildWithApiKeyHintRetainsIt() {
+        DataPlaneRegistration reg = DataPlaneRegistration.Builder.newInstance()
+                .endpoint("http://dataplane.example.com")
+                .supportedTransferTypes(Set.of("HttpData-PULL"))
+                .apiKey("hashed-value-not-checked-here")
+                .apiKeyHint("a1b2c3d4")
+                .build();
+
+        assertEquals("a1b2c3d4", reg.getApiKeyHint());
+    }
 }

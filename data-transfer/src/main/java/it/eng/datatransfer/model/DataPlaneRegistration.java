@@ -42,8 +42,21 @@ public class DataPlaneRegistration {
 
     private String authType;
 
+    /**
+     * HMAC-SHA256 hash of this Data Plane's API key (see {@code ApiKeyHasher}), used to
+     * authenticate its callbacks, re-registrations, and deregistration. The raw key is never
+     * persisted or logged.
+     */
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String apiKey;
+
+    /**
+     * Non-secret display hint for the API key (e.g. its first 8 characters), used so admins
+     * viewing {@code GET /api/v1/dataplanes} can distinguish registrations without exposing the
+     * secret itself. {@link #apiKey} stores only the HMAC-SHA256 hash of the raw key — never
+     * the raw key or enough of it to reconstruct/replay it.
+     */
+    private String apiKeyHint;
 
     /**
      * Optional set of transport profile identifiers this Data Plane advertises
@@ -129,6 +142,17 @@ public class DataPlaneRegistration {
          */
         public Builder apiKey(String apiKey) {
             registration.apiKey = apiKey;
+            return this;
+        }
+
+        /**
+         * Sets the non-secret API key display hint.
+         *
+         * @param apiKeyHint the display hint (e.g. first 8 characters of the raw key)
+         * @return this builder
+         */
+        public Builder apiKeyHint(String apiKeyHint) {
+            registration.apiKeyHint = apiKeyHint;
             return this;
         }
 
