@@ -96,7 +96,7 @@ services:
       - DATAPLANE_ID=dp-http-pull
       - DATAPLANE_ENDPOINT=http://data-plane-http-pull:9090
       - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://dsp-tc-connector:8080
-      - DATAPLANE_CONTROL_PLANE_ADMIN_SECRET=internal-service-secret-change-in-prod
+      - DATAPLANE_CONTROL_PLANE_REGISTRATION_KEY=internal-service-secret-change-in-prod
       - DATAPLANE_AUTH_TYPE=API_KEY
       - DATAPLANE_API_KEY=changeme
       - S3_ENDPOINT=http://minio:9000
