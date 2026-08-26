@@ -8,18 +8,22 @@ import it.eng.dataplane.core.service.DataPlaneAuditEventService;
 import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
+import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -144,6 +148,24 @@ class ControlPlaneRegistrationBeanTest {
     }
 
     @Test
+    @DisplayName("register sends X-Registration-Key header instead of Authorization")
+    void registerSendsRegistrationKeyHeader() throws IOException {
+        when(properties.getControlPlaneAdminEndpoint()).thenReturn("http://cp:8080");
+        when(properties.getEndpoint()).thenReturn("http://dp:9090");
+        when(properties.getId()).thenReturn("dp-test-id");
+        when(properties.getControlPlaneRegistrationKey()).thenReturn("test-registration-key");
+        when(registry.getSupportedProtocols()).thenReturn(Set.of("HttpData-PULL"));
+        ArgumentCaptor<Request> requestCaptor = ArgumentCaptor.forClass(Request.class);
+        when(okHttpClient.newCall(requestCaptor.capture())).thenReturn(call);
+        when(call.execute()).thenReturn(okResponse());
+
+        bean.onApplicationEvent(null);
+
+        assertEquals("test-registration-key", requestCaptor.getValue().header("X-Registration-Key"));
+        assertNull(requestCaptor.getValue().header("Authorization"));
+    }
+
+    @Test
     void retriesMultipleTimesBeforeFinalFailure() throws IOException {
         when(properties.getControlPlaneAdminEndpoint()).thenReturn("http://cp:8080");
         when(properties.getEndpoint()).thenReturn("http://dp:9090");
@@ -176,6 +198,22 @@ class ControlPlaneRegistrationBeanTest {
         verify(auditEventService).saveEvent(
                 eq(DataPlaneAuditEventType.DP_DEREGISTRATION_SUCCESS),
                 any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("deregister sends X-Api-Key header instead of Authorization")
+    void deregisterSendsApiKeyHeader() throws IOException {
+        when(properties.getControlPlaneAdminEndpoint()).thenReturn("http://cp:8080");
+        when(properties.getId()).thenReturn("dp-test-id");
+        when(properties.getApiKey()).thenReturn("dp-own-api-key");
+        ArgumentCaptor<Request> requestCaptor = ArgumentCaptor.forClass(Request.class);
+        when(okHttpClient.newCall(requestCaptor.capture())).thenReturn(call);
+        when(call.execute()).thenReturn(okResponse());
+
+        bean.deregisterFromControlPlane();
+
+        assertEquals("dp-own-api-key", requestCaptor.getValue().header("X-Api-Key"));
+        assertNull(requestCaptor.getValue().header("Authorization"));
     }
 
     @Test

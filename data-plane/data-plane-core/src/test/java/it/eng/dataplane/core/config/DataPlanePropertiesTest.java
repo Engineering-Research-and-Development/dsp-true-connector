@@ -40,7 +40,7 @@ class DataPlanePropertiesTest {
         props.setControlPlaneAdminEndpoint("http://cp:8080");
         props.setAuthType("API_KEY");
         props.setApiKey("secret");
-        props.setControlPlaneAdminSecret("admin-secret");
+        props.setControlPlaneRegistrationKey("registration-key");
 
         assertEquals("my-dp-id", props.getId());
         assertEquals("http://dp:9090", props.getEndpoint());
@@ -48,7 +48,7 @@ class DataPlanePropertiesTest {
         assertEquals("http://cp:8080", props.getControlPlaneAdminEndpoint());
         assertEquals("API_KEY", props.getAuthType());
         assertEquals("secret", props.getApiKey());
-        assertEquals("admin-secret", props.getControlPlaneAdminSecret());
+        assertEquals("registration-key", props.getControlPlaneRegistrationKey());
     }
 
     @Test

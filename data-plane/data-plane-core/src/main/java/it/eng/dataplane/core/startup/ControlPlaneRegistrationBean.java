@@ -24,8 +24,10 @@ import java.util.stream.Collectors;
 
 /**
  * Registers this Data Plane with the Control Plane at startup and deregisters on shutdown.
- * Registration retries up to 5 times with exponential backoff (2s base delay).
- * Deregistration on {@link PreDestroy} is best-effort: errors are logged but not propagated.
+ * Registration retries up to 5 times with exponential backoff (2s base delay) and can send
+ * {@code X-Registration-Key} when a bootstrap key is configured.
+ * Deregistration on {@link PreDestroy} is best-effort, authenticated with {@code X-Api-Key},
+ * and errors are logged but not propagated.
  */
 @Slf4j
 @Component
@@ -82,7 +84,7 @@ public class ControlPlaneRegistrationBean implements ApplicationListener<Applica
         }
         String url = cpEndpoint + DataPlaneApiEndpoints.DATA_PLANES + "/" + properties.getId();
         Request.Builder requestBuilder = new Request.Builder().url(url).delete();
-        addAdminAuth(requestBuilder);
+        addDeregistrationAuth(requestBuilder);
         try (Response response = okHttpClient.newCall(requestBuilder.build()).execute()) {
             if (response.isSuccessful()) {
                 log.info("Deregistered from CP (id={}, url={})", properties.getId(), url);
@@ -125,7 +127,7 @@ public class ControlPlaneRegistrationBean implements ApplicationListener<Applica
                     .url(url)
                     .post(RequestBody.create(json, JSON))
                     .addHeader("Content-Type", "application/json");
-                addAdminAuth(requestBuilder);
+                addRegistrationAuth(requestBuilder);
                 try (Response response = okHttpClient.newCall(requestBuilder.build()).execute()) {
                     if (response.isSuccessful()) {
                         log.info("Registered with CP at {} (id={}, attempt {})", url, properties.getId(), attempt);
@@ -149,11 +151,27 @@ public class ControlPlaneRegistrationBean implements ApplicationListener<Applica
                 Map.of("controlPlaneUrl", url, "attempts", String.valueOf(MAX_ATTEMPTS)));
     }
 
-    private void addAdminAuth(Request.Builder requestBuilder) {
-        String adminSecret = properties.getControlPlaneAdminSecret();
-        if (adminSecret != null && !adminSecret.isBlank()) {
-            requestBuilder.addHeader("Authorization",
-                okhttp3.Credentials.basic("internal-service", adminSecret));
+    /**
+     * Adds the Control Plane bootstrap registration header when configured.
+     *
+     * @param requestBuilder request builder to enrich
+     */
+    private void addRegistrationAuth(Request.Builder requestBuilder) {
+        String registrationKey = properties.getControlPlaneRegistrationKey();
+        if (registrationKey != null && !registrationKey.isBlank()) {
+            requestBuilder.addHeader("X-Registration-Key", registrationKey);
+        }
+    }
+
+    /**
+     * Adds this Data Plane instance API key for authenticated deregistration when configured.
+     *
+     * @param requestBuilder request builder to enrich
+     */
+    private void addDeregistrationAuth(Request.Builder requestBuilder) {
+        String apiKey = properties.getApiKey();
+        if (apiKey != null && !apiKey.isBlank()) {
+            requestBuilder.addHeader("X-Api-Key", apiKey);
         }
     }
 

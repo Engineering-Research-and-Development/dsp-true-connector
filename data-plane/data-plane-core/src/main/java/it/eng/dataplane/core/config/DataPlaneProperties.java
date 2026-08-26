@@ -47,9 +47,10 @@ public class DataPlaneProperties {
     private String apiKey;
 
     /**
-     * Admin secret used for HTTP Basic Auth when registering with the Control Plane.
-     * Must match {@code application.internal.secret} configured on the Control Plane.
-     * Leave blank to skip authentication (only valid when CP has auth disabled).
+     * Shared bootstrap key this Data Plane presents as {@code X-Registration-Key} when first
+     * enrolling with the Control Plane. Must match {@code dataplane.registration.bootstrap-key}
+     * configured on the Control Plane. Leave blank to skip authentication (only valid when the
+     * CP's registration endpoint has no bootstrap key configured — not recommended).
      */
-    private String controlPlaneAdminSecret;
+    private String controlPlaneRegistrationKey;
 }
