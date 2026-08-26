@@ -158,6 +158,8 @@ public class ConnectorSecurityConfig {
                             // (see DataFlowCallbackController#authenticate) instead of a JWT,
                             // so they must be excluded from the ROLE_ADMIN requirement below.
                             .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACKS_PATTERN).permitAll()
+                            .requestMatchers(HttpMethod.POST, ApiEndpoints.DATA_PLANES).permitAll()
+                            .requestMatchers(HttpMethod.DELETE, ApiEndpoints.DATA_PLANES + "/**").permitAll()
                             .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE).permitAll()
                             .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACK_ERROR).permitAll()
                             .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
@@ -185,6 +187,8 @@ public class ConnectorSecurityConfig {
                             // (see DataFlowCallbackController#authenticate) instead of a JWT,
                             // so they must be excluded from the ROLE_ADMIN requirement below.
                             .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACKS_PATTERN).permitAll()
+                            .requestMatchers(HttpMethod.POST, ApiEndpoints.DATA_PLANES).permitAll()
+                            .requestMatchers(HttpMethod.DELETE, ApiEndpoints.DATA_PLANES + "/**").permitAll()
                             .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE).permitAll()
                             .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACK_ERROR).permitAll()
                             .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
