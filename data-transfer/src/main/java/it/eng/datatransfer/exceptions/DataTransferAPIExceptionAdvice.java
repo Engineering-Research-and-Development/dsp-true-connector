@@ -28,6 +28,12 @@ public class DataTransferAPIExceptionAdvice extends ResponseEntityExceptionHandl
         return new ResponseEntity<>(GenericApiResponse.error(ex.getLocalizedMessage()), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(value = {DataPlaneUnauthorizedException.class})
+    protected ResponseEntity<Object> handleDataPlaneUnauthorizedException(DataPlaneUnauthorizedException ex,
+                                                                          WebRequest request) {
+        return new ResponseEntity<>(GenericApiResponse.error(ex.getLocalizedMessage()), HttpStatus.UNAUTHORIZED);
+    }
+
     @ExceptionHandler(value = {DataPlaneClientException.class})
     protected ResponseEntity<Object> handleDataPlaneClientException(DataPlaneClientException ex, WebRequest request) {
         return new ResponseEntity<>(GenericApiResponse.error(ex.getLocalizedMessage()), HttpStatus.BAD_GATEWAY);

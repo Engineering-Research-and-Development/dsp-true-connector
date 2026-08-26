@@ -2,9 +2,11 @@ package it.eng.datatransfer.service;
 
 import it.eng.datatransfer.event.DataPlaneRegistrationChangedEvent;
 import it.eng.datatransfer.exceptions.DataPlaneNotFoundException;
+import it.eng.datatransfer.exceptions.DataPlaneUnauthorizedException;
 import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.datatransfer.repository.DataPlaneRegistrationRepository;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.security.ApiKeyHasher;
 import it.eng.tools.service.AuditEventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +30,7 @@ public class DataPlaneRegistrationService {
     private final DataPlaneRegistrationRepository repository;
     private final AuditEventPublisher auditEventPublisher;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final ApiKeyHasher apiKeyHasher;
 
     /**
      * Registers a new Data Plane instance or updates an existing registration with the same endpoint.
@@ -41,6 +44,8 @@ public class DataPlaneRegistrationService {
     @CacheEvict(cacheNames = "dataPlanesByType", allEntries = true)
     public DataPlaneRegistration register(DataPlaneRegistration registration) {
         log.info("Registering Data Plane at endpoint {}", registration.getEndpoint());
+        String hashedApiKey = apiKeyHasher.hash(registration.getApiKey());
+        String apiKeyHint = registration.getApiKey().substring(0, Math.min(8, registration.getApiKey().length()));
         return repository.findByEndpoint(registration.getEndpoint())
                 .map(existing -> {
                     String idToUse = (registration.getId() != null && !registration.getId().isBlank())
@@ -57,7 +62,8 @@ public class DataPlaneRegistrationService {
                             .endpoint(registration.getEndpoint())
                             .supportedTransferTypes(registration.getSupportedTransferTypes())
                             .transportProfiles(registration.getTransportProfiles())
-                            .apiKey(registration.getApiKey())
+                            .apiKey(hashedApiKey)
+                            .apiKeyHint(apiKeyHint)
                             .build();
                     DataPlaneRegistration saved = repository.save(updated);
                     auditEventPublisher.publishEvent(AuditEventType.DATAPLANE_REGISTRATION_UPDATED,
@@ -68,7 +74,18 @@ public class DataPlaneRegistrationService {
                     return saved;
                 })
                 .orElseGet(() -> {
-                    DataPlaneRegistration saved = repository.save(registration);
+                    DataPlaneRegistration toSave = DataPlaneRegistration.Builder.newInstance()
+                            .id(registration.getId())
+                            .endpoint(registration.getEndpoint())
+                            .supportedTransferTypes(registration.getSupportedTransferTypes())
+                            .transportProfiles(registration.getTransportProfiles())
+                            .authType(registration.getAuthType())
+                            .lastHeartbeat(registration.getLastHeartbeat())
+                            .registeredAt(registration.getRegisteredAt())
+                            .apiKey(hashedApiKey)
+                            .apiKeyHint(apiKeyHint)
+                            .build();
+                    DataPlaneRegistration saved = repository.save(toSave);
                     auditEventPublisher.publishEvent(AuditEventType.DATAPLANE_REGISTERED,
                             "Data Plane registered at endpoint " + registration.getEndpoint(),
                             Map.of("endpoint", registration.getEndpoint(),
@@ -97,9 +114,10 @@ public class DataPlaneRegistrationService {
      * Evicts the Data Plane routing cache so removed entries are no longer dispatched to.
      *
      * @param id the id of the registration to remove
+     * @param rawApiKey the raw API key presented by the caller
      */
     @CacheEvict(cacheNames = "dataPlanesByType", allEntries = true)
-    public void deregister(String id) {
+    public void deregister(String id, String rawApiKey) {
         log.info("Deregistering Data Plane with id {}", id);
         DataPlaneRegistration existing = repository.findById(id)
                 .orElseThrow(() -> {
@@ -108,6 +126,10 @@ public class DataPlaneRegistrationService {
                             Map.of("id", id));
                     return new DataPlaneNotFoundException("Data Plane registration not found: " + id);
                 });
+        if (!apiKeyHasher.matches(rawApiKey, existing.getApiKey())) {
+            log.warn("Rejected deregistration for id {} — API key mismatch", id);
+            throw new DataPlaneUnauthorizedException("API key does not match registration " + id);
+        }
         repository.deleteById(id);
         auditEventPublisher.publishEvent(AuditEventType.DATAPLANE_DEREGISTERED,
                 "Data Plane deregistered at endpoint " + existing.getEndpoint(),
@@ -127,12 +149,15 @@ public class DataPlaneRegistrationService {
     /**
      * Finds a Data Plane registration by its API key.
      *
-     * @param apiKey the API key to look up
+     * @param rawApiKey the raw API key to look up
      * @return an Optional containing the registration if found, or empty if no registration matches
      */
-    public Optional<DataPlaneRegistration> findByApiKey(String apiKey) {
+    public Optional<DataPlaneRegistration> findByApiKey(String rawApiKey) {
         log.debug("Looking up Data Plane by API key");
-        return repository.findByApiKey(apiKey);
+        if (rawApiKey == null || rawApiKey.isBlank()) {
+            return Optional.empty();
+        }
+        return repository.findByApiKey(apiKeyHasher.hash(rawApiKey));
     }
 
     private void publishRegistrationChangedEvent(DataPlaneRegistration registration,
