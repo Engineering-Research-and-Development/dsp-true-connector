@@ -90,6 +90,11 @@ All notable changes to this project will be documented in this file.
 - Removed stale explicit jackson, assertj, json-smart, and httpclient5 `dependencyManagement` overrides —
   Spring Boot 3.5.14 BOM provides equal or newer versions via `jackson-bom 2.21.2`, `assertj 3.27.7`,
   `json-smart 2.5.2`, and `httpclient5 5.5.2`.
+- Replaced non-functional HTTP Basic Auth on Data Plane registration (`POST /api/v1/dataplanes`)
+  with a two-tier API-key model: a CP-configured bootstrap key (`X-Registration-Key`) authorizes
+  enrolling a new Data Plane, and each Data Plane's own API key is persisted only as an
+  HMAC-SHA256 hash (never in plaintext) and required (as `X-Api-Key`) to deregister that specific
+  instance, matching the existing `DataFlowCallbackController` callback authentication model.
 
 ### CI/CD
 - Upgraded all GitHub Actions to Node.js 24 compatible versions ahead of the June 2, 2026

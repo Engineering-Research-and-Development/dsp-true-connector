@@ -156,3 +156,31 @@ Key implementation touchpoints:
 - `data-transfer/.../DataPlaneRouter`
 - `data-transfer/.../DataPlaneRegistrationService`
 - `data-transfer/.../DataFlowCallbackController`
+
+## `POST /api/v1/dataplanes`
+
+This admin endpoint is used to register a dataplane instance with the Control Plane so it can
+advertise supported transfer formats and receive routed DPS lifecycle calls.
+
+#### Authentication
+
+Data Plane registration uses a two-tier API-key model:
+
+1. **Bootstrap Key (`X-Registration-Key`):** A shared, CP-wide secret configured as
+   `dataplane.registration.bootstrap-key`. New Data Planes present this header on initial
+   `POST /api/v1/dataplanes` enrollment. The Control Plane validates the key and, if correct,
+   persists the registration.
+
+2. **Per-Instance API Key:** Each registration includes an API key specific to that Data Plane
+   instance. The raw key is never persisted — only its HMAC-SHA256 hash (keyed with
+   `dataplane.registration.key-pepper`, a CP-wide secret) is stored in the database. This allows
+   the Control Plane to authenticate that Data Plane's subsequent callbacks, re-registrations,
+   and deregistration requests via the `X-Api-Key` header, without ever holding the raw secret.
+
+**Note on specification alignment:** The Dataplane Signaling Protocol (DPS) specification
+explicitly leaves registration-endpoint authentication as implementation-specific ("MAY require an
+authorization mechanism such as OAuth 2.0 or API Key") and models any such mechanism as an
+optional `authorization` object inside the registration request body, not as HTTP headers. The
+TRUE Connector's use of `X-Registration-Key` and `X-Api-Key` headers is therefore an
+implementation-specific design choice made under the latitude explicitly granted by the
+specification — not a DPS-mandated or DPS-recommended shape.

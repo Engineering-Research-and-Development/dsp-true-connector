@@ -63,7 +63,7 @@ typically override only role-specific values such as:
 - `application.encryption.key`
 - `grpc.server.port` for the gRPC Data Plane
 
-Shared values such as `dataplane.api-key`, `dataplane.control-plane-admin-secret`,
+Shared values such as `dataplane.api-key`, `dataplane.control-plane-registration-key`,
 `s3.endpoint`, `s3.accessKey`, `s3.secretKey`, `s3.region`, and TLS defaults remain in the base
 `application.properties` unless you explicitly override them.
 

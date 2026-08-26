@@ -584,7 +584,7 @@ role-specific keys, for example:
 - `grpc.server.port` for the gRPC Data Plane
 
 The remaining shared settings continue to come from `application.properties`, including
-properties such as `dataplane.api-key`, `dataplane.control-plane-admin-secret`, `s3.endpoint`,
+properties such as `dataplane.api-key`, `dataplane.control-plane-registration-key`, `s3.endpoint`,
 `s3.accessKey`, `s3.secretKey`, `s3.region`, and TLS defaults.
 
 As a result, the repository-provided profile files are not intended to be used alone. When a
