@@ -20,12 +20,19 @@ public interface DataPlaneRegistrationRepository extends MongoRepository<DataPla
     List<DataPlaneRegistration> findBySupportedTransferTypesContaining(String transferType);
 
     /**
-     * Finds a Data Plane registration by its API key.
+     * Finds a Data Plane registration by the HMAC-SHA256 hash of its API key.
      *
-     * @param apiKey the API key to search for
+     * <p>The method name intentionally still reads {@code findByApiKey} because Spring Data's
+     * query derivation resolves it against the {@code apiKey} property on
+     * {@link DataPlaneRegistration} by name, not by the semantic meaning of the value passed in;
+     * that field now stores a hash, not the raw key (see {@link DataPlaneRegistration#getApiKey()}).
+     *
+     * @param apiKeyHash the HMAC-SHA256 hash to search for (see {@code ApiKeyHasher#hash}) — the
+     *                   caller must hash the raw key before calling this method; the raw key is
+     *                   never passed to or stored by this repository
      * @return an Optional containing the registration if found, or empty if not found
      */
-    Optional<DataPlaneRegistration> findByApiKey(String apiKey);
+    Optional<DataPlaneRegistration> findByApiKey(String apiKeyHash);
 
     /**
      * Finds a Data Plane registration by its endpoint URL.
