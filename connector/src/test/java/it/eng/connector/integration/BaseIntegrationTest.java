@@ -13,6 +13,7 @@ import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.repository.DataPlaneRegistrationRepository;
+import it.eng.datatransfer.service.DataPlaneRegistrationService;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.controller.ApiEndpoints;
@@ -90,6 +91,8 @@ public class BaseIntegrationTest {
     @Autowired
     protected TenantRepository tenantRepository;
     @Autowired
+    protected DataPlaneRegistrationService dataPlaneRegistrationService;
+    @Autowired
     protected DataPlaneRegistrationRepository dataPlaneRegistrationRepository;
     protected JsonMapper jsonMapper;
 
@@ -144,7 +147,8 @@ public class BaseIntegrationTest {
      */
     protected void ensureDataPlaneRegistrations() {
         dataPlaneRegistrationRepository.deleteAll();
-        dataPlaneRegistrationRepository.save(DataPlaneRegistration.Builder.newInstance()
+        // Use the service layer which applies API key hashing
+        dataPlaneRegistrationService.register(DataPlaneRegistration.Builder.newInstance()
                 .endpoint(wireMock.baseUrl())
                 .supportedTransferTypes(Set.of(
                         DataTransferFormat.HTTP_PULL.format(),

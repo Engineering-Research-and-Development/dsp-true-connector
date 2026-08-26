@@ -14,8 +14,8 @@ import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.ApplicationConnector;
-import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.connector.filter.ApiTenantContextFilter;
+import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
@@ -46,8 +46,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -820,9 +820,11 @@ public class AutomaticDataTransferIT {
      * @param ctx the running Spring application context
      */
     private static void registerDataPlaneInContext(ConfigurableApplicationContext ctx) {
-        DataPlaneRegistrationRepository repo = ctx.getBean(DataPlaneRegistrationRepository.class);
+        // Use the service layer which applies API key hashing
+        var service = ctx.getBean(it.eng.datatransfer.service.DataPlaneRegistrationService.class);
+        var repo = ctx.getBean(DataPlaneRegistrationRepository.class);
         repo.deleteAll();
-        repo.save(DataPlaneRegistration.Builder.newInstance()
+        service.register(DataPlaneRegistration.Builder.newInstance()
                 .endpoint("http://localhost:" + DP_WIREMOCK_PORT)
                 .supportedTransferTypes(Set.of(
                         DataTransferFormat.HTTP_PULL.format(),
