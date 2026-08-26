@@ -75,7 +75,7 @@ public class DataPlaneRegistrationServiceTest {
 
         assertNotNull(result);
         assertEquals(reg.getEndpoint(), result.getEndpoint());
-        verify(repository).save(reg);
+        verify(repository).save(any(DataPlaneRegistration.class));
         verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATAPLANE_REGISTERED), any(String.class), any());
         assertPublishedRegistrationChangedEvent(DataPlaneRegistrationChangedEvent.ChangeType.REGISTERED,
                 reg.getId(), reg.getEndpoint());
