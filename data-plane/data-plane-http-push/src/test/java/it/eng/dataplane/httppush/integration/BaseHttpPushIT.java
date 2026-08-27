@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import io.minio.admin.MinioAdminClient;
 import io.minio.admin.UserInfo;
+import it.eng.dataplane.core.security.ApiKeyHasher;
 import it.eng.dataplane.httppush.TestDataPlaneHttpPushApplication;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,7 +45,10 @@ import static org.junit.jupiter.api.Assertions.fail;
  *
  * <p>Starts shared MongoDB and MinIO Testcontainers once per module and exposes
  * MockMvc, WireMock, and S3/IAM helper utilities for use by subclass tests.
- * Authentication uses the {@code X-Api-Key} header matching {@link #API_KEY}.
+ * Authentication uses the {@code X-Api-Key} header carrying the HMAC-SHA256 hash of
+ * {@link #API_KEY} (mirroring how the Control Plane only ever forwards the hashed key it
+ * stored at registration time), computed via the {@link ApiKeyHasher} bean with
+ * {@link #KEY_PEPPER}.
  */
 @SpringBootTest(
     classes = TestDataPlaneHttpPushApplication.class,
@@ -53,6 +57,7 @@ import static org.junit.jupiter.api.Assertions.fail;
         "server.port=0",
         "dataplane.control-plane-admin-endpoint=",
         "dataplane.api-key=" + BaseHttpPushIT.API_KEY,
+        "dataplane.registration.key-pepper=" + BaseHttpPushIT.KEY_PEPPER,
         "application.encryption.key=5m7mlhmu65zsp6x"
     }
 )
@@ -62,6 +67,9 @@ public class BaseHttpPushIT {
 
     /** API key used for {@code X-Api-Key} authentication in all HTTP-PUSH integration tests. */
     public static final String API_KEY = "test-dp-api-key";
+
+    /** Pepper used to hash {@link #API_KEY} before sending it as {@code X-Api-Key}. */
+    public static final String KEY_PEPPER = "unit-test-registration-key-pepper-min-32-bytes-long";
 
     /**
      * Bucket name matching {@code s3.bucketName} in {@code application.properties}.
@@ -97,6 +105,10 @@ public class BaseHttpPushIT {
     @Autowired
     protected ObjectMapper objectMapper;
 
+    /** Hasher used to compute the hashed {@code X-Api-Key} header value sent by tests. */
+    @Autowired
+    protected ApiKeyHasher apiKeyHasher;
+
     /**
      * Registers dynamic Spring properties from the running Testcontainers instances.
      *
@@ -118,13 +130,14 @@ public class BaseHttpPushIT {
     }
 
     /**
-     * Adds the {@code X-Api-Key} header to the given request builder.
+     * Adds the {@code X-Api-Key} header to the given request builder, carrying the hashed
+     * {@link #API_KEY} — matching what the Control Plane actually sends on real CP→DP calls.
      *
      * @param builder the request builder
      * @return the builder with the API-key header added
      */
     protected MockHttpServletRequestBuilder withApiKey(MockHttpServletRequestBuilder builder) {
-        return builder.header("X-Api-Key", API_KEY);
+        return builder.header("X-Api-Key", apiKeyHasher.hash(API_KEY));
     }
 
     /**

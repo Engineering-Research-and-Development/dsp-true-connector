@@ -412,7 +412,6 @@
       "tenantId": "connector_a_tenant_id"
     }
   ],
-  "transfer_request_messages": [],
   "transfer_process": [
     {
       "_id": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5",

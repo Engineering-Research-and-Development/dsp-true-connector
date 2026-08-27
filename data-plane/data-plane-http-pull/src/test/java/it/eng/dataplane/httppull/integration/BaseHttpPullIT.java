@@ -2,6 +2,7 @@ package it.eng.dataplane.httppull.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
+import it.eng.dataplane.core.security.ApiKeyHasher;
 import it.eng.dataplane.httppull.TestDataPlaneHttpPullApplication;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,7 +42,10 @@ import static org.junit.jupiter.api.Assertions.fail;
  *
  * <p>Starts shared MongoDB and MinIO Testcontainers once per module and exposes
  * MockMvc and WireMock for use by subclass tests.
- * Authentication uses the {@code X-Api-Key} header matching {@link #API_KEY}.
+ * Authentication uses the {@code X-Api-Key} header carrying the HMAC-SHA256 hash of
+ * {@link #API_KEY} (mirroring how the Control Plane only ever forwards the hashed key it
+ * stored at registration time), computed via the {@link ApiKeyHasher} bean with
+ * {@link #KEY_PEPPER}.
  */
 @SpringBootTest(
     classes = TestDataPlaneHttpPullApplication.class,
@@ -50,6 +54,7 @@ import static org.junit.jupiter.api.Assertions.fail;
         "server.port=0",
         "dataplane.control-plane-admin-endpoint=",
         "dataplane.api-key=" + BaseHttpPullIT.API_KEY,
+        "dataplane.registration.key-pepper=" + BaseHttpPullIT.KEY_PEPPER,
         "application.encryption.key=5m7mlhmu65zsp6x"
     }
 )
@@ -59,6 +64,9 @@ public class BaseHttpPullIT {
 
     /** API key used for {@code X-Api-Key} authentication in all HTTP-PULL integration tests. */
     public static final String API_KEY = "test-dp-api-key";
+
+    /** Pepper used to hash {@link #API_KEY} before sending it as {@code X-Api-Key}. */
+    public static final String KEY_PEPPER = "unit-test-registration-key-pepper-min-32-bytes-long";
 
     /**
      * Bucket name matching {@code s3.bucketName} in {@code application.properties}.
@@ -98,6 +106,10 @@ public class BaseHttpPullIT {
     @Autowired
     protected S3BucketProvisionService s3BucketProvisionService;
 
+    /** Hasher used to compute the hashed {@code X-Api-Key} header value sent by tests. */
+    @Autowired
+    protected ApiKeyHasher apiKeyHasher;
+
     /**
      * Registers dynamic Spring properties from the running Testcontainers instances.
      *
@@ -121,13 +133,14 @@ public class BaseHttpPullIT {
     }
 
     /**
-     * Adds the {@code X-Api-Key} header to the given request builder.
+     * Adds the {@code X-Api-Key} header to the given request builder, carrying the hashed
+     * {@link #API_KEY} — matching what the Control Plane actually sends on real CP→DP calls.
      *
      * @param builder the request builder
      * @return the builder with the API-key header added
      */
     protected MockHttpServletRequestBuilder withApiKey(MockHttpServletRequestBuilder builder) {
-        return builder.header("X-Api-Key", API_KEY);
+        return builder.header("X-Api-Key", apiKeyHasher.hash(API_KEY));
     }
 
     /**

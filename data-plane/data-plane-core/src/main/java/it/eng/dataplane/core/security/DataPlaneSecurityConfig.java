@@ -23,12 +23,14 @@ public class DataPlaneSecurityConfig {
      *
      * @param http HttpSecurity to configure
      * @param properties DataPlaneProperties containing API key configuration
+     * @param apiKeyHasher hasher used to derive the expected hash from the configured plaintext key
      * @return configured SecurityFilterChain
      * @throws Exception on configuration error
      */
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, DataPlaneProperties properties) throws Exception {
-        ApiKeyAuthFilter apiKeyFilter = new ApiKeyAuthFilter(properties);
+    public SecurityFilterChain filterChain(HttpSecurity http, DataPlaneProperties properties,
+                                            ApiKeyHasher apiKeyHasher) throws Exception {
+        ApiKeyAuthFilter apiKeyFilter = new ApiKeyAuthFilter(properties, apiKeyHasher);
         http
             .csrf(csrf -> csrf.disable())
             .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class)

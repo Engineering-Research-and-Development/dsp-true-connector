@@ -21,24 +21,29 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @ExtendWith(MockitoExtension.class)
 class ApiKeyAuthFilterTest {
 
+    private static final String KEY_PEPPER = "unit-test-registration-key-pepper-min-32-bytes-long";
+    private static final String RAW_API_KEY = "test-api-key-12345";
+
     @Mock
     private FilterChain filterChain;
 
     private ApiKeyAuthFilter filter;
     private DataPlaneProperties properties;
+    private ApiKeyHasher apiKeyHasher;
 
     @BeforeEach
     void setUp() {
         properties = new DataPlaneProperties();
-        properties.setApiKey("test-api-key-12345");
-        filter = new ApiKeyAuthFilter(properties);
+        properties.setApiKey(RAW_API_KEY);
+        apiKeyHasher = new ApiKeyHasher(KEY_PEPPER);
+        filter = new ApiKeyAuthFilter(properties, apiKeyHasher);
         SecurityContextHolder.clearContext();
     }
 
     @Test
     void authenticatesWithValidApiKey() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("X-Api-Key", "test-api-key-12345");
+        request.addHeader("X-Api-Key", apiKeyHasher.hash(RAW_API_KEY));
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         filter.doFilterInternal(request, response, filterChain);

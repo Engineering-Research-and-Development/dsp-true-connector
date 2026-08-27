@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased 2] — Streaming Data Planes
+## [0.7.0 Unreleased] — Streaming Data Planes
 
 ### Added
 - `data-plane-grpc` module — standalone gRPC streaming Data Plane Spring Boot application
