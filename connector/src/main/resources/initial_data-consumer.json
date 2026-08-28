@@ -378,7 +378,7 @@
       "role": "consumer",
       "agreement": {
         "$ref": "agreements",
-        "$id": "urn:uuid:agreement-pull-1111-1111-4111-8111-111111111111"
+        "$id": "29234cc4be0529227865e03b"
       },
       "consumerPid": "urn:uuid:51111111-1111-4111-8111-111111111111",
       "state": "FINALIZED",
@@ -393,7 +393,7 @@
       "role": "consumer",
       "agreement": {
         "$ref": "agreements",
-        "$id": "urn:uuid:agreement-push-2222-2222-4222-8222-222222222222"
+        "$id": "534e74f545db849fd445def3"
       },
       "consumerPid": "urn:uuid:52222222-2222-4222-8222-222222222222",
       "state": "FINALIZED",
@@ -408,7 +408,7 @@
       "role": "consumer",
       "agreement": {
         "$ref": "agreements",
-        "$id": "urn:uuid:agreement-grpc-3333-3333-4333-8333-333333333333"
+        "$id": "3e53e81c97fa625a220ce1a8"
       },
       "consumerPid": "urn:uuid:53333333-3333-4333-8333-333333333333",
       "state": "FINALIZED",
@@ -423,7 +423,7 @@
       "role": "consumer",
       "agreement": {
         "$ref": "agreements",
-        "$id": "urn:uuid:agreement-kafka-4444-4444-4444-8444-444444444444"
+        "$id": "5235c83b5d2f9856d89b47b4"
       },
       "consumerPid": "urn:uuid:54444444-4444-4444-8444-444444444444",
       "state": "FINALIZED",

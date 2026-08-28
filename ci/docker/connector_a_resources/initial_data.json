@@ -379,7 +379,7 @@
       "role": "provider",
       "agreement": {
         "$ref": "agreements",
-        "$id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA"
+        "$id": "cd2c643bc3a2fb129446e962"
       },
       "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
       "state": "FINALIZED",

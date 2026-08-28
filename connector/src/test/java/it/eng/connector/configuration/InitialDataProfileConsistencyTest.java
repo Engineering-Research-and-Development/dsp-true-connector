@@ -8,7 +8,9 @@ import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -25,13 +27,17 @@ class InitialDataProfileConsistencyTest {
 
         Set<String> consumerAgreementIds = extractIds(consumerProfile.path("agreements"));
         Set<String> providerAgreementIds = extractIds(providerProfile.path("agreements"));
+        Map<String, String> consumerAgreementTechnicalIds =
+                extractTechnicalIdsByBusinessId(consumerProfile.path("agreements"));
+        Map<String, String> providerAgreementTechnicalIds =
+                extractTechnicalIdsByBusinessId(providerProfile.path("agreements"));
 
         assertEquals(consumerAgreementIds, providerAgreementIds);
         assertEquals(consumerAgreementIds, extractFieldValues(consumerProfile.path("transfer_process"), "agreementId"));
         assertEquals(providerAgreementIds, extractFieldValues(providerProfile.path("transfer_process"), "agreementId"));
-        assertEquals(consumerAgreementIds,
+        assertEquals(new LinkedHashSet<>(consumerAgreementTechnicalIds.values()),
                 extractReferenceIds(consumerProfile.path("contract_negotiations"), "agreement"));
-        assertEquals(providerAgreementIds,
+        assertEquals(new LinkedHashSet<>(providerAgreementTechnicalIds.values()),
                 extractReferenceIds(providerProfile.path("contract_negotiations"), "agreement"));
         assertEquals(consumerAgreementIds,
                 extractFieldValues(consumerProfile.path("policy_enforcements"), "agreementId"));
@@ -47,6 +53,14 @@ class InitialDataProfileConsistencyTest {
 
     private Set<String> extractIds(JsonNode nodes) {
         return extractFieldValues(nodes, "id");
+    }
+
+    private Map<String, String> extractTechnicalIdsByBusinessId(JsonNode nodes) {
+        Map<String, String> values = new LinkedHashMap<>();
+        for (JsonNode node : nodes) {
+            values.put(node.path("id").asText(), node.path("_id").asText());
+        }
+        return values;
     }
 
     private Set<String> extractFieldValues(JsonNode nodes, String fieldName) {
