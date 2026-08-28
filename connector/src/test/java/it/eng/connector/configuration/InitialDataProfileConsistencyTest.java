@@ -46,7 +46,7 @@ class InitialDataProfileConsistencyTest {
     }
 
     private Set<String> extractIds(JsonNode nodes) {
-        return extractFieldValues(nodes, "_id");
+        return extractFieldValues(nodes, "id");
     }
 
     private Set<String> extractFieldValues(JsonNode nodes, String fieldName) {
