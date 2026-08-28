@@ -341,7 +341,7 @@
   ],
   "agreements": [
     {
-      "_id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
+      "_id": "c8d6d0afe971098a8ed9a150",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",

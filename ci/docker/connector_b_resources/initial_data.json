@@ -390,7 +390,7 @@
   ],
   "agreements": [
     {
-      "_id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
+      "_id": "72c31618c9cf61cbd654c910",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "tenantId": "connector_b_tenant_id",

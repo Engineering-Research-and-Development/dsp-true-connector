@@ -434,8 +434,9 @@
   ],
   "agreements": [
     {
-      "_id": "urn:uuid:agreement-pull-1111-1111-4111-8111-111111111111",
+      "_id": "29234cc4be0529227865e03b",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "urn:uuid:agreement-pull-1111-1111-4111-8111-111111111111",
       "tenantId": "engineering",
       "target": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "timestamp": "2026-01-01T00:00:00Z",
@@ -455,8 +456,9 @@
       ]
     },
     {
-      "_id": "urn:uuid:agreement-push-2222-2222-4222-8222-222222222222",
+      "_id": "534e74f545db849fd445def3",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "urn:uuid:agreement-push-2222-2222-4222-8222-222222222222",
       "tenantId": "engineering",
       "target": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "timestamp": "2026-01-01T00:00:00Z",
@@ -476,8 +478,9 @@
       ]
     },
     {
-      "_id": "urn:uuid:agreement-grpc-3333-3333-4333-8333-333333333333",
+      "_id": "3e53e81c97fa625a220ce1a8",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "urn:uuid:agreement-grpc-3333-3333-4333-8333-333333333333",
       "tenantId": "engineering",
       "target": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "timestamp": "2026-01-01T00:00:00Z",
@@ -497,8 +500,9 @@
       ]
     },
     {
-      "_id": "urn:uuid:agreement-kafka-4444-4444-4444-8444-444444444444",
+      "_id": "5235c83b5d2f9856d89b47b4",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "urn:uuid:agreement-kafka-4444-4444-4444-8444-444444444444",
       "tenantId": "engineering",
       "target": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
       "timestamp": "2026-01-01T00:00:00Z",
