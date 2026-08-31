@@ -1,41 +1,110 @@
 {
   "info": {
-    "_postman_id": "4f875831-0c74-401d-909c-5dd465303982",
+    "_postman_id": "c46c95bb-b02d-4a0f-98f3-22d5b4e31c89",
     "name": "Data Transfer API - stream:grpc test",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "21815221",
-    "_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-4f875831-0c74-401d-909c-5dd465303982?action=share&source=collection_link&creator=21815221"
+    "_collection_link": "https://go.postman.co/collection/21815221-c46c95bb-b02d-4a0f-98f3-22d5b4e31c89?source=collection_link"
   },
   "item": [
+    {
+      "name": "[C] Login - API",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{CONSUMER_AUTH_LOGIN}}",
+          "host": [
+            "{{CONSUMER_AUTH_LOGIN}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "[P] Login  - API",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{PROVIDER_AUTH_LOGIN}}",
+          "host": [
+            "{{PROVIDER_AUTH_LOGIN}}"
+          ]
+        }
+      },
+      "response": []
+    },
     {
       "name": "[C] Request transfer",
       "event": [
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"Retrieve consumer transfer process id\", function () {\r",
-              "    var jsonData = pm.response.json();\r",
-              "    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][\"@id\"])\r",
-              "});\r",
-              "\r",
-              "pm.test(\"Check if status code is 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"TransactionId\", ()=> {\r",
-              "    var jsonData = pm.response.json();\r",
-              "    let trId = jsonData[\"data\"][\"consumerPid\"] + \"|\" + jsonData[\"data\"][\"providerPid\"];\r",
-              "    pm.collectionVariables.set(\"transactionId\", btoa(trId));\r",
-              "    console.log(pm.collectionVariables.get(\"transactionId\"));\r",
-              "});"
-            ],
             "type": "text/javascript",
-            "packages": {}
+            "exec": [
+              "pm.test(\"Retrieve consumer transfer process id\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][\"@id\"])\r\n});\r\n\r\npm.test(\"Check if status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"TransactionId\", ()=> {\r\n    var jsonData = pm.response.json();\r\n    let trId = jsonData[\"data\"][\"consumerPid\"] + \"|\" + jsonData[\"data\"][\"providerPid\"];\r\n    pm.collectionVariables.set(\"transactionId\", btoa(trId));\r\n    console.log(pm.collectionVariables.get(\"transactionId\"));\r\n});"
+            ]
           }
         }
       ],
       "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token_consumer_api}}",
+              "type": "string"
+            }
+          ]
+        },
         "method": "POST",
         "header": [],
         "body": {
@@ -62,29 +131,29 @@
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"Check if status code is 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"Retrieve provider transfer process id\", function () {\r",
-              "    var jsonData = pm.response.json();\r",
-              "    pm.collectionVariables.set(\"provider_transferProcessId\", \r",
-              "    jsonData[\"response\"][\"data\"][\"content\"][0][\"@id\"])\r",
-              "});"
-            ],
             "type": "text/javascript",
-            "packages": {}
+            "exec": [
+              "pm.test(\"Check if status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Retrieve provider transfer process id\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"provider_transferProcessId\", \r\n    jsonData[\"response\"][\"data\"][\"content\"][0][\"@id\"])\r\n});"
+            ]
           }
         }
       ],
       "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token_provider_api}}",
+              "type": "string"
+            }
+          ]
+        },
         "method": "GET",
         "header": [
           {
             "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
+            "value": "application/json"
           }
         ],
         "url": {
@@ -203,15 +272,6 @@
             "{{consumer_transferProcessId}}",
             "download"
           ]
-        },
-        "body": {
-          "mode": "raw",
-          "raw": "",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
         }
       },
       "response": []
@@ -279,36 +339,38 @@
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"Check expected response\", ()=> {\r",
-              "    pm.response.to.have.status(200);\r",
-              "    var response = pm.response.text().trim().replace(/^\"|\"$/g, '');\r",
-              "    pm.expect(response).to.match(/https?:\\/\\/[^/]+\\/dsp-true-connector-a\\//);\r",
-              "    pm.collectionVariables.set(\"presignedURL\", response);\r",
-              "});"
-            ],
             "type": "text/javascript",
-            "packages": {}
+            "exec": [
+              "pm.test(\"Check expected response\", ()=> {\r\n    pm.response.to.have.status(200);\r\n    var response = pm.response.text().trim().replace(/^\"|\"$/g, '');\r\n    pm.expect(response).to.match(/https?:\\/\\/[^/]+\\/dsp-true-connector-a\\//);\r\n    pm.collectionVariables.set(\"presignedURL\", response);\r\n});"
+            ]
           }
         },
         {
           "listen": "prerequest",
           "script": {
+            "type": "text/javascript",
             "exec": [
               "// Polling handled by '[C] Wait for transfer COMPLETED' step"
-            ],
-            "type": "text/javascript",
-            "packages": {}
+            ]
           }
         }
       ],
       "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token_consumer_api}}",
+              "type": "string"
+            }
+          ]
+        },
         "method": "GET",
         "header": [
           {
             "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
+            "value": "application/json"
           }
         ],
         "url": {
@@ -413,7 +475,7 @@
     },
     {
       "key": "consumer_transferProcessId",
-      "value": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5"
+      "value": "urn:uuid:tp-grpc-3333-3333-4333-8333-333333333333"
     },
     {
       "key": "presignedURL",
@@ -421,11 +483,27 @@
     },
     {
       "key": "provider_transferProcessId",
-      "value": ""
+      "value": "urn:uuid:tp-grpc-provider-3333-3333-4333-8333-333333333333"
+    },
+    {
+      "key": "PROVIDER_AUTH_LOGIN",
+      "value": "http://localhost:8090/api/v1/auth/login"
+    },
+    {
+      "key": "CONSUMER_AUTH_LOGIN",
+      "value": "http://localhost:8080/api/v1/auth/login"
     },
     {
       "key": "waitRetry",
       "value": "0"
+    },
+    {
+      "key": "access_token_consumer_api",
+      "value": ""
+    },
+    {
+      "key": "access_token_provider_api",
+      "value": ""
     }
   ]
 }

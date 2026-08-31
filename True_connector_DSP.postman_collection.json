@@ -384,6 +384,160 @@
 			]
 		},
 		{
+			"name": "Internal Authentication",
+			"description": "Unified backend-mediated authentication contract, active in both INTERNAL and KEYCLOAK modes (see doc/security.md). Clients call the connector's own /api/v1/auth/* endpoints instead of talking to an identity provider directly; the connector proxies to Keycloak or issues a self-signed JWT depending on application.auth.provider. Response body is always a flat, snake_case, token-only shape: access_token, refresh_token, token_type, expires_in.",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"connector@mail.com\",\n  \"password\": \"password\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER}}/api/v1/auth/login",
+							"host": [
+								"{{CONSUMER}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"login"
+							]
+						},
+						"description": "Authenticates with email/password and returns a new access/refresh token pair. Same request shape for both INTERNAL and KEYCLOAK modes."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const jsonData = pm.response.json();",
+									"pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+									"pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
+									"pm.test(\"Response has refresh_token\", () => pm.expect(jsonData.refresh_token).to.be.a('string'));",
+									"pm.test(\"token_type is Bearer\", () => pm.expect(jsonData.token_type).to.eql('Bearer'));",
+									"pm.collectionVariables.set(\"AUTH_ACCESS_TOKEN\", jsonData.access_token);",
+									"pm.collectionVariables.set(\"AUTH_REFRESH_TOKEN\", jsonData.refresh_token);"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Refresh",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refresh_token\": \"{{AUTH_REFRESH_TOKEN}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER}}/api/v1/auth/refresh",
+							"host": [
+								"{{CONSUMER}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"refresh"
+							]
+						},
+						"description": "Rotates a valid refresh token id and mints a fresh access/refresh token pair for its owning subject."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"const jsonData = pm.response.json();",
+									"pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+									"pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
+									"pm.collectionVariables.set(\"AUTH_ACCESS_TOKEN\", jsonData.access_token);",
+									"pm.collectionVariables.set(\"AUTH_REFRESH_TOKEN\", jsonData.refresh_token);"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refresh_token\": \"{{AUTH_REFRESH_TOKEN}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER}}/api/v1/auth/logout",
+							"host": [
+								"{{CONSUMER}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"logout"
+							]
+						},
+						"description": "Revokes a refresh token id. Always returns 200, including for an already-revoked or unknown token (idempotent)."
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));"
+								]
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "API_FE",
 			"item": [
 				{
@@ -405,6 +559,80 @@
 					},
 					"item": [
 						{
+							"name": "[C] Login - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_AUTH_LOGIN}}",
+									"host": [
+										"{{CONSUMER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Login  - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_AUTH_LOGIN}}",
+									"host": [
+										"{{PROVIDER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Get All Tenants",
 							"request": {
 								"method": "GET",
@@ -425,7 +653,17 @@
 										"tenants"
 									]
 								},
-								"description": "List all tenants. Requires ROLE_SUPER_ADMIN."
+								"description": "List all tenants. Requires ROLE_SUPER_ADMIN.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -451,7 +689,17 @@
 										"engineering"
 									]
 								},
-								"description": "Get the default 'engineering' tenant."
+								"description": "Get the default 'engineering' tenant.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -485,7 +733,17 @@
 										}
 									}
 								},
-								"description": "Create a new tenant. Requires ROLE_SUPER_ADMIN."
+								"description": "Create a new tenant. Requires ROLE_SUPER_ADMIN.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -520,7 +778,17 @@
 										}
 									}
 								},
-								"description": "Update an existing tenant."
+								"description": "Update an existing tenant.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -547,7 +815,17 @@
 										"enable"
 									]
 								},
-								"description": "Enable a previously disabled tenant."
+								"description": "Enable a previously disabled tenant.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -574,7 +852,17 @@
 										"disable"
 									]
 								},
-								"description": "Disable a tenant (all protocol requests for this tenant will return 403)."
+								"description": "Disable a tenant (all protocol requests for this tenant will return 403).",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -600,7 +888,17 @@
 										"acme-corp"
 									]
 								},
-								"description": "Delete a tenant."
+								"description": "Delete a tenant.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						}
@@ -626,6 +924,80 @@
 					},
 					"item": [
 						{
+							"name": "[C] Login - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_AUTH_LOGIN}}",
+									"host": [
+										"{{CONSUMER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Login  - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_AUTH_LOGIN}}",
+									"host": [
+										"{{PROVIDER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Get All Users",
 							"request": {
 								"method": "GET",
@@ -646,7 +1018,17 @@
 										"users"
 									]
 								},
-								"description": "List all users."
+								"description": "List all users.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -670,6 +1052,16 @@
 										"v1",
 										"users",
 										"admin@mail.com"
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -704,6 +1096,16 @@
 											"language": "json"
 										}
 									}
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -740,7 +1142,17 @@
 										}
 									}
 								},
-								"description": "Update user details. Replace {{userId}} with the user's _id."
+								"description": "Update user details. Replace {{userId}} with the user's _id.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -776,7 +1188,17 @@
 										}
 									}
 								},
-								"description": "Change a user's password."
+								"description": "Change a user's password.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						}
@@ -785,6 +1207,80 @@
 				{
 					"name": "ApplicationProperty",
 					"item": [
+						{
+							"name": "[C] Login - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_AUTH_LOGIN}}",
+									"host": [
+										"{{CONSUMER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Login  - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_AUTH_LOGIN}}",
+									"host": [
+										"{{PROVIDER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
 						{
 							"name": "Get All Application Properties",
 							"event": [
@@ -817,6 +1313,16 @@
 									],
 									"path": [
 										""
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -861,6 +1367,16 @@
 											"value": "{{KEY_PREFIX}}"
 										}
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -870,6 +1386,80 @@
 				{
 					"name": "Catalog",
 					"item": [
+						{
+							"name": "[C] Login - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_AUTH_LOGIN}}",
+									"host": [
+										"{{CONSUMER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Login  - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_AUTH_LOGIN}}",
+									"host": [
+										"{{PROVIDER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
 						{
 							"name": "Get All Catalogs",
 							"request": {
@@ -886,6 +1476,16 @@
 										"{{CONSUMER_SERVER_API_CATALOG}}"
 									],
 									"path": []
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -907,6 +1507,16 @@
 									],
 									"path": [
 										"{$ID}"
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -937,6 +1547,16 @@
 										"{{CONSUMER_SERVER_API_CATALOG}}"
 									],
 									"path": []
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -968,6 +1588,16 @@
 									"path": [
 										"{$ID}"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -989,6 +1619,16 @@
 									],
 									"path": [
 										"{$ID}"
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -1020,6 +1660,80 @@
 					"name": "DataService",
 					"item": [
 						{
+							"name": "[C] Login - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_AUTH_LOGIN}}",
+									"host": [
+										"{{CONSUMER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Login  - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_AUTH_LOGIN}}",
+									"host": [
+										"{{PROVIDER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Get All DataServices",
 							"request": {
 								"method": "GET",
@@ -1035,6 +1749,16 @@
 										"{{CONSUMER_SERVER_API_DATASERVICE}}"
 									],
 									"path": []
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1056,6 +1780,16 @@
 									],
 									"path": [
 										"$ID"
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -1086,6 +1820,16 @@
 										"{{CONSUMER_SERVER_API_DATASERVICE}}"
 									],
 									"path": []
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1112,6 +1856,16 @@
 									"path": [
 										"1dc45797-4444-4955-8baf-ab7fd66ac4d5"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1135,6 +1889,16 @@
 									"path": [
 										"$ID"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1144,6 +1908,80 @@
 				{
 					"name": "DataSet",
 					"item": [
+						{
+							"name": "[C] Login - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_AUTH_LOGIN}}",
+									"host": [
+										"{{CONSUMER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Login  - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_AUTH_LOGIN}}",
+									"host": [
+										"{{PROVIDER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
 						{
 							"name": "Get All Datasets",
 							"request": {
@@ -1160,6 +1998,16 @@
 										"{{CONSUMER_SERVER_API_DATASET}}"
 									],
 									"path": []
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1181,6 +2029,16 @@
 									],
 									"path": [
 										"{$ID}"
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -1226,6 +2084,16 @@
 										"{{PROVIDER_SERVER_API_DATASET}}"
 									],
 									"path": []
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1273,6 +2141,16 @@
 									"path": [
 										"urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1295,6 +2173,16 @@
 									"path": [
 										"{$ID}"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1304,6 +2192,80 @@
 				{
 					"name": "Negotiation",
 					"item": [
+						{
+							"name": "[C] Login - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_AUTH_LOGIN}}",
+									"host": [
+										"{{CONSUMER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Login  - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_AUTH_LOGIN}}",
+									"host": [
+										"{{PROVIDER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
 						{
 							"name": "[C] Get Dataset ID",
 							"event": [
@@ -1340,6 +2302,16 @@
 										"{{PROVIDER_SERVER_API_DATASET}}"
 									],
 									"path": []
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1395,6 +2367,16 @@
 									],
 									"path": [
 										"request"
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -1453,6 +2435,16 @@
 										"{{consumer_contractNegotiationId}}",
 										"request"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1501,6 +2493,16 @@
 										{
 											"key": "state",
 											"value": "REQUESTED"
+										}
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
 										}
 									]
 								}
@@ -1559,6 +2561,16 @@
 									"path": [
 										"offer"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1616,6 +2628,16 @@
 										"{{provider_contractNegotiationId}}",
 										"offer"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1663,6 +2685,16 @@
 										"{{consumer_contractNegotiationId}}",
 										"accept"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1701,6 +2733,16 @@
 									"path": [
 										"{{provider_contractNegotiationId}}",
 										"agree"
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -1748,6 +2790,16 @@
 										"{{consumer_contractNegotiationId}}",
 										"verify"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1794,6 +2846,16 @@
 										"{{provider_contractNegotiationId}}",
 										"finalize"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1831,6 +2893,16 @@
 									"path": [
 										"{{provider_contractNegotiationId}}",
 										"terminate"
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -1878,6 +2950,16 @@
 											"value": "consumer"
 										}
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1887,6 +2969,80 @@
 				{
 					"name": "Distribution",
 					"item": [
+						{
+							"name": "[C] Login - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_AUTH_LOGIN}}",
+									"host": [
+										"{{CONSUMER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Login  - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_AUTH_LOGIN}}",
+									"host": [
+										"{{PROVIDER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
 						{
 							"name": "Get All Distributions",
 							"request": {
@@ -1903,6 +3059,16 @@
 										"{{CONSUMER_SERVER_API_DISTRIBUTION}}"
 									],
 									"path": []
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1924,6 +3090,16 @@
 									],
 									"path": [
 										"{$ID}"
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -1954,6 +3130,16 @@
 										"{{CONSUMER_SERVER_API_DISTRIBUTION}}"
 									],
 									"path": []
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -1980,6 +3166,16 @@
 									"path": [
 										"{$ID}"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -2002,6 +3198,16 @@
 									"path": [
 										"{$ID}"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -2011,6 +3217,80 @@
 				{
 					"name": "DataTransfer-PULL",
 					"item": [
+						{
+							"name": "[C] Login - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_AUTH_LOGIN}}",
+									"host": [
+										"{{CONSUMER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Login  - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_AUTH_LOGIN}}",
+									"host": [
+										"{{PROVIDER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
 						{
 							"name": "[C] Find Initialized Transfer Process",
 							"event": [
@@ -2055,6 +3335,16 @@
 										{
 											"key": "role",
 											"value": "consumer"
+										}
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
 										}
 									]
 								}
@@ -2100,6 +3390,16 @@
 										"{{CONSUMER_SERVER_API_TRANSFERS}}"
 									],
 									"path": []
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -2144,6 +3444,16 @@
 										{
 											"key": "role",
 											"value": "provider"
+										}
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
 										}
 									]
 								}
@@ -2198,6 +3508,16 @@
 										"{{provider_transferProcessId}}",
 										"start"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -2235,6 +3555,16 @@
 									"path": [
 										"{{consumer_transferProcessId}}",
 										"download"
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -2276,6 +3606,16 @@
 										"{{consumer_transferProcessId}}",
 										"view"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -2310,6 +3650,16 @@
 										"{{consumer_presignedGetUrl}}"
 									],
 									"path": []
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -2356,6 +3706,16 @@
 									"path": [
 										"{{consumer_transferProcessId}}",
 										"complete"
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -2404,6 +3764,16 @@
 										"{{provider_transferProcessId}}",
 										"suspend"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -2451,6 +3821,16 @@
 										"{{provider_transferProcessId}}",
 										"terminate"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -2460,6 +3840,80 @@
 				{
 					"name": "DataTransfer-PUSH",
 					"item": [
+						{
+							"name": "[C] Login - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_AUTH_LOGIN}}",
+									"host": [
+										"{{CONSUMER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Login  - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_AUTH_LOGIN}}",
+									"host": [
+										"{{PROVIDER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
 						{
 							"name": "[C] Find Initialized Transfer Process",
 							"event": [
@@ -2506,6 +3960,16 @@
 											"value": "consumer"
 										}
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -2549,6 +4013,16 @@
 										"{{CONSUMER_SERVER_API_TRANSFERS}}"
 									],
 									"path": []
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -2593,6 +4067,16 @@
 										{
 											"key": "role",
 											"value": "provider"
+										}
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
 										}
 									]
 								}
@@ -2647,6 +4131,16 @@
 										"{{provider_transferProcessId}}",
 										"start"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -2684,6 +4178,16 @@
 									"path": [
 										"{{provider_transferProcessId}}",
 										"download"
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -2725,6 +4229,16 @@
 										"{{consumer_transferProcessId}}",
 										"view"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -2759,6 +4273,16 @@
 										"{{consumer_presignedGetUrl}}"
 									],
 									"path": []
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -2805,6 +4329,16 @@
 									"path": [
 										"{{consumer_transferProcessId}}",
 										"complete"
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_consumer_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -2853,6 +4387,16 @@
 										"{{provider_transferProcessId}}",
 										"suspend"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -2900,6 +4444,16 @@
 										"{{provider_transferProcessId}}",
 										"terminate"
 									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -2910,19 +4464,88 @@
 					"name": "Proxy",
 					"item": [
 						{
+							"name": "[C] Login - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_AUTH_LOGIN}}",
+									"host": [
+										"{{CONSUMER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Login  - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_AUTH_LOGIN}}",
+									"host": [
+										"{{PROVIDER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Dataset formats",
 							"request": {
 								"auth": {
-									"type": "basic",
-									"basic": [
+									"type": "bearer",
+									"bearer": [
 										{
-											"key": "username",
-											"value": "admin@mail.com",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "password",
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
 											"type": "string"
 										}
 									]
@@ -2965,16 +4588,11 @@
 							"name": "Get remote catalog",
 							"request": {
 								"auth": {
-									"type": "basic",
-									"basic": [
+									"type": "bearer",
+									"bearer": [
 										{
-											"key": "username",
-											"value": "admin@mail.com",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "password",
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
 											"type": "string"
 										}
 									]
@@ -3011,6 +4629,80 @@
 					"name": "Artifact",
 					"item": [
 						{
+							"name": "[C] Login - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_AUTH_LOGIN}}",
+									"host": [
+										"{{CONSUMER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Login  - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_AUTH_LOGIN}}",
+									"host": [
+										"{{PROVIDER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "List all artifacts",
 							"event": [
 								{
@@ -3035,6 +4727,16 @@
 										"{{PROVIDER_SERVER_API_ARTIFACTS}}"
 									],
 									"path": []
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
 								}
 							},
 							"response": []
@@ -3044,6 +4746,80 @@
 				{
 					"name": "Audit Events",
 					"item": [
+						{
+							"name": "[C] Login - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_AUTH_LOGIN}}",
+									"host": [
+										"{{CONSUMER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Login  - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_AUTH_LOGIN}}",
+									"host": [
+										"{{PROVIDER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
 						{
 							"name": "Get audit events",
 							"request": {
@@ -3056,16 +4832,11 @@
 									}
 								],
 								"auth": {
-									"type": "basic",
-									"basic": [
+									"type": "bearer",
+									"bearer": [
 										{
-											"key": "username",
-											"value": "admin@mail.com",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "password",
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
 											"type": "string"
 										}
 									]
@@ -3126,16 +4897,11 @@
 									}
 								],
 								"auth": {
-									"type": "basic",
-									"basic": [
+									"type": "bearer",
+									"bearer": [
 										{
-											"key": "username",
-											"value": "admin@mail.com",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "password",
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
 											"type": "string"
 										}
 									]
@@ -3174,16 +4940,11 @@
 									}
 								],
 								"auth": {
-									"type": "basic",
-									"basic": [
+									"type": "bearer",
+									"bearer": [
 										{
-											"key": "username",
-											"value": "admin@mail.com",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "password",
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
 											"type": "string"
 										}
 									]
@@ -3248,19 +5009,88 @@
 			"name": "DataTransfer",
 			"item": [
 				{
+					"name": "[C] Login - API",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER_AUTH_LOGIN}}",
+							"host": [
+								"{{CONSUMER_AUTH_LOGIN}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Login  - API",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{PROVIDER_AUTH_LOGIN}}",
+							"host": [
+								"{{PROVIDER_AUTH_LOGIN}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Get TransferProcess",
 					"request": {
 						"auth": {
-							"type": "basic",
-							"basic": [
+							"type": "bearer",
+							"bearer": [
 								{
-									"key": "username",
-									"value": "admin@mail.com",
-									"type": "string"
-								},
-								{
-									"key": "password",
-									"value": "password",
+									"key": "token",
+									"value": "{{access_token_provider_api}}",
 									"type": "string"
 								}
 							]
@@ -3291,6 +5121,80 @@
 			"name": "DataPlane Management",
 			"item": [
 				{
+					"name": "[C] Login - API",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER_AUTH_LOGIN}}",
+							"host": [
+								"{{CONSUMER_AUTH_LOGIN}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Login  - API",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{PROVIDER_AUTH_LOGIN}}",
+							"host": [
+								"{{PROVIDER_AUTH_LOGIN}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "CP - Data Planes",
 					"item": [
 						{
@@ -3317,16 +5221,11 @@
 								},
 								"description": "List all Data Plane instances registered with the Consumer Control Plane.",
 								"auth": {
-									"type": "basic",
-									"basic": [
+									"type": "bearer",
+									"bearer": [
 										{
-											"key": "username",
-											"value": "admin@mail.com",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "password",
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
 											"type": "string"
 										}
 									]
@@ -3358,16 +5257,11 @@
 								},
 								"description": "List all Data Plane instances registered with the Provider Control Plane.",
 								"auth": {
-									"type": "basic",
-									"basic": [
+									"type": "bearer",
+									"bearer": [
 										{
-											"key": "username",
-											"value": "admin@mail.com",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "password",
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
 											"type": "string"
 										}
 									]
@@ -3407,16 +5301,11 @@
 									}
 								},
 								"auth": {
-									"type": "basic",
-									"basic": [
+									"type": "bearer",
+									"bearer": [
 										{
-											"key": "username",
-											"value": "internal-service",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "internal-service-secret-change-in-prod",
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
 											"type": "string"
 										}
 									]
@@ -3457,16 +5346,11 @@
 									}
 								},
 								"auth": {
-									"type": "basic",
-									"basic": [
+									"type": "bearer",
+									"bearer": [
 										{
-											"key": "username",
-											"value": "internal-service",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "internal-service-secret-change-in-prod",
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
 											"type": "string"
 										}
 									]
@@ -3500,16 +5384,11 @@
 								},
 								"description": "Remove a Data Plane registration from the Consumer CP by its ID.",
 								"auth": {
-									"type": "basic",
-									"basic": [
+									"type": "bearer",
+									"bearer": [
 										{
-											"key": "username",
-											"value": "admin@mail.com",
-											"type": "string"
-										},
-										{
-											"key": "password",
-											"value": "password",
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
 											"type": "string"
 										}
 									]
@@ -3543,7 +5422,17 @@
 										"health"
 									]
 								},
-								"description": "Check health of the HTTP-PULL Data Plane."
+								"description": "Check health of the HTTP-PULL Data Plane.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -3572,7 +5461,17 @@
 										"dataflows"
 									]
 								},
-								"description": "List all active DataFlow records managed by this Data Plane."
+								"description": "List all active DataFlow records managed by this Data Plane.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -3611,7 +5510,17 @@
 										}
 									}
 								},
-								"description": "Ask the HTTP-PULL DP to allocate a presigned GET URL for the artifact."
+								"description": "Ask the HTTP-PULL DP to allocate a presigned GET URL for the artifact.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -3650,7 +5559,17 @@
 										}
 									}
 								},
-								"description": "Instruct the HTTP-PULL DP to download the artifact from the provider and upload to S3."
+								"description": "Instruct the HTTP-PULL DP to download the artifact from the provider and upload to S3.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -3681,7 +5600,17 @@
 										"{{consumer_transferProcessId}}"
 									]
 								},
-								"description": "Terminate an active DataFlow on the HTTP-PULL DP."
+								"description": "Terminate an active DataFlow on the HTTP-PULL DP.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -3712,7 +5641,17 @@
 										"{{consumer_transferProcessId}}"
 									]
 								},
-								"description": "Suspend an active DataFlow on the HTTP-PULL DP."
+								"description": "Suspend an active DataFlow on the HTTP-PULL DP.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -3772,7 +5711,17 @@
 										}
 									]
 								},
-								"description": "List HTTP-PULL DP audit events. Supported filters: eventType (e.g. 'Data flow started'), processId, transferType. Requires X-Api-Key header."
+								"description": "List HTTP-PULL DP audit events. Supported filters: eventType (e.g. 'Data flow started'), processId, transferType. Requires X-Api-Key header.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -3810,7 +5759,17 @@
 										}
 									]
 								},
-								"description": "Fetch a single HTTP-PULL DP audit event by its MongoDB document ID."
+								"description": "Fetch a single HTTP-PULL DP audit event by its MongoDB document ID.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -3842,7 +5801,17 @@
 										"types"
 									]
 								},
-								"description": "List all supported HTTP-PULL DP audit event types (DATAFLOW_STARTED, DATAFLOW_COMPLETED, DATAFLOW_FAILED, DATAFLOW_TERMINATED, DATAFLOW_SUSPENDED, DATAFLOW_PREPARE_REQUESTED, DP_REGISTRATION_SUCCESS, DP_REGISTRATION_FAILED)."
+								"description": "List all supported HTTP-PULL DP audit event types (DATAFLOW_STARTED, DATAFLOW_COMPLETED, DATAFLOW_FAILED, DATAFLOW_TERMINATED, DATAFLOW_SUSPENDED, DATAFLOW_PREPARE_REQUESTED, DP_REGISTRATION_SUCCESS, DP_REGISTRATION_FAILED).",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						}
@@ -3872,7 +5841,17 @@
 										"health"
 									]
 								},
-								"description": "Check health of the HTTP-PUSH Data Plane."
+								"description": "Check health of the HTTP-PUSH Data Plane.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -3901,7 +5880,17 @@
 										"dataflows"
 									]
 								},
-								"description": "List all active DataFlow records managed by this Data Plane."
+								"description": "List all active DataFlow records managed by this Data Plane.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -3940,7 +5929,17 @@
 										}
 									}
 								},
-								"description": "Ask the HTTP-PUSH DP to create a temporary IAM user and return S3 credentials for the consumer bucket."
+								"description": "Ask the HTTP-PUSH DP to create a temporary IAM user and return S3 credentials for the consumer bucket.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -3979,7 +5978,17 @@
 										}
 									}
 								},
-								"description": "Instruct the HTTP-PUSH DP to retrieve the artifact from provider S3 and push it to the consumer S3 bucket using the temporary credentials."
+								"description": "Instruct the HTTP-PUSH DP to retrieve the artifact from provider S3 and push it to the consumer S3 bucket using the temporary credentials.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -4010,7 +6019,17 @@
 										"{{provider_transferProcessId}}"
 									]
 								},
-								"description": "Terminate an active DataFlow on the HTTP-PUSH DP."
+								"description": "Terminate an active DataFlow on the HTTP-PUSH DP.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -4041,7 +6060,17 @@
 										"{{provider_transferProcessId}}"
 									]
 								},
-								"description": "Suspend an active DataFlow on the HTTP-PUSH DP."
+								"description": "Suspend an active DataFlow on the HTTP-PUSH DP.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -4101,7 +6130,17 @@
 										}
 									]
 								},
-								"description": "List HTTP-PUSH DP audit events. Supported filters: eventType (e.g. 'Data flow started'), processId, transferType. Requires X-Api-Key header."
+								"description": "List HTTP-PUSH DP audit events. Supported filters: eventType (e.g. 'Data flow started'), processId, transferType. Requires X-Api-Key header.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -4139,7 +6178,17 @@
 										}
 									]
 								},
-								"description": "Fetch a single HTTP-PUSH DP audit event by its MongoDB document ID."
+								"description": "Fetch a single HTTP-PUSH DP audit event by its MongoDB document ID.",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						},
@@ -4171,7 +6220,17 @@
 										"types"
 									]
 								},
-								"description": "List all supported HTTP-PUSH DP audit event types (DATAFLOW_STARTED, DATAFLOW_COMPLETED, DATAFLOW_FAILED, DATAFLOW_TERMINATED, DATAFLOW_SUSPENDED, DATAFLOW_PREPARE_REQUESTED, DP_REGISTRATION_SUCCESS, DP_REGISTRATION_FAILED)."
+								"description": "List all supported HTTP-PUSH DP audit event types (DATAFLOW_STARTED, DATAFLOW_COMPLETED, DATAFLOW_FAILED, DATAFLOW_TERMINATED, DATAFLOW_SUSPENDED, DATAFLOW_PREPARE_REQUESTED, DP_REGISTRATION_SUCCESS, DP_REGISTRATION_FAILED).",
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
+									]
+								}
 							},
 							"response": []
 						}
@@ -4185,6 +6244,80 @@
 				{
 					"name": "Catalog",
 					"item": [
+						{
+							"name": "[C] Login - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_AUTH_LOGIN}}",
+									"host": [
+										"{{CONSUMER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Login  - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_AUTH_LOGIN}}",
+									"host": [
+										"{{PROVIDER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
 						{
 							"name": "Get Catalog",
 							"request": {
@@ -4211,6 +6344,16 @@
 									],
 									"path": [
 										"request"
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -4246,6 +6389,16 @@
 									"path": [
 										"datasets",
 										"fdc45798-a222-4955-8baf-ab7fd66ac4d"
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -4294,6 +6447,80 @@
 					"name": "Negotiation",
 					"item": [
 						{
+							"name": "[C] Login - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_AUTH_LOGIN}}",
+									"host": [
+										"{{CONSUMER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Login  - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_AUTH_LOGIN}}",
+									"host": [
+										"{{PROVIDER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Get negotiation by ProviderPid",
 							"protocolProfileBehavior": {
 								"disableBodyPruning": true
@@ -4322,6 +6549,16 @@
 									],
 									"path": [
 										"urn:uuid:a343fcbf-99fc-4ce8-8e9b-148c97605aa"
+									]
+								},
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{access_token_provider_api}}",
+											"type": "string"
+										}
 									]
 								}
 							},
@@ -4358,8 +6595,156 @@
 					"name": "DataTransfer",
 					"item": [
 						{
+							"name": "[C] Login - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{CONSUMER_AUTH_LOGIN}}",
+									"host": [
+										"{{CONSUMER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "[P] Login  - API",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+										]
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{PROVIDER_AUTH_LOGIN}}",
+									"host": [
+										"{{PROVIDER_AUTH_LOGIN}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
 							"name": "Provider",
 							"item": [
+								{
+									"name": "[C] Login - API",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+												]
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{CONSUMER_AUTH_LOGIN}}",
+											"host": [
+												"{{CONSUMER_AUTH_LOGIN}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "[P] Login  - API",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+												]
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{PROVIDER_AUTH_LOGIN}}",
+											"host": [
+												"{{PROVIDER_AUTH_LOGIN}}"
+											]
+										}
+									},
+									"response": []
+								},
 								{
 									"name": "Provider Get TransferProcess",
 									"event": [
@@ -4391,6 +6776,16 @@
 											],
 											"path": [
 												"urn:uuid:PROVIDER_PID_TRANSFER"
+											]
+										},
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{access_token_provider_api}}",
+													"type": "string"
+												}
 											]
 										}
 									},
@@ -4462,6 +6857,16 @@
 											"path": [
 												"request"
 											]
+										},
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{access_token_provider_api}}",
+													"type": "string"
+												}
+											]
 										}
 									},
 									"response": []
@@ -4502,6 +6907,16 @@
 											"path": [
 												"{{providerPid}}",
 												"start"
+											]
+										},
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{access_token_provider_api}}",
+													"type": "string"
+												}
 											]
 										}
 									},
@@ -4544,6 +6959,16 @@
 												"{{providerPid}}",
 												"completion"
 											]
+										},
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{access_token_provider_api}}",
+													"type": "string"
+												}
+											]
 										}
 									},
 									"response": []
@@ -4584,6 +7009,16 @@
 											"path": [
 												"{{providerPid}}",
 												"suspension"
+											]
+										},
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{access_token_provider_api}}",
+													"type": "string"
+												}
 											]
 										}
 									},
@@ -4626,6 +7061,16 @@
 												"{{providerPid}}",
 												"termination"
 											]
+										},
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{access_token_provider_api}}",
+													"type": "string"
+												}
+											]
 										}
 									},
 									"response": []
@@ -4663,6 +7108,16 @@
 												"{{transactionId}}",
 												"1"
 											]
+										},
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{access_token_provider_api}}",
+													"type": "string"
+												}
+											]
 										}
 									},
 									"response": []
@@ -4672,6 +7127,80 @@
 						{
 							"name": "Consumer",
 							"item": [
+								{
+									"name": "[C] Login - API",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+												]
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{CONSUMER_AUTH_LOGIN}}",
+											"host": [
+												"{{CONSUMER_AUTH_LOGIN}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "[P] Login  - API",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"type": "text/javascript",
+												"exec": [
+													"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+												]
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{PROVIDER_AUTH_LOGIN}}",
+											"host": [
+												"{{PROVIDER_AUTH_LOGIN}}"
+											]
+										}
+									},
+									"response": []
+								},
 								{
 									"name": "Consumer Start transfer",
 									"event": [
@@ -4708,6 +7237,16 @@
 											"path": [
 												"{{consumerPid}}",
 												"start"
+											]
+										},
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{access_token_provider_api}}",
+													"type": "string"
+												}
 											]
 										}
 									},
@@ -4749,6 +7288,16 @@
 											"path": [
 												"{{consumerPid}}",
 												"completion"
+											]
+										},
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{access_token_provider_api}}",
+													"type": "string"
+												}
 											]
 										}
 									},
@@ -4793,6 +7342,16 @@
 												"{{consumerPid}}",
 												"suspension"
 											]
+										},
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{access_token_provider_api}}",
+													"type": "string"
+												}
+											]
 										}
 									},
 									"response": []
@@ -4835,6 +7394,16 @@
 												"transfers",
 												"{{consumerPid}}",
 												"termination"
+											]
+										},
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{access_token_provider_api}}",
+													"type": "string"
+												}
 											]
 										}
 									},
@@ -4890,6 +7459,80 @@
 			"name": "Connector",
 			"item": [
 				{
+					"name": "[C] Login - API",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{CONSUMER_AUTH_LOGIN}}",
+							"host": [
+								"{{CONSUMER_AUTH_LOGIN}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "[P] Login  - API",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+								]
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{PROVIDER_AUTH_LOGIN}}",
+							"host": [
+								"{{PROVIDER_AUTH_LOGIN}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "well.known",
 					"event": [
 						{
@@ -4927,7 +7570,14 @@
 					],
 					"request": {
 						"auth": {
-							"type": "noauth"
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token_provider_api}}",
+									"type": "string"
+								}
+							]
 						},
 						"method": "GET",
 						"header": [],
@@ -4962,6 +7612,16 @@
 							"path": [
 								".well-known",
 								"dspace-version"
+							]
+						},
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{access_token_provider_api}}",
+									"type": "string"
+								}
 							]
 						}
 					},
@@ -8867,6 +11527,14 @@
 			"key": "DP_API_KEY",
 			"value": "changeme",
 			"type": "string"
+		},
+		{
+			"key": "AUTH_ACCESS_TOKEN",
+			"value": ""
+		},
+		{
+			"key": "AUTH_REFRESH_TOKEN",
+			"value": ""
 		}
 	]
 }

@@ -309,6 +309,18 @@
 			"enabled": true
 		},
 		{
+			"key": "CONSUMER_AUTH_LOGIN",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "PROVIDER_AUTH_LOGIN",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
 			"key": "KEYCLOAK_USERNAME_SUPERADMIN",
 			"value": "superadmin@test.com",
 			"type": "default",

@@ -26,6 +26,9 @@
         }
       ],
       "request": {
+        "auth": {
+          "type": "noauth"
+        },
         "method": "POST",
         "header": [],
         "body": {
@@ -66,6 +69,9 @@
         }
       ],
       "request": {
+        "auth": {
+          "type": "noauth"
+        },
         "method": "POST",
         "header": [],
         "body": {
@@ -92,26 +98,10 @@
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"Retrieve consumer transfer process id\", function () {\r",
-              "    var jsonData = pm.response.json();\r",
-              "    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][\"@id\"])\r",
-              "});\r",
-              "\r",
-              "pm.test(\"Check if status code is 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"TransactionId\", ()=> {\r",
-              "    var jsonData = pm.response.json();\r",
-              "    let trId = jsonData[\"data\"][\"consumerPid\"] + \"|\" + jsonData[\"data\"][\"providerPid\"];\r",
-              "    pm.collectionVariables.set(\"transactionId\", btoa(trId));\r",
-              "    console.log(pm.collectionVariables.get(\"transactionId\"));\r",
-              "});"
-            ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "exec": [
+              "pm.test(\"Retrieve consumer transfer process id\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][\"@id\"])\r\n});\r\n\r\npm.test(\"Check if status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"TransactionId\", ()=> {\r\n    var jsonData = pm.response.json();\r\n    let trId = jsonData[\"data\"][\"consumerPid\"] + \"|\" + jsonData[\"data\"][\"providerPid\"];\r\n    pm.collectionVariables.set(\"transactionId\", btoa(trId));\r\n    console.log(pm.collectionVariables.get(\"transactionId\"));\r\n});"
+            ]
           }
         }
       ],
@@ -152,20 +142,10 @@
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"Check if status code is 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "\r",
-              "pm.test(\"Retrieve provider transfer process id\", function () {\r",
-              "    var jsonData = pm.response.json();\r",
-              "    pm.collectionVariables.set(\"provider_transferProcessId\", \r",
-              "    jsonData[\"response\"][\"data\"][\"content\"][0][\"@id\"])\r",
-              "});"
-            ],
             "type": "text/javascript",
-            "packages": {},
-            "requests": {}
+            "exec": [
+              "pm.test(\"Check if status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Retrieve provider transfer process id\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"provider_transferProcessId\", \r\n    jsonData[\"response\"][\"data\"][\"content\"][0][\"@id\"])\r\n});"
+            ]
           }
         }
       ],
@@ -184,8 +164,7 @@
         "header": [
           {
             "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
+            "value": "application/json"
           }
         ],
         "url": {
@@ -827,7 +806,7 @@
     },
     {
       "key": "consumer_transferProcessId",
-      "value": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5"
+      "value": "urn:uuid:tp-pull-1111-1111-4111-8111-111111111111"
     },
     {
       "key": "transactionId",
@@ -835,7 +814,7 @@
     },
     {
       "key": "provider_transferProcessId",
-      "value": ""
+      "value": "urn:uuid:tp-pull-provider-1111-1111-4111-8111-111111111111"
     },
     {
       "key": "presignedURL",
