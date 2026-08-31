@@ -54,7 +54,7 @@ public class AuditEventMetricsService {
         List<KeyCount> countsByRole = getRoleCounts(criteria);
         List<TimeBucketCount> countsOverTime = getCountsOverTime(criteria, window.bucket());
         long total = getTotalCount(criteria);
-        return new HistoricalEventMetrics(countsByEventType, countsByRole, countsOverTime, total);
+        return new HistoricalEventMetrics(total, countsByEventType, countsByRole, countsOverTime);
     }
 
     private Criteria buildCriteria(TimeWindow window, String tenantId) {

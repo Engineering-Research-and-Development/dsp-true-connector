@@ -2,6 +2,7 @@ package it.eng.datatransfer.service;
 
 import it.eng.tools.model.dashboard.KeyCount;
 import it.eng.tools.model.dashboard.TransferSnapshotMetrics;
+import it.eng.tools.repository.TenantRepository;
 import org.bson.Document;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
@@ -42,9 +43,11 @@ public class TransferMetricsService {
             .thenComparing(KeyCount::key);
 
     private final MongoTemplate mongoTemplate;
+    private final TenantRepository tenantRepository;
 
-    public TransferMetricsService(MongoTemplate mongoTemplate) {
+    public TransferMetricsService(MongoTemplate mongoTemplate, TenantRepository tenantRepository) {
         this.mongoTemplate = mongoTemplate;
+        this.tenantRepository = tenantRepository;
     }
 
     /**
@@ -59,6 +62,7 @@ public class TransferMetricsService {
                 .getMappedResults();
         Document snapshot = aggregatedResults.get(0);
         return new TransferSnapshotMetrics(
+                snapshot.size(),
                 getCounts(snapshot, COUNTS_BY_STATE_FIELD),
                 getCounts(snapshot, COUNTS_BY_ROLE_AND_STATE_FIELD),
                 getCounts(snapshot, COUNTS_BY_FORMAT_FIELD),
@@ -171,5 +175,8 @@ public class TransferMetricsService {
             return number.longValue();
         }
         return Long.parseLong(String.valueOf(value));
+    }
+
+    private record TenantCount(String tenantId, long count) {
     }
 }

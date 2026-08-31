@@ -2,6 +2,7 @@ package it.eng.datatransfer.service;
 
 import it.eng.tools.model.dashboard.KeyCount;
 import it.eng.tools.model.dashboard.TransferSnapshotMetrics;
+import it.eng.tools.repository.TenantRepository;
 import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,6 +35,8 @@ class TransferMetricsServiceTest {
 
     @Mock
     private MongoTemplate mongoTemplate;
+    @Mock
+    private TenantRepository tenantRepository;
 
     @Captor
     private ArgumentCaptor<Aggregation> aggregationCaptor;
@@ -42,7 +45,7 @@ class TransferMetricsServiceTest {
 
     @BeforeEach
     void setUp() {
-        transferMetricsService = new TransferMetricsService(mongoTemplate);
+        transferMetricsService = new TransferMetricsService(mongoTemplate, tenantRepository);
     }
 
     @Test

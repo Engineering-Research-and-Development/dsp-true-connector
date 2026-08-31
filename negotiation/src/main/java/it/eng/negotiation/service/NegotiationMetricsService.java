@@ -1,7 +1,10 @@
 package it.eng.negotiation.service;
 
+import it.eng.tools.model.Tenant;
 import it.eng.tools.model.dashboard.KeyCount;
 import it.eng.tools.model.dashboard.NegotiationSnapshotMetrics;
+import it.eng.tools.model.dashboard.TenantMetrics;
+import it.eng.tools.repository.TenantRepository;
 import org.bson.Document;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -14,6 +17,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,9 +35,11 @@ public class NegotiationMetricsService {
             .thenComparing(KeyCount::key);
 
     private final MongoTemplate mongoTemplate;
+    private final TenantRepository tenantRepository;
 
-    public NegotiationMetricsService(MongoTemplate mongoTemplate) {
+    public NegotiationMetricsService(MongoTemplate mongoTemplate, TenantRepository tenantRepository ) {
         this.mongoTemplate = mongoTemplate;
+        this.tenantRepository = tenantRepository;
     }
 
     /**
@@ -48,7 +54,7 @@ public class NegotiationMetricsService {
         List<KeyCount> countsByState = getCountsByState(groupedCounts);
         List<KeyCount> countsByRoleAndState = getCountsByRoleAndState(groupedCounts);
         long total = getTotalCount(groupedCounts);
-        return new NegotiationSnapshotMetrics(countsByState, countsByRoleAndState, total);
+        return new NegotiationSnapshotMetrics(total, countsByState, countsByRoleAndState, buildByTenant(tenantId, groupedCounts));
     }
 
     private Criteria buildCriteria(String tenantId) {
@@ -63,7 +69,8 @@ public class NegotiationMetricsService {
         Aggregation aggregation = Aggregation.newAggregation(
                 Aggregation.match(criteria),
                 context -> new Document("$group", new Document("_id", new Document(ROLE_FIELD, "$" + ROLE_FIELD)
-                        .append(STATE_FIELD, "$" + STATE_FIELD))
+                        .append(STATE_FIELD, "$" + STATE_FIELD)
+                        .append(TENANT_ID_FIELD, "$" + TENANT_ID_FIELD))
                         .append(COUNT_FIELD, new Document("$sum", 1))),
                 context -> new Document("$project", new Document(KEY_FIELD, new Document("$concat", List.of(
                         "$_id." + ROLE_FIELD,
@@ -71,6 +78,7 @@ public class NegotiationMetricsService {
                         "$_id." + STATE_FIELD
                 )))
                         .append(STATE_FIELD, "$_id." + STATE_FIELD)
+                        .append(TENANT_ID_FIELD, "$_id." + TENANT_ID_FIELD)
                         .append(COUNT_FIELD, "$" + COUNT_FIELD)
                         .append("_id", 0)),
                 Aggregation.sort(Sort.by(Sort.Direction.DESC, COUNT_FIELD).and(Sort.by(Sort.Direction.ASC, KEY_FIELD)))
@@ -118,6 +126,7 @@ public class NegotiationMetricsService {
             return Optional.empty();
         }
         return Optional.of(new GroupedNegotiationCount(
+                document.getString(TENANT_ID_FIELD),
                 String.valueOf(state),
                 String.valueOf(key),
                 extractLong(document.get(COUNT_FIELD))
@@ -131,6 +140,40 @@ public class NegotiationMetricsService {
         return Long.parseLong(String.valueOf(value));
     }
 
-    private record GroupedNegotiationCount(String state, String key, long count) {
+    private record GroupedNegotiationCount(String tenantId, String state, String key, long count) {
     }
+
+    private List<TenantMetrics<NegotiationSnapshotMetrics>> buildByTenant(
+            String tenantId, List<GroupedNegotiationCount> groupedCounts) {
+        if (StringUtils.hasText(tenantId)) {
+            return null;
+        }
+        Map<String, List<GroupedNegotiationCount>> byTenantId = groupedCounts.stream()
+                .filter(row -> row.tenantId() != null)
+                .collect(Collectors.groupingBy(GroupedNegotiationCount::tenantId));
+
+        return tenantRepository.findAll().stream()
+                .sorted(Comparator.comparing(Tenant::getId))
+                .map(tenant -> {
+                    List<GroupedNegotiationCount> rows = byTenantId.getOrDefault(tenant.getId(), List.of());
+                    NegotiationSnapshotMetrics tenantMetrics = new NegotiationSnapshotMetrics(
+                            rows.stream().mapToLong(GroupedNegotiationCount::count).sum(),
+                            summarizeByKey(rows, GroupedNegotiationCount::state),
+                            summarizeByKey(rows, GroupedNegotiationCount::key),
+                            null);
+                    return new TenantMetrics<>(tenant.getId(), tenant.getName(), tenantMetrics);
+                })
+                .toList();
+    }
+
+    private static List<KeyCount> summarizeByKey(
+            List<GroupedNegotiationCount> rows, Function<GroupedNegotiationCount, String> keyExtractor) {
+        return rows.stream()
+                .collect(Collectors.groupingBy(keyExtractor, Collectors.summingLong(GroupedNegotiationCount::count)))
+                .entrySet().stream()
+                .map(e -> new KeyCount(e.getKey(), e.getValue()))
+                .toList();
+    }
+
+
 }
