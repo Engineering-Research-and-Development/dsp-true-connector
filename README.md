@@ -39,6 +39,15 @@ Project is structured as multi-module maven project:
 * data-transfer - module maintaining transfer of the data
 * tools - various tools and utilities needed across modules
 
+## Documentation
+
+* [Documentation index](doc/README.md) — map of all guides (security, configuration, identity, testing, deployment)
+* [Architecture overview](doc/architecture.md) — module map, layering, protocol flows
+* [Contributing guide](CONTRIBUTING.md) — prerequisites, build/test commands, workflow, Definition of Done
+* [Agent instructions](AGENTS.md) — rules and the GitHub-integrated AI task workflow for AI coding agents
+* [Architecture decisions](doc/decisions/README.md) — ADRs
+* [Glossary](doc/glossary.md) — DSP and dataspace terminology
+
 ## GUI tool for DSP TRUEConnector
 
 * [GUI frontend](https://github.com/Engineering-Research-and-Development/dsp-true-connector-ui)
@@ -77,4 +86,3 @@ Project is structured as multi-module maven project:
 - [Catalog Module](catalog/doc/catalog.md)
 - [Negotiation Module](negotiation/doc/model.md)
 - [Data Transfer Module](data-transfer/doc/data-transfer.md)
-

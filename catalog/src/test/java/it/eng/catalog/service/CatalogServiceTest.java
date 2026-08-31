@@ -4,6 +4,7 @@ import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.model.*;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
@@ -28,6 +29,7 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -123,6 +125,7 @@ public class CatalogServiceTest {
         when(repository.findByIdAndTenantId(anyString(), anyString())).thenReturn(Optional.of(catalog));
         service.deleteCatalog(catalog.getId());
         verify(repository).deleteById(catalog.getId());
+        verify(publisher).publishEvent(eq(AuditEventType.CATALOG_DELETED), anyString(), any());
     }
 
     @Test
@@ -149,6 +152,7 @@ public class CatalogServiceTest {
                 .anyMatch(s -> s.getCreator().contains("update")
                         && s.getEndpointURL().contains("update")
                         && s.getEndpointDescription().contains("update")));
+        verify(publisher).publishEvent(eq(AuditEventType.CATALOG_UPDATED), anyString(), any());
     }
 
     @Test
@@ -162,6 +166,48 @@ public class CatalogServiceTest {
         service.updateCatalogDataServiceAfterDelete(dataService);
 
         verify(repository).save(any(Catalog.class));
+    }
+
+    @Test
+    @DisplayName("updateCatalogDatasetAfterSave rejects cross-tenant dataset with InternalServerErrorAPIException")
+    public void updateCatalogDatasetAfterSave_crossTenantDataset_throws() {
+        Dataset crossTenantDataset = Dataset.Builder.newInstance()
+                .id("urn:dataset:cross-tenant")
+                .tenantId("other-tenant")
+                .hasPolicy(new HashSet<>())
+                .build();
+
+        assertThrows(it.eng.catalog.exceptions.InternalServerErrorAPIException.class,
+                () -> service.updateCatalogDatasetAfterSave(crossTenantDataset),
+                "A dataset from a different tenant must be rejected");
+    }
+
+    @Test
+    @DisplayName("updateCatalogDataServiceAfterSave rejects cross-tenant dataService with InternalServerErrorAPIException")
+    public void updateCatalogDataServiceAfterSave_crossTenantDataService_throws() {
+        DataService crossTenantService = DataService.Builder.newInstance()
+                .id("urn:ds:cross-tenant")
+                .tenantId("other-tenant")
+                .build();
+
+        assertThrows(it.eng.catalog.exceptions.InternalServerErrorAPIException.class,
+                () -> service.updateCatalogDataServiceAfterSave(crossTenantService),
+                "A data service from a different tenant must be rejected");
+    }
+
+    @Test
+    @DisplayName("updateCatalogDistributionAfterSave rejects cross-tenant distribution with InternalServerErrorAPIException")
+    public void updateCatalogDistributionAfterSave_crossTenantDistribution_throws() {
+        Distribution crossTenantDist = Distribution.Builder.newInstance()
+                .id("urn:dist:cross-tenant")
+                .tenantId("other-tenant")
+                .format(CatalogMockObjectUtil.DISTRIBUTION.getFormat())
+                .accessService(CatalogMockObjectUtil.DATA_SERVICE)
+                .build();
+
+        assertThrows(it.eng.catalog.exceptions.InternalServerErrorAPIException.class,
+                () -> service.updateCatalogDistributionAfterSave(crossTenantDist),
+                "A distribution from a different tenant must be rejected");
     }
 
 

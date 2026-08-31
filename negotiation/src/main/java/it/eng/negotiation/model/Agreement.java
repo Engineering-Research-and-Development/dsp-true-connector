@@ -14,6 +14,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.io.Serial;
@@ -31,6 +32,17 @@ public class Agreement implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
+
+    /**
+     * Tenant-independent MongoDB technical primary key, distinct from the DSP protocol {@code @id}.
+     * The protocol {@code id} is legitimately shared between the provider's and the consumer's local
+     * copies of the same agreement, so it cannot be used as the document's technical key in a
+     * single-instance, multi-tenant deployment where both copies live in the same collection.
+     * Left {@code null} on construction; MongoDB generates a value on first save.
+     */
+    @Id
+    @JsonIgnore
+    private String technicalId;
 
     @NotNull
     @JsonProperty(DSpaceConstants.ID)

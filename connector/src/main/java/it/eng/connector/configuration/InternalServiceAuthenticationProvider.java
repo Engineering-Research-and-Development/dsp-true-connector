@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 
 import it.eng.connector.model.Role;
 import it.eng.connector.model.User;
-import it.eng.tools.auth.condition.BasicAuthenticationModeCondition;
+import it.eng.tools.auth.condition.InternalAuthenticationModeCondition;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -22,12 +22,13 @@ import lombok.extern.slf4j.Slf4j;
  * allows {@code ApiTenantContextFilter} to honour the {@code X-Tenant-Id} request header
  * and correctly route multi-tenant internal API calls.
  *
- * <p>Only active when {@code application.auth.provider=BASIC}. In KEYCLOAK or DISABLED
+ * <p>Only active when {@code application.auth.provider=INTERNAL}. In KEYCLOAK or DISABLED
  * modes this provider is not registered.
  */
 @Slf4j
-@Component
-@Conditional(BasicAuthenticationModeCondition.class)
+//@Component
+//@Conditional(InternalAuthenticationModeCondition.class)
+@Deprecated(forRemoval = true)
 public class InternalServiceAuthenticationProvider implements AuthenticationProvider {
 
     /** Username used by internal services for machine-to-machine API calls. */
@@ -72,7 +73,7 @@ public class InternalServiceAuthenticationProvider implements AuthenticationProv
         }
         User syntheticUser = User.builder()
                 .email(INTERNAL_SERVICE_USERNAME)
-                .role(Role.ROLE_ADMIN)
+                .role(Role.ADMIN)
                 .enabled(true)
                 .build();
         log.debug("InternalServiceAuthenticationProvider: authenticated internal-service");

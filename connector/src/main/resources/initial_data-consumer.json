@@ -10,7 +10,7 @@
       "enabled": true,
       "expired": false,
       "locked": false,
-      "role": "ROLE_ADMIN",
+      "role": "ADMIN",
       "tenantId": "engineering"
     },
     {
@@ -23,7 +23,7 @@
       "enabled": "true",
       "expired": false,
       "locked": false,
-      "role": "ROLE_CONNECTOR",
+      "role": "CONNECTOR",
       "tenantId": "engineering"
     },
     {
@@ -36,7 +36,7 @@
       "enabled": true,
       "expired": false,
       "locked": false,
-      "role": "ROLE_SUPER_ADMIN"
+      "role": "SUPER_ADMIN"
     }
   ],
   "catalogs": [
@@ -181,7 +181,7 @@
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "DSP TRUE Connector",
       "endpointDescription": "connector",
-      "endpointURL": "http://localhost:8080/",
+      "endpointURL": "http://localhost:8080/engineering",
       "tenantId": "engineering",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
@@ -237,7 +237,6 @@
       },
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
-      "tenantId": "engineering",
       "version": {
         "$numberLong": "0"
       },

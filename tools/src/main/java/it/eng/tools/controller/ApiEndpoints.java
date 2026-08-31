@@ -77,4 +77,9 @@ public interface ApiEndpoints {
     public static final String DASHBOARD_EVENTS_V1 = DASHBOARD_V1 + "/events";
 
     public static final String DASHBOARD_SUMMARY_V1 = DASHBOARD_V1 + "/summary";
+
+    /**
+     * Connector module - v1 API endpoint for the unified auth contract (login/refresh/logout).
+     */
+    public static final String AUTH_V1 = "/api/v1/auth";
 }

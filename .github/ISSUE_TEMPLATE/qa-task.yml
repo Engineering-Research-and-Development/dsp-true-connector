@@ -1,0 +1,237 @@
+name: "QA Task (slice-level)"
+description: "Slice-level end-to-end QA task produced by task decomposition"
+title: "[QA] "
+labels: []
+body:
+
+  - type: markdown
+    attributes:
+      value: |
+        This template is for **slice-level QA tasks** produced by task decomposition.
+
+        - Use `.github/ISSUE_TEMPLATE/task.yml` for implementation tasks.
+        - Use `.github/ISSUE_TEMPLATE/docs-task.yml` for slice-level documentation.
+
+        After issue creation, update the title to include the shared slice tag and the issue-derived alias, for example `[QA][X1][T107] ...`. If this issue's **Type** is `bug`, use `B107` instead of `T107`. Apply the matching GitHub label/tag `slice:X1` and record both values in **Source & Parent Traceability**. The slice tag can be `C1`, `B1`, `X1`, or another short moderator/tag chosen for the slice set.
+
+        Per-task QA (each implementation task self-running its own Verification Checklist before PR) still happens inside the implementation task itself — this issue is the **additional, slice-wide** end-to-end verification across everything the slice's implementation tasks produced.
+
+        Detailed workflows:
+        - `.github/skills/task-decomposition/SKILL.md`
+        - `.github/skills/task-implementation/SKILL.md`
+
+  # ── Context ──────────────────────────────────────────────────────────
+
+  - type: textarea
+    id: context
+    attributes:
+      label: "Context"
+      description: >
+        What slice this QA task verifies, which functional outcome it covers,
+        and where in the connector the verification happens.
+      placeholder: |
+        **Slice**: #... (the parent functional-slice issue)
+        **Functional outcome under test**: ...
+        **Where**: protocol endpoints ..., modules ..., provider/consumer flows ...
+        **Requirement source**: #... or DSP 2025-1 spec section ...
+    validations:
+      required: true
+
+  # ── Source Traceability ──────────────────────────────────────────────
+
+  - type: textarea
+    id: source-traceability
+    attributes:
+      label: "Source & Parent Traceability"
+      description: >
+        Record the parent slice and every sibling implementation task this
+        QA is gated on, along with the shared slice tag and issue alias.
+      placeholder: |
+        **Slice tag**: `X1`
+        **Issue alias**: `T107` / `B107` (derived from this issue number after creation)
+        **Source type**: slice decomposition
+        **Parent slice**: #...
+        **Sibling implementation tasks gated**: #..., #..., #...
+        **Decomposition batch**: issue links created together in this split
+    validations:
+      required: true
+
+  # ── Slice-level QA Scope ─────────────────────────────────────────────
+
+  - type: textarea
+    id: qa-scope
+    attributes:
+      label: "Slice-level QA scope"
+      description: >
+        Functional coverage derived from the parent slice's Functional Outcome
+        and In-Scope Outcomes. Describe what is verified end-to-end across the
+        slice, not what any single implementation task already self-verified.
+      placeholder: |
+        **End-to-end flows**:
+        - Full protocol flow: catalog request → negotiation → agreement → transfer ...
+        - ...
+
+        **Cross-task integration points**:
+        - ...
+
+        **Protocol / data state transitions covered**:
+        - ...
+
+        **TCK compliance**: required / not required (required when the slice touches protocol-facing behavior)
+
+        **Out of scope here** (covered by per-task verification or separate QA task):
+        - ...
+    validations:
+      required: true
+
+  # ── Dependencies ─────────────────────────────────────────────────────
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: "Dependencies"
+      description: >
+        This QA task must list `Depends on: #` for every sibling implementation
+        task of the parent slice. One relationship per line.
+      placeholder: |
+        Relates to: #... (parent slice)
+        Depends on: #... (impl task A)
+        Depends on: #... (impl task B)
+        Depends on: #... (impl task C)
+    validations:
+      required: true
+
+  # ── Delivery Stream ──────────────────────────────────────────────────
+
+  - type: textarea
+    id: parallelization
+    attributes:
+      label: "Delivery Stream & Parallelization"
+      description: >
+        Describe the independent stream this QA task belongs to. Note that a
+        slice-level QA task by definition waits on its sibling impl tasks.
+      placeholder: |
+        **Stream**: `negotiation-qa` / `data-transfer-qa` / `...`
+        **Can run in parallel with**: #... (QA tasks of unrelated slices)
+        **Must wait for**: all sibling implementation tasks of slice #...
+        **Why this is a separate stream**: ...
+    validations:
+      required: true
+
+  # ── Classification ───────────────────────────────────────────────────
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: "Type"
+      options:
+        - test
+        - feature
+        - enhancement
+        - bug
+        - refactor
+        - docs
+        - chore
+      default: 0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "Priority"
+      options:
+        - "P0 — blocker"
+        - "P1 — high"
+        - "P2 — medium"
+        - "P3 — low"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: "Milestone"
+      options:
+        - "Next release"
+        - "Future release"
+        - "Maintenance / hotfix"
+    validations:
+      required: true
+
+  # ── AI Agent Configuration ──────────────────────────────────────────
+
+  - type: dropdown
+    id: ai-model
+    attributes:
+      label: "AI Model"
+      description: "Which model should execute this QA task."
+      options:
+        - "Sonnet 4.6 (standard implementation)"
+        - "Opus 4.8 (complex, multi-file, architectural)"
+        - "Fable 5 (most capable — cross-module or protocol-critical work)"
+        - "Haiku 4.5 (simple, mechanical changes)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: agent-mode
+    attributes:
+      label: "Agent Mode"
+      description: "How agents should execute this QA task."
+      options:
+        - "Single agent — sequential execution"
+        - "Parallel agents — independent sub-tasks"
+        - "Human-assisted — agent executes, human validates interactively"
+    validations:
+      required: true
+
+  - type: textarea
+    id: agent-instructions
+    attributes:
+      label: "Agent Instructions"
+      description: >
+        Additional instructions for the agent executing this QA task.
+        The Verification Checklist below IS the work — no product code should
+        be written unless a pre-existing bug is blocking verification, in which
+        case the agent stops and comments on this issue.
+      placeholder: |
+        **Read first**: parent slice #..., sibling impl task PRs
+        **Skills / MCPs**: GitHub MCP
+        **Constraints**: Do not modify product code as part of this task; Docker must be running
+    validations:
+      required: false
+
+  # ── Verification Checklist ──────────────────────────────────────────
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: "Verification Checklist"
+      description: >
+        Deterministic slice-level end-to-end pass/fail items. Each item must be
+        independently verifiable. Use task list syntax. Prefer existing repo
+        commands — `mvn clean verify`, targeted integration tests, TCK profile
+        runs, SpotBugs scan. Prefix items that cannot be automated with [manual]
+        — those are verified at PR review.
+      placeholder: |
+        **Build**
+        - [ ] `mvn clean verify` exits 0 (unit + integration tests, Docker running)
+
+        **End-to-end functional**
+        - [ ] Full protocol flow A completes: ... → ... → ...
+        - [ ] Agreement state survives across negotiation and transfer modules
+        - [ ] Cross-module integration point ... behaves as specified
+
+        **Durable integration coverage**
+        - [ ] New/extended Testcontainers integration test covers the slice's end-to-end flow
+        - [ ] Targeted integration test suite for the slice passes in isolation
+
+        **Protocol compliance** (when the slice is protocol-facing)
+        - [ ] TCK profile run passes 100% (see `doc/tck/tck_compliancy.md`)
+
+        **Security / quality**
+        - [ ] SpotBugs scan shows no new findings (`./spotbugs-scan.sh`)
+        - [ ] [manual] Postman collection walkthrough of the slice flows against local provider + consumer instances
+    validations:
+      required: true

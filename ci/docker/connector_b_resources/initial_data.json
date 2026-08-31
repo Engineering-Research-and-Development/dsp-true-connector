@@ -10,7 +10,7 @@
       "enabled": true,
       "expired": false,
       "locked": false,
-      "role": "ROLE_ADMIN",
+      "role": "ADMIN",
       "tenantId": "connector_b_tenant_id"
     },
     {
@@ -23,7 +23,7 @@
       "enabled": "true",
       "expired": false,
       "locked": false,
-      "role": "ROLE_CONNECTOR",
+      "role": "CONNECTOR",
       "tenantId": "connector_b_tenant_id"
     },
     {
@@ -36,7 +36,7 @@
       "enabled": true,
       "expired": false,
       "locked": false,
-      "role": "ROLE_SUPER_ADMIN"
+      "role": "SUPER_ADMIN"
     }
   ],
   "catalogs": [
@@ -344,6 +344,7 @@
     {
       "_id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "_class": "it.eng.negotiation.model.Agreement",
+      "id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "tenantId": "connector_b_tenant_id",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
       "timestamp": "2023-01-01T01:00:00Z",
@@ -396,8 +397,7 @@
       "_id": "connector_b_tenant_id",
       "name": "Engineering",
       "description": "Engineering tenant",
-      "connectorId": "urn:connector_b:engineering",
-      "callbackAddress": "http://172.17.0.1:8090/connector_b_tenant_id",
+      "participantId": "urn:connector_b:engineering",
       "bucketName": "dsp-true-connector-b",
       "enabled": true,
       "automaticNegotiation": false,

@@ -23,10 +23,9 @@ import static org.mockito.Mockito.when;
 class ContractNegotiationPropertiesTest {
 
     private static final String TENANT_ID = "engineering";
-    private static final String TENANT_CONNECTOR_ID = "tenant-connector-id";
-    private static final String TENANT_CALLBACK = "http://tenant.example.com";
+    private static final String TENANT_PARTICIPANT_ID = "tenant-participant-id";
     private static final String GLOBAL_CALLBACK = "http://global.example.com";
-    private static final String GLOBAL_CONNECTOR_ID = "connectorId";
+    private static final String GLOBAL_PARTICIPANT_ID = "participantId";
 
     @Mock
     private TenantRepository tenantRepository;
@@ -47,8 +46,7 @@ class ContractNegotiationPropertiesTest {
         enabledTenant = Tenant.Builder.newInstance()
                 .id(TENANT_ID)
                 .name("Engineering")
-                .connectorId(TENANT_CONNECTOR_ID)
-                .callbackAddress(TENANT_CALLBACK)
+                .participantId(TENANT_PARTICIPANT_ID)
                 .automaticNegotiation(true)
                 .enabled(true)
                 .build();
@@ -60,38 +58,37 @@ class ContractNegotiationPropertiesTest {
     }
 
     // -------------------------------------------------------------------------
-    // connectorId
+    // participantId
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("connectorId returns tenant connectorId when tenant context is active")
-    void connectorId_withActiveTenant_returnsTenantConnectorId() {
+    @DisplayName("participantId returns tenant participantId when tenant context is active")
+    void participantId_withActiveTenant_returnsTenantParticipantId() {
         TenantContextHolder.setTenantId(TENANT_ID);
         when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(enabledTenant));
 
-        assertEquals(TENANT_CONNECTOR_ID, properties.connectorId());
+        assertEquals(TENANT_PARTICIPANT_ID, properties.participantId());
     }
 
     @Test
-    @DisplayName("connectorId returns global default when no tenant context")
-    void connectorId_withoutTenantContext_returnsGlobalDefault() {
-        assertEquals(GLOBAL_CONNECTOR_ID, properties.connectorId());
+    @DisplayName("participantId returns global default when no tenant context")
+    void participantId_withoutTenantContext_returnsGlobalDefault() {
+        assertEquals(GLOBAL_PARTICIPANT_ID, properties.participantId());
     }
 
     @Test
-    @DisplayName("connectorId returns global default when tenant is disabled")
-    void connectorId_withDisabledTenant_returnsGlobalDefault() {
+    @DisplayName("participantId returns global default when tenant is disabled")
+    void participantId_withDisabledTenant_returnsGlobalDefault() {
         Tenant disabledTenant = Tenant.Builder.newInstance()
                 .id(TENANT_ID)
                 .name("Engineering")
-                .connectorId(TENANT_CONNECTOR_ID)
-                .callbackAddress(TENANT_CALLBACK)
+                .participantId(TENANT_PARTICIPANT_ID)
                 .enabled(false)
                 .build();
         TenantContextHolder.setTenantId(TENANT_ID);
         when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(disabledTenant));
 
-        assertEquals(GLOBAL_CONNECTOR_ID, properties.connectorId());
+        assertEquals(GLOBAL_PARTICIPANT_ID, properties.participantId());
     }
 
     // -------------------------------------------------------------------------
@@ -99,12 +96,12 @@ class ContractNegotiationPropertiesTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("providerCallbackAddress returns tenant callbackAddress when tenant context is active")
+    @DisplayName("providerCallbackAddress returns computed tenant callbackAddress when tenant context is active")
     void providerCallbackAddress_withActiveTenant_returnsTenantCallback() {
         TenantContextHolder.setTenantId(TENANT_ID);
         when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(enabledTenant));
 
-        assertEquals(TENANT_CALLBACK, properties.providerCallbackAddress());
+        assertEquals(GLOBAL_CALLBACK + "/" + TENANT_ID, properties.providerCallbackAddress());
     }
 
     @Test
@@ -118,28 +115,22 @@ class ContractNegotiationPropertiesTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("consumerCallbackAddress appends /consumer to tenant callbackAddress")
+    @DisplayName("consumerCallbackAddress appends /consumer to computed tenant callbackAddress")
     void consumerCallbackAddress_withActiveTenant_appendsConsumerSuffix() {
         TenantContextHolder.setTenantId(TENANT_ID);
         when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(enabledTenant));
 
-        assertEquals(TENANT_CALLBACK + "/consumer", properties.consumerCallbackAddress());
+        assertEquals(GLOBAL_CALLBACK + "/" + TENANT_ID + "/consumer", properties.consumerCallbackAddress());
     }
 
     @Test
-    @DisplayName("consumerCallbackAddress strips trailing slash before appending /consumer")
-    void consumerCallbackAddress_withTrailingSlash_stripsSlash() {
-        Tenant tenantWithSlash = Tenant.Builder.newInstance()
-                .id(TENANT_ID)
-                .name("Engineering")
-                .connectorId(TENANT_CONNECTOR_ID)
-                .callbackAddress("http://tenant.example.com/")
-                .enabled(true)
-                .build();
+    @DisplayName("consumerCallbackAddress strips trailing slash from global base URL before computing")
+    void consumerCallbackAddress_withTrailingSlashInGlobal_stripsSlash() {
+        ReflectionTestUtils.setField(properties, "callbackAddress", GLOBAL_CALLBACK + "/");
         TenantContextHolder.setTenantId(TENANT_ID);
-        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(tenantWithSlash));
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(enabledTenant));
 
-        assertEquals("http://tenant.example.com/consumer", properties.consumerCallbackAddress());
+        assertEquals(GLOBAL_CALLBACK + "/" + TENANT_ID + "/consumer", properties.consumerCallbackAddress());
     }
 
     @Test

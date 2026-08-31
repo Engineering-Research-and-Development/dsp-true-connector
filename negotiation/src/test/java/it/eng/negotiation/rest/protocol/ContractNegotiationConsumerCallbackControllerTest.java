@@ -45,8 +45,8 @@ public class ContractNegotiationConsumerCallbackControllerTest {
     @BeforeEach
     public void setUp() {
         Tenant tenant = Tenant.Builder.newInstance()
-                .id(TENANT_ID).name("Engineering").connectorId("c1")
-                .callbackAddress("http://test").enabled(true).build();
+                .id(TENANT_ID).name("Engineering").participantId("c1")
+                .enabled(true).build();
         when(tenantService.findEnabledTenantById(TENANT_ID)).thenReturn(tenant);
     }
 

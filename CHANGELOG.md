@@ -10,9 +10,88 @@ All notable changes to this project will be documented in this file.
 - `ApiEndpoints` constants for dashboard routes: `DASHBOARD_V1`, `DASHBOARD_RUNTIME_V1`, `DASHBOARD_NEGOTIATIONS_V1`, `DASHBOARD_TRANSFERS_V1`, `DASHBOARD_EVENTS_V1`, and `DASHBOARD_SUMMARY_V1`.
 - `doc/dashboard-metrics.md` documenting the dashboard metrics backend contract and `DashboardMetricsAPIIT` integration coverage for the summary endpoint.
 
-## [Unreleased] — Multi-Tenant Support
+## [Unreleased]
 
 ### Added
+- **TB1 — Tenant Bucket Credential Request Contract & Verification**
+  - `TenantBucketCredentialsRequest` (`tools`) — a request-only carrier for optional `bucketName`/`accessKey`/`secretKey`/`verifyConnection` fields, never persisted and never returned from any controller.
+  - `BucketProvisioningMode` (`AUTOMATIC`/`EXISTING_BUCKET`/`EXTERNAL_CREDENTIALS`) and `BucketProvisioningModeResolver` (`tools`) — classify the optional fields above into one of the three valid provisioning modes, or reject invalid combinations with `IllegalArgumentException`.
+  - `BucketConnectionVerificationService` (`tools`) — verifies candidate external bucket credentials against S3/MinIO via a `HeadBucket` probe, with no persistence side effects, backing the opt-in `verifyConnection` pre-flight check. See [tools/doc/tenant-s3-provisioning.md](tools/doc/tenant-s3-provisioning.md#bring-your-own-bucket-foundation-tb1).
+- **TB2 — Tenant Creation Bring-Your-Own-Bucket Onboarding**
+  - `POST /api/v1/tenants` now accepts optional `bucketName`/`accessKey`/`secretKey`/`verifyConnection` fields via `TenantCreateRequest`, and routes to `TenantService.saveTenant(Tenant, TenantBucketCredentialsRequest)`.
+  - `TenantService.saveTenant(...)` now resolves `BucketProvisioningMode`:
+    - `AUTOMATIC`: keeps existing `dsp-{tenantId}` derivation and `ensureBucketCredentials` provisioning.
+    - `EXISTING_BUCKET`: uses supplied `bucketName` and reuses `ensureBucketCredentials(bucketName)`.
+    - `EXTERNAL_CREDENTIALS`: persists supplied credentials with `BucketCredentialsService` and skips auto-provisioning.
+  - `verifyConnection=true` in external-credentials mode now enforces a pre-persistence bucket connectivity check through `BucketConnectionVerificationService`; failed verification rejects creation with HTTP 400 and no tenant/credentials persistence.
+  - Added unit coverage for all three modes, conflict handling, and both `verifyConnection` outcomes (`TenantServiceTest`, `TenantCreateRequestTest`, `TenantAPIControllerTest`), plus end-to-end `TenantAPIIT` coverage for automatic, existing-bucket, external-credentials, verification success/failure, and bucket-conflict scenarios.
+- **TB3 — Tenant Update Bucket Rotation/Migration**
+  - `PUT /api/v1/tenants/{id}` now accepts optional `bucketName`/`accessKey`/`secretKey`/`verifyConnection` fields via `TenantUpdateRequest` and routes through `TenantService.updateTenant(id, updates, credentialsRequest)`.
+  - `TenantService.updateTenant(...)` now resolves `BucketProvisioningMode` and supports:
+    - ordinary update (`AUTOMATIC`) with unchanged bucket/credentials,
+    - bucket reconfirm or migration (`EXISTING_BUCKET`) with ownership-conflict checks excluding the tenant being updated,
+    - credential rotation or migration (`EXTERNAL_CREDENTIALS`) with optional `verifyConnection=true` pre-check.
+  - `BucketCredentialsService.saveBucketCredentials(...)` now carries forward the stored `@Version` on repeated writes to the same bucket, so sequential credential rotations update the existing document instead of failing on duplicate-key insert.
+  - `TENANT_UPDATED` audit details now include `changeType` (`ORDINARY_UPDATE`, `CREDENTIALS_ROTATED`, `BUCKET_MIGRATED`).
+  - Added unit and integration coverage for update-path reconfirm/migration/rotation flows, verification failures with no partial persistence, and double-rotation regression.
+
+## [0.7.0] - 10.07.2026 - Multi-Tenant Support
+
+- **Updated java from 17 to 21**
+
+### Added
+- **MT1 — Tenant & User Lifecycle Foundation**
+  - `TenantService.saveTenant()` now auto-generates a **UUID** as the tenant ID; any caller-supplied `id` is ignored. `callbackAddress` is derived programmatically as `${application.callback.address}/{id}` — any caller-supplied `callbackAddress` is also ignored.
+  - `UserDTO` has a new `tenantId` field. When provided, `UserService.createUser()` validates that the referenced tenant exists and is enabled before persisting the user; users are stored with their `tenantId` linked.
+  - `ROLE_SUPER_ADMIN` users are exempt from tenant-existence validation and may be created without a `tenantId`.
+  - **Keycloak mode user registration** — `KeycloakUserService` and `KeycloakUserApiController` added. When `application.auth.provider=KEYCLOAK`, `POST /api/v1/users` delegates to the Keycloak Admin REST API (`POST /admin/realms/{realm}/users`) using the service account client credentials. Requires `application.keycloak.admin.server-url` and `application.keycloak.admin.realm` properties.
+  - ADR [D-TEC-001](doc/decisions/technical/D-TEC-001-keycloak-user-registration.md) — documents the Keycloak user-registration design rationale.
+- **MT2 — Security & Access Control Hardening**
+  - `ROLE_SUPER_ADMIN` is now required for `/api/v1/users/**` and `/api/v1/properties/**` in both `BASIC` and `KEYCLOAK` authentication modes. Previously only `/api/v1/tenants/**` was restricted to `ROLE_SUPER_ADMIN`; `ROLE_ADMIN` users could access user and property management endpoints, creating a privilege-escalation gap.
+  - Integration tests added covering SUPER_ADMIN access (200) and ROLE_ADMIN denial (403) for all three restricted endpoint prefixes in both auth modes. DISABLED mode is explicitly verified as permit-all for all three endpoints.
+  - **ROLE_ADMIN self-service user management** — `ROLE_ADMIN` users may now call `GET /api/v1/users/me` (own profile), `PUT /api/v1/users/{id}/update` (own name), and `PUT /api/v1/users/{id}/password` (own password) without requiring `ROLE_SUPER_ADMIN`. All other user-management endpoints remain restricted to `ROLE_SUPER_ADMIN`.
+  - **Role enum cleanup** — `Role` enum values renamed from `ROLE_ADMIN`/`ROLE_USER`/`ROLE_CONNECTOR`/`ROLE_SUPER_ADMIN` to `ADMIN`/`USER`/`CONNECTOR`/`SUPER_ADMIN`. `authorityName()` helper added to produce the Spring Security `ROLE_`-prefixed authority string. `User.getAuthorities()` now calls `role.authorityName()`. All inline `"ROLE_*"` string literals removed from production and test code.
+  - **Tenant.participantId immutability** — `TenantService.updateTenant()` no longer accepts a new `participantId` from the request body; any supplied value is silently ignored and the stored `participantId` is always preserved after tenant creation.
+- **MT3 — Per-Tenant Data Isolation**
+  - **S3 bucket auto-derivation** — `TenantService.saveTenant()` now auto-derives the S3 bucket name as `dsp-{tenantId}` when `bucketName` is not supplied in the request body. The derived bucket is provisioned via `S3BucketProvisionService.ensureBucketCredentials()` before the tenant document is persisted. See [tools/doc/tenant-s3-provisioning.md](tools/doc/tenant-s3-provisioning.md).
+  - **MongoDB compound startup indexes** — seven collections (`catalogs`, `datasets`, `contract_negotiations`, `transfer_process`, `agreements`, `audit_events`, `application_properties`) receive `(tenantId, _id)` compound indexes at application startup via `InitialDataLoader.createCompoundIndexes()`. Index creation is idempotent. See ADR [D-TEC-005](doc/decisions/technical/D-TEC-005-programmatic-startup-indexes.md).
+  - **Cross-tenant isolation integration test** — `CrossTenantIsolationIT` verifies that catalog, dataset, and data-service resources owned by one tenant are not accessible to a different tenant.
+  - ADR [D-TEC-005](doc/decisions/technical/D-TEC-005-programmatic-startup-indexes.md) — programmatic startup index creation rationale.
+  - ADR [D-TEC-006](doc/decisions/technical/D-TEC-006-dbref-tenant-filter-mitigation.md) — @DBRef tenant-filter limitation and service-layer mitigation.
+- **MT4 — Cross-Tenant Transfer & Integration**
+  - **Async tenant context propagation** — `TenantContextTaskDecorator` (`tools`) propagates `TenantContextHolder` from the submitting thread to worker threads on every executor/scheduler that runs outside the HTTP request thread: the async Spring event executor, the negotiation retry scheduler, and the data-transfer `httpPullTransferExecutor`, `httpPushTransferExecutor`, and `transferTaskScheduler` beans. See [data-transfer/doc/data-transfer.md](data-transfer/doc/data-transfer.md#async-tenant-context-propagation).
+  - `CrossTenantTransferIT` — end-to-end integration test proving that a single connector instance running one tenant as provider and another as consumer completes automatic contract negotiation plus an HTTP-PULL transfer, using the `/{tenantId}/` protocol routing introduced in MT2.
+  - DSP TCK compliance re-verified at 65/65 with `/{tenantId}/` protocol routing in place.
+  - ADR [D-TEC-007](doc/decisions/technical/D-TEC-007-s3-admin-key-http-push-temp-user.md) — documents the accepted risk of using the S3 admin key for HTTP-PUSH temporary MinIO IAM user creation, since MinIO does not support delegated IAM user creation.
+- **AUTH1-4 — Unified backend-mediated authentication & JWT login (#281)**
+  - **Unified `/api/v1/auth/*` contract** — `AuthController` exposes `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, and `POST /api/v1/auth/logout` for both `KEYCLOAK` and `INTERNAL` authentication modes, so no client ever calls Keycloak or mints credentials directly. In `KEYCLOAK` mode, `KeycloakAuthServiceImpl` proxies the request to Keycloak's token endpoint using the public UI client (`application.keycloak.login.*`, resource-owner-password-grant). In `INTERNAL` mode, `InternalAuthServiceImpl` issues/refreshes/revokes self-signed JWTs backed by MongoDB users and `RefreshTokenStore`. Both modes return the same `LoginResponse` shape.
+  - **`INTERNAL` mode end-to-end JWT** — admin (`/api/**`) and protocol (`/connector/**`, `/catalog/**`, `/negotiations/**`, `/transfers/**`) endpoints in `INTERNAL` mode are now authenticated via `InternalJwtAuthenticationFilter` (Bearer JWT), not raw HTTP Basic.
+  - **Connector-to-connector M2M** — `ConnectorCredentialProvider` / `ConnectorCredentialProviderImpl` (`connector`) obtain an M2M JWT for the seeded `ROLE_CONNECTOR` service account via `AuthService.login(...)`, used by `CredentialUtils.getConnectorCredentials()` when running in `INTERNAL` mode.
+  - **Internal-service M2M** — new `InternalServiceTokenIssuer` (`tools`) replaces `InternalAuthenticationService`, minting a correctly-scoped `ROLE_ADMIN` JWT for inter-module calls without embedding `application.security.jwt.secret` in any JWT claim.
+  - **`M2mTokenCache`** (`tools`) — shared cache for both M2M token flows above; proactively refreshes ~30s before expiry and is invalidated automatically on an HTTP 401 retry in `OkHttpRestClient`.
+- **Expanded audit event coverage — authentication, user management, and catalog admin CRUD**
+  - **22 new + 2 reactivated `AuditEventType` constants** — `APPLICATION_LOGIN`/`APPLICATION_LOGOUT` are reactivated and paired with new `APPLICATION_LOGIN_FAILED`/`APPLICATION_LOGOUT_FAILED`/`APPLICATION_TOKEN_REFRESHED`/`APPLICATION_TOKEN_REFRESH_FAILED`/`M2M_TOKEN_ISSUED`/`M2M_TOKEN_ISSUE_FAILED` events; `USER_CREATED`/`USER_UPDATED`/`USER_PASSWORD_CHANGED`; and 13 catalog-admin CRUD events across Catalog, Dataset, Artifact, DataService, and Distribution (`*_CREATED`/`*_UPDATED`/`*_DELETED`/`ARTIFACT_UPLOADED`).
+  - **Authentication events** — `AuthController` now publishes an audit event for every `login`/`refresh`/`logout` call, both on success and on `AuthenticationException` failure, in both `INTERNAL` and `KEYCLOAK` modes; the failure path always rethrows the original exception unchanged so existing 401/500 error mapping is untouched. Events record the active `application.auth.provider` and, for login, the attempted email.
+  - **M2M token events** — `ConnectorCredentialProviderImpl.issueConnectorToken()` publishes `M2M_TOKEN_ISSUED`/`M2M_TOKEN_ISSUE_FAILED`, surfacing a previously-silent connector-to-connector authentication failure mode.
+  - **User CRUD events** — `UserService.createUser()`/`updateUser()`/`updatePassword()` publish `USER_CREATED`/`USER_UPDATED`/`USER_PASSWORD_CHANGED` on success.
+  - **Catalog admin CRUD events** — `CatalogService.updateCatalog()`/`deleteCatalog()`, `DatasetService.saveDataset()`/`updateDataset()`/`deleteDataset()`, `ArtifactService.uploadArtifact()`/`deleteArtifact()`, `DataServiceService.saveDataService()`/`updateDataService()`/`deleteDataService()`, and `DistributionService.saveDistribution()`/`updateDistribution()`/`deleteDistribution()` now publish the corresponding audit event via `AuditEventPublisher`. `CatalogService.saveCatalog()` is deliberately not audited since it is an internal helper reused by every dataset/data-service/distribution mutation.
+
+### Changed
+- **MT1** — `POST /api/v1/tenants`: `id` and `callbackAddress` in the request body are now ignored (server-generated). See [connector/documentation/users.md](connector/documentation/users.md) for the updated API reference.
+- **MT1** — `POST /api/v1/users`: `tenantId` field added to the request body.
+- **MT2** — `ConnectorSecurityConfig`: hardcoded role strings `"SUPER_ADMIN"`, `"ADMIN"`, `"CONNECTOR"` replaced with constants derived from the `it.eng.connector.model.Role` enum. This makes the Role enum the single source of truth for all role names in the security configuration.
+- **MT2** — `TenantService.updateTenant()`: `participantId` is now immutable — any value in the request body is silently ignored. The stored `participantId` is always preserved after tenant creation.
+- **MT3** — `POST /api/v1/tenants`: `bucketName` is now optional; the server auto-derives `dsp-{tenantId}` when absent. See [tools/doc/tenant-s3-provisioning.md](tools/doc/tenant-s3-provisioning.md).
+- **MT3** — `CatalogService`: three update-helper methods (`updateCatalogDatasetAfterSave`, `updateCatalogDataServiceAfterSave`, `updateCatalogDistributionAfterSave`) now assert tenantId consistency before writing cross-document references, rejecting cross-tenant links with HTTP 404.
+- **MT3** — `CatalogRepository`: `findCatalogByDatasetId` and `findCatalogByDataServiceId` are supplemented with tenantId-scoped variants (`findCatalogByDatasetIdAndTenantId`, `findCatalogByDataServiceIdAndTenantId`) used by the service-layer guards.
+- Updated policy enforcement and contract negotiation to use the tenant-scoped `AgreementRepository.findAgreementByIdAndTenantId` instead of the non-tenant-scoped `findAgreementById` to prevent cross-tenant agreement lookups.
+- **AUTH1-4** — `AuthenticationMode.BASIC` renamed to `AuthenticationMode.INTERNAL`; `application.auth.provider=BASIC` is now `application.auth.provider=INTERNAL`. All `BASIC`-mode behavior (MongoDB-backed users, `/api/v1/users/**` availability, password strength enforcement) is preserved under the new name — only credential presentation changed, from HTTP Basic to a self-issued Bearer JWT obtained via `/api/v1/auth/login`.
+- **AUTH1-4** — `terraform/app-resources/connector_a_resources/application.properties` and `connector_b_resources/application.properties`: `application.security.jwt.secret` default values are now identical across both files (previously mismatched, which silently broke cross-connector JWT trust when both connectors ran in `INTERNAL` mode via Terraform-provisioned deployments).
+
+### Security
+
+- **MT2 — SUPER_ADMIN access control** — Restricted `/api/v1/users/**` and `/api/v1/properties/**` to `ROLE_SUPER_ADMIN` in both `BASIC` and `KEYCLOAK` authentication modes. `ROLE_ADMIN` users now receive HTTP 403 on these endpoints, closing a privilege-escalation path where tenant admins could previously manage users or modify global runtime properties across all tenants. Only `/api/v1/tenants/**` was previously restricted; this hardens the full management surface.
+- **AUTH1-4 — Internal-service JWT secret leak (#281 / #297)** — The previous `InternalAuthenticationService` passed the raw `application.security.jwt.secret` value into the JWT `email` claim when minting internal-service M2M tokens. Since JWT payloads are base64url-encoded, not encrypted, every internal-service token leaked the shared secret in cleartext to any recipient. Fixed by replacing it with `InternalServiceTokenIssuer`, which mints a token with `email="internal-service"` and never embeds `application.security.jwt.secret` in any claim. Covered by a regression test asserting the minted token's `email` claim is never the configured secret.
 - **Multi-tenant foundation** — `Tenant` model, `TenantRepository`, `TenantService`, `TenantContextHolder` (ThreadLocal + MDC), `TenantAPIController` for full tenant lifecycle management via `/api/v1/tenants`.
 - `TenantAwareProtocolController` — abstract base class for all DSP protocol controllers; resolves the `{tenantId}` path variable and sets `TenantContextHolder` before any request processing.
 - `ApiTenantContextFilter` — sets tenant scope for management API requests from the authenticated user's `tenantId`; super-admins may override with `X-Tenant-Id` header.
@@ -35,6 +114,21 @@ All notable changes to this project will be documented in this file.
 - All DSP protocol controllers now extend `TenantAwareProtocolController` and include `tenantId` as first path variable and method parameter.
 - `ConnectorSecurityConfig` security matchers updated to cover `/{tenantId}/` prefixed patterns.
 - `initial_data.json` — all seed catalog, dataset, distribution, data-service, and artifact entries include `"tenantId": "engineering"`.
+
+### Fixed
+- **#277 — Agreement `_id` collision across tenants** — `Agreement` now has its own tenant-independent MongoDB technical primary key (`technicalId`, `@Id`), separate from the shared DSP protocol `id`. Previously `Agreement.id` (which is legitimately shared between a provider's and a consumer's local copies of the same agreement) was used directly as the MongoDB `_id`, so when both connectors ran against the same MongoDB instance the second party's save silently overwrote the first party's document.
+  - `agreements` collection now has a unique compound index on `(tenantId, id)` instead of `(tenantId, _id)`.
+  - `AgreementRepository.findAgreementById(String id)` added for non-tenant-scoped lookups by the protocol `id` (distinct from the inherited `findById`, which now queries the technical id).
+  - `AgreementAPIService.enforceAgreement()` and `PolicyEnforcementPoint.enforcePolicy()` updated to resolve `Agreement`/`ContractNegotiation` references using the appropriate id (protocol `id` vs. technical id) instead of assuming the two always matched.
+  - New integration test `AgreementCrossTenantIT` covers persisting and enforcing agreements that share the same protocol `id` across two tenants.
+
+### Removed
+- Removed redundant PathVariable name from controllers
+- 
+## [0.6.12-SNAPSHOT] - 25.06.2026.
+
+### Added
+- Added files for agentic development approach
 
 ## [0.6.11-SNAPSHOT] - 16.04.2026.
 

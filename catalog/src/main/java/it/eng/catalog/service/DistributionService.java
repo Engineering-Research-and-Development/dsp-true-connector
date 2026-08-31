@@ -2,6 +2,7 @@
 package it.eng.catalog.service;
 
 import java.util.Collection;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
@@ -9,6 +10,8 @@ import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Distribution;
 import it.eng.catalog.repository.DistributionRepository;
+import it.eng.tools.event.AuditEventType;
+import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -21,10 +24,13 @@ public class DistributionService {
 
     private final DistributionRepository repository;
     private final CatalogService catalogService;
+    private final AuditEventPublisher auditEventPublisher;
 
-    public DistributionService(DistributionRepository repository, CatalogService catalogService) {
+    public DistributionService(DistributionRepository repository, CatalogService catalogService,
+                               AuditEventPublisher auditEventPublisher) {
         this.repository = repository;
         this.catalogService = catalogService;
+        this.auditEventPublisher = auditEventPublisher;
     }
 
     /**
@@ -77,6 +83,9 @@ public class DistributionService {
 			throw new InternalServerErrorAPIException("Distribution could not be saved");
 		}
         catalogService.updateCatalogDistributionAfterSave(savedDistribution);
+        auditEventPublisher.publishEvent(
+                AuditEventType.DISTRIBUTION_CREATED, "Distribution created",
+                Map.of("distributionId", savedDistribution.getId()));
         return distribution;
     }
 
@@ -96,6 +105,8 @@ public class DistributionService {
 			throw new InternalServerErrorAPIException("Distribution could not be deleted");
 		}
         catalogService.updateCatalogDistributionAfterDelete(distribution);
+        auditEventPublisher.publishEvent(
+                AuditEventType.DISTRIBUTION_DELETED, "Distribution deleted", Map.of("distributionId", id));
     }
 
     /**
@@ -118,6 +129,8 @@ public class DistributionService {
 			throw new InternalServerErrorAPIException("Dataset could not be updated");
 		}
 
+        auditEventPublisher.publishEvent(
+                AuditEventType.DISTRIBUTION_UPDATED, "Distribution updated", Map.of("distributionId", id));
         return storedDistribution;
     }
 }

@@ -1,5 +1,7 @@
 package it.eng.connector.integration.datatransfer;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -12,6 +14,7 @@ import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.ApplicationConnector;
+import it.eng.connector.filter.ApiTenantContextFilter;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
@@ -41,6 +44,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -80,10 +84,6 @@ public class AutomaticDataTransferIT {
     private static final String WIREMOCK_CONSUMER_BASE_URL = "http://localhost:" + WIREMOCK_CONSUMER_PORT;
     /** Default tenant — used as the DSP protocol base path segment. */
     private static final String TENANT_ID = "engineering";
-
-    // Basic auth credentials matching initial_data.json
-    private static final String ADMIN_CREDENTIALS =
-            Base64.getEncoder().encodeToString("admin@mail.com:password".getBytes(StandardCharsets.UTF_8));
 
     private static final int POLL_TIMEOUT_SECONDS = 60;
     private static final int POLL_INTERVAL_MS     = 500;
@@ -149,7 +149,7 @@ public class AutomaticDataTransferIT {
 
         // ── Consumer — downloaded artifact will land in consumerMinIO ─────────────
         consumerCtx = startInstance(mongoHost, mongoPort, CONSUMER_PORT,
-                "consumer", "consumer_db", CONSUMER_BASE_URL + "/" + TENANT_ID,
+                "consumer", "consumer_db", CONSUMER_BASE_URL,
                 consumerMinIO.getS3URL(), consumerMinIO.getUserName(), consumerMinIO.getPassword(),
                 "dsp-true-connector-consumer");
 
@@ -158,7 +158,7 @@ public class AutomaticDataTransferIT {
         // WireMock intercepts and returns HTTP 500 → triggers provider's retry loop.
         wiremockConsumerCtx = startInstance(mongoHost, mongoPort, WIREMOCK_CONSUMER_PORT,
                 "consumer-wiremock", "consumer_wiremock_db",
-                "http://localhost:" + WIREMOCK_PORT + "/" + TENANT_ID,
+                "http://localhost:" + WIREMOCK_PORT,
                 consumerMinIO.getS3URL(), consumerMinIO.getUserName(), consumerMinIO.getPassword(),
                 "dsp-true-connector-consumer");
 
@@ -215,15 +215,12 @@ public class AutomaticDataTransferIT {
                     .addCommandLineProperties(false)
                     .build();
             ConfigurableApplicationContext ctx = app.run();
-            // Phase 5: update the engineering tenant with the runtime callbackAddress,
-            // automaticNegotiation=true, and automaticTransfer=true since those now
-            // override the @Value fallback.
+            // Phase 5: update the engineering tenant with automaticNegotiation=true and automaticTransfer=true.
             TenantService tenantSvc = ctx.getBean(TenantService.class);
             Tenant tenantUpdate = Tenant.Builder.newInstance()
                     .id(TENANT_ID)
                     .name("Engineering")
-                    .connectorId("urn:connector:engineering")
-                    .callbackAddress(callbackAddress)
+                    .participantId("urn:connector:engineering")
                     .automaticNegotiation(true)
                     .automaticTransfer(true)
                     .enabled(true)
@@ -419,6 +416,23 @@ public class AutomaticDataTransferIT {
         return consumerTp.getId();
     }
 
+    private String fetchAdminJwt() throws IOException, InterruptedException {
+
+        String requestBody = """
+                {"email": "admin@mail.com", "password": "password"}
+                """;
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(CONSUMER_BASE_URL + ApiEndpoints.AUTH_V1 + "/login"))
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+        String httpResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString()).body().toString();
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode jsonNode = objectMapper.readTree(httpResponse);
+        return jsonNode.get("access_token").asText();
+    }
+
     // ── tests ─────────────────────────────────────────────────────────────────────
 
     @Test
@@ -441,9 +455,9 @@ public class AutomaticDataTransferIT {
                 {"transferProcessId": "%s", "format": "HttpData-PULL"}
                 """.formatted(consumerTpId);
 
-        HttpResponse<String> response = post(
+        HttpResponse<String> response = postAsTenant(
                 CONSUMER_BASE_URL + ApiEndpoints.TRANSFER_DATATRANSFER_V1,
-                requestBody, ADMIN_CREDENTIALS);
+                requestBody, fetchAdminJwt(), TENANT_ID);
 
         assertEquals(200, response.statusCode(),
                 "Consumer requestTransfer API failed: " + response.body());
@@ -505,9 +519,9 @@ public class AutomaticDataTransferIT {
                 {"transferProcessId": "%s", "format": "HttpData-PUSH"}
                 """.formatted(consumerTpId);
 
-        HttpResponse<String> response = post(
+        HttpResponse<String> response = postAsTenant(
                 CONSUMER_BASE_URL + ApiEndpoints.TRANSFER_DATATRANSFER_V1,
-                requestBody, ADMIN_CREDENTIALS);
+                requestBody, fetchAdminJwt(), TENANT_ID);
 
         assertEquals(200, response.statusCode(),
                 "Consumer requestTransfer API failed: " + response.body());
@@ -586,9 +600,9 @@ public class AutomaticDataTransferIT {
                 {"transferProcessId": "%s", "format": "HttpData-PULL"}
                 """.formatted(wmConsumerTpId);
 
-        HttpResponse<String> response = post(
+        HttpResponse<String> response = postAsTenant(
                 WIREMOCK_CONSUMER_BASE_URL + ApiEndpoints.TRANSFER_DATATRANSFER_V1,
-                requestBody, ADMIN_CREDENTIALS);
+                requestBody, fetchAdminJwt(), TENANT_ID);
 
         assertEquals(200, response.statusCode(),
                 "WireMock-consumer requestTransfer API failed: " + response.body());
@@ -686,15 +700,38 @@ public class AutomaticDataTransferIT {
      *
      * @param url         the target URL
      * @param body        the JSON request body
-     * @param credentials Base64-encoded Basic Auth credentials
+     * @param jwt         the JWT to set in the {@code Authorization} header
      * @return the HTTP response
      * @throws Exception on I/O or interrupt errors
      */
-    private HttpResponse<String> post(String url, String body, String credentials) throws Exception {
+    private HttpResponse<String> post(String url, String body, String jwt) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .header(HttpHeaders.AUTHORIZATION, "Basic " + credentials)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt)
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+        return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    /**
+     * Sends an HTTP POST with Basic Auth and an {@code X-Tenant-ID} header so that
+     * {@link it.eng.connector.filter.ApiTenantContextFilter} can resolve the tenant context
+     * for the request, enabling per-tenant callback address computation.
+     *
+     * @param url         the target URL
+     * @param body        the JSON request body
+     * @param jwt         the JWT to set in the {@code Authorization} header
+     * @param tenantId    the tenant identifier to set in the {@code X-Tenant-ID} header
+     * @return the HTTP response
+     */
+    private HttpResponse<String> postAsTenant(String url, String body, String jwt,
+            String tenantId) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt)
+                .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, tenantId)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());

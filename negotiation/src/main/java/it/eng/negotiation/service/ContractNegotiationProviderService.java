@@ -103,7 +103,7 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(connectorProperties.getConnectorURL()
                         + ApiEndpoints.CATALOG_OFFERS_V1 + "/validate",
                 NegotiationSerializer.serializePlainJsonNode(contractRequestMessage.getOffer()),
-                credentialUtils.getAPICredentials(),
+                credentialUtils::getAPICredentials,
                 TenantContextHolder.getTenantId());
 
         if (!response.isSuccess()) {
@@ -120,7 +120,7 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
 
         Offer offerToBeInserted = Offer.Builder.newInstance()
                 .assignee(contractRequestMessage.getOffer().getAssignee() == null ? contractRequestMessage.getCallbackAddress() : contractRequestMessage.getOffer().getAssignee())
-                .assigner(contractRequestMessage.getOffer().getAssigner() == null ? properties.connectorId() : contractRequestMessage.getOffer().getAssigner())
+                .assigner(contractRequestMessage.getOffer().getAssigner() == null ? properties.participantId() : contractRequestMessage.getOffer().getAssigner())
                 .originalId(contractRequestMessage.getOffer().getId())
                 .permission(contractRequestMessage.getOffer().getPermission())
                 .target(contractRequestMessage.getOffer().getTarget())

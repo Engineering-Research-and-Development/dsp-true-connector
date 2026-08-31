@@ -79,6 +79,11 @@ public class DistributionTest {
         Distribution distribution = CatalogMockObjectUtil.DISTRIBUTION;
         String ss = CatalogSerializer.serializeProtocol(distribution);
         Distribution distribution2 = CatalogSerializer.deserializeProtocol(ss, Distribution.class);
+
+        // protocol serialization does not include tenantId, so we need to remove it from the original distribution before comparison
+        distribution.injectTenantId(null);
+        distribution.getAccessService().injectTenantId(null);
+
         assertThat(distribution).usingRecursiveComparison().isEqualTo(distribution2);
     }
 

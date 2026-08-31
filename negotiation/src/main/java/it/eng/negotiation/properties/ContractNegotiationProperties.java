@@ -43,16 +43,16 @@ public class ContractNegotiationProperties {
 	}
 
 	/**
-	 * Returns the connector identifier.
-	 * Uses the active tenant's connectorId when a tenant context is present,
-	 * otherwise falls back to {@code "connectorId"}.
+	 * Returns the participant identifier.
+	 * Uses the active tenant's participantId when a tenant context is present,
+	 * otherwise falls back to {@code "participantId"}.
 	 *
-	 * @return connector identifier string
+	 * @return participant identifier string
 	 */
-	public String connectorId() {
+	public String participantId() {
 		return getActiveTenant()
-				.map(Tenant::getConnectorId)
-				.orElse("connectorId");
+				.map(Tenant::getParticipantId)
+				.orElse("participantId");
 	}
 
 	/**
@@ -91,28 +91,28 @@ public class ContractNegotiationProperties {
 
 	/**
 	 * Returns the provider callback address.
-	 * Uses the active tenant's callbackAddress when a tenant context is present,
+	 * Uses the active tenant's computed callback address when a tenant context is present,
 	 * otherwise falls back to the global application property.
 	 *
 	 * @return provider callback base URL
 	 */
 	public String providerCallbackAddress() {
 		return getActiveTenant()
-				.map(Tenant::getCallbackAddress)
+				.map(t -> t.getCallbackAddress(callbackAddress))
 				.orElse(callbackAddress);
 	}
 
 	/**
 	 * Returns the consumer callback address, with trailing slash removed and
 	 * {@code /consumer} suffix appended.
-	 * Uses the active tenant's callbackAddress when a tenant context is present,
+	 * Uses the active tenant's computed callback address when a tenant context is present,
 	 * otherwise falls back to the global application property.
 	 *
 	 * @return consumer callback URL
 	 */
 	public String consumerCallbackAddress() {
 		String base = getActiveTenant()
-				.map(Tenant::getCallbackAddress)
+				.map(t -> t.getCallbackAddress(callbackAddress))
 				.orElse(callbackAddress);
 		String validated = base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
 		return validated + "/consumer";

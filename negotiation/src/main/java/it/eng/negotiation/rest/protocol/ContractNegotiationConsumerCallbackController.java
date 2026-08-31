@@ -46,8 +46,8 @@ public class ContractNegotiationConsumerCallbackController extends TenantAwarePr
      * @return the serialized contract negotiation
      */
     @GetMapping(path = "/consumer/negotiations/{consumerPid}")
-    public ResponseEntity<JsonNode> getNegotiationByConsumerPid(@PathVariable("tenantId") String tenantId,
-                                                                 @PathVariable("consumerPid") String consumerPid) {
+    public ResponseEntity<JsonNode> getNegotiationByConsumerPid(@PathVariable String tenantId,
+                                                                @PathVariable String consumerPid) {
         log.info("Get negotiation by consumer pid");
         resolveTenant(tenantId);
         ContractNegotiation contractNegotiation = contractNegotiationConsumerService.getNegotiationByConsumerPid(consumerPid);
@@ -112,8 +112,8 @@ public class ContractNegotiationConsumerCallbackController extends TenantAwarePr
      * @return 200 OK
      */
     @PostMapping("/consumer/negotiations/{consumerPid}/agreement")
-    public ResponseEntity<Void> handleContractAgreementMessage(@PathVariable("tenantId") String tenantId,
-                                                               @PathVariable("consumerPid") String consumerPid,
+    public ResponseEntity<Void> handleContractAgreementMessage(@PathVariable String tenantId,
+                                                               @PathVariable String consumerPid,
                                                                @RequestBody JsonNode contractAgreementMessageJsonNode) {
 
         log.info("Received agreement from provider, consumerPid - {}", consumerPid);
@@ -137,9 +137,9 @@ public class ContractNegotiationConsumerCallbackController extends TenantAwarePr
      * @return 200 OK
      */
     @PostMapping("/consumer/negotiations/{consumerPid}/events")
-    public ResponseEntity<Void> handleContractNegotiationEventMessageFinalize(@PathVariable("tenantId") String tenantId,
-                                                                               @PathVariable("consumerPid") String consumerPid,
-                                                                               @RequestBody JsonNode contractNegotiationEventMessageJsonNode) {
+    public ResponseEntity<Void> handleContractNegotiationEventMessageFinalize(@PathVariable String tenantId,
+                                                                              @PathVariable String consumerPid,
+                                                                              @RequestBody JsonNode contractNegotiationEventMessageJsonNode) {
 
         resolveTenant(tenantId);
         ContractNegotiationEventMessage contractNegotiationEventMessage =
@@ -162,9 +162,9 @@ public class ContractNegotiationConsumerCallbackController extends TenantAwarePr
      * @return 200 OK
      */
     @PostMapping("/consumer/negotiations/{consumerPid}/termination")
-    public ResponseEntity<JsonNode> handleContractNegotiationTerminationMessage(@PathVariable("tenantId") String tenantId,
-                                                                                 @PathVariable("consumerPid") String consumerPid,
-                                                                                 @RequestBody JsonNode contractNegotiationTerminationMessageJsonNode) {
+    public ResponseEntity<JsonNode> handleContractNegotiationTerminationMessage(@PathVariable String tenantId,
+                                                                                @PathVariable String consumerPid,
+                                                                                @RequestBody JsonNode contractNegotiationTerminationMessageJsonNode) {
 
         log.info("Received terminate contract negotiation for consumerPid {}", consumerPid);
         resolveTenant(tenantId);
@@ -186,8 +186,8 @@ public class ContractNegotiationConsumerCallbackController extends TenantAwarePr
      * @return 201 Created with the resulting contract negotiation
      */
     @PostMapping("/consumer/negotiations/tck")
-    public ResponseEntity<ContractNegotiation> initiateRequestTck(@PathVariable("tenantId") String tenantId,
-                                                                   @RequestBody TCKContractNegotiationRequest tckRequest) {
+    public ResponseEntity<ContractNegotiation> initiateRequestTck(@PathVariable String tenantId,
+                                                                  @RequestBody TCKContractNegotiationRequest tckRequest) {
         log.info("Received TCK request {}", NegotiationSerializer.serializePlain(tckRequest));
         resolveTenant(tenantId);
         ContractNegotiation cnRequested = contractNegotiationConsumerService.processTCKRequest(tckRequest);
