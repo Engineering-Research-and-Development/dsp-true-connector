@@ -1,9 +1,10 @@
 {
   "info": {
-    "_postman_id": "4c32a731-e742-4505-8b8a-c0c37aa70b4a",
+    "_postman_id": "7bd26353-6bfe-46ec-ae45-2019d788d778",
     "name": "Data Transfer API - http-pull test",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "36278855"
+    "_exporter_id": "21815221",
+    "_collection_link": "https://go.postman.co/collection/21815221-7bd26353-6bfe-46ec-ae45-2019d788d778?source=collection_link"
   },
   "item": [
     {
@@ -806,7 +807,7 @@
     },
     {
       "key": "consumer_transferProcessId",
-      "value": "urn:uuid:tp-pull-1111-1111-4111-8111-111111111111"
+      "value": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5"
     },
     {
       "key": "transactionId",
@@ -814,7 +815,7 @@
     },
     {
       "key": "provider_transferProcessId",
-      "value": "urn:uuid:tp-pull-provider-1111-1111-4111-8111-111111111111"
+      "value": ""
     },
     {
       "key": "presignedURL",

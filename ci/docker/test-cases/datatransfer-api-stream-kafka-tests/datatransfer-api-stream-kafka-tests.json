@@ -411,6 +411,17 @@
         }
       },
       "response": []
+    },
+    {
+      "name": "New Request",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": []
     }
   ],
   "auth": {
@@ -465,7 +476,7 @@
     },
     {
       "key": "consumer_transferProcessId",
-      "value": "urn:uuid:tp-kafka-4444-4444-4444-8444-444444444444"
+      "value": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5"
     },
     {
       "key": "presignedURL",
@@ -473,7 +484,7 @@
     },
     {
       "key": "provider_transferProcessId",
-      "value": "urn:uuid:tp-kafka-provider-4444-4444-4444-8444-444444444444"
+      "value": ""
     },
     {
       "key": "waitRetry",
@@ -481,11 +492,11 @@
     },
     {
       "key": "PROVIDER_AUTH_LOGIN",
-      "value": "http://localhost:8090/api/v1/auth/login"
+      "value": ""
     },
     {
       "key": "CONSUMER_AUTH_LOGIN",
-      "value": "http://localhost:8080/api/v1/auth/login"
+      "value": ""
     },
     {
       "key": "access_token_consumer_api",
