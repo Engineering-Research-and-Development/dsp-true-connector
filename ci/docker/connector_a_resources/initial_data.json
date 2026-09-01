@@ -197,7 +197,7 @@
       "modified": "2024-04-23T16:26:00.000Z",
       "title": "DSP TRUE Connector",
       "endpointDescription": "connector",
-      "endpointURL": "http://localhost:8090/connector_a_tenant_id",
+      "endpointURL": "http://connector-a:8080/connector_a_tenant_id",
       "createdBy": "admin@mail.com",
       "lastModifiedBy": "admin@mail.com",
       "version": 0,
@@ -374,9 +374,9 @@
   "contract_negotiations": [
     {
       "_id": "urn:uuid:CONTRACT_NEGOTIATION_ID_INITIALIZED_API_GHA",
-      "callbackAddress": "http://172.17.0.1:8080/connector_a_tenant_id/consumer",
+      "callbackAddress": "http://172.17.0.1:8090/connector_b_tenant_id/consumer",
       "assigner": "urn:uuid:ASSIGNER_PROVIDER",
-      "role": "provider",
+      "role": "consumer",
       "agreement": {
         "$ref": "agreements",
         "$id": "cd2c643bc3a2fb129446e962"
@@ -389,7 +389,7 @@
     },
     {
       "_id": "urn:uuid:cn-pull-1111-1111-4111-8111-111111111111",
-      "callbackAddress": "http://localhost:8080/engineering/consumer",
+      "callbackAddress": "http://172.17.0.1:8090/connector_b_tenant_id/consumer",
       "assigner": "urn:connector:engineering-provider",
       "role": "consumer",
       "agreement": {
@@ -404,7 +404,7 @@
     },
     {
       "_id": "urn:uuid:cn-push-2222-2222-4222-8222-222222222222",
-      "callbackAddress": "http://localhost:8080/engineering/consumer",
+      "callbackAddress": "http://172.17.0.1:8090/connector_b_tenant_id/consumer",
       "assigner": "urn:connector:engineering-provider",
       "role": "consumer",
       "agreement": {
@@ -419,7 +419,7 @@
     },
     {
       "_id": "urn:uuid:cn-grpc-3333-3333-4333-8333-333333333333",
-      "callbackAddress": "http://localhost:8080/engineering/consumer",
+      "callbackAddress": "http://172.17.0.1:8090/connector_b_tenant_id/consumer",
       "assigner": "urn:connector:engineering-provider",
       "role": "consumer",
       "agreement": {
@@ -434,7 +434,7 @@
     },
     {
       "_id": "urn:uuid:cn-kafka-4444-4444-4444-8444-444444444444",
-      "callbackAddress": "http://localhost:8080/engineering/consumer",
+      "callbackAddress": "http://172.17.0.1:8090/connector_b_tenant_id/consumer",
       "assigner": "urn:connector:engineering-provider",
       "role": "consumer",
       "agreement": {

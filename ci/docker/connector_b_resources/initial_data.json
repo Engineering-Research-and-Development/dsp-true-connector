@@ -374,7 +374,7 @@
   "contract_negotiations": [
     {
       "_id": "urn:uuid:CONTRACT_NEGOTIATION_ID_INITIALIZED_API_GHA",
-      "callbackAddress": "http://172.17.0.1:8080/connector_b_tenant_id/consumer",
+      "callbackAddress": "http://172.17.0.1:8080/connector_a_tenant_id/consumer",
       "assigner": "urn:uuid:ASSIGNER_PROVIDER",
       "role": "provider",
       "agreement": {
