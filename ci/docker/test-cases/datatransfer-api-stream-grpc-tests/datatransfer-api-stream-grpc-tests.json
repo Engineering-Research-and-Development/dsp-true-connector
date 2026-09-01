@@ -185,35 +185,29 @@
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"Check if status code is 200\", function () {\r",
-              "    pm.response.to.have.status(200);\r",
-              "});\r",
-              "pm.test(\"Provider start returns gRPC connection properties\", function () {\r",
-              "    var jsonData = pm.response.json();\r",
-              "    var props = jsonData[\"data\"][\"dataAddress\"][\"endpointProperties\"];\r",
-              "    var endpointType = props.find(p => p.name === 'endpointType');\r",
-              "    var host = props.find(p => p.name === 'host');\r",
-              "    var port = props.find(p => p.name === 'port');\r",
-              "    var sessionId = props.find(p => p.name === 'sessionId');\r",
-              "    pm.expect(endpointType && endpointType.value).to.eql('grpc');\r",
-              "    pm.expect(host && host.value).to.be.ok;\r",
-              "    pm.expect(port && port.value).to.eql('9095');\r",
-              "    pm.expect(sessionId && sessionId.value).to.be.ok;\r",
-              "});"
-            ],
             "type": "text/javascript",
-            "packages": {}
+            "exec": [
+              "pm.test(\"Check if status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\npm.test(\"Provider start returns gRPC connection properties\", function () {\r\n    var jsonData = pm.response.json();\r\n    var props = jsonData[\"data\"][\"dataAddress\"][\"endpointProperties\"];\r\n    var endpointType = props.find(p => p.name === 'endpointType');\r\n    var host = props.find(p => p.name === 'host');\r\n    var port = props.find(p => p.name === 'port');\r\n    var sessionId = props.find(p => p.name === 'sessionId');\r\n    pm.expect(endpointType && endpointType.value).to.eql('grpc');\r\n    pm.expect(host && host.value).to.be.ok;\r\n    pm.expect(port && port.value).to.eql('9095');\r\n    pm.expect(sessionId && sessionId.value).to.be.ok;\r\n});"
+            ]
           }
         }
       ],
       "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token_provider_api}}",
+              "type": "string"
+            }
+          ]
+        },
         "method": "PUT",
         "header": [
           {
             "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
+            "value": "application/json"
           }
         ],
         "body": {
@@ -244,23 +238,29 @@
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"Status code is 202\", function () {\r",
-              "    pm.response.to.have.status(202);\r",
-              "});"
-            ],
             "type": "text/javascript",
-            "packages": {}
+            "exec": [
+              "pm.test(\"Status code is 202\", function () {\r\n    pm.response.to.have.status(202);\r\n});"
+            ]
           }
         }
       ],
       "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token_consumer_api}}",
+              "type": "string"
+            }
+          ]
+        },
         "method": "GET",
         "header": [
           {
             "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
+            "value": "application/json"
           }
         ],
         "url": {
@@ -282,43 +282,38 @@
         {
           "listen": "prerequest",
           "script": {
-            "exec": [
-              "// 1-second busy-wait between polling attempts",
-              "const w = Date.now() + 1000; while (Date.now() < w) {}"
-            ],
             "type": "text/javascript",
-            "packages": {}
+            "exec": [
+              "// 1-second busy-wait between polling attempts\nconst w = Date.now() + 1000; while (Date.now() < w) {}"
+            ]
           }
         },
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "const retries = parseInt(pm.collectionVariables.get('waitRetry') || '0');",
-              "const body = pm.response.json();",
-              "const state = body.data && body.data.state;",
-              "if (state !== 'COMPLETED' && retries < 30) {",
-              "    pm.collectionVariables.set('waitRetry', retries + 1);",
-              "    pm.execution.setNextRequest('[C] Wait for transfer COMPLETED');",
-              "} else {",
-              "    pm.collectionVariables.set('waitRetry', 0);",
-              "    pm.test('Transfer process reached COMPLETED state', () => {",
-              "        pm.expect(state).to.eql('COMPLETED');",
-              "    });",
-              "}"
-            ],
             "type": "text/javascript",
-            "packages": {}
+            "exec": [
+              "const retries = parseInt(pm.collectionVariables.get('waitRetry') || '0');\nconst body = pm.response.json();\nconst state = body.data && body.data.state;\nif (state !== 'COMPLETED' && retries < 30) {\n    pm.collectionVariables.set('waitRetry', retries + 1);\n    pm.execution.setNextRequest('[C] Wait for transfer COMPLETED');\n} else {\n    pm.collectionVariables.set('waitRetry', 0);\n    pm.test('Transfer process reached COMPLETED state', () => {\n        pm.expect(state).to.eql('COMPLETED');\n    });\n}"
+            ]
           }
         }
       ],
       "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token_consumer_api}}",
+              "type": "string"
+            }
+          ]
+        },
         "method": "GET",
         "header": [
           {
             "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
+            "value": "application/json"
           }
         ],
         "url": {
@@ -392,25 +387,22 @@
         {
           "listen": "test",
           "script": {
-            "exec": [
-              "pm.test(\"Check expected response\", ()=> {\r",
-              "    pm.response.to.have.status(200);\r",
-              "    var jsonData = pm.response.json();\r",
-              "    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r",
-              "});"
-            ],
             "type": "text/javascript",
-            "packages": {}
+            "exec": [
+              "pm.test(\"Check expected response\", ()=> {\r\n    pm.response.to.have.status(200);\r\n    var jsonData = pm.response.json();\r\n    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r\n});"
+            ]
           }
         }
       ],
       "request": {
+        "auth": {
+          "type": "noauth"
+        },
         "method": "GET",
         "header": [
           {
             "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
+            "value": "application/json"
           }
         ],
         "url": {
@@ -503,6 +495,10 @@
     },
     {
       "key": "access_token_provider_api",
+      "value": ""
+    },
+    {
+      "key": "transactionId",
       "value": ""
     }
   ]
