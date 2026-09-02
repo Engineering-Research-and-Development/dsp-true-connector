@@ -39,7 +39,7 @@ These apply to every change and must not be skipped:
 - **Protocol model classes follow the builder/validation pattern** in [`.github/instructions/model-class-guidelines.instructions.md`](.github/instructions/model-class-guidelines.instructions.md) and [`negotiation/doc/model.md`](negotiation/doc/model.md): private constructor, builder, `@NotNull` validation enforced in `build()`, junit coverage for valid construction and validation failure.
 - **New features and bug fixes must be covered by tests**: JUnit 5 + Mockito for units; MockMvc + Testcontainers for integration tests (see [`doc/test_containers_starting_guide.md`](doc/test_containers_starting_guide.md)).
 - **Module boundaries are respected**: `catalog`, `negotiation`, and `data-transfer` implement their protocol concern independently; shared logic goes in `tools`; `connector` only wires modules together. No cross-module reach-ins.
-- **Architecturally significant decisions require an ADR** in [`doc/decisions/`](doc/decisions/README.md) before implementation. Undocumented architectural drift is not acceptable.
+- **Architecturally significant decisions require an ADR** in [`doc/decisions/`](doc/decisions/README.md) before implementation. Invoke the `decisions` skill before creating, reviewing, or superseding an ADR; it selects the architecture or technical category and requires a complete, indexed decision document. Undocumented architectural drift is not acceptable.
 - **Security posture is actively maintained**: dependency upgrades addressing CVEs are documented in `CHANGELOG.md` under Security; run SpotBugs + Find Security Bugs via `spotbugs-scan.sh` / `spotbugs-scan.cmd` (see [`doc/spotbugs.md`](doc/spotbugs.md)).
 - **Don't use fully qualified names in code; use imports instead.
 - **All `initial_data*.json` seed files must be updated together, in the same commit, whenever a change alters the shape, required fields, or referencing convention of any seeded document type** (model field renames/additions, `@Id`/technical-key changes, new `@NotNull` constraints, DBRef target changes, etc.). This repository seeds MongoDB from **12 separate files** across 5 directories, and none of them are generated from a single source of truth — each must be edited by hand:
@@ -101,6 +101,7 @@ Copilot-native repository skills live under `.github/skills/`; imported Claude w
 | `task-decomposition` | Stage 2 — turning backlog functional slices into implementation, QA, and documentation tasks |
 | `task-implementation` | Stage 4 — executing any Ready task (implementation, QA, or documentation) through its per-task verification and PR handoff |
 | `slice-implementation` | Stage 4 alternate path — executing a fully decomposed functional slice as one coordinated branch and one PR while respecting child-task dependencies |
+| `decisions` | Creating, reviewing, and superseding architecture and technical decision records (ADRs) |
 | `brainstorming` (`.agents/skills/`) | Sharpening ambiguous sources or unresolved design choices before slicing, decomposition, or implementation |
 | `playwright-cli` | Browser automation — only relevant for browser-verifiable checks (e.g. against the separate GUI frontend) |
 | built-in `/code-review` | Stage 6 — automated self-review and fix after PR creation |
