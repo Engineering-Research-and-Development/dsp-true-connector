@@ -1,35 +1,8 @@
 package it.eng.connector.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Optional;
-
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.crypto.password.PasswordEncoder;
-
 import com.fasterxml.jackson.databind.JsonNode;
-
-import it.eng.connector.model.PasswordValidationResult;
-import it.eng.connector.model.Role;
-import it.eng.connector.model.User;
-import it.eng.connector.model.UserDTO;
+import it.eng.connector.exception.UserNotFoundException;
+import it.eng.connector.model.*;
 import it.eng.connector.repository.UserRepository;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.event.AuditEventType;
@@ -39,6 +12,21 @@ import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantService;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -62,8 +50,6 @@ class UserServiceTest {
 	private UserService userService;
 
 	@Mock
-	private UserDTO userDTO;
-	@Mock
 	private PasswordValidationResult passwordValidationResult;
 
 	@Test
@@ -86,42 +72,50 @@ class UserServiceTest {
 	}
 
 	@Test
-	@DisplayName("findCurrentUser returns user for known email")
+	@DisplayName("findCurrentUser returns user for known id")
 	void findCurrentUser_returnsUser() {
 		when(userRepository.findByEmail(TestUtil.USER.getEmail()))
 				.thenReturn(Optional.of(TestUtil.USER));
 
-		JsonNode result = userService.findCurrentUser(TestUtil.USER.getEmail());
+		UserCurrentUserResponse result = userService.findCurrentUser(TestUtil.USER.getEmail());
 
 		assertNotNull(result);
-		assertEquals(TestUtil.USER.getEmail(), result.get("email").asText());
+		assertEquals(TestUtil.USER.getEmail(), result.getEmail());
 		verify(userRepository).findByEmail(TestUtil.USER.getEmail());
 	}
 
 	@Test
-	@DisplayName("findCurrentUser throws BadRequestException for unknown email")
+	@DisplayName("findCurrentUser throws UserNotFoundException for unknown id")
 	void findCurrentUser_notFound_throws() {
 		when(userRepository.findByEmail("unknown@mail.com")).thenReturn(Optional.empty());
 
-		assertThrows(BadRequestException.class,
+		assertThrows(UserNotFoundException.class,
 				() -> userService.findCurrentUser("unknown@mail.com"));
+	}
+
+	private UserCreateRequest createRequest(String email, String password, String tenantId) {
+		return UserCreateRequest.Builder.newInstance()
+				.firstName("First")
+				.lastName("Last")
+				.email(email)
+				.password(password)
+				.tenantId(tenantId)
+				.build();
 	}
 
 	@Test
 	@DisplayName("Create user with valid tenantId - user saved with tenantId set")
 	void createUser_withValidTenantId() {
-		when(userDTO.getEmail()).thenReturn(USER);
-		when(userDTO.getRole()).thenReturn(Role.ADMIN);
-		when(userDTO.getTenantId()).thenReturn(TENANT_ID);
-		when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(Optional.empty());
-		when(passwordValidator.isValid(userDTO.getPassword())).thenReturn(passwordValidationResult);
+		UserCreateRequest request = createRequest(USER, "StrongPassword1!", TENANT_ID);
+		when(userRepository.findByEmail(USER)).thenReturn(Optional.empty());
+		when(passwordValidator.isValid(request.getPassword())).thenReturn(passwordValidationResult);
 		when(passwordValidationResult.isValid()).thenReturn(true);
 		when(tenantService.findEnabledTenantById(TENANT_ID)).thenReturn(
 				Tenant.Builder.newInstance().id(TENANT_ID).name("Engineering")
 						.participantId("urn:connector:engineering")
 						.enabled(true).build());
 
-		userService.createUser(userDTO);
+		userService.createUser(request);
 
 		verify(tenantService).findEnabledTenantById(TENANT_ID);
 		verify(userRepository).save(any(User.class));
@@ -131,16 +125,14 @@ class UserServiceTest {
 	@Test
 	@DisplayName("Create user with non-existent tenantId - TenantNotFoundException thrown")
 	void createUser_withNonExistentTenantId() {
-		when(userDTO.getEmail()).thenReturn(USER);
-		when(userDTO.getRole()).thenReturn(Role.ADMIN);
-		when(userDTO.getTenantId()).thenReturn("non-existent-tenant");
-		when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(Optional.empty());
-		when(passwordValidator.isValid(userDTO.getPassword())).thenReturn(passwordValidationResult);
+		UserCreateRequest request = createRequest(USER, "StrongPassword1!", "non-existent-tenant");
+		when(userRepository.findByEmail(USER)).thenReturn(Optional.empty());
+		when(passwordValidator.isValid(request.getPassword())).thenReturn(passwordValidationResult);
 		when(passwordValidationResult.isValid()).thenReturn(true);
 		when(tenantService.findEnabledTenantById("non-existent-tenant"))
 				.thenThrow(new TenantNotFoundException("Tenant not found"));
 
-		assertThrows(TenantNotFoundException.class, () -> userService.createUser(userDTO));
+		assertThrows(TenantNotFoundException.class, () -> userService.createUser(request));
 
 		verify(userRepository, never()).save(any(User.class));
 	}
@@ -148,14 +140,12 @@ class UserServiceTest {
 	@Test
 	@DisplayName("Create ROLE_SUPER_ADMIN user without tenantId - succeeds without tenant lookup")
 	void createUser_superAdmin_noTenantId() {
-		when(userDTO.getEmail()).thenReturn(USER);
-		when(userDTO.getRole()).thenReturn(Role.SUPER_ADMIN);
-		when(userDTO.getTenantId()).thenReturn(null);
-		when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(Optional.empty());
-		when(passwordValidator.isValid(userDTO.getPassword())).thenReturn(passwordValidationResult);
+		UserCreateRequest request = createRequest(USER, "StrongPassword1!", null);
+		when(userRepository.findByEmail(USER)).thenReturn(Optional.empty());
+		when(passwordValidator.isValid(request.getPassword())).thenReturn(passwordValidationResult);
 		when(passwordValidationResult.isValid()).thenReturn(true);
 
-		userService.createUser(userDTO);
+		userService.createUser(request);
 
 		// SUPER_ADMIN must never trigger a tenant lookup
 		verify(tenantService, never()).findEnabledTenantById(anyString());
@@ -165,9 +155,9 @@ class UserServiceTest {
 	@Test
 	@DisplayName("Create user - user email already exists")
 	void createUser_not_found() {
-		when(userDTO.getEmail()).thenReturn(USER);
-		when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(Optional.of(TestUtil.USER));
-		assertThrows(BadRequestException.class, () -> userService.createUser(userDTO));
+		UserCreateRequest request = createRequest(USER, "StrongPassword1!", null);
+		when(userRepository.findByEmail(USER)).thenReturn(Optional.of(TestUtil.USER));
+		assertThrows(BadRequestException.class, () -> userService.createUser(request));
 
 		verify(userRepository, times(0)).save(any(User.class));
 	}
@@ -175,12 +165,12 @@ class UserServiceTest {
 	@Test
 	@DisplayName("Create user - password not valid")
 	void createUser_weak_password() {
-		when(userDTO.getEmail()).thenReturn(USER);
-		when(userRepository.findByEmail(userDTO.getEmail())).thenReturn(Optional.empty());
-		when(passwordValidator.isValid(userDTO.getPassword())).thenReturn(passwordValidationResult);
+		UserCreateRequest request = createRequest(USER, "weak", null);
+		when(userRepository.findByEmail(USER)).thenReturn(Optional.empty());
+		when(passwordValidator.isValid(request.getPassword())).thenReturn(passwordValidationResult);
 		when(passwordValidationResult.isValid()).thenReturn(false);
 
-		assertThrows(BadRequestException.class, () -> userService.createUser(userDTO));
+		assertThrows(BadRequestException.class, () -> userService.createUser(request));
 
 		verify(userRepository, times(0)).save(any(User.class));
 	}
@@ -189,45 +179,93 @@ class UserServiceTest {
 	@DisplayName("Update user")
 	void updateUser() {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
-		when(userDTO.getFirstName()).thenReturn("First Name update");
-		when(userDTO.getLastName()).thenReturn("Last Name update");
+		UserUpdateRequest request = UserUpdateRequest.Builder.newInstance()
+				.firstName("First Name update")
+				.lastName("Last Name update")
+				.build();
 
-		userService.updateUser(USER_ID, TestUtil.USER.getEmail(), userDTO);
+		userService.updateUser(USER_ID, request);
 
 		verify(userRepository).save(any(User.class));
 		verify(auditEventPublisher).publishEvent(eq(AuditEventType.USER_UPDATED), anyString(), any());
 	}
 
 	@Test
-	@DisplayName("Update user without logged in principal in disabled mode")
-	void updateUser_withoutLoggedInUser() {
-		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
-		when(userDTO.getFirstName()).thenReturn("First Name update");
-		when(userDTO.getLastName()).thenReturn("Last Name update");
-
-		userService.updateUser(USER_ID, null, userDTO);
-
-		verify(userRepository).save(any(User.class));
-	}
-
-	@Test
 	@DisplayName("Update user - user not found")
 	void updateUser_not_found() {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
+		UserUpdateRequest request = UserUpdateRequest.Builder.newInstance().build();
 
-		assertThrows(BadRequestException.class,
-				() -> userService.updateUser(USER_ID, TestUtil.USER.getEmail(), userDTO));
+		assertThrows(UserNotFoundException.class,
+				() -> userService.updateUser(USER_ID, request));
 
 		verify(userRepository, times(0)).save(any(User.class));
 	}
 
 	@Test
-	@DisplayName("Update user - updating other user than own")
-	void updateUser_other_user() {
+	@DisplayName("Update user - updating other with existing email")
+	void updateUser_other_with_existing_email() {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
+		UserUpdateRequest request = UserUpdateRequest.Builder.newInstance()
+				.email("existingemail@mail.com")
+				.build();
+		when(userRepository.findByEmail("existingemail@mail.com")).thenReturn(Optional.of(TestUtil.USER));
 
 		assertThrows(BadRequestException.class,
-				() -> userService.updateUser(USER_ID, "otheruser@mail.com", userDTO));
+				() -> userService.updateUser(USER_ID, request));
+
+		verify(userRepository, times(0)).save(any(User.class));
+	}
+
+	@Test
+	@DisplayName("Update user names")
+	void updateUserNames() {
+		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
+		UserNamesUpdateRequest request = UserNamesUpdateRequest.Builder.newInstance()
+				.firstName("First Name update")
+				.lastName("Last Name update")
+				.build();
+
+		userService.updateUserNames(USER_ID, TestUtil.USER.getEmail(), request);
+
+		verify(userRepository).save(any(User.class));
+		verify(auditEventPublisher).publishEvent(eq(AuditEventType.USER_UPDATED), anyString(), any());
+	}
+
+	@Test
+	@DisplayName("Update user names without logged in principal in disabled mode")
+	void updateUser_withoutLoggedInUserNames() {
+		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
+		UserNamesUpdateRequest request = UserNamesUpdateRequest.Builder.newInstance()
+				.firstName("First Name update")
+				.lastName("Last Name update")
+				.build();
+
+		userService.updateUserNames(USER_ID, null, request);
+
+		verify(userRepository).save(any(User.class));
+	}
+
+	@Test
+	@DisplayName("Update user names - user not found")
+	void updateUser_Names_not_found() {
+		when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
+		UserNamesUpdateRequest request = UserNamesUpdateRequest.Builder.newInstance().build();
+
+		assertThrows(UserNotFoundException.class,
+				() -> userService.updateUserNames(USER_ID, TestUtil.USER.getEmail(), request));
+
+		verify(userRepository, times(0)).save(any(User.class));
+	}
+
+	@Test
+	@DisplayName("Update user names - updating other user than own")
+	void updateUser_other_userNames() {
+		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
+		UserNamesUpdateRequest request = UserNamesUpdateRequest.Builder.newInstance().build();
+
+		assertThrows(BadRequestException.class,
+				() -> userService.updateUserNames(USER_ID, "otheruser@mail.com", request));
 
 		verify(userRepository, times(0)).save(any(User.class));
 	}
@@ -237,13 +275,15 @@ class UserServiceTest {
 	void updatePassword() {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
 		when(encoder.matches(anyString(), anyString())).thenReturn(true);
-		when(userDTO.getPassword()).thenReturn("aaa");
+		UserPasswordUpdateRequest request = UserPasswordUpdateRequest.Builder.newInstance()
+				.password("aaa")
+				.newPassword("newPassword")
+				.build();
 		when(passwordValidator.isValid(anyString())).thenReturn(passwordValidationResult);
 		when(passwordValidationResult.isValid()).thenReturn(true);
-		when(userDTO.getNewPassword()).thenReturn("newPassword");
 		when(encoder.encode(anyString())).thenReturn("passwordEncoded");
 
-		userService.updatePassword(USER_ID, TestUtil.USER.getEmail(), userDTO);
+		userService.updatePassword(USER_ID, TestUtil.USER.getEmail(), request);
 
 		verify(userRepository).save(any(User.class));
 		verify(auditEventPublisher).publishEvent(eq(AuditEventType.USER_PASSWORD_CHANGED), anyString(), any());
@@ -254,13 +294,15 @@ class UserServiceTest {
 	void updatePassword_withoutLoggedInUser() {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
 		when(encoder.matches(anyString(), anyString())).thenReturn(true);
-		when(userDTO.getPassword()).thenReturn("aaa");
+		UserPasswordUpdateRequest request = UserPasswordUpdateRequest.Builder.newInstance()
+				.password("aaa")
+				.newPassword("newPassword")
+				.build();
 		when(passwordValidator.isValid(anyString())).thenReturn(passwordValidationResult);
 		when(passwordValidationResult.isValid()).thenReturn(true);
-		when(userDTO.getNewPassword()).thenReturn("newPassword");
 		when(encoder.encode(anyString())).thenReturn("passwordEncoded");
 
-		userService.updatePassword(USER_ID, null, userDTO);
+		userService.updatePassword(USER_ID, null, request);
 
 		verify(userRepository).save(any(User.class));
 	}
@@ -269,9 +311,13 @@ class UserServiceTest {
 	@DisplayName("Update user password - user not found")
 	void updatePassword_not_found() {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
+		UserPasswordUpdateRequest request = UserPasswordUpdateRequest.Builder.newInstance()
+				.password("aaa")
+				.newPassword("newPassword")
+				.build();
 
-		assertThrows(BadRequestException.class,
-				() -> userService.updatePassword(USER_ID, USER, userDTO));
+		assertThrows(UserNotFoundException.class,
+				() -> userService.updatePassword(USER_ID, USER, request));
 
 		verify(userRepository, times(0)).save(any(User.class));
 	}
@@ -280,11 +326,14 @@ class UserServiceTest {
 	@DisplayName("Update user password - old password not match")
 	void updatePassword_not_match() {
 		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(TestUtil.USER));
-		when(userDTO.getPassword()).thenReturn("aaa");
+		UserPasswordUpdateRequest request = UserPasswordUpdateRequest.Builder.newInstance()
+				.password("aaa")
+				.newPassword("newPassword")
+				.build();
 		when(encoder.matches(anyString(), anyString())).thenReturn(false);
 
 		assertThrows(BadRequestException.class,
-				() -> userService.updatePassword(USER_ID, TestUtil.USER.getEmail(), userDTO));
+				() -> userService.updatePassword(USER_ID, TestUtil.USER.getEmail(), request));
 
 		verify(userRepository, times(0)).save(any(User.class));
 	}
