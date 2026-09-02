@@ -15,6 +15,7 @@ This directory captures architecturally significant decisions: choices that shap
 | [D-TEC-005](technical/D-TEC-005-programmatic-startup-indexes.md)         | Programmatic startup index creation via MongoTemplate | Accepted | Technical |
 | [D-TEC-006](technical/D-TEC-006-dbref-tenant-filter-mitigation.md)       | @DBRef tenant-filter limitation and service-layer mitigation | Accepted | Technical |
 | [D-TEC-007](technical/D-TEC-007-s3-admin-key-http-push-temp-user.md)    | S3 admin key for HTTP-PUSH temporary user creation — accepted risk | Accepted | Technical |
+| [D-TEC-008](technical/D-TEC-008-dashboard-metrics-api.md)                | Tenant-aware dashboard metrics API | Accepted | Technical |
 
 ## Structure
 
