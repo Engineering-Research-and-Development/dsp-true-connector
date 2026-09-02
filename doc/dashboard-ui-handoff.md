@@ -180,25 +180,35 @@ export interface TimeBucketCount {
   count: number;
 }
 
+export interface TenantMetrics<T> {
+  tenantId: string;
+  tenantName: string;
+  metrics: T;
+}
+
 export interface NegotiationSnapshotMetrics {
-  countsByState: KeyCount[];
-  countsByRoleAndState: KeyCount[];
-  total: number;
+  totalCount: number;
+  byState: KeyCount[];
+  byRoleAndState: KeyCount[];
+  byTenant: TenantMetrics<NegotiationSnapshotMetrics>[] | null;
 }
 
 export interface TransferSnapshotMetrics {
-  countsByState: KeyCount[];
-  countsByRoleAndState: KeyCount[];
-  countsByFormat: KeyCount[];
-  countsByDownloadFlag: KeyCount[];
-  total: number;
+  totalCount: number;
+  byState: KeyCount[];
+  byRoleAndState: KeyCount[];
+  byFormat: KeyCount[];
+  downloadedCount: number;
+  downloadInProgressCount: number;
+  byTenant: TenantMetrics<TransferSnapshotMetrics>[] | null;
 }
 
 export interface HistoricalEventMetrics {
-  countsByEventType: KeyCount[];
-  countsByRole: KeyCount[];
-  countsOverTime: TimeBucketCount[];
-  total: number;
+  totalCount: number;
+  byEventType: KeyCount[];
+  byRole: KeyCount[];
+  overTime: TimeBucketCount[];
+  byTenant: TenantMetrics<HistoricalEventMetrics>[] | null;
 }
 
 export interface RuntimeMetricsResponse {
@@ -312,25 +322,35 @@ export interface TimeBucketCount {
   count: number;
 }
 
+export interface TenantMetrics<T> {
+  tenantId: string;
+  tenantName: string;
+  metrics: T;
+}
+
 export interface NegotiationSnapshotMetrics {
-  countsByState: KeyCount[];
-  countsByRoleAndState: KeyCount[];
-  total: number;
+  totalCount: number;
+  byState: KeyCount[];
+  byRoleAndState: KeyCount[];
+  byTenant: TenantMetrics<NegotiationSnapshotMetrics>[] | null;
 }
 
 export interface TransferSnapshotMetrics {
-  countsByState: KeyCount[];
-  countsByRoleAndState: KeyCount[];
-  countsByFormat: KeyCount[];
-  countsByDownloadFlag: KeyCount[];
-  total: number;
+  totalCount: number;
+  byState: KeyCount[];
+  byRoleAndState: KeyCount[];
+  byFormat: KeyCount[];
+  downloadedCount: number;
+  downloadInProgressCount: number;
+  byTenant: TenantMetrics<TransferSnapshotMetrics>[] | null;
 }
 
 export interface HistoricalEventMetrics {
-  countsByEventType: KeyCount[];
-  countsByRole: KeyCount[];
-  countsOverTime: TimeBucketCount[];
-  total: number;
+  totalCount: number;
+  byEventType: KeyCount[];
+  byRole: KeyCount[];
+  overTime: TimeBucketCount[];
+  byTenant: TenantMetrics<HistoricalEventMetrics>[] | null;
 }
 
 export interface RuntimeMetricsResponse {
@@ -355,8 +375,8 @@ export const MOCK_NEGOTIATIONS: GenericApiResponse<NegotiationSnapshotMetrics> =
   message: 'Dashboard negotiation metrics fetched',
   timestamp: '2026-05-21T12:00:00+02:00',
   data: {
-    total: 18,
-    countsByState: [
+    totalCount: 18,
+    byState: [
       { key: 'REQUESTED', count: 4 },
       { key: 'OFFERED', count: 3 },
       { key: 'ACCEPTED', count: 2 },
@@ -365,7 +385,7 @@ export const MOCK_NEGOTIATIONS: GenericApiResponse<NegotiationSnapshotMetrics> =
       { key: 'FINALIZED', count: 5 },
       { key: 'TERMINATED', count: 1 }
     ],
-    countsByRoleAndState: [
+    byRoleAndState: [
       { key: 'CONSUMER:REQUESTED', count: 2 },
       { key: 'PROVIDER:REQUESTED', count: 2 },
       { key: 'CONSUMER:OFFERED', count: 1 },
@@ -375,7 +395,8 @@ export const MOCK_NEGOTIATIONS: GenericApiResponse<NegotiationSnapshotMetrics> =
       { key: 'CONSUMER:FINALIZED', count: 3 },
       { key: 'PROVIDER:FINALIZED', count: 2 },
       { key: 'PROVIDER:TERMINATED', count: 1 }
-    ]
+    ],
+    byTenant: null
   }
 };
 
@@ -384,8 +405,8 @@ export const MOCK_TRANSFERS: GenericApiResponse<TransferSnapshotMetrics> = {
   message: 'Dashboard transfer metrics fetched',
   timestamp: '2026-05-21T12:00:00+02:00',
   data: {
-    total: 14,
-    countsByState: [
+    totalCount: 14,
+    byState: [
       { key: 'INITIALIZED', count: 1 },
       { key: 'REQUESTED', count: 3 },
       { key: 'STARTED', count: 4 },
@@ -393,7 +414,7 @@ export const MOCK_TRANSFERS: GenericApiResponse<TransferSnapshotMetrics> = {
       { key: 'COMPLETED', count: 4 },
       { key: 'TERMINATED', count: 1 }
     ],
-    countsByRoleAndState: [
+    byRoleAndState: [
       { key: 'CONSUMER:REQUESTED', count: 2 },
       { key: 'PROVIDER:REQUESTED', count: 1 },
       { key: 'CONSUMER:STARTED', count: 3 },
@@ -402,17 +423,14 @@ export const MOCK_TRANSFERS: GenericApiResponse<TransferSnapshotMetrics> = {
       { key: 'PROVIDER:COMPLETED', count: 2 },
       { key: 'PROVIDER:TERMINATED', count: 1 }
     ],
-    countsByFormat: [
+    byFormat: [
       { key: 'HTTP_PULL', count: 9 },
       { key: 'HTTP_PUSH', count: 4 },
       { key: 'SFTP', count: 1 }
     ],
-    countsByDownloadFlag: [
-      { key: 'DOWNLOADED_TRUE', count: 4 },
-      { key: 'DOWNLOADED_FALSE', count: 10 },
-      { key: 'DOWNLOAD_IN_PROGRESS_TRUE', count: 1 },
-      { key: 'DOWNLOAD_IN_PROGRESS_FALSE', count: 13 }
-    ]
+    downloadedCount: 4,
+    downloadInProgressCount: 1,
+    byTenant: null
   }
 };
 
@@ -421,8 +439,8 @@ export const MOCK_EVENTS: GenericApiResponse<HistoricalEventMetrics> = {
   message: 'Dashboard event metrics fetched',
   timestamp: '2026-05-21T12:00:00+02:00',
   data: {
-    total: 26,
-    countsByEventType: [
+    totalCount: 26,
+    byEventType: [
       { key: 'Protocol negotiation requested', count: 6 },
       { key: 'Protocol negotiation finalized', count: 4 },
       { key: 'Transfer requested', count: 5 },
@@ -430,13 +448,13 @@ export const MOCK_EVENTS: GenericApiResponse<HistoricalEventMetrics> = {
       { key: 'Transfer completed', count: 4 },
       { key: 'State transition invalid', count: 3 }
     ],
-    countsByRole: [
+    byRole: [
       { key: 'ROLE_API', count: 11 },
       { key: 'ROLE_PROVIDER', count: 8 },
       { key: 'ROLE_CONSUMER', count: 5 },
       { key: 'ROLE_PROTOCOL', count: 2 }
     ],
-    countsOverTime: [
+    overTime: [
       { bucketStart: '2026-05-20T13:00:00Z', key: 'Transfer requested', count: 1 },
       { bucketStart: '2026-05-20T14:00:00Z', key: 'Transfer requested', count: 2 },
       { bucketStart: '2026-05-20T15:00:00Z', key: 'Transfer started', count: 2 },
@@ -445,7 +463,8 @@ export const MOCK_EVENTS: GenericApiResponse<HistoricalEventMetrics> = {
       { bucketStart: '2026-05-20T18:00:00Z', key: 'Protocol negotiation finalized', count: 1 },
       { bucketStart: '2026-05-20T19:00:00Z', key: 'State transition invalid', count: 1 },
       { bucketStart: '2026-05-20T20:00:00Z', key: 'Transfer completed', count: 3 }
-    ]
+    ],
+    byTenant: null
   }
 };
 
@@ -482,22 +501,26 @@ export const MOCK_EMPTY_DASHBOARD_SUMMARY: GenericApiResponse<DashboardSummaryRe
   timestamp: '2026-05-21T12:00:00+02:00',
   data: {
     negotiations: {
-      total: 0,
-      countsByState: [],
-      countsByRoleAndState: []
+      totalCount: 0,
+      byState: [],
+      byRoleAndState: [],
+      byTenant: null
     },
     transfers: {
-      total: 0,
-      countsByState: [],
-      countsByRoleAndState: [],
-      countsByFormat: [],
-      countsByDownloadFlag: []
+      totalCount: 0,
+      byState: [],
+      byRoleAndState: [],
+      byFormat: [],
+      downloadedCount: 0,
+      downloadInProgressCount: 0,
+      byTenant: null
     },
     events: {
-      total: 0,
-      countsByEventType: [],
-      countsByRole: [],
-      countsOverTime: []
+      totalCount: 0,
+      byEventType: [],
+      byRole: [],
+      overTime: [],
+      byTenant: null
     },
     runtime: {
       processCpuUsage: -1,

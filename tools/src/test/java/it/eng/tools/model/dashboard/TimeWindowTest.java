@@ -35,28 +35,29 @@ class TimeWindowTest {
         KeyCount roleCount = new KeyCount("provider", 2L);
         TimeBucketCount timeBucketCount = new TimeBucketCount(from, "TRANSFER_STARTED", 3L);
         HistoricalEventMetrics historicalEventMetrics = new HistoricalEventMetrics(
+                6L,
                 List.of(eventTypeCount),
                 List.of(roleCount),
-                List.of(timeBucketCount),
-                6L);
+                List.of(timeBucketCount));
 
         KeyCount negotiationStateCount = new KeyCount("REQUESTED", 5L);
         KeyCount negotiationRoleStateCount = new KeyCount("consumer:REQUESTED", 5L);
         NegotiationSnapshotMetrics negotiationSnapshotMetrics = new NegotiationSnapshotMetrics(
+                5L,
                 List.of(negotiationStateCount),
-                List.of(negotiationRoleStateCount),
-                5L);
+                List.of(negotiationRoleStateCount));
 
         KeyCount transferStateCount = new KeyCount("STARTED", 7L);
         KeyCount transferRoleStateCount = new KeyCount("provider:STARTED", 7L);
         KeyCount formatCount = new KeyCount("application/json", 3L);
         KeyCount downloadFlagCount = new KeyCount("true", 2L);
         TransferSnapshotMetrics transferSnapshotMetrics = new TransferSnapshotMetrics(
+                7L,
                 List.of(transferStateCount),
                 List.of(transferRoleStateCount),
                 List.of(formatCount),
-                List.of(downloadFlagCount),
-                7L);
+                2L,
+                1L);
 
         assertEquals(from, timeWindow.from());
         assertEquals(to, timeWindow.to());
@@ -68,19 +69,19 @@ class TimeWindowTest {
         assertEquals("TRANSFER_STARTED", timeBucketCount.key());
         assertEquals(3L, timeBucketCount.count());
 
-        assertIterableEquals(List.of(eventTypeCount), historicalEventMetrics.countsByEventType());
-        assertIterableEquals(List.of(roleCount), historicalEventMetrics.countsByRole());
-        assertIterableEquals(List.of(timeBucketCount), historicalEventMetrics.countsOverTime());
-        assertEquals(6L, historicalEventMetrics.total());
+        assertIterableEquals(List.of(eventTypeCount), historicalEventMetrics.byEventType());
+        assertIterableEquals(List.of(roleCount), historicalEventMetrics.byRole());
+        assertIterableEquals(List.of(timeBucketCount), historicalEventMetrics.overTime());
+        assertEquals(6L, historicalEventMetrics.totalCount());
 
-        assertIterableEquals(List.of(negotiationStateCount), negotiationSnapshotMetrics.countsByState());
-        assertIterableEquals(List.of(negotiationRoleStateCount), negotiationSnapshotMetrics.countsByRoleAndState());
-        assertEquals(5L, negotiationSnapshotMetrics.total());
+        assertIterableEquals(List.of(negotiationStateCount), negotiationSnapshotMetrics.byState());
+        assertIterableEquals(List.of(negotiationRoleStateCount), negotiationSnapshotMetrics.byRoleAndState());
+        assertEquals(5L, negotiationSnapshotMetrics.totalCount());
 
-        assertIterableEquals(List.of(transferStateCount), transferSnapshotMetrics.countsByState());
-        assertIterableEquals(List.of(transferRoleStateCount), transferSnapshotMetrics.countsByRoleAndState());
-        assertIterableEquals(List.of(formatCount), transferSnapshotMetrics.countsByFormat());
-        assertIterableEquals(List.of(downloadFlagCount), transferSnapshotMetrics.countsByDownloadFlag());
-        assertEquals(7L, transferSnapshotMetrics.total());
+        assertIterableEquals(List.of(transferStateCount), transferSnapshotMetrics.byState());
+        assertIterableEquals(List.of(transferRoleStateCount), transferSnapshotMetrics.byRoleAndState());
+        assertIterableEquals(List.of(formatCount), transferSnapshotMetrics.byFormat());
+        assertEquals(2L, transferSnapshotMetrics.downloadedCount());
+        assertEquals(7L, transferSnapshotMetrics.totalCount());
     }
 }

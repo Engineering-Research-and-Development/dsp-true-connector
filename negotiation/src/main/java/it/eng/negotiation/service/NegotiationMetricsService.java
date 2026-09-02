@@ -51,8 +51,8 @@ public class NegotiationMetricsService {
     public NegotiationSnapshotMetrics getSnapshotMetrics(String tenantId) {
         Criteria criteria = buildCriteria(tenantId);
         List<GroupedNegotiationCount> groupedCounts = getGroupedCounts(criteria);
-        List<KeyCount> countsByState = getCountsByState(groupedCounts);
-        List<KeyCount> countsByRoleAndState = getCountsByRoleAndState(groupedCounts);
+        List<KeyCount> countsByState = getCountsByState(groupedCounts, tenantId);
+        List<KeyCount> countsByRoleAndState = getCountsByRoleAndState(groupedCounts, tenantId);
         long total = getTotalCount(groupedCounts);
         return new NegotiationSnapshotMetrics(total, countsByState, countsByRoleAndState, buildByTenant(tenantId, groupedCounts));
     }
@@ -92,7 +92,22 @@ public class NegotiationMetricsService {
                 .toList();
     }
 
-    private List<KeyCount> getCountsByState(List<GroupedNegotiationCount> groupedCounts) {
+    private List<KeyCount> getCountsByState(List<GroupedNegotiationCount> groupedCounts, String tenantId) {
+        // When tenantId is null (super-admin scope), aggregate counts by summing identical keys across tenants
+        if (!StringUtils.hasText(tenantId)) {
+            Map<String, Long> countsByState = groupedCounts.stream()
+                    .collect(Collectors.groupingBy(
+                            GroupedNegotiationCount::state,
+                            Collectors.summingLong(GroupedNegotiationCount::count)
+                    ));
+
+            return countsByState.entrySet()
+                    .stream()
+                    .map(entry -> new KeyCount(entry.getKey(), entry.getValue()))
+                    .sorted(KEY_COUNT_COMPARATOR)
+                    .toList();
+        }
+        // When tenantId is provided, counts are already tenant-specific (no aggregation needed)
         Map<String, Long> countsByState = groupedCounts.stream()
                 .collect(Collectors.groupingBy(
                         GroupedNegotiationCount::state,
@@ -106,7 +121,21 @@ public class NegotiationMetricsService {
                 .toList();
     }
 
-    private List<KeyCount> getCountsByRoleAndState(List<GroupedNegotiationCount> groupedCounts) {
+    private List<KeyCount> getCountsByRoleAndState(List<GroupedNegotiationCount> groupedCounts, String tenantId) {
+        // When tenantId is null (super-admin scope), aggregate counts by summing identical keys
+        if (!StringUtils.hasText(tenantId)) {
+            return groupedCounts.stream()
+                    .collect(Collectors.groupingBy(
+                            GroupedNegotiationCount::key,
+                            Collectors.summingLong(GroupedNegotiationCount::count)
+                    ))
+                    .entrySet()
+                    .stream()
+                    .map(entry -> new KeyCount(entry.getKey(), entry.getValue()))
+                    .sorted(KEY_COUNT_COMPARATOR)
+                    .toList();
+        }
+        // When tenantId is provided, return as-is (no aggregation needed)
         return groupedCounts.stream()
                 .map(groupedCount -> new KeyCount(groupedCount.key(), groupedCount.count()))
                 .sorted(KEY_COUNT_COMPARATOR)

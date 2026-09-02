@@ -57,8 +57,8 @@ class NegotiationMetricsServiceTest {
 
     @Test
     void getSnapshotShouldReturnZeroFilledByTenantWhenTenantIdBlank() {
-        Tenant tenantA = Tenant.Builder.newInstance().id("tenant-a").name("Tenant A").enabled(true).build();
-        Tenant tenantB = Tenant.Builder.newInstance().id("tenant-b").name("Tenant B").enabled(true).build();
+        Tenant tenantA = Tenant.Builder.newInstance().id("tenant-a").name("Tenant A").participantId("participant-a").enabled(true).build();
+        Tenant tenantB = Tenant.Builder.newInstance().id("tenant-b").name("Tenant B").participantId("participant-b").enabled(true).build();
         when(tenantRepository.findAll()).thenReturn(List.of(tenantA, tenantB));
         doReturn(aggregationResults(List.of(
                 new Document("tenantId", "tenant-a").append("state", "REQUESTED")
