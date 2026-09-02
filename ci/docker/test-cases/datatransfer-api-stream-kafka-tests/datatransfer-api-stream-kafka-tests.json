@@ -465,7 +465,7 @@
     },
     {
       "key": "consumer_transferProcessId",
-      "value": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5"
+      "value": "urn:uuid:tp-kafka-4444-4444-4444-8444-444444444444"
     },
     {
       "key": "presignedURL",
@@ -473,19 +473,19 @@
     },
     {
       "key": "provider_transferProcessId",
-      "value": ""
+      "value": "urn:uuid:tp-kafka-provider-4444-4444-4444-8444-444444444444"
     },
     {
       "key": "waitRetry",
-      "value": "0"
+      "value": "5"
     },
     {
       "key": "PROVIDER_AUTH_LOGIN",
-      "value": ""
+      "value": "http://localhost:8090/api/v1/auth/login"
     },
     {
       "key": "CONSUMER_AUTH_LOGIN",
-      "value": ""
+      "value": "http://localhost:8080/api/v1/auth/login"
     },
     {
       "key": "access_token_consumer_api",

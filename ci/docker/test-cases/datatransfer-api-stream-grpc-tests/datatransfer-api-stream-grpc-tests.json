@@ -487,15 +487,15 @@
     },
     {
       "key": "waitRetry",
-      "value": "0"
+      "value": "5"
     },
     {
       "key": "access_token_consumer_api",
-      "value": ""
+      "secret": true
     },
     {
       "key": "access_token_provider_api",
-      "value": ""
+      "secret": true
     },
     {
       "key": "transactionId",
