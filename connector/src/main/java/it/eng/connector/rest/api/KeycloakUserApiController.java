@@ -20,7 +20,7 @@ import java.util.Collection;
  * REST controller for user management in Keycloak authentication mode.
  *
  * <p>This controller is active only when {@code application.auth.provider=KEYCLOAK}.
- * It mirrors the API surface of {@link UserApiController} but delegates to
+ * It mirrors the API surface of {@link UserAPIController} but delegates to
  * {@link KeycloakUserService} to register users in the Keycloak realm.
  */
 @RestController

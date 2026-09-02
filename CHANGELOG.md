@@ -134,6 +134,20 @@ All notable changes to this project will be documented in this file.
   - `BucketCredentialsService.saveBucketCredentials(...)` now carries forward the stored `@Version` on repeated writes to the same bucket, so sequential credential rotations update the existing document instead of failing on duplicate-key insert.
   - `TENANT_UPDATED` audit details now include `changeType` (`ORDINARY_UPDATE`, `CREDENTIALS_ROTATED`, `BUCKET_MIGRATED`).
   - Added unit and integration coverage for update-path reconfirm/migration/rotation flows, verification failures with no partial persistence, and double-rotation regression.
+- **User Management API refactor**
+  - Replaced the single `UserDTO` request payload with dedicated, validation-enforced request models:
+    - `UserCreateRequest` — first name, last name, e-mail, password, and optional `tenantId`; role is inferred automatically (`ADMIN` when `tenantId` is present, `SUPER_ADMIN` otherwise).
+    - `UserUpdateRequest` — partial update of first name, last name, e-mail, password, and `enabled` flag (super-admin only).
+    - `UserNamesUpdateRequest` — self-service first/last name update.
+    - `UserPasswordUpdateRequest` — self-service password change with current-password verification.
+  - Added `UserCurrentUserResponse` for `GET /api/v1/users/me`, returning first name, last name, e-mail, `tenantId`, and role.
+  - Added `GET /api/v1/users/{id}` to retrieve a single user by technical id.
+  - Replaced `GET /api/v1/users/{email}` with paginated, filterable `GET /api/v1/users` supporting page, size, sort, and dynamic field filters; `CONNECTOR` service-account users are always excluded from results.
+  - Renamed `PUT /api/v1/users/{id}/update` to `PUT /api/v1/users/{id}/updateNames` and limited it to first/last name changes.
+  - `PUT /api/v1/users/{id}/password` now requires the current password in `password` and the new password in `newPassword`.
+  - `UserAPIController` (renamed from `UserApiController`) now returns HATEOAS paginated responses via `PlainUserAssembler` and `PagedResourcesAssembler`.
+  - Added `UserNotFoundException` and dedicated `UserAPIAdvice` for consistent 404 error mapping.
+  - Updated unit and integration tests (`UserServiceTest`, `UserAPIControllerTest`, `UserIT`) and removed the obsolete e-mail lookup tests from the Postman / Newman API suites.
 
 ## [0.7.0] - 10.07.2026 - Multi-Tenant Support
 
