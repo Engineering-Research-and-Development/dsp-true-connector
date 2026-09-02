@@ -1,9 +1,7 @@
 package it.eng.connector.integration.user;
 
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.model.Role;
-import it.eng.connector.model.User;
-import it.eng.connector.model.UserDTO;
+import it.eng.connector.model.*;
 import it.eng.connector.repository.UserRepository;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.auth.jwt.JwtService;
@@ -47,7 +45,7 @@ public class UserIT extends BaseIntegrationTest {
     private static final String KNOWN_TENANT_ID = "engineering";
     private static final String UNKNOWN_TENANT_ID = "non-existent-tenant-xyz";
 
-    // updateUser test creates a duplicate entry under the super-admin email; track by ID for safe cleanup.
+    // updateUserNames test creates a duplicate entry under the super-admin email; track by ID for safe cleanup.
     private String savedTestSuperAdminDuplicateId;
 
     @Autowired
@@ -77,12 +75,6 @@ public class UserIT extends BaseIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
         // TODO when user serialization is fixed, check if user is there
 
-        result = mockMvc.perform(get(ApiEndpoints.USERS_V1 + "/" + TestUtil.ADMIN_USER)
-                .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
-                .contentType(MediaType.APPLICATION_JSON));
-        result.andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
-
         result = mockMvc.perform(get(ApiEndpoints.USERS_V1 + "/" + "not_found@user.com")
                 .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON));
@@ -111,7 +103,9 @@ public class UserIT extends BaseIntegrationTest {
 
     @Test
     public void createUser() throws Exception {
-        UserDTO userDTO = new UserDTO("firstName", "lastName", "test@mail.com", "StrongPassword1!", null, Role.ADMIN, null);
+        UserCreateRequest userDTO = UserCreateRequest.Builder.newInstance()
+                .firstName("firstName").lastName("lastName").email("test@mail.com")
+                .password("StrongPassword1!").build();
 
         final ResultActions result = mockMvc.perform(post(ApiEndpoints.USERS_V1)
                 .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
@@ -135,7 +129,9 @@ public class UserIT extends BaseIntegrationTest {
 
     @Test
     public void createUser_weak_password() throws Exception {
-        UserDTO userDTO = new UserDTO("firstName", "lastName", "test@mail.com", "pass", null, Role.ADMIN, null);
+        UserCreateRequest userDTO = UserCreateRequest.Builder.newInstance()
+                .firstName("firstName").lastName("lastName").email("test@mail.com")
+                .password("pass").build();
 
         final ResultActions result = mockMvc.perform(post(ApiEndpoints.USERS_V1)
                 .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
@@ -154,7 +150,9 @@ public class UserIT extends BaseIntegrationTest {
                 true, false, false, Role.ADMIN);
         userRepository.save(userObj);
 
-        UserDTO userDTO = new UserDTO("FirstNameTest", "LastNameTest", "email_test@mail.com", "StrongPassword123!", null, Role.ADMIN, null);
+        UserCreateRequest userDTO = UserCreateRequest.Builder.newInstance()
+                .firstName("FirstNameTest").lastName("LastNameTest").email("email_test@mail.com")
+                .password("StrongPassword123!").build();
 
         final ResultActions result = mockMvc.perform(post(ApiEndpoints.USERS_V1)
                 .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
@@ -175,9 +173,10 @@ public class UserIT extends BaseIntegrationTest {
         // Track ID for @AfterEach cleanup; can't delete by email safely as the seed may share it.
         savedTestSuperAdminDuplicateId = userObj.getId();
 
-        UserDTO userDTO = new UserDTO("FirstNameTestUpdate", "LastNameTestUpdate", null, null, null, Role.SUPER_ADMIN, null);
+        UserUpdateRequest userDTO = UserUpdateRequest.Builder.newInstance()
+                .firstName("FirstNameTestUpdate").lastName("LastNameTestUpdate").build();
 
-        final ResultActions result = mockMvc.perform(put(ApiEndpoints.USERS_V1 + "/" + userObj.getId() + "/update")
+        final ResultActions result = mockMvc.perform(put(ApiEndpoints.USERS_V1 + "/" + userObj.getId())
                 .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
                 .content(ToolsSerializer.serializePlain(userDTO))
                 .contentType(MediaType.APPLICATION_JSON));
@@ -196,9 +195,10 @@ public class UserIT extends BaseIntegrationTest {
                 true, false, false, Role.ADMIN);
         userRepository.save(userObj);
 
-        UserDTO userDTO = new UserDTO("FirstNameTestUpdate", "LastNameTestUpdate", null, null, null, Role.ADMIN, null);
+        UserUpdateRequest userDTO = UserUpdateRequest.Builder.newInstance()
+                .firstName("FirstNameTestUpdate").lastName("LastNameTestUpdate").build();
 
-        final ResultActions result = mockMvc.perform(put(ApiEndpoints.USERS_V1 + "/" + userObj.getId() + "/update")
+        final ResultActions result = mockMvc.perform(put(ApiEndpoints.USERS_V1 + "/" + userObj.getId() + "/updateNames")
                 .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
                 .content(ToolsSerializer.serializePlain(userDTO))
                 .contentType(MediaType.APPLICATION_JSON));
@@ -218,7 +218,8 @@ public class UserIT extends BaseIntegrationTest {
                 passwordEncoder.encode("password"), true, false, false, Role.SUPER_ADMIN);
         userRepository.save(userObj);
 
-        UserDTO userDTO = new UserDTO("FirstNameTestUpdate", "LastNameTestUpdate", null, "password", "NewUpdPass123!", Role.SUPER_ADMIN, null);
+        UserPasswordUpdateRequest userDTO = UserPasswordUpdateRequest.Builder.newInstance()
+                .password("password").newPassword("NewUpdPass123!").build();
         String jwt = jwtService.issueTokenPair(userObj.getEmail(), userObj.getEmail(), List.of(Role.SUPER_ADMIN.authorityName()), null, null).accessToken();
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer " + jwt);
@@ -238,7 +239,8 @@ public class UserIT extends BaseIntegrationTest {
                 passwordEncoder.encode("password"), true, false, false, Role.SUPER_ADMIN);
         userRepository.save(userObj);
 
-        UserDTO userDTO = new UserDTO("FirstNameTestUpdate", "LastNameTestUpdate", null, "password", "weak123!", Role.SUPER_ADMIN, null);
+        UserPasswordUpdateRequest userDTO = UserPasswordUpdateRequest.Builder.newInstance()
+                .password("password").newPassword("weak123!").build();
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBasicAuth("otherUser3@mail.com", "password");
@@ -255,8 +257,9 @@ public class UserIT extends BaseIntegrationTest {
     @Test
     @DisplayName("POST /api/v1/users with valid tenantId links user to tenant and returns 200")
     public void createUser_withValidTenantId_returns200() throws Exception {
-        UserDTO userDTO = new UserDTO("First", "Last", "tenant.user@mail.com", "StrongPassword1!", null,
-                Role.ADMIN, KNOWN_TENANT_ID);
+        UserCreateRequest userDTO = UserCreateRequest.Builder.newInstance()
+                .firstName("First").lastName("Last").email("tenant.user@mail.com")
+                .password("StrongPassword1!").tenantId(KNOWN_TENANT_ID).build();
 
         mockMvc.perform(post(ApiEndpoints.USERS_V1)
                         .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
@@ -269,8 +272,9 @@ public class UserIT extends BaseIntegrationTest {
     @Test
     @DisplayName("POST /api/v1/users with non-existent tenantId returns 4xx")
     public void createUser_withNonExistentTenantId_returns4xx() throws Exception {
-        UserDTO userDTO = new UserDTO("First", "Last", "tenant.user@mail.com", "StrongPassword1!", null,
-                Role.ADMIN, UNKNOWN_TENANT_ID);
+        UserCreateRequest userDTO = UserCreateRequest.Builder.newInstance()
+                .firstName("First").lastName("Last").email("tenant.user@mail.com")
+                .password("StrongPassword1!").tenantId(UNKNOWN_TENANT_ID).build();
 
         mockMvc.perform(post(ApiEndpoints.USERS_V1)
                         .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
@@ -283,8 +287,9 @@ public class UserIT extends BaseIntegrationTest {
     @Test
     @DisplayName("POST /api/v1/users for SUPER_ADMIN without tenantId returns 200")
     public void createUser_superAdminWithoutTenantId_returns200() throws Exception {
-        UserDTO userDTO = new UserDTO("SuperFirst", "SuperLast", "superadmin.user@mail.com", "StrongPassword1!", null,
-                Role.SUPER_ADMIN, null);
+        UserCreateRequest userDTO = UserCreateRequest.Builder.newInstance()
+                .firstName("SuperFirst").lastName("SuperLast").email("superadmin.user@mail.com")
+                .password("StrongPassword1!").build();
 
         mockMvc.perform(post(ApiEndpoints.USERS_V1)
                         .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
@@ -298,7 +303,9 @@ public class UserIT extends BaseIntegrationTest {
     @DisplayName("POST /api/v1/users as ROLE_ADMIN returns 403")
     @WithUserDetails(TestUtil.ADMIN_USER)
     public void createUser_asAdmin_returns403() throws Exception {
-        UserDTO userDTO = new UserDTO("firstName", "lastName", "test@mail.com", "StrongPassword1!", null, Role.ADMIN, null);
+        UserCreateRequest userDTO = UserCreateRequest.Builder.newInstance()
+                .firstName("firstName").lastName("lastName").email("test@mail.com")
+                .password("StrongPassword1!").build();
 
         mockMvc.perform(post(ApiEndpoints.USERS_V1)
                         .content(ToolsSerializer.serializePlain(userDTO))

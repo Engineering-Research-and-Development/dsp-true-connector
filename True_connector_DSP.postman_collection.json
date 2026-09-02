@@ -910,31 +910,6 @@
               "response": []
             },
             {
-              "name": "Get User by Email",
-              "request": {
-                "method": "GET",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{CONSUMER}}/api/v1/users/admin@mail.com",
-                  "host": [
-                    "{{CONSUMER}}"
-                  ],
-                  "path": [
-                    "api",
-                    "v1",
-                    "users",
-                    "admin@mail.com"
-                  ]
-                }
-              },
-              "response": []
-            },
-            {
               "name": "Create User",
               "request": {
                 "method": "POST",

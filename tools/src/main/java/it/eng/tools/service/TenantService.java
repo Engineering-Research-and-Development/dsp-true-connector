@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -389,6 +390,15 @@ public class TenantService {
                 .enabled(enabled)
                 .bucketName(source.getBucketName())
                 .build();
+    }
+
+    /**
+     * Returns all tenants as a list needed for user creation.
+     *
+     * @return list of all tenants
+     */
+    public List<Tenant> findAllAsList() {
+        return tenantRepository.findAll();
     }
 
     private String resolveEffectiveBucketName(
