@@ -39,6 +39,7 @@ services:
     ports:
       - "0.0.0.0:8888:2222" #FTP
       - "8080:8080"
+      - "5005:5005" # Debug port
     depends_on:
       - mongodb-a
       - minio
@@ -51,6 +52,10 @@ services:
       - KEYSTORE_ALIAS=${CONNECTOR_A_KEYSTORE_ALIAS}
       - TRUSTSTORE_NAME=${TRUSTSTORE_NAME}
       - TRUSTSTORE_PASSWORD=${TRUSTSTORE_PASSWORD}
+      - DATAPLANE_REGISTRATION_BOOTSTRAP_KEY=${DP_REGISTRATION_BOOTSTRAP_KEY}
+      - DATAPLANE_REGISTRATION_KEY_PEPPER=${DP_REGISTRATION_KEY_PEPPER}
+      # viewData presigned URLs are served to external clients; match the MinIO URL Newman uses.
+      - S3_EXTERNALPRESIGNEDENDPOINT=${MINIO_EXTERNAL_URL:-http://172.17.0.1:9000}
     volumes:
       - ./connector_a_resources:/config
       - ./tc_cert:/cert
@@ -87,6 +92,7 @@ services:
     ports:
       - "0.0.0.0:8889:2222" #FTP
       - "8090:8080"
+      - "5006:5005" # Debug port
     depends_on:
       - mongodb-b
       - minio
@@ -99,6 +105,8 @@ services:
       - KEYSTORE_ALIAS=${CONNECTOR_B_KEYSTORE_ALIAS}
       - TRUSTSTORE_NAME=${TRUSTSTORE_NAME}
       - TRUSTSTORE_PASSWORD=${TRUSTSTORE_PASSWORD}
+      - DATAPLANE_REGISTRATION_BOOTSTRAP_KEY=${DP_REGISTRATION_BOOTSTRAP_KEY}
+      - DATAPLANE_REGISTRATION_KEY_PEPPER=${DP_REGISTRATION_KEY_PEPPER}
     volumes:
       - ./connector_b_resources:/config
       - ./tc_cert:/cert
@@ -116,9 +124,266 @@ services:
       - mongodb-data_b:/data/db
       - mongodb-configdb_b:/data/configdb
 
+  ### data-plane-http-pull-a (consumer pull DP — registers with connector-a)
+  ### Used for: viewData presigned URL generation (consumer side)
+  ### Started only when --profile pull is passed to docker compose
+  data-plane-http-pull-a:
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-http-pull:test
+    container_name: data-plane-http-pull-a
+    profiles: ["pull"]
+    networks:
+      - network-a
+    ports:
+      - "9090:9090"
+    depends_on:
+      minio:
+        condition: service_healthy
+      connector-a:
+        condition: service_started
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-a:27017/data-plane-pull-a
+      - DATAPLANE_ID=dp-http-pull-a
+      - DATAPLANE_ENDPOINT=http://data-plane-http-pull-a:9090
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-a:8080
+      - DATAPLANE_CONTROL_PLANE_REGISTRATION_KEY=${DP_REGISTRATION_BOOTSTRAP_KEY}
+      - DATAPLANE_REGISTRATION_KEY_PEPPER=${DP_REGISTRATION_KEY_PEPPER}
+      - DATAPLANE_AUTH_TYPE=API_KEY
+      - DATAPLANE_API_KEY=${DP_PULL_API_KEY:-changeme}
+      - APPLICATION_ENCRYPTION_KEY=5m7mlhmu65zsp6x
+
+  ### data-plane-http-pull-b (provider pull DP — registers with connector-b)
+  ### Used for: startTransfer presigned URL generation for artifact in provider's bucket
+  ### Started only when --profile pull is passed to docker compose
+  data-plane-http-pull-b:
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-http-pull:test
+    container_name: data-plane-http-pull-b
+    profiles: ["pull"]
+    networks:
+      - network-b
+    ports:
+      - "9092:9090"
+    depends_on:
+      minio:
+        condition: service_healthy
+      connector-b:
+        condition: service_started
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-b:27017/data-plane-pull-b
+      - DATAPLANE_ID=dp-http-pull-b
+      - DATAPLANE_ENDPOINT=http://data-plane-http-pull-b:9090
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-b:8080
+      - DATAPLANE_CONTROL_PLANE_REGISTRATION_KEY=${DP_REGISTRATION_BOOTSTRAP_KEY}
+      - DATAPLANE_REGISTRATION_KEY_PEPPER=${DP_REGISTRATION_KEY_PEPPER}
+      - DATAPLANE_AUTH_TYPE=API_KEY
+      - DATAPLANE_API_KEY=${DP_PULL_API_KEY:-changeme}
+      - APPLICATION_ENCRYPTION_KEY=5xplehys9mtcatb
+
+  ### data-plane-http-push-a (consumer push DP — registers with connector-a)
+  ### Used for: requestTransfer — creates temporary IAM user in consumer's bucket
+  ### Started only when --profile push is passed to docker compose
+  data-plane-http-push-a:
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-http-push:test
+    container_name: data-plane-http-push-a
+    profiles: ["push"]
+    networks:
+      - network-a
+    ports:
+      - "9093:9091"
+    depends_on:
+      minio:
+        condition: service_healthy
+      connector-a:
+        condition: service_started
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-a:27017/data-plane-push-a
+      - DATAPLANE_ID=dp-http-push-a
+      - DATAPLANE_ENDPOINT=http://data-plane-http-push-a:9091
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-a:8080
+      - DATAPLANE_CONTROL_PLANE_REGISTRATION_KEY=${DP_REGISTRATION_BOOTSTRAP_KEY}
+      - DATAPLANE_REGISTRATION_KEY_PEPPER=${DP_REGISTRATION_KEY_PEPPER}
+      - DATAPLANE_AUTH_TYPE=API_KEY
+      - DATAPLANE_API_KEY=${DP_PUSH_API_KEY:-changeme}
+      - APPLICATION_ENCRYPTION_KEY=5m7mlhmu65zsp6x
+
+  ### data-plane-http-push-b (provider push DP — registers with connector-b)
+  ### Used for: startTransfer — pushes artifact to consumer's temporary S3 credentials
+  ### Started only when --profile push is passed to docker compose
+  data-plane-http-push-b:
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-http-push:test
+    container_name: data-plane-http-push-b
+    profiles: ["push"]
+    networks:
+      - network-a
+      - network-b
+    ports:
+      - "9091:9091"
+    depends_on:
+      minio:
+        condition: service_healthy
+      connector-b:
+        condition: service_started
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-b:27017/data-plane-push-b
+      - DATAPLANE_ID=dp-http-push-b
+      - DATAPLANE_ENDPOINT=http://data-plane-http-push-b:9091
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-b:8080
+      - DATAPLANE_CONTROL_PLANE_REGISTRATION_KEY=${DP_REGISTRATION_BOOTSTRAP_KEY}
+      - DATAPLANE_REGISTRATION_KEY_PEPPER=${DP_REGISTRATION_KEY_PEPPER}
+      - DATAPLANE_AUTH_TYPE=API_KEY
+      - DATAPLANE_API_KEY=${DP_PUSH_API_KEY:-changeme}
+      - APPLICATION_ENCRYPTION_KEY=5xplehys9mtcatb
+
+  ### data-plane-grpc-a (consumer streaming DP — registers with connector-a)
+  ### Used for: downloadData on the consumer side for stream:grpc transfers
+  ### Started only when --profile grpc is passed to docker compose
+  data-plane-grpc-a:
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-grpc:test
+    container_name: data-plane-grpc-a
+    profiles: ["grpc"]
+    networks:
+      - network-a
+    ports:
+      - "9094:9094"
+      - "9095:9095"
+    depends_on:
+      minio:
+        condition: service_healthy
+      connector-a:
+        condition: service_started
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-a:27017/data-plane-grpc-a
+      - DATAPLANE_ID=dp-grpc-a
+      - DATAPLANE_ENDPOINT=http://data-plane-grpc-a:9094
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-a:8080
+      - DATAPLANE_CONTROL_PLANE_REGISTRATION_KEY=${DP_REGISTRATION_BOOTSTRAP_KEY}
+      - DATAPLANE_REGISTRATION_KEY_PEPPER=${DP_REGISTRATION_KEY_PEPPER}
+      - DATAPLANE_AUTH_TYPE=API_KEY
+      - DATAPLANE_API_KEY=${DP_GRPC_API_KEY:-changeme}
+      - APPLICATION_ENCRYPTION_KEY=5m7mlhmu65zsp6x
+      - SERVER_PORT=9094
+      - GRPC_SERVER_HOST=data-plane-grpc-a
+      - GRPC_SERVER_PORT=9095
+
+  ### data-plane-grpc-b (provider streaming DP — registers with connector-b)
+  ### Used for: startTransfer prepare on the provider side and gRPC source streaming to consumer DP
+  ### Started only when --profile grpc is passed to docker compose
+  data-plane-grpc-b:
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-grpc:test
+    container_name: data-plane-grpc-b
+    profiles: ["grpc"]
+    networks:
+      - network-a
+      - network-b
+    ports:
+      - "9096:9094"
+      - "9097:9095"
+    depends_on:
+      minio:
+        condition: service_healthy
+      connector-b:
+        condition: service_started
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-b:27017/data-plane-grpc-b
+      - DATAPLANE_ID=dp-grpc-b
+      - DATAPLANE_ENDPOINT=http://data-plane-grpc-b:9094
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-b:8080
+      - DATAPLANE_CONTROL_PLANE_REGISTRATION_KEY=${DP_REGISTRATION_BOOTSTRAP_KEY}
+      - DATAPLANE_REGISTRATION_KEY_PEPPER=${DP_REGISTRATION_KEY_PEPPER}
+      - DATAPLANE_AUTH_TYPE=API_KEY
+      - DATAPLANE_API_KEY=${DP_GRPC_API_KEY:-changeme}
+      - APPLICATION_ENCRYPTION_KEY=5xplehys9mtcatb
+      - SERVER_PORT=9094
+      - GRPC_SERVER_HOST=data-plane-grpc-b
+      - GRPC_SERVER_PORT=9095
+
+  kafka-broker:
+    image: apache/kafka:3.9.0
+    container_name: kafka-broker
+    profiles: ["kafka"]
+    networks:
+      - network-kafka
+    environment:
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+      - KAFKA_LISTENERS=PLAINTEXT://kafka-broker:9092,CONTROLLER://kafka-broker:9093
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka-broker:9092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka-broker:9093
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CONTROLLER_LISTENER_NAME=CONTROLLER
+      - KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_LOG_DIRS=/tmp/kraft-combined-logs
+    healthcheck:
+      test: [ "CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka-broker:9092 --list >/dev/null 2>&1" ]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+
+  data-plane-kafka-a:
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-kafka:test
+    container_name: data-plane-kafka-a
+    profiles: ["kafka"]
+    networks:
+      - network-a
+      - network-kafka
+    ports:
+      - "9098:9098"
+    depends_on:
+      kafka-broker:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      connector-a:
+        condition: service_started
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-a:27017/data-plane-kafka-a
+      - DATAPLANE_ID=dp-kafka-a
+      - DATAPLANE_ENDPOINT=http://data-plane-kafka-a:9098
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-a:8080
+      - DATAPLANE_CONTROL_PLANE_REGISTRATION_KEY=${DP_REGISTRATION_BOOTSTRAP_KEY}
+      - DATAPLANE_REGISTRATION_KEY_PEPPER=${DP_REGISTRATION_KEY_PEPPER}
+      - DATAPLANE_AUTH_TYPE=API_KEY
+      - DATAPLANE_API_KEY=${DP_KAFKA_API_KEY:-changeme}
+      - APPLICATION_ENCRYPTION_KEY=5m7mlhmu65zsp6x
+      - SERVER_PORT=9098
+      - DATAPLANE_KAFKA_BOOTSTRAP_SERVERS=kafka-broker:9092
+
+  data-plane-kafka-b:
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector-data-plane-kafka:test
+    container_name: data-plane-kafka-b
+    profiles: ["kafka"]
+    networks:
+      - network-b
+      - network-kafka
+    ports:
+      - "9099:9098"
+    depends_on:
+      kafka-broker:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      connector-b:
+        condition: service_started
+    environment:
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb-b:27017/data-plane-kafka-b
+      - DATAPLANE_ID=dp-kafka-b
+      - DATAPLANE_ENDPOINT=http://data-plane-kafka-b:9098
+      - DATAPLANE_CONTROL_PLANE_ADMIN_ENDPOINT=http://connector-b:8080
+      - DATAPLANE_CONTROL_PLANE_REGISTRATION_KEY=${DP_REGISTRATION_BOOTSTRAP_KEY}
+      - DATAPLANE_REGISTRATION_KEY_PEPPER=${DP_REGISTRATION_KEY_PEPPER}
+      - DATAPLANE_AUTH_TYPE=API_KEY
+      - DATAPLANE_API_KEY=${DP_KAFKA_API_KEY:-changeme}
+      - APPLICATION_ENCRYPTION_KEY=5xplehys9mtcatb
+      - SERVER_PORT=9098
+      - DATAPLANE_KAFKA_BOOTSTRAP_SERVERS=kafka-broker:9092
+
 networks:
   network-a: { }
   network-b: { }
+  network-kafka: { }
 
 volumes:
   minio_data: { }

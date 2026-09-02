@@ -15,9 +15,11 @@ import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.ApplicationConnector;
 import it.eng.connector.filter.ApiTenantContextFilter;
+import it.eng.datatransfer.model.DataPlaneRegistration;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
+import it.eng.datatransfer.repository.DataPlaneRegistrationRepository;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
@@ -45,6 +47,7 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -59,7 +62,10 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Integration test that starts two real Spring Boot application instances — one acting as
  * Consumer (port 8184) and one as Provider (port 8285) — each backed by its own MongoDB
- * database on a shared Testcontainers MongoDB container, and each with its own MinIO instance.
+ * database on a shared Testcontainers MongoDB container. The provider is also backed by a
+ * shared Testcontainers MinIO instance to support HTTP-PULL presigned URL generation.
+ * Data-plane transfer operations are intercepted by a WireMock server acting as the Data
+ * Plane microservice (port 9101).
  *
  * <p>The test inserts pre-initialized {@link TransferProcess} records on both sides, then
  * triggers automatic transfer via the consumer's API and polls both repositories until the
@@ -88,6 +94,9 @@ public class AutomaticDataTransferIT {
     private static final int POLL_TIMEOUT_SECONDS = 60;
     private static final int POLL_INTERVAL_MS     = 500;
 
+    private static final String DP_API_KEY      = "dp-api-key-test";
+    private static final int    DP_WIREMOCK_PORT = 9101;
+
     // ── containers ────────────────────────────────────────────────────────────────
     @SuppressWarnings("resource")
     private static final GenericContainer<?> mongoDBContainer =
@@ -96,11 +105,8 @@ public class AutomaticDataTransferIT {
                     .waitingFor(Wait.forLogMessage(".*Waiting for connections.*", 1))
                     .withReuse(false);
 
-    private static final MinIOContainer providerMinIO =
-            new MinIOContainer(DockerImageName.parse("minio/minio"))
-                    .withReuse(false);
-
-    private static final MinIOContainer consumerMinIO =
+    @SuppressWarnings("resource")
+    private static final MinIOContainer minIOContainer =
             new MinIOContainer(DockerImageName.parse("minio/minio"))
                     .withReuse(false);
 
@@ -119,6 +125,9 @@ public class AutomaticDataTransferIT {
     /** Standalone WireMock server that intercepts provider→consumer protocol messages. */
     private static WireMockServer wireMockServer;
 
+    /** Standalone WireMock server that acts as a Data Plane for all three contexts. */
+    private static WireMockServer dpWireMock;
+
     // ── HTTP client ───────────────────────────────────────────────────────────────
     private static final HttpClient httpClient = HttpClient.newHttpClient();
 
@@ -130,8 +139,7 @@ public class AutomaticDataTransferIT {
     @BeforeAll
     static void startApplications() {
         mongoDBContainer.start();
-        providerMinIO.start();
-        consumerMinIO.start();
+        minIOContainer.start();
 
         String mongoHost = mongoDBContainer.getHost();
         int    mongoPort = mongoDBContainer.getMappedPort(27017);
@@ -141,28 +149,58 @@ public class AutomaticDataTransferIT {
         wireMockServer.start();
         log.info("WireMock started on port {}", WIREMOCK_PORT);
 
-        // ── Provider — source artifact lives in providerMinIO ─────────────────────
+        // ── DP WireMock — simulates Data Plane for all three connector contexts ────
+        dpWireMock = new WireMockServer(WireMockConfiguration.wireMockConfig().port(DP_WIREMOCK_PORT));
+        dpWireMock.start();
+        // prepare — returns a DataFlowPrepareResponse with both presignedUrl (HTTP_PULL)
+        // and S3 credentials (HTTP_PUSH). Both fields are present so the stub handles both.
+        dpWireMock.stubFor(WireMock.post(WireMock.urlPathEqualTo("/dataflows/prepare"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"processId\":\"fake-dp-process\"," +
+                                "\"dataAddress\":{\"presignedUrl\":\"http://fake.example.com/artifact.txt\"," +
+                                "\"bucketName\":\"consumer-bucket\",\"region\":\"us-east-1\"," +
+                                "\"objectKey\":\"fake-key\",\"accessKey\":\"fake-ak\"," +
+                                "\"secretKey\":\"fake-sk\",\"endpointOverride\":\"http://fake-minio:9000\"}}")));
+        dpWireMock.stubFor(WireMock.post(WireMock.urlPathEqualTo("/dataflows/start"))
+                .willReturn(aResponse().withStatus(200)));
+        dpWireMock.stubFor(WireMock.delete(WireMock.urlPathMatching("/dataflows/.*/terminate"))
+                .willReturn(aResponse().withStatus(200)));
+        log.info("DP WireMock started on port {}", DP_WIREMOCK_PORT);
+
+        // ── Provider — real connector instance with MinIO for HTTP-PULL presigned URL generation ────
+        String minioUrl = minIOContainer.getS3URL();
         providerCtx = startInstance(mongoHost, mongoPort, PROVIDER_PORT,
                 "provider", "provider_db", PROVIDER_BASE_URL,
-                providerMinIO.getS3URL(), providerMinIO.getUserName(), providerMinIO.getPassword(),
-                "dsp-true-connector-provider");
+                minioUrl, minIOContainer.getUserName(), minIOContainer.getPassword(),
+                "provider-bucket");
 
-        // ── Consumer — downloaded artifact will land in consumerMinIO ─────────────
+        // ── Consumer — real connector instance with MinIO for HTTP-PUSH temp user creation ──
         consumerCtx = startInstance(mongoHost, mongoPort, CONSUMER_PORT,
                 "consumer", "consumer_db", CONSUMER_BASE_URL,
-                consumerMinIO.getS3URL(), consumerMinIO.getUserName(), consumerMinIO.getPassword(),
-                "dsp-true-connector-consumer");
+                minIOContainer.getS3URL(), minIOContainer.getUserName(), minIOContainer.getPassword(),
+                "consumer-bucket");
 
         // ── WireMock consumer — callbackAddress points to WireMock ────────────────
+        // application.callback.address must be the bare root URL: DataTransferProperties
+        // .consumerCallbackAddress() / Tenant.getCallbackAddress() append "/{tenantId}/consumer"
+        // themselves. Pre-appending "/" + TENANT_ID here would double the tenant segment
+        // (http://localhost:9100/engineering/engineering/consumer/...) and break WireMock matching.
         // Provider sends TransferStartMessage to http://localhost:WIREMOCK_PORT/engineering/consumer/transfers/{pid}/start.
         // WireMock intercepts and returns HTTP 500 → triggers provider's retry loop.
         wiremockConsumerCtx = startInstance(mongoHost, mongoPort, WIREMOCK_CONSUMER_PORT,
                 "consumer-wiremock", "consumer_wiremock_db",
                 "http://localhost:" + WIREMOCK_PORT,
-                consumerMinIO.getS3URL(), consumerMinIO.getUserName(), consumerMinIO.getPassword(),
-                "dsp-true-connector-consumer");
+                minIOContainer.getS3URL(), minIOContainer.getUserName(), minIOContainer.getPassword(),
+                "consumer-bucket");
 
         populateProviderCatalog();
+
+        registerDataPlaneInContext(providerCtx);
+        registerDataPlaneInContext(consumerCtx);
+        registerDataPlaneInContext(wiremockConsumerCtx);
+        log.info("Data Plane registered in all contexts");
     }
 
     /**
@@ -215,8 +253,13 @@ public class AutomaticDataTransferIT {
                     .addCommandLineProperties(false)
                     .build();
             ConfigurableApplicationContext ctx = app.run();
-            // Phase 5: update the engineering tenant with automaticNegotiation=true and automaticTransfer=true.
+            // Phase 5: update the engineering tenant with the runtime callbackAddress,
+            // automaticNegotiation=true, and automaticTransfer=true since those now
+            // override the @Value fallback.
             TenantService tenantSvc = ctx.getBean(TenantService.class);
+            // participantId is immutable and always preserved from the existing tenant by
+            // TenantService.updateTenant(); it is only supplied here to satisfy Tenant.Builder's
+            // @NotNull validation on build().
             Tenant tenantUpdate = Tenant.Builder.newInstance()
                     .id(TENANT_ID)
                     .name("Engineering")
@@ -266,9 +309,11 @@ public class AutomaticDataTransferIT {
         if (wireMockServer != null && wireMockServer.isRunning()) {
             wireMockServer.stop();
         }
+        if (dpWireMock != null && dpWireMock.isRunning()) {
+            dpWireMock.stop();
+        }
         mongoDBContainer.stop();
-        providerMinIO.stop();
-        consumerMinIO.stop();
+        minIOContainer.stop();
     }
 
     // ── catalog + artifact setup ──────────────────────────────────────────────────
@@ -303,6 +348,29 @@ public class AutomaticDataTransferIT {
         distributionRepository.saveAll(catalog.getDistribution());
         if (dataset.getArtifact() != null) {
             artifactRepository.save(dataset.getArtifact());
+        }
+
+        // Upload test artifact to provider MinIO with key=datasetId so that
+        // generateGetPresignedUrl() (which calls headObject) can succeed for HTTP-PULL tests.
+        try {
+            String bucketName = s3Properties.getBucketName();
+            Map<String, String> destProps = Map.of(
+                    S3Utils.OBJECT_KEY, datasetId,
+                    S3Utils.BUCKET_NAME, bucketName,
+                    S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
+                    S3Utils.REGION, s3Properties.getRegion(),
+                    S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),
+                    S3Utils.SECRET_KEY, s3Properties.getSecretKey());
+            String contentDisposition = ContentDisposition.attachment()
+                    .filename("artifact.json")
+                    .build()
+                    .toString();
+            try (InputStream is = new ByteArrayInputStream("{\"data\":\"test artifact\"}".getBytes(StandardCharsets.UTF_8))) {
+                s3ClientService.uploadFile(is, destProps, MediaType.APPLICATION_JSON_VALUE, contentDisposition).get();
+            }
+            log.info("Test artifact uploaded to provider MinIO — bucket='{}', key='{}'", bucketName, datasetId);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to upload test artifact to provider MinIO", e);
         }
 
         // Add an HTTP_PUSH distribution to the dataset so that checkSupportedFormats
@@ -463,12 +531,24 @@ public class AutomaticDataTransferIT {
                 "Consumer requestTransfer API failed: " + response.body());
         log.info("Transfer requested — consumerTpId='{}'", consumerTpId);
 
-        // ── Poll Consumer TP until COMPLETED ──────────────────────────────────────
+        // ── Wait for consumer TP to start downloading (DP.start() called) ────────
+        // downloadData() sets isDownloadInProgress=true before calling dataPlaneClient.start()
+        TransferProcess downloadingConsumerTp = pollUntilDownloadInProgress(
+                consumerTpRepo, consumerTpId, "consumer");
+
+        // ── Simulate DP completion callback ──────────────────────────────────────
+        // The DP would normally download via the presigned URL and upload into the Consumer's
+        // MinIO before POSTing to /api/v1/dataflows/complete. We simulate both steps manually
+        // because the WireMock DP only fakes the DPS signaling exchange, not real S3 operations.
+        simulateDpArtifactDelivery(downloadingConsumerTp.getId());
+        int cbStatus = postDpCallback(CONSUMER_BASE_URL, downloadingConsumerTp.getId());
+        assertEquals(200, cbStatus, "DP callback to consumer should succeed");
+
+        // ── Poll Consumer TP until COMPLETED ─────────────────────────────────────
         TransferProcess completedConsumerTp = pollUntilTransferState(
                 consumerTpRepo, consumerTpId, TransferState.COMPLETED, "consumer");
 
-        // ── Poll Provider TP until COMPLETED ──────────────────────────────────────
-        // Look up by agreementId since only the consumer TP id is known upfront.
+        // ── Poll Provider TP until COMPLETED ─────────────────────────────────────
         TransferProcess completedProviderTp = pollUntilTransferStateByAgreementId(
                 providerTpRepo, agreementId, TransferState.COMPLETED, "provider");
 
@@ -478,7 +558,7 @@ public class AutomaticDataTransferIT {
         assertEquals(TransferState.COMPLETED, completedProviderTp.getState(),
                 "Provider TP must be COMPLETED");
         assertTrue(completedConsumerTp.isDownloaded(),
-                "Consumer TP isDownloaded must be true after HTTP_PULL download");
+                "Consumer TP isDownloaded must be true — set by completeTransfer() when wasDownloading=true");
         assertNotNull(completedConsumerTp.getDataId(),
                 "Consumer TP dataId must be set after successful download");
 
@@ -509,10 +589,10 @@ public class AutomaticDataTransferIT {
         // TransferRequestMessage sent to the provider.
         // Provider's initiateDataTransfer fires AutoTransferStartEvent → processStart:
         //   1. startTransfer: sends TransferStartMessage to consumer → Provider STARTED.
-        //   2. HTTP_PUSH chain: HttpPushTransferStrategy generates a presigned GET URL for
-        //      the artifact in provider MinIO, downloads it, then uploads it to consumer MinIO
-        //      using the dataAddress from the request → provider sends TransferCompletionMessage
-        //      → Provider COMPLETED.
+        //   2. HTTP_PUSH chain: DataTransferAPIService delegates to DataPlaneClient.start() which
+        //      orchestrates the external data-plane microservice to download from provider MinIO,
+        //      then upload to consumer MinIO using the dataAddress credentials → provider sends
+        //      TransferCompletionMessage → Provider COMPLETED.
         // Consumer receives TransferStartMessage → STARTED (no auto-download for HTTP_PUSH).
         // Consumer receives TransferCompletionMessage → COMPLETED.
         String requestBody = """
@@ -527,15 +607,31 @@ public class AutomaticDataTransferIT {
                 "Consumer requestTransfer API failed: " + response.body());
         log.info("HTTP_PUSH Transfer requested — consumerTpId='{}'", consumerTpId);
 
-        // ── Poll Consumer TP until COMPLETED ──────────────────────────────────────
-        // Consumer transitions: INITIALIZED → REQUESTED → STARTED → COMPLETED
-        // (COMPLETED is set when the consumer receives TransferCompletionMessage from provider)
+        // ── Wait for provider TP to reach STARTED ────────────────────────────────
+        // After sendDataFlowStartToDataPlane() returns (DP.start() called), provider TP is STARTED.
+        TransferProcess startedProviderTp = pollUntilTransferStateByAgreementId(
+                providerTpRepo, agreementId, TransferState.STARTED, "provider");
+        // Brief delay to ensure processDownload() + downloadData() have completed their
+        // HTTP calls to the WireMock DP (both are synchronous but happen after STARTED is saved).
+        Thread.sleep(500);
+
+        // ── Simulate DP completion callback to provider ───────────────────────────
+        // The DP (running on the provider side) would normally download from the Provider's
+        // MinIO and push into the Consumer's MinIO (objectKey = consumerTpId) before POSTing
+        // back to the provider CP. We simulate both steps manually because the WireMock DP
+        // only fakes the DPS signaling exchange, not real S3 operations.
+        simulateDpArtifactDelivery(consumerTpId);
+        int cbStatus = postDpCallback(PROVIDER_BASE_URL, startedProviderTp.getId());
+        assertEquals(200, cbStatus, "DP callback to provider should succeed");
+
+        // ── Poll Consumer TP until COMPLETED ─────────────────────────────────────
+        // Provider's completeTransfer() sends TransferCompletionMessage to consumer.
+        // Consumer's AbstractDataTransferService.completeDataTransfer() transitions to COMPLETED
+        // and sets isDownloaded=true, dataId=consumerTpId.
         TransferProcess completedConsumerTp = pollUntilTransferState(
                 consumerTpRepo, consumerTpId, TransferState.COMPLETED, "consumer");
 
-        // ── Poll Provider TP until COMPLETED ──────────────────────────────────────
-        // Provider transitions: INITIALIZED → REQUESTED → STARTED → COMPLETED
-        // (COMPLETED is set after HttpPushTransferStrategy pushes data and sends completion)
+        // ── Poll Provider TP until COMPLETED ─────────────────────────────────────
         TransferProcess completedProviderTp = pollUntilTransferStateByAgreementId(
                 providerTpRepo, agreementId, TransferState.COMPLETED, "provider");
 
@@ -545,7 +641,7 @@ public class AutomaticDataTransferIT {
         assertEquals(TransferState.COMPLETED, completedProviderTp.getState(),
                 "Provider TP must be COMPLETED");
         assertTrue(completedConsumerTp.isDownloaded(),
-                "Consumer TP isDownloaded must be true after HTTP_PUSH");
+                "Consumer TP isDownloaded must be true after HTTP_PUSH (set by completeDataTransfer)");
         assertNotNull(completedConsumerTp.getDataId(),
                 "Consumer TP dataId must be set after HTTP_PUSH");
 
@@ -631,6 +727,111 @@ public class AutomaticDataTransferIT {
     }
 
     // ── polling helpers ───────────────────────────────────────────────────────────
+
+    /**
+     * Polls the given repository until the transfer process has {@code isDownloadInProgress=true},
+     * indicating that {@code downloadData()} has been called and the DP {@code start()} was invoked.
+     *
+     * @param repository the repository to query
+     * @param tpId       internal TP id
+     * @param label      human-readable label for log messages
+     * @return the TP once {@code isDownloadInProgress=true}
+     * @throws AssertionError if not reached within 30 seconds
+     */
+    private TransferProcess pollUntilDownloadInProgress(TransferProcessRepository repository,
+                                                        String tpId, String label)
+            throws InterruptedException {
+        long deadline = System.currentTimeMillis() + 30_000L;
+        while (System.currentTimeMillis() < deadline) {
+            Optional<TransferProcess> opt = repository.findById(tpId);
+            if (opt.isPresent() && opt.get().isDownloadInProgress()) {
+                log.info("[{}] isDownloadInProgress=true", label);
+                return opt.get();
+            }
+            log.debug("[{}] waiting for downloadInProgress, current state={}", label,
+                    opt.map(tp -> tp.getState().toString()).orElse("not found"));
+            Thread.sleep(POLL_INTERVAL_MS);
+        }
+        throw new AssertionError("[" + label + "] download did not start within 30s");
+    }
+
+    /**
+     * Simulates the real Data Plane's data-movement side effect by uploading a test artifact
+     * directly into the Consumer's MinIO bucket, keyed by {@code objectKey}.
+     *
+     * <p>The WireMock Data Plane used by this test only fakes the DPS signaling exchange
+     * ({@code /dataflows/prepare}, {@code /dataflows/start}) — it never performs the actual
+     * S3 download/upload that a real HTTP-PULL or HTTP-PUSH Data Plane would. Since the
+     * control plane no longer performs that data movement itself (it is now delegated to the
+     * external Data Plane per the DPS split), the test must perform this step manually before
+     * simulating the DP's completion callback, or the "artifact exists in Consumer MinIO"
+     * assertions can never pass.
+     *
+     * @param objectKey the S3 object key the real Data Plane would have used — the internal
+     *                  Consumer {@link TransferProcess} id for both HTTP_PULL and HTTP_PUSH
+     * @throws Exception on S3 upload failure
+     */
+    private static void simulateDpArtifactDelivery(String objectKey) throws Exception {
+        var consumerS3      = consumerCtx.getBean(S3ClientService.class);
+        var consumerS3Props = consumerCtx.getBean(S3Properties.class);
+        Map<String, String> destProps = Map.of(
+                S3Utils.OBJECT_KEY,        objectKey,
+                S3Utils.BUCKET_NAME,       consumerS3Props.getBucketName(),
+                S3Utils.ENDPOINT_OVERRIDE, consumerS3Props.getEndpoint(),
+                S3Utils.REGION,            consumerS3Props.getRegion(),
+                S3Utils.ACCESS_KEY,        consumerS3Props.getAccessKey(),
+                S3Utils.SECRET_KEY,        consumerS3Props.getSecretKey());
+        try (InputStream is = new ByteArrayInputStream("artifact-content".getBytes(StandardCharsets.UTF_8))) {
+            consumerS3.uploadFile(is, destProps, MediaType.TEXT_PLAIN_VALUE,
+                    ContentDisposition.attachment().filename("artifact.txt").build().toString()).get();
+        }
+        log.info("Simulated Data Plane artifact delivery — bucket='{}', key='{}'",
+                consumerS3Props.getBucketName(), objectKey);
+    }
+
+    /**
+     * Sends a DP completion callback ({@code POST /api/v1/dataflows/complete}) to the connector
+     * at {@code baseUrl}, simulating the Data Plane reporting that a transfer has finished.
+     * Uses {@link #DP_API_KEY} for authentication.
+     *
+     * @param baseUrl   base URL of the target connector (e.g. {@code http://localhost:8184})
+     * @param processId the transfer process id to complete
+     * @return the HTTP response status code
+     * @throws Exception on I/O errors
+     */
+    private int postDpCallback(String baseUrl, String processId) throws Exception {
+        String url = baseUrl + it.eng.tools.controller.ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE;
+        String body = "{\"processId\":\"" + processId + "\",\"state\":\"COMPLETED\"}";
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .header("X-Api-Key", DP_API_KEY)
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        log.info("DP callback to {} returned {}: {}", url, response.statusCode(), response.body());
+        return response.statusCode();
+    }
+
+    /**
+     * Registers a WireMock Data Plane in the given application context's MongoDB database.
+     * The DP supports both HTTP_PULL and HTTP_PUSH and uses {@link #DP_API_KEY} for callback auth.
+     *
+     * @param ctx the running Spring application context
+     */
+    private static void registerDataPlaneInContext(ConfigurableApplicationContext ctx) {
+        // Use the service layer which applies API key hashing
+        var service = ctx.getBean(it.eng.datatransfer.service.DataPlaneRegistrationService.class);
+        var repo = ctx.getBean(DataPlaneRegistrationRepository.class);
+        repo.deleteAll();
+        service.register(DataPlaneRegistration.Builder.newInstance()
+                .endpoint("http://localhost:" + DP_WIREMOCK_PORT)
+                .supportedTransferTypes(Set.of(
+                        DataTransferFormat.HTTP_PULL.format(),
+                        DataTransferFormat.HTTP_PUSH.format()))
+                .apiKey(DP_API_KEY)
+                .build());
+    }
 
     /**
      * Polls the given {@link TransferProcessRepository} by internal TP id until the

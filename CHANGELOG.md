@@ -2,6 +2,114 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.0 Unreleased] — Streaming Data Planes
+
+### Added
+- `data-plane-grpc` module — standalone gRPC streaming Data Plane Spring Boot application
+  (REST 9094, gRPC 9095). The provider DP prepares a stream session and exposes transport
+  metadata (`host`, `port`, `sessionId`, `mode`); the consumer DP starts the stream and writes
+  the received payload into the consumer bucket.
+- `data-plane-kafka` module — standalone Kafka-backed streaming Data Plane Spring Boot
+  application (REST 9098). The provider DP prepares Kafka transport metadata
+  (`bootstrapServers`, `topic`, `groupId`, `mode`), publishes the source stream into a broker
+  topic, and the consumer DP drains that topic into the consumer bucket.
+- Docker Compose profiles for streaming dataplanes:
+  - `--profile grpc` starts the consumer/provider gRPC dataplanes
+  - `--profile kafka` starts the consumer/provider Kafka dataplanes plus the shared Kafka broker
+
+### Changed
+- Streaming transfer orchestration now supports both `stream:grpc` and `stream:kafka` transport
+  profiles through DPS `prepare` + admin-triggered consumer `downloadData()` flow. The provider
+  CP persists transport metadata and sticky dataplane assignment so follow-up lifecycle calls hit
+  the same prepared dataplane instance.
+- `doc/data-plane-signaling-user-guide.md` and `doc/data-plane-signaling-technical.md` now
+  document the gRPC and Kafka dataplane deployment, transfer flow, and operator troubleshooting.
+
+## [Unreleased] — Dataplane Signaling Protocol
+
+### Added
+- **Dataplane Signaling Protocol (DPS)** — TRUE Connector now implements the
+  [Eclipse Dataplane Signaling Protocol](https://github.com/eclipse-dataplane-signaling/dataplane-signaling),
+  decoupling data-movement logic from the Control Plane orchestration.
+- `data-plane-api` module — SPI interfaces and DSP message models
+  (`DataFlowStartMessage`, `DataFlowPrepareMessage`, `DataFlowStatusMessage`, `DataFlow`).
+- `data-plane-core` module — shared runtime library: `DataTransferProtocolRegistry`,
+  `ControlPlaneClient`, `ControlPlaneRegistrationBean` (startup self-registration with exponential
+  backoff retry), `ApiKeyAuthFilter`, `DataPlaneProperties`.
+- `data-plane-http-pull` module — standalone HTTP-PULL Data Plane Spring Boot application
+  (default port 9090). Generates presigned S3 GET URLs and streams artifacts to consumers.
+  Uses Java 21 virtual threads for concurrent transfers.
+- `data-plane-http-push` module — standalone HTTP-PUSH Data Plane Spring Boot application
+  (default port 9091). Pushes provider artifacts directly to consumer S3 buckets using
+  temporary IAM credentials. Uses Java 21 virtual threads for concurrent transfers.
+- `DataPlaneRegistration` model, repository, service, and admin controller (`/api/v1/dataplanes`)
+  for managing registered Data Plane services on the Control Plane side.
+- `DataPlaneClient` + `DataPlaneRouter` — CP-side components for routing and dispatching
+  `DataFlowStartMessage` to the correct Data Plane (round-robin selection).
+- `DataFlowCallbackController` — CP-side endpoint (`/api/v1/dataflows/complete`,
+  `/api/v1/dataflows/error`) receiving status callbacks from Data Planes.
+- API key authentication for all CP ↔ DP traffic (`X-Api-Key` header + `ApiKeyAuthFilter`).
+- Docker Compose services for `data-plane-http-pull` and `data-plane-http-push` in
+  `ci/docker/docker-compose.yml`.
+- `doc/data-plane-signaling-technical.md` — developer and architecture reference.
+- `doc/data-plane-signaling-user-guide.md` — operator manual covering deployment, registration,
+  scaling, and troubleshooting.
+
+### Changed
+- `DataTransferAPIService` — transfer dispatch now routes through `DataPlaneClient` instead of
+  calling `HttpPullTransferStrategy` / `HttpPushTransferStrategy` directly. Transfer completion
+  is now driven by the DP callback (`DataFlowCallbackController`) rather than inline in the
+  service.
+- Java source/target level upgraded from **17 to 21**. All modules now compile with
+  `--release 21`. Docker base images updated to `eclipse-temurin:21-jre-jammy`.
+- `HttpPullTransferProtocol` and `HttpPushTransferProtocol` now use `java.net.http.HttpClient`
+  (JDK built-in) instead of `HttpURLConnection` for artifact downloads. The client negotiates
+  **HTTP/2** via ALPN on TLS connections (AWS S3, production MinIO) and falls back to HTTP/1.1
+  for plain HTTP (development MinIO). The instance is a Spring `@Bean` (`dataPlaneHttpClient`)
+  defined in `DataPlaneHttpClientConfiguration` and injected into both protocol classes.
+  Dynamic per-file read timeout replaced with a fixed 30-minute timeout (required by `HttpClient`
+  API — timeout must be set before `send()`).
+- **Fixed:** `java.net.http.HttpClient` now honours the connector's SSL posture. Previously, the
+  static client used the JVM default `SSLContext`, which always performed strict certificate
+  validation regardless of `server.ssl.enabled`. `DataPlaneHttpClientConfiguration` mirrors
+  `OkHttpClientConfiguration`: trust-all `SSLContext` when `server.ssl.enabled=false`
+  (development), connector SSL bundle `SSLContext` when `server.ssl.enabled=true` (production).
+
+### Removed
+- `DataTransferStrategyFactory` (replaced by `DataPlaneRouter` + `DataPlaneRegistration`).
+- `HttpPullTransferStrategy` and `HttpPushTransferStrategy` from `data-transfer` module
+  (logic moved into `data-plane-http-pull` and `data-plane-http-push` respectively).
+
+### Security
+- Upgraded Spring Boot from `3.5.11` to `3.5.14`, resolving:
+  - CVE-2026-40971 (Spring Boot RabbitMQ SSL bundle does not perform hostname verification — MITM risk)
+- Upgraded `tomcat-embed-core` from `10.1.50` to `10.1.54` (BOM override), resolving:
+  - CVE-2026-29146 (HIGH — padding oracle vulnerability in EncryptInterceptor default configuration)
+  - CVE-2026-29145 (MEDIUM — CLIENT_CERT authentication bypass when soft-fail is disabled)
+  - CVE-2026-32990 (MEDIUM — incomplete SNI case-sensitivity fix allowing virtual-host certificate bypass)
+- Removed stale explicit jackson, assertj, json-smart, and httpclient5 `dependencyManagement` overrides —
+  Spring Boot 3.5.14 BOM provides equal or newer versions via `jackson-bom 2.21.2`, `assertj 3.27.7`,
+  `json-smart 2.5.2`, and `httpclient5 5.5.2`.
+- Replaced non-functional HTTP Basic Auth on Data Plane registration (`POST /api/v1/dataplanes`)
+  with a two-tier API-key model: a CP-configured bootstrap key (`X-Registration-Key`) authorizes
+  enrolling a new Data Plane, and each Data Plane's own API key is persisted only as an
+  HMAC-SHA256 hash (never in plaintext) and required (as `X-Api-Key`) to deregister that specific
+  instance, matching the existing `DataFlowCallbackController` callback authentication model.
+
+### CI/CD
+- Upgraded all GitHub Actions to Node.js 24 compatible versions ahead of the June 2, 2026
+  deadline when Node.js 20 runners are removed:
+  `actions/checkout` v4→v6, `actions/setup-java` v4→v5, `docker/login-action` v3→v4,
+  `docker/metadata-action` v5→v6, `docker/build-push-action` v6→v7,
+  `softprops/action-gh-release` v1→v3, `aquasecurity/trivy-action` 0.30.0→0.36.0.
+- Replaced abandoned `matt-ball/newman-action@v2.0.0` (no Node.js 24 support) with
+  `npx --yes newman run` — Newman now runs directly on the host runner instead of inside a
+  Docker container. Updated `MINIO_EXTERNAL_URL` from bridge IP `172.17.0.1:9000` to
+  `localhost:9000` in pull/push test jobs accordingly.
+- Replaced `jwalton/gh-docker-logs@v2` (abandoned) with `docker compose ... logs` run step.
+- Fixed `release.yml` and `develop.yml`: `java-version` corrected from `17` to `21`.
+
+
 ## [Unreleased]
 
 ### Added

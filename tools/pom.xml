@@ -12,6 +12,10 @@
 
     <dependencies>
         <dependency>
+            <groupId>it.eng</groupId>
+            <artifactId>s3-support</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
             <scope>provided</scope>
@@ -69,57 +73,6 @@ from spring-boot-starter-security scope provided-->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-        </dependency>
-        <!-- AWS S3 SDK -->
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>s3</artifactId>
-            <version>${aws.sdk.version}</version>
-        </dependency>
-        <!-- AWS Identity and Access -->
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>iam</artifactId>
-            <version>${aws.sdk.version}</version>
-        </dependency>
-        <!-- AWS SDK Apache HTTP Client for SSL/TLS configuration -->
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>apache-client</artifactId>
-            <version>${aws.sdk.version}</version>
-        </dependency>
-        <!-- AWS SDK AWS CRT HTTP Client for async operations - replaces Netty to avoid
-             URI percent-encoding validation issues (Netty 4.2.x rejects %3A in paths) -->
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>aws-crt-client</artifactId>
-            <version>${aws.sdk.version}</version>
-        </dependency>
-        <!--  AWS Security Token Service -->
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>sts</artifactId>
-            <version>${aws.sdk.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>transfer</artifactId>
-            <version>${aws.sdk.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>s3-transfer-manager</artifactId>
-            <version>${aws.sdk.version}</version>
-        </dependency>
-        <!-- needed for TransferManager-->
-        <dependency>
-            <groupId>software.amazon.awssdk.crt</groupId>
-            <artifactId>aws-crt</artifactId>
-        </dependency>
-        <!-- MinIO SDK -->
-        <dependency>
-            <groupId>io.minio</groupId>
-            <artifactId>minio-admin</artifactId>
         </dependency>
         <dependency>
             <groupId>dev.failsafe</groupId>

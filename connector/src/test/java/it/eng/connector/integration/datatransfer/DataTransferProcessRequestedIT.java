@@ -17,8 +17,6 @@ import it.eng.negotiation.model.*;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.tools.model.IConstants;
-import it.eng.tools.s3.util.S3Utils;
-import it.eng.tools.service.FieldEncryptionService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -55,8 +53,6 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
     private DatasetRepository datasetRepository;
     @Autowired
     private DistributionRepository distributionRepository;
-    @Autowired
-    private FieldEncryptionService fieldEncryptionService;
     private Catalog catalog;
     private Dataset dataset;
     private Distribution distribution;
@@ -350,7 +346,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("DataTransfer requested - HTTP_PUSH - secretKey is encrypted before being stored in MongoDB")
+    @DisplayName("DataTransfer requested - HTTP_PUSH - endpoint properties stored as-is (no encryption in CP)")
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void initiateDataTransfer_httpPush_secretKeyEncryptedInMongoDB() throws Exception {
         String plainSecretKey = "plain-secret-key-for-test";
@@ -386,15 +382,15 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .build();
         transferProcessRepository.save(transferProcessInitialized);
 
-        // DataAddress carries a plain secretKey, as the consumer sends it to the provider
+        // DataAddress carries endpoint properties as the consumer sends them to the provider
         DataAddress httpPushDataAddress = DataAddress.Builder.newInstance()
                 .endpointProperties(List.of(
-                        EndpointProperty.Builder.newInstance().name(S3Utils.BUCKET_NAME).value("consumer-bucket").build(),
-                        EndpointProperty.Builder.newInstance().name(S3Utils.REGION).value("us-east-1").build(),
-                        EndpointProperty.Builder.newInstance().name(S3Utils.OBJECT_KEY).value("consumer-object-key").build(),
-                        EndpointProperty.Builder.newInstance().name(S3Utils.ACCESS_KEY).value("consumer-access-key").build(),
-                        EndpointProperty.Builder.newInstance().name(S3Utils.SECRET_KEY).value(plainSecretKey).build(),
-                        EndpointProperty.Builder.newInstance().name(S3Utils.ENDPOINT_OVERRIDE).value("http://consumer-minio:9000").build()
+                        EndpointProperty.Builder.newInstance().name("bucketName").value("consumer-bucket").build(),
+                        EndpointProperty.Builder.newInstance().name("region").value("us-east-1").build(),
+                        EndpointProperty.Builder.newInstance().name("objectKey").value("consumer-object-key").build(),
+                        EndpointProperty.Builder.newInstance().name("accessKey").value("consumer-access-key").build(),
+                        EndpointProperty.Builder.newInstance().name("secretKey").value(plainSecretKey).build(),
+                        EndpointProperty.Builder.newInstance().name("endpointOverride").value("http://consumer-minio:9000").build()
                 ))
                 .build();
 
@@ -417,16 +413,14 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
         assertTrue(saved.isPresent(), "TransferProcess must be saved to MongoDB");
 
         String storedSecretKey = saved.get().getDataAddress().getEndpointProperties().stream()
-                .filter(p -> S3Utils.SECRET_KEY.equals(p.getName()))
+                .filter(p -> "secretKey".equals(p.getName()))
                 .findFirst()
                 .map(EndpointProperty::getValue)
                 .orElse(null);
 
         assertNotNull(storedSecretKey, "secretKey endpoint property must be present in stored DataAddress");
-        assertNotEquals(plainSecretKey, storedSecretKey,
-                "secretKey must be encrypted in MongoDB — plain text must never be stored");
-        assertEquals(plainSecretKey, fieldEncryptionService.decrypt(storedSecretKey),
-                "Decrypting the stored secretKey must yield the original plain value");
+        assertEquals(plainSecretKey, storedSecretKey,
+                "secretKey must be stored as-is in CP — encryption is the DP's responsibility");
 
         // cleanup
         agreementRepository.delete(agreement);

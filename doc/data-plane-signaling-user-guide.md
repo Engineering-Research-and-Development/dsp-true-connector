@@ -1,0 +1,495 @@
+# Data Plane Signaling — User Guide
+
+## Overview
+
+TRUE Connector uses the **Dataplane Signaling Protocol** to separate orchestration logic
+(Control Plane) from actual data movement (Data Plane). You can deploy one or more Data Plane
+services independently and scale them as needed.
+
+---
+
+## Concepts
+
+| Term | Description |
+|---|---|
+| **Control Plane (CP)** | The main connector application that manages negotiations and transfer lifecycle |
+| **Data Plane (DP)** | A lightweight service responsible for the actual data transfer |
+| **Transfer type** | Protocol used for data movement — `HttpData-PULL`, `HttpData-PUSH`, `stream:grpc`, or `stream:kafka` |
+| **DP Registration** | A CP record describing where a DP lives and what transfer types it supports |
+| **Template distribution** | The admin-side distribution metadata used as the source when the connector re-materializes per-format catalog entries |
+
+---
+
+## Deployment
+
+The connector ships four ready-made Data Plane images:
+
+| Image | Transfer type | Local profile ports |
+|---|---|---|
+| `data-plane-http-pull` | `HttpData-PULL` | consumer 9090, provider 9092 |
+| `data-plane-http-push` | `HttpData-PUSH` | consumer 9093, provider 9091 |
+| `data-plane-grpc` | `stream:grpc` | consumer REST 9094 / gRPC 9095, provider REST 9096 / gRPC 9097 |
+| `data-plane-kafka` | `stream:kafka` | consumer 9098, provider 9099 |
+
+All four are wired in `ci/docker/docker-compose.yml`:
+
+- `--profile grpc` starts the consumer/provider gRPC dataplanes
+- `--profile kafka` starts the consumer/provider Kafka dataplanes plus the shared Kafka broker
+
+### Minimum required configuration (each DP)
+
+```properties
+# Which CP to register with (must be reachable from the DP container)
+dataplane.control-plane-admin-endpoint=http://connector:8080
+
+# Public URL of this DP (must be reachable from the CP)
+dataplane.endpoint=http://dp-http-pull:9090
+
+# Shared secret — must match what is stored on the CP for this DP
+dataplane.api-key=change-me-in-production
+```
+
+### How `application.properties` and profile files work
+
+Each standalone Data Plane module ships with:
+
+- `application.properties`
+- `application-consumer.properties`
+- `application-provider.properties`
+
+Spring Boot loads `application.properties` first and then applies the active profile file on
+top of it. In this repository, the profile files contain only the values that differ between the
+consumer and provider roles, such as the port, DP endpoint, CP admin endpoint, MongoDB name,
+default bucket, and encryption key.
+
+This means:
+
+1. If you run with `--spring.profiles.active=consumer`, Spring combines
+   `application.properties` + `application-consumer.properties`.
+2. If you run with `--spring.profiles.active=provider`, Spring combines
+   `application.properties` + `application-provider.properties`.
+3. If you run without an active profile, Spring uses only `application.properties`.
+
+Example:
+
+```bash
+java -jar data-plane-http-pull.jar --spring.profiles.active=consumer
+```
+
+or
+
+```bash
+SPRING_PROFILES_ACTIVE=provider java -jar data-plane-grpc.jar
+```
+
+> **Deployment rule**: the shipped `application-consumer.properties` and
+> `application-provider.properties` files are override files, not complete standalone
+> configurations. If you use them, keep the base `application.properties` available as well.
+> If you prefer a single deployment file, provide one complete `application.properties` and do
+> not activate a profile.
+
+### Additional configuration for the HTTP-PUSH DP
+
+For the **current built-in TRUE Connector flow**, the CP initiates the two operator-facing S3
+steps:
+
+1. **Request transfer (`HttpData-PUSH`)** — the consumer CP creates the temporary IAM user directly.
+2. **`viewData` after completion** — the consumer CP sends a transport-neutral DPS
+   `prepare(mode=VIEW)` request to the dataplane registered for the transfer format, and that DP
+   returns the presigned GET URL.
+
+The provider-side push DP also does **not** use local S3 config to access the provider artifact.
+Instead, the CP resolves the provider's tenant bucket and per-bucket credentials and passes them
+as `source.*` properties in `DataFlowStartMessage.dataAddress`. The push DP reads the artifact
+via `S3SourceReader` with those CP-supplied credentials.
+
+
+For the built-in `viewData` path, the CP supplies the full sink S3 coordinates in the VIEW
+prepare metadata. Two endpoint values may be present:
+
+- `sink.s3.endpointOverride` — internal/container-reachable S3 endpoint used by the dataplane
+  for `HeadObject` and other server-side SDK calls
+- `sink.s3.publicPresignedEndpoint` — public-facing base URL embedded into the presigned GET URL
+  returned to the browser or API caller
+
+This allows MinIO/AWS access to remain on private service names while `viewData` returns a
+host-accessible or reverse-proxy URL.
+
+```properties
+s3.endpoint=http://minio:9000
+s3.accessKey=minioadmin
+s3.secretKey=minioadmin
+s3.region=us-east-1
+# Used by the consumer connector when it prepares sink metadata for built-in VIEW presigning.
+s3.bucketName=my-consumer-bucket
+# For MinIO behind Docker NAT: the consumer connector forwards this as the VIEW presign endpoint.
+# Leave blank for AWS or when MinIO is directly accessible at s3.endpoint.
+s3.externalPresignedEndpoint=http://172.17.0.1:9000
+```
+
+### Additional configuration for the Kafka DP
+
+The Kafka dataplane still uses S3-backed `SourceReader` / `SinkWriter`, but the transport itself is
+broker-backed:
+
+```properties
+server.port=9098
+dataplane.endpoint=http://dp-kafka:9098
+
+# Kafka broker used by both provider and consumer Kafka dataplanes
+dataplane.kafka.bootstrap-servers=kafka-broker:9092
+
+# Prefix used when the provider DP allocates transport topics
+dataplane.kafka.topic-prefix=stream-topic-
+```
+
+In the local compose stack the consumer Kafka DP is exposed on host port `9098` and the provider
+Kafka DP on host port `9099` (container port `9098` in both cases).
+
+---
+
+## How Transfers Work
+
+> **Bucket and credential ownership**: The Control Plane is authoritative for tenant bucket
+> selection and S3 credential provisioning. Bucket creation and per-bucket credential setup
+> happen at CP startup (`InitialDataLoader`) — **DP startup does not provision buckets**. The
+> CP resolves the correct bucket for each tenant and includes the necessary S3 credentials in
+> every CP↔DP message, so DPs do not need independent access to the credential store.
+
+### Which flows use DPS `prepare`
+
+TRUE Connector does **not** call DPS `prepare` for every transfer type:
+
+| Transfer type | `prepare` used by the built-in CP flow? | Summary |
+|---|---|---|
+| `HttpData-PULL` | No | Provider CP builds the presigned URL directly; consumer pull DP starts on demand |
+| `HttpData-PUSH` | No | Consumer CP creates sink credentials directly; provider push DP receives everything in `start` |
+| `stream:grpc` | Yes | Provider gRPC DP allocates a streaming session before the consumer starts |
+| `stream:kafka` | Yes | Provider Kafka DP allocates topic and broker metadata before the consumer starts |
+
+### HTTP-PULL — consumer fetches the artifact
+
+1. **Consumer** requests a transfer (`HttpData-PULL`).
+2. **Provider admin** calls *Start transfer* — the CP resolves the tenant bucket via
+   `TenantBucketResolver` and generates a presigned S3 download URL **directly via its own
+   S3 client** (no pull DP is registered or needed on the provider side). That URL is sent
+   to the consumer inside `TransferStartMessage`.
+3. **Consumer admin** calls *Download data* — the consumer-side pull DP downloads the artifact
+   from the presigned URL and stores it in the consumer's S3 bucket.
+4. The DP notifies the CP when done; both sides move to `COMPLETED`.
+5. **Consumer admin** can call *View data* to get a fresh presigned URL for the stored artifact.
+
+> **Note (current built-in behavior)**: The provider CP generates the presigned GET URL
+> directly using its own S3 client. A provider-side pull DP is not part of the current
+> built-in HTTP-PULL flow.
+
+### HTTP-PUSH — provider pushes the artifact to the consumer
+
+1. **Consumer admin** calls *Request transfer* (`HttpData-PUSH`).
+   The consumer CP resolves the tenant bucket via `TenantBucketResolver`, creates a temporary
+   S3 user with write-only access to that bucket, and includes those credentials in the
+   transfer request to the provider. The CP uses `s3.endpoint` (internal Docker URL) as
+   `endpointOverride` so the provider DP can reach MinIO from within the network.
+2. **Provider admin** calls *Start transfer* — the provider CP adds the provider's own S3
+   credentials (`source.*` properties, resolved from per-bucket credentials) alongside the
+   consumer's temporary credentials (`sink.*` properties) and forwards them to the transfer
+   process. No data moves yet.
+3. **Provider admin** calls *Push data* (the download endpoint on the provider side) — the
+   provider CP routes `POST /dataflows/start` to the push DP with a `DataFlowStartMessage`
+   containing both `source.*` (provider S3, CP-resolved) and `sink.*` (consumer temp
+   credentials). The push DP reads the artifact via `S3SourceReader` using those
+   `source.*` properties and uploads it directly to the consumer's S3 bucket using the
+   `sink.*` credentials.
+4. The DP notifies both CPs when done; both sides move to `COMPLETED`.
+5. **Consumer admin** can call *View data* to get a presigned URL for the received artifact.
+
+> **Note**: Temporary push credentials are automatically cleaned up after the transfer
+> completes or is terminated.
+
+### gRPC streaming — provider prepares, consumer streams
+
+1. **Consumer admin** calls *Request transfer* with `format=stream:grpc`.
+   Optional source hints such as `sourceType=s3` and `finite=true|false` can be passed
+   in the request `dataAddress`.
+2. **Provider admin** calls *Start transfer*.
+   The provider CP calls DPS `POST /dataflows/prepare` on the provider gRPC DP. The CP
+   forwards any source hints from the original `dataAddress` along with the resolved S3
+   access details (bucket, credentials, region, internal endpoint) in
+   `DataFlowPrepareMessage.metadata` under the `source` / `source.s3` sections. The DP
+   allocates a stream session and returns gRPC endpoint metadata (`host`, `port`, `sessionId`,
+   `mode`).
+3. The provider CP sends a standard `TransferStartMessage` to the consumer, embedding those
+   transport details inside `dataAddress`.
+4. **Consumer admin** calls *Download data*.
+   The consumer CP routes `POST /dataflows/start` to the consumer gRPC DP, which opens the gRPC
+   stream and writes received chunks into the consumer bucket.
+5. Finite streams notify `COMPLETED` on EOF, after which the consumer can use the shared
+   `viewData` behavior described below to obtain a fresh presigned URL for the stored artifact.
+   Non-finite streams stay `STARTED` until explicitly terminated; if the provider unexpectedly
+   closes a non-finite stream, the DP reports `errored`.
+
+The provider-side prepared session is sticky-routed to one DP instance and is cleaned up on
+rollback or termination.
+
+### Kafka streaming — provider prepares topic, consumer drains broker
+
+1. **Consumer admin** calls *Request transfer* with `format=stream:kafka`.
+   The current built-in scenario is an S3-backed finite stream, even though the transport metadata
+   still carries a `mode` field.
+2. **Provider admin** calls *Start transfer*.
+   The provider CP calls DPS `POST /dataflows/prepare` on the provider Kafka DP, which allocates
+   transport metadata (`bootstrapServers`, `topic`, `groupId`, `mode`) and starts publishing the
+   provider source stream into that topic.
+3. The provider CP sends a standard `TransferStartMessage` to the consumer, embedding those Kafka
+   transport details inside `dataAddress`.
+4. **Consumer admin** calls *Download data*.
+   The consumer CP routes `POST /dataflows/start` to the consumer Kafka DP, which subscribes to the
+   prepared topic and writes consumed records into the consumer bucket.
+5. Finite transfers complete when the consumer sees the EOF marker published by the provider DP.
+   `viewData` then returns a normal presigned URL for the stored consumer-side artifact.
+
+Current implementation notes:
+
+- Topic names are normalized from transfer IDs into Kafka-safe names such as
+  `stream-topic-urn_uuid_...`.
+- Suspend and resume are **not** implemented for `stream:kafka` yet; terminate and re-request the
+  transfer instead.
+
+### Viewing downloaded data
+
+After a transfer reaches `COMPLETED`, call:
+
+```
+GET /api/v1/transfers/{transferProcessId}/view
+```
+
+The CP sends a transport-neutral DPS `prepare(mode=VIEW)` request to the dataplane registered for
+that transfer format. The DP returns a presigned S3 GET URL for the artifact stored under
+`objectKey = transferProcessId` in the consumer's bucket. The URL is valid for 7 days.
+
+### Streaming `viewData` semantics
+
+For streaming transports (`stream:grpc`, `stream:kafka`), `viewData` is supported only when the
+completed transfer produced a finite, materialized consumer-side artifact (for example, one S3
+object). In that case, the dataplane `prepare(mode=VIEW)` path returns a presigned URL for the
+stored artifact.
+
+`viewData` is not a generic live-stream access mechanism. Non-finite streams are not exposed
+through presigned URLs; they require a separate consume/query/subscribe model.
+
+---
+
+## How catalog formats follow dataplane registration
+
+The catalog exposed by the connector keeps DSP-compliant `Distribution` objects on the wire, but the
+set of advertised `distribution.format` values is driven by the currently registered dataplanes.
+
+What this means in practice:
+
+1. A DP registers itself with the CP at startup through `/api/v1/dataplanes`.
+2. The CP stores that registration, publishes audit events, and triggers catalog reconciliation.
+3. `CatalogDataPlaneFormatSyncService` computes the union of all registered
+   `supportedTransferTypes`.
+4. For each dataset, the connector keeps one concrete distribution per active format.
+5. If no dataplane formats are registered, the connector keeps one template distribution with
+   `format = null` instead of exposing stale old formats.
+
+### Effect on admin updates
+
+Updating a distribution via `/api/v1/distributions/{id}` edits the template metadata that is reused
+for reconciliation, but it does **not** freeze the final format list forever. After a reconcile, the
+connector re-applies the active dataplane capability set:
+
+- metadata such as title, description, access service, and policy references are preserved from the
+  updated template
+- `distribution.format` entries are re-derived from registered dataplanes
+
+If you want a dataset to advertise `HttpData-PULL`, `HttpData-PUSH`, `stream:grpc`, or
+`stream:kafka`, the corresponding dataplane must be registered.
+
+---
+
+## Audit Events
+
+Both the Control Plane and each Data Plane record audit events to their respective MongoDB
+collections.
+
+### Control Plane audit events for DP registration
+
+Query via the CP admin API:
+
+```bash
+# All DP registration events
+curl "http://localhost:8080/api/v1/audit?eventType=Data+Plane+registered" \
+  -u admin@mail.com:password
+
+# All DP audit event types
+curl http://localhost:8080/api/v1/audit/types \
+  -u admin@mail.com:password
+```
+
+| Event type | Trigger |
+|---|---|
+| `DATAPLANE_REGISTERED` | New DP connected (`POST /api/v1/dataplanes`) |
+| `DATAPLANE_REGISTRATION_UPDATED` | DP restarted and re-registered (idempotent update) |
+| `DATAPLANE_DEREGISTERED` | DP removed (`DELETE /api/v1/dataplanes/{id}`) |
+| `DATAPLANE_REGISTRATION_NOT_FOUND` | Delete attempted on unknown registration ID |
+
+These registration changes also trigger catalog distribution reconciliation, so dataset format
+availability follows the active dataplane set automatically.
+
+### Data Plane audit events
+
+Each DP exposes its own audit event API at `/api/v1/audit` (protected by `X-Api-Key`):
+
+```bash
+# All events for a specific transfer
+curl "http://localhost:9090/api/v1/audit?processId=urn:uuid:..." \
+  -H "X-Api-Key: dp-secret-key"
+
+# Filter by transfer type
+curl "http://localhost:9090/api/v1/audit?transferType=HttpData-PULL" \
+  -H "X-Api-Key: dp-secret-key"
+
+# Filter by event type
+curl "http://localhost:9090/api/v1/audit?eventType=Data+flow+completed" \
+  -H "X-Api-Key: dp-secret-key"
+
+# Supported event types
+curl http://localhost:9090/api/v1/audit/types \
+  -H "X-Api-Key: dp-secret-key"
+```
+
+| Event type | When |
+|---|---|
+| `DATAFLOW_STARTED` | DP receives `/dataflows/start` |
+| `DATAFLOW_PREPARE_REQUESTED` | DP receives `/dataflows/prepare` |
+| `DATAFLOW_COMPLETED` | Transfer finishes and CP is notified |
+| `DATAFLOW_FAILED` | Transfer fails, CP is notified of error |
+| `DATAFLOW_TERMINATED` | Explicit terminate received |
+| `DATAFLOW_SUSPENDED` | Suspend received |
+| `DP_REGISTRATION_SUCCESS` | DP successfully registered with CP on startup |
+| `DP_REGISTRATION_FAILED` | CP registration failed after all retries |
+
+Events are stored in the `dp_audit_events` MongoDB collection on each DP's own MongoDB instance.
+This is separate from the CP's `audit_events` collection because the DP is an independent service.
+
+---
+
+## Suspend and Resume
+
+A transfer in `STARTED` state can be suspended **before** data movement has started:
+
+```
+PUT /api/v1/transfers/{id}/suspend   → 200 OK  (no download in progress)
+PUT /api/v1/transfers/{id}/suspend   → 400     (download already in progress)
+```
+
+Once a download is in progress, the data plane transfer cannot be paused. The CP will
+reject a suspend request with HTTP 400 in that case.
+
+To resume a suspended transfer, the provider admin calls *Start transfer* again.
+
+---
+
+## Registering a Data Plane Manually
+
+If automatic startup registration is disabled or fails, register a DP via the CP admin API:
+
+```bash
+curl -X POST http://localhost:8080/api/v1/dataplanes \
+  -H "Content-Type: application/json" \
+  -u admin@mail.com:password \
+  -d '{
+    "endpoint": "http://my-dp:9090",
+    "supportedTransferTypes": ["HttpData-PULL"],
+    "apiKey": "my-secret"
+  }'
+```
+
+### View registered Data Planes
+
+```bash
+curl http://localhost:8080/api/v1/dataplanes \
+  -u admin@mail.com:password
+```
+
+### Remove a Data Plane
+
+```bash
+curl -X DELETE http://localhost:8080/api/v1/dataplanes/{id} \
+  -u admin@mail.com:password
+```
+
+---
+
+## Scaling
+
+HTTP-PULL and HTTP-PUSH dataplanes are stateless Spring Boot applications. Run multiple
+instances and register each separately:
+
+```bash
+# Register replica 1
+curl -X POST http://localhost:8080/api/v1/dataplanes \
+  -u admin@mail.com:password \
+  -d '{"endpoint":"http://dp-pull-1:9090","supportedTransferTypes":["HttpData-PULL"],"apiKey":"..."}'
+
+# Register replica 2
+curl -X POST http://localhost:8080/api/v1/dataplanes \
+  -u admin@mail.com:password \
+  -d '{"endpoint":"http://dp-pull-2:9090","supportedTransferTypes":["HttpData-PULL"],"apiKey":"..."}'
+```
+
+For these stateless HTTP dataplanes, requests are distributed in round-robin order across
+registered DPs of the same transfer type.
+
+Streaming dataplanes (`stream:grpc`, `stream:kafka`) are different: after `prepare()`, the CP
+sticky-routes the transfer to the same DP instance because that instance holds the in-memory
+prepared session state. Do not assume equal round-robin distribution for an in-progress streaming
+transfer, and avoid terminating the specific DP instance assigned to a prepared or started
+streaming session.
+
+---
+
+## Adding a Custom Data Plane
+
+If you have a custom DP implementation that follows the Dataplane Signaling API spec,
+register it the same way using `POST /api/v1/dataplanes`. Your DP must expose:
+
+- `POST /dataflows/start` — begin a transfer (async)
+- `POST /dataflows/prepare` — prepare resources (DPS spec; not called by the built-in CP for HTTP-PULL or HTTP-PUSH)
+- `POST /dataflows/{id}/terminate` — abort a transfer (also accepts `DELETE`)
+- `POST /dataflows/{id}/suspend` — suspend a transfer
+- `POST /dataflows/{id}/resume` — resume a suspended transfer
+- `GET /dataflows/{id}/status` — query the current data flow state
+
+Your DP should send canonical per-transfer callbacks to the CP after each lifecycle event:
+
+- `POST {callbackBaseAddress}/api/v1/transfers/{processId}/dataflow/prepared` — resources prepared; required for DPs that implement `prepare()`
+- `POST {callbackBaseAddress}/api/v1/transfers/{processId}/dataflow/started` — transfer started
+- `POST {callbackBaseAddress}/api/v1/transfers/{processId}/dataflow/completed` — transfer completed
+- `POST {callbackBaseAddress}/api/v1/transfers/{processId}/dataflow/errored` — transfer failed
+
+Each callback must carry the `X-Api-Key` header with the DP's registered API key.
+
+See `doc/data-plane-signaling-technical.md` for the full message schemas.
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Transfer stays in `REQUESTED` | No DP registered for that transfer type | Register a DP via admin API |
+| `stream:grpc` stays in `REQUESTED` after *Start transfer* | No gRPC DP registered on the provider side or `prepare` failed | Check `/api/v1/dataplanes`, provider DP logs, and gRPC DP registration |
+| `stream:grpc` reaches `STARTED` but *Download data* fails immediately | Consumer received incomplete gRPC `dataAddress` metadata | Verify provider `prepare` response contains `host`, `port`, and `sessionId` |
+| `stream:kafka` stays in `REQUESTED` after *Start transfer* | No Kafka DP registered on the provider side or the broker-backed `prepare` call failed | Check `/api/v1/dataplanes`, provider DP logs, Kafka broker health, and Kafka DP registration |
+| `stream:kafka` reaches `STARTED` but *Download data* fails immediately | Consumer received incomplete Kafka `dataAddress` metadata | Verify provider `prepare` response contains `bootstrapServers`, `topic`, and `groupId` |
+| `stream:kafka` start fails with topic creation errors | Transfer ID was mapped to an invalid topic name or the broker is unavailable | Check provider Kafka DP logs for `Failed to create Kafka topic` and verify Kafka broker health |
+| Non-finite gRPC stream ends and transfer moves to error | Provider closed a stream that was advertised as non-finite | Check provider source implementation and DP logs; non-finite EOF is treated as an error |
+| DP logs "CP registration failed" on startup | CP not reachable or wrong endpoint | Check `dataplane.control-plane-admin-endpoint` |
+| CP rejects DP callbacks with HTTP 401 | API key mismatch | Verify `dataplane.api-key` matches the key stored in `DataPlaneRegistration` on the CP |
+| Transfer stuck in `STARTED` after push | DP completed but CP callback failed | Check DP logs; verify the CP callback URL (`dataplane.control-plane-admin-endpoint`) is reachable from the DP container |
+| `400 Cannot suspend while data transfer is in progress` | `downloadData()` was already called | Suspend is only valid before the actual data movement starts |
+| `viewData` returns a presigned URL with the wrong host | `s3.externalPresignedEndpoint` not set on the consumer CP, or set to an internal-only hostname | Set `s3.externalPresignedEndpoint` to the browser-accessible or reverse-proxy URL; the CP sends it as `sink.s3.publicPresignedEndpoint` while the dataplane keeps using `sink.s3.endpointOverride` for internal S3 calls |
+| `viewData` returns 400 | Transfer not yet COMPLETED or artifact not downloaded | Ensure the transfer is COMPLETED and `isDownloaded = true` |

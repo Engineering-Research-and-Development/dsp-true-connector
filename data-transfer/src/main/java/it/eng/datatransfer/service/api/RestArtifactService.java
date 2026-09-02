@@ -9,9 +9,7 @@ import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ExternalData;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
-import it.eng.tools.service.TenantBucketResolver;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.util.codec.binary.Base64;
@@ -29,33 +27,42 @@ public class RestArtifactService {
     private final TransferProcessStrategy dataTransferService;
     private final OkHttpRestClient okHttpRestClient;
     private final AuditEventPublisher publisher;
-    private final S3ClientService s3ClientService;
     private final ArtifactTransferService artifactTransferService;
-    private final TenantBucketResolver tenantBucketResolver;
 
+    /**
+     * Creates a new {@code RestArtifactService}.
+     *
+     * @param dataTransferService     strategy for locating transfer processes
+     * @param okHttpRestClient        HTTP client for external artifact requests
+     * @param publisher               audit event publisher
+     * @param artifactTransferService artifact lookup service
+     */
     public RestArtifactService(TransferProcessStrategy dataTransferService,
                                OkHttpRestClient okHttpRestClient,
                                AuditEventPublisher publisher,
-                               S3ClientService s3ClientService,
-                               ArtifactTransferService artifactTransferService,
-                               TenantBucketResolver tenantBucketResolver) {
+                               ArtifactTransferService artifactTransferService) {
         super();
         this.dataTransferService = dataTransferService;
         this.okHttpRestClient = okHttpRestClient;
         this.publisher = publisher;
-        this.s3ClientService = s3ClientService;
         this.artifactTransferService = artifactTransferService;
-        this.tenantBucketResolver = tenantBucketResolver;
     }
 
+    /**
+     * Streams artifact data for the given transaction ID to the HTTP response.
+     * FILE-type artifacts are no longer served via this endpoint — the Data Plane
+     * issues a presigned URL embedded directly in the {@code TransferStartMessage}.
+     *
+     * @param transactionId Base64-encoded {@code consumerPid|providerPid} token
+     * @param response      servlet response to write data into
+     */
     public void getArtifact(String transactionId, HttpServletResponse response) {
         TransferProcess transferProcess = getTransferProcessForTransactionId(transactionId);
         Artifact artifact = artifactTransferService.findArtifact(transferProcess);
 
         switch (artifact.getArtifactType()) {
             case FILE:
-                getFile(artifact.getValue(), transferProcess.getTenantId(), response);
-                break;
+                throw new DataTransferAPIException("FILE artifacts are served via a presigned URL in the TransferStartMessage — direct download through this endpoint is no longer supported.");
             case EXTERNAL:
                 getExternalData(artifact.getValue(), artifact.getAuthorization(), response);
                 break;
@@ -65,19 +72,6 @@ public class RestArtifactService {
                 throw new DownloadException("Error while downloading data", HttpStatus.INTERNAL_SERVER_ERROR);
         }
         publisher.publishEvent(new ArtifactConsumedEvent(transferProcess.getAgreementId(), transferProcess.getTenantId()));
-    }
-
-
-    @Deprecated(since = "Use S3ClientService over presignedURL")
-    private void getFile(String fileId, String tenantId, HttpServletResponse response) {
-        String bucketName = tenantBucketResolver.resolveBucketName(tenantId);
-        // Check if file exists in S3
-        if (!s3ClientService.fileExists(bucketName, fileId)) {
-            log.error("Data not found in S3");
-            throw new DataTransferAPIException("Data not found in S3");
-        }
-        // Download file from S3
-        s3ClientService.downloadFile(bucketName, fileId, response);
     }
 
     private void getExternalData(String value, String authorization, HttpServletResponse response) {
@@ -98,8 +92,6 @@ public class RestArtifactService {
             log.error("Could not download external data: {}", externalData.getMessage());
             throw new DownloadException("Could not download external data", HttpStatus.INTERNAL_SERVER_ERROR);
         }
-
-
     }
 
     private TransferProcess getTransferProcessForTransactionId(String transactionId) {

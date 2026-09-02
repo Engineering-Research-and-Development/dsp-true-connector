@@ -1,0 +1,496 @@
+{
+  "info": {
+    "_postman_id": "0516dd58-23c7-439f-a1e8-d2fcc9ec80bb",
+    "name": "Data Transfer API - stream:kafka test",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "21815221",
+    "_collection_link": "https://go.postman.co/collection/21815221-0516dd58-23c7-439f-a1e8-d2fcc9ec80bb?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "[C] Login - API",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_consumer_api\", jsonData[\"access_token\"])\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{CONSUMER_AUTH_LOGIN}}",
+          "host": [
+            "{{CONSUMER_AUTH_LOGIN}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "[P] Login  - API",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "//extract the access_token and refresh_token from the response body and store them in environment variables.\r\npm.test(\"Retrieve access_token\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{PROVIDER_AUTH_LOGIN}}",
+          "host": [
+            "{{PROVIDER_AUTH_LOGIN}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "[C] Request transfer",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Retrieve consumer transfer process id\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"consumer_transferProcessId\", jsonData[\"data\"][\"@id\"])\r\n});\r\n\r\npm.test(\"Check if status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"TransactionId\", ()=> {\r\n    var jsonData = pm.response.json();\r\n    let trId = jsonData[\"data\"][\"consumerPid\"] + \"|\" + jsonData[\"data\"][\"providerPid\"];\r\n    pm.collectionVariables.set(\"transactionId\", btoa(trId));\r\n    console.log(pm.collectionVariables.get(\"transactionId\"));\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token_consumer_api}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"transferProcessId\": \"{{consumer_transferProcessId}}\",\n    \"format\": \"stream:kafka\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{CONSUMER_API_TRANSFERS}}",
+          "host": [
+            "{{CONSUMER_API_TRANSFERS}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "[P] Find Transfer Process",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Check if status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\n\r\npm.test(\"Retrieve provider transfer process id\", function () {\r\n    var jsonData = pm.response.json();\r\n    pm.collectionVariables.set(\"provider_transferProcessId\", \r\n    jsonData[\"response\"][\"data\"][\"content\"][0][\"@id\"])\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token_provider_api}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{PROVIDER_API_TRANSFERS}}?state=REQUESTED&role=provider&datasetId=urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
+          "host": [
+            "{{PROVIDER_API_TRANSFERS}}"
+          ],
+          "query": [
+            {
+              "key": "state",
+              "value": "REQUESTED"
+            },
+            {
+              "key": "role",
+              "value": "provider"
+            },
+            {
+              "key": "datasetId",
+              "value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "[P] Start transfer",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Check if status code is 200\", function () {\r\n    pm.response.to.have.status(200);\r\n});\r\npm.test(\"Provider start returns Kafka connection properties\", function () {\r\n    var jsonData = pm.response.json();\r\n    var props = jsonData[\"data\"][\"dataAddress\"][\"endpointProperties\"];\r\n    var endpointType = props.find(p => p.name === 'endpointType');\r\n    var bootstrapServers = props.find(p => p.name === 'bootstrapServers');\r\n    var topic = props.find(p => p.name === 'topic');\r\n    pm.expect(endpointType && endpointType.value).to.eql('kafka');\r\n    pm.expect(bootstrapServers && bootstrapServers.value).to.be.ok;\r\n    pm.expect(topic && topic.value).to.match(/^stream-topic-/);\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token_provider_api}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{PROVIDER_API_TRANSFERS}}/{{provider_transferProcessId}}/start",
+          "host": [
+            "{{PROVIDER_API_TRANSFERS}}"
+          ],
+          "path": [
+            "{{provider_transferProcessId}}",
+            "start"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "[C] Download data",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Status code is 202\", function () {\r\n    pm.response.to.have.status(202);\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token_consumer_api}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/download",
+          "host": [
+            "{{CONSUMER_API_TRANSFERS}}"
+          ],
+          "path": [
+            "{{consumer_transferProcessId}}",
+            "download"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "[C] Wait for transfer COMPLETED",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const w = Date.now() + 1000; while (Date.now() < w) {}"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const retries = parseInt(pm.collectionVariables.get('waitRetry') || '0');\nconst body = pm.response.json();\nconst state = body.data && body.data.state;\nif (state !== 'COMPLETED' && retries < 30) {\n    pm.collectionVariables.set('waitRetry', retries + 1);\n    pm.execution.setNextRequest('[C] Wait for transfer COMPLETED');\n} else {\n    pm.collectionVariables.set('waitRetry', 0);\n    pm.test('Transfer process reached COMPLETED state', () => {\n        pm.expect(state).to.eql('COMPLETED');\n    });\n}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token_consumer_api}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}",
+          "host": [
+            "{{CONSUMER_API_TRANSFERS}}"
+          ],
+          "path": [
+            "{{consumer_transferProcessId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "[C] View data",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Check expected response\", ()=> {\r\n    pm.response.to.have.status(200);\r\n    var response = pm.response.text().trim().replace(/^\"|\"$/g, '');\r\n    pm.expect(response).to.match(/https?:\\/\\/[^/]+\\/dsp-true-connector-a\\//);\r\n    pm.collectionVariables.set(\"presignedURL\", response);\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{access_token_consumer_api}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{CONSUMER_API_TRANSFERS}}/{{consumer_transferProcessId}}/view",
+          "host": [
+            "{{CONSUMER_API_TRANSFERS}}"
+          ],
+          "path": [
+            "{{consumer_transferProcessId}}",
+            "view"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "[C] Use presignedURL to download actual data",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Check expected response\", ()=> {\r\n    pm.response.to.have.status(200);\r\n    var jsonData = pm.response.json();\r\n    pm.expect(jsonData[0]['employee']['name']).to.eq('John Doe');\r\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{presignedURL}}",
+          "host": [
+            "{{presignedURL}}"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "auth": {
+    "type": "basic",
+    "basic": [
+      {
+        "key": "password",
+        "value": "password",
+        "type": "string"
+      },
+      {
+        "key": "username",
+        "value": "admin@mail.com",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "PROVIDER",
+      "value": "http://localhost:8090"
+    },
+    {
+      "key": "CONSUMER_API_TRANSFERS",
+      "value": "http://localhost:8080/api/v1/transfers"
+    },
+    {
+      "key": "PROVIDER_API_TRANSFERS",
+      "value": "http://localhost:8090/api/v1/transfers"
+    },
+    {
+      "key": "consumer_transferProcessId",
+      "value": "urn:uuid:tp-kafka-4444-4444-4444-8444-444444444444"
+    },
+    {
+      "key": "presignedURL",
+      "value": ""
+    },
+    {
+      "key": "provider_transferProcessId",
+      "value": "urn:uuid:tp-kafka-provider-4444-4444-4444-8444-444444444444"
+    },
+    {
+      "key": "waitRetry",
+      "value": "5"
+    },
+    {
+      "key": "PROVIDER_AUTH_LOGIN",
+      "value": "http://localhost:8090/api/v1/auth/login"
+    },
+    {
+      "key": "CONSUMER_AUTH_LOGIN",
+      "value": "http://localhost:8080/api/v1/auth/login"
+    },
+    {
+      "key": "access_token_consumer_api",
+      "secret": true
+    },
+    {
+      "key": "access_token_provider_api",
+      "secret": true
+    },
+    {
+      "key": "transactionId",
+      "value": ""
+    }
+  ]
+}

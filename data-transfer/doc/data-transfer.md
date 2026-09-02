@@ -1,217 +1,186 @@
 # Data Transfer
-## Consumer initiates transfer
 
-**Assumption:** contract negotiation is successfully completed between consumer and provider and agreement is stored.
+## Overview
 
-Consumer initiates flow by sending TransferRequestMessage to provider endpoint http://localhost:8090/transfers/request:
+This module owns DSP transfer-process lifecycle handling in TRUE Connector.
 
-```
+Normative DSP behavior:
+
+- Consumer sends `TransferRequestMessage`
+- Provider creates a `TransferProcess` in `REQUESTED`
+- Provider performs the initial `REQUESTED -> STARTED` transition
+- Either party may later complete, suspend, restart from `SUSPENDED`, or terminate
+
+Implementation-specific behavior in this repository:
+
+- the actual byte movement is delegated to dataplanes through DPS
+- built-in HTTP-PULL and HTTP-PUSH do not use DPS `prepare`
+- streaming transports (`stream:grpc`, `stream:kafka`) do use DPS `prepare`
+- transfer availability depends on formats exposed in the catalog, which in turn follow registered
+  dataplanes
+
+## Protocol base paths
+
+TRUE Connector commonly runs with tenant-aware DSP paths. In that deployment model, the default
+tenant `engineering` yields endpoints such as:
+
+- `POST /engineering/transfers/request`
+- `POST /engineering/negotiations/request`
+- `POST /engineering/catalog/request`
+
+The unversioned root endpoint `/.well-known/dspace-version` remains tenant-unaware.
+
+## Transfer request shape
+
+Example request:
+
+```json
 {
-"@context":  "https://w3id.org/dspace/2024/1/context.json",
-"@type": "TransferRequestMessage",
-"consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-"agreementId": "urn:uuid:AGREEMENT_ID",
-"dct:format": "HttpData-PULL",
-"callbackAddress": "https://consumer.callback.url"
+  "@context": "https://w3id.org/dspace/2025/1/context.jsonld",
+  "@type": "TransferRequestMessage",
+  "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
+  "agreementId": "urn:uuid:AGREEMENT_ID",
+  "format": "HttpData-PULL",
+  "callbackAddress": "http://consumer.example/engineering/consumer"
 }
 ```
-After processing message, (validate if such agreement exists), provider will create TransferProcess response and send it to consumer.
 
-```
-{
-"@context":  "https://w3id.org/dspace/2024/1/context.json",
-"@type": "TransferProcess",
-"consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-"providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-"state": "REQUESTED"
-}
-```
-In case that agreement with such id is not found, provider will send TransferError message
+Repository-specific notes:
 
-```
-{
-"@context":  "https://w3id.org/dspace/2024/1/context.json",
-"@type": "TransferError",
-"consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-"providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-"code": "...",
-"reason": [
-{},
-{}
-]
-}
-```
-Internally, provider will store callbackAddress and agreementId into TransferProcess document. Those 2 fields will be used to send TransferStartMessage, to generate download link and enforce agreement, once download link is accessed, like
+- `format` must match a distribution currently advertised by the provider dataset
+- push transfers carry transport-specific sink details in `dataAddress`
+- pull transfers receive their final `dataAddress` later in `TransferStartMessage`
 
-```
-"transfer_process" : [
-{
-"_id": "abc45798-4444-4932-8baf-ab7fd66ql4d5",
-"_class": "it.eng.datatransfer.model.TransferProcess",
-"providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-"consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",
-"callbackAddress" : "http://localhost:8080/consumer/transfer/callback/",
-"agreementId" : "urn:uuid:AGREEMENT_ID",
-"state" : "REQUESTEDs",
-"createdBy": "admin@mail.com",
-"lastModifiedBy": "admin@mail.com",
-"issued": "2024-04-23T16:26:00.000Z",
-"modified": "2024-04-23T16:26:00.000Z",
-"version": 0
-}
-]
-```
+## Current transfer types
 
-Here the path branches and depending on the data storage solution the DataAddress is different:
- - the data can be stored in a S3 bucket
- - the data can be stored using another external storage solution, in which case the DataAddress will contain the URL to that file in the external storage
+| Format | DSP transfer style | DPS behavior in TRUE Connector |
+|---|---|---|
+| `HttpData-PULL` | Pull | Provider CP generates presigned URL directly; consumer pull DP executes the download |
+| `HttpData-PUSH` | Push | Consumer CP creates temporary sink credentials; provider push DP copies provider S3 -> consumer S3 |
+| `stream:grpc` | Pull-like streaming | Provider gRPC DP prepares a session; consumer gRPC DP streams chunks into consumer storage |
+| `stream:kafka` | Pull-like brokered streaming | Provider Kafka DP prepares topic metadata; consumer Kafka DP drains broker records into consumer storage |
 
-## Http-PULL
+## HTTP-PULL
 
-![http pull flow](diagrams/pull_data_transfer.png "http pull flow")
+Current repository flow:
 
-Connector will generate a presignedURL(download link), in following format:
+1. Consumer sends `TransferRequestMessage` with `format=HttpData-PULL`
+2. Provider admin calls start transfer
+3. Provider CP generates a presigned GET URL directly through `S3ClientService`
+4. Provider sends `TransferStartMessage` containing that URL in `dataAddress.endpoint`
+5. Consumer admin calls download
+6. Consumer-side pull DP receives DPS `POST /dataflows/start`
+7. Pull DP downloads from the presigned URL and stores the artifact in the consumer bucket under
+   `objectKey = transferProcessId`
+8. DP notifies completion back to the CP
 
-```
-http://localhost:9000/dsp-true-connector-provider-bucket/urn%3Auuid%3A71053997-02f8-4def-b445-a6b9ce5a1d18?response-content-disposition=attachment%3B%20filename%3D%22ENG-employee.json
+Important implementation detail:
 
-```
+- the built-in flow does **not** require a provider-side pull dataplane
 
-### Consumer triggers download
+## HTTP-PUSH
 
-Upon initiating, the data will be directly downloaded from S3 bucket, using presigned URL. The consumer will receive the data and store it in S3.
+Current repository flow:
 
+1. Consumer admin requests transfer with `format=HttpData-PUSH`
+2. Consumer CP resolves the tenant bucket and creates temporary write-only S3 credentials
+3. Consumer sends those sink details in `TransferRequestMessage.dataAddress`
+4. Provider admin starts the transfer
+5. Provider admin triggers data movement
+6. Provider-side push DP receives DPS `POST /dataflows/start`
+7. The DP reads the source artifact from provider S3 using CP-supplied `source.*` credentials and
+   uploads it to consumer S3 using `sink.*` credentials
+8. Temporary credentials are cleaned up after completion or termination
 
-## Http-PUSH
+Important implementation detail:
 
-![http push flow](diagrams/push_data_transfer.png "http push flow")
+- the built-in flow does **not** use a consumer-side push dataplane
 
-Connector acting as consumer will generate the DataAddress with S3 credentials that the connector acting as provider will use to upload the data in following format:
+## Streaming transports
 
-```
-"dataAddress": {
-    "endpointProperties": [
-      {
-        "name": "bucketName",
-        "value": "dsp-true-connector-consumer"
-      },
-      {
-        "name": "region",
-        "value": "us-east-1"
-      },
-      {
-        "name": "objectKey",
-        "value": "urn:uuid:22644978-9b3d-4907-828f-7cb79d489996"
-      },
-      {
-        "name": "accessKey",
-        "value": "GetBucketUser-ece8f0de"
-      },
-      {
-        "name": "secretKey",
-        "value": "f0ca1d01-fd18-4168-b58a-81f6c1cf92dc"
-      },
-      {
-        "name": "endpointOverride",
-        "value": "http://localhost:9000"
-      }
-    ]
-  }
-```
+### gRPC
 
-### Provider triggers upload
+- provider side uses DPS `prepare` to allocate a session and transport metadata
+- consumer side uses DPS `start` to connect and stream chunks
+- source and sink access stay behind `SourceReader` / `SinkWriter`
+- provider-side prepared sessions are sticky-routed to the same dataplane instance
 
-Upon initiating, the data will be directly downloaded from S3 bucket, using presigned URL and then uploaded to the S3 bucket specified in the DataAddress.
+### Kafka
 
-## External storage
+- provider side uses DPS `prepare` to allocate topic and broker metadata
+- consumer side uses DPS `start` to subscribe and drain records
+- current built-in flow is finite S3-backed streaming
+- suspend/resume are not implemented for `stream:kafka`
 
-**NOTE** This solution downloads the data through the provider connector, which then forwards the data to the consumer. This is not a direct download from the external storage.
+## `prepare` vs `start`
 
-Connector exposes REST endpoint for "downloading" artifacts, in following format:
+Current TRUE Connector behavior:
 
-```
-https://conenctor.provider:port/artifact/encoded(consumerPid|providerPid)/artifactId
+| Transfer type | `prepare` used? | Why |
+|---|---|---|
+| `HttpData-PULL` | No | Presigned URL can be produced directly by the provider CP |
+| `HttpData-PUSH` | No | Sink credentials are created directly by the consumer CP |
+| `stream:grpc` | Yes | Session metadata must exist before the consumer can connect |
+| `stream:kafka` | Yes | Topic and broker metadata must exist before the consumer can subscribe |
 
-```
+This is an implementation decision, not a DSP requirement.
 
-Idea for this is that if single endpoint is exposed for all connectors, how could we know (at this stage, without credentials authorization) which connector is accessing data. In url we have "embedded" consumer and provider Pids, used to start transfer, and we can use them, to check if transferProcess is in started state, and to use consumerPid to get agreementId (TransferRequestMessage.agreementId) to fetch and enforce agreement.
+## Viewing transferred data
 
-describe logic with some example messages, so we might use them in req testing
+After a transfer reaches `COMPLETED`, the consumer can call:
 
+`GET /api/v1/transfers/{transferProcessId}/view`
 
-Once resource is ready, can be done automatically or by enabling it from UI (user initiates sending TransferStartMessage, provider will perform following:
+The CP generates a fresh presigned GET URL directly via `S3ClientService`. No dataplane call is
+required for `viewData`.
 
-* for given consumerPid and providerPid from TransferProcess message, download link will be generated using:
+## Interaction with the catalog
 
-```
-String encoded = Base64.encodeBase64URLSafeString((transferProcess.consumer_pid + "|" + transferProcess.provider_pid).getBytes(Charset.forName("UTF-8")));
-url = "/artifact/" + encoded + "/1"
-```
-* using callbackAddress from transferProcess, send request to consumer with link included
+The transfer module depends on catalog capabilities being aligned with dataplane registrations:
 
-```
-{
-  "@context":  "https://w3id.org/dspace/2024/1/context.json",
-  "@type": "TransferStartMessage",
-  "providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-  "consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",  
-  "dataAddress": {
-    "@type": "DataAddress",
-    "endpointType": "https://w3id.org/idsa/v4.1/HTTP",
-    "endpoint": "http://localhost:8090/artifact/encoded_value/artifact_id",
-  }
-}
+- users discover supported formats from dataset distributions and `/api/v1/datasets/{id}/formats`
+- those formats are re-derived from active dataplane registrations
+- if no dataplane advertises a format, the transfer router cannot select a matching dataplane
 
-```
+In other words, catalog format synchronization and dataplane routing must stay consistent for
+transfer initiation to succeed.
 
-**Note** for this phase, authorization for downloading artifact is not implemented.
+## Source of truth in code
 
-* upon receiving 200 OK from consumer, update TransferProcess.STATE to STARTED.
+Key implementation touchpoints:
 
-### Consumer triggers download link
+- `data-transfer/.../DataTransferAPIService`
+- `data-transfer/.../AbstractDataTransferService`
+- `data-transfer/.../AutomaticDataTransferService`
+- `data-transfer/.../DataPlaneClient`
+- `data-transfer/.../DataPlaneRouter`
+- `data-transfer/.../DataPlaneRegistrationService`
+- `data-transfer/.../DataFlowCallbackController`
 
-Upon receiving request for artifact, provider will initiate filter, to validate following:
+## `POST /api/v1/dataplanes`
 
-* if link needs to be validated (link contains '/artifact/')
-* if link is download link, get consumerPid and providerPid from url (parse url and decode values)
-* get agreementId for consumerPid:providerPid combination (from TransferProcess document)
-* if agreementId is found, trigger agreement enforcement
+This admin endpoint is used to register a dataplane instance with the Control Plane so it can
+advertise supported transfer formats and receive routed DPS lifecycle calls.
 
-If all steps are evaluated as true, in that case provider connector will allow request to be executed, otherwise it will return http 503 status, saying service not available.
+#### Authentication
 
-Controller that handles artifacts will fetch correct artifact based on artifactId passed and sends response back to the consumer.
+Data Plane registration uses a two-tier API-key model:
 
-For testing, with initial data present in 
+1. **Bootstrap Key (`X-Registration-Key`):** A shared, CP-wide secret configured as
+   `dataplane.registration.bootstrap-key`. New Data Planes present this header on initial
+   `POST /api/v1/dataplanes` enrollment. The Control Plane validates the key and, if correct,
+   persists the registration.
 
+2. **Per-Instance API Key:** Each registration includes an API key specific to that Data Plane
+   instance. The raw key is never persisted — only its HMAC-SHA256 hash (keyed with
+   `dataplane.registration.key-pepper`, a CP-wide secret) is stored in the database. This allows
+   the Control Plane to authenticate that Data Plane's subsequent callbacks, re-registrations,
+   and deregistration requests via the `X-Api-Key` header, without ever holding the raw secret.
 
-"providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-"consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER",  
-
-```
-http://localhost:8090/artifact/dXJuOnV1aWQ6Q09OU1VNRVJfUElEX1RSQU5TRkVSfHVybjp1dWlkOlBST1ZJREVSX1BJRF9UUkFOU0ZFUg/1
-```
-
-and not available - HTTP 503:
-
-"providerPid": "urn:uuid:PROVIDER_PID_TRANSFER",
-"consumerPid": "urn:uuid:CONSUMER_PID_TRANSFER_NOT",  
-
-```
-http://localhost:8090/artifact/dXJuOnV1aWQ6Q09OU1VNRVJfUElEX1RSQU5TRkVSfHVybjp1dWlkOlBST1ZJREVSX1BJRF9UUkFOU0ZFUl9OT1Q/1
-```
-
-TODO:
- 
- * add authorization logic for data endpoint - we might then have endpoint without encoded part; then we need to add creating credentials, storing credentials and checking then when consumer "clicks" download link.
-
-## Async Tenant Context Propagation
-
-In multi-tenant deployments, the active tenant is held in `TenantContextHolder`, a `ThreadLocal` set from the incoming request. HTTP-PULL and HTTP-PUSH transfers, and the automatic transfer retry loop, all hand off work to a Spring-managed executor or scheduler, which run on a separate worker thread. A plain `ThreadLocal` does not survive that hop — the worker thread would otherwise start with no tenant context.
-
-To fix this, `it.eng.tools.configuration.TenantContextTaskDecorator` (a `org.springframework.core.task.TaskDecorator`) is installed on every executor/scheduler bean defined in `DataTransferConfiguration`:
-
-- `httpPullTransferExecutor` — runs `HttpPullTransferStrategy` transfers
-- `httpPushTransferExecutor` — runs `HttpPushTransferStrategy` transfers
-- `transferTaskScheduler` — schedules the non-blocking retry delays used by `AutomaticDataTransferService` when a protocol message attempt fails and a retry is still within the configured retry budget
-
-The decorator captures the submitting thread's tenant ID, sets it on the worker thread before the delegated task runs, and clears it in a `finally` block afterwards so pooled threads never leak tenant context into an unrelated task. This keeps tenant-scoped repository lookups, S3 bucket resolution (`TenantBucketResolver.resolveBucketName(tenantId)`), and audit logging correct for transfers and retries that execute off the original request thread. See [doc/architecture.md](../../doc/architecture.md) for the broader multi-tenant runtime picture.
+**Note on specification alignment:** The Dataplane Signaling Protocol (DPS) specification
+explicitly leaves registration-endpoint authentication as implementation-specific ("MAY require an
+authorization mechanism such as OAuth 2.0 or API Key") and models any such mechanism as an
+optional `authorization` object inside the registration request body, not as HTTP headers. The
+TRUE Connector's use of `X-Registration-Key` and `X-Api-Key` headers is therefore an
+implementation-specific design choice made under the latitude explicitly granted by the
+specification — not a DPS-mandated or DPS-recommended shape.

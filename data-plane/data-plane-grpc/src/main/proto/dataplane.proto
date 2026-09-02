@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package dataplane;
+
+option java_package = "it.eng.dataplane.grpc.proto";
+option java_multiple_files = true;
+
+service DataStream {
+  rpc Stream(StreamRequest) returns (stream DataChunk);
+}
+
+message StreamRequest {
+  string session_id = 1;
+}
+
+message DataChunk {
+  bytes payload = 1;
+}

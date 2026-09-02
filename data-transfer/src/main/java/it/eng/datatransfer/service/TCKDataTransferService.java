@@ -3,6 +3,7 @@ package it.eng.datatransfer.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.datatransfer.client.DataPlaneClient;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.properties.DataTransferProperties;
@@ -15,9 +16,7 @@ import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.service.AuditEventPublisher;
-import it.eng.tools.service.FieldEncryptionService;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
@@ -52,9 +51,9 @@ public class TCKDataTransferService extends AbstractDataTransferService {
                                   OkHttpRestClient okHttpRestClient,
                                   CredentialUtils credentialUtils,
                                   DataTransferProperties dataTransferProperties,
-                                  TemporaryBucketUserService temporaryBucketUserService,
-                                  FieldEncryptionService fieldEncryptionService) {
-        super(transferProcessRepository, auditEventPublisher, okHttpRestClient, transferRequestMessageRepository, dataTransferProperties, temporaryBucketUserService, fieldEncryptionService);
+                                  DataPlaneClient dataPlaneClient) {
+        super(transferProcessRepository, auditEventPublisher, okHttpRestClient, transferRequestMessageRepository,
+                dataTransferProperties, dataPlaneClient);
         this.dataTransferAPIService = dataTransferAPIService;
         this.auditEventPublisher = auditEventPublisher;
         this.okHttpRestClient = okHttpRestClient;

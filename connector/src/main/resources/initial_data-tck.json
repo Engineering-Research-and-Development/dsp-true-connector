@@ -1205,7 +1205,7 @@
       "role": "provider",
       "agreement": {
         "$ref": "agreements",
-        "$id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA"
+        "$id": "a84a5f4ed350ab74d2e2fe1c"
       },
       "consumerPid": "urn:uuid:be8c0f63-1350-4288-9bf7-5f5495da48b8",
       "state": "FINALIZED",
@@ -1216,7 +1216,7 @@
   ],
   "agreements": [
     {
-      "_id": "ATP0101",
+      "_id": "54fbafdc79dd1e1e4ca345f9",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATP0101",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1238,7 +1238,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATP0102",
+      "_id": "0496cb04fc7163e132a8079a",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATP0102",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1260,7 +1260,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATP0103",
+      "_id": "6378e9e2ceebf84900a950e4",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATP0103",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1282,7 +1282,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATP0104",
+      "_id": "8f5471e20409c2e1429475d1",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATP0104",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1304,7 +1304,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATP0105",
+      "_id": "e679498959376064085a3518",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATP0105",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1326,7 +1326,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATP0201",
+      "_id": "666fdbaab4cfa1e3efda3e67",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATP0201",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1348,7 +1348,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATP0202",
+      "_id": "2b4768e730a55e8b3b808f6a",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATP0202",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1370,7 +1370,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATP0203",
+      "_id": "34a012ce104a7668911febd9",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATP0203",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1392,7 +1392,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATP0204",
+      "_id": "99bac135cc4b3fb7fb85b962",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATP0204",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1414,7 +1414,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATP0205",
+      "_id": "396ee295995143b9521eca6b",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATP0205",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1436,7 +1436,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATP0301",
+      "_id": "56dd03603a4da861b3e682d7",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATP0301",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1458,7 +1458,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATP0302",
+      "_id": "c03eecc78666933ac0631b33",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATP0302",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1480,7 +1480,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATP0303",
+      "_id": "142c9900c7d950d06a77a278",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATP0303",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1502,7 +1502,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATP0304",
+      "_id": "f037f4789593ac22a07de6de",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATP0304",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1524,7 +1524,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATP0305",
+      "_id": "a8eb360b3d67503941f1dda0",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATP0305",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1546,7 +1546,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATP0306",
+      "_id": "481a0ecb62d3272caaafe760",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATP0306",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1568,7 +1568,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATPC0101",
+      "_id": "55588afb4e4004ddac0bc4b7",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATPC0101",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1590,7 +1590,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATPC0102",
+      "_id": "da1e4569fae3198829b145c5",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATPC0102",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1612,7 +1612,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATPC0103",
+      "_id": "499ab221bd96c34b7b9a47d2",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATPC0103",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1634,7 +1634,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATPC0104",
+      "_id": "721035a657c16d31ed1037f3",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATPC0104",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1656,7 +1656,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATPC0105",
+      "_id": "e676c861184584946d0f1cd1",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATPC0105",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1678,7 +1678,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATPC0201",
+      "_id": "4b19e4affb611b7e2d4da15d",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATPC0201",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1700,7 +1700,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATPC0202",
+      "_id": "5ae352b98afc8905c77edbbe",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATPC0202",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1722,7 +1722,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATPC0203",
+      "_id": "579928e37a749d09ea540fbd",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATPC0203",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1744,7 +1744,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATPC0204",
+      "_id": "bfd7fd78e5a2feddf73373a1",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATPC0204",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1766,7 +1766,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATPC0205",
+      "_id": "746cf62aa8a881b905082bb9",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATPC0205",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1788,7 +1788,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATPC0301",
+      "_id": "16c185de3221cd6598f91d12",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATPC0301",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1810,7 +1810,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATPC0302",
+      "_id": "485b4e505f9829196c175d61",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATPC0302",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1832,7 +1832,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATPC0303",
+      "_id": "30b067fc3584dfc015adc7e8",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATPC0303",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1854,7 +1854,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATPC0304",
+      "_id": "53513bb5d5ee43b514a87fbe",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATPC0304",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1876,7 +1876,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATPC0305",
+      "_id": "53070f6605c0606829b04480",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATPC0305",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1898,7 +1898,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "ATPC0306",
+      "_id": "687aadb17cccb78ace16f791",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "ATPC0306",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",
@@ -1920,7 +1920,7 @@
       "tenantId": "engineering"
     },
     {
-      "_id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
+      "_id": "a84a5f4ed350ab74d2e2fe1c",
       "_class": "it.eng.negotiation.model.Agreement",
       "id": "urn:uuid:AGREEMENT_ID_INITIALIZED_API_GHA",
       "target": "urn:uuid:3dd1add4-4d2d-569e-d614-8394a8836d23",

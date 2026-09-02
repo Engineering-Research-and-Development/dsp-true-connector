@@ -117,7 +117,7 @@ The following properties are used regardless of which storage backend you choose
 
 ### Detailed Property Descriptions
 
-- **`s3.endpoint`**: The S3 service endpoint URL
+- **`s3.endpoint`**: Internal S3/MinIO API route used by connector/dataplane server-side calls
   - **MinIO**: Your MinIO server endpoint URL (e.g., `http://localhost:9000` or `https://minio.example.com`)
   - **AWS S3**: Leave empty (connector uses default AWS regional endpoints automatically)
   
@@ -135,7 +135,8 @@ The following properties are used regardless of which storage backend you choose
   
 - **`s3.bucketName`**: Name of the S3 bucket to store data
   
-- **`s3.externalPresignedEndpoint`**: External endpoint URL used for presigned URL generation
+- **`s3.externalPresignedEndpoint`**: Externally reachable or reverse-proxy URL used only as the
+  public base for presigned downloads
   - **MinIO**: **Critical** - Must be set to the externally accessible URL for presigned URLs to work correctly
   - **AWS S3**: Leave empty(AWS handles this automatically using regional endpoints)
 

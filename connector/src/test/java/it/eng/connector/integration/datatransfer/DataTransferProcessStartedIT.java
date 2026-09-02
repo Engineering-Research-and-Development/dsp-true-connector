@@ -21,6 +21,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * Integration tests for DSP protocol transfer start messages:
+ * {@code POST /{tenantId}/transfers/{providerPid}/start} (provider-facing) and
+ * {@code POST /{tenantId}/consumer/transfers/{consumerPid}/start} (consumer-facing).
+ *
+ * <p>Covers the {@code REQUESTED} → {@code STARTED} and {@code SUSPENDED} → {@code STARTED}
+ * transitions triggered by peer DSP messages. For Data Plane callback-driven state updates
+ * (via {@code POST /api/v1/transfers/{id}/dataflow/started}), see
+ * {@link DataPlaneProtocolAlignmentIT}.</p>
+ */
 public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
     // REQUESTED->STARTED

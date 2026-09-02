@@ -1,0 +1,15 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "DataFlowStartMessage.json",
+  "title": "DataFlowStartMessage",
+  "allOf": [
+    {
+      "$ref": "DataFlowBaseMessage.schema.json"
+    }
+  ],
+  "properties": {
+    "dataAddress": {
+      "$ref": "data-address-schema.json"
+    }
+  }
+}

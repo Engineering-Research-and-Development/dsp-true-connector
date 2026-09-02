@@ -19,7 +19,7 @@ import java.util.*;
  */
 @Service
 @Slf4j
-public class ApplicationPropertiesService {
+public class ApplicationPropertiesService implements ApplicationPropertyReader {
 
     private static final String STORED_APPLICATION_PROPERTIES = "storedApplicationProperties";
 
@@ -108,6 +108,17 @@ public class ApplicationPropertiesService {
             }
         }
         return propertyByMongo;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Delegates to {@link #getPropertyByKey(String)} and maps the result to the
+     * plain string value, enabling S3 upload-mode overrides backed by MongoDB.
+     */
+    @Override
+    public Optional<String> getPropertyValue(String key) {
+        return getPropertyByKey(key).map(ApplicationProperty::getValue);
     }
 
     private ApplicationProperty addPropertyOnMongo(ApplicationProperty property) {

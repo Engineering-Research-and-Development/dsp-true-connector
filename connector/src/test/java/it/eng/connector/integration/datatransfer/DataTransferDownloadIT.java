@@ -21,7 +21,7 @@ import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
 import okhttp3.Credentials;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,8 +33,6 @@ import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MvcResult;
 import org.wiremock.spring.InjectWireMock;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -89,7 +87,7 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Download artifact file")
+    @DisplayName("Download artifact file - returns 400 (FILE artifacts use presigned URLs now)")
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void downloadArtifactFile() throws Exception {
         String fileContent = "Hello, World!";
@@ -152,31 +150,14 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
-        ContentDisposition contentDisposition = ContentDisposition.attachment()
-                .filename(FILE_NAME)
-                .build();
-
-        Map<String, String> destinationS3Properties = createS3EndpointProperties(dataset.getId());
-
-        try (InputStream inputStream = new ByteArrayInputStream(fileContent.getBytes())) {
-            s3ClientService.uploadFile(
-                            inputStream,
-                            destinationS3Properties,
-                            MediaType.TEXT_PLAIN_VALUE,
-                            contentDisposition.toString())
-                    .get();
-        } catch (Exception e) {
-            throw new Exception("File storing aborted, " + e.getLocalizedMessage());
-        }
-
         String transactionId = Base64.getEncoder().encodeToString((transferProcessStarted.getConsumerPid() + "|" + transferProcessStarted.getProviderPid())
                 .getBytes(StandardCharsets.UTF_8));
 
-        MvcResult resultArtifact = mockMvc.perform(get("/artifacts/" + transactionId)
+        // FILE artifacts are now served via presigned URL embedded in TransferStartMessage.
+        // Direct download via /artifacts/{transactionId} is no longer supported for FILE type.
+        mockMvc.perform(get("/artifacts/" + transactionId)
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andReturn();
-        assertTrue(resultArtifact.getResponse().getContentAsString().contains(fileContent));
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -269,7 +250,7 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
                 .andExpect(content().contentType(MediaType.TEXT_PLAIN))
                 .andReturn();
         String response = resultArtifact.getResponse().getContentAsString();
-        assertTrue(StringUtils.equals(fileContent, response));
+        assertTrue(Strings.CS.equals(fileContent, response));
     }
 
     @Test

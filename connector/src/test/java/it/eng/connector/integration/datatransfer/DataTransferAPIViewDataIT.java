@@ -2,12 +2,17 @@ package it.eng.connector.integration.datatransfer;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.client.WireMock;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
+import it.eng.dataplane.api.DataPlaneConstants;
+import it.eng.dataplane.api.message.DataFlowPrepareResponse;
+import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
+import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
@@ -30,7 +35,7 @@ import org.wiremock.spring.InjectWireMock;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.net.URL;
+import java.net.URI;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
@@ -38,6 +43,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -114,12 +120,13 @@ public class DataTransferAPIViewDataIT extends BaseIntegrationTest {
                 .agreementId(agreement.getId())
                 .callbackAddress(wiremock.baseUrl())
                 .isDownloaded(true)
+                .format(DataTransferFormat.HTTP_PULL.format())
                 .state(TransferState.COMPLETED)
                 .tenantId("engineering")
                 .build();
         transferProcessRepository.save(transferProcessCompleted);
 
-        ContentDisposition contentDisposition = ContentDisposition.attachment()
+        ContentDisposition contentDisposition= ContentDisposition.attachment()
                 .filename(FILE_NAME)
                 .build();
 
@@ -131,6 +138,23 @@ public class DataTransferAPIViewDataIT extends BaseIntegrationTest {
         } catch (Exception e) {
             throw new Exception("File storing aborted, " + e.getLocalizedMessage());
         }
+
+        // DP now generates the presigned URL directly via S3ClientService
+        // The file was already uploaded to S3 above; the URL is generated from that bucket+key.
+        DataFlowPrepareResponse dataFlowPrepareResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId("test-process-id")
+                .dataAddress(Map.of(DataPlaneConstants.DATA_ADDRESS_PRESIGNED_URL_KEY, "http://mock.presignUlr.forArtifact"))
+                .build();
+        WireMock.stubFor(WireMock.post("/dataflows/prepare")
+                .withRequestBody(WireMock.containing("DataFlowPrepareMessage"))
+                .willReturn(
+                        aResponse().withHeader("Content-Type", "application/json")
+                                .withBody(TransferSerializer.serializeProtocol(dataFlowPrepareResponse))));
+
+        WireMock.stubFor(WireMock.delete("/dataflows/" +  transferProcessCompleted.getId() + "/terminate")
+                .willReturn(
+                        aResponse().withHeader("Content-Type", "application/json")));
+
         // send request
         final ResultActions result =
                 mockMvc.perform(
@@ -144,7 +168,7 @@ public class DataTransferAPIViewDataIT extends BaseIntegrationTest {
 
         // response is presignedUrl for download data
         assertNotNull(response);
-        new URL(response).toURI();
+        URI.create(response).toURL();
 
         // check if the TransferProcess is inserted in the database
         TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessCompleted.getId()).get();

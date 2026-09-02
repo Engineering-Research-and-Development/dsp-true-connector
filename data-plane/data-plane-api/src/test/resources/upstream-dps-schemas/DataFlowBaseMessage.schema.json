@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataFlowBaseMessage",
+  "type": "object",
+  "properties": {
+    "messageId": {
+      "type": "string",
+      "description": "Unique identifier for the message"
+    },
+    "participantId": {
+      "type": "string",
+      "description": "ID of the participant sending the message"
+    },
+    "counterPartyId": {
+      "type": "string",
+      "description": "ID of the counterparty"
+    },
+    "dataspaceContext": {
+      "type": "string",
+      "description": "Context identifier of the dataspace"
+    },
+    "processId": {
+      "type": "string",
+      "description": "Associated process identifier. This should be the transfer process ID."
+    },
+    "agreementId": {
+      "type": "string",
+      "description": "Contract Agreement identifier"
+    },
+    "datasetId": {
+      "type": "string",
+      "description": "Dataset identifier. This should be identical to the @id of the dcat:dataset"
+    },
+    "callbackAddress": {
+      "type": "string",
+      "format": "uri",
+      "description": "Callback URL as a string"
+    },
+    "transferType": {
+      "type": "string",
+      "description": "the flow transfer type"
+    },
+    "claims": {
+      "type": "object",
+      "description": "DSP claims of the counterparty as verified by the control plane"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "labels": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "messageId",
+    "participantId",
+    "counterPartyId",
+    "dataspaceContext",
+    "processId",
+    "agreementId",
+    "datasetId",
+    "transferType",
+    "claims"
+  ]
+}

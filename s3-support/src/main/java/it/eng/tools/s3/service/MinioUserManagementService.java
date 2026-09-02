@@ -1,0 +1,92 @@
+package it.eng.tools.s3.service;
+
+import io.minio.admin.MinioAdminClient;
+import io.minio.admin.UserInfo;
+import it.eng.tools.exception.S3ServerException;
+import it.eng.tools.s3.model.BucketCredentialsEntity;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.stereotype.Component;
+
+/**
+ * Minio-specific IAM user management.
+ * Only active when MinioAdminClient bean exists.
+ */
+@Component
+@ConditionalOnBean(MinioAdminClient.class)
+@Slf4j
+public class MinioUserManagementService implements IamUserManagementService {
+
+    private final MinioAdminClient minioAdminClient;
+
+    public MinioUserManagementService(MinioAdminClient minioAdminClient) {
+        this.minioAdminClient = minioAdminClient;
+        log.info("MinioUserManagementService initialized - MinIo IAM enabled");
+    }
+
+    @Override
+    public void createUser(BucketCredentialsEntity bucketCredentials) {
+        try {
+            // Check if user already exists
+            if (minioAdminClient.getUserInfo(bucketCredentials.getAccessKey()) != null) {
+                log.info("User {} already exists, skipping creation.", bucketCredentials.getAccessKey());
+            }
+        } catch (Exception e) {
+            // User doesn't exist, create it
+            try {
+                minioAdminClient.addUser(bucketCredentials.getAccessKey(), UserInfo.Status.ENABLED, bucketCredentials.getSecretKey(), null, null);
+                log.info("User {} created successfully", bucketCredentials.getAccessKey());
+            } catch (Exception createError) {
+                log.error("Failed to create user {}: {}", bucketCredentials.getAccessKey(), createError.getMessage());
+                throw new S3ServerException("Failed to create user", createError);
+            }
+        }
+    }
+
+    @Override
+    public void attachPolicyToUser(BucketCredentialsEntity bucketCredentials) {
+        try {
+            log.debug("Attaching built-in consoleAdmin policy to user {}", bucketCredentials.getAccessKey());
+            minioAdminClient.setPolicy(bucketCredentials.getAccessKey(), false, "consoleAdmin");
+        } catch (Exception e) {
+            log.error("Error checking policy existence: {}", e.getMessage());
+            throw new S3ServerException("Error attaching policy to user", e);
+        }
+    }
+
+    @Override
+    public void attachTemporaryPolicy(BucketCredentialsEntity managementCredentials, String accessKey,
+                                      String policyName, String policyJson) {
+        try {
+            log.debug("Creating temporary policy {} with content: {}", policyName, policyJson);
+            minioAdminClient.addCannedPolicy(policyName, policyJson);
+            log.debug("Attaching temporary policy {} to user {}", policyName, accessKey);
+            minioAdminClient.setPolicy(accessKey, false, policyName);
+        } catch (Exception e) {
+            log.error("Failed to attach temporary policy {} to user {}: {}", policyName, accessKey, e.getMessage());
+            throw new S3ServerException("Failed to attach temporary policy to user", e);
+        }
+    }
+
+    @Override
+    public void deleteUser(BucketCredentialsEntity managementCredentials, String accessKey) {
+        try {
+            minioAdminClient.deleteUser(accessKey);
+            log.info("User {} deleted successfully", accessKey);
+        } catch (Exception e) {
+            log.error("Failed to delete user {}: {}", accessKey, e.getMessage());
+            throw new S3ServerException("Failed to delete user", e);
+        }
+    }
+
+    @Override
+    public void deletePolicy(BucketCredentialsEntity managementCredentials, String policyName) {
+        try {
+            minioAdminClient.removeCannedPolicy(policyName);
+            log.info("Policy {} deleted successfully", policyName);
+        } catch (Exception e) {
+            log.error("Failed to delete policy {}: {}", policyName, e.getMessage());
+            throw new S3ServerException("Failed to delete policy", e);
+        }
+    }
+}

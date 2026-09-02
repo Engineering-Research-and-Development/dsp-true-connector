@@ -1,6 +1,10 @@
 package it.eng.datatransfer.configuration;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.TaskScheduler;
@@ -8,16 +12,32 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Spring configuration for data-transfer infrastructure beans.
  */
 @Configuration
+@EnableCaching
 public class DataTransferConfiguration {
 
     /** Pool size for the task scheduler used by automatic transfer retry scheduling. */
     @Value("${application.transfer.scheduler.pool-size:5}")
     private int schedulerPoolSize = 5;
+
+
+    /**
+     * Cache manager for Data Plane routing lookups.
+     * Entries expire 10 seconds after write so registration changes propagate quickly.
+     *
+     * @return caffeine-backed cache manager
+     */
+    @Bean
+    public CacheManager cacheManager() {
+        CaffeineCacheManager manager = new CaffeineCacheManager("dataPlanesByType");
+        manager.setCaffeine(Caffeine.newBuilder().expireAfterWrite(10, TimeUnit.SECONDS));
+        return manager;
+    }
 
     /**
      * Bounded executor used by {@link it.eng.datatransfer.service.api.strategy.HttpPushTransferStrategy}

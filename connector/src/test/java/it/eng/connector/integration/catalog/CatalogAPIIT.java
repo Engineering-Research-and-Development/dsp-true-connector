@@ -27,6 +27,8 @@ import org.wiremock.spring.InjectWireMock;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -292,6 +294,9 @@ public class CatalogAPIIT extends BaseIntegrationTest {
     }
 
     private void assertCatalogFields(Catalog responseCatalog, Catalog expectedCatalog) {
+        Set<Distribution> expectedDistributions = expectedDistributions(expectedCatalog);
+        Set<DataService> expectedServices = expectedServices(expectedCatalog);
+
         assertNotNull(responseCatalog);
         assertTrue(responseCatalog.getConformsTo().equals(expectedCatalog.getConformsTo()));
         assertTrue(responseCatalog.getCreator().equals(expectedCatalog.getCreator()));
@@ -322,18 +327,18 @@ public class CatalogAPIIT extends BaseIntegrationTest {
 
         // Check distributions
         assertNotNull(responseCatalog.getDistribution());
-        assertTrue(responseCatalog.getDistribution().size() == expectedCatalog.getDistribution().size());
+        assertTrue(responseCatalog.getDistribution().size() == expectedDistributions.size());
         responseCatalog.getDistribution().forEach(dist -> {
-            assertTrue(expectedCatalog.getDistribution().stream()
+            assertTrue(expectedDistributions.stream()
                     .anyMatch(expectedDist -> expectedDist.getId().equals(dist.getId())
                             && expectedDist.getTitle().equals(dist.getTitle())));
         });
 
         // Check services
         assertNotNull(responseCatalog.getService());
-        assertTrue(responseCatalog.getService().size() == expectedCatalog.getService().size());
+        assertTrue(responseCatalog.getService().size() == expectedServices.size());
         responseCatalog.getService().forEach(service -> {
-            assertTrue(expectedCatalog.getService().stream()
+            assertTrue(expectedServices.stream()
                     .anyMatch(expectedService -> expectedService.getId().equals(service.getId())
                             && expectedService.getEndpointURL().equals(service.getEndpointURL())));
         });
@@ -345,5 +350,26 @@ public class CatalogAPIIT extends BaseIntegrationTest {
             assertTrue(expectedCatalog.getHasPolicy().stream()
                     .anyMatch(expectedPolicy -> expectedPolicy.getId().equals(policy.getId())));
         });
+    }
+
+    private Set<Distribution> expectedDistributions(Catalog expectedCatalog) {
+        if (expectedCatalog.getDataset() == null) {
+            return expectedCatalog.getDistribution();
+        }
+        return expectedCatalog.getDataset().stream()
+                .map(Dataset::getDistribution)
+                .filter(Objects::nonNull)
+                .flatMap(Set::stream)
+                .collect(Collectors.toCollection(HashSet::new));
+    }
+
+    private Set<DataService> expectedServices(Catalog expectedCatalog) {
+        if (expectedCatalog.getDataset() == null) {
+            return expectedCatalog.getService();
+        }
+        return expectedDistributions(expectedCatalog).stream()
+                .map(Distribution::getAccessService)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(HashSet::new));
     }
 }

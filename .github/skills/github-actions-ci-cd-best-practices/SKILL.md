@@ -616,6 +616,18 @@ This section provides an expanded guide to diagnosing and resolving frequent pro
     - **Rollback Immediately:**
         - If a production deployment fails or causes degradation, trigger the rollback strategy immediately to restore service. Diagnose the issue in a non-production environment.
 
+### **7. TRUE Connector local reproduction of Newman jobs**
+- **Root Causes:** The local `ci/docker/.env` default for `MINIO_EXTERNAL_URL` may differ from the value injected by the GitHub Actions job, so presigned URL downloads can fail locally even when the workflow would pass.
+- **Actionable Steps:**
+    - For TRUE Connector data-transfer Newman jobs, check the workflow job `env:` block first. In this repository, the `datatransfer-api-http-pull-tests` and `datatransfer-api-http-push-tests` jobs set `MINIO_EXTERNAL_URL=http://localhost:9000`.
+    - Remember precedence: the job-level `env` passed to `docker compose` overrides the value from `ci/docker/.env`.
+    - When reproducing those jobs locally, run compose with the same override so presigned URLs match the workflow environment:
+      ```bash
+      MINIO_EXTERNAL_URL=http://localhost:9000 docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env --profile pull up -d
+      ```
+    - If you omit the override, local runs may fall back to the `.env` default (`http://172.17.0.1:9000`) and fail only at the Newman presigned URL download step.
+    - Before changing Java code for presigned URL generation, verify whether the failure is just an environment mismatch between the workflow job and your local compose run.
+
 ## Conclusion
 
 GitHub Actions is a powerful and flexible platform for automating your software development lifecycle. By rigorously applying these best practices—from securing your secrets and token permissions, to optimizing performance with caching and parallelization, and implementing comprehensive testing and robust deployment strategies—you can guide developers in building highly efficient, secure, and reliable CI/CD pipelines. Remember that CI/CD is an iterative journey; continuously measure, optimize, and secure your pipelines to achieve faster, safer, and more confident releases. Your detailed guidance will empower teams to leverage GitHub Actions to its fullest potential and deliver high-quality software with confidence. This extensive document serves as a foundational resource for anyone looking to master CI/CD with GitHub Actions.

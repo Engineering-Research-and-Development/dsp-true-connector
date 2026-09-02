@@ -4,8 +4,10 @@ package it.eng.catalog.service;
 import java.util.Collection;
 import java.util.Map;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
+import it.eng.catalog.event.CatalogStructureChangedEvent;
 import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.Distribution;
@@ -24,12 +26,14 @@ public class DistributionService {
 
     private final DistributionRepository repository;
     private final CatalogService catalogService;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final AuditEventPublisher auditEventPublisher;
 
     public DistributionService(DistributionRepository repository, CatalogService catalogService,
-                               AuditEventPublisher auditEventPublisher) {
+                               ApplicationEventPublisher applicationEventPublisher, AuditEventPublisher auditEventPublisher) {
         this.repository = repository;
         this.catalogService = catalogService;
+        this.applicationEventPublisher = applicationEventPublisher;
         this.auditEventPublisher = auditEventPublisher;
     }
 
@@ -86,6 +90,7 @@ public class DistributionService {
         auditEventPublisher.publishEvent(
                 AuditEventType.DISTRIBUTION_CREATED, "Distribution created",
                 Map.of("distributionId", savedDistribution.getId()));
+        applicationEventPublisher.publishEvent(CatalogStructureChangedEvent.fullReconcile("distribution-saved"));
         return distribution;
     }
 
@@ -107,6 +112,7 @@ public class DistributionService {
         catalogService.updateCatalogDistributionAfterDelete(distribution);
         auditEventPublisher.publishEvent(
                 AuditEventType.DISTRIBUTION_DELETED, "Distribution deleted", Map.of("distributionId", id));
+        applicationEventPublisher.publishEvent(CatalogStructureChangedEvent.fullReconcile("distribution-deleted"));
     }
 
     /**
@@ -131,6 +137,7 @@ public class DistributionService {
 
         auditEventPublisher.publishEvent(
                 AuditEventType.DISTRIBUTION_UPDATED, "Distribution updated", Map.of("distributionId", id));
+        applicationEventPublisher.publishEvent(CatalogStructureChangedEvent.fullReconcile("distribution-updated"));
         return storedDistribution;
     }
 }

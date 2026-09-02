@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>it.eng</groupId>
+        <artifactId>trueconnector</artifactId>
+        <version>${revision}</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    <groupId>it.eng.dataplane</groupId>
+    <artifactId>data-plane</artifactId>
+    <packaging>pom</packaging>
+    <name>Data Plane</name>
+    <description>Parent module aggregating all Data Plane sub-modules (API, core, and transport implementations)</description>
+
+    <modules>
+        <module>data-plane-api</module>
+        <module>data-plane-core</module>
+        <module>data-plane-s3</module>
+        <module>data-plane-http-pull</module>
+        <module>data-plane-http-push</module>
+        <module>data-plane-grpc</module>
+        <module>data-plane-kafka</module>
+    </modules>
+</project>

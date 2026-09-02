@@ -91,6 +91,23 @@ public class DataTransferProperties {
 	}
 
 	/**
+	 * Returns the raw application-level callback address, without tenant path.
+	 *
+	 * <p>Used when sending {@link it.eng.dataplane.api.message.DataFlowStartMessage} to a
+	 * Data Plane microservice so that the DP can POST status callbacks back to
+	 * {@code /api/v1/dataflows/complete} or {@code /api/v1/dataflows/error}. Those
+	 * endpoints are on the admin (non-tenant) chain and must NOT include a tenant-path
+	 * prefix. The tenant-aware {@link #providerCallbackAddress()} would return the
+	 * tenant's address (e.g. {@code http://connector-a:8080/connector_a_tenant_id})
+	 * which causes a 404 when the DP sends its callback.</p>
+	 *
+	 * @return the global {@code application.callback.address} value
+	 */
+	public String dataPlaneFeedbackAddress() {
+		return callbackAddress;
+	}
+
+	/**
 	 * Resolves the active (enabled) tenant from the current thread's tenant context.
 	 * Returns an empty Optional when no tenant context is set or the tenant is disabled.
 	 *

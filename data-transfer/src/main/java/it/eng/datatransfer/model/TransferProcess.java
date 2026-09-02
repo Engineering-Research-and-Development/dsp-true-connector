@@ -109,6 +109,36 @@ public class TransferProcess extends AbstractTransferMessage {
     private int retryCount;
 
     /**
+     * Internal tracking state of the data flow (e.g. PREPARED, STARTED, COMPLETED, TERMINATED).
+     * Not included in protocol JSON — used only for internal monitoring.
+     */
+    @JsonIgnore
+    private String dataFlowState;
+
+    /**
+     * Last error message received from the data plane.
+     * Not included in protocol JSON — used only for internal diagnostics.
+     */
+    @JsonIgnore
+    private String dataFlowErrorMessage;
+
+    /**
+     * Internal transport profile chosen for this transfer process (e.g. {@code "stream:grpc"}).
+     * Not included in protocol JSON — used only for internal Data Plane routing.
+     */
+    @JsonIgnore
+    private String transportProfile;
+
+    /**
+     * Endpoint of the Data Plane instance selected for this transfer process.
+     * Persisted so that sticky routing survives a CP restart: on resume, terminate, or suspend,
+     * the CP can re-seed the in-memory sticky map from this field and reach the correct instance.
+     * Not included in protocol JSON.
+     */
+    @JsonIgnore
+    private String assignedDataplaneEndpoint;
+
+    /**
      * Tenant this transfer process belongs to. Null for super-admin scope.
      */
     @JsonIgnore
@@ -185,8 +215,52 @@ public class TransferProcess extends AbstractTransferMessage {
             return this;
         }
 
+        /**
+         * Sets the internal data flow state (e.g. PREPARED, STARTED, COMPLETED, TERMINATED).
+         *
+         * @param dataFlowState the data flow state string
+         * @return this builder
+         */
+        public Builder dataFlowState(String dataFlowState) {
+            message.dataFlowState = dataFlowState;
+            return this;
+        }
+
+        /**
+         * Sets the last error message received from the data plane.
+         *
+         * @param dataFlowErrorMessage the data flow error message
+         * @return this builder
+         */
+        public Builder dataFlowErrorMessage(String dataFlowErrorMessage) {
+            message.dataFlowErrorMessage = dataFlowErrorMessage;
+            return this;
+        }
+
         public Builder tenantId(String tenantId) {
             message.tenantId = tenantId;
+            return this;
+        }
+
+        /**
+         * Sets the internal transport profile for Data Plane routing.
+         *
+         * @param transportProfile the transport profile (e.g. {@code "stream:grpc"}), or {@code null} for standard HTTP
+         * @return this builder
+         */
+        public Builder transportProfile(String transportProfile) {
+            message.transportProfile = transportProfile;
+            return this;
+        }
+
+        /**
+         * Sets the endpoint of the Data Plane instance selected for this process.
+         *
+         * @param assignedDataplaneEndpoint the Data Plane base URL, or {@code null}
+         * @return this builder
+         */
+        public Builder assignedDataplaneEndpoint(String assignedDataplaneEndpoint) {
+            message.assignedDataplaneEndpoint = assignedDataplaneEndpoint;
             return this;
         }
 
@@ -299,6 +373,10 @@ public class TransferProcess extends AbstractTransferMessage {
                 .datasetId(this.datasetId)
                 .retryCount(this.retryCount)
                 .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
@@ -332,6 +410,10 @@ public class TransferProcess extends AbstractTransferMessage {
                 .datasetId(this.datasetId)
                 .retryCount(retryCount)
                 .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
@@ -365,7 +447,264 @@ public class TransferProcess extends AbstractTransferMessage {
                 .datasetId(this.datasetId)
                 .retryCount(this.retryCount)
                 .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
                 // auditable fields
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified isDownloaded flag.
+     * All other fields remain unchanged.
+     *
+     * @param isDownloaded {@code true} if the artifact has been downloaded, {@code false} otherwise
+     * @return new TransferProcess instance with updated isDownloaded flag
+     */
+    public TransferProcess withIsDownloaded(boolean isDownloaded) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified dataId.
+     * All other fields remain unchanged.
+     *
+     * @param dataId the data identifier (e.g. S3 object key used to retrieve the downloaded artifact)
+     * @return new TransferProcess instance with updated dataId
+     */
+    public TransferProcess withDataId(String dataId) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
+                .dataId(dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified internal dataplane state.
+     * All other fields remain unchanged.
+     *
+     * @param dataFlowState the data flow state string (e.g. PREPARED, STARTED, COMPLETED, TERMINATED)
+     * @return new TransferProcess instance with updated dataFlowState
+     */
+    public TransferProcess withDataFlowState(String dataFlowState) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
+                .dataFlowState(dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified data plane error message.
+     * All other fields remain unchanged.
+     *
+     * @param dataFlowErrorMessage the error message from the data plane
+     * @return new TransferProcess instance with updated dataFlowErrorMessage
+     */
+    public TransferProcess withDataFlowErrorMessage(String dataFlowErrorMessage) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified data address.
+     * All other fields remain unchanged.
+     *
+     * @param dataAddress the data address to set
+     * @return new TransferProcess instance with updated dataAddress
+     */
+    public TransferProcess withDataAddress(DataAddress dataAddress) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified transport profile.
+     * All other fields remain unchanged.
+     *
+     * @param transportProfile the internal transport profile (e.g. {@code "stream:grpc"}), or {@code null}
+     * @return new TransferProcess instance with updated transportProfile
+     */
+    public TransferProcess withTransportProfile(String transportProfile) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(transportProfile)
+                .assignedDataplaneEndpoint(this.assignedDataplaneEndpoint)
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified assigned Data Plane endpoint.
+     * All other fields remain unchanged.
+     *
+     * @param assignedDataplaneEndpoint the base URL of the selected Data Plane (e.g. {@code "http://dp:9090"}),
+     *                                  or {@code null} when no DP has been assigned yet
+     * @return new TransferProcess instance with updated assignedDataplaneEndpoint
+     */
+    public TransferProcess withAssignedDataplaneEndpoint(String assignedDataplaneEndpoint) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
+                .dataFlowState(this.dataFlowState)
+                .dataFlowErrorMessage(this.dataFlowErrorMessage)
+                .transportProfile(this.transportProfile)
+                .assignedDataplaneEndpoint(assignedDataplaneEndpoint)
                 .createdBy(this.createdBy)
                 .created(created)
                 .lastModifiedBy(this.lastModifiedBy)

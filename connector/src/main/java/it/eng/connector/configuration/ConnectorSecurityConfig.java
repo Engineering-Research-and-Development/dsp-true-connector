@@ -142,6 +142,8 @@ public class ConnectorSecurityConfig {
                     .addFilterBefore(keycloakFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .addFilterAfter(apiTenantContextFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth
+                            // Health endpoint is unauthenticated for CI/CD and orchestration health checks
+                            .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                             .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
                             .requestMatchers(HttpMethod.GET, ApiEndpoints.USERS_V1 + "/me")
                             .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
@@ -152,6 +154,14 @@ public class ConnectorSecurityConfig {
                             .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
                             .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
                             .requestMatchers(ApiEndpoints.AUTH_V1 + "/**").permitAll()
+                            // Data Plane callbacks authenticate themselves via X-Api-Key
+                            // (see DataFlowCallbackController#authenticate) instead of a JWT,
+                            // so they must be excluded from the ROLE_ADMIN requirement below.
+                            .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACKS_PATTERN).permitAll()
+                            .requestMatchers(HttpMethod.POST, ApiEndpoints.DATA_PLANES).permitAll()
+                            .requestMatchers(HttpMethod.DELETE, ApiEndpoints.DATA_PLANES + "/**").permitAll()
+                            .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE).permitAll()
+                            .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACK_ERROR).permitAll()
                             .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         } else {
@@ -161,6 +171,8 @@ public class ConnectorSecurityConfig {
                     .addFilterBefore(jwtAuthFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .addFilterAfter(apiTenantContextFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
                     .authorizeHttpRequests(auth -> auth
+                            // Health endpoint is unauthenticated for CI/CD and orchestration health checks
+                            .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                             .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
                             .requestMatchers(HttpMethod.GET, ApiEndpoints.USERS_V1 + "/me")
                             .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
@@ -171,6 +183,14 @@ public class ConnectorSecurityConfig {
                             .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
                             .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
                             .requestMatchers(ApiEndpoints.AUTH_V1 + "/**").permitAll()
+                            // Data Plane callbacks authenticate themselves via X-Api-Key
+                            // (see DataFlowCallbackController#authenticate) instead of a JWT,
+                            // so they must be excluded from the ROLE_ADMIN requirement below.
+                            .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACKS_PATTERN).permitAll()
+                            .requestMatchers(HttpMethod.POST, ApiEndpoints.DATA_PLANES).permitAll()
+                            .requestMatchers(HttpMethod.DELETE, ApiEndpoints.DATA_PLANES + "/**").permitAll()
+                            .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE).permitAll()
+                            .requestMatchers(ApiEndpoints.DATAFLOW_CALLBACK_ERROR).permitAll()
                             .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         }

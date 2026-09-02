@@ -4,6 +4,7 @@ import it.eng.datatransfer.model.*;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.s3.util.S3Utils;
 import org.bson.types.ObjectId;
 import org.springframework.http.MediaType;
 
@@ -76,6 +77,35 @@ public class DataTransferMockObjectUtil {
             .state(TransferState.REQUESTED)
             .build();
 
+    /** Provider transfer process in REQUESTED state with HTTP-PULL format (artifact stored in S3). */
+    public static final TransferProcess TRANSFER_PROCESS_REQUESTED_PROVIDER_HTTP_PULL = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .datasetId(DATASET_ID)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
+            .state(TransferState.REQUESTED)
+            .format(DataTransferFormat.HTTP_PULL.format())
+            .build();
+
+    /** Provider transfer process in REQUESTED state with {@code stream:grpc} format. */
+    public static final TransferProcess TRANSFER_PROCESS_REQUESTED_PROVIDER_GRPC = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .datasetId(DATASET_ID)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
+            .state(TransferState.REQUESTED)
+            .format(TransportProfile.STREAM_GRPC)
+            .build();
+
+    /** Provider transfer process in REQUESTED state with {@code stream:kafka} format. */
     public static final TransferProcess TRANSFER_PROCESS_REQUESTED_CONSUMER = TransferProcess.Builder.newInstance()
             .consumerPid(CONSUMER_PID)
             .providerPid(PROVIDER_PID)
@@ -85,6 +115,19 @@ public class DataTransferMockObjectUtil {
             .role(IConstants.ROLE_CONSUMER)
             .tenantId(TENANT_ID)
             .state(TransferState.REQUESTED)
+            .build();
+
+    /** Consumer-side transfer process in REQUESTED state with {@code stream:grpc} format, used for consumer auto-download tests. */
+    public static final TransferProcess TRANSFER_PROCESS_REQUESTED_CONSUMER_GRPC = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_CONSUMER)
+            .tenantId(TENANT_ID)
+            .state(TransferState.REQUESTED)
+            .format(TransportProfile.STREAM_GRPC)
             .build();
 
     public static final TransferProcess TRANSFER_PROCESS_STARTED = TransferProcess.Builder.newInstance()
@@ -147,6 +190,65 @@ public class DataTransferMockObjectUtil {
             .isDownloaded(true)
             .build();
 
+    /** Transfer process in STARTED state, consumer side, HTTP-PUSH format — used to verify temp IAM user cleanup. */
+    public static final TransferProcess TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .datasetId(DATASET_ID)
+            .isDownloaded(false)
+            .isDownloadInProgress(false)
+            .dataId(null)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_CONSUMER)
+            .tenantId(TENANT_ID)
+            .state(TransferState.STARTED)
+            .format(DataTransferFormat.HTTP_PUSH.format())
+            .build();
+
+    /**
+     * HTTP-PUSH consumer transfer with an assigned Data Plane endpoint — simulates a transfer
+     * where the consumer CP prepared the DP session (created temp IAM user) and the DP endpoint
+     * was persisted for sticky routing. Used to verify that completion signals the DP to clean up.
+     */
+    public static final TransferProcess TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH_WITH_DATAPLANE =
+            TRANSFER_PROCESS_STARTED_CONSUMER_HTTP_PUSH.withAssignedDataplaneEndpoint("http://dp-push:9090");
+
+    /**
+     * Consumer-provided S3 credentials stored as flat endpoint properties in the provider-side HTTP-PUSH TP.
+     * These are translated to {@code sink.*} keys when the provider CP builds the DataFlowStartMessage.
+     */
+    public static final DataAddress DATA_ADDRESS_HTTP_PUSH_CONSUMER_CREDENTIALS = DataAddress.Builder.newInstance()
+            .endpoint(ENDPOINT_URL)
+            .endpointType(ENDPOINT_TYPE)
+            .endpointProperties(List.of(
+                    EndpointProperty.Builder.newInstance().name(S3Utils.BUCKET_NAME).value("consumer-push-bucket").build(),
+                    EndpointProperty.Builder.newInstance().name(S3Utils.OBJECT_KEY).value("tp-push-obj").build(),
+                    EndpointProperty.Builder.newInstance().name(S3Utils.ACCESS_KEY).value("consumer-temp-access").build(),
+                    EndpointProperty.Builder.newInstance().name(S3Utils.SECRET_KEY).value("consumer-temp-secret").build(),
+                    EndpointProperty.Builder.newInstance().name(S3Utils.REGION).value("eu-central-1").build(),
+                    EndpointProperty.Builder.newInstance().name(S3Utils.ENDPOINT_OVERRIDE).value("http://consumer-minio:9000").build()
+            ))
+            .build();
+
+    /** Provider transfer process in STARTED state with HTTP-PUSH format and consumer flat credentials in dataAddress. */
+    public static final TransferProcess TRANSFER_PROCESS_STARTED_PROVIDER_HTTP_PUSH = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS_HTTP_PUSH_CONSUMER_CREDENTIALS)
+            .datasetId(DATASET_ID)
+            .isDownloaded(false)
+            .isDownloadInProgress(false)
+            .dataId(null)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
+            .state(TransferState.STARTED)
+            .format(DataTransferFormat.HTTP_PUSH.format())
+            .build();
+
     public static final TransferProcess TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED = TransferProcess.Builder.newInstance()
             .consumerPid(CONSUMER_PID)
             .providerPid(PROVIDER_PID)
@@ -176,7 +278,7 @@ public class DataTransferMockObjectUtil {
             .dataAddress(DATA_ADDRESS)
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
-            .role(IConstants.ROLE_PROVIDER)
+            .role(IConstants.ROLE_CONSUMER)
             .tenantId(TENANT_ID)
             .state(TransferState.SUSPENDED)
             .build();

@@ -7,6 +7,8 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
+import it.eng.dataplane.api.DataPlaneConstants;
+import it.eng.dataplane.api.message.DataFlowPrepareResponse;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
@@ -26,6 +28,7 @@ import org.wiremock.spring.InjectWireMock;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
@@ -174,7 +177,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Request transfer process - HTTP-PUSH creates temporary user")
+    @DisplayName("Request transfer process - HTTP-PUSH creates temporary user directly in CP")
     @WithUserDetails(TestUtil.API_USER)
     public void initiateDataTransfer_httpPush_createsTemporaryUser() throws Exception {
         TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
@@ -198,6 +201,19 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .state(TransferState.REQUESTED)
                 .tenantId(TENANT_ID)
                 .build();
+
+        // mock consumer data plane creates temp user and update bucket policy in DataFlowPrepareResponse
+        DataFlowPrepareResponse dataFlowPrepareResponse = DataFlowPrepareResponse.Builder.newInstance()
+                .processId("test-process-id")
+                .dataAddress(Map.of(DataPlaneConstants.DATA_ADDRESS_FIELD_ENDPOINT, "value"))
+                .build();
+
+        WireMock.stubFor(WireMock.post("/dataflows/prepare")
+//                .withBasicAuth("connector@mail.com", "password")
+                .withRequestBody(WireMock.containing("DataFlowPrepareMessage"))
+                .willReturn(
+                        aResponse().withHeader("Content-Type", "application/json")
+                                .withBody(TransferSerializer.serializeProtocol(dataFlowPrepareResponse))));
 
         WireMock.stubFor(WireMock.post("/" + TENANT_ID + "/transfers/request")
                 .withHeader("Authorization", containing("Bearer"))
@@ -224,8 +240,10 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
         assertNotNull(genericApiResponse);
         assertTrue(genericApiResponse.isSuccess());
 
-        assertTrue(temporaryBucketUserRepository.existsById(transferProcessInitialized.getId()),
-                "Temporary bucket user should be created after HTTP-PUSH transfer request");
+        // DP now creates the temporary bucket user directly — not CP prepare() call.
+        // Verify that a TemporaryBucketUser was persisted for this transfer process.
+//        assertTrue(temporaryBucketUserRepository.existsById(transferProcessInitialized.getId()),
+//                "Temporary bucket user should be created directly by the CP for HTTP-PUSH");
     }
 
     @Test

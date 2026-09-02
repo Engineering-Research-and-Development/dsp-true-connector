@@ -1,5 +1,6 @@
 package it.eng.connector.integration.multitenant;
 
+import com.github.tomakehurst.wiremock.client.WireMock;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.Dataset;
 import it.eng.catalog.model.Offer;
@@ -50,9 +51,11 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -256,6 +259,25 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
                 .orElseThrow(() -> new IllegalStateException("No PolicyEnforcement found for provider agreement " + agreementId));
         log.info("Count from policy enforcement provider {}", peProvider.getCount());
 
+        // Stub the Data Plane's DPS signaling endpoints on the shared WireMock server that
+        // BaseIntegrationTest.ensureDataPlaneRegistrations() already registered as this
+        // connector's HTTP_PULL/HTTP_PUSH Data Plane. Without these stubs, the provider's
+        // auto-start (/dataflows/prepare) and the consumer's auto-download (/dataflows/start)
+        // both fail with DataPlaneClientException and the transfer is retried into TERMINATED
+        // instead of ever reaching COMPLETED, since data movement is now delegated to an
+        // external Data Plane rather than performed by the control plane itself.
+        WireMock.stubFor(WireMock.post(WireMock.urlPathEqualTo("/dataflows/prepare"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"processId\":\"fake-dp-process\"," +
+                                "\"dataAddress\":{\"presignedUrl\":\"http://fake.example.com/artifact.txt\"," +
+                                "\"bucketName\":\"fake-bucket\",\"region\":\"us-east-1\"," +
+                                "\"objectKey\":\"fake-key\",\"accessKey\":\"fake-ak\"," +
+                                "\"secretKey\":\"fake-sk\",\"endpointOverride\":\"http://fake-minio:9000\"}}")));
+        WireMock.stubFor(WireMock.post(WireMock.urlPathEqualTo("/dataflows/start"))
+                .willReturn(aResponse().withStatus(200)));
+
         ResultActions transferResult = mockMvc.perform(
                 post(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
 //                        .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, CONSUMER_TENANT)
@@ -264,6 +286,36 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON));
 
         transferResult.andExpect(status().isOk());
+
+        // Wait until the consumer's automatic download has begun (downloadData() sets
+        // isDownloadInProgress=true before calling the DP's /dataflows/start) — this is the
+        // point at which a real Data Plane would be actively pulling the artifact.
+        TransferProcess downloadingConsumerTp = pollTransferProcess(
+                () -> transferProcessRepository.findByIdAndTenantId(consumerTransferProcessId, CONSUMER_TENANT),
+                tp -> tp.isDownloadInProgress() || TransferState.COMPLETED.equals(tp.getState()),
+                "consumer transfer downloading");
+
+        // Simulate the real Data Plane's work: it would have downloaded "hello world" from the
+        // provider's presigned URL and uploaded it into the consumer's own S3 bucket, then
+        // POSTed the completion callback. The WireMock DP stubbed above only fakes the DPS
+        // signaling exchange, so both steps are performed manually here.
+        simulateDpArtifactDelivery(downloadingConsumerTp.getId(), "hello world");
+        postDpCompletedCallback(downloadingConsumerTp.getId());
+
+        // The consumer's later "/view" call also delegates presigned-URL generation to the Data
+        // Plane via a fresh /dataflows/prepare call (see DataTransferAPIService.viewData()).
+        // Re-stub /dataflows/prepare — now that the artifact really exists in the consumer's
+        // bucket — with a genuine presigned URL so the test can actually download through it,
+        // overriding the generic stub used above for the provider's auto-start prepare call.
+        // WireMock resolves overlapping stub mappings by preferring the most recently registered.
+        String realPresignedUrl = s3ClientService.generateGetPresignedUrl(
+                consumerBucketName, downloadingConsumerTp.getId(), Duration.ofDays(1));
+        WireMock.stubFor(WireMock.post(WireMock.urlPathEqualTo("/dataflows/prepare"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody("{\"processId\":\"fake-dp-process\",\"dataAddress\":{\"presignedUrl\":\""
+                                + realPresignedUrl + "\"}}")));
 
         // Automatic transfer chain: provider auto-starts, consumer auto-downloads, both
         // reach COMPLETED without further manual API calls.
@@ -378,6 +430,58 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
                 ContentDisposition.attachment().filename("artifact.txt").build().toString()).get();
         Thread.sleep(2000); // wait for S3 upload to complete, as done elsewhere in the test suite
         log.info("Provider artifact uploaded to bucket '{}' with key '{}'", providerBucketName, providerDataset.getId());
+    }
+
+    /**
+     * Uploads {@code content} directly into the consumer tenant's S3 bucket under
+     * {@code objectKey}, simulating what a real Data Plane would have done after
+     * downloading the artifact from the provider via the presigned URL.
+     *
+     * <p>The WireMock Data Plane double registered for this test only fakes the DPS
+     * signaling exchange ({@code /dataflows/prepare}, {@code /dataflows/start}) — it never
+     * performs the actual S3 download/upload that a real HTTP-PULL Data Plane would, since
+     * real data movement is delegated to an external Data Plane per the DPS split. Without
+     * this step, the "artifact exists in consumer bucket" assertion could never pass.
+     *
+     * @param objectKey the S3 object key the real Data Plane would have used — the
+     *                  consumer {@link TransferProcess} id
+     * @param content   the artifact content to place in the consumer bucket
+     * @throws Exception on S3 upload failure
+     */
+    private void simulateDpArtifactDelivery(String objectKey, String content) throws Exception {
+        Map<String, String> destinationS3Properties = Map.of(
+                S3Utils.OBJECT_KEY, objectKey,
+                S3Utils.BUCKET_NAME, consumerBucketName,
+                S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
+                S3Utils.REGION, s3Properties.getRegion(),
+                S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),
+                S3Utils.SECRET_KEY, s3Properties.getSecretKey());
+
+        try (InputStream is = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8))) {
+            s3ClientService.uploadFile(is, destinationS3Properties, MediaType.TEXT_PLAIN_VALUE,
+                    ContentDisposition.attachment().filename("artifact.txt").build().toString()).get();
+        }
+        Thread.sleep(2000); // wait for S3 upload to complete, as done elsewhere in the test suite
+        log.info("Simulated Data Plane artifact delivery — bucket='{}', key='{}'", consumerBucketName, objectKey);
+    }
+
+    /**
+     * Sends the legacy Data Plane completion callback ({@code POST /api/v1/dataflows/complete})
+     * for {@code processId}, simulating the Data Plane reporting that the HTTP-PULL download
+     * has finished. Authenticates using {@link #DP_API_KEY}, which {@code BaseIntegrationTest}
+     * registers for this connector instance's Data Plane entry.
+     *
+     * @param processId the internal transfer process id to complete
+     * @throws Exception if the callback request fails
+     */
+    private void postDpCompletedCallback(String processId) throws Exception {
+        String body = "{\"processId\":\"" + processId + "\",\"state\":\"COMPLETED\"}";
+        mockMvc.perform(
+                        post(ApiEndpoints.DATAFLOW_CALLBACK_COMPLETE)
+                                .header("X-Api-Key", DP_API_KEY)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(body))
+                .andExpect(status().isOk());
     }
 
     // ---- polling helpers ----

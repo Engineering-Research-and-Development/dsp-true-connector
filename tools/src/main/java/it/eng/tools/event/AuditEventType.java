@@ -55,6 +55,11 @@ public enum AuditEventType {
     TENANT_UPDATED("Tenant updated"),
     TENANT_NOT_FOUND("Tenant not found"),
 
+    DATAPLANE_REGISTERED("Data Plane registered"),
+    DATAPLANE_REGISTRATION_UPDATED("Data Plane registration updated"),
+    DATAPLANE_DEREGISTERED("Data Plane deregistered"),
+    DATAPLANE_REGISTRATION_NOT_FOUND("Data Plane registration not found"),
+
     USER_CREATED("User created"),
     USER_UPDATED("User updated"),
     USER_PASSWORD_CHANGED("User password changed"),
