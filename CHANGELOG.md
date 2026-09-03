@@ -2,7 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.7.0] - 10.09.2026 - Multi-Tenant Support
+
+- **Updated java from 17 to 21**
 
 ### Added
 - **TB1 — Tenant Bucket Credential Request Contract & Verification**
@@ -40,12 +42,6 @@ All notable changes to this project will be documented in this file.
   - `UserAPIController` (renamed from `UserApiController`) now returns HATEOAS paginated responses via `PlainUserAssembler` and `PagedResourcesAssembler`.
   - Added `UserNotFoundException` and dedicated `UserAPIAdvice` for consistent 404 error mapping.
   - Updated unit and integration tests (`UserServiceTest`, `UserAPIControllerTest`, `UserIT`) and removed the obsolete e-mail lookup tests from the Postman / Newman API suites.
-
-## [0.7.0] - 10.07.2026 - Multi-Tenant Support
-
-- **Updated java from 17 to 21**
-
-### Added
 - **MT1 — Tenant & User Lifecycle Foundation**
   - `TenantService.saveTenant()` now auto-generates a **UUID** as the tenant ID; any caller-supplied `id` is ignored. `callbackAddress` is derived programmatically as `${application.callback.address}/{id}` — any caller-supplied `callbackAddress` is also ignored.
   - `UserDTO` has a new `tenantId` field. When provided, `UserService.createUser()` validates that the referenced tenant exists and is enabled before persisting the user; users are stored with their `tenantId` linked.
