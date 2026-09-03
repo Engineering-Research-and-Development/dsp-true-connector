@@ -1,7 +1,9 @@
 package it.eng.connector.integration.negotiation;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -16,14 +18,17 @@ import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.ApplicationConnector;
+import it.eng.connector.filter.ApiTenantContextFilter;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.service.TenantService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -41,6 +46,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -74,14 +80,24 @@ public class AutomaticNegotiationIT {
     private static final int WIREMOCK_CONSUMER_PORT = 8383;
     /** Port WireMock listens on — intercepting provider→consumer protocol messages. */
     private static final int WIREMOCK_PORT = 9099;
+    /** Default tenant ID — used as the DSP protocol base path segment. */
+    private static final String TENANT_ID = "engineering";
 
     private static final String CONSUMER_BASE_URL          = "http://localhost:" + CONSUMER_PORT;
     private static final String PROVIDER_BASE_URL          = "http://localhost:" + PROVIDER_PORT;
     private static final String WIREMOCK_CONSUMER_BASE_URL = "http://localhost:" + WIREMOCK_CONSUMER_PORT;
 
-    // Basic auth credentials matching initial_data.json
-    private static final String ADMIN_CREDENTIALS =
-            Base64.getEncoder().encodeToString("admin@mail.com:password".getBytes(StandardCharsets.UTF_8));
+    /**
+     * Tenant-qualified provider protocol base URL.
+     * Used as {@code Forward-To} when the consumer initiates a negotiation toward the provider
+     * so that DSP protocol messages reach the correct {@code /{tenantId}/negotiations/...} endpoint.
+     */
+    private static final String PROVIDER_PROTOCOL_URL = PROVIDER_BASE_URL + "/" + TENANT_ID;
+    /**
+     * Tenant-qualified WireMock base URL.
+     * Used as {@code Forward-To} when the consumer routes protocol messages through WireMock.
+     */
+    private static final String WIREMOCK_PROTOCOL_URL = "http://localhost:" + WIREMOCK_PORT + "/" + TENANT_ID;
 
     private static final int POLL_TIMEOUT_SECONDS = 30;
     private static final int POLL_INTERVAL_MS     = 500;
@@ -146,7 +162,7 @@ public class AutomaticNegotiationIT {
                 null, null, null);
 
         // ── WireMock consumer — callbackAddress points to WireMock, not the real consumer ──
-        // Provider will send ContractAgreementMessage to http://localhost:WIREMOCK_PORT/consumer/...
+        // Provider will send ContractAgreementMessage to http://localhost:WIREMOCK_PORT/{tenantId}/consumer/...
         // WireMock intercepts that request and returns an error → triggers provider's retry logic.
         wiremockConsumerCtx = startInstance(mongoHost, mongoPort, WIREMOCK_CONSUMER_PORT,
                 "consumer-wiremock", "consumer_wiremock_db",
@@ -193,14 +209,25 @@ public class AutomaticNegotiationIT {
             System.setProperty("s3.accessKey", s3AccessKey);
             System.setProperty("s3.secretKey", s3SecretKey);
             System.setProperty("s3.region", "us-east-1");
-            System.setProperty("s3.bucketName", "provider-bucket");
+            System.setProperty("s3.bucketName", "dsp-true-connector-provider");
         }
 
         try {
             var app = new SpringApplicationBuilder(ApplicationConnector.class)
                     .addCommandLineProperties(false)
                     .build();
-            return app.run();
+            ConfigurableApplicationContext ctx = app.run();
+            // Phase 5: update the engineering tenant in the DB with automaticNegotiation=true.
+            TenantService tenantSvc = ctx.getBean(TenantService.class);
+            Tenant tenantUpdate = Tenant.Builder.newInstance()
+                    .id(TENANT_ID)
+                    .name("Engineering")
+                    .participantId("urn:connector:engineering")
+                    .automaticNegotiation(true)
+                    .enabled(true)
+                    .build();
+            tenantSvc.updateTenant(TENANT_ID, tenantUpdate);
+            return ctx;
         } finally {
             // Clear system properties so they don't leak into the next context started
             // in this JVM (consumer starts after provider with different values).
@@ -248,6 +275,8 @@ public class AutomaticNegotiationIT {
      * Saves a catalog with a dataset and matching offer into the provider's MongoDB and
      * uploads the artifact file to the provider's MinIO instance — mirroring the setup
      * in {@code CatalogIT} so that offer validation and catalog serving both succeed.
+     * All entities are stamped with the default {@value #TENANT_ID} tenant so that
+     * tenant-scoped repository queries (introduced in Phase 2) can locate them.
      */
     private static void populateProviderCatalog() {
         var catalogRepository      = providerCtx.getBean(CatalogRepository.class);
@@ -258,7 +287,8 @@ public class AutomaticNegotiationIT {
         var s3ClientService        = providerCtx.getBean(S3ClientService.class);
         var s3Properties           = providerCtx.getBean(it.eng.tools.s3.properties.S3Properties.class);
 
-        Catalog catalog = CatalogMockObjectUtil.createNewCatalog();
+        // createNewCatalog(TENANT_ID) cascades tenantId to dataset, distribution, and data-service
+        Catalog catalog = CatalogMockObjectUtil.createNewCatalog(TENANT_ID);
         Dataset dataset = catalog.getDataset().stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("No dataset in catalog"));
 
@@ -298,6 +328,23 @@ public class AutomaticNegotiationIT {
                 dataset.getId(), s3Properties.getBucketName());
     }
 
+    private String fetchAdminJwt() throws IOException, InterruptedException {
+
+        String requestBody = """
+                {"email": "admin@mail.com", "password": "password"}
+                """;
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(CONSUMER_BASE_URL + ApiEndpoints.AUTH_V1 + "/login"))
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+        String httpResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString()).body().toString();
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode jsonNode = objectMapper.readTree(httpResponse);
+        return jsonNode.get("access_token").asText();
+    }
+
     // ── test ──────────────────────────────────────────────────────────────────────
 
     @Test
@@ -320,13 +367,15 @@ public class AutomaticNegotiationIT {
 
         // Consumer sends API request to initiate negotiation toward the provider
         Map<String, Object> requestBody = new LinkedHashMap<>();
-        requestBody.put("Forward-To", PROVIDER_BASE_URL);
+        requestBody.put("Forward-To", PROVIDER_PROTOCOL_URL);
         requestBody.put("offer", NegotiationSerializer.serializePlainJsonNode(offer));
 
-        HttpResponse<String> initiateResponse = post(
+        // X-Tenant-Id header ensures the consumer CN is saved with the correct tenantId,
+        // so protocol callbacks (agreement, events) can look it up with tenant isolation.
+        HttpResponse<String> initiateResponse = postAsTenant(
                 CONSUMER_BASE_URL + ApiEndpoints.NEGOTIATION_V1 + "/request",
                 NegotiationSerializer.serializePlain(requestBody),
-                ADMIN_CREDENTIALS);
+                fetchAdminJwt(), TENANT_ID);
 
         assertEquals(200, initiateResponse.statusCode(),
                 "Consumer initiate request failed: " + initiateResponse.body());
@@ -345,7 +394,7 @@ public class AutomaticNegotiationIT {
         // Poll consumer until FINALIZED
         ContractNegotiation finalConsumerCn = pollUntilState(
                 CONSUMER_BASE_URL + ApiEndpoints.NEGOTIATION_V1 + "/" + consumerCnId,
-                ADMIN_CREDENTIALS, ContractNegotiationState.FINALIZED, "consumer");
+                fetchAdminJwt(), ContractNegotiationState.FINALIZED, "consumer");
 
         // Poll provider until FINALIZED (look up by providerPid stored on consumer side)
         String providerPid = finalConsumerCn.getProviderPid();
@@ -399,7 +448,7 @@ public class AutomaticNegotiationIT {
         // ── configure WireMock stubs ───────────────────────────────────────────────
         // 1. Intercept ContractAgreementMessage with 500 → triggers provider retry loop.
         wireMockServer.stubFor(
-                WireMock.post(urlPathMatching("/consumer/negotiations/.+/agreement"))
+                WireMock.post(urlPathMatching("/" + TENANT_ID + "/consumer/negotiations/.+/agreement"))
                         .willReturn(aResponse()
                                 .withStatus(500)
                                 .withHeader("Content-Type", "application/json")
@@ -408,7 +457,7 @@ public class AutomaticNegotiationIT {
         // 2. Proxy ContractNegotiationTerminationMessage to the real wiremock-consumer so
         //    its CN is also transitioned to TERMINATED via the normal protocol handler.
         wireMockServer.stubFor(
-                WireMock.post(urlPathMatching("/consumer/negotiations/.+/termination"))
+                WireMock.post(urlPathMatching("/" + TENANT_ID + "/consumer/negotiations/.+/termination"))
                         .willReturn(aResponse()
                                 .proxiedFrom("http://localhost:" + WIREMOCK_CONSUMER_PORT)));
 
@@ -426,16 +475,16 @@ public class AutomaticNegotiationIT {
                 .build();
 
         // ── wiremock-consumer sends ContractRequestMessage to real provider ────────
-        // The consumer's callbackAddress is http://localhost:WIREMOCK_PORT/consumer, so
+        // The consumer's callbackAddress is http://localhost:WIREMOCK_PORT/{tenantId}, so
         // the provider will route all subsequent protocol messages through WireMock.
         Map<String, Object> requestBody = new LinkedHashMap<>();
-        requestBody.put("Forward-To", PROVIDER_BASE_URL);
+        requestBody.put("Forward-To", PROVIDER_PROTOCOL_URL);
         requestBody.put("offer", NegotiationSerializer.serializePlainJsonNode(offer));
 
-        HttpResponse<String> initiateResponse = post(
+        HttpResponse<String> initiateResponse = postAsTenant(
                 WIREMOCK_CONSUMER_BASE_URL + ApiEndpoints.NEGOTIATION_V1 + "/request",
                 NegotiationSerializer.serializePlain(requestBody),
-                ADMIN_CREDENTIALS);
+                fetchAdminJwt(), TENANT_ID);
 
         assertEquals(200, initiateResponse.statusCode(),
                 "WireMock-consumer initiate request failed: " + initiateResponse.body());
@@ -523,14 +572,14 @@ public class AutomaticNegotiationIT {
         // 1. Proxy the initial ContractRequestMessage through to the real provider so the
         //    negotiation is bootstrapped correctly on both sides.
         wireMockServer.stubFor(
-                WireMock.post(urlPathMatching("/negotiations/request"))
+                WireMock.post(urlPathMatching("/" + TENANT_ID + "/negotiations/request"))
                         .willReturn(aResponse()
                                 .proxiedFrom("http://localhost:" + PROVIDER_PORT)));
 
         // 2. Intercept ContractAgreementVerificationMessage with 500 → triggers consumer
         //    retry loop (AGREED → VERIFIED transition fails repeatedly).
         wireMockServer.stubFor(
-                WireMock.post(urlPathMatching("/negotiations/.+/agreement/verification"))
+                WireMock.post(urlPathMatching("/" + TENANT_ID + "/negotiations/.+/agreement/verification"))
                         .willReturn(aResponse()
                                 .withStatus(500)
                                 .withHeader("Content-Type", "application/json")
@@ -539,7 +588,7 @@ public class AutomaticNegotiationIT {
         // 3. Proxy ContractNegotiationTerminationMessage to the real provider so its CN is
         //    also transitioned to TERMINATED via the normal protocol handler.
         wireMockServer.stubFor(
-                WireMock.post(urlPathMatching("/negotiations/.+/termination"))
+                WireMock.post(urlPathMatching("/" + TENANT_ID + "/negotiations/.+/termination"))
                         .willReturn(aResponse()
                                 .proxiedFrom("http://localhost:" + PROVIDER_PORT)));
 
@@ -557,17 +606,19 @@ public class AutomaticNegotiationIT {
                 .build();
 
         // ── consumer sends ContractRequestMessage through WireMock to the provider ──
-        // By setting Forward-To to WireMock's address the consumer stores
-        // http://localhost:WIREMOCK_PORT as its callbackAddress for the provider,
+        // By setting Forward-To to WireMock's tenant-qualified address the consumer stores
+        // http://localhost:WIREMOCK_PORT/{tenantId} as its callbackAddress for the provider,
         // so all subsequent consumer→provider protocol messages go through WireMock.
         Map<String, Object> requestBody = new LinkedHashMap<>();
-        requestBody.put("Forward-To", "http://localhost:" + WIREMOCK_PORT);
+        requestBody.put("Forward-To", WIREMOCK_PROTOCOL_URL);
         requestBody.put("offer", NegotiationSerializer.serializePlainJsonNode(offer));
 
-        HttpResponse<String> initiateResponse = post(
+        // X-Tenant-Id header ensures the consumer CN is saved with the correct tenantId,
+        // so protocol callbacks (agreement, events) can look it up with tenant isolation.
+        HttpResponse<String> initiateResponse = postAsTenant(
                 CONSUMER_BASE_URL + ApiEndpoints.NEGOTIATION_V1 + "/request",
                 NegotiationSerializer.serializePlain(requestBody),
-                ADMIN_CREDENTIALS);
+                fetchAdminJwt(), TENANT_ID);
 
         assertEquals(200, initiateResponse.statusCode(),
                 "Consumer initiate request failed: " + initiateResponse.body());
@@ -622,20 +673,20 @@ public class AutomaticNegotiationIT {
      * expected {@code targetState} or the timeout is exceeded.
      *
      * @param url         the API endpoint to poll
-     * @param credentials Base64-encoded Basic Auth credentials
+     * @param jwt         the JWT token for authorization
      * @param targetState the {@link ContractNegotiationState} to wait for
      * @param label       human-readable label used in log messages
      * @return the {@link ContractNegotiation} once it reaches {@code targetState}
      * @throws Exception if polling times out or an HTTP/parse error occurs
      */
-    private ContractNegotiation pollUntilState(String url, String credentials,
+    private ContractNegotiation pollUntilState(String url, String jwt,
                                                ContractNegotiationState targetState, String label)
             throws Exception {
         long deadline = System.currentTimeMillis() + (POLL_TIMEOUT_SECONDS * 1000L);
         var javaType = jsonMapper.getTypeFactory()
                 .constructParametricType(GenericApiResponse.class, ContractNegotiation.class);
         while (System.currentTimeMillis() < deadline) {
-            HttpResponse<String> response = get(url, credentials);
+            HttpResponse<String> response = get(url, jwt);
             if (response.statusCode() == 200) {
                 GenericApiResponse<ContractNegotiation> apiResponse =
                         jsonMapper.readValue(response.body(), javaType);
@@ -700,19 +751,43 @@ public class AutomaticNegotiationIT {
     }
 
     /**
-     * Sends an HTTP POST request with JSON body and Basic Auth.
+     * Sends an HTTP POST request with JSON body and Bearer token.
      *
      * @param url         the target URL
      * @param body        the JSON request body
-     * @param credentials Base64-encoded Basic Auth credentials
+     * @param jwt         the JWT token for authorization
      * @return the HTTP response
      * @throws Exception on I/O or interrupt errors
      */
-    private HttpResponse<String> post(String url, String body, String credentials) throws Exception {
+    private HttpResponse<String> post(String url, String body, String jwt) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .header(HttpHeaders.AUTHORIZATION, "Basic " + credentials)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt)
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+        return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    /**
+     * Sends an HTTP POST request with JSON body, Bearer token, and an {@code X-Tenant-Id}
+     * header.  The header allows a super-admin (null tenantId user) to act on behalf of
+     * a specific tenant so that created entities are stored with the correct tenantId.
+     *
+     * @param url         the target URL
+     * @param body        the JSON request body
+     * @param jwt         the JWT token for authorization
+     * @param tenantId    the tenant identifier to set in the {@code X-Tenant-Id} header
+     * @return the HTTP response
+     * @throws Exception on I/O or interrupt errors
+     */
+    private HttpResponse<String> postAsTenant(String url, String body, String jwt,
+            String tenantId) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt)
+                .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, tenantId)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
@@ -730,7 +805,7 @@ public class AutomaticNegotiationIT {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .header(HttpHeaders.AUTHORIZATION, "Basic " + credentials)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + credentials)
                 .GET()
                 .build();
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());

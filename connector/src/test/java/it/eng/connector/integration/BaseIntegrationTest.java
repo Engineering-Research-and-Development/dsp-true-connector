@@ -13,6 +13,8 @@ import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.model.Tenant;
+import it.eng.tools.repository.TenantRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.serializer.InstantDeserializer;
@@ -57,6 +59,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Testcontainers
 public class BaseIntegrationTest {
 
+    /** Default tenant ID used across all integration tests. */
+    protected static final String TENANT_ID = "engineering";
+
     // starts a mongodb and s3 simulated cloud storage container; the containers are shared among all tests; docker must be running
     protected static final MongoDBContainer mongoDBContainer =
             new MongoDBContainer(DockerImageName.parse("mongo:7.0.12"))
@@ -69,6 +74,8 @@ public class BaseIntegrationTest {
     protected MockMvc mockMvc;
     @Autowired
     protected S3Properties s3Properties;
+    @Autowired
+    protected TenantRepository tenantRepository;
     protected JsonMapper jsonMapper;
 
     protected String createNewId() {
@@ -102,6 +109,24 @@ public class BaseIntegrationTest {
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
                 .addModule(instantConverterModule)
                 .build();
+        ensureDefaultTenant();
+    }
+
+    /**
+     * Idempotently ensures the default Engineering tenant exists in the test database.
+     * Called from {@code @BeforeEach} so each test method starts with a valid tenant,
+     * even if a previous test's {@code @AfterEach} removed it.
+     */
+    protected void ensureDefaultTenant() {
+        if (tenantRepository.findById(TENANT_ID).isEmpty()) {
+            tenantRepository.save(Tenant.Builder.newInstance()
+                    .id(TENANT_ID)
+                    .name("Engineering")
+                    .participantId("connector-engineering")
+                    .bucketName(s3Properties.getBucketName())
+                    .enabled(true)
+                    .build());
+        }
     }
 
     protected JsonNode getContractNegotiationOverAPI() throws Exception {

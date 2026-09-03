@@ -10,6 +10,7 @@ import it.eng.tools.repository.ApplicationPropertiesRepository;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.serializer.ToolsSerializer;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -23,6 +24,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -43,11 +45,11 @@ public class ApplicationPropertyIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.ADMIN_USER)
     public void getPropertiesSuccessfulTest() throws Exception {
         ResultActions result =
                 mockMvc.perform(
                         get(ApiEndpoints.PROPERTIES_V1 + "/")
+                                .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
                                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                                 .accept(MediaType.APPLICATION_JSON_VALUE));
 
@@ -65,6 +67,7 @@ public class ApplicationPropertyIT extends BaseIntegrationTest {
         result =
                 mockMvc.perform(
                         get(ApiEndpoints.PROPERTIES_V1 + "/?key_prefix=" + ApplicationPropertyKeys.PROTOCOL_AUTHENTICATION)
+                                .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
                                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                                 .accept(MediaType.APPLICATION_JSON_VALUE));
         result.andExpect(status().isOk())
@@ -79,7 +82,16 @@ public class ApplicationPropertyIT extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/properties as ROLE_ADMIN returns 403")
     @WithUserDetails(TestUtil.ADMIN_USER)
+    public void getProperties_asAdmin_returns403() throws Exception {
+        mockMvc.perform(get(ApiEndpoints.PROPERTIES_V1 + "/")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .accept(MediaType.APPLICATION_JSON_VALUE))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     public void putPropertySuccessfulTest() throws Exception {
         ApplicationProperty property = ApplicationProperty.Builder.newInstance()
                 .key(TEST_KEY)
@@ -99,6 +111,7 @@ public class ApplicationPropertyIT extends BaseIntegrationTest {
         final ResultActions result =
                 mockMvc.perform(
                         put("/api/v1/properties/")
+                                .with(user(TestUtil.SUPER_ADMIN_USER).roles("SUPER_ADMIN"))
                                 .contentType(MediaType.APPLICATION_JSON_VALUE)
                                 .content(body)
                                 .accept(MediaType.APPLICATION_JSON_VALUE));
@@ -112,6 +125,22 @@ public class ApplicationPropertyIT extends BaseIntegrationTest {
         GenericApiResponse<List<ApplicationProperty>> apiResp = ToolsSerializer.deserializePlain(json, typeRef);
 
         assertNotNull(apiResp.getData());
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/properties as ROLE_ADMIN returns 403")
+    @WithUserDetails(TestUtil.ADMIN_USER)
+    public void putProperty_asAdmin_returns403() throws Exception {
+        ApplicationProperty changedProperty = ApplicationProperty.Builder.newInstance()
+                .key(TEST_KEY)
+                .value("blocked")
+                .build();
+
+        mockMvc.perform(put(ApiEndpoints.PROPERTIES_V1 + "/")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content(ToolsSerializer.serializePlain(Arrays.asList(changedProperty)).toString())
+                        .accept(MediaType.APPLICATION_JSON_VALUE))
+                .andExpect(status().isForbidden());
     }
 
 }

@@ -10,6 +10,7 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.property.ConnectorProperties;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.usagecontrol.UsageControlProperties;
+import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -43,7 +44,8 @@ public class AgreementService {
 			GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(connectorProperties.getConnectorURL() 
 					+ ApiEndpoints.NEGOTIATION_AGREEMENTS_V1 + "/" + agreementId + "/enforce", 
 					null, 
-					credentialUtils.getAPICredentials());
+					credentialUtils::getAPICredentials,
+					TenantContextHolder.getTenantId());
 			if (!response.isSuccess()) {
 				log.info("Agreement is not valid");
 				return false;

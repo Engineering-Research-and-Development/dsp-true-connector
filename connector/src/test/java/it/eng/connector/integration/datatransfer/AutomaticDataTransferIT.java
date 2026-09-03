@@ -1,5 +1,7 @@
 package it.eng.connector.integration.datatransfer;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -12,16 +14,19 @@ import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.ApplicationConnector;
+import it.eng.connector.filter.ApiTenantContextFilter;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.service.TenantService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -39,6 +44,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -76,10 +82,8 @@ public class AutomaticDataTransferIT {
     private static final String CONSUMER_BASE_URL          = "http://localhost:" + CONSUMER_PORT;
     private static final String PROVIDER_BASE_URL          = "http://localhost:" + PROVIDER_PORT;
     private static final String WIREMOCK_CONSUMER_BASE_URL = "http://localhost:" + WIREMOCK_CONSUMER_PORT;
-
-    // Basic auth credentials matching initial_data.json
-    private static final String ADMIN_CREDENTIALS =
-            Base64.getEncoder().encodeToString("admin@mail.com:password".getBytes(StandardCharsets.UTF_8));
+    /** Default tenant — used as the DSP protocol base path segment. */
+    private static final String TENANT_ID = "engineering";
 
     private static final int POLL_TIMEOUT_SECONDS = 60;
     private static final int POLL_INTERVAL_MS     = 500;
@@ -141,22 +145,22 @@ public class AutomaticDataTransferIT {
         providerCtx = startInstance(mongoHost, mongoPort, PROVIDER_PORT,
                 "provider", "provider_db", PROVIDER_BASE_URL,
                 providerMinIO.getS3URL(), providerMinIO.getUserName(), providerMinIO.getPassword(),
-                "provider-bucket");
+                "dsp-true-connector-provider");
 
         // ── Consumer — downloaded artifact will land in consumerMinIO ─────────────
         consumerCtx = startInstance(mongoHost, mongoPort, CONSUMER_PORT,
                 "consumer", "consumer_db", CONSUMER_BASE_URL,
                 consumerMinIO.getS3URL(), consumerMinIO.getUserName(), consumerMinIO.getPassword(),
-                "consumer-bucket");
+                "dsp-true-connector-consumer");
 
         // ── WireMock consumer — callbackAddress points to WireMock ────────────────
-        // Provider sends TransferStartMessage to http://localhost:WIREMOCK_PORT/consumer/transfers/{pid}/start.
+        // Provider sends TransferStartMessage to http://localhost:WIREMOCK_PORT/engineering/consumer/transfers/{pid}/start.
         // WireMock intercepts and returns HTTP 500 → triggers provider's retry loop.
         wiremockConsumerCtx = startInstance(mongoHost, mongoPort, WIREMOCK_CONSUMER_PORT,
                 "consumer-wiremock", "consumer_wiremock_db",
                 "http://localhost:" + WIREMOCK_PORT,
                 consumerMinIO.getS3URL(), consumerMinIO.getUserName(), consumerMinIO.getPassword(),
-                "consumer-bucket");
+                "dsp-true-connector-consumer");
 
         populateProviderCatalog();
     }
@@ -210,7 +214,19 @@ public class AutomaticDataTransferIT {
             var app = new SpringApplicationBuilder(ApplicationConnector.class)
                     .addCommandLineProperties(false)
                     .build();
-            return app.run();
+            ConfigurableApplicationContext ctx = app.run();
+            // Phase 5: update the engineering tenant with automaticNegotiation=true and automaticTransfer=true.
+            TenantService tenantSvc = ctx.getBean(TenantService.class);
+            Tenant tenantUpdate = Tenant.Builder.newInstance()
+                    .id(TENANT_ID)
+                    .name("Engineering")
+                    .participantId("urn:connector:engineering")
+                    .automaticNegotiation(true)
+                    .automaticTransfer(true)
+                    .enabled(true)
+                    .build();
+            tenantSvc.updateTenant(TENANT_ID, tenantUpdate);
+            return ctx;
         } finally {
             // Clear system properties so they don't leak into the next context started in this JVM.
             System.clearProperty("server.port");
@@ -272,8 +288,10 @@ public class AutomaticDataTransferIT {
         var s3Properties           = providerCtx.getBean(S3Properties.class);
 
         Catalog catalog = CatalogMockObjectUtil.createNewCatalog();
+        catalog.injectTenantId(TENANT_ID);
         Dataset dataset = catalog.getDataset().stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("No dataset in catalog"));
+        dataset.injectTenantId(TENANT_ID);
 
         datasetId = dataset.getId();
         log.info("Provider catalog populated — datasetId='{}'", datasetId);
@@ -368,12 +386,13 @@ public class AutomaticDataTransferIT {
         // with TransferRequestMessage.callbackAddress = consumerInstance.consumerCallbackAddress().
         TransferProcess providerTp = TransferProcess.Builder.newInstance()
                 .agreementId(agreementId)
-                .callbackAddress(consumerCallbackUrl + "/consumer")
+                .callbackAddress(consumerCallbackUrl + "/" + TENANT_ID + "/consumer")
                 .datasetId(datasetId)
                 .state(TransferState.INITIALIZED)
                 .role(IConstants.ROLE_PROVIDER)
                 .consumerPid(IConstants.TEMPORARY_CONSUMER_PID)
                 .providerPid(providerPid)
+                .tenantId(TENANT_ID)
                 .build();
         providerRepository.save(providerTp);
         log.info("Provider TP created — id='{}', agreementId='{}'", providerTp.getId(), agreementId);
@@ -382,18 +401,36 @@ public class AutomaticDataTransferIT {
         // sends TransferRequestMessage (via DataTransferCallback.getConsumerDataTransferRequest).
         TransferProcess consumerTp = TransferProcess.Builder.newInstance()
                 .agreementId(agreementId)
-                .callbackAddress(PROVIDER_BASE_URL)
+                .callbackAddress(PROVIDER_BASE_URL + "/" + TENANT_ID)
                 .datasetId(datasetId)
                 .state(TransferState.INITIALIZED)
                 .role(IConstants.ROLE_CONSUMER)
                 .consumerPid(consumerPid)
                 .providerPid(IConstants.TEMPORARY_PROVIDER_PID)
+                .tenantId(TENANT_ID)
                 .build();
         consumerRepository.save(consumerTp);
         log.info("Consumer TP created — id='{}', consumerPid='{}', agreementId='{}'",
                 consumerTp.getId(), consumerPid, agreementId);
 
         return consumerTp.getId();
+    }
+
+    private String fetchAdminJwt() throws IOException, InterruptedException {
+
+        String requestBody = """
+                {"email": "admin@mail.com", "password": "password"}
+                """;
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(CONSUMER_BASE_URL + ApiEndpoints.AUTH_V1 + "/login"))
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+        String httpResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString()).body().toString();
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode jsonNode = objectMapper.readTree(httpResponse);
+        return jsonNode.get("access_token").asText();
     }
 
     // ── tests ─────────────────────────────────────────────────────────────────────
@@ -418,9 +455,9 @@ public class AutomaticDataTransferIT {
                 {"transferProcessId": "%s", "format": "HttpData-PULL"}
                 """.formatted(consumerTpId);
 
-        HttpResponse<String> response = post(
+        HttpResponse<String> response = postAsTenant(
                 CONSUMER_BASE_URL + ApiEndpoints.TRANSFER_DATATRANSFER_V1,
-                requestBody, ADMIN_CREDENTIALS);
+                requestBody, fetchAdminJwt(), TENANT_ID);
 
         assertEquals(200, response.statusCode(),
                 "Consumer requestTransfer API failed: " + response.body());
@@ -482,9 +519,9 @@ public class AutomaticDataTransferIT {
                 {"transferProcessId": "%s", "format": "HttpData-PUSH"}
                 """.formatted(consumerTpId);
 
-        HttpResponse<String> response = post(
+        HttpResponse<String> response = postAsTenant(
                 CONSUMER_BASE_URL + ApiEndpoints.TRANSFER_DATATRANSFER_V1,
-                requestBody, ADMIN_CREDENTIALS);
+                requestBody, fetchAdminJwt(), TENANT_ID);
 
         assertEquals(200, response.statusCode(),
                 "Consumer requestTransfer API failed: " + response.body());
@@ -530,7 +567,7 @@ public class AutomaticDataTransferIT {
         // ── configure WireMock stubs ──────────────────────────────────────────────
         // 1. Intercept TransferStartMessage with 500 → triggers provider retry loop.
         wireMockServer.stubFor(
-                WireMock.post(urlPathMatching("/consumer/transfers/.+/start"))
+                WireMock.post(urlPathMatching("/engineering/consumer/transfers/.+/start"))
                         .willReturn(aResponse()
                                 .withStatus(500)
                                 .withHeader("Content-Type", "application/json")
@@ -539,7 +576,7 @@ public class AutomaticDataTransferIT {
         // 2. Proxy TransferTerminationMessage to the real WireMock-consumer (port 8386)
         //    so its TP is also transitioned to TERMINATED via the normal protocol handler.
         wireMockServer.stubFor(
-                WireMock.post(urlPathMatching("/consumer/transfers/.+/termination"))
+                WireMock.post(urlPathMatching("/engineering/consumer/transfers/.+/termination"))
                         .willReturn(aResponse()
                                 .proxiedFrom("http://localhost:" + WIREMOCK_CONSUMER_PORT)));
 
@@ -549,10 +586,10 @@ public class AutomaticDataTransferIT {
 
         // ── create INITIALIZED TPs ────────────────────────────────────────────────
         // WireMock-consumer's application.callback.address = http://localhost:WIREMOCK_PORT.
-        // Its consumerCallbackAddress() = http://localhost:9100/consumer.
-        // Provider will send TransferStartMessage to http://localhost:9100/consumer/transfers/{pid}/start
+        // Its consumerCallbackAddress() = http://localhost:9100/engineering/consumer.
+        // Provider will send TransferStartMessage to http://localhost:9100/engineering/consumer/transfers/{pid}/start
         // which WireMock intercepts → 500. After retry exhaustion provider terminates gracefully
-        // → sends termination to http://localhost:9100/consumer/transfers/{pid}/termination
+        // → sends termination to http://localhost:9100/engineering/consumer/transfers/{pid}/termination
         // which WireMock proxies to the real WireMock-consumer at port 8386.
         String wmConsumerTpId = createTransferProcessFixture(
                 providerTpRepo, wmConsumerTpRepo, agreementId,
@@ -563,9 +600,9 @@ public class AutomaticDataTransferIT {
                 {"transferProcessId": "%s", "format": "HttpData-PULL"}
                 """.formatted(wmConsumerTpId);
 
-        HttpResponse<String> response = post(
+        HttpResponse<String> response = postAsTenant(
                 WIREMOCK_CONSUMER_BASE_URL + ApiEndpoints.TRANSFER_DATATRANSFER_V1,
-                requestBody, ADMIN_CREDENTIALS);
+                requestBody, fetchAdminJwt(), TENANT_ID);
 
         assertEquals(200, response.statusCode(),
                 "WireMock-consumer requestTransfer API failed: " + response.body());
@@ -663,15 +700,38 @@ public class AutomaticDataTransferIT {
      *
      * @param url         the target URL
      * @param body        the JSON request body
-     * @param credentials Base64-encoded Basic Auth credentials
+     * @param jwt         the JWT to set in the {@code Authorization} header
      * @return the HTTP response
      * @throws Exception on I/O or interrupt errors
      */
-    private HttpResponse<String> post(String url, String body, String credentials) throws Exception {
+    private HttpResponse<String> post(String url, String body, String jwt) throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .header(HttpHeaders.AUTHORIZATION, "Basic " + credentials)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt)
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+        return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    /**
+     * Sends an HTTP POST with Basic Auth and an {@code X-Tenant-ID} header so that
+     * {@link it.eng.connector.filter.ApiTenantContextFilter} can resolve the tenant context
+     * for the request, enabling per-tenant callback address computation.
+     *
+     * @param url         the target URL
+     * @param body        the JSON request body
+     * @param jwt         the JWT to set in the {@code Authorization} header
+     * @param tenantId    the tenant identifier to set in the {@code X-Tenant-ID} header
+     * @return the HTTP response
+     */
+    private HttpResponse<String> postAsTenant(String url, String body, String jwt,
+            String tenantId) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt)
+                .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, tenantId)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());

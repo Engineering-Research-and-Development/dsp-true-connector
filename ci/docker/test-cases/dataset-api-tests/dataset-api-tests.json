@@ -1,11 +1,54 @@
 {
   "info": {
-    "_postman_id": "24a95d2f-6810-4474-8137-979e965afa44",
+    "_postman_id": "0652ee70-3b8f-4342-ae5d-2121cdaed49f",
     "name": "Dataset API tests",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "36278855"
   },
   "item": [
+    {
+      "name": "Login ADMIN",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "//extract the access_token and refresh_token from the response body and store them in environment variables.\r",
+              "pm.test(\"Retrieve access_token\", function () {\r",
+              "    var jsonData = pm.response.json();\r",
+              "    pm.collectionVariables.set(\"access_token_provider_api\", jsonData[\"access_token\"])\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{PROVIDER_API_LOGIN}}",
+          "host": [
+            "{{PROVIDER_API_LOGIN}}"
+          ]
+        }
+      },
+      "response": []
+    },
     {
       "name": "List all artifacts",
       "event": [
@@ -250,7 +293,7 @@
               "key": "file",
               "description": "File for upload",
               "type": "file",
-              "src": [],
+              "value": null,
               "disabled": true
             },
             {
@@ -514,7 +557,7 @@
               "key": "file",
               "description": "File for upload",
               "type": "file",
-              "src": [],
+              "value": null,
               "disabled": true
             },
             {
@@ -1082,16 +1125,11 @@
     }
   ],
   "auth": {
-    "type": "basic",
-    "basic": [
+    "type": "bearer",
+    "bearer": [
       {
-        "key": "password",
-        "value": "password",
-        "type": "string"
-      },
-      {
-        "key": "username",
-        "value": "admin@mail.com",
+        "key": "token",
+        "value": "{{access_token_provider_api}}",
         "type": "string"
       }
     ]
@@ -1102,6 +1140,7 @@
       "script": {
         "type": "text/javascript",
         "packages": {},
+        "requests": {},
         "exec": [
           ""
         ]
@@ -1112,6 +1151,7 @@
       "script": {
         "type": "text/javascript",
         "packages": {},
+        "requests": {},
         "exec": [
           ""
         ]
@@ -1121,21 +1161,26 @@
   "variable": [
     {
       "key": "datasetId",
-      "value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5",
-      "type": "string"
+      "value": "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5"
     },
     {
       "key": "PROVIDER_API_ARTIFACTS",
-      "value": "http://localhost:8090/api/v1/artifacts",
-      "type": "string"
+      "value": "http://localhost:8090/api/v1/artifacts"
     },
     {
       "key": "PROVIDER_API_DATASETS",
-      "value": "http://localhost:8090/api/v1/datasets",
-      "type": "string"
+      "value": "http://localhost:8090/api/v1/datasets"
     },
     {
       "key": "datasetWithFileId",
+      "value": ""
+    },
+    {
+      "key": "PROVIDER_API_LOGIN",
+      "value": "http://localhost:8090/api/v1/auth/login"
+    },
+    {
+      "key": "access_token_provider_api",
       "value": ""
     }
   ]

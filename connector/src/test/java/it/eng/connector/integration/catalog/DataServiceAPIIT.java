@@ -62,11 +62,13 @@ public class DataServiceAPIIT extends BaseIntegrationTest {
                 .title(CatalogMockObjectUtil.TITLE)
                 .endpointURL("http://dataservice.com")
                 .endpointDescription("endpoint description")
+                .tenantId("engineering")
                 .build();
 
         // Initialize the Catalog before adding, deleting, or updating dataservice
         catalog = Catalog.Builder.newInstance()
                 .service(Collections.singleton(dataService))
+                .tenantId("engineering")
                 .build();
 
         dataServiceRepository.save(dataService);

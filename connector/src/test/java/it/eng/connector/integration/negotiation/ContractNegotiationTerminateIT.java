@@ -33,7 +33,6 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
 
     @Autowired
     private ContractNegotiationRepository contractNegotiationRepository;
-
     @AfterEach
     public void cleanup() {
         contractNegotiationRepository.deleteAll();
@@ -56,7 +55,7 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
         //negotiations/:id/termination resource
         final ResultActions result =
                 mockMvc.perform(
-                        post("/negotiations/" + cn.getProviderPid() + "/termination")
+                        post("/" + TENANT_ID + "/negotiations/" + cn.getProviderPid() + "/termination")
                                 .content(body)
                                 .contentType(MediaType.APPLICATION_JSON));
         // result is 200 OK
@@ -82,7 +81,7 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
         //negotiations/:id/termination resource
         final ResultActions result =
                 mockMvc.perform(
-                        post("/negotiations/" + INVALID_PID + "/termination")
+                        post("/" + TENANT_ID + "/negotiations/" + INVALID_PID + "/termination")
                                 .content(body)
                                 .contentType(MediaType.APPLICATION_JSON));
         // result is 400 error
@@ -113,7 +112,7 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
         // /consumer/negotiations/{consumerPid}/termination
         final ResultActions result =
                 mockMvc.perform(
-                        post("/consumer/negotiations/" + cn.getConsumerPid() + "/termination")
+                        post("/" + TENANT_ID + "/consumer/negotiations/" + cn.getConsumerPid() + "/termination")
                                 .content(body)
                                 .contentType(MediaType.APPLICATION_JSON));
         // result is 200 OK
@@ -138,7 +137,7 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
         // /consumer/negotiations/{consumerPid}/termination
         final ResultActions result =
                 mockMvc.perform(
-                        post("/consumer/negotiations/" + INVALID_PID + "/termination")
+                        post("/" + TENANT_ID + "/consumer/negotiations/" + INVALID_PID + "/termination")
                                 .content(body)
                                 .contentType(MediaType.APPLICATION_JSON));
         // result is 400 error
@@ -159,6 +158,7 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
                 .role(IConstants.ROLE_PROVIDER)
                 .state(ContractNegotiationState.REQUESTED)
                 .build();
+        cn.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(cn);
         return cn;
     }

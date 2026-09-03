@@ -55,7 +55,7 @@ public class PolicyEnforcementPoint {
      * @return the policy decision
      */
     public PolicyDecision enforcePolicy(Agreement agreement, String operation) {
-        ContractNegotiation contractNegotiation = contractNegotiationRepository.findByAgreement(agreement.getId())
+        ContractNegotiation contractNegotiation = contractNegotiationRepository.findByAgreement(agreement.getTechnicalId())
                 .orElseThrow(() -> new ContractNegotiationAPIException("Contract negotiation with agreement Id " + agreement.getId() + " not found."));
         if (!ContractNegotiationState.FINALIZED.equals(contractNegotiation.getState())) {
             String errorMessage = "Contract negotiation with agreement Id " + agreement.getId() + " not FINALIZED.";

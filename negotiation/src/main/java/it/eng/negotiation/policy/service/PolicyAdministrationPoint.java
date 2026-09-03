@@ -29,11 +29,13 @@ public class PolicyAdministrationPoint {
 	
 	/**
 	 * Create policy enforcement object in DB.
-	 * @param agreementId
+	 * @param agreementId agreementId to create policy enforcement for
+	 * @param tenantId tenantId to create policy enforcement for
 	 */
-	public void createPolicyEnforcement(String agreementId) {
+	public void createPolicyEnforcement(String agreementId, String tenantId) {
 		PolicyEnforcement pe = new PolicyEnforcement();
 		pe.setAgreementId(agreementId);
+		pe.setTenantId(tenantId);
 		pe.setCount(1);
 		policyEnforcementRepository.save(pe);
 	}
@@ -42,20 +44,22 @@ public class PolicyAdministrationPoint {
 	 * Check if PolicyEnforcement for agreement exists.
 	 * Must be sure that policy can be enforced after data is returned
 	 * @param agreementId agreementId to check
+	 * @param tenantId tenantId to check
 	 * @return boolean value if policy enforcement exists or not
 	 */
-	public boolean policyEnforcementExists(String agreementId) {
-		return policyEnforcementRepository.findByAgreementId(agreementId).isPresent();
+	public boolean policyEnforcementExists(String agreementId, String tenantId) {
+		return policyEnforcementRepository.findByAgreementIdAndTenantId(agreementId, tenantId).isPresent();
 	}
 	
 	/**
 	 * Get access count for agreementId.
 	 * 
 	 * @param agreementId agreementId to check
+	 * @param tenantId tenantId to check
 	 */
-	public synchronized void updateAccessCount(String agreementId) {
+	public synchronized void updateAccessCount(String agreementId, String tenantId) {
 		log.info("Updating access count for agreementId {}", agreementId);
-		PolicyEnforcement pe = policyEnforcementRepository.findByAgreementId(agreementId)
+		PolicyEnforcement pe = policyEnforcementRepository.findByAgreementIdAndTenantId(agreementId, tenantId)
 				.orElseThrow(() -> new PolicyEnforcementException("PolicyManager for agreementId  '" + agreementId + "' not found"));
 		pe.setCount(pe.getCount() + 1);
 		policyEnforcementRepository.save(pe);

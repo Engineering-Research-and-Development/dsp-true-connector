@@ -38,6 +38,7 @@ public class DataTransferEventListener {
                 .state(TransferState.INITIALIZED)
                 .created(Instant.now())
                 .modified(Instant.now())
+                .tenantId(initializeTransferProcess.getTenantId())
                 .role(initializeTransferProcess.getRole());
 
         if (initializeTransferProcess.getRole().equals(IConstants.ROLE_CONSUMER)) {

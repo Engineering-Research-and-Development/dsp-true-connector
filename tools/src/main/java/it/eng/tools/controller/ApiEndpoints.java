@@ -60,4 +60,14 @@ public interface ApiEndpoints {
     public static final String PROPERTIES_V1 = "/api/v1/properties";
 
     public static final String AUDIT_V1 = "/api/v1/audit";
+
+    /**
+     * Tools module - v1 API endpoint for tenant management.
+     */
+    public static final String TENANTS_V1 = "/api/v1/tenants";
+
+    /**
+     * Connector module - v1 API endpoint for the unified auth contract (login/refresh/logout).
+     */
+    public static final String AUTH_V1 = "/api/v1/auth";
 }

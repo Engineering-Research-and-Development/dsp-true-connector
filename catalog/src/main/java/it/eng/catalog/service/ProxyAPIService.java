@@ -40,7 +40,7 @@ public class ProxyAPIService {
     public Catalog getCatalog(String forwardTo) {
         CatalogRequestMessage catalogRequestMessage = CatalogRequestMessage.Builder.newInstance().build();
         GenericApiResponse<String> catalogResponse = okHttpClient.sendRequestProtocol(forwardTo + "/catalog/request", CatalogSerializer.serializeProtocolJsonNode(catalogRequestMessage),
-                credentialUtils.getConnectorCredentials());
+                credentialUtils::getConnectorCredentials);
         if (catalogResponse.isSuccess()) {
             return CatalogSerializer.deserializeProtocol(catalogResponse.getData(), Catalog.class);
         } else {

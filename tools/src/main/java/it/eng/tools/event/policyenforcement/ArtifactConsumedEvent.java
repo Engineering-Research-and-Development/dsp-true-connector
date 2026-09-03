@@ -8,4 +8,5 @@ import lombok.Getter;
 public class ArtifactConsumedEvent {
 
 	private String agreementId;
+	private String tenantId;
 }

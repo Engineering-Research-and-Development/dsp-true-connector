@@ -344,7 +344,8 @@ public class DSPContractNegotiationConsumerServiceTest {
         verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
         //verify that status is updated to FINALIZED
         assertEquals(ContractNegotiationState.FINALIZED, argCaptorContractNegotiation.getValue().getState());
-        verify(policyAdministrationPoint).createPolicyEnforcement(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getAgreement().getId());
+        verify(policyAdministrationPoint).createPolicyEnforcement(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getAgreement().getId(),
+                NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getTenantId());
         verify(publisher).publishEvent(any(InitializeTransferProcess.class));
     }
 

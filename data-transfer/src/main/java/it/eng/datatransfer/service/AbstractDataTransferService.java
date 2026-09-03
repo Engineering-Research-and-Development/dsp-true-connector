@@ -22,6 +22,7 @@ import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.FieldEncryptionService;
+import it.eng.tools.service.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpMethod;
@@ -67,7 +68,10 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
      */
     @Override
     public TransferProcess findTransferProcessByProviderPid(String providerPid) {
-        TransferProcess tp = transferProcessRepository.findByProviderPid(providerPid)
+        String tenantId = TenantContextHolder.getTenantId();
+        TransferProcess tp = (tenantId != null
+                ? transferProcessRepository.findByProviderPidAndTenantId(providerPid, tenantId)
+                : transferProcessRepository.findByProviderPid(providerPid))
                 .orElseThrow(() -> new TransferProcessNotFoundException("No transfer process found for providerPid: " + providerPid));
         log.info("Found transfer process: consumerPid {}, providerPid{} , state {}", tp.getConsumerPid(), tp.getProviderPid(), tp.getState());
         return tp;
@@ -81,7 +85,10 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
      */
     @Override
     public TransferProcess findTransferProcessByConsumerPid(String consumerPid) {
-        return transferProcessRepository.findByConsumerPid(consumerPid)
+        String tenantId = TenantContextHolder.getTenantId();
+        return (tenantId != null
+                ? transferProcessRepository.findByConsumerPidAndTenantId(consumerPid, tenantId)
+                : transferProcessRepository.findByConsumerPid(consumerPid))
                 .orElseThrow(() -> new TransferProcessNotFoundException("No transfer process found for consumerPid: " + consumerPid));
     }
 
@@ -93,7 +100,10 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
      * @return TransferProcess
      */
     public TransferProcess findByConsumerPidAndProviderPid(String consumerPid, String providerPid) {
-        return transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
+        String tenantId = TenantContextHolder.getTenantId();
+        return (tenantId != null
+                ? transferProcessRepository.findByConsumerPidAndProviderPidAndTenantId(consumerPid, providerPid, tenantId)
+                : transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid))
                 .orElseThrow(() -> new TransferProcessNotFoundException("No transfer process found"));
     }
 
@@ -104,7 +114,10 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
      * @return TransferProcess
      */
     public TransferProcess findByAgreementId(String agreementId) {
-        return transferProcessRepository.findByAgreementId(agreementId)
+        String tenantId = TenantContextHolder.getTenantId();
+        return (tenantId != null
+                ? transferProcessRepository.findByAgreementIdAndTenantId(agreementId, tenantId)
+                : transferProcessRepository.findByAgreementId(agreementId))
                 .orElseThrow(() -> new TransferProcessNotFoundException("No transfer process found for agreementId: " + agreementId));
     }
 
@@ -139,7 +152,10 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
      * @return TransferProcess with status REQUESTED
      */
     public TransferProcess initiateDataTransfer(TransferRequestMessage transferRequestMessage) {
-        TransferProcess transferProcessInitialized = transferProcessRepository.findByAgreementId(transferRequestMessage.getAgreementId())
+        String tenantId = TenantContextHolder.getTenantId();
+        TransferProcess transferProcessInitialized = (tenantId != null
+                ? transferProcessRepository.findByAgreementIdAndTenantId(transferRequestMessage.getAgreementId(), tenantId)
+                : transferProcessRepository.findByAgreementId(transferRequestMessage.getAgreementId()))
                 .orElseThrow(() ->
                 {
                     String errorMessage = "No agreement with id " + transferRequestMessage.getAgreementId() +
@@ -190,6 +206,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .role(IConstants.ROLE_PROVIDER)
                 .retryCount(transferProcessInitialized.getRetryCount())
                 .datasetId(transferProcessInitialized.getDatasetId())
+                .tenantId(transferProcessInitialized.getTenantId())
                 .created(transferProcessInitialized.getCreated())
                 .createdBy(transferProcessInitialized.getCreatedBy())
                 .modified(transferProcessInitialized.getModified())
@@ -257,6 +274,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .role(transferProcessRequested.getRole())
                 .datasetId(transferProcessRequested.getDatasetId())
                 .retryCount(transferProcessRequested.getRetryCount())
+                .tenantId(transferProcessRequested.getTenantId())
                 .created(transferProcessRequested.getCreated())
                 .createdBy(transferProcessRequested.getCreatedBy())
                 .modified(transferProcessRequested.getModified())
@@ -315,6 +333,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .state(TransferState.COMPLETED)
                 .role(transferProcessStarted.getRole())
                 .datasetId(transferProcessStarted.getDatasetId())
+                .tenantId(transferProcessStarted.getTenantId())
                 .created(transferProcessStarted.getCreated())
                 .createdBy(transferProcessStarted.getCreatedBy())
                 .modified(transferProcessStarted.getModified())
@@ -418,7 +437,10 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
      * @return TransferProcess
      */
     public TransferProcess findTransferProcess(String consumerPid, String providerPid) {
-        return transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
+        String tenantId = TenantContextHolder.getTenantId();
+        return (tenantId != null
+                ? transferProcessRepository.findByConsumerPidAndProviderPidAndTenantId(consumerPid, providerPid, tenantId)
+                : transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid))
                 .orElseThrow(() ->
                 {
                     publisher.publishEvent(

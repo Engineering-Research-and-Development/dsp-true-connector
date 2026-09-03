@@ -40,7 +40,7 @@ Connector has implemented simple user management, including following:
  - update user
  - update password
  
-All endpoints requires Content-Type: application/json, and Authorization header with username:password for existing user with role ADMIN.
+All endpoints require `Content-Type: application/json` and an `Authorization` header for a user with `ROLE_SUPER_ADMIN`. `ROLE_ADMIN` users cannot access these endpoints and will receive HTTP 403.
  
 ### Create user 
 
@@ -92,3 +92,203 @@ If updating other user (than logged in), connector will return error message.
  - It will check if password matches with existing password 
  - Password validity enforcement for new password will be applied (min/max length, must contains digits, lower/upper case, special characters...)
  - If both checks are ok, old password will be replaced with new value
+
+## Tenant API endpoints (/api/v1/tenants)
+
+Connector supports multi-tenant operation. Tenants are managed via the tenant API (SUPER_ADMIN role required).
+
+All endpoints require `Content-Type: application/json` and an Authorization header for a user with `ROLE_SUPER_ADMIN`.
+
+| Method | Path | Description |
+|---|---|---|
+| GET    | `/api/v1/tenants`            | List all tenants |
+| GET    | `/api/v1/tenants/{id}`       | Get tenant by ID |
+| POST   | `/api/v1/tenants`            | Create a tenant |
+| PUT    | `/api/v1/tenants/{id}`       | Update a tenant |
+| PUT    | `/api/v1/tenants/{id}/enable`  | Enable a tenant |
+| PUT    | `/api/v1/tenants/{id}/disable` | Disable a tenant |
+| DELETE | `/api/v1/tenants/{id}`       | Delete a tenant |
+
+### Create tenant
+
+POST request
+
+> **Important**: `id`, `name`, and `participantId` are **required**.
+> - `id` is **chosen by the caller** and must consist only of alphanumeric characters and hyphens (e.g. `my-tenant`). The server does not auto-generate it.
+> - `participantId` is the DSP participant identity for this tenant and must be unique across all tenants.
+> - `callbackAddress` is **not** a stored field — it is derived at runtime as `${application.callback.address}/{id}`.
+> - Bucket onboarding supports three request shapes:
+>   - no bucket fields: fully automatic bucket provisioning (`dsp-{tenantId}`)
+>   - `bucketName` only: reuse an existing bucket and ensure credentials for that name
+>   - `bucketName` + `accessKey` + `secretKey`: persist externally supplied credentials (optionally with `verifyConnection=true`)
+
+```json
+{
+  "id"           : "my-tenant",
+  "name"         : "My Tenant",
+  "description"  : "Optional tenant description",
+  "participantId": "urn:connector:my-tenant",
+  "automaticNegotiation": false,
+  "automaticTransfer": false,
+  "enabled": true
+}
+```
+
+Existing-bucket mode:
+
+```json
+{
+  "id"           : "my-tenant-existing-bucket",
+  "name"         : "My Tenant Existing Bucket",
+  "participantId": "urn:connector:my-tenant-existing-bucket",
+  "bucketName"   : "existing-bucket-name"
+}
+```
+
+External-credentials mode:
+
+```json
+{
+  "id"               : "my-tenant-external-credentials",
+  "name"             : "My Tenant External Credentials",
+  "participantId"    : "urn:connector:my-tenant-external-credentials",
+  "bucketName"       : "external-bucket-name",
+  "accessKey"        : "external-access-key",
+  "secretKey"        : "external-secret-key",
+  "verifyConnection" : true
+}
+```
+
+Example response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id"                   : "my-tenant",
+    "name"                 : "My Tenant",
+    "description"          : "Optional tenant description",
+    "participantId"        : "urn:connector:my-tenant",
+    "automaticNegotiation" : false,
+    "automaticTransfer"    : false,
+    "enabled"              : false,
+    "bucketName"           : null
+  }
+}
+```
+
+A newly created tenant is **disabled** by default. Call `PUT /api/v1/tenants/{id}/enable` to activate it before assigning users.
+
+Create-tenant validation errors return HTTP 400 in these cases:
+
+- invalid bucket-field combinations (for example only `accessKey`, or `bucketName` + `accessKey` without `secretKey`)
+- `bucketName` already owned by another tenant
+- `verifyConnection=true` with external credentials that fail bucket connectivity verification
+
+### Update tenant
+
+`PUT /api/v1/tenants/{id}`
+
+Mutable fields: `name`, `description`, `automaticNegotiation`, `automaticTransfer`, and optional
+bucket-rotation/migration inputs (`bucketName`, `accessKey`, `secretKey`, `verifyConnection`).
+
+The `participantId` and `enabled` state are immutable in this endpoint.
+
+```json
+{
+  "name"                 : "Updated Tenant Name",
+  "automaticNegotiation" : true,
+  "automaticTransfer"    : true
+}
+```
+
+Bucket migration (existing bucket mode):
+
+```json
+{
+  "name"                 : "Updated Tenant Name",
+  "automaticNegotiation" : true,
+  "automaticTransfer"    : true,
+  "bucketName"           : "existing-bucket-name"
+}
+```
+
+Credential rotation / migration with external credentials:
+
+```json
+{
+  "name"                 : "Updated Tenant Name",
+  "automaticNegotiation" : true,
+  "automaticTransfer"    : true,
+  "bucketName"           : "external-bucket-name",
+  "accessKey"            : "external-access-key",
+  "secretKey"            : "external-secret-key",
+  "verifyConnection"     : true
+}
+```
+
+Update validation errors return HTTP 400 in these cases:
+
+- invalid bucket-field combinations (for example only `accessKey`, or `bucketName` + `accessKey` without `secretKey`)
+- `bucketName` already owned by another tenant (self-reconfirm is allowed)
+- `verifyConnection=true` with external credentials that fail bucket connectivity verification
+
+### Enable / disable tenant
+
+```
+PUT /api/v1/tenants/{id}/enable
+PUT /api/v1/tenants/{id}/disable
+```
+
+These endpoints toggle the `enabled` flag. A disabled tenant's users cannot perform protocol operations and are rejected from tenant context resolution.
+
+### Delete tenant
+
+```
+DELETE /api/v1/tenants/{id}
+```
+
+Deletes the tenant record. If the tenant had an S3 bucket configured (`bucketName`), the bucket is **not** automatically deleted to prevent accidental data loss. Clean it up manually once all artifact data has been migrated or is no longer needed.
+
+## User management and multi-tenancy
+
+### tenantId field
+
+From the MT1 release, the create-user request body accepts an optional `tenantId` field that links the user to a specific tenant:
+
+```json
+{
+  "firstName" : "Alice",
+  "lastName"  : "Example",
+  "email"     : "alice@example.com",
+  "password"  : "SecurePass123!",
+  "role"      : "ROLE_ADMIN",
+  "tenantId"  : "my-tenant"
+}
+```
+
+Rules:
+
+- If `tenantId` is provided it **must reference an enabled tenant** (`enabled = true`). If the tenant does not exist or is disabled, the connector returns a 4xx error.
+- Users with `ROLE_SUPER_ADMIN` are **exempt** from tenant-existence validation; they may be created without a `tenantId`.
+
+### Keycloak mode user creation
+
+When the connector is running in **Keycloak authentication mode** (`application.auth.provider=KEYCLOAK`), the `POST /api/v1/users` endpoint delegates to `KeycloakUserService`, which:
+
+1. Obtains a client-credentials token from Keycloak using the configured service account.
+2. Calls the Keycloak Admin REST API (`POST /admin/realms/{realm}/users`) to create the user in the Keycloak realm.
+3. Returns the user JSON on success.
+
+Required properties for Keycloak mode:
+
+| Property | Description |
+|---|---|
+| `application.keycloak.admin.server-url` | Base URL of the Keycloak server (e.g. `http://keycloak:8080`) |
+| `application.keycloak.admin.realm`      | Realm in which users should be created (e.g. `dsp-connector`) |
+| `application.keycloak.server-url`       | Keycloak server for token validation (existing property) |
+| `application.keycloak.realm`            | Token validation realm (existing property) |
+
+The service account configured under `application.keycloak.client.*` must have the `manage-users` role assigned in the target realm.
+
+See [ADR D-TEC-001](../../doc/decisions/technical/D-TEC-001-keycloak-user-registration.md) for the design rationale.

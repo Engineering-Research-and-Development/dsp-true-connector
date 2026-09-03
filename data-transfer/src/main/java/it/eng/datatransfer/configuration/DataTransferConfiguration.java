@@ -31,6 +31,9 @@ public class DataTransferConfiguration {
      * data; 8 concurrent transfers correspond to approximately 400 MB. Tune
      * {@code maxPoolSize} and the queue capacity to match available RAM and expected workload.
      *
+     * <p>A {@link it.eng.tools.configuration.TenantContextTaskDecorator} is installed so that
+     * transfer worker threads inherit the tenant context from the submitting thread.
+     *
      * @return a configured {@link ThreadPoolTaskExecutor} with a core/max pool size of 8
      */
     @Bean(name = "httpPushTransferExecutor")
@@ -41,6 +44,7 @@ public class DataTransferConfiguration {
         executor.setQueueCapacity(50);
         executor.setThreadNamePrefix("http-push-transfer-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setTaskDecorator(new it.eng.tools.configuration.TenantContextTaskDecorator());
         executor.initialize();
         return executor;
     }
@@ -53,6 +57,9 @@ public class DataTransferConfiguration {
      * In-flight downloads complete before the Spring context closes thanks to
      * {@code waitForTasksToCompleteOnShutdown=true}, preventing partial writes to S3.
      *
+     * <p>A {@link it.eng.tools.configuration.TenantContextTaskDecorator} is installed so that
+     * transfer worker threads inherit the tenant context from the submitting thread.
+     *
      * @return a configured {@link ThreadPoolTaskExecutor} with a core/max pool size of 8
      */
     @Bean(name = "httpPullTransferExecutor")
@@ -63,6 +70,7 @@ public class DataTransferConfiguration {
         executor.setQueueCapacity(50);
         executor.setThreadNamePrefix("http-pull-transfer-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setTaskDecorator(new it.eng.tools.configuration.TenantContextTaskDecorator());
         executor.initialize();
         return executor;
     }
@@ -74,6 +82,9 @@ public class DataTransferConfiguration {
      * <p>{@link ThreadPoolTaskScheduler} participates in the Spring lifecycle and shuts down
      * gracefully when the context closes, ensuring scheduled retries are not abandoned mid-flight.
      *
+     * <p>A {@link it.eng.tools.configuration.TenantContextTaskDecorator} is installed so that
+     * scheduled retry tasks inherit the tenant context from the submitting thread.
+     *
      * @return configured {@link TaskScheduler}
      */
     @Bean(name = "transferTaskScheduler")
@@ -81,6 +92,7 @@ public class DataTransferConfiguration {
         var scheduler = new ThreadPoolTaskScheduler();
         scheduler.setPoolSize(schedulerPoolSize);
         scheduler.setThreadNamePrefix("transfer-retry-");
+        scheduler.setTaskDecorator(new it.eng.tools.configuration.TenantContextTaskDecorator());
         scheduler.initialize();
         return scheduler;
     }

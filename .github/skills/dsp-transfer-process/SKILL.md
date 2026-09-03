@@ -42,27 +42,60 @@ Predefined transfer process states are:
 - COMPLETED
 - TERMINATED
 
+## State machine transitions (normative)
+
+From the DSP state machine (`transfer-process-state-machine.puml`). `C` = Consumer initiates, `P` = Provider initiates.
+
+| From | To | Initiator | Message |
+|---|---|---|---|
+| _(initial)_ | REQUESTED | C | `TransferRequestMessage` |
+| REQUESTED | STARTED | **P only** | `TransferStartMessage` |
+| REQUESTED | TERMINATED | C/P | `TransferTerminationMessage` |
+| STARTED | COMPLETED | P/C | `TransferCompletionMessage` |
+| STARTED | SUSPENDED | P/C | `TransferSuspensionMessage` |
+| STARTED | TERMINATED | P/C | `TransferTerminationMessage` |
+| SUSPENDED | STARTED | **P/C** | `TransferStartMessage` |
+| SUSPENDED | TERMINATED | P/C | `TransferTerminationMessage` |
+
+Key rules:
+- The **initial start** (`REQUESTED → STARTED`) is **Provider-only**. Consumer cannot send it.
+- **Restart from SUSPENDED** (`SUSPENDED → STARTED`) can be initiated by **either party**.
+- All other multi-party transitions (COMPLETED, SUSPENDED, TERMINATED from STARTED) allow either party.
+
 # Provider-side HTTPS bindings
 
-- `GET /transfers/:providerPid`
-- `POST /transfers/request`
-- `POST /transfers/:providerPid/start`
-- `POST /transfers/:providerPid/completion`
-- `POST /transfers/:providerPid/termination`
-- `POST /transfers/:providerPid/suspension`
+| Method | Path                                  | HTTP response       |
+|--------|---------------------------------------|---------------------|
+| GET    | `/transfers/:providerPid`             | 200 TransferProcess |
+| POST   | `/transfers/request`                  | 201 TransferProcess |
+| POST   | `/transfers/:providerPid/start`       | 200                 |
+| POST   | `/transfers/:providerPid/completion`  | 200                 |
+| POST   | `/transfers/:providerPid/termination` | 200                 |
+| POST   | `/transfers/:providerPid/suspension`  | 200                 |
 
 Important semantics:
 
 - Initiating `POST /transfers/request` returns HTTP 201 with a `TransferProcess` body.
 - Successful follow-up state-changing POSTs return HTTP 200.
+- Invalid state transitions MUST return HTTP 400 with a `TransferError` body.
+- Missing transfer processes MUST return HTTP 404.
+- Unauthorized access MUST return HTTP 404.
 - Callback URLs in transfer messages MUST support HTTPS.
+- `POST /transfers/:providerPid/start` is used by a **Consumer** to restart a previously suspended
+  transfer. The Provider sends the **initial** start via the Consumer callback.
+- `POST /:callback/transfers/:consumerPid/start` is used by the **Provider** to indicate the start of
+  a Transfer Process — both the initial start and a Provider-initiated restart from `SUSPENDED`.
+- Either party MAY initiate a restart from `SUSPENDED`: Consumer via the Provider-side `/start` endpoint,
+  Provider via the Consumer callback `/start` endpoint.
 
 # Consumer callback bindings
 
-- `POST /:callback/transfers/:consumerPid/start`
-- `POST /:callback/transfers/:consumerPid/completion`
-- `POST /:callback/transfers/:consumerPid/termination`
-- `POST /:callback/transfers/:consumerPid/suspension`
+| Method | Path                                            | HTTP response |
+|--------|-------------------------------------------------|---------------|
+| POST   | `/:callback/transfers/:consumerPid/start`       | 200           |
+| POST   | `/:callback/transfers/:consumerPid/completion`  | 200           |
+| POST   | `/:callback/transfers/:consumerPid/termination` | 200           |
+| POST   | `/:callback/transfers/:consumerPid/suspension`  | 200           |
 
 Callback rules:
 
@@ -72,11 +105,49 @@ Callback rules:
 
 # Critical message rules
 
-- `TransferRequestMessage` includes `consumerPid`, `agreementId`, `format`, and `callbackAddress`.
-- In a transfer request, `dataAddress` MUST only be provided if the format requires a push transfer.
-- In a transfer start message for a pull transfer, `dataAddress` MUST be provided and its endpoint information is interpreted according to the transfer format or profile.
-- Providers SHOULD implement idempotent behavior for transfer requests keyed by `consumerPid`.
-- The idempotency retention window is implementation-specific.
+## TransferRequestMessage (sent by Consumer)
+
+- `consumerPid` — MUST refer to the Consumer-side transfer identifier.
+- `agreementId` — MUST refer to an existing Agreement between Consumer and Provider.
+- `format` — MUST be a format specified by a Distribution in the Provider's Catalog for the Dataset.
+- `dataAddress` — MUST only be provided if the `format` requires a **push** transfer.
+  - MUST contain transport-specific endpoint properties for pushing data.
+  - MAY include an `endpoint` and temporary authorization via `endpointProperties`.
+- `callbackAddress` — MUST be a URI. If not understood, the Provider MUST return an **unrecoverable** error.
+- Providers SHOULD implement idempotent behavior keyed by `consumerPid`.
+  - If a request for the given `consumerPid` was already received from the same Consumer, the Provider SHOULD respond
+    with an appropriate `TransferStartMessage`.
+
+## TransferStartMessage (sent by Provider; Consumer uses Provider `/start` endpoint to signal restart)
+
+- The protocol spec lists `TransferStartMessage` as **sent by Provider**. In the HTTPS binding:
+  - Provider sends it to the **Consumer callback** (`POST /:callback/transfers/:consumerPid/start`)
+    for the initial start and for Provider-initiated restarts from `SUSPENDED`.
+  - Consumer sends it to the **Provider endpoint** (`POST /transfers/:providerPid/start`)
+    to signal a Consumer-initiated restart from `SUSPENDED`. The Provider processes it and
+    transitions `SUSPENDED → STARTED`.
+- `dataAddress` MUST be provided when the transfer is a **pull** transfer.
+  - Contains a transport-specific endpoint address for the Consumer to retrieve data.
+  - `endpointType` property signals the kind of transport and determines required `endpointProperties`.
+- `endpointProperties` MAY contain:
+  - `authorization` — opaque authorization token the client MAY present when accessing the endpoint.
+  - `authType` — auth token type, e.g., `"bearer"`. If present, MAY be used with transport rules for presenting the token.
+
+## TransferSuspensionMessage (sent by Consumer or Provider)
+
+- Either party MAY send this to temporarily suspend the Transfer Process.
+- MAY include a reason description.
+
+## TransferCompletionMessage (sent by Consumer or Provider)
+
+- Either party MAY send this when data transfer is complete.
+- Some implementations MAY optimize by signalling completion at the wire protocol level, in which case this message
+  need not be sent.
+
+## TransferTerminationMessage (sent by Consumer or Provider)
+
+- MAY be sent at any non-terminal state.
+- If termination is due to an error, the sender MAY include error information.
 
 # Implementation-specific decisions
 
@@ -86,6 +157,7 @@ Callback rules:
 - Callback URL validation and SSRF protections.
 - Idempotency retention duration and archival strategy.
 - Handling of non-finite transfers and suspension or restart policy.
+- `endpointProperties` fields beyond `authorization` and `authType`.
 
 # Repository hints for TRUE Connector
 

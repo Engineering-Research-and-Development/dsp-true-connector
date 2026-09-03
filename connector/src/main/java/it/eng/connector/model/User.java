@@ -38,10 +38,27 @@ public class User implements UserDetails {
 
 	private Role role;
 
+	private String tenantId;
+
+	// Backward-compatible constructor for code that does not supply tenantId.
+	public User(String id, String firstName, String lastName, String email, String password,
+			boolean enabled, boolean expired, boolean locked, Role role) {
+		this.id = id;
+		this.firstName = firstName;
+		this.lastName = lastName;
+		this.email = email;
+		this.password = password;
+		this.enabled = enabled;
+		this.expired = expired;
+		this.locked = locked;
+		this.role = role;
+		this.tenantId = null;
+	}
+
 
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
-		return List.of(new SimpleGrantedAuthority(role.name()));
+		return List.of(new SimpleGrantedAuthority(role.authorityName()));
 	}
 
 	@Override

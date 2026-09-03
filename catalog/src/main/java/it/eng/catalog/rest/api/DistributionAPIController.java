@@ -23,7 +23,7 @@ public class DistributionAPIController {
     }
 
     @GetMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<JsonNode>> getDistributionById(@PathVariable("id") String id) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> getDistributionById(@PathVariable String id) {
         log.info("Fetching distribution with id: '" + id + "'");
         Distribution distribution = distributionService.getDistributionById(id);
 
@@ -53,7 +53,7 @@ public class DistributionAPIController {
     }
 
     @DeleteMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<Void>> deleteDistribution(@PathVariable("id") String id) {
+    public ResponseEntity<GenericApiResponse<Void>> deleteDistribution(@PathVariable String id) {
         log.info("Deleting distribution with id: " + id);
 
         distributionService.deleteDistribution(id);
@@ -63,7 +63,7 @@ public class DistributionAPIController {
     }
 
     @PutMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<JsonNode>> updateDistribution(@PathVariable("id") String id, @RequestBody String distribution) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> updateDistribution(@PathVariable String id, @RequestBody String distribution) {
         Distribution ds = CatalogSerializer.deserializePlain(distribution, Distribution.class);
 
         log.info("Updating distribution with id: " + id);

@@ -2,12 +2,15 @@ package it.eng.catalog.service;
 
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantBucketResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.ContentDisposition;
@@ -25,12 +28,18 @@ public class ArtifactService {
     private final ArtifactRepository artifactRepository;
     private final S3ClientService s3ClientService;
     private final S3Properties s3Properties;
+    private final TenantBucketResolver tenantBucketResolver;
+    private final AuditEventPublisher auditEventPublisher;
 
-    public ArtifactService(ArtifactRepository artifactRepository, S3ClientService s3ClientService, S3Properties s3Properties) {
+    public ArtifactService(ArtifactRepository artifactRepository, S3ClientService s3ClientService,
+                           S3Properties s3Properties, TenantBucketResolver tenantBucketResolver,
+                           AuditEventPublisher auditEventPublisher) {
         super();
         this.artifactRepository = artifactRepository;
         this.s3ClientService = s3ClientService;
         this.s3Properties = s3Properties;
+        this.tenantBucketResolver = tenantBucketResolver;
+        this.auditEventPublisher = auditEventPublisher;
     }
 
     public List<Artifact> getArtifacts(String artifactId) {
@@ -67,6 +76,8 @@ public class ArtifactService {
         }
         artifact = artifactRepository.save(artifact);
         log.info("Inserted Artifact {}", artifact.getFilename() != null ? artifact.getFilename() : artifact.getValue());
+        auditEventPublisher.publishEvent(
+                AuditEventType.ARTIFACT_UPLOADED, "Artifact uploaded", Map.of("artifactId", artifact.getId()));
         return artifact;
     }
 
@@ -75,7 +86,7 @@ public class ArtifactService {
         switch (newArtifact.getArtifactType()) {
             case EXTERNAL: {
                 try {
-                    s3ClientService.deleteFile(s3Properties.getBucketName(), oldArtifact.getValue());
+                    s3ClientService.deleteFile(tenantBucketResolver.resolveBucketName(), oldArtifact.getValue());
                 } catch (Exception e) {
                     log.warn("Error while deleting file from S3: {}", e.getMessage());
                 }
@@ -88,6 +99,8 @@ public class ArtifactService {
                 break;
         }
         artifactRepository.delete(oldArtifact);
+        auditEventPublisher.publishEvent(
+                AuditEventType.ARTIFACT_DELETED, "Artifact deleted", Map.of("artifactId", oldArtifact.getId()));
     }
 
     public void deleteArtifact(Artifact artifact) {
@@ -98,7 +111,7 @@ public class ArtifactService {
             }
             case FILE: {
                 try {
-                    s3ClientService.deleteFile(s3Properties.getBucketName(), artifact.getValue());
+                    s3ClientService.deleteFile(tenantBucketResolver.resolveBucketName(), artifact.getValue());
                 } catch (Exception e) {
                     log.warn("Error while deleting file from S3: {}", e.getMessage());
                 }
@@ -108,6 +121,8 @@ public class ArtifactService {
                 break;
         }
         artifactRepository.delete(artifact);
+        auditEventPublisher.publishEvent(
+                AuditEventType.ARTIFACT_DELETED, "Artifact deleted", Map.of("artifactId", artifact.getId()));
     }
 
     private void storeFile(String fileId, MultipartFile file) {
@@ -118,7 +133,7 @@ public class ArtifactService {
         // Upload file to S3
         Map<String, String> destinationS3Properties = Map.of(
                 S3Utils.OBJECT_KEY, fileId,
-                S3Utils.BUCKET_NAME, s3Properties.getBucketName(),
+                S3Utils.BUCKET_NAME, tenantBucketResolver.resolveBucketName(),
                 S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
                 S3Utils.REGION, s3Properties.getRegion(),
                 S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),

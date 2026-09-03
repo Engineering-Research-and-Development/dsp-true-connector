@@ -10,8 +10,8 @@
     <description>Dataspace protocol implementation of the TRUE Connector</description>
 
     <properties>
-        <revision>0.6.15-SNAPSHOT</revision>
-        <java.version>17</java.version>
+        <revision>0.7.0-SNAPSHOT</revision>
+        <java.version>21</java.version>
         <build.sourceEncoding>UTF-8</build.sourceEncoding>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

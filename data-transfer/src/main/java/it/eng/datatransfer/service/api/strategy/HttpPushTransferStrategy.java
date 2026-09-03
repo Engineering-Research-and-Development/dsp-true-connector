@@ -8,6 +8,7 @@ import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.FieldEncryptionService;
+import it.eng.tools.service.TenantBucketResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -33,6 +34,7 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
     private final S3ClientService s3ClientService;
     private final Executor transferExecutor;
     private final FieldEncryptionService fieldEncryptionService;
+    private final TenantBucketResolver tenantBucketResolver;
     private static final int DEFAULT_CONNECT_TIMEOUT = 10000; // 10 seconds
     /**
      * Fallback read timeout (30 minutes) used before Content-Length is known.
@@ -49,16 +51,19 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
      * @param s3ClientService service for downloading and uploading data to S3
      * @param transferExecutor Spring-managed executor for running async transfer tasks
      * @param fieldEncryptionService service for decrypting sensitive fields stored in MongoDB
+     * @param tenantBucketResolver resolves the S3 bucket name for the current tenant
      */
     @Autowired
     public HttpPushTransferStrategy(S3Properties s3Properties,
                                     S3ClientService s3ClientService,
                                     @Qualifier("httpPushTransferExecutor") Executor transferExecutor,
-                                    FieldEncryptionService fieldEncryptionService) {
+                                    FieldEncryptionService fieldEncryptionService,
+                                    TenantBucketResolver tenantBucketResolver) {
         this.s3Properties = s3Properties;
         this.s3ClientService = s3ClientService;
         this.transferExecutor = transferExecutor;
         this.fieldEncryptionService = fieldEncryptionService;
+        this.tenantBucketResolver = tenantBucketResolver;
     }
 
     @Override
@@ -72,7 +77,7 @@ public class HttpPushTransferStrategy implements DataTransferStrategy {
                                 ? fieldEncryptionService.decrypt(prop.getValue())
                                 : prop.getValue()
                 ));
-        String presignedUrl = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), transferProcess.getDatasetId(), Duration.ofDays(1L));
+        String presignedUrl = s3ClientService.generateGetPresignedUrl(tenantBucketResolver.resolveBucketName(transferProcess.getTenantId()), transferProcess.getDatasetId(), Duration.ofDays(1L));
         return transfer(presignedUrl, destinationS3Properties)
                 .thenAccept(key ->
                         log.info("Pushed transfer process id - {} data!", key));

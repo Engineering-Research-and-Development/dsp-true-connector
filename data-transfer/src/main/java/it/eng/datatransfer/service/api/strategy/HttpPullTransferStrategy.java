@@ -8,6 +8,7 @@ import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.service.TenantBucketResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,7 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
     private final S3ClientService s3ClientService;
     private final S3Properties s3Properties;
     private final Executor transferExecutor;
+    private final TenantBucketResolver tenantBucketResolver;
     private static final int DEFAULT_CONNECT_TIMEOUT = 10_000; // 10 seconds
     /**
      * Fallback read timeout (30 minutes) used when the server does not advertise
@@ -46,19 +48,24 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
      * @param s3ClientService service for uploading data to S3
      * @param s3Properties S3 configuration properties
      * @param transferExecutor Spring-managed executor for running async transfer tasks
+     * @param tenantBucketResolver resolves the S3 bucket name for the current tenant
      */
     @Autowired
     public HttpPullTransferStrategy(S3ClientService s3ClientService,
                                     S3Properties s3Properties,
-                                    @Qualifier("httpPullTransferExecutor") Executor transferExecutor) {
+                                    @Qualifier("httpPullTransferExecutor") Executor transferExecutor,
+                                    TenantBucketResolver tenantBucketResolver) {
         this.s3ClientService = s3ClientService;
         this.s3Properties = s3Properties;
         this.transferExecutor = transferExecutor;
+        this.tenantBucketResolver = tenantBucketResolver;
     }
 
     @Override
     public CompletableFuture<Void> transfer(TransferProcess transferProcess) {
         log.info("Executing HTTP PULL transfer for process {}", transferProcess.getId());
+        // Resolve bucket in the request thread (before async handoff) — TenantContextHolder is available here
+        String bucketName = tenantBucketResolver.resolveBucketName(transferProcess.getTenantId());
 
         // get authorization information from Data Address if present
         String authorization = extractAuthorization(transferProcess);
@@ -66,14 +73,16 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
         return downloadAndUploadToS3(
                 transferProcess.getDataAddress().getEndpoint(),
                 authorization,
-                transferProcess.getId()
+                transferProcess.getId(),
+                bucketName
         ).thenAccept(key ->
                 log.info("Stored transfer process id - {} data!", key));
     }
 
     private CompletableFuture<String> downloadAndUploadToS3(String presignedUrl,
                                                             String authorization,
-                                                            String key) {
+                                                            String key,
+                                                            String bucketName) {
         // AtomicReference allows the connection to be shared across two separate lambda stages
         // (supplyAsync and whenComplete) without violating Java's effectively-final capture rule.
         // The supplyAsync lambda opens the connection and stores it here; whenComplete reads it
@@ -123,7 +132,7 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
                 String contentDisposition = connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION);
                 Map<String, String> destinationS3Properties = Map.of(
                         S3Utils.OBJECT_KEY, key,
-                        S3Utils.BUCKET_NAME, s3Properties.getBucketName(),
+                        S3Utils.BUCKET_NAME, bucketName,
                         S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
                         S3Utils.REGION, s3Properties.getRegion(),
                         S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),

@@ -604,4 +604,153 @@ GitHub Actions is a powerful and flexible platform for automating your software 
 
 ---
 
+## TRUE Connector — Newman End-to-End Test Suites
+
+This section documents the project-specific Newman-based end-to-end test suites defined in `build.yml` and how to run them locally to validate that they will pass on GitHub Actions before pushing.
+
+### Overview
+
+Each test suite in `build.yml` runs as a **separate, isolated job**:
+
+1. `docker compose up -d` — start fresh environment
+2. `sleep 30` — wait for connectors to boot
+3. `newman run <collection>` — execute the tests
+4. `docker compose down -v` — **destroy all data** (`-v` removes volumes)
+
+This isolation is critical: stateful suites (negotiation, data transfer) rely on a clean MongoDB with only the seeded `initial_data.json` data. Running two suites against the same environment will corrupt state and cause failures.
+
+**The `negotiation-api-with-counteroffer-tests` suite must also be added to `build.yml`** — it is currently missing and only verified locally.
+
+### Test suites and their collections
+
+| Job name | Collection path |
+|---|---|
+| `connector-tests` | `ci/docker/test-cases/connector-tests/connector-tests.json` |
+| `api-endpoints-tests` | `ci/docker/test-cases/api-tests/api-endpoints-tests.json` |
+| `dataset-api-tests` | `ci/docker/test-cases/dataset-api-tests/dataset-api-tests.json` |
+| `negotiation-api-without-counteroffer-tests` | `ci/docker/test-cases/negotiation-api-without-counteroffer-tests/negotiation-api-without-counteroffer-tests.json` |
+| `negotiation-api-with-counteroffer-tests` | `ci/docker/test-cases/negotiation-api-with-counteroffer-tests/negotiation-api-with-counteroffer-tests.json` |
+| `datatransfer-api-http-pull-tests` | `ci/docker/test-cases/datatransfer-api-http-pull-tests/datatransfer-api-http-pull-tests.json` |
+| `datatransfer-api-http-push-tests` | `ci/docker/test-cases/datatransfer-api-http-push-tests/datatransfer-api-http-push-tests.json` |
+
+### Running locally — the golden rule
+
+**Every suite must run against its own fresh Docker environment.** Never run two suites back-to-back against the same environment. Always `down -v` between them.
+
+```bash
+# Pattern to follow for each suite
+cd <repo-root>
+
+docker compose -f ci/docker/docker-compose.yml --env-file ci/docker/.env up -d
+sleep 30   # wait for both connectors to finish startup and seed data
+
+newman run ci/docker/test-cases/<suite-dir>/<suite-file>.json
+
+docker compose -f ci/docker/docker-compose.yml --env-file ci/docker/.env down -v
+```
+
+### Stateless vs stateful suites
+
+**Stateless** (safe to re-run without restarting the environment; data changes are self-contained):
+- `connector-tests`
+- `api-endpoints-tests`
+- `dataset-api-tests`
+
+**Stateful** (must have a fresh environment; MongoDB state is consumed by the flow and cannot be replayed):
+- `negotiation-api-without-counteroffer-tests`
+- `negotiation-api-with-counteroffer-tests`
+- `datatransfer-api-http-pull-tests`
+- `datatransfer-api-http-push-tests`
+
+For stateful suites, even a single partial run leaves the connectors in a terminal state (e.g., `FINALIZED`, `COMPLETED`). Re-running on the same environment will fail with state-machine transition errors.
+
+### Running all suites in sequence locally
+
+```bash
+cd <repo-root>
+
+COMPOSE="docker compose -f ci/docker/docker-compose.yml --env-file ci/docker/.env"
+
+for SUITE in \
+  "connector-tests/connector-tests.json" \
+  "api-tests/api-endpoints-tests.json" \
+  "dataset-api-tests/dataset-api-tests.json" \
+  "negotiation-api-without-counteroffer-tests/negotiation-api-without-counteroffer-tests.json" \
+  "negotiation-api-with-counteroffer-tests/negotiation-api-with-counteroffer-tests.json" \
+  "datatransfer-api-http-pull-tests/datatransfer-api-http-pull-tests.json" \
+  "datatransfer-api-http-push-tests/datatransfer-api-http-push-tests.json"
+do
+  echo "=== Starting: $SUITE ==="
+  $COMPOSE up -d
+  sleep 30
+  newman run ci/docker/test-cases/$SUITE
+  $COMPOSE down -v
+  echo "=== Done: $SUITE ==="
+done
+```
+
+### Tenant configuration
+
+The two connector instances use distinct tenant IDs. These values must be consistent across `initial_data.json` seed files, application properties, and Newman collection variables:
+
+| Instance | Port | Tenant ID |
+|---|---|---|
+| connector-a (consumer) | 8080 | `connector_a_tenant_id` |
+| connector-b (provider) | 8090 | `connector_b_tenant_id` |
+
+Key collection variables that embed the tenant ID:
+- `CONSUMER_PROTOCOL_ENDPOINT` — must be `http://172.17.0.1:8080/connector_a_tenant_id`
+- `PROVIDER_PROTOCOL_ENDPOINT` — must be `http://172.17.0.1:8090/connector_b_tenant_id`
+- `PROVIDER_PROTOCOL` — must be `http://172.17.0.1:8090/connector_b_tenant_id`
+
+Newman URL objects store the URL in two places: the `raw` string **and** the `path` array. Both must be updated when changing tenant IDs or host addresses. Newman uses the `path` array for resolution, not just `raw`.
+
+### Tenant API authentication
+
+The `/api/v1/tenants/**` endpoints require `ROLE_SUPER_ADMIN`. Regular `admin@mail.com` (which holds `ROLE_ADMIN`) returns `403 Forbidden`. Newman requests targeting the Tenant API must authenticate as `superadmin@mail.com:password`.
+
+### MinIO presigned URL access (datatransfer suites)
+
+The data transfer suites download artifacts via presigned URLs generated by MinIO. The presigned URL hostname is controlled by `s3.externalPresignedEndpoint` in `application.properties` (set to `http://172.17.0.1:9000`). This address must be reachable from the machine running Newman:
+
+- On GitHub Actions runners, `172.17.0.1` is the Docker bridge gateway and is reachable.
+- Locally, the Docker bridge IP may differ. If `172.17.0.1:9000` times out, MinIO is accessible via `localhost:9000` but presigned URLs already embed the configured host. The test will pass on GitHub Actions even if the presigned URL download step fails locally.
+
+### Adding a new test suite to build.yml
+
+Follow the exact pattern used by existing jobs — each job must:
+1. Declare `needs: build-and-push-image` so it runs after the image is published.
+2. Start with `actions/checkout@v4`.
+3. Run `docker compose ... up -d` then `sleep 30`.
+4. Run `docker ps -a` to log container state (aids debugging on failure).
+5. Use `matt-ball/newman-action@v2.0.0` with the `collection` path.
+6. Include a `jwalton/gh-docker-logs@v2` step with `if: failure()` for log capture.
+7. Always end with `docker compose ... down -v` regardless of test outcome (add `if: always()` to ensure cleanup even on failure).
+
+```yaml
+  my-new-tests:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+      - name: Run docker container
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
+      - name: Wait for container starting
+        run: sleep 30
+      - name: Check if the container is up and running
+        run: docker ps -a
+      - uses: matt-ball/newman-action@v2.0.0
+        with:
+          collection: ./ci/docker/test-cases/my-new-tests/my-new-tests.json
+      - name: Dump docker logs on failure
+        if: failure()
+        uses: jwalton/gh-docker-logs@v2
+      - name: Stop docker container
+        if: always()
+        run: docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env down -v
+```
+
+Note the `if: always()` on the cleanup step — existing jobs in `build.yml` omit this, meaning the `down -v` is skipped on test failure. Add `if: always()` to new jobs and consider back-filling it on existing ones to avoid orphaned containers on the runner.
+
 <!-- End of GitHub Actions CI/CD Best Practices Instructions --> 

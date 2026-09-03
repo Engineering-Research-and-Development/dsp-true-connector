@@ -2,7 +2,6 @@ package it.eng.tools.event;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import it.eng.tools.model.ApplicationProperty;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
@@ -19,9 +18,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Getter
-@JsonDeserialize(builder = ApplicationProperty.Builder.class)
+@JsonDeserialize(builder = AuditEvent.Builder.class)
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
-@JsonPropertyOrder(value = {"timestamp", "eventType"}, alphabetic = true)
+@JsonPropertyOrder(value = {"timestamp", "eventType", "tenantId"}, alphabetic = true)
 @Document(collection = "audit_events")
 public class AuditEvent {
 
@@ -35,6 +34,7 @@ public class AuditEvent {
     private Map<String, Object> details; // flexible structure for additional data
     private String source;       // component/module where event occurred
     private String ipAddress;
+    private String tenantId;
 
     public static class Builder {
         private final AuditEvent event;
@@ -87,6 +87,17 @@ public class AuditEvent {
             return this;
         }
 
+        /**
+         * Sets the tenant identifier for this audit event.
+         *
+         * @param tenantId the tenant identifier
+         * @return this builder
+         */
+        public Builder tenantId(String tenantId) {
+            event.tenantId = tenantId;
+            return this;
+        }
+
         public AuditEvent build() {
             Set<ConstraintViolation<AuditEvent>> violations =
                     Validation.buildDefaultValidatorFactory().getValidator().validate(event);
@@ -101,6 +112,16 @@ public class AuditEvent {
                             .map(v -> v.getPropertyPath() + " " + v.getMessage())
                             .collect(Collectors.joining(",")));
         }
+    }
+
+    /**
+     * Directly sets the tenant identifier on this instance, bypassing the builder.
+     * Used by the service layer to stamp tenant ownership before persisting.
+     *
+     * @param tenantId the tenant ID to associate with this catalog
+     */
+    public void injectTenantId(String tenantId) {
+        this.tenantId = tenantId;
     }
 
 }

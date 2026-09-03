@@ -18,4 +18,5 @@ public class PolicyEnforcement {
 	
 	private String agreementId;
 	private int count;
+	private String tenantId;
 }

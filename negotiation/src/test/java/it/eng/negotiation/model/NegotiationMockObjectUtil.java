@@ -5,7 +5,6 @@ import org.springframework.http.HttpStatus;
 
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.UUID;
 
@@ -19,6 +18,7 @@ public class NegotiationMockObjectUtil {
     public static final String DATASET_ID = "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5";
     public static final String ASSIGNEE = "urn:uuid:ASSIGNEE_CONSUMER";
     public static final String ASSIGNER = "urn:uuid:ASSIGNER_PROVIDER";
+    public static final String TENANT_ID = "tenantId";
 
     // target for offer must be dataset_id
     public static final String TARGET = DATASET_ID;
@@ -87,33 +87,33 @@ public class NegotiationMockObjectUtil {
     public static final Permission PERMISSION_COUNT_5 = Permission.Builder.newInstance()
             .action(Action.USE)
             .target(TARGET)
-            .constraint(Arrays.asList(CONSTRAINT_COUNT_5))
+            .constraint(Collections.singletonList(CONSTRAINT_COUNT_5))
             .build();
 
     public static final Permission PERMISSION_SPATIAL = Permission.Builder.newInstance()
             .action(Action.USE)
             .target(TARGET)
-            .constraint(Arrays.asList(CONSTRAINT_SPATIAL))
+            .constraint(Collections.singletonList(CONSTRAINT_SPATIAL))
             .build();
 
     public static final Permission PERMISSION_PURPOSE = Permission.Builder.newInstance()
             .action(Action.USE)
             .target(TARGET)
-            .constraint(Arrays.asList(CONSTRAINT_PURPOSE))
+            .constraint(Collections.singletonList(CONSTRAINT_PURPOSE))
             .build();
 
     public static final Offer OFFER = Offer.Builder.newInstance()
             .target(TARGET)
             .assignee(ASSIGNEE)
             .assigner(ASSIGNER)
-            .permission(Arrays.asList(PERMISSION))
+            .permission(Collections.singletonList(PERMISSION))
             .build();
 
     public static final Offer OFFER_WITH_ORIGINAL_ID = Offer.Builder.newInstance()
             .target(TARGET)
             .assignee(ASSIGNEE)
             .assigner(ASSIGNER)
-            .permission(Arrays.asList(PERMISSION))
+            .permission(Collections.singletonList(PERMISSION))
             .originalId("some-original-id")
             .build();
 
@@ -121,7 +121,7 @@ public class NegotiationMockObjectUtil {
             .target(TARGET)
             .assignee(ASSIGNEE)
             .assigner(ASSIGNER)
-            .permission(Arrays.asList(PERMISSION_COUNT_5))
+            .permission(Collections.singletonList(PERMISSION_COUNT_5))
             .build();
 
     public static final ContractOfferMessage CONTRACT_OFFER_MESSAGE_INITIAL = ContractOfferMessage.Builder.newInstance()
@@ -142,7 +142,7 @@ public class NegotiationMockObjectUtil {
             .assigner(ASSIGNER)
             .target(TARGET)
             .timestamp(ZonedDateTime.now().minusDays(2).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
-            .permission(Arrays.asList(PERMISSION_COUNT_5))
+            .permission(Collections.singletonList(PERMISSION_COUNT_5))
             .build();
 
     public static final ContractRequestMessage CONTRACT_REQUEST_MESSAGE_INITIAL = ContractRequestMessage.Builder.newInstance()
@@ -239,6 +239,7 @@ public class NegotiationMockObjectUtil {
             .callbackAddress(CALLBACK_ADDRESS)
             .state(ContractNegotiationState.VERIFIED)
             .agreement(AGREEMENT)
+            .tenantId(TENANT_ID)
             .build();
 
     public static final ContractNegotiation CONTRACT_NEGOTIATION_FINALIZED = ContractNegotiation.Builder.newInstance()
@@ -256,4 +257,5 @@ public class NegotiationMockObjectUtil {
             .offer(OFFER_COUNT_5)
             .assigner(ASSIGNER)
             .build();
+
 }

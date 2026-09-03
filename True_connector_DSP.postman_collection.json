@@ -4,7 +4,8 @@
     "name": "True_connector_DSP",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "21815221",
-    "_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-7c503262-f8f4-4b17-b1d7-51701031bc1f?action=share&source=collection_link&creator=21815221"
+    "_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-7c503262-f8f4-4b17-b1d7-51701031bc1f?action=share&source=collection_link&creator=21815221",
+    "description": "TRUE Connector DSP Postman Collection\n\nDefault tenant: engineering\nConsumer: http://localhost:8080\nProvider: http://localhost:8090\n\nUsers (BASIC auth mode):\n  superadmin@mail.com / password  - ROLE_SUPER_ADMIN (manages tenants)\n  admin@mail.com / password       - ROLE_ADMIN, tenantId=engineering\n  connector@mail.com / password   - ROLE_CONNECTOR, tenantId=engineering\n\nProtocol endpoints include tenantId path segment: /{tenantId}/catalog, /{tenantId}/negotiations, /{tenantId}/transfers\nUse TENANT_ID env variable for the active tenant."
   },
   "item": [
     {
@@ -14,10 +15,11 @@
         {
           "request": {
             "url": {
+              "raw": "{{KEYCLOAK_TOKEN_URL}}",
               "host": [
                 "{{KEYCLOAK_TOKEN_URL}}"
               ],
-              "raw": "{{KEYCLOAK_TOKEN_URL}}"
+              "path": []
             },
             "method": "POST",
             "body": {
@@ -56,50 +58,83 @@
           "name": "Get Token (Password - Admin)",
           "event": [
             {
+              "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {\r",
-                  "    pm.response.to.have.status(200);\r",
-                  "});\r",
-                  "\r",
-                  "if (pm.response.code === 200) {\r",
-                  "    var jsonData = pm.response.json();\r",
-                  "\r",
-                  "    // Store tokens in BOTH collection and environment variables\r",
-                  "    pm.collectionVariables.set(\"keycloak_access_token\", jsonData.access_token);\r",
-                  "    if (jsonData.refresh_token) {\r",
-                  "        pm.collectionVariables.set(\"keycloak_refresh_token\", jsonData.refresh_token);\r",
-                  "        pm.environment.set(\"KEYCLOAK_REFRESH_TOKEN\", jsonData.refresh_token);\r",
-                  "    }\r",
-                  "    pm.environment.set(\"KEYCLOAK_ACCESS_TOKEN\", jsonData.access_token);\r",
-                  "\r",
-                  "    // Calculate and log token expiry time\r",
-                  "    var expiresIn = jsonData.expires_in;\r",
-                  "    var expiryTime = new Date(Date.now() + (expiresIn * 1000));\r",
-                  "\r",
-                  "    console.log(\"Token Retrieved Successfully\");\r",
-                  "    console.log(\"Token Type: \" + jsonData.token_type);\r",
-                  "    console.log(\"Expires in: \" + expiresIn + \" seconds (\" + Math.floor(expiresIn/60) + \" minutes)\");\r",
-                  "    console.log(\"Expiry Time: \" + expiryTime.toLocaleString());\r",
-                  "    console.log(\"Tokens stored in collection and environment variables\");\r",
-                  "\r",
-                  "    // Store expiry time for reference\r",
-                  "    pm.collectionVariables.set(\"keycloak_token_expiry\", expiryTime.toISOString());\r",
-                  "    pm.environment.set(\"KEYCLOAK_TOKEN_EXPIRY\", expiryTime.toISOString());\r",
-                  "\r",
-                  "    // Display scope if available\r",
-                  "    if (jsonData.scope) {\r",
-                  "        console.log(\"Scope: \" + jsonData.scope);\r",
-                  "    }\r",
-                  "} else {\r",
-                  "    console.error(\"Failed to retrieve token\");\r",
-                  "    console.error(\"Response: \" + pm.response.text());\r",
-                  "}"
-                ],
-                "packages": {},
-                "type": "text/javascript"
-              },
-              "listen": "test"
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
+                  "pm.environment.set(\"KEYCLOAK_ACCESS_TOKEN\", jsonData.access_token);",
+                  "pm.test(\"JWT contains tenantId claim = 'engineering'\", function () {",
+                  "    const payload = JSON.parse(atob(jsonData.access_token.split('.')[1]));",
+                  "    pm.expect(payload.tenantId).to.eql(\"engineering\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get Token (Password - SuperAdmin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "type": "text",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "client_id",
+                  "type": "text",
+                  "value": "{{KEYCLOAK_CLIENT_ID_UI}}"
+                },
+                {
+                  "key": "username",
+                  "type": "text",
+                  "value": "{{KEYCLOAK_USERNAME_SUPERADMIN}}"
+                },
+                {
+                  "key": "password",
+                  "type": "text",
+                  "value": "{{KEYCLOAK_PASSWORD_SUPERADMIN}}"
+                },
+                {
+                  "key": "grant_type",
+                  "type": "text",
+                  "value": "password"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{KEYCLOAK_TOKEN_URL}}",
+              "host": [
+                "{{KEYCLOAK_TOKEN_URL}}"
+              ],
+              "path": []
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
+                  "pm.test(\"JWT does not contain tenantId claim\", function () {",
+                  "    const payload = JSON.parse(atob(jsonData.access_token.split('.')[1]));",
+                  "    pm.expect(payload.tenantId).to.be.undefined;",
+                  "});"
+                ]
+              }
             }
           ],
           "response": []
@@ -107,10 +142,11 @@
         {
           "request": {
             "url": {
+              "raw": "{{KEYCLOAK_TOKEN_URL}}",
               "host": [
                 "{{KEYCLOAK_TOKEN_URL}}"
               ],
-              "raw": "{{KEYCLOAK_TOKEN_URL}}"
+              "path": []
             },
             "method": "POST",
             "body": {
@@ -149,50 +185,19 @@
           "name": "Get Token (Password - User)",
           "event": [
             {
+              "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {\r",
-                  "    pm.response.to.have.status(200);\r",
-                  "});\r",
-                  "\r",
-                  "if (pm.response.code === 200) {\r",
-                  "    var jsonData = pm.response.json();\r",
-                  "\r",
-                  "    // Store tokens in BOTH collection and environment variables\r",
-                  "    pm.collectionVariables.set(\"keycloak_access_token\", jsonData.access_token);\r",
-                  "    if (jsonData.refresh_token) {\r",
-                  "        pm.collectionVariables.set(\"keycloak_refresh_token\", jsonData.refresh_token);\r",
-                  "        pm.environment.set(\"KEYCLOAK_REFRESH_TOKEN\", jsonData.refresh_token);\r",
-                  "    }\r",
-                  "    pm.environment.set(\"KEYCLOAK_ACCESS_TOKEN\", jsonData.access_token);\r",
-                  "\r",
-                  "    // Calculate and log token expiry time\r",
-                  "    var expiresIn = jsonData.expires_in;\r",
-                  "    var expiryTime = new Date(Date.now() + (expiresIn * 1000));\r",
-                  "\r",
-                  "    console.log(\"Token Retrieved Successfully\");\r",
-                  "    console.log(\"Token Type: \" + jsonData.token_type);\r",
-                  "    console.log(\"Expires in: \" + expiresIn + \" seconds (\" + Math.floor(expiresIn/60) + \" minutes)\");\r",
-                  "    console.log(\"Expiry Time: \" + expiryTime.toLocaleString());\r",
-                  "    console.log(\"Tokens stored in collection and environment variables\");\r",
-                  "\r",
-                  "    // Store expiry time for reference\r",
-                  "    pm.collectionVariables.set(\"keycloak_token_expiry\", expiryTime.toISOString());\r",
-                  "    pm.environment.set(\"KEYCLOAK_TOKEN_EXPIRY\", expiryTime.toISOString());\r",
-                  "\r",
-                  "    // Display scope if available\r",
-                  "    if (jsonData.scope) {\r",
-                  "        console.log(\"Scope: \" + jsonData.scope);\r",
-                  "    }\r",
-                  "} else {\r",
-                  "    console.error(\"Failed to retrieve token\");\r",
-                  "    console.error(\"Response: \" + pm.response.text());\r",
-                  "}"
-                ],
-                "packages": {},
-                "type": "text/javascript"
-              },
-              "listen": "test"
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
+                  "pm.test(\"JWT contains tenantId claim = 'engineering'\", function () {",
+                  "    const payload = JSON.parse(atob(jsonData.access_token.split('.')[1]));",
+                  "    pm.expect(payload.tenantId).to.eql(\"engineering\");",
+                  "});"
+                ]
+              }
             }
           ],
           "response": []
@@ -200,10 +205,11 @@
         {
           "request": {
             "url": {
+              "raw": "{{KEYCLOAK_TOKEN_URL}}",
               "host": [
                 "{{KEYCLOAK_TOKEN_URL}}"
               ],
-              "raw": "{{KEYCLOAK_TOKEN_URL}}"
+              "path": []
             },
             "method": "POST",
             "body": {
@@ -242,50 +248,19 @@
           "name": "Get Token (Password - Connector)",
           "event": [
             {
+              "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {\r",
-                  "    pm.response.to.have.status(200);\r",
-                  "});\r",
-                  "\r",
-                  "if (pm.response.code === 200) {\r",
-                  "    var jsonData = pm.response.json();\r",
-                  "\r",
-                  "    // Store tokens in BOTH collection and environment variables\r",
-                  "    pm.collectionVariables.set(\"keycloak_access_token\", jsonData.access_token);\r",
-                  "    if (jsonData.refresh_token) {\r",
-                  "        pm.collectionVariables.set(\"keycloak_refresh_token\", jsonData.refresh_token);\r",
-                  "        pm.environment.set(\"KEYCLOAK_REFRESH_TOKEN\", jsonData.refresh_token);\r",
-                  "    }\r",
-                  "    pm.environment.set(\"KEYCLOAK_ACCESS_TOKEN\", jsonData.access_token);\r",
-                  "\r",
-                  "    // Calculate and log token expiry time\r",
-                  "    var expiresIn = jsonData.expires_in;\r",
-                  "    var expiryTime = new Date(Date.now() + (expiresIn * 1000));\r",
-                  "\r",
-                  "    console.log(\"Token Retrieved Successfully\");\r",
-                  "    console.log(\"Token Type: \" + jsonData.token_type);\r",
-                  "    console.log(\"Expires in: \" + expiresIn + \" seconds (\" + Math.floor(expiresIn/60) + \" minutes)\");\r",
-                  "    console.log(\"Expiry Time: \" + expiryTime.toLocaleString());\r",
-                  "    console.log(\"Tokens stored in collection and environment variables\");\r",
-                  "\r",
-                  "    // Store expiry time for reference\r",
-                  "    pm.collectionVariables.set(\"keycloak_token_expiry\", expiryTime.toISOString());\r",
-                  "    pm.environment.set(\"KEYCLOAK_TOKEN_EXPIRY\", expiryTime.toISOString());\r",
-                  "\r",
-                  "    // Display scope if available\r",
-                  "    if (jsonData.scope) {\r",
-                  "        console.log(\"Scope: \" + jsonData.scope);\r",
-                  "    }\r",
-                  "} else {\r",
-                  "    console.error(\"Failed to retrieve token\");\r",
-                  "    console.error(\"Response: \" + pm.response.text());\r",
-                  "}"
-                ],
-                "packages": {},
-                "type": "text/javascript"
-              },
-              "listen": "test"
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
+                  "pm.test(\"JWT contains tenantId claim = 'engineering'\", function () {",
+                  "    const payload = JSON.parse(atob(jsonData.access_token.split('.')[1]));",
+                  "    pm.expect(payload.tenantId).to.eql(\"engineering\");",
+                  "});"
+                ]
+              }
             }
           ],
           "response": []
@@ -293,10 +268,11 @@
         {
           "request": {
             "url": {
+              "raw": "{{KEYCLOAK_TOKEN_URL}}",
               "host": [
                 "{{KEYCLOAK_TOKEN_URL}}"
               ],
-              "raw": "{{KEYCLOAK_TOKEN_URL}}"
+              "path": []
             },
             "method": "POST",
             "body": {
@@ -330,50 +306,19 @@
           "name": "Get Token (Client Credentials - Provider)",
           "event": [
             {
+              "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {\r",
-                  "    pm.response.to.have.status(200);\r",
-                  "});\r",
-                  "\r",
-                  "if (pm.response.code === 200) {\r",
-                  "    var jsonData = pm.response.json();\r",
-                  "\r",
-                  "    // Store tokens in BOTH collection and environment variables\r",
-                  "    pm.collectionVariables.set(\"keycloak_access_token\", jsonData.access_token);\r",
-                  "    if (jsonData.refresh_token) {\r",
-                  "        pm.collectionVariables.set(\"keycloak_refresh_token\", jsonData.refresh_token);\r",
-                  "        pm.environment.set(\"KEYCLOAK_REFRESH_TOKEN\", jsonData.refresh_token);\r",
-                  "    }\r",
-                  "    pm.environment.set(\"KEYCLOAK_ACCESS_TOKEN\", jsonData.access_token);\r",
-                  "\r",
-                  "    // Calculate and log token expiry time\r",
-                  "    var expiresIn = jsonData.expires_in;\r",
-                  "    var expiryTime = new Date(Date.now() + (expiresIn * 1000));\r",
-                  "\r",
-                  "    console.log(\"Token Retrieved Successfully\");\r",
-                  "    console.log(\"Token Type: \" + jsonData.token_type);\r",
-                  "    console.log(\"Expires in: \" + expiresIn + \" seconds (\" + Math.floor(expiresIn/60) + \" minutes)\");\r",
-                  "    console.log(\"Expiry Time: \" + expiryTime.toLocaleString());\r",
-                  "    console.log(\"Tokens stored in collection and environment variables\");\r",
-                  "\r",
-                  "    // Store expiry time for reference\r",
-                  "    pm.collectionVariables.set(\"keycloak_token_expiry\", expiryTime.toISOString());\r",
-                  "    pm.environment.set(\"KEYCLOAK_TOKEN_EXPIRY\", expiryTime.toISOString());\r",
-                  "\r",
-                  "    // Display scope if available\r",
-                  "    if (jsonData.scope) {\r",
-                  "        console.log(\"Scope: \" + jsonData.scope);\r",
-                  "    }\r",
-                  "} else {\r",
-                  "    console.error(\"Failed to retrieve token\");\r",
-                  "    console.error(\"Response: \" + pm.response.text());\r",
-                  "}"
-                ],
-                "packages": {},
-                "type": "text/javascript"
-              },
-              "listen": "test"
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
+                  "pm.test(\"JWT does not contain tenantId claim\", function () {",
+                  "    const payload = JSON.parse(atob(jsonData.access_token.split('.')[1]));",
+                  "    pm.expect(payload.tenantId).to.be.undefined;",
+                  "});"
+                ]
+              }
             }
           ],
           "response": []
@@ -381,10 +326,11 @@
         {
           "request": {
             "url": {
+              "raw": "{{KEYCLOAK_TOKEN_URL}}",
               "host": [
                 "{{KEYCLOAK_TOKEN_URL}}"
               ],
-              "raw": "{{KEYCLOAK_TOKEN_URL}}"
+              "path": []
             },
             "method": "POST",
             "body": {
@@ -418,50 +364,173 @@
           "name": "Get Token (Client Credentials - Consumer)",
           "event": [
             {
+              "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Status code is 200\", function () {\r",
-                  "    pm.response.to.have.status(200);\r",
-                  "});\r",
-                  "\r",
-                  "if (pm.response.code === 200) {\r",
-                  "    var jsonData = pm.response.json();\r",
-                  "\r",
-                  "    // Store tokens in BOTH collection and environment variables\r",
-                  "    pm.collectionVariables.set(\"keycloak_access_token\", jsonData.access_token);\r",
-                  "    if (jsonData.refresh_token) {\r",
-                  "        pm.collectionVariables.set(\"keycloak_refresh_token\", jsonData.refresh_token);\r",
-                  "        pm.environment.set(\"KEYCLOAK_REFRESH_TOKEN\", jsonData.refresh_token);\r",
-                  "    }\r",
-                  "    pm.environment.set(\"KEYCLOAK_ACCESS_TOKEN\", jsonData.access_token);\r",
-                  "\r",
-                  "    // Calculate and log token expiry time\r",
-                  "    var expiresIn = jsonData.expires_in;\r",
-                  "    var expiryTime = new Date(Date.now() + (expiresIn * 1000));\r",
-                  "\r",
-                  "    console.log(\"Token Retrieved Successfully\");\r",
-                  "    console.log(\"Token Type: \" + jsonData.token_type);\r",
-                  "    console.log(\"Expires in: \" + expiresIn + \" seconds (\" + Math.floor(expiresIn/60) + \" minutes)\");\r",
-                  "    console.log(\"Expiry Time: \" + expiryTime.toLocaleString());\r",
-                  "    console.log(\"Tokens stored in collection and environment variables\");\r",
-                  "\r",
-                  "    // Store expiry time for reference\r",
-                  "    pm.collectionVariables.set(\"keycloak_token_expiry\", expiryTime.toISOString());\r",
-                  "    pm.environment.set(\"KEYCLOAK_TOKEN_EXPIRY\", expiryTime.toISOString());\r",
-                  "\r",
-                  "    // Display scope if available\r",
-                  "    if (jsonData.scope) {\r",
-                  "        console.log(\"Scope: \" + jsonData.scope);\r",
-                  "    }\r",
-                  "} else {\r",
-                  "    console.error(\"Failed to retrieve token\");\r",
-                  "    console.error(\"Response: \" + pm.response.text());\r",
-                  "}"
-                ],
-                "packages": {},
-                "type": "text/javascript"
-              },
-              "listen": "test"
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
+                  "pm.test(\"JWT does not contain tenantId claim\", function () {",
+                  "    const payload = JSON.parse(atob(jsonData.access_token.split('.')[1]));",
+                  "    pm.expect(payload.tenantId).to.be.undefined;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Internal Authentication",
+      "description": "Unified backend-mediated authentication contract, active in both INTERNAL and KEYCLOAK modes (see doc/security.md). Clients call the connector's own /api/v1/auth/* endpoints instead of talking to an identity provider directly; the connector proxies to Keycloak or issues a self-signed JWT depending on application.auth.provider. Response body is always a flat, snake_case, token-only shape: access_token, refresh_token, token_type, expires_in.",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"connector@mail.com\",\n  \"password\": \"password\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{CONSUMER}}/api/v1/auth/login",
+              "host": [
+                "{{CONSUMER}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Authenticates with email/password and returns a new access/refresh token pair. Same request shape for both INTERNAL and KEYCLOAK modes."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
+                  "pm.test(\"Response has refresh_token\", () => pm.expect(jsonData.refresh_token).to.be.a('string'));",
+                  "pm.test(\"token_type is Bearer\", () => pm.expect(jsonData.token_type).to.eql('Bearer'));",
+                  "pm.collectionVariables.set(\"AUTH_ACCESS_TOKEN\", jsonData.access_token);",
+                  "pm.collectionVariables.set(\"AUTH_REFRESH_TOKEN\", jsonData.refresh_token);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Refresh",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{AUTH_REFRESH_TOKEN}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{CONSUMER}}/api/v1/auth/refresh",
+              "host": [
+                "{{CONSUMER}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Rotates a valid refresh token id and mints a fresh access/refresh token pair for its owning subject."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set(\"AUTH_ACCESS_TOKEN\", jsonData.access_token);",
+                  "pm.collectionVariables.set(\"AUTH_REFRESH_TOKEN\", jsonData.refresh_token);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{AUTH_REFRESH_TOKEN}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{CONSUMER}}/api/v1/auth/logout",
+              "host": [
+                "{{CONSUMER}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Revokes a refresh token id. Always returns 200, including for an already-revoked or unknown token (idempotent)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));"
+                ]
+              }
             }
           ],
           "response": []
@@ -471,6 +540,482 @@
     {
       "name": "API_FE",
       "item": [
+        {
+          "name": "Tenant",
+          "auth": {
+            "type": "basic",
+            "basic": [
+              {
+                "key": "username",
+                "value": "superadmin@mail.com",
+                "type": "string"
+              },
+              {
+                "key": "password",
+                "value": "password",
+                "type": "string"
+              }
+            ]
+          },
+          "item": [
+            {
+              "name": "Get All Tenants",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/tenants",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tenants"
+                  ]
+                },
+                "description": "List all tenants. Requires ROLE_SUPER_ADMIN."
+              },
+              "response": []
+            },
+            {
+              "name": "Get Tenant by ID",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/tenants/engineering",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tenants",
+                    "engineering"
+                  ]
+                },
+                "description": "Get the default 'engineering' tenant."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Tenant",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/tenants",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tenants"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id\": \"acme-corp\",\n  \"name\": \"ACME Corporation\",\n  \"description\": \"ACME tenant\",\n  \"enabled\": true,\n  \"automaticNegotiation\": false,\n  \"automaticTransfer\": false,\n  \"participantId\": \"urn:connector:acme\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Create a new tenant. Requires ROLE_SUPER_ADMIN."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Tenant",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/tenants/acme-corp",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tenants",
+                    "acme-corp"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"ACME Corporation Updated\",\n  \"description\": \"Updated description\",\n  \"automaticNegotiation\": true,\n  \"automaticTransfer\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Update an existing tenant."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Tenant - Bucket Migration",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/tenants/acme-corp",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tenants",
+                    "acme-corp"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"ACME Corporation Updated\",\n  \"description\": \"Migrate tenant bucket\",\n  \"automaticNegotiation\": true,\n  \"automaticTransfer\": false,\n  \"bucketName\": \"existing-bucket-name\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Update a tenant and migrate to another existing bucket."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Tenant - Credential Rotation",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/tenants/acme-corp",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tenants",
+                    "acme-corp"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"ACME Corporation Updated\",\n  \"description\": \"Rotate tenant credentials\",\n  \"automaticNegotiation\": true,\n  \"automaticTransfer\": false,\n  \"bucketName\": \"existing-bucket-name\",\n  \"accessKey\": \"rotated-access-key\",\n  \"secretKey\": \"rotated-secret-key\",\n  \"verifyConnection\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Update a tenant and rotate bucket credentials with pre-flight verification."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Tenant - Bucket Conflict (expected 400)",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/tenants/acme-corp",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tenants",
+                    "acme-corp"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"ACME Corporation Updated\",\n  \"description\": \"Expected conflict\",\n  \"automaticNegotiation\": true,\n  \"automaticTransfer\": false,\n  \"bucketName\": \"already-owned-bucket\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Negative example: migration to a bucket already owned by another tenant should return HTTP 400."
+              },
+              "response": []
+            },
+            {
+              "name": "Enable Tenant",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/tenants/acme-corp/enable",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tenants",
+                    "acme-corp",
+                    "enable"
+                  ]
+                },
+                "description": "Enable a previously disabled tenant."
+              },
+              "response": []
+            },
+            {
+              "name": "Disable Tenant",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/tenants/acme-corp/disable",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tenants",
+                    "acme-corp",
+                    "disable"
+                  ]
+                },
+                "description": "Disable a tenant (all protocol requests for this tenant will return 403)."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Tenant",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/tenants/acme-corp",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tenants",
+                    "acme-corp"
+                  ]
+                },
+                "description": "Delete a tenant."
+              },
+              "response": []
+            }
+          ],
+          "description": "Tenant management. All requests require ROLE_SUPER_ADMIN (superadmin@mail.com)."
+        },
+        {
+          "name": "Users",
+          "auth": {
+            "type": "basic",
+            "basic": [
+              {
+                "key": "username",
+                "value": "superadmin@mail.com",
+                "type": "string"
+              },
+              {
+                "key": "password",
+                "value": "password",
+                "type": "string"
+              }
+            ]
+          },
+          "item": [
+            {
+              "name": "Get All Users",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/users",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users"
+                  ]
+                },
+                "description": "List all users."
+              },
+              "response": []
+            },
+            {
+              "name": "Create User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/users",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Tenant\",\n  \"lastName\": \"Admin\",\n  \"email\": \"admin@acme-corp.com\",\n  \"password\": \"password\",\n  \"role\": \"ROLE_ADMIN\",\n  \"tenantId\": \"acme-corp\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update User",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/users/{{userId}}/update",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "{{userId}}",
+                    "update"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Tenant\",\n  \"lastName\": \"Admin Updated\",\n  \"email\": \"admin@acme-corp.com\",\n  \"role\": \"ROLE_ADMIN\",\n  \"tenantId\": \"acme-corp\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Update user details. Replace {{userId}} with the user's _id."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Password",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/users/{{userId}}/password",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "users",
+                    "{{userId}}",
+                    "password"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"password\": \"newPassword123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Change a user's password."
+              },
+              "response": []
+            }
+          ]
+        },
         {
           "name": "ApplicationProperty",
           "item": [
@@ -573,7 +1118,8 @@
                   "raw": "{{CONSUMER_SERVER_API_CATALOG}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_CATALOG}}"
-                  ]
+                  ],
+                  "path": []
                 }
               },
               "response": []
@@ -623,7 +1169,8 @@
                   "raw": "{{CONSUMER_SERVER_API_CATALOG}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_CATALOG}}"
-                  ]
+                  ],
+                  "path": []
                 }
               },
               "response": []
@@ -720,7 +1267,8 @@
                   "raw": "{{CONSUMER_SERVER_API_DATASERVICE}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_DATASERVICE}}"
-                  ]
+                  ],
+                  "path": []
                 }
               },
               "response": []
@@ -770,7 +1318,8 @@
                   "raw": "{{CONSUMER_SERVER_API_DATASERVICE}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_DATASERVICE}}"
-                  ]
+                  ],
+                  "path": []
                 }
               },
               "response": []
@@ -843,7 +1392,8 @@
                   "raw": "{{CONSUMER_SERVER_API_DATASET}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_DATASET}}"
-                  ]
+                  ],
+                  "path": []
                 }
               },
               "response": []
@@ -908,7 +1458,8 @@
                   "raw": "{{PROVIDER_SERVER_API_DATASET}}",
                   "host": [
                     "{{PROVIDER_SERVER_API_DATASET}}"
-                  ]
+                  ],
+                  "path": []
                 }
               },
               "response": []
@@ -1021,7 +1572,8 @@
                   "raw": "{{PROVIDER_SERVER_API_DATASET}}",
                   "host": [
                     "{{PROVIDER_SERVER_API_DATASET}}"
-                  ]
+                  ],
+                  "path": []
                 }
               },
               "response": []
@@ -1174,6 +1726,7 @@
                   "host": [
                     "{{PROVIDER_SERVER_API_NEGOTIATION}}"
                   ],
+                  "path": [],
                   "query": [
                     {
                       "key": "role",
@@ -1552,6 +2105,7 @@
                   "host": [
                     "{{CONSUMER_SERVER_API_NEGOTIATION}}"
                   ],
+                  "path": [],
                   "query": [
                     {
                       "key": "role",
@@ -1581,7 +2135,8 @@
                   "raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_DISTRIBUTION}}"
-                  ]
+                  ],
+                  "path": []
                 }
               },
               "response": []
@@ -1631,7 +2186,8 @@
                   "raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_DISTRIBUTION}}"
-                  ]
+                  ],
+                  "path": []
                 }
               },
               "response": []
@@ -1724,6 +2280,7 @@
                   "host": [
                     "{{CONSUMER_SERVER_API_TRANSFERS}}"
                   ],
+                  "path": [],
                   "query": [
                     {
                       "key": "state",
@@ -1775,7 +2332,8 @@
                   "raw": "{{CONSUMER_SERVER_API_TRANSFERS}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_TRANSFERS}}"
-                  ]
+                  ],
+                  "path": []
                 }
               },
               "response": []
@@ -1815,6 +2373,7 @@
                   "host": [
                     "{{PROVIDER_SERVER_API_TRANSFERS}}"
                   ],
+                  "path": [],
                   "query": [
                     {
                       "key": "role",
@@ -1983,7 +2542,8 @@
                   "raw": "{{consumer_presignedGetUrl}}",
                   "host": [
                     "{{consumer_presignedGetUrl}}"
-                  ]
+                  ],
+                  "path": []
                 }
               },
               "response": []
@@ -2169,6 +2729,7 @@
                   "host": [
                     "{{CONSUMER_SERVER_API_TRANSFERS}}"
                   ],
+                  "path": [],
                   "query": [
                     {
                       "key": "state",
@@ -2220,7 +2781,8 @@
                   "raw": "{{CONSUMER_SERVER_API_TRANSFERS}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_TRANSFERS}}"
-                  ]
+                  ],
+                  "path": []
                 }
               },
               "response": []
@@ -2260,6 +2822,7 @@
                   "host": [
                     "{{PROVIDER_SERVER_API_TRANSFERS}}"
                   ],
+                  "path": [],
                   "query": [
                     {
                       "key": "role",
@@ -2428,7 +2991,8 @@
                   "raw": "{{consumer_presignedGetUrl}}",
                   "host": [
                     "{{consumer_presignedGetUrl}}"
-                  ]
+                  ],
+                  "path": []
                 }
               },
               "response": []
@@ -2703,7 +3267,8 @@
                   "raw": "{{PROVIDER_SERVER_API_ARTIFACTS}}",
                   "host": [
                     "{{PROVIDER_SERVER_API_ARTIFACTS}}"
-                  ]
+                  ],
+                  "path": []
                 }
               },
               "response": []
@@ -2745,7 +3310,8 @@
             ]
           }
         }
-      ]
+      ],
+      "description": "Management API (Basic Auth).\n\nDefault tenant: engineering\nAdmin user: admin@mail.com / password (ROLE_ADMIN, tenantId=engineering)\nSuper-admin: superadmin@mail.com / password (ROLE_SUPER_ADMIN, no tenant)\nConnector user: connector@mail.com / password (ROLE_CONNECTOR, tenantId=engineering)\n\nFor tenant management (Tenant folder), requests use superadmin@mail.com."
     },
     {
       "name": "DataTransfer",
@@ -3394,7 +3960,7 @@
                       }
                     },
                     "url": {
-                      "raw": "{{CONSUMER}}/consumer/transfers/{{consumerPid}}/suspension",
+                      "raw": "{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{consumerPid}}/suspension",
                       "host": [
                         "{{CONSUMER}}"
                       ],
@@ -3437,7 +4003,7 @@
                       }
                     },
                     "url": {
-                      "raw": "{{CONSUMER}}/consumer/transfers/{{consumerPid}}/termination",
+                      "raw": "{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{consumerPid}}/termination",
                       "host": [
                         "{{CONSUMER}}"
                       ],
@@ -3546,6 +4112,29 @@
               "raw": "{{CONSUMER}}/.well-known/dspace-version",
               "host": [
                 "{{CONSUMER}}"
+              ],
+              "path": [
+                ".well-known",
+                "dspace-version"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "well.known (Provider)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{PROVIDER}}/.well-known/dspace-version",
+              "host": [
+                "{{PROVIDER}}"
               ],
               "path": [
                 ".well-known",
@@ -3682,7 +4271,8 @@
                   "raw": "{{CONSUMER_SERVER_API_CATALOG}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_CATALOG}}"
-                  ]
+                  ],
+                  "path": []
                 },
                 "auth": {
                   "bearer": [
@@ -3752,7 +4342,8 @@
                   "raw": "{{CONSUMER_SERVER_API_CATALOG}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_CATALOG}}"
-                  ]
+                  ],
+                  "path": []
                 },
                 "auth": {
                   "bearer": [
@@ -3879,7 +4470,8 @@
                   "raw": "{{CONSUMER_SERVER_API_DATASERVICE}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_DATASERVICE}}"
-                  ]
+                  ],
+                  "path": []
                 },
                 "auth": {
                   "bearer": [
@@ -3949,7 +4541,8 @@
                   "raw": "{{CONSUMER_SERVER_API_DATASERVICE}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_DATASERVICE}}"
-                  ]
+                  ],
+                  "path": []
                 },
                 "auth": {
                   "bearer": [
@@ -4052,7 +4645,8 @@
                   "raw": "{{CONSUMER_SERVER_API_DATASET}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_DATASET}}"
-                  ]
+                  ],
+                  "path": []
                 },
                 "auth": {
                   "bearer": [
@@ -4137,7 +4731,8 @@
                   "raw": "{{PROVIDER_SERVER_API_DATASET}}",
                   "host": [
                     "{{PROVIDER_SERVER_API_DATASET}}"
-                  ]
+                  ],
+                  "path": []
                 },
                 "auth": {
                   "bearer": [
@@ -4280,7 +4875,8 @@
                   "raw": "{{PROVIDER_SERVER_API_DATASET}}",
                   "host": [
                     "{{PROVIDER_SERVER_API_DATASET}}"
-                  ]
+                  ],
+                  "path": []
                 },
                 "auth": {
                   "bearer": [
@@ -4463,6 +5059,7 @@
                   "host": [
                     "{{PROVIDER_SERVER_API_NEGOTIATION}}"
                   ],
+                  "path": [],
                   "query": [
                     {
                       "key": "role",
@@ -4921,6 +5518,7 @@
                   "host": [
                     "{{CONSUMER_SERVER_API_NEGOTIATION}}"
                   ],
+                  "path": [],
                   "query": [
                     {
                       "key": "role",
@@ -4960,7 +5558,8 @@
                   "raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_DISTRIBUTION}}"
-                  ]
+                  ],
+                  "path": []
                 },
                 "auth": {
                   "bearer": [
@@ -5030,7 +5629,8 @@
                   "raw": "{{CONSUMER_SERVER_API_DISTRIBUTION}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_DISTRIBUTION}}"
-                  ]
+                  ],
+                  "path": []
                 },
                 "auth": {
                   "bearer": [
@@ -5153,6 +5753,7 @@
                   "host": [
                     "{{CONSUMER_SERVER_API_TRANSFERS}}"
                   ],
+                  "path": [],
                   "query": [
                     {
                       "key": "state",
@@ -5214,7 +5815,8 @@
                   "raw": "{{CONSUMER_SERVER_API_TRANSFERS}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_TRANSFERS}}"
-                  ]
+                  ],
+                  "path": []
                 },
                 "auth": {
                   "bearer": [
@@ -5264,6 +5866,7 @@
                   "host": [
                     "{{PROVIDER_SERVER_API_TRANSFERS}}"
                   ],
+                  "path": [],
                   "query": [
                     {
                       "key": "role",
@@ -5472,7 +6075,8 @@
                   "raw": "{{consumer_presignedGetUrl}}",
                   "host": [
                     "{{consumer_presignedGetUrl}}"
-                  ]
+                  ],
+                  "path": []
                 },
                 "auth": {
                   "bearer": [
@@ -5698,6 +6302,7 @@
                   "host": [
                     "{{CONSUMER_SERVER_API_TRANSFERS}}"
                   ],
+                  "path": [],
                   "query": [
                     {
                       "key": "state",
@@ -5759,7 +6364,8 @@
                   "raw": "{{CONSUMER_SERVER_API_TRANSFERS}}",
                   "host": [
                     "{{CONSUMER_SERVER_API_TRANSFERS}}"
-                  ]
+                  ],
+                  "path": []
                 },
                 "auth": {
                   "bearer": [
@@ -5809,6 +6415,7 @@
                   "host": [
                     "{{PROVIDER_SERVER_API_TRANSFERS}}"
                   ],
+                  "path": [],
                   "query": [
                     {
                       "key": "role",
@@ -6017,7 +6624,8 @@
                   "raw": "{{consumer_presignedGetUrl}}",
                   "host": [
                     "{{consumer_presignedGetUrl}}"
-                  ]
+                  ],
+                  "path": []
                 },
                 "auth": {
                   "bearer": [
@@ -6322,7 +6930,8 @@
                   "raw": "{{PROVIDER_SERVER_API_ARTIFACTS}}",
                   "host": [
                     "{{PROVIDER_SERVER_API_ARTIFACTS}}"
-                  ]
+                  ],
+                  "path": []
                 },
                 "auth": {
                   "bearer": [
@@ -6374,7 +6983,8 @@
             ]
           }
         }
-      ]
+      ],
+      "description": "Management API (Keycloak Auth).\n\nUses Bearer token obtained from Keycloak Authentication folder.\nKeycloak admin user maps to ROLE_ADMIN for the default tenant."
     },
     {
       "name": "DataTransfer (Keycloak)",
@@ -7138,7 +7748,7 @@
                       }
                     },
                     "url": {
-                      "raw": "{{CONSUMER}}/consumer/transfers/{{consumerPid}}/suspension",
+                      "raw": "{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{consumerPid}}/suspension",
                       "host": [
                         "{{CONSUMER}}"
                       ],
@@ -7191,7 +7801,7 @@
                       }
                     },
                     "url": {
-                      "raw": "{{CONSUMER}}/consumer/transfers/{{consumerPid}}/termination",
+                      "raw": "{{CONSUMER_SERVER_PROTOCOL_DATA_TRANSFER}}/{{consumerPid}}/termination",
                       "host": [
                         "{{CONSUMER}}"
                       ],
@@ -7403,6 +8013,14 @@
     },
     {
       "key": "consumer_presignedGetUrl",
+      "value": ""
+    },
+    {
+      "key": "AUTH_ACCESS_TOKEN",
+      "value": ""
+    },
+    {
+      "key": "AUTH_REFRESH_TOKEN",
       "value": ""
     }
   ]

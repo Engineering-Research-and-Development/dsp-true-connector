@@ -52,6 +52,9 @@ public class DataService implements Serializable {
     private String endpointURL;
 
     @JsonIgnore
+    private String tenantId;
+
+    @JsonIgnore
     @CreatedBy
     private String createdBy;
     @JsonIgnore
@@ -152,6 +155,17 @@ public class DataService implements Serializable {
             return this;
         }
 
+        /**
+         * Sets the tenant identifier for this data service.
+         *
+         * @param tenantId the tenant ID
+         * @return this builder
+         */
+        public Builder tenantId(String tenantId) {
+            service.tenantId = tenantId;
+            return this;
+        }
+
         public DataService build() {
             if (service.id == null) {
                 service.id = "urn:uuid" + UUID.randomUUID().toString();
@@ -167,6 +181,16 @@ public class DataService implements Serializable {
                             .map(v -> v.getPropertyPath() + " " + v.getMessage())
                             .collect(Collectors.joining(",")));
         }
+    }
+
+    /**
+     * Directly sets the tenant identifier on this instance, bypassing the builder.
+     * Used by the service layer to stamp tenant ownership before persisting.
+     *
+     * @param tenantId the tenant ID to associate with this data service
+     */
+    public void injectTenantId(String tenantId) {
+        this.tenantId = tenantId;
     }
 
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
@@ -187,6 +211,7 @@ public class DataService implements Serializable {
                 .version(this.version)
                 .issued(this.issued)
                 .createdBy(this.createdBy)
+                .tenantId(this.tenantId)
                 .keyword(updatedDataService.getKeyword() != null ? updatedDataService.getKeyword() : this.keyword)
                 .theme(updatedDataService.getTheme() != null ? updatedDataService.getTheme() : this.theme)
                 .conformsTo(updatedDataService.getConformsTo() != null ? updatedDataService.getConformsTo() : this.conformsTo)

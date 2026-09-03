@@ -25,6 +25,8 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 
+import java.io.IOException;
+
 /**
  * Tests for KeycloakAuthenticationService.
  */
@@ -71,7 +73,7 @@ class KeycloakAuthenticationServiceTest {
 		when(call.execute()).thenReturn(response);
 
 		// Act
-		String token = service.fetchToken();
+		String token = service.fetchToken("ROLE_CONNECTOR");
 
 		// Assert
 		assertNotNull(token);
@@ -97,7 +99,7 @@ class KeycloakAuthenticationServiceTest {
 		when(call.execute()).thenReturn(response);
 
 		// Act
-		String token = service.fetchToken();
+		String token = service.fetchToken("ROLE_CONNECTOR");
 
 		// Assert
 		assertNull(token);
@@ -111,10 +113,10 @@ class KeycloakAuthenticationServiceTest {
 		when(keycloakProperties.getTokenUrl()).thenReturn("http://localhost:8180/realms/test/protocol/openid-connect/token");
 
 		when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
-		when(call.execute()).thenThrow(new java.io.IOException("Connection refused"));
+		when(call.execute()).thenThrow(new IOException("Connection refused"));
 
 		// Act
-		String token = service.fetchToken();
+		String token = service.fetchToken("ROLE_CONNECTOR");
 
 		// Assert
 		assertNull(token);
@@ -143,7 +145,7 @@ class KeycloakAuthenticationServiceTest {
 		when(call.execute()).thenReturn(response);
 
 		// Act
-		String token = service.fetchToken();
+		String token = service.fetchToken("ROLE_CONNECTOR");
 
 		// Assert
 		assertNull(token);

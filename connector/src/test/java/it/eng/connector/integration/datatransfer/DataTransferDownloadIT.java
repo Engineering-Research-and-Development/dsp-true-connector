@@ -138,7 +138,7 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
                 .build();
         contractNegotiationRepository.save(contractNegotiation);
 
-        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0, null);
         policyEnforcementRepository.save(policyEnforcement);
 
         // TransferProcess started
@@ -236,7 +236,7 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
                 .build();
         contractNegotiationRepository.save(contractNegotiation);
 
-        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0, null);
         policyEnforcementRepository.save(policyEnforcement);
 
         // TransferProcess started
@@ -299,7 +299,7 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
                 .build();
         agreementRepository.save(agreement);
 
-        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0, null);
         policyEnforcementRepository.save(policyEnforcement);
 
         // TransferProcess started
@@ -321,7 +321,7 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Download artifact - enforcmenet failed")
+    @DisplayName("Download artifact - enforcement failed")
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void downloadArtifact_fail_enforcement_failed() throws Exception {
         Dataset dataset = Dataset.Builder.newInstance()
@@ -347,7 +347,7 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
         agreementRepository.save(agreement);
 
         // simulate policy enforcement already over
-        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 6);
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 6, null);
         policyEnforcementRepository.save(policyEnforcement);
 
         // TransferProcess started

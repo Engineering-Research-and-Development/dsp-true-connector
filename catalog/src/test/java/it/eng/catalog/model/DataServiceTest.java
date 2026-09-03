@@ -120,6 +120,10 @@ public class DataServiceTest {
         DataService dataService = CatalogMockObjectUtil.DATA_SERVICE;
         String ss = CatalogSerializer.serializeProtocol(dataService);
         DataService dataService2 = CatalogSerializer.deserializeProtocol(ss, DataService.class);
+
+        // protocol serialization does not include tenantId, so we need to remove it from the original dataService before comparison
+        dataService.injectTenantId(null);
+
         assertThat(dataService).usingRecursiveComparison().isEqualTo(dataService2);
     }
 

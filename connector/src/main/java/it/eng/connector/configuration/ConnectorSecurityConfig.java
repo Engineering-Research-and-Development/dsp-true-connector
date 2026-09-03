@@ -1,7 +1,14 @@
 package it.eng.connector.configuration;
 
-import java.util.Arrays;
-
+import it.eng.connector.filter.ApiTenantContextFilter;
+import it.eng.connector.model.Role;
+import it.eng.connector.repository.UserRepository;
+import it.eng.tools.auth.AuthenticationMode;
+import it.eng.tools.auth.AuthenticationModeResolver;
+import it.eng.tools.auth.condition.InternalAuthenticationModeCondition;
+import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
+import it.eng.tools.auth.jwt.JwtService;
+import it.eng.tools.controller.ApiEndpoints;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
 import org.springframework.beans.factory.ObjectProvider;
@@ -13,8 +20,9 @@ import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.Customizer;
@@ -24,6 +32,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -36,13 +45,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import it.eng.connector.repository.UserRepository;
-import it.eng.tools.auth.AuthenticationMode;
-import it.eng.tools.auth.AuthenticationModeResolver;
-import it.eng.tools.auth.condition.BasicAuthenticationModeCondition;
-import it.eng.tools.auth.condition.DcpEnabledCondition;
-import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
-import org.springframework.http.HttpHeaders;
+import java.util.Arrays;
 
 /**
  * Unified security configuration for the connector.
@@ -50,7 +53,7 @@ import org.springframework.http.HttpHeaders;
  * <p>Defines three {@link SecurityFilterChain} beans matched by URL zone:
  * <ol>
  *   <li><b>Admin chain</b> ({@code /api/**, /actuator/**, /env}) — requires {@code ROLE_ADMIN}.
- *       Keycloak or Basic Auth depending on {@code application.auth.provider}.</li>
+ *       Keycloak or self-issued JWT depending on {@code application.auth.provider}.</li>
  *   <li><b>Protocol chain</b> ({@code /connector/**, /catalog/**, /negotiations/**, /transfers/**})
  *       — requires {@code ROLE_CONNECTOR}. Uses DCP when {@code application.auth.dcp.enabled=true},
  *       otherwise follows the configured provider.</li>
@@ -59,20 +62,17 @@ import org.springframework.http.HttpHeaders;
  *
  * <p>Supported authentication matrix:
  * <pre>
- * provider=KEYCLOAK + dcp.enabled=false  → admin: Keycloak,  protocol: Keycloak
- * provider=KEYCLOAK + dcp.enabled=true   → admin: Keycloak,  protocol: DCP
- * provider=BASIC    + dcp.enabled=false  → admin: Basic Auth, protocol: Basic Auth
- * provider=BASIC    + dcp.enabled=true   → admin: Basic Auth, protocol: DCP
- * provider=DISABLED                      → all endpoints: permitAll
+ * provider=KEYCLOAK + dcp.enabled=false → admin: Keycloak, protocol: Keycloak
+ * provider=KEYCLOAK + dcp.enabled=true → admin: Keycloak, protocol: DCP
+ * provider=INTERNAL + dcp.enabled=false → admin: self-issued JWT, protocol: self-issued JWT
+ * provider=INTERNAL + dcp.enabled=true → admin: self-issued JWT, protocol: DCP
+ * provider=DISABLED → all endpoints: permitAll
  * </pre>
  */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class ConnectorSecurityConfig {
-
-    private static final String ADMIN_ROLE = "ADMIN";
-    private static final String CONNECTOR_ROLE = "CONNECTOR";
 
     @Value("${application.cors.allowed.origins:}")
     private String allowedOrigins;
@@ -111,17 +111,27 @@ public class ConnectorSecurityConfig {
 
     /**
      * Admin security filter chain covering {@code /api/**}, {@code /actuator/**} and {@code /env}.
-     * Requires {@code ROLE_ADMIN}. Disabled mode permits all requests.
+     * Requires {@code ROLE_SUPER_ADMIN} for {@code /api/v1/tenants/**},
+     * {@code /api/v1/properties/**}, and most {@code /api/v1/users/**} endpoints.
+     * {@code GET /api/v1/users/me}, {@code PUT /api/v1/users/*\/update}, and
+     * {@code PUT /api/v1/users/*\/password} are accessible to {@code ROLE_ADMIN} and
+     * {@code ROLE_SUPER_ADMIN} (self-service only — the service layer enforces ownership).
+     * All other {@code /api/**} endpoints require at minimum {@code ROLE_ADMIN}.
+     * Disabled mode permits all requests.
      *
      * @param http the HttpSecurity builder
      * @param keycloakFilter optional Keycloak filter, present when mode is KEYCLOAK
+     * @param apiTenantContextFilter the tenant context filter for API requests
+     * @param jwtAuthFilter the JWT authentication filter for human logins (INTERNAL mode)
      * @return the configured filter chain
      * @throws Exception if the chain cannot be built
      */
     @Bean
     @Order(1)
     SecurityFilterChain adminFilterChain(HttpSecurity http,
-            ObjectProvider<KeycloakAuthenticationFilter> keycloakFilter) throws Exception {
+                                         ObjectProvider<KeycloakAuthenticationFilter> keycloakFilter,
+                                         ObjectProvider<ApiTenantContextFilter> apiTenantContextFilter,
+                                         ObjectProvider<InternalJwtAuthenticationFilter> jwtAuthFilter) throws Exception {
         applyCommonConfiguration(http);
         http.securityMatcher("/api/**", "/actuator/**", "/env");
 
@@ -130,13 +140,38 @@ public class ConnectorSecurityConfig {
         } else if (authMode == AuthenticationMode.KEYCLOAK) {
             http.anonymous(AbstractHttpConfigurer::disable)
                     .addFilterBefore(keycloakFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
-                    .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(ADMIN_ROLE))
+                    .addFilterAfter(apiTenantContextFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
+                    .authorizeHttpRequests(auth -> auth
+                            .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                            .requestMatchers(HttpMethod.GET, ApiEndpoints.USERS_V1 + "/me")
+                            .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                            .requestMatchers(HttpMethod.PUT, ApiEndpoints.USERS_V1 + "/*/update")
+                            .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                            .requestMatchers(HttpMethod.PUT, ApiEndpoints.USERS_V1 + "/*/password")
+                            .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                            .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                            .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                            .requestMatchers(ApiEndpoints.AUTH_V1 + "/**").permitAll()
+                            .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         } else {
-            // BASIC
+            // INTERNAL: ApiTenantContextFilter must run AFTER UsernamePasswordAuthenticationFilter so that
+            // the Authentication is already populated in SecurityContextHolder when we read it.
             http.anonymous(AbstractHttpConfigurer::disable)
-                    .httpBasic(basic -> basic.authenticationEntryPoint(authEntryPoint))
-                    .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(ADMIN_ROLE))
+                    .addFilterBefore(jwtAuthFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
+                    .addFilterAfter(apiTenantContextFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
+                    .authorizeHttpRequests(auth -> auth
+                            .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                            .requestMatchers(HttpMethod.GET, ApiEndpoints.USERS_V1 + "/me")
+                            .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                            .requestMatchers(HttpMethod.PUT, ApiEndpoints.USERS_V1 + "/*/update")
+                            .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                            .requestMatchers(HttpMethod.PUT, ApiEndpoints.USERS_V1 + "/*/password")
+                            .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
+                            .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                            .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                            .requestMatchers(ApiEndpoints.AUTH_V1 + "/**").permitAll()
+                            .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         }
         return http.build();
@@ -150,16 +185,28 @@ public class ConnectorSecurityConfig {
      * @param http the HttpSecurity builder
      * @param keycloakFilter optional Keycloak filter, present when mode is KEYCLOAK
      * @param dcpFilter optional DCP filter, present when dcp.enabled is true
+     * @param jwtAuthFilter optional JWT filter, present when mode is INTERNAL
      * @return the configured filter chain
      * @throws Exception if the chain cannot be built
      */
     @Bean
     @Order(2)
     SecurityFilterChain protocolFilterChain(HttpSecurity http,
-            ObjectProvider<KeycloakAuthenticationFilter> keycloakFilter,
-            ObjectProvider<DcpAuthenticationFilter> dcpFilter) throws Exception {
+                                            ObjectProvider<KeycloakAuthenticationFilter> keycloakFilter,
+                                            ObjectProvider<DcpAuthenticationFilter> dcpFilter,
+                                            ObjectProvider<InternalJwtAuthenticationFilter> jwtAuthFilter) throws Exception {
         applyCommonConfiguration(http);
-        http.securityMatcher("/connector/**", "/catalog/**", "/negotiations/**", "/transfers/**");
+        // Tenant-prefixed paths (/{tenantId}/catalog/request etc.) — added in Phase 1.
+        // Legacy non-prefixed catalog paths have been removed; the catalog controller
+        // now requires the /{tenantId} prefix (Phase 2).
+        // Negotiation and consumer paths now also require the /{tenantId} prefix (Phase 3).
+        // Non-prefixed protocol paths are also included here so that the TckProtocolForwardingFilter
+        // (active when application.tck.enabled=true) can forward them to the tenant-prefixed
+        // controller before the security chain completes authentication for the forwarded path.
+        http.securityMatcher(
+                "/*/connector/**", "/*/catalog/**", "/*/negotiations/**", "/*/transfers/**",
+                "/*/consumer/**",
+                "/connector/**", "/catalog/**", "/negotiations/**", "/transfers/**", "/consumer/**");
 
         if (authMode == AuthenticationMode.DISABLED) {
             http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
@@ -169,18 +216,18 @@ public class ConnectorSecurityConfig {
                 http.addFilterBefore(dcp, UsernamePasswordAuthenticationFilter.class);
             }
             http.anonymous(AbstractHttpConfigurer::disable)
-                    .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(CONNECTOR_ROLE))
+                    .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(Role.CONNECTOR.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         } else if (authMode == AuthenticationMode.KEYCLOAK) {
             http.anonymous(AbstractHttpConfigurer::disable)
                     .addFilterBefore(keycloakFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
-                    .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(CONNECTOR_ROLE))
+                    .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(Role.CONNECTOR.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         } else {
-            // BASIC
+            // INTERNAL
             http.anonymous(AbstractHttpConfigurer::disable)
-                    .httpBasic(basic -> basic.authenticationEntryPoint(authEntryPoint))
-                    .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(CONNECTOR_ROLE))
+                    .addFilterBefore(jwtAuthFilter.getObject(), UsernamePasswordAuthenticationFilter.class)
+                    .authorizeHttpRequests(auth -> auth.anyRequest().hasRole(Role.CONNECTOR.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         }
         return http.build();
@@ -247,51 +294,72 @@ public class ConnectorSecurityConfig {
     @Bean
     @Conditional(KeycloakAuthenticationModeCondition.class)
     KeycloakAuthenticationFilter keycloakAuthenticationFilter(JwtDecoder jwtDecoder,
-            KeycloakRealmRoleConverter keycloakRealmRoleConverter) {
+                                                              KeycloakRealmRoleConverter keycloakRealmRoleConverter) {
         return new KeycloakAuthenticationFilter(jwtDecoder, keycloakRealmRoleConverter);
     }
 
     // =========================================================================
-    // Conditional Basic Auth beans
+    // Conditional Internal Auth beans
     // =========================================================================
 
     /**
-     * Creates the {@link UserDetailsService} backed by MongoDB for Basic Auth mode.
+     * Creates the JWT authentication filter for INTERNAL mode.
+     * Active only in INTERNAL mode.
+     *
+     * @param jwtService the JwtService for validating and decoding tokens
+     * @return a new {@link InternalJwtAuthenticationFilter}
+     */
+    @Bean
+    @Conditional(InternalAuthenticationModeCondition.class)
+    public InternalJwtAuthenticationFilter jwtAuthenticationFilter(JwtService jwtService) {
+        return new InternalJwtAuthenticationFilter(jwtService);
+    }
+
+    /**
+     * Creates the {@link UserDetailsService} backed by MongoDB for Internal Auth mode.
+     *
+     * <p>Throws {@link UsernameNotFoundException} on a missing user, per the
+     * {@code UserDetailsService.loadUserByUsername} contract. {@link DaoAuthenticationProvider}
+     * only recognizes this exception type in {@code retrieveUser()}; any other exception type is
+     * wrapped as an {@code InternalAuthenticationServiceException}, which would incorrectly surface
+     * a missing user as an internal server error to callers such as {@code AuthController} instead
+     * of a clean authentication failure.
      *
      * @param userRepository the user repository
      * @return the user details service
      */
     @Bean
-    @Conditional(BasicAuthenticationModeCondition.class)
+    @Conditional(InternalAuthenticationModeCondition.class)
     UserDetailsService userDetailsService(UserRepository userRepository) {
         return username -> userRepository.findByEmail(username)
-                .orElseThrow(() -> new BadCredentialsException("Bad credentials"));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }
 
     /**
-     * Creates the {@link DaoAuthenticationProvider} for Basic Auth mode.
+     * Creates the {@link DaoAuthenticationProvider} for Internal Auth mode.
      *
      * @param userDetailsService the user details service
      * @param passwordEncoder the password encoder
      * @return the configured DAO authentication provider
      */
     @Bean
-    @Conditional(BasicAuthenticationModeCondition.class)
+    @Conditional(InternalAuthenticationModeCondition.class)
     DaoAuthenticationProvider daoAuthenticationProvider(UserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder) {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
+                                                        PasswordEncoder passwordEncoder) {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
         return provider;
     }
 
     /**
-     * Creates the {@link AuthenticationManager} for Basic Auth mode.
+     * Creates the {@link AuthenticationManager} for Internal Auth mode.
      *
      * @param daoAuthenticationProvider the DAO authentication provider
      * @return the authentication manager
      */
     @Bean
-    @Conditional(BasicAuthenticationModeCondition.class)
+    @Conditional(InternalAuthenticationModeCondition.class)
     AuthenticationManager authenticationManager(DaoAuthenticationProvider daoAuthenticationProvider) {
         return new ProviderManager(daoAuthenticationProvider);
     }
@@ -299,6 +367,18 @@ public class ConnectorSecurityConfig {
     // =========================================================================
     // Shared beans
     // =========================================================================
+
+    /**
+     * Creates the {@link ApiTenantContextFilter} bean for resolving tenant context from API requests.
+     * Not annotated with {@code @Component} to prevent auto-registration as a servlet filter;
+     * it is added explicitly to the admin security filter chain only.
+     *
+     * @return the filter instance
+     */
+    @Bean
+    ApiTenantContextFilter apiTenantContextFilter() {
+        return new ApiTenantContextFilter();
+    }
 
     /**
      * Password encoder used for hashing and verifying user passwords.

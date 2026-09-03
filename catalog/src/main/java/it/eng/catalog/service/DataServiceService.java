@@ -1,6 +1,7 @@
 package it.eng.catalog.service;
 
 import java.util.Collection;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
@@ -8,6 +9,9 @@ import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.repository.DataServiceRepository;
+import it.eng.tools.event.AuditEventType;
+import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -19,34 +23,47 @@ public class DataServiceService {
 
     private final DataServiceRepository repository;
     private final CatalogService catalogService;
+    private final AuditEventPublisher auditEventPublisher;
 
-    public DataServiceService(DataServiceRepository repository, CatalogService catalogService) {
+    public DataServiceService(DataServiceRepository repository, CatalogService catalogService,
+                              AuditEventPublisher auditEventPublisher) {
         this.repository = repository;
         this.catalogService = catalogService;
+        this.auditEventPublisher = auditEventPublisher;
     }
 
     /**
-     * Retrieves a data service by its unique ID.
+     * Retrieves a data service by its unique ID, scoped to the current tenant context.
      *
      * @param id the unique ID of the data service
      * @return the dataService corresponding to the provided ID
      * @throws ResourceNotFoundAPIException if no dataService is found with the provided ID
      */
     public DataService getDataServiceById(String id) {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            return repository.findByIdAndTenantId(id, tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundAPIException("Data Service with id: " + id + " not found"));
+        }
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Data Service with id: " + id + " not found"));
     }
 
     /**
-     * Retrieves all data services in the catalog.
+     * Retrieves all data services, scoped to the current tenant context.
      *
-     * @return a list of all data services
+     * @return a collection of all data services visible to the current principal
      */
     public Collection<DataService> getAllDataServices() {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            return repository.findAllByTenantId(tenantId);
+        }
         return repository.findAll();
     }
 
     /**
-     * Saves a dataService to the repository and updates the catalog.
+     * Saves a dataService to the repository, stamping it with the current tenant ID.
+     * Also updates the catalog.
      *
      * @param dataService the dataService to be saved
      * @return saved dataService
@@ -55,12 +72,19 @@ public class DataServiceService {
     public DataService saveDataService(DataService dataService) {
     	DataService savedDataService = null;
         try {
+        	String tenantId = TenantContextHolder.getTenantId();
+        	if (tenantId != null) {
+        	    dataService.injectTenantId(tenantId);
+        	}
         	savedDataService = repository.save(dataService);
 		} catch (Exception e) {
 			log.error(e.getMessage(), e);
 			throw new InternalServerErrorAPIException("Data service could not be saved");
 		}
         catalogService.updateCatalogDataServiceAfterSave(savedDataService);
+        auditEventPublisher.publishEvent(
+                AuditEventType.DATA_SERVICE_CREATED, "Data service created",
+                Map.of("dataServiceId", savedDataService.getId()));
         return dataService;
     }
 
@@ -80,6 +104,8 @@ public class DataServiceService {
 			throw new InternalServerErrorAPIException("Data service could not be deleted");
 		}
         catalogService.updateCatalogDataServiceAfterDelete(existingDataService);
+        auditEventPublisher.publishEvent(
+                AuditEventType.DATA_SERVICE_DELETED, "Data service deleted", Map.of("dataServiceId", id));
     }
 
     /**
@@ -93,7 +119,7 @@ public class DataServiceService {
      */
     public DataService updateDataService(String id, DataService dataService) {
         DataService existingDataService = getDataServiceById(id);
-        DataService storedDataService = null;;
+        DataService storedDataService;
 		try {
 			DataService updatedDataService = existingDataService.updateInstance(dataService);
 			storedDataService = repository.save(updatedDataService);
@@ -102,6 +128,8 @@ public class DataServiceService {
 			throw new InternalServerErrorAPIException("Data service could not be updated");
 		}
 
+        auditEventPublisher.publishEvent(
+                AuditEventType.DATA_SERVICE_UPDATED, "Data service updated", Map.of("dataServiceId", id));
         return storedDataService;
     }
 }
