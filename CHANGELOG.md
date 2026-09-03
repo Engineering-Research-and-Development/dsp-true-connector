@@ -130,7 +130,12 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 - Removed redundant PathVariable name from controllers
-- 
+
+## [0.6.13-SNAPSHOT] - 22.07.2026.
+
+### Added
+- Apache2 license file to root directory.
+
 ## [0.6.12-SNAPSHOT] - 25.06.2026.
 
 ### Added
