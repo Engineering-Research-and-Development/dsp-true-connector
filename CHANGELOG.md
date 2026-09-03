@@ -26,7 +26,9 @@ All notable changes to this project will be documented in this file.
   - Updated `doc/dashboard-metrics.md` with new "Metrics Aggregation Pattern" section explaining the per-tenant vs. super-admin distinction and showing implementation examples.
   - All 284 existing unit and integration tests pass; no regressions.
 
-## [Unreleased]
+## [0.7.0] - 10.09.2026 - Multi-Tenant Support
+
+- **Updated java from 17 to 21**
 
 ### Added
 - **TB1 — Tenant Bucket Credential Request Contract & Verification**

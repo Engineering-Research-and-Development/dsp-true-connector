@@ -29,11 +29,9 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TenantAPIControllerTest {
@@ -68,8 +66,8 @@ class TenantAPIControllerTest {
     }
 
     @Test
-    @DisplayName("Get all tenants returns list")
-    void getAllTenants_returnsList() {
+    @DisplayName("Get all tenants returns paged list")
+    void getAllTenants_returnsPagedList() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         List<EntityModel<Tenant>> content = Collections.singletonList(EntityModel.of(buildTenant()));
         PagedModel<EntityModel<Tenant>> pagedModel = PagedModel.of(content, metadata);
@@ -90,6 +88,18 @@ class TenantAPIControllerTest {
         assertFalse(response.getBody().getResponse().getData().getContent().isEmpty());
 
         verify(tenantService).findAll(any(Map.class), any(Pageable.class));
+    }
+
+    @Test
+    @DisplayName("Get all tenants returns list")
+    void getAllTenants_returnsList() {
+        List<Tenant> tenants = Collections.singletonList(buildTenant());
+        when(tenantService.findAllAsList()).thenReturn(tenants);
+
+        ResponseEntity<GenericApiResponse<List<Tenant>>> response = controller.getAllTenants();
+
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().getData().size());
     }
 
     @Test
