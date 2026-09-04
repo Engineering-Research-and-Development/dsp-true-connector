@@ -10,7 +10,9 @@ All notable changes to this project will be documented in this file.
 - `ApiEndpoints` constants for dashboard routes: `DASHBOARD_V1`, `DASHBOARD_RUNTIME_V1`, `DASHBOARD_NEGOTIATIONS_V1`, `DASHBOARD_TRANSFERS_V1`, `DASHBOARD_EVENTS_V1`, and `DASHBOARD_SUMMARY_V1`.
 - `doc/dashboard-metrics.md` documenting the dashboard metrics backend contract and `DashboardMetricsAPIIT` integration coverage for the summary endpoint.
 
-## [Unreleased]
+## [0.7.0] - 10.09.2026 - Multi-Tenant Support
+
+- **Updated java from 17 to 21**
 
 ### Added
 - **TB1 — Tenant Bucket Credential Request Contract & Verification**
@@ -48,12 +50,6 @@ All notable changes to this project will be documented in this file.
   - `UserAPIController` (renamed from `UserApiController`) now returns HATEOAS paginated responses via `PlainUserAssembler` and `PagedResourcesAssembler`.
   - Added `UserNotFoundException` and dedicated `UserAPIAdvice` for consistent 404 error mapping.
   - Updated unit and integration tests (`UserServiceTest`, `UserAPIControllerTest`, `UserIT`) and removed the obsolete e-mail lookup tests from the Postman / Newman API suites.
-
-## [0.7.0] - 10.07.2026 - Multi-Tenant Support
-
-- **Updated java from 17 to 21**
-
-### Added
 - **MT1 — Tenant & User Lifecycle Foundation**
   - `TenantService.saveTenant()` now auto-generates a **UUID** as the tenant ID; any caller-supplied `id` is ignored. `callbackAddress` is derived programmatically as `${application.callback.address}/{id}` — any caller-supplied `callbackAddress` is also ignored.
   - `UserDTO` has a new `tenantId` field. When provided, `UserService.createUser()` validates that the referenced tenant exists and is enabled before persisting the user; users are stored with their `tenantId` linked.
@@ -138,7 +134,12 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 - Removed redundant PathVariable name from controllers
-- 
+
+## [0.6.13-SNAPSHOT] - 22.07.2026.
+
+### Added
+- Apache2 license file to root directory.
+
 ## [0.6.12-SNAPSHOT] - 25.06.2026.
 
 ### Added
