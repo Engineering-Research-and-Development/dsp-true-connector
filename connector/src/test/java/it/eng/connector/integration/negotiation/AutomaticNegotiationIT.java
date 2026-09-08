@@ -52,7 +52,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -116,7 +115,7 @@ public class AutomaticNegotiationIT {
     private static ConfigurableApplicationContext consumerCtx;
     private static ConfigurableApplicationContext providerCtx;
     /**
-     * Consumer instance whose {@code application.callback.address} points to WireMock.
+     * Consumer instance whose {@code application.baseURL} points to WireMock.
      * The provider sends protocol messages (e.g. ContractAgreementMessage) back to this
      * address, which WireMock intercepts and returns an error — triggering retry logic.
      */
@@ -196,7 +195,7 @@ public class AutomaticNegotiationIT {
         System.setProperty("spring.data.mongodb.host", mongoHost);
         System.setProperty("spring.data.mongodb.port", String.valueOf(mongoPort));
         System.setProperty("spring.data.mongodb.database", database);
-        System.setProperty("application.callback.address", callbackAddress);
+        System.setProperty("application.baseURL", callbackAddress);
         System.setProperty("application.automatic.negotiation", "true");
         System.setProperty("application.automatic.negotiation.retry.max", "3");
         System.setProperty("application.automatic.negotiation.retry.delay.ms", "500");
@@ -236,7 +235,7 @@ public class AutomaticNegotiationIT {
             System.clearProperty("spring.data.mongodb.host");
             System.clearProperty("spring.data.mongodb.port");
             System.clearProperty("spring.data.mongodb.database");
-            System.clearProperty("application.callback.address");
+            System.clearProperty("application.baseURL");
             System.clearProperty("application.automatic.negotiation");
             System.clearProperty("application.automatic.negotiation.retry.max");
             System.clearProperty("application.automatic.negotiation.retry.delay.ms");

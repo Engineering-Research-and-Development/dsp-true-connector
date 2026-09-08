@@ -124,7 +124,6 @@
       "_id": "engineering",
       "name": "Engineering",
       "description": "Default Engineering tenant",
-      "connectorId": "urn:connector:engineering",
       "callbackAddress": "http://localhost:8080",
       "enabled": true,
       "automaticNegotiation": false,

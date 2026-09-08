@@ -62,7 +62,7 @@ public class TenantService {
      * @param bucketProvisioningModeResolver the resolver for tenant bucket provisioning mode
      * @param bucketConnectionVerificationService the service verifying externally supplied bucket credentials
      * @param baseCallbackAddress      the base URL used to derive per-tenant callback addresses;
-     *                                 injected from {@code application.callback.address}
+     *                                 injected from {@code application.baseURL}
      */
     public TenantService(TenantRepository tenantRepository,
                          AuditEventPublisher auditEventPublisher,
@@ -70,7 +70,7 @@ public class TenantService {
                          BucketCredentialsService bucketCredentialsService,
                          BucketProvisioningModeResolver bucketProvisioningModeResolver,
                          BucketConnectionVerificationService bucketConnectionVerificationService,
-                         @Value("${application.callback.address}") String baseCallbackAddress) {
+                         @Value("${application.baseURL}") String baseCallbackAddress) {
         this.tenantRepository = tenantRepository;
         this.auditEventPublisher = auditEventPublisher;
         this.s3BucketProvisionService = s3BucketProvisionService;

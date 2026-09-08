@@ -220,7 +220,7 @@ public class DataService implements Serializable {
                 .identifier(updatedDataService.getIdentifier() != null ? updatedDataService.getIdentifier() : this.identifier)
                 .title(updatedDataService.getTitle() != null ? updatedDataService.getTitle() : this.title)
                 .endpointDescription(updatedDataService.getEndpointDescription() != null ? updatedDataService.getEndpointDescription() : this.endpointDescription)
-                .endpointURL(updatedDataService.getEndpointURL() != null ? updatedDataService.getEndpointURL() : this.endpointURL)
+                .endpointURL(this.endpointURL)
                 .build();
     }
 
@@ -228,5 +228,10 @@ public class DataService implements Serializable {
         if (this.endpointURL == null) {
             throw new ValidationException("DataService not valid according to protocol");
         }
+    }
+
+    public DataService injectEndpointURL(String endpointURL) {
+        this.endpointURL = endpointURL;
+        return this;
     }
 }

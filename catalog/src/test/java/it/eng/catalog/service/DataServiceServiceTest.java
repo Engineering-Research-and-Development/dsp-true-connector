@@ -1,28 +1,5 @@
 package it.eng.catalog.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.util.Optional;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.repository.DataServiceRepository;
@@ -30,6 +7,21 @@ import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantContextHolder;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class DataServiceServiceTest {
@@ -48,15 +40,17 @@ public class DataServiceServiceTest {
     @Captor
 	private ArgumentCaptor<DataService> argCaptorDataService;
 
-    @InjectMocks
     private DataServiceService dataServiceService;
 
     private DataService dataService;
+
+    private String baseURL = "http://localhost:8080";
 
     @BeforeEach
     void setUp() {
         dataService = CatalogMockObjectUtil.createNewDataService();
         TenantContextHolder.setTenantId(TENANT_ID);
+        dataServiceService = new DataServiceService(repository, catalogService, auditEventPublisher, baseURL);
     }
 
     @AfterEach

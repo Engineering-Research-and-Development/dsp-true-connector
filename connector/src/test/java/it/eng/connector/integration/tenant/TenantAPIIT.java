@@ -6,8 +6,8 @@ import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
-import it.eng.tools.model.TenantCreateRequest;
 import it.eng.tools.model.Tenant;
+import it.eng.tools.model.TenantCreateRequest;
 import it.eng.tools.model.TenantUpdateRequest;
 import it.eng.tools.repository.AuditEventRepository;
 import it.eng.tools.repository.TenantRepository;
@@ -20,13 +20,13 @@ import it.eng.tools.serializer.ToolsSerializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
-import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.HashSet;
 import java.util.List;
@@ -34,17 +34,10 @@ import java.util.Objects;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(OutputCaptureExtension.class)
 public class TenantAPIIT extends BaseIntegrationTest {
@@ -58,7 +51,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
     private final Set<String> createdTenantIds = new HashSet<>();
     private final Set<String> createdBuckets = new HashSet<>();
 
-    @Value("${application.callback.address:http://localhost:8080/}")
+    @Value("${application.baseURL:http://localhost:8080/}")
     private String baseCallbackAddress;
 
     @Autowired

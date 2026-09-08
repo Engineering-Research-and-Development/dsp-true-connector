@@ -153,11 +153,11 @@ spec:
   - name: connector-a
     env:
       # From ConfigMap (non-sensitive)
-      - name: CALLBACK_ADDRESS
+      - name: BASE_URL
         valueFrom:
           configMapKeyRef:
             name: connector-a-env
-            key: CALLBACK_ADDRESS
+            key: BASE_URL
       - name: KEYSTORE_NAME
         valueFrom:
           configMapKeyRef:
@@ -325,7 +325,7 @@ connector_b_config = {
 
 ### Fixed Properties (NOT parameterized)
 - `server.port`: 8080 (A) vs 8090 (B)
-- `application.connectorid`: connector_a vs connector_b
+- `application.participantId`: connector_a vs connector_b
 - `application.encryption.key`: 5m7mlhmu65zsp6x vs 5xplehys9mtcatb
 
 ### Parameterized Differences

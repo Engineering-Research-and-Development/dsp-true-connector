@@ -19,7 +19,7 @@ public class DataTransferProperties {
 
 	private final TenantRepository tenantRepository;
 
-	@Value("${application.callback.address}")
+	@Value("${application.baseURL}")
 	private String callbackAddress;
 
     /**
