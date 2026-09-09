@@ -18,7 +18,7 @@ public class ContractNegotiationProperties {
 
 	private final TenantRepository tenantRepository;
 
-	@Value("${application.callback.address}")
+	@Value("${application.baseURL}")
 	private String callbackAddress;
 	
 	@Value("${application.automatic.negotiation}")

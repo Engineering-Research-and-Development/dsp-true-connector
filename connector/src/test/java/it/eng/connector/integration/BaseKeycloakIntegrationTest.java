@@ -63,7 +63,7 @@ public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
                 () -> realmUrl() + "/protocol/openid-connect/token");
         registry.add("application.keycloak.login.logout-url",
                 () -> realmUrl() + "/protocol/openid-connect/logout");
-        registry.add("application.callback.address", () -> "http://localhost:8080/");
+        registry.add("application.baseURL", () -> "http://localhost:8080/");
         registry.add("application.automatic.negotiation", () -> "false");
         registry.add("application.encryption.key", () -> "5xplehys9mtcatb");
         registry.add("s3.accessKey", () -> "minioadmin");

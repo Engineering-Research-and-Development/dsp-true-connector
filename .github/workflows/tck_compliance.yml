@@ -23,24 +23,29 @@ jobs:
       - name: Run docker container for TCK Runtime
         id: tck_runtime
         run: |
-          docker compose -f ./ci/tck/docker-compose-tck.yml up > tck_runtime.log 2>&1
+          docker compose -f ./ci/tck/docker-compose-tck.yml up 2>&1 | tee tck_runtime.log
         continue-on-error: true
+
+      - name: Upload TCK Runtime log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tck-runtime-log
+          path: tck_runtime.log
+          if-no-files-found: warn
 
       - name: Check TCK test results
         id: check_results
         run: |
           echo "Checking TCK Runtime logs for test results..."
-          cat tck_runtime.log
           if grep -q "Failed tests: 0" tck_runtime.log; then
-            echo "status=success" >> $GITHUB_OUTPUT
-            echo "color=brightgreen" >> $GITHUB_OUTPUT
-            echo "message=passing" >> $GITHUB_OUTPUT
+            echo "### ✅ TCK Compliance Tests Passed" >> $GITHUB_STEP_SUMMARY
+            echo "No failing tests found in runtime log." >> $GITHUB_STEP_SUMMARY
             echo "✅ TCK tests passed"
             exit 0
           else
-            echo "status=failure" >> $GITHUB_OUTPUT
-            echo "color=red" >> $GITHUB_OUTPUT
-            echo "message=failing" >> $GITHUB_OUTPUT
+            echo "### ❌ TCK Compliance Tests Failed" >> $GITHUB_STEP_SUMMARY
+            echo "Failing tests detected or log was incomplete." >> $GITHUB_STEP_SUMMARY
             echo "❌ TCK tests failed"
             exit 1
           fi
@@ -52,8 +57,3 @@ jobs:
       - name: Stop docker container DSPTRUEConnector as TCK profile
         if: always()
         run: docker compose -f ./ci/tck/docker-compose.yml down -v
-
-      - name: Fail workflow if tests failed
-        if: steps.check_results.outcome == 'failure'
-        run: exit 1
-

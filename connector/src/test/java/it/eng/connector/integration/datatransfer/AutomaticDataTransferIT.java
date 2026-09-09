@@ -50,7 +50,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
@@ -109,7 +112,7 @@ public class AutomaticDataTransferIT {
     private static ConfigurableApplicationContext providerCtx;
 
     /**
-     * Consumer instance whose {@code application.callback.address} points to WireMock.
+     * Consumer instance whose {@code application.baseURL} points to WireMock.
      * The provider sends protocol messages (e.g. TransferStartMessage) back to WireMock,
      * which intercepts and returns an error — triggering retry logic.
      */
@@ -191,7 +194,7 @@ public class AutomaticDataTransferIT {
         System.setProperty("spring.data.mongodb.host", mongoHost);
         System.setProperty("spring.data.mongodb.port", String.valueOf(mongoPort));
         System.setProperty("spring.data.mongodb.database", database);
-        System.setProperty("application.callback.address", callbackAddress);
+        System.setProperty("application.baseURL", callbackAddress);
         System.setProperty("application.automatic.negotiation", "true");
         System.setProperty("application.automatic.negotiation.retry.max", "3");
         System.setProperty("application.automatic.negotiation.retry.delay.ms", "500");
@@ -234,7 +237,7 @@ public class AutomaticDataTransferIT {
             System.clearProperty("spring.data.mongodb.host");
             System.clearProperty("spring.data.mongodb.port");
             System.clearProperty("spring.data.mongodb.database");
-            System.clearProperty("application.callback.address");
+            System.clearProperty("application.baseURL");
             System.clearProperty("application.automatic.negotiation");
             System.clearProperty("application.automatic.negotiation.retry.max");
             System.clearProperty("application.automatic.negotiation.retry.delay.ms");
@@ -585,7 +588,7 @@ public class AutomaticDataTransferIT {
         String agreementId   = "urn:uuid:auto-transfer-retry-" + UUID.randomUUID();
 
         // ── create INITIALIZED TPs ────────────────────────────────────────────────
-        // WireMock-consumer's application.callback.address = http://localhost:WIREMOCK_PORT.
+        // WireMock-consumer's application.baseURL = http://localhost:WIREMOCK_PORT.
         // Its consumerCallbackAddress() = http://localhost:9100/engineering/consumer.
         // Provider will send TransferStartMessage to http://localhost:9100/engineering/consumer/transfers/{pid}/start
         // which WireMock intercepts → 500. After retry exhaustion provider terminates gracefully

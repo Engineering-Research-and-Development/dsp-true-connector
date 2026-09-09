@@ -38,8 +38,8 @@ connector_image    = "ghcr.io/engineering-research-and-development/dsp-true-conn
 connector_ui_image = "ghcr.io/engineering-research-and-development/dsp-true-connector-ui:0.6.1"
 
 # Callback Addresses
-connector_a_callback_address = "http://connector-a:8080/"
-connector_b_callback_address = "http://connector-b:8090/"
+connector_a_base_url = "http://connector-a:8080/"
+connector_b_base_url = "http://connector-b:8090/"
 
 # Keystore Configuration for Connector A
 keystore_connector_a_config = {

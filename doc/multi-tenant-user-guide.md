@@ -56,7 +56,7 @@ Content-Type: application/json
 {
   "id": "acme-corp",
   "name": "ACME Corporation",
-  "connectorId": "urn:connector:acme",
+  "participantId": "urn:connector:acme",
   "callbackAddress": "https://acme-connector.example.com",
   "enabled": true
 }
