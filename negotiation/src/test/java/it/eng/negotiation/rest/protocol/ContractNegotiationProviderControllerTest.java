@@ -8,6 +8,7 @@ import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.negotiation.service.ContractNegotiationProviderStrategy;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.model.Tenant;
+import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.service.TenantService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.AfterEach;
@@ -61,10 +62,10 @@ public class ContractNegotiationProviderControllerTest {
 
     @AfterEach
     public void after() {
-        it.eng.tools.service.TenantContextHolder.clear();
+        TenantContextHolder.clear();
     }
 
-    private ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
+    private final ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
             .consumerPid(NegotiationMockObjectUtil.CONSUMER_PID)
             .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
             .state(ContractNegotiationState.REQUESTED)
@@ -78,7 +79,7 @@ public class ContractNegotiationProviderControllerTest {
         assertNotNull(response, "Response is not null");
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(response.getBody().get(DSpaceConstants.TYPE).asText(), ContractNegotiation.class.getSimpleName());
-        assertEquals(response.getBody().get(DSpaceConstants.CONTEXT).get(0).asText(), DSpaceConstants.DSPACE_2025_01_CONTEXT);
+        assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, response.getBody().get(DSpaceConstants.CONTEXT).get(0).asText());
     }
 
     @Test
@@ -100,7 +101,7 @@ public class ContractNegotiationProviderControllerTest {
         assertNotNull(response, "Response is not null");
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertEquals(response.getBody().get(DSpaceConstants.TYPE).asText(), ContractNegotiation.class.getSimpleName());
-        assertEquals(response.getBody().get(DSpaceConstants.CONTEXT).get(0).asText(), DSpaceConstants.DSPACE_2025_01_CONTEXT);
+        assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, response.getBody().get(DSpaceConstants.CONTEXT).get(0).asText());
     }
 
     @Test
@@ -120,7 +121,7 @@ public class ContractNegotiationProviderControllerTest {
         assertNotNull(response, "Response is not null");
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(response.getBody().get(DSpaceConstants.TYPE).asText(), ContractNegotiation.class.getSimpleName());
-        assertEquals(response.getBody().get(DSpaceConstants.CONTEXT).get(0).asText(), DSpaceConstants.DSPACE_2025_01_CONTEXT);
+        assertEquals(DSpaceConstants.DSPACE_2025_01_CONTEXT, response.getBody().get(DSpaceConstants.CONTEXT).get(0).asText());
     }
 
     @Test

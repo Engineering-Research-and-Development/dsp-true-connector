@@ -18,6 +18,7 @@ import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -143,8 +144,8 @@ public class DataServiceAPIIT extends BaseIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
         String response = result.andReturn().getResponse().getContentAsString();
-        GenericApiResponse<java.util.List<DataService>> apiResponse = CatalogSerializer.deserializePlain(response,
-                new TypeReference<GenericApiResponse<java.util.List<DataService>>>() {
+        GenericApiResponse<List<DataService>> apiResponse = CatalogSerializer.deserializePlain(response,
+                new TypeReference<GenericApiResponse<List<DataService>>>() {
                 });
 
         assertNotNull(apiResponse);

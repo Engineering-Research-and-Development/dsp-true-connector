@@ -5,6 +5,7 @@ import it.eng.tools.s3.model.S3ClientRequest;
 import it.eng.tools.s3.properties.S3Properties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 
@@ -142,7 +143,7 @@ public class S3SyncUploadStrategy implements S3UploadStrategy {
         log.debug("Uploading part {} (SYNC) for key: {} ({} bytes)", partNumber, objectKey, partData.length);
 
         UploadPartResponse response = s3Client.uploadPart(uploadPartRequest,
-                software.amazon.awssdk.core.sync.RequestBody.fromInputStream(
+                RequestBody.fromInputStream(
                         new ByteArrayInputStream(partData), partData.length));
 
         log.debug("Part {} uploaded successfully (SYNC) with ETag: {}", partNumber, response.eTag());

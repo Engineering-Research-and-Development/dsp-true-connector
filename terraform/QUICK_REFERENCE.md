@@ -18,6 +18,7 @@ The following are stored in Kubernetes Secrets and injected as environment varia
 - ✅ `KEYSTORE_PASSWORD` - From Secret key `keystore_password`
 - ✅ `KEY_PASSWORD` - From Secret key `key_password`
 - ✅ `TRUSTSTORE_PASSWORD` - From Secret key `truststore_password`
+- ✅ `APPLICATION_SECURITY_JWT_SECRET` - From `connector_a_config.jwt_secret` / `connector_b_config.jwt_secret`
 
 ### Configuration in ConfigMaps (Non-sensitive)
 Only non-sensitive configuration values are in ConfigMaps:
@@ -28,12 +29,16 @@ Only non-sensitive configuration values are in ConfigMaps:
 ---
 
 ## 0. Docker Images
-| Property | Variable | Default |
+| Property | Variable | Default (`variables.tf`) |
 |----------|----------|---------|
 | MongoDB Image | `mongodb_image` | `"mongo:7.0.12"` |
 | MinIO Image | `minio_image` | `"minio/minio:RELEASE.2025-04-22T22-12-26Z"` |
 | Connector Image | `connector_image` | `"ghcr.io/.../dsp-true-connector:0.6.4"` |
-| Connector UI Image | `connector_ui_image` | `"ghcr.io/.../dsp-true-connector-ui:0.6.1"` |
+| Connector UI Image | `connector_ui_image` | `"ghcr.io/.../dsp-true-connector-ui:latest"` |
+
+> ⚠️ `terraform.tfvars` is auto-loaded and **overrides these defaults**. Check `terraform.tfvars` for the actual
+> effective image tags (`connector_image` / `connector_ui_image` are currently pinned to `:test` there). When using a
+> locally built image not pushed to any registry, see "Using a Locally Built Docker Image" in `terraform.md`.
 
 ---
 
@@ -89,6 +94,17 @@ All keystore and truststore passwords are stored in Kubernetes Secrets and injec
 | Keystore Password | `keystore_password` | `$${KEYSTORE_PASSWORD}` |
 | Key Password | `key_password` | `$${KEY_PASSWORD}` |
 | Truststore Password | `truststore_password` | `$${TRUSTSTORE_PASSWORD}` |
+
+---
+
+## 6. JWT Authentication Secret (Kubernetes Secret)
+
+| Property | Variable | Secret Key | Injected As | Default (A / B) |
+|----------|----------|------------|-------------|---------|
+| `application.security.jwt.secret` | `connector_a_config.jwt_secret` / `connector_b_config.jwt_secret` | (added to `dsp-connector-{a,b}-credentials`) | `$${APPLICATION_SECURITY_JWT_SECRET}` | `"connector-jwt-dev-secret-change-in-prod-min-32-bytes"` (both) |
+
+> Must be at least 32 bytes (256 bits). **Change this in production** — set a unique, random value per environment in
+> your `*.tfvars` file; never commit a real production secret to `terraform.tfvars`.
 
 ---
 
@@ -312,8 +328,8 @@ connector_a_config = {
   s3_access_key           = string
   s3_secret_key           = string
   s3_region               = string
-  s3_bucket_name          = string
   s3_external_endpoint    = string
+  jwt_secret              = string
 }
 
 connector_b_config = {
@@ -330,7 +346,6 @@ connector_b_config = {
 
 ### Parameterized Differences
 - `mongodb_database`: true_connector_a vs true_connector_b
-- `s3_bucket_name`: dsp-true-connector-a vs dsp-true-connector-b
 - `s3_external_endpoint`: http://localhost:9000 vs http://172.17.0.1:9000
 
 ## Terraform State & Generated Files
@@ -379,7 +394,7 @@ connector_b_config = {
 
 ### Infrastructure Issues
 **S3 bucket already exists**
-→ Ensure unique bucket names in s3_bucket_name variables
+→ Ensure unique bucket names in Tenant configuration.
 
 **MongoDB connection failing**
 → Verify mongodb_host and mongodb_port are accessible from Kubernetes cluster

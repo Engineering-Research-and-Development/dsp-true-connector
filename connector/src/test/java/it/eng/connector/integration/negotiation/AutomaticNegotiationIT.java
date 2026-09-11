@@ -27,7 +27,9 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.TenantService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
@@ -284,7 +286,7 @@ public class AutomaticNegotiationIT {
         var distributionRepository = providerCtx.getBean(DistributionRepository.class);
         var artifactRepository     = providerCtx.getBean(ArtifactRepository.class);
         var s3ClientService        = providerCtx.getBean(S3ClientService.class);
-        var s3Properties           = providerCtx.getBean(it.eng.tools.s3.properties.S3Properties.class);
+        var s3Properties           = providerCtx.getBean(S3Properties.class);
 
         // createNewCatalog(TENANT_ID) cascades tenantId to dataset, distribution, and data-service
         Catalog catalog = CatalogMockObjectUtil.createNewCatalog(TENANT_ID);
@@ -304,12 +306,12 @@ public class AutomaticNegotiationIT {
         // just upload the artifact file using the provider's S3Properties bean,
         // exactly as CatalogIT.uploadFile() does via createS3EndpointProperties().
         Map<String, String> destinationS3Properties = Map.of(
-                it.eng.tools.s3.util.S3Utils.OBJECT_KEY,        dataset.getId(),
-                it.eng.tools.s3.util.S3Utils.BUCKET_NAME,       s3Properties.getBucketName(),
-                it.eng.tools.s3.util.S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
-                it.eng.tools.s3.util.S3Utils.REGION,            s3Properties.getRegion(),
-                it.eng.tools.s3.util.S3Utils.ACCESS_KEY,        s3Properties.getAccessKey(),
-                it.eng.tools.s3.util.S3Utils.SECRET_KEY,        s3Properties.getSecretKey()
+                S3Utils.OBJECT_KEY,        dataset.getId(),
+                S3Utils.BUCKET_NAME,       s3Properties.getBucketName(),
+                S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
+                S3Utils.REGION,            s3Properties.getRegion(),
+                S3Utils.ACCESS_KEY,        s3Properties.getAccessKey(),
+                S3Utils.SECRET_KEY,        s3Properties.getSecretKey()
         );
 
         try {

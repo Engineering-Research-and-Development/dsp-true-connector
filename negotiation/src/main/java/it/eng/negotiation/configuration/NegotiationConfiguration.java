@@ -1,5 +1,6 @@
 package it.eng.negotiation.configuration;
 
+import it.eng.tools.configuration.TenantContextTaskDecorator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,7 +34,7 @@ public class NegotiationConfiguration {
         var scheduler = new ThreadPoolTaskScheduler();
         scheduler.setPoolSize(schedulerPoolSize);
         scheduler.setThreadNamePrefix("negotiation-retry-");
-        scheduler.setTaskDecorator(new it.eng.tools.configuration.TenantContextTaskDecorator());
+        scheduler.setTaskDecorator(new TenantContextTaskDecorator());
         scheduler.initialize();
         return scheduler;
     }

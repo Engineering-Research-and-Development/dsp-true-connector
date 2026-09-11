@@ -11,6 +11,7 @@ resource "kubernetes_secret" "connector_a_credentials" {
     "KEYSTORE_PASSWORD"        = var.keystore_connector_a_config["KEYSTORE_PASSWORD"]
     "KEY_PASSWORD"             = var.keystore_connector_a_config["KEY_PASSWORD"]
     "TRUSTSTORE_PASSWORD"      = var.keystore_connector_a_config["TRUSTSTORE_PASSWORD"]
+    "APPLICATION_SECURITY_JWT_SECRET" = var.connector_a_config.jwt_secret
   }
 }
 
@@ -27,6 +28,7 @@ resource "kubernetes_secret" "connector_b_credentials" {
     "KEYSTORE_PASSWORD"        = var.keystore_connector_b_config["KEYSTORE_PASSWORD"]
     "KEY_PASSWORD"             = var.keystore_connector_b_config["KEY_PASSWORD"]
     "TRUSTSTORE_PASSWORD"      = var.keystore_connector_b_config["TRUSTSTORE_PASSWORD"]
+    "APPLICATION_SECURITY_JWT_SECRET" = var.connector_b_config.jwt_secret
   }
 }
 
@@ -125,7 +127,6 @@ resource "local_file" "connector_a_properties" {
     S3_ACCESS_KEY                       = "$${S3_ACCESS_KEY}"
     S3_SECRET_KEY                       = "$${S3_SECRET_KEY}"
     S3_REGION                           = var.connector_a_config.s3_region
-    S3_BUCKET_NAME                      = var.connector_a_config.s3_bucket_name
     S3_EXTERNAL_PRESIGNED_ENDPOINT      = var.connector_a_config.s3_external_endpoint
   })
   filename = "${path.module}/.terraform/connector_a_application.properties"
@@ -162,7 +163,6 @@ resource "local_file" "connector_b_properties" {
     S3_ACCESS_KEY                       = "$${S3_ACCESS_KEY}"
     S3_SECRET_KEY                       = "$${S3_SECRET_KEY}"
     S3_REGION                           = var.connector_b_config.s3_region
-    S3_BUCKET_NAME                      = var.connector_b_config.s3_bucket_name
     S3_EXTERNAL_PRESIGNED_ENDPOINT      = var.connector_b_config.s3_external_endpoint
   })
   filename = "${path.module}/.terraform/connector_b_application.properties"

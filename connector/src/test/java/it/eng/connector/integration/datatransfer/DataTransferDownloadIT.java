@@ -256,7 +256,7 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
         String fileContent = "Hello, World!";
         String fileName = "helloworld.txt";
 
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.get("/helloworld")
+        WireMock.stubFor(WireMock.get("/helloworld")
                 .withBasicAuth(mockUser, mockPassword)
                 .willReturn(
                         aResponse().withHeader(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN_VALUE)

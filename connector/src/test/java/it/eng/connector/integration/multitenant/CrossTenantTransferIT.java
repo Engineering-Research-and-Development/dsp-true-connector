@@ -52,6 +52,9 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Predicate;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -182,7 +185,7 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
             }
             providerDataset.getDistribution().stream()
                     .map(distribution -> distribution.getAccessService())
-                    .filter(java.util.Objects::nonNull)
+                    .filter(Objects::nonNull)
                     .forEach(dataService -> dataServiceRepository.deleteById(dataService.getId()));
         }
 
@@ -385,7 +388,7 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
     /** Functional supplier of an optional entity, re-evaluated on every polling iteration. */
     @FunctionalInterface
     private interface PollingSource<T> {
-        java.util.Optional<T> get();
+        Optional<T> get();
     }
 
     /**
@@ -424,7 +427,7 @@ public class CrossTenantTransferIT extends BaseIntegrationTest {
      * @throws InterruptedException if the polling sleep is interrupted
      */
     private TransferProcess pollTransferProcess(PollingSource<TransferProcess> source,
-            java.util.function.Predicate<TransferProcess> predicate, String label) throws InterruptedException {
+                                                Predicate<TransferProcess> predicate, String label) throws InterruptedException {
         long deadline = System.currentTimeMillis() + (POLL_TIMEOUT_SECONDS * 1000L);
         while (System.currentTimeMillis() < deadline) {
             var found = source.get();

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
@@ -48,7 +49,7 @@ class CredentialUtilsTest {
     @DisplayName("getConnectorCredentials: should use the INTERNAL-mode provider/cache path when present")
     void getConnectorCredentials_providerPresent_usesCache() {
         when(connectorCredentialProviderObjectProvider.getIfAvailable()).thenReturn(connectorCredentialProvider);
-        when(m2mTokenCache.getOrFetch(org.mockito.ArgumentMatchers.eq("connector-m2m"), org.mockito.ArgumentMatchers.any()))
+        when(m2mTokenCache.getOrFetch(ArgumentMatchers.eq("connector-m2m"), ArgumentMatchers.any()))
                 .thenReturn("m2m-token");
 
         String result = credentialUtils.getConnectorCredentials();
@@ -71,7 +72,7 @@ class CredentialUtilsTest {
     @DisplayName("getConnectorCredentials: should fall back to Keycloak when provider is present but yields no token")
     void getConnectorCredentials_providerPresentButNoToken_fallsBackToKeycloak() {
         when(connectorCredentialProviderObjectProvider.getIfAvailable()).thenReturn(connectorCredentialProvider);
-        when(m2mTokenCache.getOrFetch(org.mockito.ArgumentMatchers.eq("connector-m2m"), org.mockito.ArgumentMatchers.any()))
+        when(m2mTokenCache.getOrFetch(ArgumentMatchers.eq("connector-m2m"), ArgumentMatchers.any()))
                 .thenReturn(null);
         when(authenticationCache.getToken("ROLE_CONNECTOR")).thenReturn("keycloak-token");
 
@@ -84,7 +85,7 @@ class CredentialUtilsTest {
     @DisplayName("getAPICredentials: should use the INTERNAL-mode issuer/cache path when present")
     void getAPICredentials_issuerPresent_usesCache() {
         when(internalServiceTokenIssuerObjectProvider.getIfAvailable()).thenReturn(internalServiceTokenIssuer);
-        when(m2mTokenCache.getOrFetch(org.mockito.ArgumentMatchers.eq("internal-api"), org.mockito.ArgumentMatchers.any()))
+        when(m2mTokenCache.getOrFetch(ArgumentMatchers.eq("internal-api"), ArgumentMatchers.any()))
                 .thenReturn("internal-token");
 
         String result = credentialUtils.getAPICredentials();
@@ -107,7 +108,7 @@ class CredentialUtilsTest {
     @DisplayName("getAPICredentials: should fall back to Keycloak when issuer is present but yields no token")
     void getAPICredentials_issuerPresentButNoToken_fallsBackToKeycloak() {
         when(internalServiceTokenIssuerObjectProvider.getIfAvailable()).thenReturn(internalServiceTokenIssuer);
-        when(m2mTokenCache.getOrFetch(org.mockito.ArgumentMatchers.eq("internal-api"), org.mockito.ArgumentMatchers.any()))
+        when(m2mTokenCache.getOrFetch(ArgumentMatchers.eq("internal-api"), ArgumentMatchers.any()))
                 .thenReturn(null);
         when(authenticationCache.getToken("ROLE_ADMIN")).thenReturn("keycloak-admin-token");
 

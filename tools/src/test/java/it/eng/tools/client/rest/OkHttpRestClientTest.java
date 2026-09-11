@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.HttpHeaders;
 import it.eng.tools.model.ExternalData;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.util.CredentialUtils;
 import okhttp3.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,12 +13,15 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpMethod;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -372,8 +376,8 @@ public class OkHttpRestClientTest {
 
         assertEquals("Success", result);
         verify(credentialUtils).invalidateCachedCredentials();
-        verify(credentialUtils, org.mockito.Mockito.times(2)).getAPICredentials();
-        verify(okHttpClient, org.mockito.Mockito.times(2)).newCall(any(Request.class));
+        verify(credentialUtils, Mockito.times(2)).getAPICredentials();
+        verify(okHttpClient, Mockito.times(2)).newCall(any(Request.class));
     }
 
     @Test
@@ -389,9 +393,9 @@ public class OkHttpRestClientTest {
         String result = okHttpRestClient.sendInternalRequest("/api/test", HttpMethod.GET, null);
 
         assertEquals("Still unauthorized", result);
-        verify(credentialUtils, org.mockito.Mockito.times(1)).invalidateCachedCredentials();
-        verify(credentialUtils, org.mockito.Mockito.times(2)).getAPICredentials();
-        verify(okHttpClient, org.mockito.Mockito.times(2)).newCall(any(Request.class));
+        verify(credentialUtils, Mockito.times(1)).invalidateCachedCredentials();
+        verify(credentialUtils, Mockito.times(2)).getAPICredentials();
+        verify(okHttpClient, Mockito.times(2)).newCall(any(Request.class));
     }
 
     @Test
@@ -407,9 +411,9 @@ public class OkHttpRestClientTest {
         String result = okHttpRestClient.sendInternalRequest("/api/test", HttpMethod.GET, null);
 
         assertEquals("Success", result);
-        verify(credentialUtils, org.mockito.Mockito.never()).invalidateCachedCredentials();
-        verify(credentialUtils, org.mockito.Mockito.times(1)).getAPICredentials();
-        verify(okHttpClient, org.mockito.Mockito.times(1)).newCall(any(Request.class));
+        verify(credentialUtils, Mockito.never()).invalidateCachedCredentials();
+        verify(credentialUtils, Mockito.times(1)).getAPICredentials();
+        verify(okHttpClient, Mockito.times(1)).newCall(any(Request.class));
     }
 
     @Test
@@ -425,8 +429,8 @@ public class OkHttpRestClientTest {
         when(response.body()).thenReturn(responseBody);
         when(responseBody.string()).thenReturn("Unauthorized", "Success");
 
-        java.util.concurrent.atomic.AtomicInteger callCount = new java.util.concurrent.atomic.AtomicInteger();
-        java.util.function.Supplier<String> authorizationSupplier = () ->
+        AtomicInteger callCount = new AtomicInteger();
+        Supplier<String> authorizationSupplier = () ->
                 callCount.incrementAndGet() == 1 ? "Bearer stale-token" : "Bearer fresh-token";
 
         GenericApiResponse<String> apiResponse = okHttpRestClient.sendRequestProtocol(TARGET_ADDRESS, jsonNode, authorizationSupplier);
@@ -435,7 +439,7 @@ public class OkHttpRestClientTest {
         assertTrue(apiResponse.isSuccess());
         assertEquals(2, callCount.get());
         verify(credentialUtils).invalidateCachedCredentials();
-        verify(okHttpClient, org.mockito.Mockito.times(2)).newCall(any(Request.class));
+        verify(okHttpClient, Mockito.times(2)).newCall(any(Request.class));
     }
 
     @Test
@@ -451,8 +455,8 @@ public class OkHttpRestClientTest {
         when(response.body()).thenReturn(responseBody);
         when(responseBody.string()).thenReturn("Success");
 
-        java.util.concurrent.atomic.AtomicInteger callCount = new java.util.concurrent.atomic.AtomicInteger();
-        java.util.function.Supplier<String> authorizationSupplier = () -> {
+        AtomicInteger callCount = new AtomicInteger();
+        Supplier<String> authorizationSupplier = () -> {
             callCount.incrementAndGet();
             return "Bearer valid-token";
         };
@@ -462,8 +466,8 @@ public class OkHttpRestClientTest {
         assertNotNull(apiResponse);
         assertTrue(apiResponse.isSuccess());
         assertEquals(1, callCount.get());
-        verify(credentialUtils, org.mockito.Mockito.never()).invalidateCachedCredentials();
-        verify(okHttpClient, org.mockito.Mockito.times(1)).newCall(any(Request.class));
+        verify(credentialUtils, Mockito.never()).invalidateCachedCredentials();
+        verify(okHttpClient, Mockito.times(1)).newCall(any(Request.class));
     }
 
     @Test
@@ -485,8 +489,8 @@ public class OkHttpRestClientTest {
         assertNotNull(apiResponse);
         assertTrue(apiResponse.isSuccess());
         verify(credentialUtils).invalidateCachedCredentials();
-        verify(okHttpClient, org.mockito.Mockito.times(2)).newCall(argThat(request ->
-                "tenant-1".equals(request.header(it.eng.tools.service.TenantContextHolder.HEADER_X_TENANT_ID))));
+        verify(okHttpClient, Mockito.times(2)).newCall(argThat(request ->
+                "tenant-1".equals(request.header(TenantContextHolder.HEADER_X_TENANT_ID))));
     }
 
 }

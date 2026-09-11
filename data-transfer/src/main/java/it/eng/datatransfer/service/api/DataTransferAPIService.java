@@ -28,6 +28,7 @@ import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
+import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.tomcat.util.codec.binary.Base64;
@@ -261,7 +262,7 @@ public class DataTransferAPIService {
                             "Transfer process request failed",
                             details);
                     throw new DataTransferAPIException(transferError, "Error making request");
-                } catch (jakarta.validation.ValidationException ve) {
+                } catch (ValidationException ve) {
                     log.warn("Provider error response is not a DSP TransferError: {}", response.getData());
                     throw new DataTransferAPIException("Transfer request failed: " + response.getMessage());
                 }
@@ -790,7 +791,7 @@ public class DataTransferAPIService {
 
     /**
      * Builds an audit event map, skipping entries where the value is null.
-     * Avoids {@link java.util.Map#of} throwing NullPointerException when optional
+     * Avoids {@link Map#of} throwing NullPointerException when optional
      * fields like consumerPid or providerPid are not yet populated.
      *
      * @param keyValuePairs alternating key/value pairs; null values are silently skipped

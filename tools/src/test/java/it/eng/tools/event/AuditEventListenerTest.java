@@ -1,12 +1,15 @@
 package it.eng.tools.event;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import it.eng.tools.repository.AuditEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.ZonedDateTime;
@@ -44,7 +47,7 @@ class AuditEventListenerTest {
 
         auditEventListener.handleAuditEvent(event);
 
-        verify(auditEventRepository).save(org.mockito.ArgumentMatchers.any(AuditEvent.class));
+        verify(auditEventRepository).save(ArgumentMatchers.any(AuditEvent.class));
     }
 
     // -------------------------------------------------------------------------
@@ -173,7 +176,7 @@ class AuditEventListenerTest {
      */
     static final class UnserializableValue {
         /** Forces Jackson to fail: the getter throws at serialization time. */
-        @com.fasterxml.jackson.annotation.JsonProperty("value")
+        @JsonProperty("value")
         public String getValue() {
             throw new RuntimeException("simulated serialization failure");
         }
@@ -254,8 +257,8 @@ class AuditEventListenerTest {
     @Test
     @DisplayName("handleAuditEvent does not propagate exceptions thrown by the repository")
     void handleAuditEvent_repositoryException_doesNotPropagate() {
-        org.mockito.Mockito.doThrow(new RuntimeException("DB error"))
-                .when(auditEventRepository).save(org.mockito.ArgumentMatchers.any());
+        Mockito.doThrow(new RuntimeException("DB error"))
+                .when(auditEventRepository).save(ArgumentMatchers.any());
 
         var event = AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.APPLICATION_START)

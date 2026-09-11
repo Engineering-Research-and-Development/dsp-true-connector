@@ -345,7 +345,7 @@ public class MultitenantInternalAPIIT extends BaseIntegrationTest {
     }
 
     private void removeAllS3Files() {
-        java.util.List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+        List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
         if (files != null) {
             files.forEach(f -> s3ClientService.deleteFile(s3Properties.getBucketName(), f));
         }

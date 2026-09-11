@@ -6,6 +6,7 @@ import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.X509Certificate;
 
@@ -102,7 +103,7 @@ public class GlobalSSLConfiguration {
 
 			// Create SSL context with trust-all manager
 			SSLContext sslContext = SSLContext.getInstance("TLS");
-			sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+			sslContext.init(null, trustAllCerts, new SecureRandom());
 
 			// Set as default for HttpsURLConnection
 			HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());

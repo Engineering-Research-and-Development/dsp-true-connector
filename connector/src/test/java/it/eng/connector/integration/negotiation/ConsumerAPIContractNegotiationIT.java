@@ -22,7 +22,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 import org.wiremock.spring.InjectWireMock;
 
@@ -65,7 +64,6 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
     // start negotiation
     @Test
     @DisplayName("Consumer initiates contract negotiation - success")
-//    @WithUserDetails(TestUtil.ADMIN_USER)
     public void consumerInitiatesContractNegotiation() throws Exception {
         // insert data into consumer DB
         ContractNegotiation contractNegotiationResponse = ContractNegotiation.Builder.newInstance()
@@ -75,7 +73,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
                 .build();
 
         // prepare provider/wiremock response
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/negotiations/request")
+        WireMock.stubFor(WireMock.post("/negotiations/request")
                 .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(containing("ContractRequestMessage"))
                 .willReturn(
@@ -106,7 +104,6 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Consumer initiates contract negotiation - provider error")
-//    @WithUserDetails(TestUtil.ADMIN_USER)
     public void consumerInitiatesContractNegotiation_providerError() throws Exception {
         // prepare provider/wiremock response
         ContractNegotiationErrorMessage contractNegotiationError = ContractNegotiationErrorMessage.Builder.newInstance()
@@ -115,7 +112,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
                 .code("TEST_ERROR")
                 .reason(Collections.singletonList("Test error"))
                 .build();
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/negotiations/request")
+        WireMock.stubFor(WireMock.post("/negotiations/request")
                 .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(containing("ContractRequestMessage"))
                 .willReturn(
@@ -146,9 +143,8 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Consumer initiates contract negotiation - provider error with wrong message")
-//    @WithUserDetails(TestUtil.ADMIN_USER)
     public void consumerInitiatesContractNegotiation_providerErrorWithInvalidMessage() throws Exception {
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/negotiations/request")
+        WireMock.stubFor(WireMock.post("/negotiations/request")
                 .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(containing("ContractRequestMessage"))
                 .willReturn(
@@ -178,7 +174,6 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
     // verify negotiation
     @Test
     @DisplayName("Consumer verify contract negotiation")
-//    @WithUserDetails(TestUtil.ADMIN_USER)
     public void consumerVerifyContractNegotiation() throws Exception {
         // insert data into consumer DB
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
@@ -193,7 +188,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
 
         // prepare provider/wiremock response
 //		":callback:/negotiations/:providerPid:/agreement/verification"
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/negotiations/" + contractNegotiation.getProviderPid() + "/agreement/verification")
+        WireMock.stubFor(WireMock.post("/negotiations/" + contractNegotiation.getProviderPid() + "/agreement/verification")
                 .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(containing("ContractAgreementVerificationMessage"))
                 .willReturn(
@@ -218,7 +213,6 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Consumer verify contract negotiation - provider error")
-//    @WithUserDetails(TestUtil.ADMIN_USER)
     public void consumerVerifyContractNegotiation_providerError() throws Exception {
         // insert data into consumer DB
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
@@ -238,7 +232,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
                 .code("TEST_ERROR")
                 .reason(Collections.singletonList("Test error"))
                 .build();
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/negotiations/" + contractNegotiation.getProviderPid() + "/agreement/verification")
+        WireMock.stubFor(WireMock.post("/negotiations/" + contractNegotiation.getProviderPid() + "/agreement/verification")
                 .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(containing("ContractAgreementVerificationMessage"))
                 .willReturn(
@@ -270,7 +264,6 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Consumer verify contract negotiation - provider error with wrong message")
-//    @WithUserDetails(TestUtil.ADMIN_USER)
     public void consumerVerifyContractNegotiation_providerErrorWithInvalidMessage() throws Exception {
         // insert data into consumer DB
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
@@ -284,7 +277,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
         contractNegotiationRepository.save(contractNegotiation);
 
         // prepare provider/wiremock response
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/negotiations/" + contractNegotiation.getProviderPid() + "/agreement/verification")
+        WireMock.stubFor(WireMock.post("/negotiations/" + contractNegotiation.getProviderPid() + "/agreement/verification")
                 .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(containing("ContractAgreementVerificationMessage"))
                 .willReturn(
@@ -314,7 +307,6 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
     // terminate contract negotiation
     @Test
     @DisplayName("Consumer terminates contract negotiation")
-//    @WithUserDetails(TestUtil.ADMIN_USER)
     public void consumerTerminatesContractNegotiation() throws Exception {
         // insert data into consumer DB
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
@@ -330,7 +322,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
 
         // prepare provider/wiremock response
         // /{providerPid}/termination
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/negotiations/" + contractNegotiation.getProviderPid() + "/termination")
+        WireMock.stubFor(WireMock.post("/negotiations/" + contractNegotiation.getProviderPid() + "/termination")
                 .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(containing("ContractNegotiationTerminationMessage"))
                 .willReturn(
@@ -356,7 +348,6 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
     // terminate contract negotiation
     @Test
     @DisplayName("Consumer terminates contract negotiation - provider error")
-//    @WithUserDetails(TestUtil.ADMIN_USER)
     public void consumerTerminatesContractNegotiation_providerError() throws Exception {
         // insert data into consumer DB
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
@@ -377,7 +368,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
                 .code("TEST_ERROR")
                 .reason(Collections.singletonList("Test error"))
                 .build();
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/negotiations/" + contractNegotiation.getProviderPid() + "/termination")
+        WireMock.stubFor(WireMock.post("/negotiations/" + contractNegotiation.getProviderPid() + "/termination")
                 .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(containing("ContractNegotiationTerminationMessage"))
                 .willReturn(
@@ -409,7 +400,6 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Consumer terminates contract negotiation - provider error with wrong message")
-//    @WithUserDetails(TestUtil.ADMIN_USER)
     public void consumerTerminatesContractNegotiation_providerErrorWithInvalidMessage() throws Exception {
         // insert data into consumer DB
         ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
@@ -424,7 +414,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
         contractNegotiationRepository.save(contractNegotiation);
 
         // prepare provider/wiremock response
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/negotiations/" + contractNegotiation.getProviderPid() + "/termination")
+        WireMock.stubFor(WireMock.post("/negotiations/" + contractNegotiation.getProviderPid() + "/termination")
                 .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(containing("ContractNegotiationTerminationMessage"))
                 .willReturn(
