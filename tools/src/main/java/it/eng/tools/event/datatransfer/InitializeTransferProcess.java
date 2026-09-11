@@ -15,5 +15,6 @@ public class InitializeTransferProcess {
 	private String agreementId;
 	private String datasetId;
 	private String role;
+	private String tenantId;
 
 }

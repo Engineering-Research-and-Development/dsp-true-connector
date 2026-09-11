@@ -3,6 +3,14 @@
 **Date**: April 2026  
 **Status**: ✅ Complete
 
+> **⚠️ Historical snapshot.** This document describes the security architecture as of the
+> `BASIC`-mode PR (April 2026). Since then, `BASIC` mode has been renamed **`INTERNAL`** mode, a
+> unified backend-mediated `/api/v1/auth/login|refresh|logout` contract now fronts both `KEYCLOAK`
+> and `INTERNAL` modes (clients never call Keycloak or mint credentials directly), and
+> connector-to-connector/internal-service M2M calls now use self-issued JWTs rather than the flows
+> described below. **[doc/security.md](doc/security.md) is the current, authoritative source** —
+> treat everything below as historical context only.
+
 ---
 
 ## Overview

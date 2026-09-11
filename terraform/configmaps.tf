@@ -11,6 +11,7 @@ resource "kubernetes_secret" "connector_a_credentials" {
     "KEYSTORE_PASSWORD"        = var.keystore_connector_a_config["KEYSTORE_PASSWORD"]
     "KEY_PASSWORD"             = var.keystore_connector_a_config["KEY_PASSWORD"]
     "TRUSTSTORE_PASSWORD"      = var.keystore_connector_a_config["TRUSTSTORE_PASSWORD"]
+    "APPLICATION_SECURITY_JWT_SECRET" = var.connector_a_config.jwt_secret
   }
 }
 
@@ -27,6 +28,7 @@ resource "kubernetes_secret" "connector_b_credentials" {
     "KEYSTORE_PASSWORD"        = var.keystore_connector_b_config["KEYSTORE_PASSWORD"]
     "KEY_PASSWORD"             = var.keystore_connector_b_config["KEY_PASSWORD"]
     "TRUSTSTORE_PASSWORD"      = var.keystore_connector_b_config["TRUSTSTORE_PASSWORD"]
+    "APPLICATION_SECURITY_JWT_SECRET" = var.connector_b_config.jwt_secret
   }
 }
 
@@ -57,7 +59,7 @@ resource "kubernetes_config_map" "connector_a_env" {
     name = "connector-a-env"
   }
   data = {
-    CALLBACK_ADDRESS       = var.connector_a_callback_address
+    BASE_URL       = var.connector_a_base_url
     KEYSTORE_NAME          = var.keystore_connector_a_config["KEYSTORE_NAME"]
     KEYSTORE_ALIAS         = var.keystore_connector_a_config["KEYSTORE_ALIAS"]
     TRUSTSTORE_NAME        = var.keystore_connector_a_config["TRUSTSTORE_NAME"]
@@ -69,7 +71,7 @@ resource "kubernetes_config_map" "connector_b_env" {
     name = "connector-b-env"
   }
   data = {
-    CALLBACK_ADDRESS       = var.connector_b_callback_address
+    BASE_URL       = var.connector_b_base_url
     KEYSTORE_NAME          = var.keystore_connector_b_config["KEYSTORE_NAME"]
     KEYSTORE_ALIAS         = var.keystore_connector_b_config["KEYSTORE_ALIAS"]
     TRUSTSTORE_NAME        = var.keystore_connector_b_config["TRUSTSTORE_NAME"]
@@ -108,7 +110,7 @@ resource "kubernetes_config_map" "employee_data" {
 
 resource "local_file" "connector_a_properties" {
   content = templatefile("${path.module}/app-resources/connector_a_resources/application.properties", {
-    CALLBACK_ADDRESS                    = var.connector_a_callback_address
+    BASE_URL                    = var.connector_a_base_url
     KEYSTORE_ALIAS                      = var.keystore_connector_a_config["KEYSTORE_ALIAS"]
     KEY_PASSWORD                        = "$${KEY_PASSWORD}"
     KEYSTORE_NAME                       = var.keystore_connector_a_config["KEYSTORE_NAME"]
@@ -125,7 +127,6 @@ resource "local_file" "connector_a_properties" {
     S3_ACCESS_KEY                       = "$${S3_ACCESS_KEY}"
     S3_SECRET_KEY                       = "$${S3_SECRET_KEY}"
     S3_REGION                           = var.connector_a_config.s3_region
-    S3_BUCKET_NAME                      = var.connector_a_config.s3_bucket_name
     S3_EXTERNAL_PRESIGNED_ENDPOINT      = var.connector_a_config.s3_external_endpoint
   })
   filename = "${path.module}/.terraform/connector_a_application.properties"
@@ -145,7 +146,7 @@ resource "kubernetes_config_map" "connector_a_config" {
 
 resource "local_file" "connector_b_properties" {
   content = templatefile("${path.module}/app-resources/connector_b_resources/application.properties", {
-    CALLBACK_ADDRESS                    = var.connector_b_callback_address
+    BASE_URL                    = var.connector_b_base_url
     KEYSTORE_ALIAS                      = var.keystore_connector_b_config["KEYSTORE_ALIAS"]
     KEY_PASSWORD                        = "$${KEY_PASSWORD}"
     KEYSTORE_NAME                       = var.keystore_connector_b_config["KEYSTORE_NAME"]
@@ -162,7 +163,6 @@ resource "local_file" "connector_b_properties" {
     S3_ACCESS_KEY                       = "$${S3_ACCESS_KEY}"
     S3_SECRET_KEY                       = "$${S3_SECRET_KEY}"
     S3_REGION                           = var.connector_b_config.s3_region
-    S3_BUCKET_NAME                      = var.connector_b_config.s3_bucket_name
     S3_EXTERNAL_PRESIGNED_ENDPOINT      = var.connector_b_config.s3_external_endpoint
   })
   filename = "${path.module}/.terraform/connector_b_application.properties"

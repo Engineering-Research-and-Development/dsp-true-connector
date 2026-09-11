@@ -57,11 +57,13 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
     private DistributionRepository distributionRepository;
     @Autowired
     private FieldEncryptionService fieldEncryptionService;
-
     private Catalog catalog;
     private Dataset dataset;
     private Distribution distribution;
     private Distribution distributionHttpPush;
+
+    // from initial_data
+    private static final String TENANT_ID = "engineering";
 
     @BeforeEach
     public void populateCatalog() {
@@ -76,9 +78,11 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
         dataset = Dataset.Builder.newInstance()
                 .hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
                 .distribution(new HashSet<>(Arrays.asList(distribution, distributionHttpPush)))
+                .tenantId(TENANT_ID)
                 .build();
         catalog = Catalog.Builder.newInstance()
                 .dataset(Collections.singleton(dataset))
+                .tenantId(TENANT_ID)
                 .build();
 
         distributionRepository.save(distribution);
@@ -104,7 +108,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
         // finalized contract negotiation
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
-                .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                .constraint(Collections.singletonList(Constraint.Builder.newInstance()
                         .leftOperand(LeftOperand.COUNT)
                         .operator(Operator.LTEQ)
                         .rightOperand("5")
@@ -114,7 +118,8 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .assignee("assignee")
                 .assigner("assigner")
                 .target("test_dataset")
-                .permission(Arrays.asList(permission))
+                .permission(Collections.singletonList(permission))
+                .tenantId(TENANT_ID)
                 .build();
         agreementRepository.save(agreement);
 
@@ -126,6 +131,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .agreement(agreement)
                 .state(ContractNegotiationState.FINALIZED)
                 .role(IConstants.ROLE_PROVIDER)
+                .tenantId(TENANT_ID)
                 .build();
         contractNegotiationRepository.save(contractNegotiationFinalized);
 
@@ -136,6 +142,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .agreementId(agreement.getId())
                 .state(TransferState.INITIALIZED)
                 .datasetId(dataset.getId())
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessInitialized);
 
@@ -148,7 +155,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/request")
+                        post("/" + TENANT_ID + "/transfers/request")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isCreated())
@@ -194,7 +201,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/request")
+                        post("/" + TENANT_ID + "/transfers/request")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
@@ -214,7 +221,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
         // finalized contract negotiation
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
-                .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                .constraint(Collections.singletonList(Constraint.Builder.newInstance()
                         .leftOperand(LeftOperand.COUNT)
                         .operator(Operator.LTEQ)
                         .rightOperand("5")
@@ -224,7 +231,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .assignee("assignee")
                 .assigner("assigner")
                 .target("test_dataset")
-                .permission(Arrays.asList(permission))
+                .permission(Collections.singletonList(permission))
                 .build();
         agreementRepository.save(agreement);
 
@@ -258,7 +265,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/request")
+                        post("/" + TENANT_ID + "/transfers/request")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
@@ -304,7 +311,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/request")
+                        post("/" + TENANT_ID + "/transfers/request")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
@@ -331,7 +338,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/request")
+                        post("/" + TENANT_ID + "/transfers/request")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .header("Authorization", "Basic YXNkckBtYWlsLmNvbTpwYXNzd29yZA=="));
@@ -352,7 +359,8 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .assignee("assignee")
                 .assigner("assigner")
                 .target("test_dataset")
-                .permission(Arrays.asList(Permission.Builder.newInstance().action(Action.USE).build()))
+                .permission(Collections.singletonList(Permission.Builder.newInstance().action(Action.USE).build()))
+                .tenantId(TENANT_ID)
                 .build();
         agreementRepository.save(agreement);
 
@@ -363,6 +371,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .agreement(agreement)
                 .state(ContractNegotiationState.FINALIZED)
                 .role(IConstants.ROLE_PROVIDER)
+                .tenantId(TENANT_ID)
                 .build();
         contractNegotiationRepository.save(contractNegotiation);
 
@@ -373,6 +382,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .agreementId(agreement.getId())
                 .state(TransferState.INITIALIZED)
                 .datasetId(dataset.getId())
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessInitialized);
 
@@ -397,7 +407,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .build();
 
         mockMvc.perform(
-                post("/transfers/request")
+                post("/" + TENANT_ID + "/transfers/request")
                         .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isCreated());

@@ -2,11 +2,11 @@
 mongodb_image      = "mongo:7.0.12"
 minio_image        = "minio/minio:RELEASE.2025-04-22T22-12-26Z"
 connector_image    = "ghcr.io/engineering-research-and-development/dsp-true-connector:test"
-connector_ui_image = "ghcr.io/engineering-research-and-development/dsp-true-connector-ui:0.6.1"
+connector_ui_image = "ghcr.io/engineering-research-and-development/dsp-true-connector-ui:test"
 
-# Callback Addresses
-connector_a_callback_address = "http://connector-a:8080/"
-connector_b_callback_address = "http://connector-b:8090/"
+# Base URL Addresses - external access to the connectors
+connector_a_base_url = "http://connector-a:8080/"
+connector_b_base_url = "http://connector-b:8090/"
 
 connector_a_tc_root_api_url = "/connector-a/api/v1"
 # connector_a_tc_root_api_url = "http://be.endurance.lab.synelixis.com/api/v1"
@@ -44,9 +44,10 @@ connector_a_config = {
   s3_access_key           = "minioadmin"
   s3_secret_key           = "minioadmin"
   s3_region               = "us-east-1"
-  s3_bucket_name          = "dsp-true-connector-a"
   # put your local IP address here to access the S3 bucket from outside the docker network
-  s3_external_endpoint    = "http://172.24.224.1:9000"
+  s3_external_endpoint    = "http://192.168.0.12:9000"
+  # Shared HMAC-SHA256 secret for INTERNAL-mode JWT login (must be at least 32 bytes)
+  jwt_secret              = "connector-jwt-dev-secret-change-in-prod-min-32-bytes"
 }
 
 # Connector B Configuration
@@ -61,8 +62,9 @@ connector_b_config = {
   s3_access_key           = "minioadmin"
   s3_secret_key           = "minioadmin"
   s3_region               = "us-east-1"
-  s3_bucket_name          = "dsp-true-connector-b"
   # put your local IP address here to access the S3 bucket from outside the docker network
-  s3_external_endpoint    = "http://172.24.224.1:9000"
+  s3_external_endpoint    = "http://192.168.0.12:9000"
+  # Shared HMAC-SHA256 secret for INTERNAL-mode JWT login (must be at least 32 bytes)
+  jwt_secret              = "connector-jwt-dev-secret-change-in-prod-min-32-bytes"
 }
 

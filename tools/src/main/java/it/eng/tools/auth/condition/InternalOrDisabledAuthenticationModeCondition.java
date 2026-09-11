@@ -8,21 +8,21 @@ import it.eng.tools.auth.AuthenticationMode;
 import it.eng.tools.auth.AuthenticationModeResolver;
 
 /**
- * Matches when the application is running in Basic or Disabled authentication mode.
+ * Matches when the application is running in Internal or Disabled authentication mode.
  * Used to conditionally load MongoDB-based user management which is not available in Keycloak mode.
  */
-public class BasicOrDisabledAuthenticationModeCondition implements Condition {
+public class InternalOrDisabledAuthenticationModeCondition implements Condition {
 
     /**
-     * Evaluates whether the current environment resolves to Basic or Disabled mode.
+     * Evaluates whether the current environment resolves to Internal or Disabled mode.
      *
      * @param context the condition context
      * @param metadata the annotated type metadata
-     * @return {@code true} when Basic or Disabled mode is active
+     * @return {@code true} when Internal or Disabled mode is active
      */
     @Override
     public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
         AuthenticationMode mode = AuthenticationModeResolver.resolve(context.getEnvironment());
-        return mode == AuthenticationMode.BASIC || mode == AuthenticationMode.DISABLED;
+        return mode == AuthenticationMode.INTERNAL || mode == AuthenticationMode.DISABLED;
     }
 }

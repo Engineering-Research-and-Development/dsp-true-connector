@@ -21,6 +21,7 @@ import it.eng.tools.property.ConnectorProperties;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.util.CredentialUtils;
+import it.eng.tools.service.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -65,12 +66,17 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
      */
     public ContractNegotiation getNegotiationByProviderPid(String providerPid) {
         log.info("Getting contract negotiation by provider pid: {}", providerPid);
-//        publisher.publishEvent(ContractNegotiationEvent.builder().action("Find by provider pid").description("Searching with provider pid ").build());
         publisher.publishEvent(AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.PROTOCOL_NEGOTIATION_CONTRACT_NEGOTIATION)
                 .description("Searching with provider pid " + providerPid)
                 .details(Map.of(DSpaceConstants.PROVIDER_PID, providerPid, "role", IConstants.ROLE_PROVIDER))
                 .build());
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            return contractNegotiationRepository.findByProviderPidAndTenantId(providerPid, tenantId)
+                    .orElseThrow(() ->
+                            new ContractNegotiationNotFoundException("Contract negotiation with provider pid " + providerPid + " not found", providerPid));
+        }
         return contractNegotiationRepository.findByProviderPid(providerPid)
                 .orElseThrow(() ->
                         new ContractNegotiationNotFoundException("Contract negotiation with provider pid " + providerPid + " not found", providerPid));
@@ -97,7 +103,8 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(connectorProperties.getConnectorURL()
                         + ApiEndpoints.CATALOG_OFFERS_V1 + "/validate",
                 NegotiationSerializer.serializePlainJsonNode(contractRequestMessage.getOffer()),
-                credentialUtils.getAPICredentials());
+                credentialUtils::getAPICredentials,
+                TenantContextHolder.getTenantId());
 
         if (!response.isSuccess()) {
             publisher.publishEvent(AuditEvent.Builder.newInstance()
@@ -113,7 +120,7 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
 
         Offer offerToBeInserted = Offer.Builder.newInstance()
                 .assignee(contractRequestMessage.getOffer().getAssignee() == null ? contractRequestMessage.getCallbackAddress() : contractRequestMessage.getOffer().getAssignee())
-                .assigner(contractRequestMessage.getOffer().getAssigner() == null ? properties.connectorId() : contractRequestMessage.getOffer().getAssigner())
+                .assigner(contractRequestMessage.getOffer().getAssigner() == null ? properties.participantId() : contractRequestMessage.getOffer().getAssigner())
                 .originalId(contractRequestMessage.getOffer().getId())
                 .permission(contractRequestMessage.getOffer().getPermission())
                 .target(contractRequestMessage.getOffer().getTarget())
@@ -131,6 +138,10 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
                 .offer(offerToBeInserted)
                 .build();
 
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            contractNegotiation.injectTenantId(tenantId);
+        }
         contractNegotiationRepository.save(contractNegotiation);
         log.info("PROVIDER - Contract negotiation {} saved", contractNegotiation.getId());
         publisher.publishEvent(AuditEvent.Builder.newInstance()
@@ -198,8 +209,9 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
                 .role(IConstants.ROLE_PROVIDER)
                 .offer(updatedOffer)
                 .assigner(contractRequestMessage.getOffer().getAssigner())
-                .callbackAddress(contractNegotiation.getCallbackAddress())
+                .callbackAddress(contractRequestMessage.getCallbackAddress() != null ?  contractRequestMessage.getCallbackAddress() : contractNegotiation.getCallbackAddress())
                 .agreement(contractNegotiation.getAgreement())
+                .tenantId(contractNegotiation.getTenantId())
                 .created(contractNegotiation.getCreated())
                 .createdBy(contractNegotiation.getCreatedBy())
                 .version(contractNegotiation.getVersion())
@@ -274,11 +286,21 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
                                                             ContractNegotiationTerminationMessage contractNegotiationTerminationMessage) {
         compareProviderPids(providerPid, contractNegotiationTerminationMessage.getProviderPid(), contractNegotiationTerminationMessage.getConsumerPid());
 
-        ContractNegotiation contractNegotiation = contractNegotiationRepository.findByProviderPid(providerPid)
-                .orElseThrow(() -> new ContractNegotiationNotFoundException(
-                        "Contract negotiation with providerPid " + providerPid +
-                                " and consumerPid " + contractNegotiationTerminationMessage.getConsumerPid() + " not found",
-                        contractNegotiationTerminationMessage.getConsumerPid(), providerPid));
+        ContractNegotiation contractNegotiation;
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            contractNegotiation = contractNegotiationRepository.findByProviderPidAndTenantId(providerPid, tenantId)
+                    .orElseThrow(() -> new ContractNegotiationNotFoundException(
+                            "Contract negotiation with providerPid " + providerPid +
+                                    " and consumerPid " + contractNegotiationTerminationMessage.getConsumerPid() + " not found",
+                            contractNegotiationTerminationMessage.getConsumerPid(), providerPid));
+        } else {
+            contractNegotiation = contractNegotiationRepository.findByProviderPid(providerPid)
+                    .orElseThrow(() -> new ContractNegotiationNotFoundException(
+                            "Contract negotiation with providerPid " + providerPid +
+                                    " and consumerPid " + contractNegotiationTerminationMessage.getConsumerPid() + " not found",
+                            contractNegotiationTerminationMessage.getConsumerPid(), providerPid));
+        }
         stateTransitionCheck(ContractNegotiationState.TERMINATED, contractNegotiation);
 
         ContractNegotiation contractNegotiationTerminated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.TERMINATED);

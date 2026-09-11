@@ -22,6 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -344,7 +345,8 @@ public class DSPContractNegotiationConsumerServiceTest {
         verify(contractNegotiationRepository).save(argCaptorContractNegotiation.capture());
         //verify that status is updated to FINALIZED
         assertEquals(ContractNegotiationState.FINALIZED, argCaptorContractNegotiation.getValue().getState());
-        verify(policyAdministrationPoint).createPolicyEnforcement(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getAgreement().getId());
+        verify(policyAdministrationPoint).createPolicyEnforcement(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getAgreement().getId(),
+                NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_VERIFIED.getTenantId());
         verify(publisher).publishEvent(any(InitializeTransferProcess.class));
     }
 
@@ -471,7 +473,7 @@ public class DSPContractNegotiationConsumerServiceTest {
                 .consumerPid("wrong-consumer-pid")
                 .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
                 .code("Test")
-                .reason(java.util.Collections.singletonList("test"))
+                .reason(Collections.singletonList("test"))
                 .build();
 
         assertThrows(ContractNegotiationNotFoundException.class,

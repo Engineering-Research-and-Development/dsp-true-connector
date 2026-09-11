@@ -50,24 +50,22 @@ public class PolicyDecisionPoint {
 
         // Get the agreement
         if (agreementId == null || agreementId.isEmpty()) {
-            PolicyDecision decision = PolicyDecision.Builder.newInstance()
+            //            decisionCache.put(cacheKey, decision);
+            return PolicyDecision.Builder.newInstance()
                     .allowed(false)
                     .message("Agreement ID is missing")
                     .build();
-//            decisionCache.put(cacheKey, decision);
-            return decision;
         }
 
         // Get the policies from the agreement
         // convert all constraints to policies
         List<Policy> policies = convertConstraintsToPolicies(agreement);
-        if (policies == null || policies.isEmpty()) {
-            PolicyDecision decision = PolicyDecision.Builder.newInstance()
+        if (policies.isEmpty()) {
+            //            decisionCache.put(cacheKey, decision);
+            return PolicyDecision.Builder.newInstance()
                     .allowed(false)
                     .message("No policies found for agreement " + agreementId)
                     .build();
-//            decisionCache.put(cacheKey, decision);
-            return decision;
         }
 
         // Evaluate each policy
@@ -76,6 +74,7 @@ public class PolicyDecisionPoint {
                 log.debug("Policy {} is not valid at the current time", policy.getId());
                 continue;
             }
+            log.debug("Policy {} is valid at the current time", policy.getId());
 
             LeftOperand policyType = policy.getType();
             PolicyEvaluator evaluator = evaluators.get(policyType);
@@ -84,6 +83,7 @@ public class PolicyDecisionPoint {
                 continue;
             }
 
+            log.debug("Evaluating policy by evaluator {}", evaluator.getClass().getSimpleName());
             PolicyDecision decision = evaluator.evaluate(policy, request);
             if (!decision.isAllowed()) {
                 log.debug("Policy {} denied access: {}", policy.getId(), decision.getMessage());

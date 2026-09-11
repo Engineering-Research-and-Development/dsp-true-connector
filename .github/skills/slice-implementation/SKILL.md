@@ -276,10 +276,13 @@ If a pre-existing bug blocks QA or docs, stop and comment on the blocking child 
 
 After all included open child issues are completed and integrated into the final slice branch:
 
-1. commit the final slice branch changes
-2. push the final slice branch
-3. open **one PR** against `develop`
-4. move the parent slice and every included open child issue to **In Review**
+1. run the complete `mvn clean verify` suite (Docker required) on the final slice branch — this is the mandatory pre-push gate; targeted test runs used during child-task execution do not satisfy this requirement; note any known pre-existing flaky failures explicitly rather than skipping the full suite
+2. commit the final slice branch changes
+3. push the final slice branch
+4. open **one PR** against `develop`
+5. wait for GitHub Actions to complete: `gh pr checks <PR-number> --watch`
+6. if checks fail, enter the fix-and-retry loop described in `.github/skills/task-implementation/SKILL.md` **GitHub Actions check after PR** section — each push-and-wait counts against the shared 3-cycle budget
+7. move the parent slice and every included open child issue to **In Review** only after all GitHub Actions checks pass
 
 ### Required PR body convention
 
@@ -331,3 +334,5 @@ If the workflow fails or is unavailable, use this fallback after merge:
 - do not treat `Relates to:` as a hard dependency
 - do not infer child membership from branch names alone
 - do not skip the per-child verification rules inherited from `.github/skills/task-implementation/SKILL.md`
+- do not move the parent slice or any child issue to **In Review** while any required GitHub Actions checks are still failing
+- do not close the slice as done based on targeted test results alone — the full `mvn clean verify` suite is the mandatory pre-push gate

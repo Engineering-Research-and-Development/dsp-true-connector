@@ -10,9 +10,11 @@ import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
+import it.eng.connector.service.AuthService;
 import it.eng.connector.util.TestUtil;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.service.AuditEventService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,10 +25,10 @@ import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 import org.wiremock.spring.InjectWireMock;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -46,6 +48,11 @@ public class CatalogAPIIT extends BaseIntegrationTest {
 
     @Autowired
     private DataServiceRepository dataServiceRepository;
+    @Autowired
+    private AuthService authService;
+
+    @Autowired
+    private AuditEventService auditEventService;
 
     @InjectWireMock
     private WireMockServer wiremock;
@@ -60,79 +67,82 @@ public class CatalogAPIIT extends BaseIntegrationTest {
     public void setup() {
 
         dataService = DataService.Builder.newInstance()
-                .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
-                .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
+                .keyword(Stream.of("keyword1", "keyword2").collect(Collectors.toCollection(HashSet::new)))
+                .theme(Stream.of("white", "blue", "aqua").collect(Collectors.toCollection(HashSet::new)))
                 .conformsTo(CatalogMockObjectUtil.CONFORMSTO)
                 .creator(CatalogMockObjectUtil.CREATOR)
-                .description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("DataService description").build())
-                        .stream().collect(Collectors.toCollection(HashSet::new)))
+                .description(Stream.of(Multilanguage.Builder.newInstance().language("en").value("DataService description").build())
+                        .collect(Collectors.toCollection(HashSet::new)))
                 .identifier(CatalogMockObjectUtil.IDENTIFIER)
                 .issued(CatalogMockObjectUtil.ISSUED)
                 .modified(CatalogMockObjectUtil.MODIFIED)
                 .title(CatalogMockObjectUtil.TITLE)
                 .endpointDescription("Description for test")
                 .endpointURL(CatalogMockObjectUtil.ENDPOINT_URL)
+                .tenantId("engineering")
                 .build();
 
         distribution = Distribution.Builder.newInstance()
-                .description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Distribution description").build())
-                        .stream().collect(Collectors.toCollection(HashSet::new)))
+                .description(Stream.of(Multilanguage.Builder.newInstance().language("en").value("Distribution description").build())
+                        .collect(Collectors.toCollection(HashSet::new)))
                 .issued(CatalogMockObjectUtil.ISSUED)
                 .modified(CatalogMockObjectUtil.MODIFIED)
                 .title(CatalogMockObjectUtil.TITLE)
                 .accessService(dataService)
+                .tenantId("engineering")
                 .build();
 
         dataset = Dataset.Builder.newInstance()
                 .conformsTo(CatalogMockObjectUtil.CONFORMSTO)
                 .creator(CatalogMockObjectUtil.CREATOR)
-                .description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Dataset description").build())
-                        .stream().collect(Collectors.toCollection(HashSet::new)))
+                .description(new HashSet<>(Collections.singletonList(Multilanguage.Builder.newInstance().language("en").value("Dataset description").build())))
                 .identifier(CatalogMockObjectUtil.IDENTIFIER)
-                .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
-                .theme(Arrays.asList("white", "blue").stream().collect(Collectors.toCollection(HashSet::new)))
+                .keyword(Stream.of("keyword1", "keyword2").collect(Collectors.toCollection(HashSet::new)))
+                .theme(Stream.of("white", "blue").collect(Collectors.toCollection(HashSet::new)))
                 .title(CatalogMockObjectUtil.TITLE)
                 .hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
+                .tenantId("engineering")
                 .build();
 
         catalog = Catalog.Builder.newInstance()
                 .conformsTo(CatalogMockObjectUtil.CONFORMSTO)
                 .creator(CatalogMockObjectUtil.CREATOR)
-                .description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build())
-                        .stream().collect(Collectors.toCollection(HashSet::new)))
+                .description(Stream.of(Multilanguage.Builder.newInstance().language("en").value("Catalog description").build())
+                        .collect(Collectors.toCollection(HashSet::new)))
                 .identifier(CatalogMockObjectUtil.IDENTIFIER)
-                .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
-                .theme(Arrays.asList("white", "blue").stream().collect(Collectors.toCollection(HashSet::new)))
+                .keyword(Stream.of("keyword1", "keyword2").collect(Collectors.toCollection(HashSet::new)))
+                .theme(Stream.of("white", "blue").collect(Collectors.toCollection(HashSet::new)))
                 .title(CatalogMockObjectUtil.TITLE)
                 .participantId("urn:example:DataProviderA")
                 .service(Collections.singleton(dataService))
                 .dataset(Collections.singleton(dataset))
                 .distribution(Collections.singleton(distribution))
-                .hasPolicy(Arrays.asList(CatalogMockObjectUtil.OFFER).stream().collect(Collectors.toCollection(HashSet::new)))
+                .hasPolicy(Stream.of(CatalogMockObjectUtil.OFFER).collect(Collectors.toCollection(HashSet::new)))
                 .createdBy("admin@mail.com")
                 .lastModifiedBy("admin@mail.com")
                 .issued(CatalogMockObjectUtil.ISSUED)
                 .modified(CatalogMockObjectUtil.MODIFIED)
+                .tenantId("engineering")
                 .build();
 
         newCatalog = Catalog.Builder.newInstance()
                 .conformsTo(CatalogMockObjectUtil.CONFORMSTO)
                 .creator(CatalogMockObjectUtil.CREATOR)
-                .description(Arrays.asList(Multilanguage.Builder.newInstance().language("en").value("Catalog description update").build())
-                        .stream().collect(Collectors.toCollection(HashSet::new)))
+                .description(new HashSet<>(Collections.singletonList(Multilanguage.Builder.newInstance().language("en").value("Catalog description update").build())))
                 .identifier(CatalogMockObjectUtil.IDENTIFIER)
-                .keyword(Arrays.asList("keyword1", "keyword2").stream().collect(Collectors.toCollection(HashSet::new)))
-                .theme(Arrays.asList("white", "blue", "aqua").stream().collect(Collectors.toCollection(HashSet::new)))
+                .keyword(Stream.of("keyword1", "keyword2").collect(Collectors.toCollection(HashSet::new)))
+                .theme(Stream.of("white", "blue", "aqua").collect(Collectors.toCollection(HashSet::new)))
                 .title(CatalogMockObjectUtil.TITLE)
                 .participantId("urn:example:DataProviderA")
-                .service(Arrays.asList(CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
-                .dataset(Arrays.asList(CatalogMockObjectUtil.DATASET).stream().collect(Collectors.toCollection(HashSet::new)))
-                .distribution(Arrays.asList(CatalogMockObjectUtil.DISTRIBUTION_FOR_UPDATE).stream().collect(Collectors.toCollection(HashSet::new)))
-                .hasPolicy(Arrays.asList(CatalogMockObjectUtil.OFFER_WITH_TARGET).stream().collect(Collectors.toCollection(HashSet::new)))
+                .service(Stream.of(CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE).collect(Collectors.toCollection(HashSet::new)))
+                .dataset(Stream.of(CatalogMockObjectUtil.DATASET).collect(Collectors.toCollection(HashSet::new)))
+                .distribution(Stream.of(CatalogMockObjectUtil.DISTRIBUTION_FOR_UPDATE).collect(Collectors.toCollection(HashSet::new)))
+                .hasPolicy(Stream.of(CatalogMockObjectUtil.OFFER_WITH_TARGET).collect(Collectors.toCollection(HashSet::new)))
                 .createdBy("admin@mail.com")
                 .lastModifiedBy("admin@mail.com")
                 .issued(CatalogMockObjectUtil.ISSUED)
                 .modified(CatalogMockObjectUtil.MODIFIED)
+                .tenantId("engineering")
                 .build();
 
         datasetRepository.save(dataset);
@@ -197,12 +207,14 @@ public class CatalogAPIIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Create catalog - success")
-    @WithUserDetails(TestUtil.API_USER)
     public void createCatalog_success() throws Exception {
         String catalogJson = CatalogSerializer.serializePlain(newCatalog);
 
+        String jwt = authService.login(TestUtil.API_USER, "password").accessToken();
+
         final ResultActions result = mockMvc.perform(
                 post(ApiEndpoints.CATALOG_CATALOGS_V1)
+                        .header("Authorization", "Bearer " + jwt)
                         .content(catalogJson)
                         .contentType(MediaType.APPLICATION_JSON));
 

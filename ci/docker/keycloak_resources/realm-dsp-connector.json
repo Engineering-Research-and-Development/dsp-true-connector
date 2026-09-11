@@ -4,11 +4,27 @@
   "displayName": "DSP Connector",
   "roles": {
     "realm": [
-      { "name": "admin" },
-      { "name": "user" },
-      { "name": "connector" },
-      { "name": "provider-connector" },
-      { "name": "consumer-connector" }
+      {
+        "name": "admin"
+      },
+      {
+        "name": "user"
+      },
+      {
+        "name": "connector"
+      },
+      {
+        "name": "provider-connector"
+      },
+      {
+        "name": "consumer-connector"
+      },
+      {
+        "name": "super_admin",
+        "description": "Super-admin role \u2014 cross-tenant access, tenant management",
+        "composite": false,
+        "clientRole": false
+      }
     ]
   },
   "clientScopes": [
@@ -61,7 +77,23 @@
       "attributes": {
         "connector.type": "provider",
         "connector.port": "8090"
-      }
+      },
+      "protocolMappers": [
+        {
+          "name": "tenantId",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "tenantId",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "tenantId",
+            "jsonType.label": "String"
+          }
+        }
+      ]
     },
     {
       "clientId": "dsp-connector-consumer-backend",
@@ -89,7 +121,23 @@
       "attributes": {
         "connector.type": "consumer",
         "connector.port": "8080"
-      }
+      },
+      "protocolMappers": [
+        {
+          "name": "tenantId",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "tenantId",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "tenantId",
+            "jsonType.label": "String"
+          }
+        }
+      ]
     },
     {
       "clientId": "dsp-connector-ui",
@@ -113,6 +161,22 @@
         "address",
         "phone",
         "offline_access"
+      ],
+      "protocolMappers": [
+        {
+          "name": "tenantId",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "tenantId",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "tenantId",
+            "jsonType.label": "String"
+          }
+        }
       ]
     }
   ],
@@ -133,7 +197,12 @@
       ],
       "realmRoles": [
         "admin"
-      ]
+      ],
+      "attributes": {
+        "tenantId": [
+          "engineering"
+        ]
+      }
     },
     {
       "username": "user@test.com",
@@ -151,7 +220,12 @@
       ],
       "realmRoles": [
         "user"
-      ]
+      ],
+      "attributes": {
+        "tenantId": [
+          "engineering"
+        ]
+      }
     },
     {
       "username": "connector@test.com",
@@ -169,7 +243,12 @@
       ],
       "realmRoles": [
         "connector"
-      ]
+      ],
+      "attributes": {
+        "tenantId": [
+          "engineering"
+        ]
+      }
     },
     {
       "username": "service-account-dsp-connector-provider-backend",
@@ -189,6 +268,24 @@
         "admin",
         "connector",
         "consumer-connector"
+      ]
+    },
+    {
+      "username": "superadmin@test.com",
+      "enabled": true,
+      "email": "superadmin@test.com",
+      "firstName": "Super",
+      "lastName": "Admin",
+      "realmRoles": [
+        "super_admin"
+      ],
+      "attributes": {},
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
       ]
     }
   ]

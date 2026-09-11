@@ -69,7 +69,7 @@ public class DataTransferAPIController {
      */
     @GetMapping(path = {"/{transferProcessId}/download"})
     public ResponseEntity<GenericApiResponse<String>> downloadData(
-            @PathVariable("transferProcessId") String transferProcessId) {
+            @PathVariable String transferProcessId) {
         log.info("Downloading transfer process id - {} data", transferProcessId);
         apiService.downloadData(transferProcessId)
                 .exceptionally(throwable -> {
@@ -93,7 +93,7 @@ public class DataTransferAPIController {
      */
     @GetMapping(path = {"/{transferProcessId}/view"})
     public ResponseEntity<String> viewData(
-            @PathVariable("transferProcessId") String transferProcessId) {
+            @PathVariable String transferProcessId) {
         log.info("Accessing transfer process id - {} data", transferProcessId);
         String artifactURL = apiService.viewData(transferProcessId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
@@ -110,7 +110,7 @@ public class DataTransferAPIController {
      */
     @GetMapping(path = "/{transferProcessId}")
     public ResponseEntity<GenericApiResponse<JsonNode>> getTransferProcessById(
-            @PathVariable("transferProcessId") String transferProcessId) {
+            @PathVariable String transferProcessId) {
         log.info("Fetching transfer process details for id {}", transferProcessId);
         TransferProcess transferProcess = apiService.findTransferProcessById(transferProcessId);
         return ResponseEntity.ok()
@@ -169,7 +169,7 @@ public class DataTransferAPIController {
      * @return GenericApiResponse response with success message.
      */
     @PutMapping(path = "/{transferProcessId}/start")
-    public ResponseEntity<GenericApiResponse<JsonNode>> startTransfer(@PathVariable("transferProcessId") String transferProcessId) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> startTransfer(@PathVariable String transferProcessId) {
         log.info("Starting data transfer {}", transferProcessId);
         JsonNode response = apiService.startTransfer(transferProcessId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
@@ -183,7 +183,7 @@ public class DataTransferAPIController {
      * @return GenericApiResponse response with success message.
      */
     @PutMapping(path = "/{transferProcessId}/complete")
-    public ResponseEntity<GenericApiResponse<JsonNode>> completeTransfer(@PathVariable("transferProcessId") String transferProcessId) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> completeTransfer(@PathVariable String transferProcessId) {
         log.info("Completing data transfer {}", transferProcessId);
         JsonNode response = apiService.completeTransfer(transferProcessId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
@@ -197,7 +197,7 @@ public class DataTransferAPIController {
      * @return GenericApiResponse response with success message.
      */
     @PutMapping(path = "/{transferProcessId}/suspend")
-    public ResponseEntity<GenericApiResponse<JsonNode>> suspendTransfer(@PathVariable("transferProcessId") String transferProcessId) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> suspendTransfer(@PathVariable String transferProcessId) {
         log.info("Suspending data transfer {}", transferProcessId);
         JsonNode response = apiService.suspendTransfer(transferProcessId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
@@ -211,7 +211,7 @@ public class DataTransferAPIController {
      * @return GenericApiResponse response with success message.
      */
     @PutMapping(path = "/{transferProcessId}/terminate")
-    public ResponseEntity<GenericApiResponse<JsonNode>> terminateTransfer(@PathVariable("transferProcessId") String transferProcessId) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> terminateTransfer(@PathVariable String transferProcessId) {
         log.info("Terminating data transfer {}", transferProcessId);
         JsonNode response = apiService.terminateTransfer(transferProcessId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)

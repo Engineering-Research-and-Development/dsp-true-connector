@@ -36,6 +36,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
 
+    private static final String CATALOG_REQUEST_PATH = "/" + TENANT_ID + "/catalog/request";
+
     @Autowired
     private CatalogRepository catalogRepository;
 
@@ -103,37 +105,64 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/properties with admin token returns 200 in Keycloak mode")
-    void getPropertiesWithAdminTokenReturnsOk() throws Exception {
+    @DisplayName("GET /api/v1/properties with admin token returns 403 in Keycloak mode (SUPER_ADMIN required)")
+    void getPropertiesWithAdminTokenReturnsForbidden() throws Exception {
         mockMvc.perform(get(ApiEndpoints.PROPERTIES_V1 + "/")
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(adminAccessToken()))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/properties with super-admin token returns 200 in Keycloak mode")
+    void getPropertiesWithSuperAdminTokenReturnsOk() throws Exception {
+        mockMvc.perform(get(ApiEndpoints.PROPERTIES_V1 + "/")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(superAdminAccessToken()))
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
 
     @Test
-    @DisplayName("GET /api/v1/users with admin token returns 404 in Keycloak mode")
-    void getUsersWithAdminTokenReturnsNotFound() throws Exception {
+    @DisplayName("GET /api/v1/users with admin token returns 403 in Keycloak mode (SUPER_ADMIN required)")
+    void getUsersWithAdminTokenReturnsForbidden() throws Exception {
         mockMvc.perform(get(ApiEndpoints.USERS_V1)
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(adminAccessToken()))
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isForbidden());
     }
 
     @Test
-    @DisplayName("POST /catalog/request without bearer token returns 401 in Keycloak mode")
+    @DisplayName("GET /api/v1/users with super-admin token reaches the Keycloak-mode endpoint (not blocked by Spring Security)")
+    void getUsersWithSuperAdminTokenReachesEndpoint() throws Exception {
+        // In Keycloak mode, GET /api/v1/users is handled by KeycloakUserApiController.
+        // A valid super-admin bearer token must reach the endpoint (not be rejected by Spring Security).
+        // The downstream Keycloak Admin API call may fail depending on service-account permissions,
+        // which would return a 4xx, but that is an application-level concern, not a security-config concern.
+        mockMvc.perform(get(ApiEndpoints.USERS_V1)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(superAdminAccessToken()))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(result -> {
+                    int status = result.getResponse().getStatus();
+                    if (status == 401 || status == 403) {
+                        throw new AssertionError("Expected a non-security-rejection status but got " + status);
+                    }
+                });
+    }
+
+    @Test
+    @DisplayName("POST /{tenantId}/catalog/request without bearer token returns 401 in Keycloak mode")
     void catalogRequestWithoutBearerTokenReturnsUnauthorized() throws Exception {
-        mockMvc.perform(post("/catalog/request")
+        mockMvc.perform(post(CATALOG_REQUEST_PATH)
                         .content(catalogRequestBody())
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("POST /catalog/request with admin token returns 403 in Keycloak mode")
+    @DisplayName("POST /{tenantId}/catalog/request with admin token returns 403 in Keycloak mode")
     void catalogRequestWithAdminTokenReturnsForbidden() throws Exception {
-        mockMvc.perform(post("/catalog/request")
+        mockMvc.perform(post(CATALOG_REQUEST_PATH)
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(adminAccessToken()))
                         .content(catalogRequestBody())
                         .contentType(MediaType.APPLICATION_JSON))
@@ -141,12 +170,12 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /catalog/request with connector token returns 200 in Keycloak mode")
+    @DisplayName("POST /{tenantId}/catalog/request with connector token returns 200 in Keycloak mode")
     void catalogRequestWithConnectorTokenReturnsOk() throws Exception {
         populateCatalog();
         uploadFile();
 
-        ResultActions result = mockMvc.perform(post("/catalog/request")
+        ResultActions result = mockMvc.perform(post(CATALOG_REQUEST_PATH)
                 .header(HttpHeaders.AUTHORIZATION, bearerToken(connectorAccessToken()))
                 .content(catalogRequestBody())
                 .contentType(MediaType.APPLICATION_JSON));
@@ -164,8 +193,10 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
 
     private void populateCatalog() {
         Catalog catalog = CatalogMockObjectUtil.createNewCatalog();
+        catalog.injectTenantId(TENANT_ID);
         Dataset dataset = catalog.getDataset().stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("Catalog test fixture does not contain a dataset."));
+        dataset.injectTenantId(TENANT_ID);
 
         catalogRepository.save(catalog);
         datasetRepository.saveAll(catalog.getDataset());

@@ -8,8 +8,11 @@ import it.eng.catalog.service.CatalogService;
 import it.eng.catalog.service.DatasetService;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.model.DSpaceConstants;
+import it.eng.tools.model.Tenant;
+import it.eng.tools.service.TenantService;
 import jakarta.validation.ValidationException;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +27,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class CatalogControllerTest {
 
+    private static final String TENANT_ID = "engineering";
+
     @InjectMocks
     private CatalogController catalogController;
 
@@ -33,11 +38,25 @@ public class CatalogControllerTest {
     @Mock
     private DatasetService datasetService;
 
+    @Mock
+    private TenantService tenantService;
+
+    private final Tenant tenant = Tenant.Builder.newInstance()
+            .id(TENANT_ID)
+            .name("Engineering")
+            .participantId("connector-1")
+            .enabled(true)
+            .build();
+
     private final CatalogRequestMessage catalogRequestMessage = CatalogRequestMessage.Builder.newInstance().build();
     private final DatasetRequestMessage datasetRequestMessage = DatasetRequestMessage.Builder.newInstance()
             .dataset(CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET))
             .build();
 
+    @BeforeEach
+    void setUp() {
+        when(tenantService.findEnabledTenantById(TENANT_ID)).thenReturn(tenant);
+    }
 
     @Test
     @DisplayName("Get catalog - success")
@@ -45,13 +64,13 @@ public class CatalogControllerTest {
         when(catalogService.getCatalog()).thenReturn(CatalogMockObjectUtil.CATALOG);
         JsonNode jsonNode = CatalogSerializer.serializeProtocolJsonNode(catalogRequestMessage);
 
-        ResponseEntity<JsonNode> response = catalogController.getCatalog(null, jsonNode);
+        ResponseEntity<JsonNode> response = catalogController.getCatalog(TENANT_ID, null, jsonNode);
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertNotNull(response.getBody());
-        assertTrue(StringUtils.contains(response.getBody().toString(), CatalogMockObjectUtil.CATALOG.getType()));
-        assertTrue(StringUtils.contains(response.getBody().toString(), DSpaceConstants.DSPACE_2025_01_CONTEXT));
+        assertTrue(Strings.CS.contains(response.getBody().toString(), CatalogMockObjectUtil.CATALOG.getType()));
+        assertTrue(Strings.CS.contains(response.getBody().toString(), DSpaceConstants.DSPACE_2025_01_CONTEXT));
     }
 
     @Test
@@ -59,9 +78,9 @@ public class CatalogControllerTest {
     public void notValidCatalogRequestMessageTest() throws Exception {
         JsonNode jsonNode = CatalogSerializer.serializeProtocolJsonNode(datasetRequestMessage);
 
-        Exception e = assertThrows(ValidationException.class, () -> catalogController.getCatalog(null, jsonNode));
+        Exception e = assertThrows(ValidationException.class, () -> catalogController.getCatalog(TENANT_ID, null, jsonNode));
 
-        assertTrue(StringUtils.contains(e.getMessage(), "@type field not correct, expected CatalogRequestMessage"));
+        assertTrue(Strings.CS.contains(e.getMessage(), "@type field not correct, expected CatalogRequestMessage"));
     }
 
     @Test
@@ -69,12 +88,12 @@ public class CatalogControllerTest {
     public void getDatasetSuccessfulTest() throws Exception {
         when(datasetService.getDatasetById("1")).thenReturn(CatalogMockObjectUtil.DATASET);
 
-        ResponseEntity<JsonNode> response = catalogController.getDataset(null, "1");
+        ResponseEntity<JsonNode> response = catalogController.getDataset(TENANT_ID, null, "1");
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertNotNull(response.getBody());
-        assertTrue(StringUtils.contains(response.getBody().toString(), CatalogMockObjectUtil.DATASET.getType()));
-        assertTrue(StringUtils.contains(response.getBody().toString(), DSpaceConstants.DSPACE_2025_01_CONTEXT));
+        assertTrue(Strings.CS.contains(response.getBody().toString(), CatalogMockObjectUtil.DATASET.getType()));
+        assertTrue(Strings.CS.contains(response.getBody().toString(), DSpaceConstants.DSPACE_2025_01_CONTEXT));
     }
 }

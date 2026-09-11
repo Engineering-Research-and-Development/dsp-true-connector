@@ -17,8 +17,11 @@ import java.util.Optional;
 import org.bouncycastle.asn1.ASN1Primitive;
 import org.bouncycastle.asn1.DEROctetString;
 import org.bouncycastle.asn1.ocsp.OCSPObjectIdentifiers;
+import org.bouncycastle.asn1.x509.AccessDescription;
+import org.bouncycastle.asn1.x509.AuthorityInformationAccess;
 import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.asn1.x509.Extensions;
+import org.bouncycastle.asn1.x509.GeneralName;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateHolder;
 import org.bouncycastle.cert.ocsp.BasicOCSPResp;
@@ -103,16 +106,16 @@ public class OcspValidator {
                 byte[] octets = derOctetString.getOctets();
                 
                 // Parse Authority Information Access extension
-                org.bouncycastle.asn1.x509.AuthorityInformationAccess aia = 
-                    org.bouncycastle.asn1.x509.AuthorityInformationAccess.getInstance(
+                AuthorityInformationAccess aia =
+                    AuthorityInformationAccess.getInstance(
                         ASN1Primitive.fromByteArray(octets));
                 
                 // Find OCSP access method
-                org.bouncycastle.asn1.x509.AccessDescription[] accessDescriptions = aia.getAccessDescriptions();
-                for (org.bouncycastle.asn1.x509.AccessDescription accessDescription : accessDescriptions) {
-                    if (accessDescription.getAccessMethod().equals(org.bouncycastle.asn1.x509.AccessDescription.id_ad_ocsp)) {
-                        org.bouncycastle.asn1.x509.GeneralName generalName = accessDescription.getAccessLocation();
-                        if (generalName.getTagNo() == org.bouncycastle.asn1.x509.GeneralName.uniformResourceIdentifier) {
+                AccessDescription[] accessDescriptions = aia.getAccessDescriptions();
+                for (AccessDescription accessDescription : accessDescriptions) {
+                    if (accessDescription.getAccessMethod().equals(AccessDescription.id_ad_ocsp)) {
+                        GeneralName generalName = accessDescription.getAccessLocation();
+                        if (generalName.getTagNo() == GeneralName.uniformResourceIdentifier) {
                             return generalName.getName().toString();
                         }
                     }

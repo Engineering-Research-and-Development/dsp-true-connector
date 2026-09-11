@@ -19,12 +19,12 @@ class AuthenticationModeResolverTest {
     }
 
     @Test
-    @DisplayName("Should resolve Basic mode from the provider property")
-    void resolveBasicModeFromProviderProperty() {
+    @DisplayName("Should resolve Internal mode from the provider property")
+    void resolveInternalModeFromProviderProperty() {
         MockEnvironment environment = new MockEnvironment()
-                .withProperty(AuthenticationModeResolver.AUTH_PROVIDER_PROPERTY, "BASIC");
+                .withProperty(AuthenticationModeResolver.AUTH_PROVIDER_PROPERTY, "INTERNAL");
 
-        assertEquals(AuthenticationMode.BASIC, AuthenticationModeResolver.resolve(environment));
+        assertEquals(AuthenticationMode.INTERNAL, AuthenticationModeResolver.resolve(environment));
     }
 
     @Test

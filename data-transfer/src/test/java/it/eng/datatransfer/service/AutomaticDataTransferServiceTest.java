@@ -1,5 +1,6 @@
 package it.eng.datatransfer.service;
 
+import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
@@ -124,7 +125,7 @@ public class AutomaticDataTransferServiceTest {
         when(transferProperties.getRetryDelayMs()).thenReturn(1L);
         when(apiService.startTransfer(id)).thenThrow(new RuntimeException("fail"));
         when(transferProcessRepository.save(any())).thenAnswer(inv -> {
-            var cn = inv.<it.eng.datatransfer.model.TransferProcess>getArgument(0);
+            var cn = inv.<TransferProcess>getArgument(0);
             saved.set(cn);
             return cn;
         });
@@ -155,7 +156,7 @@ public class AutomaticDataTransferServiceTest {
         when(transferProperties.getRetryDelayMs()).thenReturn(1L);
         when(apiService.startTransfer(id)).thenThrow(new RuntimeException("fail"));
         when(transferProcessRepository.save(any())).thenAnswer(inv -> {
-            var cn = inv.<it.eng.datatransfer.model.TransferProcess>getArgument(0);
+            var cn = inv.<TransferProcess>getArgument(0);
             saved.set(cn);
             return cn;
         });
@@ -264,7 +265,7 @@ public class AutomaticDataTransferServiceTest {
         when(transferProperties.getRetryDelayMs()).thenReturn(1L);
         when(apiService.downloadData(id)).thenReturn(CompletableFuture.failedFuture(new RuntimeException("fail")));
         when(transferProcessRepository.save(any())).thenAnswer(inv -> {
-            var cn = inv.<it.eng.datatransfer.model.TransferProcess>getArgument(0);
+            var cn = inv.<TransferProcess>getArgument(0);
             saved.set(cn);
             return cn;
         });
@@ -295,7 +296,7 @@ public class AutomaticDataTransferServiceTest {
         when(transferProperties.getRetryDelayMs()).thenReturn(1L);
         when(apiService.downloadData(id)).thenReturn(CompletableFuture.failedFuture(new RuntimeException("fail")));
         when(transferProcessRepository.save(any())).thenAnswer(inv -> {
-            var cn = inv.<it.eng.datatransfer.model.TransferProcess>getArgument(0);
+            var cn = inv.<TransferProcess>getArgument(0);
             saved.set(cn);
             return cn;
         });

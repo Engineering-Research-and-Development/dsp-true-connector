@@ -6,11 +6,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.event.ApplicationEventMulticaster;
-import org.springframework.context.event.SimpleApplicationEventMulticaster;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -49,9 +51,9 @@ class AsynchronousSpringEventsConfigTest {
         var executed = new boolean[]{false};
 
         // Create a live executor so isShutdown() returns false
-        var executor = new java.util.concurrent.ThreadPoolExecutor(
-                1, 1, 0L, java.util.concurrent.TimeUnit.MILLISECONDS,
-                new java.util.concurrent.LinkedBlockingQueue<>());
+        var executor = new ThreadPoolExecutor(
+                1, 1, 0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>());
 
         policy.rejectedExecution(() -> executed[0] = true, executor);
         executor.shutdown();
@@ -66,9 +68,9 @@ class AsynchronousSpringEventsConfigTest {
         var policy = new AsynchronousSpringEventsConfig.CallerRunsOrDiscardPolicy();
         var executed = new boolean[]{false};
 
-        var executor = new java.util.concurrent.ThreadPoolExecutor(
-                1, 1, 0L, java.util.concurrent.TimeUnit.MILLISECONDS,
-                new java.util.concurrent.LinkedBlockingQueue<>());
+        var executor = new ThreadPoolExecutor(
+                1, 1, 0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>());
         executor.shutdown();
 
         policy.rejectedExecution(() -> executed[0] = true, executor);

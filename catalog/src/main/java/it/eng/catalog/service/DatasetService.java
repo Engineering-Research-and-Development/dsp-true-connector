@@ -10,9 +10,10 @@ import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.model.IConstants;
-import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantBucketResolver;
+import it.eng.tools.service.TenantContextHolder;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -35,32 +36,40 @@ public class DatasetService {
     private final CatalogService catalogService;
     private final ArtifactService artifactService;
     private final S3ClientService s3ClientService;
-    private final S3Properties s3Properties;
+    private final TenantBucketResolver tenantBucketResolver;
     private final AuditEventPublisher publisher;
 
     public DatasetService(DatasetRepository repository, CatalogService catalogService, ArtifactService artifactService,
-                          S3ClientService s3ClientService, S3Properties s3Properties, AuditEventPublisher publisher) {
+                          S3ClientService s3ClientService, TenantBucketResolver tenantBucketResolver, AuditEventPublisher publisher) {
         this.repository = repository;
         this.catalogService = catalogService;
         this.artifactService = artifactService;
         this.s3ClientService = s3ClientService;
-        this.s3Properties = s3Properties;
+        this.tenantBucketResolver = tenantBucketResolver;
         this.publisher = publisher;
     }
 
     /********* PROTOCOL ***********/
     /**
-     * Retrieves a dataset by its unique ID, intended for protocol use.
+     * Retrieves a dataset by its unique ID, scoped to the current tenant context.
+     * Intended for protocol use.
      *
      * @param id the unique ID of the dataset
      * @return the dataset corresponding to the provided ID
      * @throws CatalogErrorException if no dataset is found with the provided ID
      */
     public Dataset getDatasetById(String id) {
-        Dataset dataset = repository.findById(id)
-                .orElseThrow(() -> new CatalogErrorException("Dataset with id: " + id + " not found"));
+        String tenantId = TenantContextHolder.getTenantId();
+        Dataset dataset;
+        if (tenantId != null) {
+            dataset = repository.findByIdAndTenantId(id, tenantId)
+                    .orElseThrow(() -> new CatalogErrorException("Dataset with id: " + id + " not found"));
+        } else {
+            dataset = repository.findById(id)
+                    .orElseThrow(() -> new CatalogErrorException("Dataset with id: " + id + " not found"));
+        }
 
-        List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+        List<String> files = s3ClientService.listFiles(tenantBucketResolver.resolveBucketName());
 
         if (dataset.getArtifact() != null && dataset.getArtifact().getArtifactType() == ArtifactType.FILE
                 && !files.contains(dataset.getId())) {
@@ -86,27 +95,38 @@ public class DatasetService {
 
     /********* API ***********/
     /**
-     * Retrieves a dataset by its unique ID, intended for API use.
+     * Retrieves a dataset by its unique ID, scoped to the current tenant context.
+     * Intended for API use.
      *
      * @param id the unique ID of the dataset
      * @return the dataset corresponding to the provided ID
      * @throws ResourceNotFoundAPIException if no dataset is found with the provided ID
      */
     public Dataset getDatasetByIdForApi(String id) {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            return repository.findByIdAndTenantId(id, tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundAPIException("Dataset with id: " + id + " not found"));
+        }
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Dataset with id: " + id + " not found"));
     }
 
     /**
-     * Retrieves all datasets in the catalog.
+     * Retrieves all datasets, scoped to the current tenant context.
      *
-     * @return a list of all datasets
+     * @return a collection of all datasets visible to the current principal
      */
     public Collection<Dataset> getAllDatasets() {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            return repository.findAllByTenantId(tenantId);
+        }
         return repository.findAll();
     }
 
     /**
      * Saves a dataset to the repository and updates the catalog.
+     * Stamps the current tenant ID on the dataset before persisting.
      *
      * @param dataset       the dataset to be saved
      * @param externalURL   URL of external data
@@ -119,8 +139,12 @@ public class DatasetService {
         Dataset savedDataSet = null;
         try {
 //			TODO revert changes in case of failure
+            String tenantId = TenantContextHolder.getTenantId();
             Artifact artifact = artifactService.uploadArtifact(dataset.getId(), file, externalURL, authorization);
             Dataset datasetWithArtifact = addArtifactToDataset(dataset, artifact);
+            if (tenantId != null) {
+                datasetWithArtifact.injectTenantId(tenantId);
+            }
             savedDataSet = repository.save(datasetWithArtifact);
         } catch (Exception e) {
             log.error(e.getMessage(), e);
@@ -128,6 +152,7 @@ public class DatasetService {
         }
         catalogService.updateCatalogDatasetAfterSave(savedDataSet);
         log.info("Inserted Dataset with id {}", savedDataSet.getId());
+        publisher.publishEvent(AuditEventType.DATASET_CREATED, "Dataset created", Map.of("datasetId", savedDataSet.getId()));
         return savedDataSet;
     }
 
@@ -171,6 +196,7 @@ public class DatasetService {
             throw new InternalServerErrorAPIException("Dataset could not be updated");
         }
 
+        publisher.publishEvent(AuditEventType.DATASET_UPDATED, "Dataset updated", Map.of("datasetId", id));
         return storedDataset;
     }
 
@@ -191,6 +217,7 @@ public class DatasetService {
             throw new InternalServerErrorAPIException("Dataset could not be deleted");
         }
         catalogService.updateCatalogDatasetAfterDelete(ds);
+        publisher.publishEvent(AuditEventType.DATASET_DELETED, "Dataset deleted", Map.of("datasetId", id));
     }
 
     public List<String> getFormatsFromDataset(String id) {
@@ -223,6 +250,7 @@ public class DatasetService {
     private Dataset addArtifactToDataset(Dataset dataset, Artifact artifact) {
         Dataset datasetWithArtifact = Dataset.Builder.newInstance()
                 .id(dataset.getId())
+                .tenantId(dataset.getTenantId())
                 .artifact(artifact)
                 .conformsTo(dataset.getConformsTo())
                 .createdBy(dataset.getCreatedBy())

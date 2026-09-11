@@ -39,12 +39,14 @@ Predefined contract negotiation states are:
 
 # Provider-side HTTPS bindings
 
-- `GET /negotiations/:providerPid`
-- `POST /negotiations/request`
-- `POST /negotiations/:providerPid/request`
-- `POST /negotiations/:providerPid/events`
-- `POST /negotiations/:providerPid/agreement/verification`
-- `POST /negotiations/:providerPid/termination`
+| Method | Path                                                | HTTP response          |
+|--------|-----------------------------------------------------|------------------------|
+| GET    | `/negotiations/:providerPid`                        | 200 ContractNegotiation|
+| POST   | `/negotiations/request`                             | 201 ContractNegotiation|
+| POST   | `/negotiations/:providerPid/request`                | 200                    |
+| POST   | `/negotiations/:providerPid/events`                 | 200                    |
+| POST   | `/negotiations/:providerPid/agreement/verification` | 200                    |
+| POST   | `/negotiations/:providerPid/termination`            | 200                    |
 
 Important semantics:
 
@@ -56,12 +58,14 @@ Important semantics:
 
 # Consumer callback bindings
 
-- `GET /:callback/negotiations/:consumerPid`
-- `POST /negotiations/offers`
-- `POST /:callback/negotiations/:consumerPid/offers`
-- `POST /:callback/negotiations/:consumerPid/agreement`
-- `POST /:callback/negotiations/:consumerPid/events`
-- `POST /:callback/negotiations/:consumerPid/termination`
+| Method | Path                                               | HTTP response          |
+|--------|----------------------------------------------------|------------------------|
+| GET    | `/:callback/negotiations/:consumerPid`             | 200 ContractNegotiation|
+| POST   | `/negotiations/offers`                             | 201 ContractNegotiation|
+| POST   | `/:callback/negotiations/:consumerPid/offers`      | 200                    |
+| POST   | `/:callback/negotiations/:consumerPid/agreement`   | 200                    |
+| POST   | `/:callback/negotiations/:consumerPid/events`      | 200                    |
+| POST   | `/:callback/negotiations/:consumerPid/termination` | 200                    |
 
 Callback rules:
 
@@ -69,23 +73,75 @@ Callback rules:
 - The HTTPS scheme MUST be supported for `callbackAddress`.
 - Implementations MAY support additional schemes.
 - Implementations should handle callback base URLs with or without a trailing slash.
+- `POST /negotiations/offers` is a Provider-initiated negotiation start; the Consumer returns HTTP 201.
 
 # Message and decision boundaries
 
-Normative:
+## Normative message rules
 
-- message shapes
-- state transitions
-- endpoint paths and HTTP semantics
-- callback path construction
+### ContractRequestMessage (sent by Consumer)
 
-Implementation-specific:
+- MUST include an `offer` property, which MUST have an `@id`.
+- `offer.@id` MUST generally refer to an Offer contained in a Catalog. If the Provider is not aware of it, it MUST return an error.
+- If the message does NOT include `providerPid`, a new Contract Negotiation MUST be created and the Provider selects `providerPid`.
+- If the message DOES include `providerPid`, it MUST be associated with an existing negotiation.
+- `offer.obligation` and `offer.permission` express the terms at which the Consumer would accept the Offer.
+- The Offer inside `ContractRequestMessage` MUST have a `target` attribute (the Dataset identifier).
+- Rules inside the Offer (permissions, prohibitions, obligations) MUST NOT have a `target` attribute — this prevents inconsistencies with ODRL compact policy inferencing.
+- `callbackAddress` MUST be a URL. If the address is not understood, the Provider MUST return an **unrecoverable** error.
 
-- offer and counter-offer strategy
-- policy evaluation details
-- callback retry behavior
-- human approval or automatic acceptance policy
-- audit and governance behavior beyond the DSP contract flow
+### ContractOfferMessage (sent by Provider)
+
+- If the message does NOT include `consumerPid`, a new Contract Negotiation MUST be created on Consumer side.
+- If the message DOES include `consumerPid`, it MUST be associated with an existing negotiation.
+- The Offer inside `ContractOfferMessage` MUST have a `target` attribute. Rules inside it MUST NOT.
+- If the message initiates a Contract Negotiation (no `consumerPid`), it MUST contain a `callbackAddress` property.
+  If the address is not understood, the Consumer MUST return an **unrecoverable** error.
+
+### ContractAgreementMessage (sent by Provider)
+
+- MUST contain a `consumerPid` and a `providerPid`.
+- MUST contain a complete `agreement` object, which MUST include:
+  - `timestamp` — XSD DateTime type.
+  - `assigner` — dataspace-specific unique identifier of the Provider party.
+  - `assignee` — dataspace-specific unique identifier of the Consumer party.
+  - `target` — the Dataset identifier. Rules inside the Agreement MUST NOT have a `target` attribute.
+
+### ContractAgreementVerificationMessage (sent by Consumer)
+
+- MUST contain a `consumerPid` and a `providerPid`.
+- A Provider MUST respond with an error if the Agreement cannot be validated or is incorrect.
+
+### ContractNegotiationEventMessage (sent by Consumer or Provider)
+
+- MUST contain a `consumerPid` and a `providerPid`.
+- When sent by Provider with `eventType: FINALIZED` → state transitions to `FINALIZED`; Dataset is now accessible.
+- When sent by Consumer with `eventType: ACCEPTED` → state transitions to `ACCEPTED`.
+- **It is an error for a Consumer to send `eventType: FINALIZED` to the Provider.**
+- **It is an error for a Provider to send `eventType: ACCEPTED` to the Consumer.**
+- Neither party MUST send an event after the state machine has entered a terminal state.
+
+### ContractNegotiationTerminationMessage (sent by Consumer or Provider)
+
+- MUST contain a `consumerPid` and a `providerPid`.
+- MAY be sent at any non-terminal state without providing a reason.
+- MAY include a description to help the receiver.
+- If the receiver responds with an error, the sender MAY choose to ignore it.
+
+## Normative (spec-mandated)
+
+- Message shapes and required properties (see above).
+- State transitions.
+- Endpoint paths and HTTP semantics.
+- Callback path construction.
+
+## Implementation-specific
+
+- Offer and counter-offer strategy.
+- Policy evaluation details.
+- Callback retry behavior.
+- Human approval or automatic acceptance policy.
+- Audit and governance behavior beyond the DSP contract flow.
 
 # Repository hints for TRUE Connector
 

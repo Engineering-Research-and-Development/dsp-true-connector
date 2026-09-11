@@ -27,8 +27,8 @@ public class ProxyAPIController {
 	}
 
 	@PostMapping(path = "/datasets/{id}/formats")
-	public ResponseEntity<GenericApiResponse<List<String>>> getFormatsFromDataset(@PathVariable("id") String id,
-			@RequestBody JsonNode formatsRequest) {
+	public ResponseEntity<GenericApiResponse<List<String>>> getFormatsFromDataset(@PathVariable String id,
+                                                                                  @RequestBody JsonNode formatsRequest) {
 		log.info("Fetching formats from dataset with id: '" + id + "'");
 		String forwardTo = formatsRequest.get("Forward-To").asText();
 		List<String> formats = proxyApiService.getFormatsFromDataset(id, forwardTo);

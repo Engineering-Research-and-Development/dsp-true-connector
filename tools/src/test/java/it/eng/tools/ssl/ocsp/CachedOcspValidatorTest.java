@@ -8,6 +8,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.math.BigInteger;
+import java.security.PublicKey;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.util.Date;
@@ -20,6 +22,8 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+
+import javax.security.auth.x500.X500Principal;
 
 @ExtendWith(MockitoExtension.class)
 class CachedOcspValidatorTest {
@@ -41,14 +45,14 @@ class CachedOcspValidatorTest {
         ReflectionTestUtils.setField(cachedOcspValidator, "ocspValidator", ocspValidator);
         
         // Mock certificate methods to avoid NullPointerException - use lenient to avoid unnecessary stubbing errors
-        javax.security.auth.x500.X500Principal mockPrincipal = mock(javax.security.auth.x500.X500Principal.class);
+        X500Principal mockPrincipal = mock(X500Principal.class);
         Mockito.lenient().when(mockPrincipal.getEncoded()).thenReturn(new byte[] { 1, 2, 3 });
         
         Mockito.lenient().when(certificate.getSubjectX500Principal()).thenReturn(mockPrincipal);
-        Mockito.lenient().when(certificate.getSerialNumber()).thenReturn(java.math.BigInteger.ONE);
+        Mockito.lenient().when(certificate.getSerialNumber()).thenReturn(BigInteger.ONE);
         
         Mockito.lenient().when(issuerCertificate.getSubjectX500Principal()).thenReturn(mockPrincipal);
-        Mockito.lenient().when(issuerCertificate.getPublicKey()).thenReturn(mock(java.security.PublicKey.class));
+        Mockito.lenient().when(issuerCertificate.getPublicKey()).thenReturn(mock(PublicKey.class));
     }
 
     @Test

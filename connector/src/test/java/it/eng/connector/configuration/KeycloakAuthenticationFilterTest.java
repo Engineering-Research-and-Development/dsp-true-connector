@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import it.eng.connector.model.Role;
+
 import java.util.List;
 import java.util.Set;
 
@@ -60,7 +62,7 @@ class KeycloakAuthenticationFilterTest {
                 .build();
         when(jwtDecoder.decode("token")).thenReturn(jwt);
 
-        Set<GrantedAuthority> authorities = Set.of(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        Set<GrantedAuthority> authorities = Set.of(new SimpleGrantedAuthority(Role.ADMIN.authorityName()));
         KeycloakAuthenticationFilter filter = new KeycloakAuthenticationFilter(jwtDecoder, ignored -> authorities);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer token");
@@ -71,7 +73,7 @@ class KeycloakAuthenticationFilterTest {
 
         assertTrue(SecurityContextHolder.getContext().getAuthentication().getAuthorities()
                 .stream()
-                .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN")));
+                .anyMatch(auth -> auth.getAuthority().equals(Role.ADMIN.authorityName())));
         verify(jwtDecoder).decode("token");
     }
 }

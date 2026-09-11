@@ -8,10 +8,11 @@ public interface AuthProvider {
 
     /**
      * Fetches an authentication token.
+     * @param role the role for which to fetch the token
      *
      * @return the authentication token, or null if unavailable
      */
-    String fetchToken();
+    String fetchToken(String role);
 
     /**
      * Validates an authentication token.

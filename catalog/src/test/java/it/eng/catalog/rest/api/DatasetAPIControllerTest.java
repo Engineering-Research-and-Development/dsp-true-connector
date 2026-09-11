@@ -9,7 +9,7 @@ import it.eng.catalog.service.DatasetService;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.response.GenericApiResponse;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,7 +44,7 @@ public class DatasetAPIControllerTest {
         verify(datasetService).getDatasetByIdForApi(CatalogMockObjectUtil.DATASET.getId());
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertTrue(StringUtils.contains(response.getBody().toString(), CatalogMockObjectUtil.DATASET.getType()));
+        assertTrue(Strings.CS.contains(response.getBody().toString(), CatalogMockObjectUtil.DATASET.getType()));
     }
 
     @Test
@@ -56,7 +56,7 @@ public class DatasetAPIControllerTest {
         verify(datasetService).getAllDatasets();
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertTrue(StringUtils.contains(response.getBody().toString(), CatalogMockObjectUtil.DATASET.getType()));
+        assertTrue(Strings.CS.contains(response.getBody().toString(), CatalogMockObjectUtil.DATASET.getType()));
     }
 
     @Test
@@ -70,7 +70,7 @@ public class DatasetAPIControllerTest {
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertNotNull(response.getBody());
-        assertTrue(StringUtils.contains(response.getBody().getData().get("type").toString(), CatalogMockObjectUtil.DATASET.getType()));
+        assertTrue(Strings.CS.contains(response.getBody().getData().get("type").toString(), CatalogMockObjectUtil.DATASET.getType()));
     }
 
     @Test
@@ -80,7 +80,7 @@ public class DatasetAPIControllerTest {
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertTrue(StringUtils.contains(response.getBody().getMessage(), "Dataset deleted successfully"));
+        assertTrue(Strings.CS.contains(response.getBody().getMessage(), "Dataset deleted successfully"));
     }
 
     @Test
@@ -99,7 +99,7 @@ public class DatasetAPIControllerTest {
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertNotNull(response.getBody());
-        assertTrue(StringUtils.contains(response.getBody().getData().get("type").toString(), CatalogMockObjectUtil.DATASET.getType()));
+        assertTrue(Strings.CS.contains(response.getBody().getData().get("type").toString(), CatalogMockObjectUtil.DATASET.getType()));
 
     }
 
@@ -131,7 +131,7 @@ public class DatasetAPIControllerTest {
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertTrue(StringUtils.contains(response.getBody().getData().get(0),
+        assertTrue(Strings.CS.contains(response.getBody().getData().get(0),
                 CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getDistribution().stream().findFirst().get().getFormat()));
     }
 

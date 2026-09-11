@@ -12,6 +12,22 @@ Before you begin, ensure you have the following prerequisites:
 - Install Kind (Kubernetes IN Docker) for local Kubernetes clusters. Follow the instructions at
   [Kind Quick Start](https://kind.sigs.k8s.io/docs/user/quick-start/).
 
+### Installing Kind on Linux / WSL Ubuntu
+
+`kind` is not available via `apt`. Install the static binary directly:
+
+```sh
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
+chmod +x ./kind
+sudo mv ./kind /usr/local/bin/kind
+
+# Verify installation
+kind version
+kind get clusters   # should list "dsp-cluster" once terraform apply has run
+```
+
+For other architectures/OSes, see the [Kind releases page](https://github.com/kubernetes-sigs/kind/releases).
+
 ## Kubernetes Resources Overview
 
 ### Provider
@@ -80,6 +96,39 @@ For example:
   ```sh
   terraform destroy
   ```
+
+### Using a Locally Built Docker Image (not pushed to a registry)
+
+Kind runs Kubernetes nodes as separate containers with their **own internal image store**, isolated from your host's
+Docker daemon. `docker images` on your host does **not** mean the Kind node can see or pull that image — you must load
+it explicitly.
+
+1. Build your image locally:
+   ```sh
+   docker build -t ghcr.io/engineering-research-and-development/dsp-true-connector:local ./connector
+   ```
+2. Load it into the running Kind cluster (cluster must already exist, e.g. after a previous `terraform apply`):
+   ```sh
+   kind load docker-image ghcr.io/engineering-research-and-development/dsp-true-connector:local --name dsp-cluster
+   ```
+3. Point Terraform at the local tag, either via `-var` or in `terraform.tfvars`:
+   ```sh
+   terraform apply -var="connector_image=ghcr.io/engineering-research-and-development/dsp-true-connector:local"
+   ```
+4. Ensure the deployment does not try to pull from the registry. In `modules/connector/main.tf`, set:
+   ```hcl
+   image_pull_policy = "Never"
+   ```
+
+**Important — tag collisions:** if you reuse a tag that also exists in the remote registry (e.g. `test`), `IfNotPresent`
+may silently keep whichever image the node already cached — local or remote — with no clear indication of which one was
+used. Prefer:
+- A unique local-only tag per build (e.g. `local`, `test1`, `test2`, …), and
+- `image_pull_policy = "Never"`, so a missing `kind load` step fails loudly (`ErrImageNeverPull`) instead of silently
+  pulling the wrong image from the registry.
+
+You must repeat `kind load docker-image` every time you rebuild the image — Kind nodes do not share your host's Docker
+build cache/layers.
 
 ### Inspecting Kubernetes State
 

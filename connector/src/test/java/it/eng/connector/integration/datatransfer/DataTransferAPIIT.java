@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -38,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Data Transfer API endpoints integration test
  */
 public class DataTransferAPIIT extends BaseIntegrationTest {
+
 
     @Autowired
     private TransferProcessRepository transferProcessRepository;
@@ -62,6 +64,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .consumerPid(createNewId())
                 .providerPid(createNewId())
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessRequested);
 
@@ -69,6 +72,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .consumerPid(createNewId())
                 .providerPid(createNewId())
                 .state(TransferState.STARTED)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
@@ -119,9 +123,10 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .consumerPid(createNewId())
                 .providerPid(IConstants.TEMPORARY_PROVIDER_PID)
                 .agreementId(createNewId())
-                .callbackAddress(wiremock.baseUrl())
+                .callbackAddress(wiremock.baseUrl() + "/" + TENANT_ID)
                 .state(TransferState.INITIALIZED)
                 .role(IConstants.ROLE_CONSUMER)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessInitialized);
 
@@ -133,10 +138,11 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .consumerPid(transferProcessInitialized.getId())
                 .providerPid(createNewId())
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
-        WireMock.stubFor(WireMock.post("/transfers/request")
-                .withBasicAuth("connector@mail.com", "password")
+        WireMock.stubFor(WireMock.post("/" + TENANT_ID + "/transfers/request")
+                .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(WireMock.containing("TransferRequestMessage"))
                 .willReturn(
                         aResponse().withHeader("Content-Type", "application/json")
@@ -175,9 +181,10 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .consumerPid(createNewId())
                 .providerPid(IConstants.TEMPORARY_PROVIDER_PID)
                 .agreementId(createNewId())
-                .callbackAddress(wiremock.baseUrl())
+                .callbackAddress(wiremock.baseUrl() + "/" + TENANT_ID)
                 .state(TransferState.INITIALIZED)
                 .role(IConstants.ROLE_CONSUMER)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessInitialized);
 
@@ -189,10 +196,11 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .consumerPid(transferProcessInitialized.getConsumerPid())
                 .providerPid(createNewId())
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
-        WireMock.stubFor(WireMock.post("/transfers/request")
-                .withBasicAuth("connector@mail.com", "password")
+        WireMock.stubFor(WireMock.post("/" + TENANT_ID + "/transfers/request")
+                .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(WireMock.containing("TransferRequestMessage"))
                 .willReturn(
                         aResponse().withHeader("Content-Type", "application/json")
@@ -228,8 +236,9 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .consumerPid(createNewId())
                 .providerPid(createNewId())
                 .agreementId(createNewId())
-                .callbackAddress(wiremock.baseUrl())
+                .callbackAddress(wiremock.baseUrl() + "/" + TENANT_ID)
                 .state(TransferState.INITIALIZED)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessInitialized);
 
@@ -244,8 +253,8 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value("TEST").build()))
                 .build();
 
-        WireMock.stubFor(WireMock.post("/transfers/request")
-                .withBasicAuth("connector@mail.com", "password")
+        WireMock.stubFor(WireMock.post("/" + TENANT_ID + "/transfers/request")
+                .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(WireMock.containing("TransferRequestMessage"))
                 .willReturn(
                         aResponse().withHeader("Content-Type", "application/json")
@@ -288,6 +297,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-1")
                 .role(IConstants.ROLE_CONSUMER)
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         TransferProcess process2 = TransferProcess.Builder.newInstance()
@@ -296,6 +306,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-1")
                 .role(IConstants.ROLE_PROVIDER)
                 .state(TransferState.STARTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         TransferProcess process3 = TransferProcess.Builder.newInstance()
@@ -304,6 +315,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-2")
                 .role(IConstants.ROLE_CONSUMER)
                 .state(TransferState.COMPLETED)
+                .tenantId(TENANT_ID)
                 .build();
 
         transferProcessRepository.saveAll(List.of(process1, process2, process3));
@@ -342,6 +354,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-1")
                 .role(IConstants.ROLE_CONSUMER)
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         TransferProcess process2 = TransferProcess.Builder.newInstance()
@@ -350,6 +363,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-2")
                 .role(IConstants.ROLE_PROVIDER)
                 .state(TransferState.STARTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         transferProcessRepository.saveAll(List.of(process1, process2));
@@ -385,6 +399,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-1")
                 .role(IConstants.ROLE_CONSUMER)
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         TransferProcess process2 = TransferProcess.Builder.newInstance()
@@ -393,6 +408,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-2")
                 .role(IConstants.ROLE_PROVIDER)
                 .state(TransferState.STARTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         transferProcessRepository.saveAll(List.of(process1, process2));
@@ -426,6 +442,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-1")
                 .role(IConstants.ROLE_CONSUMER)
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         TransferProcess process2 = TransferProcess.Builder.newInstance()
@@ -434,6 +451,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-1")
                 .role(IConstants.ROLE_PROVIDER)
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         TransferProcess process3 = TransferProcess.Builder.newInstance()
@@ -442,6 +460,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-1")
                 .role(IConstants.ROLE_CONSUMER)
                 .state(TransferState.STARTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         transferProcessRepository.saveAll(List.of(process1, process2, process3));
@@ -482,6 +501,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("target-dataset")
                 .role(IConstants.ROLE_CONSUMER)
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         TransferProcess nonMatchingProcess = TransferProcess.Builder.newInstance()
@@ -490,6 +510,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("other-dataset")
                 .role(IConstants.ROLE_PROVIDER)
                 .state(TransferState.STARTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         transferProcessRepository.saveAll(List.of(matchingProcess, nonMatchingProcess));
@@ -527,6 +548,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("existing-dataset")
                 .role(IConstants.ROLE_CONSUMER)
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         transferProcessRepository.save(process);
@@ -555,11 +577,12 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .consumerPid(createNewId())
                 .providerPid(createNewId())
                 .state(TransferState.STARTED)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcess);
 
         MvcResult result = mockMvc.perform(
-                        get("/consumer/transfers/" + transferProcess.getConsumerPid())
+                        get("/" + TENANT_ID + "/consumer/transfers/" + transferProcess.getConsumerPid())
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -576,7 +599,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.CONNECTOR_USER)
     public void getTransferProcessByConsumerPid_notFound() throws Exception {
         MvcResult result = mockMvc.perform(
-                        get("/consumer/transfers/" + createNewId())
+                        get("/" + TENANT_ID + "/consumer/transfers/" + createNewId())
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest())
                 .andReturn();

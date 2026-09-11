@@ -13,16 +13,16 @@ variable "minio_image" {
 variable "connector_image" {
   description = "DSP True Connector image to use"
   type        = string
-  default     = "ghcr.io/engineering-research-and-development/dsp-true-connector:0.6.4"
+  default     = "ghcr.io/engineering-research-and-development/dsp-true-connector:latest"
 }
 
 variable "connector_ui_image" {
   description = "DSP True Connector UI image to use"
   type        = string
-  default     = "ghcr.io/engineering-research-and-development/dsp-true-connector-ui:0.6.1"
+  default     = "ghcr.io/engineering-research-and-development/dsp-true-connector-ui:latest"
 }
 
-variable "connector_a_callback_address" {
+variable "connector_a_base_url" {
   description = "Connector A callback address"
   type        = string
   default     = "http://connector-a:8080/"
@@ -54,7 +54,7 @@ variable "keystore_connector_b_config" {
   }
 }
 
-variable "connector_b_callback_address" {
+variable "connector_b_base_url" {
   description = "Connector B callback address"
   type        = string
   default     = "http://connector-b:8090/"
@@ -98,8 +98,8 @@ variable "connector_a_config" {
     s3_access_key           = string
     s3_secret_key           = string
     s3_region               = string
-    s3_bucket_name          = string
     s3_external_endpoint    = string
+    jwt_secret              = string
   })
   default = {
     automatic_transfer      = false
@@ -112,8 +112,8 @@ variable "connector_a_config" {
     s3_access_key           = "minioadmin"
     s3_secret_key           = "minioadmin"
     s3_region               = "us-east-1"
-    s3_bucket_name          = "dsp-true-connector-a"
     s3_external_endpoint    = "http://localhost:9000"
+    jwt_secret              = "connector-jwt-dev-secret-change-in-prod-min-32-bytes"
   }
 }
 
@@ -131,8 +131,8 @@ variable "connector_b_config" {
     s3_access_key           = string
     s3_secret_key           = string
     s3_region               = string
-    s3_bucket_name          = string
     s3_external_endpoint    = string
+    jwt_secret              = string
   })
   default = {
     automatic_transfer      = false
@@ -145,7 +145,7 @@ variable "connector_b_config" {
     s3_access_key           = "minioadmin"
     s3_secret_key           = "minioadmin"
     s3_region               = "us-east-1"
-    s3_bucket_name          = "dsp-true-connector-b"
     s3_external_endpoint    = "http://172.17.0.1:9000"
+    jwt_secret              = "connector-jwt-dev-secret-change-in-prod-min-32-bytes"
   }
 }

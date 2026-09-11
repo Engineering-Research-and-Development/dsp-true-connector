@@ -1,5 +1,6 @@
 package it.eng.negotiation.configuration;
 
+import it.eng.tools.configuration.TenantContextTaskDecorator;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +24,9 @@ public class NegotiationConfiguration {
      * <p>{@link ThreadPoolTaskScheduler} participates in the Spring lifecycle and shuts down
      * gracefully when the context closes, ensuring scheduled retries are not abandoned mid-flight.
      *
+     * <p>A {@link it.eng.tools.configuration.TenantContextTaskDecorator} is installed so that
+     * scheduled retry tasks inherit the tenant context from the thread that submitted them.
+     *
      * @return configured {@link TaskScheduler}
      */
     @Bean(name = "negotiationTaskScheduler")
@@ -30,6 +34,7 @@ public class NegotiationConfiguration {
         var scheduler = new ThreadPoolTaskScheduler();
         scheduler.setPoolSize(schedulerPoolSize);
         scheduler.setThreadNamePrefix("negotiation-retry-");
+        scheduler.setTaskDecorator(new TenantContextTaskDecorator());
         scheduler.initialize();
         return scheduler;
     }

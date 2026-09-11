@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.HttpHeaders;
 import it.eng.tools.model.ExternalData;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.util.CredentialUtils;
 import okhttp3.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,12 +13,15 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpMethod;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -356,6 +360,137 @@ public class OkHttpRestClientTest {
         String result = okHttpRestClient.sendInternalRequest("/api/test", HttpMethod.GET, null);
 
         assertNull(result);
+    }
+
+    @Test
+    @DisplayName("Send internal request - retries once on 401 and succeeds")
+    public void sendInternalRequest_retriesOnceOn401() throws IOException {
+        when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
+        when(call.execute()).thenReturn(response);
+        when(response.code()).thenReturn(401, 200);
+        when(response.body()).thenReturn(responseBody);
+        when(responseBody.string()).thenReturn("Unauthorized", "Success");
+        when(credentialUtils.getAPICredentials()).thenReturn("Bearer stale-token", "Bearer fresh-token");
+
+        String result = okHttpRestClient.sendInternalRequest("/api/test", HttpMethod.GET, null);
+
+        assertEquals("Success", result);
+        verify(credentialUtils).invalidateCachedCredentials();
+        verify(credentialUtils, Mockito.times(2)).getAPICredentials();
+        verify(okHttpClient, Mockito.times(2)).newCall(any(Request.class));
+    }
+
+    @Test
+    @DisplayName("Send internal request - 401 on both attempts surfaces the second failure without a third retry")
+    public void sendInternalRequest_401Twice_noThirdAttempt() throws IOException {
+        when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
+        when(call.execute()).thenReturn(response);
+        when(response.code()).thenReturn(401, 401);
+        when(response.body()).thenReturn(responseBody);
+        when(responseBody.string()).thenReturn("Unauthorized", "Still unauthorized");
+        when(credentialUtils.getAPICredentials()).thenReturn("Bearer stale-token", "Bearer still-stale-token");
+
+        String result = okHttpRestClient.sendInternalRequest("/api/test", HttpMethod.GET, null);
+
+        assertEquals("Still unauthorized", result);
+        verify(credentialUtils, Mockito.times(1)).invalidateCachedCredentials();
+        verify(credentialUtils, Mockito.times(2)).getAPICredentials();
+        verify(okHttpClient, Mockito.times(2)).newCall(any(Request.class));
+    }
+
+    @Test
+    @DisplayName("Send internal request - success on first attempt never invalidates credentials")
+    public void sendInternalRequest_successFirstTry_noInvalidate() throws IOException {
+        when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
+        when(call.execute()).thenReturn(response);
+        when(response.code()).thenReturn(200);
+        when(response.body()).thenReturn(responseBody);
+        when(responseBody.string()).thenReturn("Success");
+        when(credentialUtils.getAPICredentials()).thenReturn("Bearer valid-token");
+
+        String result = okHttpRestClient.sendInternalRequest("/api/test", HttpMethod.GET, null);
+
+        assertEquals("Success", result);
+        verify(credentialUtils, Mockito.never()).invalidateCachedCredentials();
+        verify(credentialUtils, Mockito.times(1)).getAPICredentials();
+        verify(okHttpClient, Mockito.times(1)).newCall(any(Request.class));
+    }
+
+    @Test
+    @DisplayName("Send protocol request with Supplier - retries once on 401 and succeeds")
+    public void sendRequestProtocolSupplier_retriesOnceOn401() throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode jsonNode = mapper.readTree("{\"test\": \"example\"}");
+
+        when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
+        when(call.execute()).thenReturn(response);
+        when(response.code()).thenReturn(401, 200);
+        when(response.isSuccessful()).thenReturn(false, true);
+        when(response.body()).thenReturn(responseBody);
+        when(responseBody.string()).thenReturn("Unauthorized", "Success");
+
+        AtomicInteger callCount = new AtomicInteger();
+        Supplier<String> authorizationSupplier = () ->
+                callCount.incrementAndGet() == 1 ? "Bearer stale-token" : "Bearer fresh-token";
+
+        GenericApiResponse<String> apiResponse = okHttpRestClient.sendRequestProtocol(TARGET_ADDRESS, jsonNode, authorizationSupplier);
+
+        assertNotNull(apiResponse);
+        assertTrue(apiResponse.isSuccess());
+        assertEquals(2, callCount.get());
+        verify(credentialUtils).invalidateCachedCredentials();
+        verify(okHttpClient, Mockito.times(2)).newCall(any(Request.class));
+    }
+
+    @Test
+    @DisplayName("Send protocol request with Supplier - success on first attempt never invalidates credentials")
+    public void sendRequestProtocolSupplier_successFirstTry_noInvalidate() throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode jsonNode = mapper.readTree("{\"test\": \"example\"}");
+
+        when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
+        when(call.execute()).thenReturn(response);
+        when(response.code()).thenReturn(200);
+        when(response.isSuccessful()).thenReturn(true);
+        when(response.body()).thenReturn(responseBody);
+        when(responseBody.string()).thenReturn("Success");
+
+        AtomicInteger callCount = new AtomicInteger();
+        Supplier<String> authorizationSupplier = () -> {
+            callCount.incrementAndGet();
+            return "Bearer valid-token";
+        };
+
+        GenericApiResponse<String> apiResponse = okHttpRestClient.sendRequestProtocol(TARGET_ADDRESS, jsonNode, authorizationSupplier);
+
+        assertNotNull(apiResponse);
+        assertTrue(apiResponse.isSuccess());
+        assertEquals(1, callCount.get());
+        verify(credentialUtils, Mockito.never()).invalidateCachedCredentials();
+        verify(okHttpClient, Mockito.times(1)).newCall(any(Request.class));
+    }
+
+    @Test
+    @DisplayName("Send protocol request with Supplier and tenantId - propagates tenant header and retries on 401")
+    public void sendRequestProtocolSupplierWithTenant_retriesOnceOn401() throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode jsonNode = mapper.readTree("{\"test\": \"example\"}");
+
+        when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
+        when(call.execute()).thenReturn(response);
+        when(response.code()).thenReturn(401, 200);
+        when(response.isSuccessful()).thenReturn(false, true);
+        when(response.body()).thenReturn(responseBody);
+        when(responseBody.string()).thenReturn("Unauthorized", "Success");
+
+        GenericApiResponse<String> apiResponse = okHttpRestClient.sendRequestProtocol(TARGET_ADDRESS, jsonNode,
+                () -> "Bearer token", "tenant-1");
+
+        assertNotNull(apiResponse);
+        assertTrue(apiResponse.isSuccess());
+        verify(credentialUtils).invalidateCachedCredentials();
+        verify(okHttpClient, Mockito.times(2)).newCall(argThat(request ->
+                "tenant-1".equals(request.header(TenantContextHolder.HEADER_X_TENANT_ID))));
     }
 
 }

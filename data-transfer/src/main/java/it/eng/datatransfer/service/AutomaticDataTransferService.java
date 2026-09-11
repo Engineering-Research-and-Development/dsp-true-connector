@@ -2,6 +2,7 @@ package it.eng.datatransfer.service;
 
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
+import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
@@ -139,7 +140,7 @@ public class AutomaticDataTransferService {
             log.error("Failed to send termination to peer for TransferProcess {}. Forcing local TERMINATED state. Reason: {}", transferProcessId, e.getMessage());
             TransferProcess tp = transferProcessRepository.findById(transferProcessId).orElse(null);
             if (tp != null) {
-                TransferProcess terminated = tp.copyWithNewTransferState(it.eng.datatransfer.model.TransferState.TERMINATED);
+                TransferProcess terminated = tp.copyWithNewTransferState(TransferState.TERMINATED);
                 transferProcessRepository.save(terminated);
                 
                 // Publish audit event for local forced termination

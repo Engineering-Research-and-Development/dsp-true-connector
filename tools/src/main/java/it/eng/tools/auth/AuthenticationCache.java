@@ -22,8 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class AuthenticationCache {
 
-	public static final String DUMMY_TOKEN_VALUE = "DummyTokenValue";
-
 	private final List<AuthProvider> authenticationProviders;
 	private final KeycloakAuthenticationProperties keycloakProperties;
 
@@ -39,10 +37,11 @@ public class AuthenticationCache {
 
 	/**
 	 * Retrieves an authentication token, either from cache or by fetching a new one.
+	 * @param role the role for which the token is requested
 	 *
 	 * @return the authentication token, or a dummy token if no provider is configured
 	 */
-	public String getToken() {
+	public String getToken(String role) {
 		log.info("Requesting outbound authentication token");
 
 		AuthProvider authProvider = selectAuthenticationProvider();
@@ -53,14 +52,14 @@ public class AuthenticationCache {
 
 		if (authProvider == null) {
 			log.info("No authentication provider configured - continuing with dummy token");
-			return DUMMY_TOKEN_VALUE;
+			return null;
 		}
 
 		if (tokenCachingEnabled) {
 			synchronized (this) {
 				if (cachedToken == null || LocalDateTime.now().isAfter(expirationTime)) {
 					log.info("Fetching new token");
-					cachedToken = authProvider.fetchToken();
+					cachedToken = authProvider.fetchToken(role);
 					if (cachedToken != null) {
 						try {
 							expirationTime = JWT.decode(cachedToken).getExpiresAt()
@@ -79,7 +78,7 @@ public class AuthenticationCache {
 			}
 		} else {
 			// Always fetch a fresh token
-			return authProvider.fetchToken();
+			return authProvider.fetchToken(role);
 		}
 	}
 
@@ -113,7 +112,7 @@ public class AuthenticationCache {
 					.findFirst()
 					.orElse(null);
 		}
-		return null;
+		return authenticationProviders.getFirst();
 	}
 
 	/**
