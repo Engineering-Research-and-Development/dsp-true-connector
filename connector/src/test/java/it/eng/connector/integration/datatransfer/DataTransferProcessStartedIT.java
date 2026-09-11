@@ -26,6 +26,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
     // REQUESTED->STARTED
     // @PostMapping(path = "/{consumerPid}/start")
 
+
     @Autowired
     private TransferProcessRepository transferProcessRepository;
 
@@ -45,6 +46,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .state(TransferState.REQUESTED)
                 .role(IConstants.ROLE_PROVIDER)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessRequested);
 
@@ -55,7 +57,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/" + transferStartMessage.getProviderPid() + "/start")
+                        post("/" + TENANT_ID + "/transfers/" + transferStartMessage.getProviderPid() + "/start")
                                 .content(TransferSerializer.serializeProtocol(transferStartMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         //["State transition aborted, consumer can not transit from REQUESTED to STARTED"]}
@@ -79,7 +81,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/" + transferStartMessage.getProviderPid() + "/start")
+                        post("/" + TENANT_ID + "/transfers/" + transferStartMessage.getProviderPid() + "/start")
                                 .content(TransferSerializer.serializeProtocol(transferStartMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());
@@ -101,7 +103,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/" + transferCompletionMessage.getProviderPid() + "/start")
+                        post("/" + TENANT_ID + "/transfers/" + transferCompletionMessage.getProviderPid() + "/start")
                                 .content(TransferSerializer.serializeProtocol(transferCompletionMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());
@@ -122,6 +124,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .state(TransferState.REQUESTED)
                 .role(IConstants.ROLE_CONSUMER)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessRequested);
 
@@ -132,7 +135,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/consumer/transfers/" + transferStartMessage.getConsumerPid() + "/start")
+                        post("/" + TENANT_ID + "/consumer/transfers/" + transferStartMessage.getConsumerPid() + "/start")
                                 .content(TransferSerializer.serializeProtocol(transferStartMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isOk());
@@ -140,7 +143,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
         //?? not sure if this is correct endpoint or it should be consumer/transfers/{consumerPid}
         // but such endpoint does not exists in protocol specification
         ResultActions transferProcessStartedAction = mockMvc.perform(
-                get("/transfers/" + transferProcessRequested.getProviderPid())
+                get("/" + TENANT_ID + "/transfers/" + transferProcessRequested.getProviderPid())
                         .contentType(MediaType.APPLICATION_JSON));
         // check if status is STARTED
         transferProcessStartedAction.andExpect(status().isOk()).andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -163,7 +166,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/consumer/transfers/" + transferStartMessage.getConsumerPid() + "/start")
+                        post("/" + TENANT_ID + "/consumer/transfers/" + transferStartMessage.getConsumerPid() + "/start")
                                 .content(TransferSerializer.serializeProtocol(transferStartMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());
@@ -185,7 +188,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/consumer/transfers/" + transferCompletionMessage.getProviderPid() + "/start")
+                        post("/" + TENANT_ID + "/consumer/transfers/" + transferCompletionMessage.getProviderPid() + "/start")
                                 .content(TransferSerializer.serializeProtocol(transferCompletionMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());
@@ -206,6 +209,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .state(TransferState.SUSPENDED)
                 .role(IConstants.ROLE_CONSUMER)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessSuspended);
 
@@ -216,7 +220,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/" + transferStartMessage.getProviderPid() + "/start")
+                        post("/" + TENANT_ID + "/transfers/" + transferStartMessage.getProviderPid() + "/start")
                                 .content(TransferSerializer.serializeProtocol(transferStartMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isOk());
@@ -233,6 +237,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .state(TransferState.STARTED)
                 .role(IConstants.ROLE_CONSUMER)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessSuspended);
 
@@ -243,7 +248,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/" + transferStartMessage.getProviderPid() + "/start")
+                        post("/" + TENANT_ID + "/transfers/" + transferStartMessage.getProviderPid() + "/start")
                                 .content(TransferSerializer.serializeProtocol(transferStartMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());
@@ -263,6 +268,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .state(TransferState.SUSPENDED)
                 .role(IConstants.ROLE_PROVIDER)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessSuspended);
 
@@ -273,7 +279,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/consumer/transfers/" + transferStartMessage.getConsumerPid() + "/start")
+                        post("/" + TENANT_ID + "/consumer/transfers/" + transferStartMessage.getConsumerPid() + "/start")
                                 .content(TransferSerializer.serializeProtocol(transferStartMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isOk());
@@ -290,6 +296,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .state(TransferState.STARTED)
                 .role(IConstants.ROLE_PROVIDER)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessSuspended);
 
@@ -300,7 +307,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/consumer/transfers/" + transferStartMessage.getConsumerPid() + "/start")
+                        post("/" + TENANT_ID + "/consumer/transfers/" + transferStartMessage.getConsumerPid() + "/start")
                                 .content(TransferSerializer.serializeProtocol(transferStartMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());

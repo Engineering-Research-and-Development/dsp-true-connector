@@ -2,6 +2,8 @@ package it.eng.connector.configuration;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import it.eng.connector.model.Role;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +24,7 @@ class KeycloakRealmRoleConverterTest {
         KeycloakRealmRoleConverter converter = new KeycloakRealmRoleConverter();
         Collection<GrantedAuthority> authorities = converter.convert(jwt);
 
-        assertTrue(authorities.stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN")));
-        assertTrue(authorities.stream().anyMatch(auth -> auth.getAuthority().equals("ROLE_CONNECTOR")));
+        assertTrue(authorities.stream().anyMatch(auth -> auth.getAuthority().equals(Role.ADMIN.authorityName())));
+        assertTrue(authorities.stream().anyMatch(auth -> auth.getAuthority().equals(Role.CONNECTOR.authorityName())));
     }
 }

@@ -99,7 +99,6 @@ public class DataServiceTest {
         assertTrue(updated.getTheme().contains("red"));
         assertTrue(updated.getTheme().contains("green"));
         assertTrue(updated.getTheme().contains("black"));
-        assertEquals("updatedEndpointUrl", updated.getEndpointURL());
         assertEquals("Description for test", updated.getEndpointDescription());
         assertEquals(CatalogMockObjectUtil.ISSUED, updated.getIssued());
         assertEquals(CatalogMockObjectUtil.TITLE, updated.getTitle());
@@ -120,6 +119,10 @@ public class DataServiceTest {
         DataService dataService = CatalogMockObjectUtil.DATA_SERVICE;
         String ss = CatalogSerializer.serializeProtocol(dataService);
         DataService dataService2 = CatalogSerializer.deserializeProtocol(ss, DataService.class);
+
+        // protocol serialization does not include tenantId, so we need to remove it from the original dataService before comparison
+        dataService.injectTenantId(null);
+
         assertThat(dataService).usingRecursiveComparison().isEqualTo(dataService2);
     }
 

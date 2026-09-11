@@ -19,6 +19,7 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3Configuration;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
@@ -230,13 +231,13 @@ public class S3ClientServiceImpl implements S3ClientService {
                 .region(Region.of(s3Properties.getRegion()));
 
         if (isAws) {
-            presignerBuilder.serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
+            presignerBuilder.serviceConfiguration(S3Configuration.builder()
                     .pathStyleAccessEnabled(false)
                     .build());
         } else {
             presignerBuilder
                     .endpointOverride(URI.create(externalEndpoint))
-                    .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
+                    .serviceConfiguration(S3Configuration.builder()
                             .pathStyleAccessEnabled(true)
                             .build());
         }

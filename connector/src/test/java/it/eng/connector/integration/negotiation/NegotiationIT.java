@@ -4,6 +4,7 @@ import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.ContractNegotiationErrorMessage;
 import it.eng.negotiation.serializer.NegotiationSerializer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -28,7 +29,7 @@ public class NegotiationIT extends BaseIntegrationTest {
     public void negotiationWrongMessageTests(String path) throws Exception {
         final ResultActions result =
                 mockMvc.perform(
-                        post("/negotiations" + path)
+                        post("/" + TENANT_ID + "/negotiations" + path)
                                 .content("{\"some\":\"json\"}")
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
@@ -45,7 +46,7 @@ public class NegotiationIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        get("/negotiations/1")
+                        get("/" + TENANT_ID + "/negotiations/1")
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -58,7 +59,7 @@ public class NegotiationIT extends BaseIntegrationTest {
     public void contractNegotiation_notAuthorized() throws Exception {
         final ResultActions result =
                 mockMvc.perform(
-                        get("/negotiations/1")
+                        get("/" + TENANT_ID + "/negotiations/1")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .header("Authorization", "Basic YXNkckBtYWlsLmNvbTpwYXNzd29yZA=="));
         result.andExpect(status().isUnauthorized())

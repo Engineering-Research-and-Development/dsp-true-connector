@@ -30,15 +30,20 @@ public class BucketCredentialsService {
                 .accessKey(bucketCredentials.getAccessKey())
                 .secretKey(fieldEncryptionService.decrypt(bucketCredentials.getSecretKey()))
                 .bucketName(bucketCredentials.getBucketName())
+                .version(bucketCredentials.getVersion())
                 .build();
     }
 
     public BucketCredentialsEntity saveBucketCredentials(BucketCredentialsEntity bucketCredentials) {
         log.info("Saving bucket credentials for bucket: {}", bucketCredentials.getBucketName());
+        Long existingVersion = bucketCredentialsRepository.findByBucketName(bucketCredentials.getBucketName())
+                .map(BucketCredentialsEntity::getVersion)
+                .orElse(null);
         BucketCredentialsEntity savedBucketCredentials = BucketCredentialsEntity.Builder.newInstance()
                 .accessKey(bucketCredentials.getAccessKey())
                 .secretKey(fieldEncryptionService.encrypt(bucketCredentials.getSecretKey()))
                 .bucketName(bucketCredentials.getBucketName())
+                .version(existingVersion)
                 .build();
         return bucketCredentialsRepository.save(savedBucketCredentials);
     }

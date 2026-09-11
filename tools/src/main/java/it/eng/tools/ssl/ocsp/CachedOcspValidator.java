@@ -3,6 +3,7 @@ package it.eng.tools.ssl.ocsp;
 import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
@@ -153,17 +154,17 @@ public class CachedOcspValidator {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             CertificateId that = (CertificateId) o;
-            return java.util.Arrays.equals(issuerNameHash, that.issuerNameHash) &&
-                   java.util.Arrays.equals(issuerKeyHash, that.issuerKeyHash) &&
-                   java.util.Arrays.equals(serialNumber, that.serialNumber);
+            return Arrays.equals(issuerNameHash, that.issuerNameHash) &&
+                   Arrays.equals(issuerKeyHash, that.issuerKeyHash) &&
+                   Arrays.equals(serialNumber, that.serialNumber);
         }
         
         @Override
         public int hashCode() {
             int result = Objects.hash();
-            result = 31 * result + java.util.Arrays.hashCode(issuerNameHash);
-            result = 31 * result + java.util.Arrays.hashCode(issuerKeyHash);
-            result = 31 * result + java.util.Arrays.hashCode(serialNumber);
+            result = 31 * result + Arrays.hashCode(issuerNameHash);
+            result = 31 * result + Arrays.hashCode(issuerKeyHash);
+            result = 31 * result + Arrays.hashCode(serialNumber);
             return result;
         }
     }

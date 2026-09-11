@@ -9,6 +9,11 @@ import it.eng.negotiation.model.*;
 import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.negotiation.service.ContractNegotiationConsumerService;
+import it.eng.tools.model.Tenant;
+import it.eng.tools.service.TenantContextHolder;
+import it.eng.tools.service.TenantService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,6 +28,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class ContractNegotiationConsumerCallbackControllerTest {
 
+    private static final String TENANT_ID = "engineering";
+
     @InjectMocks
     private ContractNegotiationConsumerCallbackController controller;
 
@@ -30,8 +37,23 @@ public class ContractNegotiationConsumerCallbackControllerTest {
     private ContractNegotiationConsumerService contractNegotiationConsumerService;
     @Mock
     private ContractNegotiationProperties properties;
+    @Mock
+    private TenantService tenantService;
 
     ObjectMapper mapper = new ObjectMapper();
+
+    @BeforeEach
+    public void setUp() {
+        Tenant tenant = Tenant.Builder.newInstance()
+                .id(TENANT_ID).name("Engineering").participantId("c1")
+                .enabled(true).build();
+        when(tenantService.findEnabledTenantById(TENANT_ID)).thenReturn(tenant);
+    }
+
+    @AfterEach
+    public void tearDown() {
+        TenantContextHolder.clear();
+    }
 
     @Test
     public void handleContractOfferMessage_success() throws JsonProcessingException {
@@ -40,7 +62,7 @@ public class ContractNegotiationConsumerCallbackControllerTest {
         when(contractNegotiationConsumerService.handleContractOfferMessage(any(ContractOfferMessage.class)))
                 .thenReturn(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED);
         when(properties.providerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
-        ResponseEntity<JsonNode> response = controller.handleContractOfferMessage(jsonNode);
+        ResponseEntity<JsonNode> response = controller.handleContractOfferMessage(TENANT_ID, jsonNode);
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
     }
@@ -49,9 +71,9 @@ public class ContractNegotiationConsumerCallbackControllerTest {
     public void handleContractOfferMessageAsCounteroffer_success() throws JsonProcessingException {
         String json = NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE_INITIAL);
         JsonNode jsonNode = mapper.readTree(json);
-        when(contractNegotiationConsumerService.handleContractOfferMessageAsCounteroffer(anyString(),any(ContractOfferMessage.class)))
+        when(contractNegotiationConsumerService.handleContractOfferMessageAsCounteroffer(anyString(), any(ContractOfferMessage.class)))
                 .thenReturn(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_OFFERED);
-        ResponseEntity<JsonNode> response = controller.handleContractOfferMessageAsCounteroffer(NegotiationMockObjectUtil.CONSUMER_PID, jsonNode);
+        ResponseEntity<JsonNode> response = controller.handleContractOfferMessageAsCounteroffer(TENANT_ID, NegotiationMockObjectUtil.CONSUMER_PID, jsonNode);
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
     }
@@ -61,9 +83,9 @@ public class ContractNegotiationConsumerCallbackControllerTest {
         String json = NegotiationSerializer.serializeProtocol(NegotiationMockObjectUtil.CONTRACT_AGREEMENT_MESSAGE);
         JsonNode jsonNode = mapper.readTree(json);
         when(contractNegotiationConsumerService.handleContractAgreementMessage(anyString(), any(ContractAgreementMessage.class)))
-                .thenReturn(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_AGREED);;
+                .thenReturn(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_AGREED);
 
-        ResponseEntity<Void> response = controller.handleContractAgreementMessage(NegotiationMockObjectUtil.CONSUMER_PID, jsonNode);
+        ResponseEntity<Void> response = controller.handleContractAgreementMessage(TENANT_ID, NegotiationMockObjectUtil.CONSUMER_PID, jsonNode);
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
 
@@ -79,7 +101,7 @@ public class ContractNegotiationConsumerCallbackControllerTest {
                 .when(contractNegotiationConsumerService).handleContractAgreementMessage(anyString(), any(ContractAgreementMessage.class));
 
         assertThrows(ContractNegotiationInvalidStateException.class, () ->
-                controller.handleContractAgreementMessage(NegotiationMockObjectUtil.CONSUMER_PID, jsonNode));
+                controller.handleContractAgreementMessage(TENANT_ID, NegotiationMockObjectUtil.CONSUMER_PID, jsonNode));
     }
 
     @Test
@@ -88,7 +110,7 @@ public class ContractNegotiationConsumerCallbackControllerTest {
         JsonNode jsonNode = mapper.readTree(json);
         doNothing().when(contractNegotiationConsumerService).handleContractNegotiationEventMessageFinalize(anyString(), any(ContractNegotiationEventMessage.class));
 
-        ResponseEntity<Void> response = controller.handleContractNegotiationEventMessageFinalize(NegotiationMockObjectUtil.CONSUMER_PID, jsonNode);
+        ResponseEntity<Void> response = controller.handleContractNegotiationEventMessageFinalize(TENANT_ID, NegotiationMockObjectUtil.CONSUMER_PID, jsonNode);
         assertNull(response.getBody());
         assertTrue(response.getStatusCode().is2xxSuccessful());
     }
@@ -101,14 +123,14 @@ public class ContractNegotiationConsumerCallbackControllerTest {
                 .when(contractNegotiationConsumerService).handleContractNegotiationEventMessageFinalize(anyString(), any(ContractNegotiationEventMessage.class));
 
         assertThrows(ContractNegotiationInvalidStateException.class, () ->
-                controller.handleContractNegotiationEventMessageFinalize(NegotiationMockObjectUtil.CONSUMER_PID, jsonNode));
+                controller.handleContractNegotiationEventMessageFinalize(TENANT_ID, NegotiationMockObjectUtil.CONSUMER_PID, jsonNode));
     }
 
     @Test
     public void handleContractNegotiationTerminationMessage() {
         JsonNode jsonNode = NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.TERMINATION_MESSAGE);
 
-        ResponseEntity<JsonNode> response = controller.handleContractNegotiationTerminationMessage(NegotiationMockObjectUtil.CONSUMER_PID, jsonNode);
+        ResponseEntity<JsonNode> response = controller.handleContractNegotiationTerminationMessage(TENANT_ID, NegotiationMockObjectUtil.CONSUMER_PID, jsonNode);
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
     }
@@ -119,6 +141,6 @@ public class ContractNegotiationConsumerCallbackControllerTest {
         doThrow(ContractNegotiationNotFoundException.class).when(contractNegotiationConsumerService)
                 .handleContractNegotiationTerminationMessage(any(String.class), any(ContractNegotiationTerminationMessage.class));
         assertThrows(ContractNegotiationNotFoundException.class,
-                () -> controller.handleContractNegotiationTerminationMessage(NegotiationMockObjectUtil.CONSUMER_PID, jsonNode));
+                () -> controller.handleContractNegotiationTerminationMessage(TENANT_ID, NegotiationMockObjectUtil.CONSUMER_PID, jsonNode));
     }
 }

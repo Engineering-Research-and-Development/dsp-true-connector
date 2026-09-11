@@ -14,6 +14,7 @@ import java.util.UUID;
 
 public class DataTransferMockObjectUtil {
 
+    public static final String TENANT_ID = "engineering";
     public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
     public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";
     public static final String RIGHT_EXPRESSION = "EU";
@@ -60,6 +61,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_CONSUMER)
+            .tenantId(TENANT_ID)
             .state(TransferState.INITIALIZED)
             .build();
 
@@ -70,6 +72,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
             .state(TransferState.REQUESTED)
             .build();
 
@@ -80,6 +83,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_CONSUMER)
+            .tenantId(TENANT_ID)
             .state(TransferState.REQUESTED)
             .build();
 
@@ -94,6 +98,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
             .state(TransferState.STARTED)
             .format(DataTransferFormat.HTTP_PULL.name())
             .build();
@@ -110,6 +115,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_CONSUMER)
+            .tenantId(TENANT_ID)
             .state(TransferState.STARTED)
             .format(DataTransferFormat.HTTP_PULL.name())
             .build();
@@ -124,6 +130,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
             .state(TransferState.STARTED)
             .format(DataTransferFormat.HTTP_PULL.name())
             .build();
@@ -135,6 +142,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_CONSUMER)
+            .tenantId(TENANT_ID)
             .state(TransferState.COMPLETED)
             .isDownloaded(true)
             .build();
@@ -146,6 +154,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_CONSUMER)
+            .tenantId(TENANT_ID)
             .state(TransferState.COMPLETED)
             .isDownloaded(false)
             .build();
@@ -157,6 +166,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
             .state(TransferState.SUSPENDED)
             .build();
 
@@ -167,6 +177,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
             .state(TransferState.SUSPENDED)
             .build();
 
@@ -177,6 +188,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
             .state(TransferState.TERMINATED)
             .build();
 

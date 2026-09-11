@@ -50,6 +50,9 @@ public class AsynchronousSpringEventsConfig {
      * {@link TaskExecutor} beans are present, {@code AnnotationAsyncExecutionInterceptor}
      * looks for this name to avoid the "More than one TaskExecutor bean found" warning.
      *
+     * <p>A {@link TenantContextTaskDecorator} is installed so that worker threads inherit
+     * the tenant context from the submitting HTTP request thread.
+     *
      * @return configured {@link ThreadPoolTaskExecutor}
      */
     @Bean(name = "taskExecutor")
@@ -60,6 +63,7 @@ public class AsynchronousSpringEventsConfig {
         executor.setQueueCapacity(queueCapacity);
         executor.setThreadNamePrefix("event-async-");
         executor.setRejectedExecutionHandler(new CallerRunsOrDiscardPolicy());
+        executor.setTaskDecorator(new TenantContextTaskDecorator());
         executor.initialize();
         return executor;
     }

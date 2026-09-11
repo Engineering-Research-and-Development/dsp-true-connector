@@ -108,6 +108,12 @@ public class TransferProcess extends AbstractTransferMessage {
     @Field("retryCount")
     private int retryCount;
 
+    /**
+     * Tenant this transfer process belongs to. Null for super-admin scope.
+     */
+    @JsonIgnore
+    private String tenantId;
+
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
@@ -176,6 +182,11 @@ public class TransferProcess extends AbstractTransferMessage {
 
         public Builder retryCount(int retryCount) {
             message.retryCount = retryCount;
+            return this;
+        }
+
+        public Builder tenantId(String tenantId) {
+            message.tenantId = tenantId;
             return this;
         }
 
@@ -255,6 +266,16 @@ public class TransferProcess extends AbstractTransferMessage {
     }
 
     /**
+     * Injects the tenant identifier into this transfer process.
+     * Called after loading from DB or event, when tenant context is not available via TenantContextHolder.
+     *
+     * @param tenantId the tenant identifier to set
+     */
+    public void injectTenantId(String tenantId) {
+        this.tenantId = tenantId;
+    }
+
+    /**
      * Create new TransferProcess from origin, with new TransferState.<br>
      * Used to update state when transition happens.
      *
@@ -277,6 +298,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .role(this.role)
                 .datasetId(this.datasetId)
                 .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
@@ -309,6 +331,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .role(this.role)
                 .datasetId(this.datasetId)
                 .retryCount(retryCount)
+                .tenantId(this.tenantId)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)
@@ -341,6 +364,7 @@ public class TransferProcess extends AbstractTransferMessage {
                 .role(this.role)
                 .datasetId(this.datasetId)
                 .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)

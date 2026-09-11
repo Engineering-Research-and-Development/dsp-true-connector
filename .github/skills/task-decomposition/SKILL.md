@@ -171,7 +171,7 @@ Every created child issue, regardless of family, must also include:
 - **AI Model**
 - **Agent Mode**
 - **Agent Instructions**
-- **Verification Checklist** — covers only this task's own scope (per-task QA)
+- **Verification Checklist** — covers only this task's own scope (per-task QA); must always include a GitHub Actions item: `[ ] All GitHub Actions CI checks pass on the PR (verified via gh pr checks)`
 
 ### Slice-level QA task — `.github/ISSUE_TEMPLATE/qa-task.yml`
 
@@ -183,7 +183,7 @@ Every created child issue, regardless of family, must also include:
 - **Delivery Stream & Parallelization**
 - **Type / Priority / Milestone** — Type `test`
 - **AI Model / Agent Mode / Agent Instructions** — must state that this task's implementation is *running the Verification Checklist*, adding durable automated QA coverage where the task explicitly calls for it, and otherwise not writing product code
-- **Verification Checklist** — deterministic slice-level end-to-end pass/fail items; `[manual]` prefix where automation is not possible (e.g. Postman collection walkthroughs); prefer existing repo commands (`mvn clean verify`, TCK profile run, SpotBugs scan); include explicit items for adding/updating durable integration coverage and running that targeted suite whenever practical for the slice
+- **Verification Checklist** — deterministic slice-level end-to-end pass/fail items; `[manual]` prefix where automation is not possible (e.g. Postman collection walkthroughs); prefer existing repo commands (`mvn clean verify`, TCK profile run, SpotBugs scan); include explicit items for adding/updating durable integration coverage and running that targeted suite whenever practical for the slice; always include `[ ] All GitHub Actions CI checks pass on the PR (verified via gh pr checks)`
 
 ### Slice-level documentation task — `.github/ISSUE_TEMPLATE/docs-task.yml`
 

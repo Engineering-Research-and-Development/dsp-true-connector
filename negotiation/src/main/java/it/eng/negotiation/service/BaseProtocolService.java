@@ -12,9 +12,11 @@ import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantContextHolder;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 public abstract class BaseProtocolService {
 
@@ -36,18 +38,21 @@ public abstract class BaseProtocolService {
     }
 
     protected ContractNegotiation findContractNegotiationByPids(String consumerPid, String providerPid) {
-        return contractNegotiationRepository.findByProviderPidAndConsumerPid(providerPid, consumerPid)
-                .orElseThrow(() -> {
-                    publisher.publishEvent(AuditEvent.Builder.newInstance()
-                            .eventType(AuditEventType.PROTOCOL_NEGOTIATION_NOT_FOUND)
-                            .description("Contract negotiation not found")
-                            .details(Map.of("consumerPid", consumerPid,
-                                    "providerPid", providerPid))
-                            .build());
-                    return new ContractNegotiationNotFoundException(
-                            "Contract negotiation with providerPid " + providerPid +
-                                    " and consumerPid " + consumerPid + " not found", consumerPid, providerPid);
-                });
+        String tenantId = TenantContextHolder.getTenantId();
+        Optional<ContractNegotiation> found = tenantId != null
+                ? contractNegotiationRepository.findByProviderPidAndConsumerPidAndTenantId(providerPid, consumerPid, tenantId)
+                : contractNegotiationRepository.findByProviderPidAndConsumerPid(providerPid, consumerPid);
+        return found.orElseThrow(() -> {
+            publisher.publishEvent(AuditEvent.Builder.newInstance()
+                    .eventType(AuditEventType.PROTOCOL_NEGOTIATION_NOT_FOUND)
+                    .description("Contract negotiation not found")
+                    .details(Map.of("consumerPid", consumerPid,
+                            "providerPid", providerPid))
+                    .build());
+            return new ContractNegotiationNotFoundException(
+                    "Contract negotiation with providerPid " + providerPid +
+                            " and consumerPid " + consumerPid + " not found", consumerPid, providerPid);
+        });
     }
 
     protected void stateTransitionCheck(ContractNegotiationState newState, ContractNegotiation contractNegotiation) {
@@ -66,36 +71,41 @@ public abstract class BaseProtocolService {
     }
 
     protected void checkIfContractNegotiationExists(String consumerPid, String providerPid) {
-        contractNegotiationRepository
-                .findByProviderPidAndConsumerPid(providerPid, consumerPid)
-                .ifPresent(cn -> {
-                    Map<String, Object> details = new HashMap<>();
-                    if (providerPid != null) {
-                        details.put("providerPid", providerPid);
-                    }
-                    if (consumerPid != null) {
-                        details.put("consumerPid", consumerPid);
-                    }
-                    publisher.publishEvent(AuditEvent.Builder.newInstance()
-                            .eventType(AuditEventType.PROTOCOL_NEGOTIATION_CONTRACT_NEGOTIATION)
-                            .description("Contract negotiation already exists")
-                            .details(details)
-                            .build());
-                    throw new ContractNegotiationExistsException("Contract negotiation with providerPid " + cn.getProviderPid() +
-                            " and consumerPid " + cn.getConsumerPid() + " already exists");
-                });
+        String tenantId = TenantContextHolder.getTenantId();
+        Optional<ContractNegotiation> existing = tenantId != null
+                ? contractNegotiationRepository.findByProviderPidAndConsumerPidAndTenantId(providerPid, consumerPid, tenantId)
+                : contractNegotiationRepository.findByProviderPidAndConsumerPid(providerPid, consumerPid);
+        existing.ifPresent(cn -> {
+            Map<String, Object> details = new HashMap<>();
+            if (providerPid != null) {
+                details.put("providerPid", providerPid);
+            }
+            if (consumerPid != null) {
+                details.put("consumerPid", consumerPid);
+            }
+            publisher.publishEvent(AuditEvent.Builder.newInstance()
+                    .eventType(AuditEventType.PROTOCOL_NEGOTIATION_CONTRACT_NEGOTIATION)
+                    .description("Contract negotiation already exists")
+                    .details(details)
+                    .build());
+            throw new ContractNegotiationExistsException("Contract negotiation with providerPid " + cn.getProviderPid() +
+                    " and consumerPid " + cn.getConsumerPid() + " already exists");
+        });
     }
 
     protected ContractNegotiation findContractNegotiationById(String contractNegotiationId) {
-        return contractNegotiationRepository.findById(contractNegotiationId)
-                .orElseThrow(() -> {
-                    publisher.publishEvent(AuditEvent.Builder.newInstance()
-                            .eventType(AuditEventType.PROTOCOL_NEGOTIATION_NOT_FOUND)
-                            .description("Contract negotiation not found")
-                            .details(Map.of("contractNegotiationId", contractNegotiationId))
-                            .build());
-                    return new ContractNegotiationNotFoundException("Contract negotiation with id " + contractNegotiationId + " not found");
-                });
+        String tenantId = TenantContextHolder.getTenantId();
+        Optional<ContractNegotiation> found = tenantId != null
+                ? contractNegotiationRepository.findByIdAndTenantId(contractNegotiationId, tenantId)
+                : contractNegotiationRepository.findById(contractNegotiationId);
+        return found.orElseThrow(() -> {
+            publisher.publishEvent(AuditEvent.Builder.newInstance()
+                    .eventType(AuditEventType.PROTOCOL_NEGOTIATION_NOT_FOUND)
+                    .description("Contract negotiation not found")
+                    .details(Map.of("contractNegotiationId", contractNegotiationId))
+                    .build());
+            return new ContractNegotiationNotFoundException("Contract negotiation with id " + contractNegotiationId + " not found");
+        });
     }
 
 }

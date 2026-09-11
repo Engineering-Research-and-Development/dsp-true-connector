@@ -8,6 +8,7 @@ import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.FieldEncryptionService;
+import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.util.ToolsUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -20,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -42,6 +44,8 @@ public class HttpPushTransferStrategyTest {
     private S3ClientService s3ClientService;
     @Mock
     private FieldEncryptionService fieldEncryptionService;
+    @Mock
+    private TenantBucketResolver tenantBucketResolver;
     @Mock
     private HttpURLConnection mockConnection;
 
@@ -73,9 +77,10 @@ public class HttpPushTransferStrategyTest {
     @BeforeEach
     void setUp() {
         // Runnable::run is a valid Executor that executes tasks on the calling thread
-        strategy = new HttpPushTransferStrategy(s3Properties, s3ClientService, Runnable::run, fieldEncryptionService);
+        strategy = new HttpPushTransferStrategy(s3Properties, s3ClientService, Runnable::run, fieldEncryptionService, tenantBucketResolver);
         // Return the decrypted value for any encrypted secret key used in tests
         lenient().when(fieldEncryptionService.decrypt(TEST_ENCRYPTED_SECRET_KEY)).thenReturn(TEST_SECRET_KEY);
+        lenient().when(tenantBucketResolver.resolveBucketName(any())).thenReturn(TEST_BUCKET);
     }
 
     @Test
@@ -137,7 +142,6 @@ public class HttpPushTransferStrategyTest {
                 .format(DataTransferFormat.HTTP_PUSH.format())
                 .build();
 
-        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
         when(s3ClientService.generateGetPresignedUrl(eq(TEST_BUCKET), eq(TEST_DATASET_ID), any()))
                 .thenReturn("http://presigned-url");
 
@@ -176,7 +180,6 @@ public class HttpPushTransferStrategyTest {
         // Arrange
         TransferProcess transferProcess = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED;
 
-        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
         when(s3ClientService.generateGetPresignedUrl(eq(TEST_BUCKET), eq(DataTransferMockObjectUtil.DATASET_ID), any()))
                 .thenReturn("http://presigned-url");
 
@@ -196,9 +199,9 @@ public class HttpPushTransferStrategyTest {
     @DisplayName("Should set dynamic read timeout when Content-Length is known")
     void transfer_dynamicReadTimeoutApplied_whenContentLengthKnown() throws Exception {
         // Arrange
-        String consumerPid = it.eng.tools.util.ToolsUtil.generateUniqueId();
-        String providerPid = it.eng.tools.util.ToolsUtil.generateUniqueId();
-        String transferProcessId = it.eng.tools.util.ToolsUtil.generateUniqueId();
+        String consumerPid = ToolsUtil.generateUniqueId();
+        String providerPid = ToolsUtil.generateUniqueId();
+        String transferProcessId = ToolsUtil.generateUniqueId();
 
         List<EndpointProperty> endpointProperties = List.of(
                 EndpointProperty.Builder.newInstance().name(S3Utils.BUCKET_NAME).value(TEST_BUCKET).build(),
@@ -221,7 +224,6 @@ public class HttpPushTransferStrategyTest {
                 .format(DataTransferFormat.HTTP_PUSH.format())
                 .build();
 
-        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
         when(s3ClientService.generateGetPresignedUrl(eq(TEST_BUCKET), eq(TEST_DATASET_ID), any()))
                 .thenReturn("http://presigned-url");
         when(s3ClientService.uploadFile(any(InputStream.class), any(Map.class), anyString(), anyString()))
@@ -265,9 +267,9 @@ public class HttpPushTransferStrategyTest {
 
         DataAddress dataAddress = DataAddress.Builder.newInstance().endpointProperties(endpointProperties).build();
         TransferProcess transferProcess = TransferProcess.Builder.newInstance()
-                .id(it.eng.tools.util.ToolsUtil.generateUniqueId())
-                .consumerPid(it.eng.tools.util.ToolsUtil.generateUniqueId())
-                .providerPid(it.eng.tools.util.ToolsUtil.generateUniqueId())
+                .id(ToolsUtil.generateUniqueId())
+                .consumerPid(ToolsUtil.generateUniqueId())
+                .providerPid(ToolsUtil.generateUniqueId())
                 .role(IConstants.ROLE_PROVIDER)
                 .dataAddress(dataAddress)
                 .datasetId(TEST_DATASET_ID)
@@ -275,7 +277,6 @@ public class HttpPushTransferStrategyTest {
                 .format(DataTransferFormat.HTTP_PUSH.format())
                 .build();
 
-        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
         when(s3ClientService.generateGetPresignedUrl(eq(TEST_BUCKET), eq(TEST_DATASET_ID), any()))
                 .thenReturn("http://presigned-url");
         when(s3ClientService.uploadFile(any(InputStream.class), any(Map.class), anyString(), anyString()))
@@ -317,9 +318,9 @@ public class HttpPushTransferStrategyTest {
 
         DataAddress dataAddress = DataAddress.Builder.newInstance().endpointProperties(endpointProperties).build();
         TransferProcess transferProcess = TransferProcess.Builder.newInstance()
-                .id(it.eng.tools.util.ToolsUtil.generateUniqueId())
-                .consumerPid(it.eng.tools.util.ToolsUtil.generateUniqueId())
-                .providerPid(it.eng.tools.util.ToolsUtil.generateUniqueId())
+                .id(ToolsUtil.generateUniqueId())
+                .consumerPid(ToolsUtil.generateUniqueId())
+                .providerPid(ToolsUtil.generateUniqueId())
                 .role(IConstants.ROLE_PROVIDER)
                 .dataAddress(dataAddress)
                 .datasetId(TEST_DATASET_ID)
@@ -327,14 +328,13 @@ public class HttpPushTransferStrategyTest {
                 .format(DataTransferFormat.HTTP_PUSH.format())
                 .build();
 
-        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
         when(s3ClientService.generateGetPresignedUrl(eq(TEST_BUCKET), eq(TEST_DATASET_ID), any()))
                 .thenReturn("http://presigned-url");
 
         try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
                 (mock, context) -> when(mock.openConnection()).thenReturn(mockConnection))) {
 
-            when(mockConnection.getResponseCode()).thenThrow(new java.io.IOException("Connection refused"));
+            when(mockConnection.getResponseCode()).thenThrow(new IOException("Connection refused"));
 
             // Act & Assert — supplyAsync wraps thrown exceptions in CompletionException on .join()
             var ex = assertThrows(CompletionException.class,

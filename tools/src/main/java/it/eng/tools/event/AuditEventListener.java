@@ -87,6 +87,7 @@ public class AuditEventListener {
                 .details(sanitized)
                 .source(event.getSource())
                 .ipAddress(event.getIpAddress())
+                .tenantId(event.getTenantId())
                 .build();
     }
 }

@@ -19,7 +19,7 @@ public class InitializeTransferProcessTest {
         String role = EventTestUtil.TEST_ROLE;
         
         InitializeTransferProcess event = new InitializeTransferProcess(
-            callbackAddress, agreementId, datasetId, role);
+            callbackAddress, agreementId, datasetId, role, "engineering");
         
         assertNotNull(event);
         assertEquals(callbackAddress, event.getCallbackAddress());

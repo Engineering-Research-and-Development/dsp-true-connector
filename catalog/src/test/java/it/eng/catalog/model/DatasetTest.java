@@ -99,6 +99,12 @@ public class DatasetTest {
         Dataset dataset = CatalogMockObjectUtil.DATASET;
         String ss = CatalogSerializer.serializeProtocol(dataset);
         Dataset dataset2 = CatalogSerializer.deserializeProtocol(ss, Dataset.class);
+
+        // protocol serialization does not include tenantId, so we need to remove it from the original dataset before comparison
+        dataset.injectTenantId(null);
+        dataset.getDistribution().forEach(distribution -> distribution.injectTenantId(null));
+        dataset.getDistribution().forEach(distribution -> distribution.getAccessService().injectTenantId(null));
+
         assertThat(dataset).usingRecursiveComparison().isEqualTo(dataset2);
     }
 

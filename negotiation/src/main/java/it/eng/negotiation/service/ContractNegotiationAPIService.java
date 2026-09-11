@@ -19,6 +19,7 @@ import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.util.CredentialUtils;
 import it.eng.tools.util.ToolsUtil;
 import jakarta.validation.ValidationException;
@@ -32,7 +33,6 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 @Slf4j
@@ -71,6 +71,17 @@ public class ContractNegotiationAPIService {
      * @return ContractNegotiation
      */
     public ContractNegotiation findContractNegotiationById(String contractNegotiationId) {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            return contractNegotiationRepository.findByIdAndTenantId(contractNegotiationId, tenantId)
+                    .orElseThrow(() -> {
+                        auditEventPublisher.publishEvent(AuditEventType.PROTOCOL_NEGOTIATION_NOT_FOUND,
+                                "Contract negotiation not found",
+                                Map.of("contractNegotiationId", contractNegotiationId,
+                                        "role", IConstants.ROLE_API));
+                        return new ContractNegotiationAPIException("Contract negotiation with id " + contractNegotiationId + " not found");
+                    });
+        }
         return contractNegotiationRepository.findById(contractNegotiationId)
                 .orElseThrow(() -> {
                     auditEventPublisher.publishEvent(AuditEventType.PROTOCOL_NEGOTIATION_NOT_FOUND,
@@ -113,7 +124,7 @@ public class ContractNegotiationAPIService {
                 .build();
 
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(ContractNegotiationCallback.getInitialNegotiationRequestURL(forwardTo),
-                NegotiationSerializer.serializeProtocolJsonNode(contractRequestMessage), credentialUtils.getConnectorCredentials());
+                NegotiationSerializer.serializeProtocolJsonNode(contractRequestMessage), credentialUtils::getConnectorCredentials);
         log.info("Response received {}", response);
         ContractNegotiation contractNegotiationWithOffer;
         if (response.isSuccess()) {
@@ -142,6 +153,10 @@ public class ContractNegotiationAPIService {
                         .role(IConstants.ROLE_CONSUMER)
                         .offer(offerWithOriginalId)
                         .build();
+                String tenantIdReq = TenantContextHolder.getTenantId();
+                if (tenantIdReq != null) {
+                    contractNegotiationWithOffer.injectTenantId(tenantIdReq);
+                }
                 contractNegotiationRepository.save(contractNegotiationWithOffer);
                 log.info("Contract negotiation {} saved", contractNegotiationWithOffer.getId());
                 auditEventPublisher.publishEvent(
@@ -212,12 +227,14 @@ public class ContractNegotiationAPIService {
                 .consumerPid(existingContractNegotiation.getConsumerPid())
                 .providerPid(existingContractNegotiation.getProviderPid())
                 .offer(offerWithoutOriginalId)
+//                TODO commented out because of dsp-tck CN_C:01-02
+                .callbackAddress(properties.consumerCallbackAddress())
                 .build();
 
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
                 ContractNegotiationCallback.getNegotiationRequestURL(existingContractNegotiation.getCallbackAddress(), existingContractNegotiation.getProviderPid()),
                 NegotiationSerializer.serializeProtocolJsonNode(contractRequestMessage),
-                credentialUtils.getConnectorCredentials());
+                credentialUtils::getConnectorCredentials);
         log.info("Response received {}", response);
         ContractNegotiation contractNegotiationWithOffer;
         if (response.isSuccess()) {
@@ -247,6 +264,7 @@ public class ContractNegotiationAPIService {
                         .role(IConstants.ROLE_CONSUMER)
                         .offer(offerWithOriginalId)
                         .agreement(existingContractNegotiation.getAgreement())
+                        .tenantId(existingContractNegotiation.getTenantId())
                         .created(existingContractNegotiation.getCreated())
                         .createdBy(existingContractNegotiation.getCreatedBy())
                         .version(existingContractNegotiation.getVersion())
@@ -322,7 +340,7 @@ public class ContractNegotiationAPIService {
                 .build();
 
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(ContractNegotiationCallback.getInitialOfferCallback(forwardTo),
-                NegotiationSerializer.serializeProtocolJsonNode(contractOfferMessage), credentialUtils.getConnectorCredentials());
+                NegotiationSerializer.serializeProtocolJsonNode(contractOfferMessage), credentialUtils::getConnectorCredentials);
         log.info("Response received {}", response);
         ContractNegotiation contractNegotiationWithOffer;
         if (response.isSuccess()) {
@@ -344,12 +362,16 @@ public class ContractNegotiationAPIService {
                         .id(contractNegotiationFromResponse.getId())
                         .consumerPid(contractNegotiationFromResponse.getConsumerPid())
                         .providerPid(contractNegotiationFromResponse.getProviderPid())
-                        .callbackAddress(forwardTo)
+//                        .callbackAddress(forwardTo)
                         .assigner(updatedOffer.getAssigner())
                         .state(contractNegotiationFromResponse.getState())
                         .role(IConstants.ROLE_PROVIDER)
                         .offer(updatedOffer)
                         .build();
+                String tenantIdOffer = TenantContextHolder.getTenantId();
+                if (tenantIdOffer != null) {
+                    contractNegotiationWithOffer.injectTenantId(tenantIdOffer);
+                }
                 contractNegotiationRepository.save(contractNegotiationWithOffer);
                 log.info("Contract negotiation {} saved", contractNegotiationWithOffer.getId());
                 auditEventPublisher.publishEvent(
@@ -424,7 +446,7 @@ public class ContractNegotiationAPIService {
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
                 ContractNegotiationCallback.getConsumerOffersCallback(existingContractNegotiation.getCallbackAddress(), existingContractNegotiation.getConsumerPid()),
                 NegotiationSerializer.serializeProtocolJsonNode(contractOfferMessage),
-                credentialUtils.getConnectorCredentials());
+                credentialUtils::getConnectorCredentials);
         log.info("Response received {}", response);
         ContractNegotiation contractNegotiationWithOffer;
         if (response.isSuccess()) {
@@ -453,6 +475,7 @@ public class ContractNegotiationAPIService {
                         .role(IConstants.ROLE_PROVIDER)
                         .offer(updatedOffer)
                         .agreement(existingContractNegotiation.getAgreement())
+                        .tenantId(existingContractNegotiation.getTenantId())
                         .created(existingContractNegotiation.getCreated())
                         .createdBy(existingContractNegotiation.getCreatedBy())
                         .version(existingContractNegotiation.getVersion())
@@ -529,18 +552,19 @@ public class ContractNegotiationAPIService {
 
         log.info("Sending ContractNegotiationEventMessage.FINALIZED to {}", callbackAddress);
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(callbackAddress,
-                NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationEventMessage), credentialUtils.getConnectorCredentials());
+                NegotiationSerializer.serializeProtocolJsonNode(contractNegotiationEventMessage), credentialUtils::getConnectorCredentials);
 
         if (response.isSuccess()) {
             ContractNegotiation contractNegotiationFinalized = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.FINALIZED);
             contractNegotiationRepository.save(contractNegotiationFinalized);
             // TODO remove this line once api/getArtifact is implemented on consumer side
-            policyAdministrationPoint.createPolicyEnforcement(contractNegotiation.getAgreement().getId());
+            policyAdministrationPoint.createPolicyEnforcement(contractNegotiation.getAgreement().getId(), contractNegotiation.getTenantId());
             auditEventPublisher.publishEvent(new InitializeTransferProcess(
                     contractNegotiationFinalized.getCallbackAddress(),
                     contractNegotiationFinalized.getAgreement().getId(),
                     contractNegotiationFinalized.getAgreement().getTarget(),
-                    contractNegotiationFinalized.getRole()
+                    contractNegotiationFinalized.getRole(),
+                    contractNegotiationFinalized.getTenantId()
             ));
             auditEventPublisher.publishEvent(
                     AuditEventType.PROTOCOL_NEGOTIATION_FINALIZED,
@@ -585,7 +609,7 @@ public class ContractNegotiationAPIService {
         GenericApiResponse<String> response = okHttpRestClient
                 .sendRequestProtocol(ContractNegotiationCallback.getContractEventsCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getProviderPid()),
                         NegotiationSerializer.serializeProtocolJsonNode(eventMessageAccepted),
-                        credentialUtils.getConnectorCredentials());
+                        credentialUtils::getConnectorCredentials);
         log.info("Response received {}", response);
         if (response.isSuccess()) {
             ContractNegotiation contractNegotiationAccepted = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.ACCEPTED);
@@ -634,11 +658,15 @@ public class ContractNegotiationAPIService {
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
                 ContractNegotiationCallback.getContractAgreementCallback(contractNegotiation.getCallbackAddress(),contractNegotiation.getConsumerPid()),
                 NegotiationSerializer.serializeProtocolJsonNode(agreementMessage),
-                credentialUtils.getConnectorCredentials());
+                credentialUtils::getConnectorCredentials);
         if (response.isSuccess()) {
             log.info("Updating status for negotiation {} to agreed", contractNegotiation.getId());
-            log.info("Saving agreement...{}", agreementMessage.getAgreement().getId());
-            agreementRepository.save(agreementMessage.getAgreement());
+            log.info("Saving agreement...DSP ID: {}", agreementMessage.getAgreement().getId());
+            Agreement agreementToSave = agreementMessage.getAgreement();
+            if (contractNegotiation.getTenantId() != null) {
+                agreementToSave.injectTenantId(contractNegotiation.getTenantId());
+            }
+            agreementRepository.save(agreementToSave);
 
             ContractNegotiation contractNegotiationAgreed = ContractNegotiation.Builder.newInstance()
                     .id(contractNegotiation.getId())
@@ -649,7 +677,8 @@ public class ContractNegotiationAPIService {
                     .state(ContractNegotiationState.AGREED)
                     .role(contractNegotiation.getRole())
                     .offer(contractNegotiation.getOffer())
-                    .agreement(agreementMessage.getAgreement())
+                    .agreement(agreementToSave)
+                    .tenantId(contractNegotiation.getTenantId())
                     .created(contractNegotiation.getCreated())
                     .createdBy(contractNegotiation.getCreatedBy())
                     .modified(contractNegotiation.getModified())
@@ -664,7 +693,7 @@ public class ContractNegotiationAPIService {
                     AuditEventType.PROTOCOL_NEGOTIATION_AGREED,
                     "Contract negotiation agreed",
                     Map.of("contractNegotiation", contractNegotiationAgreed,
-                            "agreement", agreementMessage.getAgreement(),
+                            "agreement", agreementToSave,
                             "consumerPid", contractNegotiationAgreed.getConsumerPid(),
                             "providerPid", contractNegotiationAgreed.getProviderPid(),
                             "role", IConstants.ROLE_API));
@@ -705,7 +734,7 @@ public class ContractNegotiationAPIService {
         log.info("Sending verification message to provider to {}", callbackAddress);
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(callbackAddress,
                 NegotiationSerializer.serializeProtocolJsonNode(verificationMessage),
-                credentialUtils.getConnectorCredentials());
+                credentialUtils::getConnectorCredentials);
 
         if (response.isSuccess()) {
             log.info("Updating status for negotiation {} to verified", contractNegotiation.getId());
@@ -781,7 +810,7 @@ public class ContractNegotiationAPIService {
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
                 address,
                 NegotiationSerializer.serializeProtocolJsonNode(negotiationTerminatedEventMessage),
-                credentialUtils.getConnectorCredentials());
+                credentialUtils::getConnectorCredentials);
         if (response.isSuccess()) {
             log.info("Updating status for negotiation {} to terminated", contractNegotiation.getId());
             ContractNegotiation contractNegotiationTerminated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.TERMINATED);

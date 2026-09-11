@@ -11,4 +11,6 @@ import it.eng.negotiation.model.PolicyEnforcement;
 public interface PolicyEnforcementRepository extends MongoRepository<PolicyEnforcement, String> {
 
 	Optional<PolicyEnforcement> findByAgreementId(String agreementId);
+
+	Optional<PolicyEnforcement> findByAgreementIdAndTenantId(String agreementId, String tenantId);
 }

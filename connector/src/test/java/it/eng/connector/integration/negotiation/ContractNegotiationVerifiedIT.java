@@ -17,7 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
-import java.util.Arrays;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -28,6 +28,7 @@ public class ContractNegotiationVerifiedIT extends BaseIntegrationTest {
 //@PostMapping(path = "/{providerPid}/agreement/verification")
 //Provider must return an HTTP code 200 (OK). The response body is not specified and clients are not required to process it.
 //AGREED->VERIFIED
+
 
     @Autowired
     private ContractNegotiationRepository contractNegotiationRepository;
@@ -49,7 +50,7 @@ public class ContractNegotiationVerifiedIT extends BaseIntegrationTest {
 
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
-                .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                .constraint(Collections.singletonList(Constraint.Builder.newInstance()
                         .leftOperand(LeftOperand.COUNT)
                         .operator(Operator.LTEQ)
                         .rightOperand("5")
@@ -57,7 +58,7 @@ public class ContractNegotiationVerifiedIT extends BaseIntegrationTest {
                 .build();
 
         Offer offer = Offer.Builder.newInstance()
-                .permission(Arrays.asList(permission))
+                .permission(Collections.singletonList(permission))
                 .originalId(CatalogMockObjectUtil.OFFER.getId())
                 .target("test_dataset")
                 .assigner("assigner")
@@ -68,7 +69,7 @@ public class ContractNegotiationVerifiedIT extends BaseIntegrationTest {
                 .assignee("assignee")
                 .assigner("assigner")
                 .target("test_dataset")
-                .permission(Arrays.asList(permission))
+                .permission(Collections.singletonList(permission))
                 .build();
         agreementRepository.save(agreement);
 
@@ -81,6 +82,7 @@ public class ContractNegotiationVerifiedIT extends BaseIntegrationTest {
                 .state(ContractNegotiationState.AGREED)
                 .role(IConstants.ROLE_CONSUMER)
                 .build();
+        contractNegotiationVerified.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(contractNegotiationVerified);
 
         ContractAgreementVerificationMessage verificationMessage = ContractAgreementVerificationMessage.Builder
@@ -90,7 +92,7 @@ public class ContractNegotiationVerifiedIT extends BaseIntegrationTest {
                 .build();
 
         final ResultActions result = mockMvc
-                .perform(post("/negotiations/" + contractNegotiationVerified.getProviderPid() + "/agreement/verification")
+                .perform(post("/" + TENANT_ID + "/negotiations/" + contractNegotiationVerified.getProviderPid() + "/agreement/verification")
                         .content(NegotiationSerializer.serializeProtocol(verificationMessage))
                         .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isOk());
@@ -114,6 +116,7 @@ public class ContractNegotiationVerifiedIT extends BaseIntegrationTest {
                 .state(ContractNegotiationState.REQUESTED)
                 .role(IConstants.ROLE_CONSUMER)
                 .build();
+        contractNegotiationVerified.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(contractNegotiationVerified);
 
         ContractAgreementVerificationMessage verificationMessage = ContractAgreementVerificationMessage.Builder
@@ -123,7 +126,7 @@ public class ContractNegotiationVerifiedIT extends BaseIntegrationTest {
                 .build();
 
         final ResultActions result = mockMvc
-                .perform(post("/negotiations/" + contractNegotiationVerified.getProviderPid() + "/agreement/verification")
+                .perform(post("/" + TENANT_ID + "/negotiations/" + contractNegotiationVerified.getProviderPid() + "/agreement/verification")
                         .content(NegotiationSerializer.serializeProtocol(verificationMessage))
                         .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());
@@ -139,7 +142,7 @@ public class ContractNegotiationVerifiedIT extends BaseIntegrationTest {
                 .build();
 
         final ResultActions result = mockMvc
-                .perform(post("/negotiations/" + verificationMessage.getProviderPid() + "/agreement/verification")
+                .perform(post("/" + TENANT_ID + "/negotiations/" + verificationMessage.getProviderPid() + "/agreement/verification")
                         .content(NegotiationSerializer.serializeProtocol(verificationMessage))
                         .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isNotFound());

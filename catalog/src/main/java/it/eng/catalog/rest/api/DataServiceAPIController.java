@@ -25,7 +25,7 @@ public class DataServiceAPIController {
     }
 
     @GetMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<JsonNode>> getDataServiceById(@PathVariable("id") String id) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> getDataServiceById(@PathVariable String id) {
         log.info("Fetching data service with id: '" + id + "'");
         DataService dataService = dataServiceService.getDataServiceById(id);
 
@@ -55,7 +55,7 @@ public class DataServiceAPIController {
     }
 
     @DeleteMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<Void>> deleteDataService(@PathVariable("id") String id) {
+    public ResponseEntity<GenericApiResponse<Void>> deleteDataService(@PathVariable String id) {
         log.info("Deleting data service with id: " + id);
 
         dataServiceService.deleteDataService(id);
@@ -65,7 +65,7 @@ public class DataServiceAPIController {
     }
 
     @PutMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<JsonNode>> updateDataService(@PathVariable("id") String id, @RequestBody String dataService) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> updateDataService(@PathVariable String id, @RequestBody String dataService) {
         DataService ds = CatalogSerializer.deserializePlain(dataService, DataService.class);
 
         log.info("Updating data service with id: " + id);

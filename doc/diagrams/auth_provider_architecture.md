@@ -221,15 +221,15 @@ connector/src/main/java/it/eng/connector/configuration/
                │    /connector/**→ROLE_CONNECTOR│
                │    /catalog/**  → ROLE_CONNECTOR│
                └───────────────────────────────┘
-                               │
+                              │
                ┌──────────────┴──────────────┐
                ▼ Authorized                  ▼ Unauthorized
 ┌─────────────────────────┐   ┌──────────────────────────────┐
 │ Controller Method       │   │ AuthenticationEntryPoint     │
 │ Handle request          │   │ → DataspaceProtocol          │
 │ Return response         │   │   ExceptionHandler           │
-└─────────────────────────┘   │ → DSP-format 401 JSON body  │
-                               └──────────────────────────────┘
+└─────────────────────────┘   │ → DSP-format 401 JSON body   │
+                              └──────────────────────────────┘
 ```
 
 ---

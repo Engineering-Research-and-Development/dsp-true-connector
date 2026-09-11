@@ -6,7 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,7 +42,7 @@ public class DistributionAPIControllerTest {
         verify(distributionService).getDistributionById(CatalogMockObjectUtil.DISTRIBUTION.getId());
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertTrue(StringUtils.contains(response.getBody().toString(), CatalogMockObjectUtil.DISTRIBUTION.getType()));
+        assertTrue(Strings.CS.contains(response.getBody().toString(), CatalogMockObjectUtil.DISTRIBUTION.getType()));
     }
 
     @Test
@@ -54,7 +54,7 @@ public class DistributionAPIControllerTest {
         verify(distributionService).getAllDistributions();
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertTrue(StringUtils.contains(response.getBody().toString(), CatalogMockObjectUtil.DISTRIBUTION.getType()));
+        assertTrue(Strings.CS.contains(response.getBody().toString(), CatalogMockObjectUtil.DISTRIBUTION.getType()));
     }
 
     @Test
@@ -68,7 +68,7 @@ public class DistributionAPIControllerTest {
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertNotNull(response.getBody());
-        assertTrue(StringUtils.contains(response.getBody().getData().get("type").toString(), CatalogMockObjectUtil.DISTRIBUTION.getType()));
+        assertTrue(Strings.CS.contains(response.getBody().getData().get("type").toString(), CatalogMockObjectUtil.DISTRIBUTION.getType()));
     }
 
     @Test
@@ -78,7 +78,7 @@ public class DistributionAPIControllerTest {
 
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
-        assertTrue(StringUtils.contains(response.getBody().getMessage(), "Distribution deleted successfully"));
+        assertTrue(Strings.CS.contains(response.getBody().getMessage(), "Distribution deleted successfully"));
     }
 
     @Test
@@ -92,7 +92,7 @@ public class DistributionAPIControllerTest {
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertNotNull(response.getBody());
-        assertTrue(StringUtils.contains(response.getBody().getData().get("type").toString(), CatalogMockObjectUtil.DISTRIBUTION.getType()));
+        assertTrue(Strings.CS.contains(response.getBody().getData().get("type").toString(), CatalogMockObjectUtil.DISTRIBUTION.getType()));
 
     }
 }

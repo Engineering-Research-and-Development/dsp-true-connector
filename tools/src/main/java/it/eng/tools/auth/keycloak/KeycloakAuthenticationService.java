@@ -47,10 +47,11 @@ public class KeycloakAuthenticationService implements AuthProvider {
     /**
      * Fetches an access token from Keycloak using client credentials flow.
      *
+     * @param role the role for which the token is requested
      * @return the access token, or null if the request fails
      */
     @Override
-    public String fetchToken() {
+    public String fetchToken(String role) {
         String token = null;
         Response tokenResponse = null;
         try {

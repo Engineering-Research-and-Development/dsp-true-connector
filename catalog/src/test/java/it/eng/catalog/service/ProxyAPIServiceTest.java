@@ -17,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -58,8 +59,7 @@ class ProxyAPIServiceTest {
 	@Test
 	@DisplayName("Get formats fail")
 	void getFormatsFromDataset_fail() {
-		when(credentialUtils.getConnectorCredentials()).thenReturn("ABC");
-		when(okHttpClient.sendRequestProtocol(anyString(), any(JsonNode.class), anyString()))
+		when(okHttpClient.sendRequestProtocol(anyString(), any(JsonNode.class), any(Supplier.class)))
 				.thenReturn(genericApiResponse);
 		when(genericApiResponse.isSuccess()).thenReturn(false);
 		when(genericApiResponse.getData())
@@ -78,8 +78,7 @@ class ProxyAPIServiceTest {
 	}
 
 	private void mockCatalogCall() {
-		when(credentialUtils.getConnectorCredentials()).thenReturn("ABC");
-		when(okHttpClient.sendRequestProtocol(anyString(), any(JsonNode.class), anyString()))
+		when(okHttpClient.sendRequestProtocol(anyString(), any(JsonNode.class), any(Supplier.class)))
 				.thenReturn(genericApiResponse);
 		when(genericApiResponse.isSuccess()).thenReturn(true);
 		when(genericApiResponse.getData()).thenReturn(CatalogSerializer.serializeProtocol(catalog));

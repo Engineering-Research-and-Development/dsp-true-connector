@@ -7,6 +7,7 @@ import it.eng.tools.model.IConstants;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.service.TenantBucketResolver;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +41,8 @@ public class HttpPullTransferStrategyTest {
     @Mock
     private S3ClientService s3ClientService;
     @Mock
+    private TenantBucketResolver tenantBucketResolver;
+    @Mock
     private HttpURLConnection mockConnection;
 
     private HttpPullTransferStrategy strategy;
@@ -62,7 +65,8 @@ public class HttpPullTransferStrategyTest {
     @BeforeEach
     void setUp() {
         // Runnable::run is a valid Executor that executes tasks on the calling thread
-        strategy = new HttpPullTransferStrategy(s3ClientService, s3Properties, Runnable::run);
+        strategy = new HttpPullTransferStrategy(s3ClientService, s3Properties, Runnable::run, tenantBucketResolver);
+        lenient().when(tenantBucketResolver.resolveBucketName(any())).thenReturn(TEST_BUCKET);
     }
 
     @Test
@@ -314,7 +318,6 @@ public class HttpPullTransferStrategyTest {
 
     private Map<String, String> mockS3Properties(String objectKey) {
         // Configure S3Properties mock
-        when(s3Properties.getBucketName()).thenReturn(TEST_BUCKET);
         when(s3Properties.getEndpoint()).thenReturn(TEST_ENDPOINT);
         when(s3Properties.getRegion()).thenReturn(TEST_REGION);
         when(s3Properties.getAccessKey()).thenReturn(TEST_ACCESS_KEY);
