@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] — Dashboard Metrics API
+## [0.7.1] — Dashboard Metrics API
 
 ### Added
 - Dashboard admin API endpoints for `/api/v1/dashboard/summary`, `/api/v1/dashboard/runtime`, `/api/v1/dashboard/negotiations`, `/api/v1/dashboard/transfers`, and `/api/v1/dashboard/events`.
@@ -25,6 +25,7 @@ All notable changes to this project will be documented in this file.
   - Aggregation pattern aligns with the already-correct implementation in `AuditEventMetricsService`.
   - Updated `doc/dashboard-metrics.md` with new "Metrics Aggregation Pattern" section explaining the per-tenant vs. super-admin distinction and showing implementation examples.
   - All 284 existing unit and integration tests pass; no regressions.
+
 
 ## [0.7.0] - 10.09.2026 - Multi-Tenant Support
 
@@ -52,12 +53,20 @@ All notable changes to this project will be documented in this file.
   - `BucketCredentialsService.saveBucketCredentials(...)` now carries forward the stored `@Version` on repeated writes to the same bucket, so sequential credential rotations update the existing document instead of failing on duplicate-key insert.
   - `TENANT_UPDATED` audit details now include `changeType` (`ORDINARY_UPDATE`, `CREDENTIALS_ROTATED`, `BUCKET_MIGRATED`).
   - Added unit and integration coverage for update-path reconfirm/migration/rotation flows, verification failures with no partial persistence, and double-rotation regression.
-
-## [0.7.0] - 10.07.2026 - Multi-Tenant Support
-
-- **Updated java from 17 to 21**
-
-### Added
+- **User Management API refactor**
+  - Replaced the single `UserDTO` request payload with dedicated, validation-enforced request models:
+    - `UserCreateRequest` — first name, last name, e-mail, password, and optional `tenantId`; role is inferred automatically (`ADMIN` when `tenantId` is present, `SUPER_ADMIN` otherwise).
+    - `UserUpdateRequest` — partial update of first name, last name, e-mail, password, and `enabled` flag (super-admin only).
+    - `UserNamesUpdateRequest` — self-service first/last name update.
+    - `UserPasswordUpdateRequest` — self-service password change with current-password verification.
+  - Added `UserCurrentUserResponse` for `GET /api/v1/users/me`, returning first name, last name, e-mail, `tenantId`, and role.
+  - Added `GET /api/v1/users/{id}` to retrieve a single user by technical id.
+  - Replaced `GET /api/v1/users/{email}` with paginated, filterable `GET /api/v1/users` supporting page, size, sort, and dynamic field filters; `CONNECTOR` service-account users are always excluded from results.
+  - Renamed `PUT /api/v1/users/{id}/update` to `PUT /api/v1/users/{id}/updateNames` and limited it to first/last name changes.
+  - `PUT /api/v1/users/{id}/password` now requires the current password in `password` and the new password in `newPassword`.
+  - `UserAPIController` (renamed from `UserApiController`) now returns HATEOAS paginated responses via `PlainUserAssembler` and `PagedResourcesAssembler`.
+  - Added `UserNotFoundException` and dedicated `UserAPIAdvice` for consistent 404 error mapping.
+  - Updated unit and integration tests (`UserServiceTest`, `UserAPIControllerTest`, `UserIT`) and removed the obsolete e-mail lookup tests from the Postman / Newman API suites.
 - **MT1 — Tenant & User Lifecycle Foundation**
   - `TenantService.saveTenant()` now auto-generates a **UUID** as the tenant ID; any caller-supplied `id` is ignored. `callbackAddress` is derived programmatically as `${application.callback.address}/{id}` — any caller-supplied `callbackAddress` is also ignored.
   - `UserDTO` has a new `tenantId` field. When provided, `UserService.createUser()` validates that the referenced tenant exists and is enabled before persisting the user; users are stored with their `tenantId` linked.
@@ -142,7 +151,12 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 - Removed redundant PathVariable name from controllers
-- 
+
+## [0.6.13-SNAPSHOT] - 22.07.2026.
+
+### Added
+- Apache2 license file to root directory.
+
 ## [0.6.12-SNAPSHOT] - 25.06.2026.
 
 ### Added

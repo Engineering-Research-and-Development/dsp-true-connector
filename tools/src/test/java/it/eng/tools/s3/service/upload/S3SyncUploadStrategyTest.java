@@ -68,7 +68,7 @@ public class S3SyncUploadStrategyTest {
         when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
                 .thenReturn(CreateMultipartUploadResponse.builder().uploadId(UPLOAD_ID).build());
 
-        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(RequestBody.class)))
                 .thenReturn(UploadPartResponse.builder().eTag(ETAG).build());
 
         when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
@@ -114,7 +114,7 @@ public class S3SyncUploadStrategyTest {
         when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
                 .thenReturn(CreateMultipartUploadResponse.builder().uploadId(UPLOAD_ID).build());
 
-        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+        lenient().when(s3Client.uploadPart(any(UploadPartRequest.class), any(RequestBody.class)))
                 .thenReturn(UploadPartResponse.builder().eTag(ETAG).build());
 
         when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))
@@ -142,7 +142,7 @@ public class S3SyncUploadStrategyTest {
         when(s3Client.createMultipartUpload(any(CreateMultipartUploadRequest.class)))
                 .thenReturn(CreateMultipartUploadResponse.builder().uploadId(UPLOAD_ID).build());
 
-        when(s3Client.uploadPart(any(UploadPartRequest.class), any(software.amazon.awssdk.core.sync.RequestBody.class)))
+        when(s3Client.uploadPart(any(UploadPartRequest.class), any(RequestBody.class)))
                 .thenReturn(UploadPartResponse.builder().eTag(ETAG).build());
 
         when(s3Client.completeMultipartUpload(any(CompleteMultipartUploadRequest.class)))

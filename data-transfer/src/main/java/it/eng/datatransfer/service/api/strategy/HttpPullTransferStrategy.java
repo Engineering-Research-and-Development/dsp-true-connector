@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 
+import javax.net.ssl.HttpsURLConnection;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -104,7 +105,7 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
                     connection.setRequestProperty(HttpHeaders.AUTHORIZATION, authorization);
                 }
 
-                if (connection instanceof javax.net.ssl.HttpsURLConnection) {
+                if (connection instanceof HttpsURLConnection) {
                     log.debug("Using HTTPS connection to: {}", presignedUrl);
                 } else {
                     log.debug("Using HTTP connection to: {}", presignedUrl);

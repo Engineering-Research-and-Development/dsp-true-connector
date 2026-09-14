@@ -27,7 +27,9 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.TenantService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
@@ -52,7 +54,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -116,7 +117,7 @@ public class AutomaticNegotiationIT {
     private static ConfigurableApplicationContext consumerCtx;
     private static ConfigurableApplicationContext providerCtx;
     /**
-     * Consumer instance whose {@code application.callback.address} points to WireMock.
+     * Consumer instance whose {@code application.baseURL} points to WireMock.
      * The provider sends protocol messages (e.g. ContractAgreementMessage) back to this
      * address, which WireMock intercepts and returns an error — triggering retry logic.
      */
@@ -196,7 +197,7 @@ public class AutomaticNegotiationIT {
         System.setProperty("spring.data.mongodb.host", mongoHost);
         System.setProperty("spring.data.mongodb.port", String.valueOf(mongoPort));
         System.setProperty("spring.data.mongodb.database", database);
-        System.setProperty("application.callback.address", callbackAddress);
+        System.setProperty("application.baseURL", callbackAddress);
         System.setProperty("application.automatic.negotiation", "true");
         System.setProperty("application.automatic.negotiation.retry.max", "3");
         System.setProperty("application.automatic.negotiation.retry.delay.ms", "500");
@@ -236,7 +237,7 @@ public class AutomaticNegotiationIT {
             System.clearProperty("spring.data.mongodb.host");
             System.clearProperty("spring.data.mongodb.port");
             System.clearProperty("spring.data.mongodb.database");
-            System.clearProperty("application.callback.address");
+            System.clearProperty("application.baseURL");
             System.clearProperty("application.automatic.negotiation");
             System.clearProperty("application.automatic.negotiation.retry.max");
             System.clearProperty("application.automatic.negotiation.retry.delay.ms");
@@ -285,7 +286,7 @@ public class AutomaticNegotiationIT {
         var distributionRepository = providerCtx.getBean(DistributionRepository.class);
         var artifactRepository     = providerCtx.getBean(ArtifactRepository.class);
         var s3ClientService        = providerCtx.getBean(S3ClientService.class);
-        var s3Properties           = providerCtx.getBean(it.eng.tools.s3.properties.S3Properties.class);
+        var s3Properties           = providerCtx.getBean(S3Properties.class);
 
         // createNewCatalog(TENANT_ID) cascades tenantId to dataset, distribution, and data-service
         Catalog catalog = CatalogMockObjectUtil.createNewCatalog(TENANT_ID);
@@ -305,12 +306,12 @@ public class AutomaticNegotiationIT {
         // just upload the artifact file using the provider's S3Properties bean,
         // exactly as CatalogIT.uploadFile() does via createS3EndpointProperties().
         Map<String, String> destinationS3Properties = Map.of(
-                it.eng.tools.s3.util.S3Utils.OBJECT_KEY,        dataset.getId(),
-                it.eng.tools.s3.util.S3Utils.BUCKET_NAME,       s3Properties.getBucketName(),
-                it.eng.tools.s3.util.S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
-                it.eng.tools.s3.util.S3Utils.REGION,            s3Properties.getRegion(),
-                it.eng.tools.s3.util.S3Utils.ACCESS_KEY,        s3Properties.getAccessKey(),
-                it.eng.tools.s3.util.S3Utils.SECRET_KEY,        s3Properties.getSecretKey()
+                S3Utils.OBJECT_KEY,        dataset.getId(),
+                S3Utils.BUCKET_NAME,       s3Properties.getBucketName(),
+                S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
+                S3Utils.REGION,            s3Properties.getRegion(),
+                S3Utils.ACCESS_KEY,        s3Properties.getAccessKey(),
+                S3Utils.SECRET_KEY,        s3Properties.getSecretKey()
         );
 
         try {

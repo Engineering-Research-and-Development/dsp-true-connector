@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.cert.X509Certificate;
 
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -58,16 +59,16 @@ class OkHttpClientConfigurationTest {
         // Create a mock trust manager
         X509TrustManager mockTrustManager = new X509TrustManager() {
             @Override
-            public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+            public void checkClientTrusted(X509Certificate[] chain, String authType) {
             }
 
             @Override
-            public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+            public void checkServerTrusted(X509Certificate[] chain, String authType) {
             }
 
             @Override
-            public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-                return new java.security.cert.X509Certificate[]{};
+            public X509Certificate[] getAcceptedIssuers() {
+                return new X509Certificate[]{};
             }
         };
 

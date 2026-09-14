@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -198,9 +199,9 @@ public class HttpPushTransferStrategyTest {
     @DisplayName("Should set dynamic read timeout when Content-Length is known")
     void transfer_dynamicReadTimeoutApplied_whenContentLengthKnown() throws Exception {
         // Arrange
-        String consumerPid = it.eng.tools.util.ToolsUtil.generateUniqueId();
-        String providerPid = it.eng.tools.util.ToolsUtil.generateUniqueId();
-        String transferProcessId = it.eng.tools.util.ToolsUtil.generateUniqueId();
+        String consumerPid = ToolsUtil.generateUniqueId();
+        String providerPid = ToolsUtil.generateUniqueId();
+        String transferProcessId = ToolsUtil.generateUniqueId();
 
         List<EndpointProperty> endpointProperties = List.of(
                 EndpointProperty.Builder.newInstance().name(S3Utils.BUCKET_NAME).value(TEST_BUCKET).build(),
@@ -266,9 +267,9 @@ public class HttpPushTransferStrategyTest {
 
         DataAddress dataAddress = DataAddress.Builder.newInstance().endpointProperties(endpointProperties).build();
         TransferProcess transferProcess = TransferProcess.Builder.newInstance()
-                .id(it.eng.tools.util.ToolsUtil.generateUniqueId())
-                .consumerPid(it.eng.tools.util.ToolsUtil.generateUniqueId())
-                .providerPid(it.eng.tools.util.ToolsUtil.generateUniqueId())
+                .id(ToolsUtil.generateUniqueId())
+                .consumerPid(ToolsUtil.generateUniqueId())
+                .providerPid(ToolsUtil.generateUniqueId())
                 .role(IConstants.ROLE_PROVIDER)
                 .dataAddress(dataAddress)
                 .datasetId(TEST_DATASET_ID)
@@ -317,9 +318,9 @@ public class HttpPushTransferStrategyTest {
 
         DataAddress dataAddress = DataAddress.Builder.newInstance().endpointProperties(endpointProperties).build();
         TransferProcess transferProcess = TransferProcess.Builder.newInstance()
-                .id(it.eng.tools.util.ToolsUtil.generateUniqueId())
-                .consumerPid(it.eng.tools.util.ToolsUtil.generateUniqueId())
-                .providerPid(it.eng.tools.util.ToolsUtil.generateUniqueId())
+                .id(ToolsUtil.generateUniqueId())
+                .consumerPid(ToolsUtil.generateUniqueId())
+                .providerPid(ToolsUtil.generateUniqueId())
                 .role(IConstants.ROLE_PROVIDER)
                 .dataAddress(dataAddress)
                 .datasetId(TEST_DATASET_ID)
@@ -333,7 +334,7 @@ public class HttpPushTransferStrategyTest {
         try (MockedConstruction<URL> mockedUrl = mockConstruction(URL.class,
                 (mock, context) -> when(mock.openConnection()).thenReturn(mockConnection))) {
 
-            when(mockConnection.getResponseCode()).thenThrow(new java.io.IOException("Connection refused"));
+            when(mockConnection.getResponseCode()).thenThrow(new IOException("Connection refused"));
 
             // Act & Assert — supplyAsync wraps thrown exceptions in CompletionException on .join()
             var ex = assertThrows(CompletionException.class,

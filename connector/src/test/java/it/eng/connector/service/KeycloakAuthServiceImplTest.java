@@ -4,8 +4,10 @@ import it.eng.tools.auth.keycloak.KeycloakLoginProperties;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.service.AuditEventPublisher;
+import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,8 +47,8 @@ class KeycloakAuthServiceImplTest {
         when(okHttpRestClient.executeCall(any(Request.class))).thenReturn(response);
 
         when(response.isSuccessful()).thenReturn(true);
-        when(response.body()).thenReturn(okhttp3.ResponseBody.create("{\"access_token\":\"dummy-access-token\",\"refresh_token\":\"dummy-refresh-token\",\"expires_in\":3600}",
-                okhttp3.MediaType.parse("application/json")));
+        when(response.body()).thenReturn(ResponseBody.create("{\"access_token\":\"dummy-access-token\",\"refresh_token\":\"dummy-refresh-token\",\"expires_in\":3600}",
+                MediaType.parse("application/json")));
 
         AuthService.AuthTokens authTokens = keycloakAuthServiceImpl.login("admin", "admin");
 
@@ -82,8 +84,8 @@ class KeycloakAuthServiceImplTest {
         when(okHttpRestClient.executeCall(any(Request.class))).thenReturn(response);
 
         when(response.isSuccessful()).thenReturn(true);
-        when(response.body()).thenReturn(okhttp3.ResponseBody.create("{\"access_token\":\"dummy-access-token\",\"refresh_token\":\"dummy-refresh-token\",\"expires_in\":3600}",
-                okhttp3.MediaType.parse("application/json")));
+        when(response.body()).thenReturn(ResponseBody.create("{\"access_token\":\"dummy-access-token\",\"refresh_token\":\"dummy-refresh-token\",\"expires_in\":3600}",
+                MediaType.parse("application/json")));
 
         AuthService.AuthTokens authTokens = keycloakAuthServiceImpl.refresh("dummy-refresh-token");
 
@@ -103,8 +105,8 @@ class KeycloakAuthServiceImplTest {
         when(okHttpRestClient.executeCall(any(Request.class))).thenReturn(response);
 
         when(response.isSuccessful()).thenReturn(false);
-        when(response.body()).thenReturn(okhttp3.ResponseBody.create("{\"error\":\"invalid_token\",\"error_description\":\"Refresh token is invalid\"}",
-                okhttp3.MediaType.parse("application/json")));
+        when(response.body()).thenReturn(ResponseBody.create("{\"error\":\"invalid_token\",\"error_description\":\"Refresh token is invalid\"}",
+                MediaType.parse("application/json")));
 
         assertThrows(BadCredentialsException.class, () -> {
             keycloakAuthServiceImpl.refresh("dummy-refresh-token");
@@ -137,8 +139,8 @@ class KeycloakAuthServiceImplTest {
         when(okHttpRestClient.executeCall(any(Request.class))).thenReturn(response);
 
         when(response.isSuccessful()).thenReturn(false);
-        when(response.body()).thenReturn(okhttp3.ResponseBody.create("{\"error\":\"invalid_token\",\"error_description\":\"Refresh token is invalid\"}",
-                okhttp3.MediaType.parse("application/json")));
+        when(response.body()).thenReturn(ResponseBody.create("{\"error\":\"invalid_token\",\"error_description\":\"Refresh token is invalid\"}",
+                MediaType.parse("application/json")));
 
         assertThrows(BadCredentialsException.class, () -> {
             keycloakAuthServiceImpl.logout("dummy-refresh-token-invalid");

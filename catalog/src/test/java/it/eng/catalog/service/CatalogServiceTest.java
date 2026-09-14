@@ -1,6 +1,7 @@
 package it.eng.catalog.service;
 
 import it.eng.catalog.exceptions.CatalogErrorException;
+import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.model.*;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
@@ -177,7 +178,7 @@ public class CatalogServiceTest {
                 .hasPolicy(new HashSet<>())
                 .build();
 
-        assertThrows(it.eng.catalog.exceptions.InternalServerErrorAPIException.class,
+        assertThrows(InternalServerErrorAPIException.class,
                 () -> service.updateCatalogDatasetAfterSave(crossTenantDataset),
                 "A dataset from a different tenant must be rejected");
     }
@@ -190,7 +191,7 @@ public class CatalogServiceTest {
                 .tenantId("other-tenant")
                 .build();
 
-        assertThrows(it.eng.catalog.exceptions.InternalServerErrorAPIException.class,
+        assertThrows(InternalServerErrorAPIException.class,
                 () -> service.updateCatalogDataServiceAfterSave(crossTenantService),
                 "A data service from a different tenant must be rejected");
     }
@@ -205,7 +206,7 @@ public class CatalogServiceTest {
                 .accessService(CatalogMockObjectUtil.DATA_SERVICE)
                 .build();
 
-        assertThrows(it.eng.catalog.exceptions.InternalServerErrorAPIException.class,
+        assertThrows(InternalServerErrorAPIException.class,
                 () -> service.updateCatalogDistributionAfterSave(crossTenantDist),
                 "A distribution from a different tenant must be rejected");
     }

@@ -399,10 +399,10 @@
       "name": "Engineering",
       "description": "Default Engineering tenant",
       "participantId": "urn:connector:engineering",
-      "bucketName": "dsp-true-connector-consumer",
+      "bucketName": "dsp-true-connector-engineering",
       "enabled": true,
-      "automaticNegotiation": false,
-      "automaticTransfer": false,
+      "automaticNegotiation": true,
+      "automaticTransfer": true,
       "version": 0
     }
   ]

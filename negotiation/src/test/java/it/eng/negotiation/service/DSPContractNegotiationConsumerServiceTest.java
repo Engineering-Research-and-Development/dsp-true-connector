@@ -22,6 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -472,7 +473,7 @@ public class DSPContractNegotiationConsumerServiceTest {
                 .consumerPid("wrong-consumer-pid")
                 .providerPid(NegotiationMockObjectUtil.PROVIDER_PID)
                 .code("Test")
-                .reason(java.util.Collections.singletonList("test"))
+                .reason(Collections.singletonList("test"))
                 .build();
 
         assertThrows(ContractNegotiationNotFoundException.class,

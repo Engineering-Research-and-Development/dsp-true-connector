@@ -20,11 +20,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 @ExtendWith(MockitoExtension.class)
-@org.mockito.junit.jupiter.MockitoSettings(strictness = Strictness.LENIENT)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class OcspX509TrustManagerTest {
 
     @Mock
@@ -46,8 +48,8 @@ class OcspX509TrustManagerTest {
     @BeforeEach
     void setUp() {
         // Create real array with mock certificates instead of mocking the array
-        X509Certificate mockCert = org.mockito.Mockito.mock(X509Certificate.class);
-        X509Certificate mockIssuer = org.mockito.Mockito.mock(X509Certificate.class);
+        X509Certificate mockCert = Mockito.mock(X509Certificate.class);
+        X509Certificate mockIssuer = Mockito.mock(X509Certificate.class);
         chain = new X509Certificate[] { mockCert, mockIssuer };
         
         trustManager = new OcspX509TrustManager(delegateTrustManager, ocspValidator, ocspProperties);
@@ -93,8 +95,8 @@ class OcspX509TrustManagerTest {
         when(ocspValidator.validate(any(), any())).thenReturn(false);
         
         // Mock a non-empty chain
-        X509Certificate cert = org.mockito.Mockito.mock(X509Certificate.class);
-        X509Certificate issuer = org.mockito.Mockito.mock(X509Certificate.class);
+        X509Certificate cert = Mockito.mock(X509Certificate.class);
+        X509Certificate issuer = Mockito.mock(X509Certificate.class);
         X509Certificate[] mockChain = new X509Certificate[] { cert, issuer };
         
         // Act & Assert
@@ -114,8 +116,8 @@ class OcspX509TrustManagerTest {
         when(ocspValidator.validate(any(), any())).thenReturn(false);
         
         // Mock a non-empty chain
-        X509Certificate cert = org.mockito.Mockito.mock(X509Certificate.class);
-        X509Certificate issuer = org.mockito.Mockito.mock(X509Certificate.class);
+        X509Certificate cert = Mockito.mock(X509Certificate.class);
+        X509Certificate issuer = Mockito.mock(X509Certificate.class);
         X509Certificate[] mockChain = new X509Certificate[] { cert, issuer };
         
         // Act & Assert
@@ -168,8 +170,8 @@ class OcspX509TrustManagerTest {
         when(ocspValidator.validate(any(), any())).thenThrow(new RuntimeException("Test exception"));
         
         // Mock a non-empty chain
-        X509Certificate cert = org.mockito.Mockito.mock(X509Certificate.class);
-        X509Certificate issuer = org.mockito.Mockito.mock(X509Certificate.class);
+        X509Certificate cert = Mockito.mock(X509Certificate.class);
+        X509Certificate issuer = Mockito.mock(X509Certificate.class);
         X509Certificate[] mockChain = new X509Certificate[] { cert, issuer };
         
         // Act & Assert

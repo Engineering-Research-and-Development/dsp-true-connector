@@ -32,7 +32,7 @@ This document analyses the existing Terraform setup and describes how to deploy 
 | 5 | MinIO credentials in `application.properties` are hard-coded to `minioadmin/minioadmin`. On the remote cluster the real credentials come from the `ztfl-minio` secret. | Must update the config map or inject from the remote secret. |
 | 6 | S3 endpoint in `application.properties` is `http://minio:9000`. On the remote cluster the service name is `ztfl-minio`. | Must update the endpoint. |
 | 7 | NodePort service type works for Kind. Remote cluster may require `ClusterIP` + ingress, or the same NodePort if the cluster allows it. | Verify with cluster admin; NodePort range 30000-32767 is usually allowed. |
-| 8 | No `image_pull_policy` is set. For local images (loaded into Kind) `Never` or `IfNotPresent` is needed. | See local setup below. |
+| 8 | `modules/connector/main.tf` sets `image_pull_policy = "Never"` (with `IfNotPresent` commented out above it); `modules/frontend/main.tf` uses `IfNotPresent`. `Never` requires the image to be pre-loaded into Kind via `kind load docker-image` — a remote-registry image will never be pulled. | See local setup below for the `kind load` workflow. For remote deployment (registry-hosted images), switch back to `IfNotPresent` or `Always`. |
 
 ---
 
@@ -41,10 +41,23 @@ This document analyses the existing Terraform setup and describes how to deploy 
 ### Prerequisites
 
 ```powershell
+# Windows
 # Install Docker Desktop (running), then:
 choco install kind            # or: winget install Kubernetes.kind
 choco install terraform
 choco install kubernetes-cli  # kubectl
+```
+
+```sh
+# Linux / WSL Ubuntu (kind is not available via apt — install the static binary)
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
+chmod +x ./kind
+sudo mv ./kind /usr/local/bin/kind
+kind version
+
+# Terraform and kubectl via your usual package manager, e.g.:
+sudo snap install terraform --classic   # or follow hashicorp's apt repo instructions
+sudo snap install kubectl --classic     # or follow kubernetes.io instructions
 ```
 
 ### How the current setup handles local ports
@@ -62,15 +75,24 @@ Kind maps host ports to NodePorts inside the cluster:
 
 ### Using a local Docker image
 
-If your connector image is built locally and not pushed to a registry, load it into Kind **before** running Terraform:
+If your connector image is built locally and not pushed to a registry, load it into Kind **before** running Terraform.
+Kind runs its Kubernetes nodes as separate containers with their **own internal image store**, isolated from your host
+Docker daemon — `docker images` on the host does not mean the Kind node can see the image.
 
 ```powershell
+# Windows
 # Build the image (from the connector module root)
 docker build -t dsp-true-connector:local ./connector
 
 # Load it into the Kind cluster
 # NOTE: Kind cluster must already exist (created by 'terraform apply' or manually)
 kind load docker-image dsp-true-connector:local --name dsp-cluster
+```
+
+```sh
+# Linux / WSL Ubuntu
+docker build -t ghcr.io/engineering-research-and-development/dsp-true-connector:local ./connector
+kind load docker-image ghcr.io/engineering-research-and-development/dsp-true-connector:local --name dsp-cluster
 ```
 
 Then override the image variable:
@@ -91,6 +113,13 @@ In `modules/connector/main.tf`, add inside the `container` block:
 ```hcl
 image_pull_policy = "Never"
 ```
+
+> **Tag collisions with the remote registry:** if you reuse a tag that is also published on GHCR (e.g. `test`),
+> `image_pull_policy = "IfNotPresent"` may silently keep whichever image the node already has cached — local or
+> remote — with no indication of which one was actually used. Prefer a unique local-only tag per rebuild (`local`,
+> `test1`, `test2`, …) together with `image_pull_policy = "Never"`, so a forgotten `kind load docker-image` step
+> fails loudly with `ErrImageNeverPull` instead of silently deploying the wrong image. You must re-run
+> `kind load docker-image` after every local rebuild — Kind nodes do not share the host's Docker build cache/layers.
 
 ### Deploy to local Kind cluster
 
@@ -518,7 +547,7 @@ If neither is enabled the Ingress resources are not created. If both were enable
 | `ingress.tf` _(new)_ | Three `kubernetes_ingress_v1` resources mapping hostnames to `tc-fe-service`, `tc-be-service`, `tc-storage-service` |
 | `modules/connector/variables.tf` | Add `namespace`, `service_name`, `service_type`, optional `node_port` variables |
 | `modules/frontend/variables.tf` | Add `namespace`, `service_name`, `service_type`, optional `node_port` variables |
-| `variables.tf` | Add `namespace`, `minio_endpoint`, `s3_region`, `s3_bucket_name_a/b`, `enable_connector_a/b` variables |
+| `variables.tf` | Add `namespace`, `minio_endpoint`, `s3_region`, `enable_connector_a/b` variables |
 
 ---
 

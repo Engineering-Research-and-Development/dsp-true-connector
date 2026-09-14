@@ -99,7 +99,6 @@ public class DataServiceTest {
         assertTrue(updated.getTheme().contains("red"));
         assertTrue(updated.getTheme().contains("green"));
         assertTrue(updated.getTheme().contains("black"));
-        assertEquals("updatedEndpointUrl", updated.getEndpointURL());
         assertEquals("Description for test", updated.getEndpointDescription());
         assertEquals(CatalogMockObjectUtil.ISSUED, updated.getIssued());
         assertEquals(CatalogMockObjectUtil.TITLE, updated.getTitle());

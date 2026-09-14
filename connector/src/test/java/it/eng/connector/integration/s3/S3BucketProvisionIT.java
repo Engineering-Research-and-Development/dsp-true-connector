@@ -18,6 +18,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -100,7 +101,7 @@ public class S3BucketProvisionIT extends BaseIntegrationTest {
     }
 
     private String generateSecretKey() {
-        return java.util.UUID.randomUUID().toString();
+        return UUID.randomUUID().toString();
     }
 
 }

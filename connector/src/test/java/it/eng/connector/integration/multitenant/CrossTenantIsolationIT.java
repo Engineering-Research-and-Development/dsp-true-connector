@@ -1,5 +1,6 @@
 package it.eng.connector.integration.multitenant;
 
+import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.model.*;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.repository.DataServiceRepository;
@@ -139,7 +140,7 @@ public class CrossTenantIsolationIT extends BaseIntegrationTest {
     void updateCatalog_crossTenantDataset_isRejected() {
         TenantContextHolder.setTenantId(TENANT_A);
         try {
-            assertThrows(it.eng.catalog.exceptions.InternalServerErrorAPIException.class,
+            assertThrows(InternalServerErrorAPIException.class,
                     () -> catalogService.updateCatalogDatasetAfterSave(datasetB),
                     "Dataset from a different tenant must be rejected by the service guard");
         } finally {

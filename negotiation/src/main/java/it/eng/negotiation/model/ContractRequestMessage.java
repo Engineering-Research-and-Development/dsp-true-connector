@@ -81,7 +81,7 @@ public class ContractRequestMessage {
             }
 
              // Collect existing validator messages
-             java.util.List<String> messages = violations
+             List<String> messages = violations
                      .stream()
                      .map(v -> v.getPropertyPath() + " " + v.getMessage())
                      .collect(Collectors.toList());

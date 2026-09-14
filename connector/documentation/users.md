@@ -116,7 +116,7 @@ POST request
 > **Important**: `id`, `name`, and `participantId` are **required**.
 > - `id` is **chosen by the caller** and must consist only of alphanumeric characters and hyphens (e.g. `my-tenant`). The server does not auto-generate it.
 > - `participantId` is the DSP participant identity for this tenant and must be unique across all tenants.
-> - `callbackAddress` is **not** a stored field — it is derived at runtime as `${application.callback.address}/{id}`.
+> - `callbackAddress` is **not** a stored field — it is derived at runtime as `${application.baseURL}/{id}`.
 > - Bucket onboarding supports three request shapes:
 >   - no bucket fields: fully automatic bucket provisioning (`dsp-{tenantId}`)
 >   - `bucketName` only: reuse an existing bucket and ensure credentials for that name
