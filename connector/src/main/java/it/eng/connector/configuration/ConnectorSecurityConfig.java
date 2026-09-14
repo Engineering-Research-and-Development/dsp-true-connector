@@ -153,6 +153,7 @@ public class ConnectorSecurityConfig {
                             .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
                             .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
                             .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                            .requestMatchers(ApiEndpoints.DASHBOARD_V1 + "/**").hasRole(Role.ADMIN.name())
                             .requestMatchers(ApiEndpoints.AUTH_V1 + "/**").permitAll()
                             .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
@@ -174,6 +175,7 @@ public class ConnectorSecurityConfig {
                             .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
                             .requestMatchers(ApiEndpoints.USERS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
                             .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
+                            .requestMatchers(ApiEndpoints.DASHBOARD_V1 + "/**").hasRole(Role.ADMIN.name())
                             .requestMatchers(ApiEndpoints.AUTH_V1 + "/**").permitAll()
                             .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
