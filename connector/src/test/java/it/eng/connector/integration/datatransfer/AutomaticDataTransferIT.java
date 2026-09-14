@@ -38,7 +38,6 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
@@ -90,6 +89,11 @@ public class AutomaticDataTransferIT {
 
     private static final int POLL_TIMEOUT_SECONDS = 60;
     private static final int POLL_INTERVAL_MS     = 500;
+    private static final int S3_PORT = 9000;
+    private static final String PROVIDER_S3_ACCESS_KEY = "rustfs-provider-root";
+    private static final String PROVIDER_S3_SECRET_KEY = "rustfs-provider-root-secret";
+    private static final String CONSUMER_S3_ACCESS_KEY = "rustfs-consumer-root";
+    private static final String CONSUMER_S3_SECRET_KEY = "rustfs-consumer-root-secret";
 
     // ── containers ────────────────────────────────────────────────────────────────
     @SuppressWarnings("resource")
@@ -99,13 +103,23 @@ public class AutomaticDataTransferIT {
                     .waitingFor(Wait.forLogMessage(".*Waiting for connections.*", 1))
                     .withReuse(false);
 
-    private static final MinIOContainer providerMinIO =
-            new MinIOContainer(DockerImageName.parse("minio/minio"))
-                    .withReuse(false);
+    protected static final GenericContainer<?> providerMinIO = new GenericContainer<>(
+            DockerImageName.parse("rustfs/rustfs:1.0.0-rc.6"))
+            .withEnv("RUSTFS_ACCESS_KEY", PROVIDER_S3_ACCESS_KEY)
+            .withEnv("RUSTFS_SECRET_KEY", PROVIDER_S3_SECRET_KEY)
+            .withEnv("RUSTFS_ADDRESS", ":" + S3_PORT)
+            .withExposedPorts(S3_PORT)
+            .withCommand("/data")
+            .waitingFor(Wait.forHttp("/health").forPort(S3_PORT));
 
-    private static final MinIOContainer consumerMinIO =
-            new MinIOContainer(DockerImageName.parse("minio/minio"))
-                    .withReuse(false);
+    protected static final GenericContainer<?> consumerMinIO = new GenericContainer<>(
+            DockerImageName.parse("rustfs/rustfs:1.0.0-rc.6"))
+            .withEnv("RUSTFS_ACCESS_KEY", CONSUMER_S3_ACCESS_KEY)
+            .withEnv("RUSTFS_SECRET_KEY", CONSUMER_S3_SECRET_KEY)
+            .withEnv("RUSTFS_ADDRESS", ":" + S3_PORT)
+            .withExposedPorts(S3_PORT)
+            .withCommand("/data")
+            .waitingFor(Wait.forHttp("/health").forPort(S3_PORT));
 
     // ── Spring Boot contexts ──────────────────────────────────────────────────────
     private static ConfigurableApplicationContext consumerCtx;
@@ -130,6 +144,7 @@ public class AutomaticDataTransferIT {
 
     // ── lifecycle ────────────────────────────────────────────────────────────────
 
+
     @BeforeAll
     static void startApplications() {
         mongoDBContainer.start();
@@ -147,13 +162,13 @@ public class AutomaticDataTransferIT {
         // ── Provider — source artifact lives in providerMinIO ─────────────────────
         providerCtx = startInstance(mongoHost, mongoPort, PROVIDER_PORT,
                 "provider", "provider_db", PROVIDER_BASE_URL,
-                providerMinIO.getS3URL(), providerMinIO.getUserName(), providerMinIO.getPassword(),
+                getS3Url(providerMinIO), PROVIDER_S3_ACCESS_KEY, PROVIDER_S3_SECRET_KEY,
                 "dsp-true-connector-provider");
 
         // ── Consumer — downloaded artifact will land in consumerMinIO ─────────────
         consumerCtx = startInstance(mongoHost, mongoPort, CONSUMER_PORT,
                 "consumer", "consumer_db", CONSUMER_BASE_URL,
-                consumerMinIO.getS3URL(), consumerMinIO.getUserName(), consumerMinIO.getPassword(),
+                getS3Url(consumerMinIO), CONSUMER_S3_ACCESS_KEY, CONSUMER_S3_SECRET_KEY,
                 "dsp-true-connector-consumer");
 
         // ── WireMock consumer — callbackAddress points to WireMock ────────────────
@@ -162,10 +177,22 @@ public class AutomaticDataTransferIT {
         wiremockConsumerCtx = startInstance(mongoHost, mongoPort, WIREMOCK_CONSUMER_PORT,
                 "consumer-wiremock", "consumer_wiremock_db",
                 "http://localhost:" + WIREMOCK_PORT,
-                consumerMinIO.getS3URL(), consumerMinIO.getUserName(), consumerMinIO.getPassword(),
+                getS3Url(consumerMinIO), CONSUMER_S3_ACCESS_KEY, CONSUMER_S3_SECRET_KEY,
                 "dsp-true-connector-consumer");
 
         populateProviderCatalog();
+    }
+
+    /**
+     * Returns the host-reachable S3 endpoint for a RustFS Testcontainers instance.
+     *
+     * @param rustfsContainer started RustFS container
+     * @return the endpoint using Testcontainers' dynamically mapped host port
+     */
+    private static String getS3Url(GenericContainer<?> rustfsContainer) {
+        return "http://%s:%d".formatted(
+                rustfsContainer.getHost(),
+                rustfsContainer.getMappedPort(S3_PORT));
     }
 
     /**

@@ -76,7 +76,6 @@ public class BaseIntegrationTest {
             DockerImageName.parse("rustfs/rustfs:1.0.0-rc.6"))
             .withEnv("RUSTFS_ACCESS_KEY", S3Utils.ACCESS_KEY)
             .withEnv("RUSTFS_SECRET_KEY", S3Utils.SECRET_KEY)
-//            .withEnv("RUSTFS_ADDRESS", ":9000")
             .withExposedPorts(S3_PORT)
             .withCommand("/data")
             .waitingFor(Wait.forHttp("/health").forPort(S3_PORT));
