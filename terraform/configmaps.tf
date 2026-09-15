@@ -6,11 +6,11 @@ resource "kubernetes_secret" "connector_a_credentials" {
   type = "Opaque"
 
   data = {
-    "S3_ACCESS_KEY"            = var.connector_a_config.s3_access_key
-    "S3_SECRET_KEY"            = var.connector_a_config.s3_secret_key
-    "KEYSTORE_PASSWORD"        = var.keystore_connector_a_config["KEYSTORE_PASSWORD"]
-    "KEY_PASSWORD"             = var.keystore_connector_a_config["KEY_PASSWORD"]
-    "TRUSTSTORE_PASSWORD"      = var.keystore_connector_a_config["TRUSTSTORE_PASSWORD"]
+    "S3_ACCESS_KEY"                   = var.connector_a_config.s3_access_key
+    "S3_SECRET_KEY"                   = var.connector_a_config.s3_secret_key
+    "KEYSTORE_PASSWORD"               = var.keystore_connector_a_config["KEYSTORE_PASSWORD"]
+    "KEY_PASSWORD"                    = var.keystore_connector_a_config["KEY_PASSWORD"]
+    "TRUSTSTORE_PASSWORD"             = var.keystore_connector_a_config["TRUSTSTORE_PASSWORD"]
     "APPLICATION_SECURITY_JWT_SECRET" = var.connector_a_config.jwt_secret
   }
 }
@@ -23,11 +23,11 @@ resource "kubernetes_secret" "connector_b_credentials" {
   type = "Opaque"
 
   data = {
-    "S3_ACCESS_KEY"            = var.connector_b_config.s3_access_key
-    "S3_SECRET_KEY"            = var.connector_b_config.s3_secret_key
-    "KEYSTORE_PASSWORD"        = var.keystore_connector_b_config["KEYSTORE_PASSWORD"]
-    "KEY_PASSWORD"             = var.keystore_connector_b_config["KEY_PASSWORD"]
-    "TRUSTSTORE_PASSWORD"      = var.keystore_connector_b_config["TRUSTSTORE_PASSWORD"]
+    "S3_ACCESS_KEY"                   = var.connector_b_config.s3_access_key
+    "S3_SECRET_KEY"                   = var.connector_b_config.s3_secret_key
+    "KEYSTORE_PASSWORD"               = var.keystore_connector_b_config["KEYSTORE_PASSWORD"]
+    "KEY_PASSWORD"                    = var.keystore_connector_b_config["KEY_PASSWORD"]
+    "TRUSTSTORE_PASSWORD"             = var.keystore_connector_b_config["TRUSTSTORE_PASSWORD"]
     "APPLICATION_SECURITY_JWT_SECRET" = var.connector_b_config.jwt_secret
   }
 }
@@ -39,7 +39,7 @@ resource "kubernetes_config_map" "connector_a_certs" {
 
   binary_data = {
     "connector-a.jks" = filebase64("./app-resources/cert/connector-a/connector-a.jks")
-    "truststore.jks" = filebase64("./app-resources/cert/connector-a/truststore.jks")
+    "truststore.jks"  = filebase64("./app-resources/cert/connector-a/truststore.jks")
   }
 }
 
@@ -50,7 +50,7 @@ resource "kubernetes_config_map" "connector_b_certs" {
 
   binary_data = {
     "connector-b.jks" = filebase64("./app-resources/cert/connector-b/connector-b.jks")
-    "truststore.jks" = filebase64("./app-resources/cert/connector-a/truststore.jks")
+    "truststore.jks"  = filebase64("./app-resources/cert/connector-a/truststore.jks")
   }
 }
 
@@ -59,10 +59,10 @@ resource "kubernetes_config_map" "connector_a_env" {
     name = "connector-a-env"
   }
   data = {
-    BASE_URL       = var.connector_a_base_url
-    KEYSTORE_NAME          = var.keystore_connector_a_config["KEYSTORE_NAME"]
-    KEYSTORE_ALIAS         = var.keystore_connector_a_config["KEYSTORE_ALIAS"]
-    TRUSTSTORE_NAME        = var.keystore_connector_a_config["TRUSTSTORE_NAME"]
+    BASE_URL        = var.connector_a_base_url
+    KEYSTORE_NAME   = var.keystore_connector_a_config["KEYSTORE_NAME"]
+    KEYSTORE_ALIAS  = var.keystore_connector_a_config["KEYSTORE_ALIAS"]
+    TRUSTSTORE_NAME = var.keystore_connector_a_config["TRUSTSTORE_NAME"]
   }
 }
 
@@ -71,10 +71,10 @@ resource "kubernetes_config_map" "connector_b_env" {
     name = "connector-b-env"
   }
   data = {
-    BASE_URL       = var.connector_b_base_url
-    KEYSTORE_NAME          = var.keystore_connector_b_config["KEYSTORE_NAME"]
-    KEYSTORE_ALIAS         = var.keystore_connector_b_config["KEYSTORE_ALIAS"]
-    TRUSTSTORE_NAME        = var.keystore_connector_b_config["TRUSTSTORE_NAME"]
+    BASE_URL        = var.connector_b_base_url
+    KEYSTORE_NAME   = var.keystore_connector_b_config["KEYSTORE_NAME"]
+    KEYSTORE_ALIAS  = var.keystore_connector_b_config["KEYSTORE_ALIAS"]
+    TRUSTSTORE_NAME = var.keystore_connector_b_config["TRUSTSTORE_NAME"]
   }
 }
 
@@ -110,24 +110,24 @@ resource "kubernetes_config_map" "employee_data" {
 
 resource "local_file" "connector_a_properties" {
   content = templatefile("${path.module}/app-resources/connector_a_resources/application.properties", {
-    BASE_URL                    = var.connector_a_base_url
-    KEYSTORE_ALIAS                      = var.keystore_connector_a_config["KEYSTORE_ALIAS"]
-    KEY_PASSWORD                        = "$${KEY_PASSWORD}"
-    KEYSTORE_NAME                       = var.keystore_connector_a_config["KEYSTORE_NAME"]
-    KEYSTORE_PASSWORD                   = "$${KEYSTORE_PASSWORD}"
-    TRUSTSTORE_NAME                     = var.keystore_connector_a_config["TRUSTSTORE_NAME"]
-    TRUSTSTORE_PASSWORD                 = "$${TRUSTSTORE_PASSWORD}"
-    APPLICATION_AUTOMATIC_TRANSFER      = var.connector_a_config.automatic_transfer
-    APPLICATION_AUTOMATIC_NEGOTIATION   = var.connector_a_config.automatic_negotiation
-    MONGODB_HOST                        = var.connector_a_config.mongodb_host
-    MONGODB_PORT                        = var.connector_a_config.mongodb_port
-    MONGODB_DATABASE                    = var.connector_a_config.mongodb_database
-    SERVER_SSL_ENABLED                  = var.connector_a_config.ssl_enabled
-    S3_ENDPOINT                         = var.connector_a_config.s3_endpoint
-    S3_ACCESS_KEY                       = "$${S3_ACCESS_KEY}"
-    S3_SECRET_KEY                       = "$${S3_SECRET_KEY}"
-    S3_REGION                           = var.connector_a_config.s3_region
-    S3_EXTERNAL_PRESIGNED_ENDPOINT      = var.connector_a_config.s3_external_endpoint
+    BASE_URL                          = var.connector_a_base_url
+    KEYSTORE_ALIAS                    = var.keystore_connector_a_config["KEYSTORE_ALIAS"]
+    KEY_PASSWORD                      = "$${KEY_PASSWORD}"
+    KEYSTORE_NAME                     = var.keystore_connector_a_config["KEYSTORE_NAME"]
+    KEYSTORE_PASSWORD                 = "$${KEYSTORE_PASSWORD}"
+    TRUSTSTORE_NAME                   = var.keystore_connector_a_config["TRUSTSTORE_NAME"]
+    TRUSTSTORE_PASSWORD               = "$${TRUSTSTORE_PASSWORD}"
+    APPLICATION_AUTOMATIC_TRANSFER    = var.connector_a_config.automatic_transfer
+    APPLICATION_AUTOMATIC_NEGOTIATION = var.connector_a_config.automatic_negotiation
+    MONGODB_HOST                      = var.connector_a_config.mongodb_host
+    MONGODB_PORT                      = var.connector_a_config.mongodb_port
+    MONGODB_DATABASE                  = var.connector_a_config.mongodb_database
+    SERVER_SSL_ENABLED                = var.connector_a_config.ssl_enabled
+    S3_ENDPOINT                       = var.connector_a_config.s3_endpoint
+    S3_ACCESS_KEY                     = "$${S3_ACCESS_KEY}"
+    S3_SECRET_KEY                     = "$${S3_SECRET_KEY}"
+    S3_REGION                         = var.connector_a_config.s3_region
+    S3_EXTERNAL_PRESIGNED_ENDPOINT    = var.connector_a_config.s3_external_endpoint
   })
   filename = "${path.module}/.terraform/connector_a_application.properties"
 }
@@ -146,24 +146,24 @@ resource "kubernetes_config_map" "connector_a_config" {
 
 resource "local_file" "connector_b_properties" {
   content = templatefile("${path.module}/app-resources/connector_b_resources/application.properties", {
-    BASE_URL                    = var.connector_b_base_url
-    KEYSTORE_ALIAS                      = var.keystore_connector_b_config["KEYSTORE_ALIAS"]
-    KEY_PASSWORD                        = "$${KEY_PASSWORD}"
-    KEYSTORE_NAME                       = var.keystore_connector_b_config["KEYSTORE_NAME"]
-    KEYSTORE_PASSWORD                   = "$${KEYSTORE_PASSWORD}"
-    TRUSTSTORE_NAME                     = var.keystore_connector_b_config["TRUSTSTORE_NAME"]
-    TRUSTSTORE_PASSWORD                 = "$${TRUSTSTORE_PASSWORD}"
-    APPLICATION_AUTOMATIC_TRANSFER      = var.connector_b_config.automatic_transfer
-    APPLICATION_AUTOMATIC_NEGOTIATION   = var.connector_b_config.automatic_negotiation
-    MONGODB_HOST                        = var.connector_b_config.mongodb_host
-    MONGODB_PORT                        = var.connector_b_config.mongodb_port
-    MONGODB_DATABASE                    = var.connector_b_config.mongodb_database
-    SERVER_SSL_ENABLED                  = var.connector_b_config.ssl_enabled
-    S3_ENDPOINT                         = var.connector_b_config.s3_endpoint
-    S3_ACCESS_KEY                       = "$${S3_ACCESS_KEY}"
-    S3_SECRET_KEY                       = "$${S3_SECRET_KEY}"
-    S3_REGION                           = var.connector_b_config.s3_region
-    S3_EXTERNAL_PRESIGNED_ENDPOINT      = var.connector_b_config.s3_external_endpoint
+    BASE_URL                          = var.connector_b_base_url
+    KEYSTORE_ALIAS                    = var.keystore_connector_b_config["KEYSTORE_ALIAS"]
+    KEY_PASSWORD                      = "$${KEY_PASSWORD}"
+    KEYSTORE_NAME                     = var.keystore_connector_b_config["KEYSTORE_NAME"]
+    KEYSTORE_PASSWORD                 = "$${KEYSTORE_PASSWORD}"
+    TRUSTSTORE_NAME                   = var.keystore_connector_b_config["TRUSTSTORE_NAME"]
+    TRUSTSTORE_PASSWORD               = "$${TRUSTSTORE_PASSWORD}"
+    APPLICATION_AUTOMATIC_TRANSFER    = var.connector_b_config.automatic_transfer
+    APPLICATION_AUTOMATIC_NEGOTIATION = var.connector_b_config.automatic_negotiation
+    MONGODB_HOST                      = var.connector_b_config.mongodb_host
+    MONGODB_PORT                      = var.connector_b_config.mongodb_port
+    MONGODB_DATABASE                  = var.connector_b_config.mongodb_database
+    SERVER_SSL_ENABLED                = var.connector_b_config.ssl_enabled
+    S3_ENDPOINT                       = var.connector_b_config.s3_endpoint
+    S3_ACCESS_KEY                     = "$${S3_ACCESS_KEY}"
+    S3_SECRET_KEY                     = "$${S3_SECRET_KEY}"
+    S3_REGION                         = var.connector_b_config.s3_region
+    S3_EXTERNAL_PRESIGNED_ENDPOINT    = var.connector_b_config.s3_external_endpoint
   })
   filename = "${path.module}/.terraform/connector_b_application.properties"
 }

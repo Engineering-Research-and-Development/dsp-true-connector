@@ -68,9 +68,7 @@ public class BaseIntegrationTest {
     protected static final MongoDBContainer mongoDBContainer =
             new MongoDBContainer(DockerImageName.parse("mongo:7.0.12"))
                     .withReuse(false);
-//    protected static final MinIOContainer minIOContainer =
-//            new MinIOContainer(DockerImageName.parse("rustfs/rustfs:1.0.0-rc.6"))
-//                    .withReuse(false);
+
     private static final int S3_PORT = 9000;
     protected static final GenericContainer<?> minIOContainer = new GenericContainer<>(
             DockerImageName.parse("rustfs/rustfs:1.0.0-rc.6"))

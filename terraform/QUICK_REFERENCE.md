@@ -32,7 +32,7 @@ Only non-sensitive configuration values are in ConfigMaps:
 | Property | Variable | Default (`variables.tf`) |
 |----------|----------|---------|
 | MongoDB Image | `mongodb_image` | `"mongo:7.0.12"` |
-| MinIO Image | `minio_image` | `"minio/minio:RELEASE.2025-04-22T22-12-26Z"` |
+| RustFS Image | `rustfs_image` | `"rustfs/rustfs:1.0.0-rc.6"` |
 | Connector Image | `connector_image` | `"ghcr.io/.../dsp-true-connector:0.6.4"` |
 | Connector UI Image | `connector_ui_image` | `"ghcr.io/.../dsp-true-connector-ui:latest"` |
 
@@ -72,7 +72,7 @@ Only non-sensitive configuration values are in ConfigMaps:
 ### Non-Sensitive (ConfigMap)
 | Property | Variable | Default (A / B) |
 |----------|----------|---------|
-| `s3.endpoint` | `connector_a_config.s3_endpoint` | `"http://minio:9000"` |
+| `s3.endpoint` | `connector_a_config.s3_endpoint` | `"http://rustfs:9000"` |
 | `s3.region` | `connector_a_config.s3_region` | `"us-east-1"` |
 | `s3.bucketName` | `connector_a_config.s3_bucket_name` | `"dsp-true-connector-a"` / `"dsp-true-connector-b"` |
 | `s3.externalPresignedEndpoint` | `connector_a_config.s3_external_endpoint` | `"http://localhost:9000"` / `"http://172.17.0.1:9000"` |
@@ -80,8 +80,8 @@ Only non-sensitive configuration values are in ConfigMaps:
 ### Sensitive (Kubernetes Secret - Environment Variables)
 | Property | Secret Key | Injected As | Default (A / B) |
 |----------|-----------|------------|---------|
-| `s3.accessKey` | `s3_access_key` | `$${S3_ACCESS_KEY}` | `"minioadmin"` |
-| `s3.secretKey` | `s3_secret_key` | `$${S3_SECRET_KEY}` | `"minioadmin"` |
+| `s3.accessKey` | `s3_access_key` | `$${S3_ACCESS_KEY}` | `"rustfsadmin"` |
+| `s3.secretKey` | `s3_secret_key` | `$${S3_SECRET_KEY}` | `"rustfsadmin"` |
 
 ---
 
@@ -402,4 +402,3 @@ connector_b_config = {
 **Secret values not appearing in application**
 → Confirm environment variables are correctly defined in pod spec
 → Restart pod after updating Secrets: `kubectl rollout restart deployment/connector-a`
-

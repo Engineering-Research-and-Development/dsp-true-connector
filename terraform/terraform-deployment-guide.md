@@ -14,8 +14,8 @@ This document analyses the existing Terraform setup and describes how to deploy 
 |---|---|
 | `providers.tf` | Declares `tehcyx/kind` + `hashicorp/kubernetes` providers. The Kubernetes provider **hard-wires** its `config_path` to the Kind cluster output. |
 | `main.tf` | Creates a **Kind** (local) cluster named `dsp-cluster` with port-forward mappings for all services. |
-| `deployments.tf` | Deploys `connector-a`, `connector-b` (via reusable module), `connector-a-ui`, `connector-b-ui`, `minio`, `mongodb`. |
-| `services.tf` | Kubernetes `NodePort` services for MinIO + MongoDB; connector/UI services are created inside their modules. |
+| `deployments.tf` | Deploys `connector-a`, `connector-b` (via reusable module), `connector-a-ui`, `connector-b-ui`, `rustfs`, `mongodb`. |
+| `services.tf` | Kubernetes `NodePort` services for RustFS + MongoDB; connector/UI services are created inside their modules. |
 | `configmaps.tf` | Mounts all config files (`application.properties`, `initial_data.json`, JKS certs, nginx.conf, TLS secrets) as ConfigMaps/Secrets. |
 | `variables.tf` | Parameterises images, ports, callback addresses, keystore config. |
 | `modules/connector/` | Reusable Deployment + NodePort Service for any connector instance. |
@@ -28,9 +28,9 @@ This document analyses the existing Terraform setup and describes how to deploy 
 | 1 | `providers.tf` uses `kind_cluster.dsp-cluster.kubeconfig_path` — this **only works locally with Kind**. | Must be changed / overridden for remote deploy. |
 | 2 | `main.tf` creates the Kind cluster — must be **skipped** for remote deploy. | |
 | 3 | All resources deploy to the **default namespace**. The remote cluster uses `endurance-playground` namespace. | Namespace must be set for remote deploy. |
-| 4 | `minio` and `mongodb` are deployed as in-cluster services. On the remote cluster **MinIO already exists** (`ztfl-minio`), and **MongoDB is not available**. | `minio` deployment should be skipped remotely; `mongodb` can remain or also be skipped (see below). |
-| 5 | MinIO credentials in `application.properties` are hard-coded to `minioadmin/minioadmin`. On the remote cluster the real credentials come from the `ztfl-minio` secret. | Must update the config map or inject from the remote secret. |
-| 6 | S3 endpoint in `application.properties` is `http://minio:9000`. On the remote cluster the service name is `ztfl-minio`. | Must update the endpoint. |
+| 4 | `rustfs` and `mongodb` are deployed as in-cluster services. A remote deployment must provide a compatible RustFS service and credentials. | Skip the in-cluster `rustfs` deployment only when the remote service is available. |
+| 5 | RustFS credentials are configured through Terraform S3 variables. | Provide the remote service credentials through a secret-backed Terraform configuration. |
+| 6 | The default S3 endpoint is `http://rustfs:9000`. | Override it with the remote RustFS service endpoint. |
 | 7 | NodePort service type works for Kind. Remote cluster may require `ClusterIP` + ingress, or the same NodePort if the cluster allows it. | Verify with cluster admin; NodePort range 30000-32767 is usually allowed. |
 | 8 | `modules/connector/main.tf` sets `image_pull_policy = "Never"` (with `IfNotPresent` commented out above it); `modules/frontend/main.tf` uses `IfNotPresent`. `Never` requires the image to be pre-loaded into Kind via `kind load docker-image` — a remote-registry image will never be pulled. | See local setup below for the `kind load` workflow. For remote deployment (registry-hosted images), switch back to `IfNotPresent` or `Always`. |
 
@@ -70,8 +70,8 @@ Kind maps host ports to NodePorts inside the cluster:
 | 8090 | 30090 | connector-b |
 | 4200 | 30420 | connector-a-ui |
 | 4300 | 30430 | connector-b-ui |
-| 9000 | 30081 | minio API |
-| 9001 | 30082 | minio Console |
+| 9000 | 30081 | RustFS API |
+| 9001 | 30082 | RustFS Console |
 
 ### Using a local Docker image
 
@@ -146,8 +146,8 @@ Connector A:     http://localhost:8080
 Connector B:     http://localhost:8090
 Connector A UI:  https://localhost:4200
 Connector B UI:  https://localhost:4300
-MinIO API:       http://localhost:9000
-MinIO Console:   http://localhost:9001  (user: minioadmin / minioadmin)
+RustFS API:      http://localhost:9000
+RustFS Console:  http://localhost:9001  (configured RustFS credentials)
 ```
 
 ### Destroy local cluster
@@ -167,7 +167,7 @@ terraform destroy
 | API server | `https://kubernetes.services.synelixis.com:1337` |
 | Namespace | `endurance-playground` |
 | Auth | Bearer token (service account `endurance-playground-svcs-acct`) |
-| Existing MinIO service | `ztfl-minio` (port 9000; credentials in `ztfl-minio` secret) |
+| Existing RustFS service | Obtain the endpoint and credentials from the remote cluster operator. |
 | MongoDB | Deployed in-cluster as `mongodb` in `endurance-playground` namespace |
 | Ingress controller | nginx (`ingress_class_name = "nginx"`) |
 
@@ -241,9 +241,10 @@ metadata {
 
 Then in `remote/deployments.tf`, pass `namespace = "endurance-playground"` to every module call.
 
-### Step 5 — Update MinIO config for the remote cluster
+### Step 5 — Configure RustFS for the remote cluster
 
-On the remote cluster, MinIO is `ztfl-minio` with credentials stored in the `ztfl-minio` Kubernetes secret.
+Obtain the RustFS endpoint and administrative credentials from the remote cluster operator. Store
+the credentials in a Kubernetes Secret; do not commit them to `terraform.tfvars`.
 
 #### Option A — Hard-code credentials in terraform.tfvars (simplest)
 
@@ -254,70 +255,72 @@ After retrieving credentials from the cluster:
 $kubeconfig = "..\..\endurance-playground-config"
 $ns = "endurance-playground"
 
-$user = kubectl get secret ztfl-minio -n $ns --kubeconfig $kubeconfig `
-  -o jsonpath="{.data.rootUser}" | `
+$user = kubectl get secret rustfs-credentials -n $ns --kubeconfig $kubeconfig `
+  -o jsonpath="{.data.accessKey}" | `
   [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($_))
 
-$pass = kubectl get secret ztfl-minio -n $ns --kubeconfig $kubeconfig `
-  -o jsonpath="{.data.rootPassword}" | `
+$pass = kubectl get secret rustfs-credentials -n $ns --kubeconfig $kubeconfig `
+  -o jsonpath="{.data.secretKey}" | `
   [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($_))
 
-Write-Host "MinIO user: $user"
-Write-Host "MinIO pass: $pass"
+Write-Host "RustFS user: $user"
+Write-Host "RustFS secret: $pass"
 ```
 
 Then put the values into `remote/terraform.tfvars`:
 
 ```hcl
-minio_access_key    = "<retrieved-user>"
-minio_secret_key    = "<retrieved-password>"
-minio_endpoint      = "http://ztfl-minio:9000"
+s3_access_key    = "<retrieved-user>"
+s3_secret_key    = "<retrieved-password>"
+s3_endpoint      = "http://rustfs.endurance-playground.svc.cluster.local:9000"
 ```
 
 Add the corresponding variables to `variables.tf`:
 
 ```hcl
-variable "minio_endpoint"   { type = string; default = "http://minio:9000" }
-variable "minio_access_key" { type = string; default = "minioadmin" }
-variable "minio_secret_key" { type = string; default = "minioadmin" }
+variable "s3_endpoint"   { type = string; default = "http://rustfs:9000" }
+variable "s3_access_key" { type = string; sensitive = true }
+variable "s3_secret_key" { type = string; sensitive = true }
 ```
 
 #### Option B — Reference the existing Kubernetes secret directly (Terraform data source)
 
 ```hcl
 # remote/main.tf
-data "kubernetes_secret" "ztfl_minio" {
+data "kubernetes_secret" "rustfs_credentials" {
   metadata {
-    name      = "ztfl-minio"
+    name      = "rustfs-credentials"
     namespace = "endurance-playground"
   }
 }
 
 locals {
-  minio_user     = data.kubernetes_secret.ztfl_minio.data["rootUser"]
-  minio_password = data.kubernetes_secret.ztfl_minio.data["rootPassword"]
+  s3_access_key = data.kubernetes_secret.rustfs_credentials.data["accessKey"]
+  s3_secret_key = data.kubernetes_secret.rustfs_credentials.data["secretKey"]
 }
 ```
 
-Then inject `local.minio_user` / `local.minio_password` into the connector ConfigMaps instead of the hard-coded `minioadmin` values.
+Then inject `local.s3_access_key` / `local.s3_secret_key` into the connector credentials
+Secrets.
 
-### Step 6 — Update `application.properties` for remote MinIO
+### Step 6 — Update `application.properties` for remote RustFS
 
 In `app-resources/connector_a_resources/application.properties` (and `_b_`), change:
 
 ```properties
 # FROM (local):
-s3.endpoint=http://minio:9000
-s3.accessKey=minioadmin
-s3.secretKey=minioadmin
+s3.endpoint=http://rustfs:9000
+s3.accessKey=rustfsadmin
+s3.secretKey=rustfsadmin
 
 # TO (remote cluster):
-s3.endpoint=http://ztfl-minio:9000
-s3.accessKey=${MINIO_ACCESS_KEY}
-s3.secretKey=${MINIO_SECRET_KEY}
+s3.endpoint=http://rustfs.endurance-playground.svc.cluster.local:9000
+s3.accessKey=${S3_ACCESS_KEY}
+s3.secretKey=${S3_SECRET_KEY}
 ```
 
-And add `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` to the connector env ConfigMaps in `configmaps.tf`.
+The existing `configmaps.tf` injects `S3_ACCESS_KEY` and `S3_SECRET_KEY` from Kubernetes
+Secrets into both connector deployments.
 
 ### Step 7 — MongoDB on the remote cluster
 
@@ -333,7 +336,7 @@ The remote cluster uses an nginx Ingress controller. All services are type `Clus
 | `be.endurance.lab.synelixis.com` | `tc-be-service` | 80 |
 | `storage.endurance.lab.synelixis.com` | `tc-storage-service` | 80 |
 
-The connector and UI modules accept a `service_name` override so they create services with exactly those names. The MinIO service in `services.tf` is also named `tc-storage-service`.
+The connector and UI modules accept a `service_name` override so they create services with exactly those names. The RustFS service in `services.tf` is also named `tc-storage-service`.
 
 #### Temporary local access via kubectl port-forward (bypasses Ingress):
 
@@ -347,7 +350,7 @@ kubectl port-forward svc/tc-be-service 8080:80 -n $ns --kubeconfig $kubeconfig
 # Connector UI
 kubectl port-forward svc/tc-fe-service 4200:80 -n $ns --kubeconfig $kubeconfig
 
-# MinIO (using in-cluster tc-storage-service)
+# RustFS (using in-cluster tc-storage-service)
 kubectl port-forward svc/tc-storage-service 9000:80 -n $ns --kubeconfig $kubeconfig
 ```
 
@@ -412,7 +415,7 @@ Without the Ingress, the connector UI and API would be entirely unreachable from
 |---|---|---|---|---|
 | `kubernetes_ingress_v1.tc_frontend` | `fe.endurance.lab.synelixis.com` | `tc-fe-service` | 80 | Connector UI (nginx serving the Angular app) |
 | `kubernetes_ingress_v1.tc_backend` | `be.endurance.lab.synelixis.com` | `tc-be-service` | 80 | Connector REST API (Spring Boot) |
-| `kubernetes_ingress_v1.tc_storage` | `storage.endurance.lab.synelixis.com` | `tc-storage-service` | 80 | MinIO S3 API |
+| `kubernetes_ingress_v1.tc_storage` | `storage.endurance.lab.synelixis.com` | `tc-storage-service` | 80 | RustFS S3 API |
 
 The `tc-storage-ingress` has additional annotations to support large file uploads:
 - `proxy-body-size: 0` — disables the default 1 MB body limit
@@ -433,7 +436,7 @@ Specifically:
 ```
 tc-fe-service    →  pods with label app=connector-a-ui  (or connector-b-ui)
 tc-be-service    →  pods with label app=connector-a     (or connector-b)
-tc-storage-service → pods with label app=minio
+tc-storage-service → pods with label app=rustfs
 ```
 
 The `service_name` override in `deployments.tf` is what assigns these exact names:
@@ -462,7 +465,7 @@ Traffic enters via the Ingress controller on port 80. The hostname in the reques
 |---|---|
 | Connector UI | `http://fe.endurance.lab.synelixis.com` |
 | Connector REST API | `http://be.endurance.lab.synelixis.com` |
-| MinIO S3 API | `http://storage.endurance.lab.synelixis.com` |
+| RustFS S3 API | `http://storage.endurance.lab.synelixis.com` |
 
 Example — opening the UI in a browser:
 
@@ -492,13 +495,13 @@ Pods inside the cluster never go through the Ingress. They talk directly to each
 | From pod | To service | DNS name used |
 |---|---|---|
 | connector-a | mongodb | `mongodb.endurance-playground.svc.cluster.local` |
-| connector-a | minio (ztfl-minio) | `ztfl-minio.endurance-playground.svc.cluster.local` |
+| connector-a | rustfs | `rustfs.endurance-playground.svc.cluster.local` |
 | connector-a-ui (nginx proxy) | connector-a | `tc-be-service.endurance-playground.svc.cluster.local` |
 
 > The short form (e.g. just `mongodb`) also works when both pods are in the same namespace, which is how `application.properties` refers to it:
 > ```properties
 > spring.data.mongodb.host=mongodb
-> s3.endpoint=http://ztfl-minio:9000
+> s3.endpoint=http://rustfs:9000
 > ```
 
 #### Summary table
@@ -538,16 +541,16 @@ If neither is enabled the Ingress resources are not created. If both were enable
 | File | Change |
 |---|---|
 | `providers.tf` (remote copy) | Remove `kind` provider; point `kubernetes` to `endurance-playground-config` |
-| `main.tf` (remote copy) | Remove `kind_cluster` resource; add `data` source for `ztfl-minio` secret |
+| `main.tf` (remote copy) | Remove `kind_cluster` resource; add `data` source for the RustFS credentials secret |
 | All metadata blocks | Add `namespace = var.namespace` |
 | `application.properties` (both) | Parameterise `s3.endpoint`, `s3.accessKey`, `s3.secretKey` via env var placeholders |
 | `configmaps.tf` | Store S3 credentials and config in `kubernetes_secret` resources; add `count` per connector |
 | `deployments.tf` | Set `service_name` + `service_type = "ClusterIP"` on module calls; add `count` for optional connectors |
-| `services.tf` | Rename MinIO service to `tc-storage-service`; switch all services to `ClusterIP` |
+| `services.tf` | Rename RustFS service to `tc-storage-service`; switch all services to `ClusterIP` |
 | `ingress.tf` _(new)_ | Three `kubernetes_ingress_v1` resources mapping hostnames to `tc-fe-service`, `tc-be-service`, `tc-storage-service` |
 | `modules/connector/variables.tf` | Add `namespace`, `service_name`, `service_type`, optional `node_port` variables |
 | `modules/frontend/variables.tf` | Add `namespace`, `service_name`, `service_type`, optional `node_port` variables |
-| `variables.tf` | Add `namespace`, `minio_endpoint`, `s3_region`, `enable_connector_a/b` variables |
+| `variables.tf` | Add `namespace`, `s3_endpoint`, `s3_region`, `enable_connector_a/b` variables |
 
 ---
 
@@ -595,4 +598,3 @@ kubectl get secrets $kube
 kubectl logs deployment/connector-a $kube -f
 kubectl describe pod <pod-name>      $kube
 ```
-

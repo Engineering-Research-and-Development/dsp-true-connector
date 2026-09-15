@@ -117,10 +117,6 @@ public class AutomaticNegotiationIT {
             .withCommand("/data")
             .waitingFor(Wait.forHttp("/health"));//.forPort(S3_PORT));
 
-//    private static final MinIOContainer providerMinIO =
-//            new MinIOContainer(DockerImageName.parse("minio/minio"))
-//                    .withReuse(false);
-
     private static ConfigurableApplicationContext consumerCtx;
     private static ConfigurableApplicationContext providerCtx;
     /**

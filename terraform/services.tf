@@ -1,7 +1,7 @@
-# This file defines the Kubernetes services for MinIO.
-resource "kubernetes_service" "minio" {
+# This file defines the Kubernetes services for RustFS.
+resource "kubernetes_service" "rustfs" {
   metadata {
-    name = "minio"
+    name = "rustfs"
   }
   spec {
     type = "NodePort"
@@ -9,16 +9,16 @@ resource "kubernetes_service" "minio" {
       name        = "api"
       port        = 9000
       target_port = 9000
-      node_port   = 30081  # Match the port mapping in kind_cluster
+      node_port   = 30081 # Match the port mapping in kind_cluster
     }
     port {
       name        = "console"
       port        = 9001
       target_port = 9001
-      node_port   = 30082  # Match the port mapping in kind_cluster
+      node_port   = 30082 # Match the port mapping in kind_cluster
     }
     selector = {
-      app = "minio"
+      app = "rustfs"
     }
   }
 }

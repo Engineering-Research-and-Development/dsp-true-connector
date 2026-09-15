@@ -1,6 +1,6 @@
 # Docker Images Configuration
 mongodb_image      = "mongo:7.0.12"
-minio_image        = "minio/minio:RELEASE.2025-04-22T22-12-26Z"
+rustfs_image       = "rustfs/rustfs:1.0.0-rc.6"
 connector_image    = "ghcr.io/engineering-research-and-development/dsp-true-connector:test"
 connector_ui_image = "ghcr.io/engineering-research-and-development/dsp-true-connector-ui:test"
 
@@ -34,37 +34,36 @@ keystore_connector_b_config = {
 
 # Connector A Configuration
 connector_a_config = {
-  automatic_transfer      = true
-  automatic_negotiation   = true
-  mongodb_host            = "mongodb"
-  mongodb_port            = 27017
-  mongodb_database        = "true_connector_a"
-  ssl_enabled             = false
-  s3_endpoint             = "http://minio:9000"
-  s3_access_key           = "minioadmin"
-  s3_secret_key           = "minioadmin"
-  s3_region               = "us-east-1"
+  automatic_transfer    = true
+  automatic_negotiation = true
+  mongodb_host          = "mongodb"
+  mongodb_port          = 27017
+  mongodb_database      = "true_connector_a"
+  ssl_enabled           = false
+  s3_endpoint           = "http://rustfs:9000"
+  s3_access_key         = "rustfsadmin"
+  s3_secret_key         = "rustfsadmin"
+  s3_region             = "us-east-1"
   # put your local IP address here to access the S3 bucket from outside the docker network
-  s3_external_endpoint    = "http://192.168.0.12:9000"
+  s3_external_endpoint = "http://192.168.0.12:9000"
   # Shared HMAC-SHA256 secret for INTERNAL-mode JWT login (must be at least 32 bytes)
-  jwt_secret              = "connector-jwt-dev-secret-change-in-prod-min-32-bytes"
+  jwt_secret = "connector-jwt-dev-secret-change-in-prod-min-32-bytes"
 }
 
 # Connector B Configuration
 connector_b_config = {
-  automatic_transfer      = true
-  automatic_negotiation   = true
-  mongodb_host            = "mongodb"
-  mongodb_port            = 27017
-  mongodb_database        = "true_connector_b"
-  ssl_enabled             = false
-  s3_endpoint             = "http://minio:9000"
-  s3_access_key           = "minioadmin"
-  s3_secret_key           = "minioadmin"
-  s3_region               = "us-east-1"
+  automatic_transfer    = true
+  automatic_negotiation = true
+  mongodb_host          = "mongodb"
+  mongodb_port          = 27017
+  mongodb_database      = "true_connector_b"
+  ssl_enabled           = false
+  s3_endpoint           = "http://rustfs:9000"
+  s3_access_key         = "rustfsadmin"
+  s3_secret_key         = "rustfsadmin"
+  s3_region             = "us-east-1"
   # put your local IP address here to access the S3 bucket from outside the docker network
-  s3_external_endpoint    = "http://192.168.0.12:9000"
+  s3_external_endpoint = "http://192.168.0.12:9000"
   # Shared HMAC-SHA256 secret for INTERNAL-mode JWT login (must be at least 32 bytes)
-  jwt_secret              = "connector-jwt-dev-secret-change-in-prod-min-32-bytes"
+  jwt_secret = "connector-jwt-dev-secret-change-in-prod-min-32-bytes"
 }
-

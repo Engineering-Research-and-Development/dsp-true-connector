@@ -7,18 +7,18 @@ functionality.
 
 The DSP True Connector supports S3-compatible object storage for artifact management and data transfer. You can choose **one** of the following storage backends:
 
-1. **MinIO** - Open-source, self-hosted S3-compatible storage
+1. **RustFS** - Open-source, self-hosted S3-compatible storage
 2. **AWS S3** - Amazon's native cloud object storage service
 
-**Important**: Configure only **one** storage backend at a time. The connector uses the same configuration properties for both MinIO and AWS S3, but the values differ based on your chosen backend.
+**Important**: Configure only **one** storage backend at a time. The connector uses the same configuration properties for both RustFS and AWS S3, but the values differ based on your chosen backend.
 
 ## Configuration Properties
 
 Choose **ONE** of the following configuration approaches based on your storage backend:
 
-### Option 1: MinIO Configuration
+### Option 1: RustFS Configuration
 
-Use this configuration when connecting to **MinIO** self-hosted object storage.
+Use this configuration when connecting to **RustFS** self-hosted object storage.
 
 **Key Characteristics:**
 - ✅ Self-hosted, open-source solution
@@ -27,33 +27,31 @@ Use this configuration when connecting to **MinIO** self-hosted object storage.
 - ✅ Must configure external presigned endpoint for URL generation
 - ✅ Best for on-premise deployments and development environments
 
-For MinIO, add the following properties:
+For RustFS, add the following properties:
 
 ```properties
-# MinIO Connection Settings
-s3.endpoint=<S3_ENDPOINT_URL>                      # REQUIRED: e.g., http://localhost:9000 or https://minio.example.com
+# RustFS Connection Settings
+s3.endpoint=<S3_ENDPOINT_URL>                      # REQUIRED: e.g., http://localhost:9000 or https://rustfs.example.com
 s3.accessKey=<YOUR_ACCESS_KEY>
 s3.secretKey=<YOUR_SECRET_KEY>
 s3.region=<S3_REGION>                              # Can be any value (e.g., us-east-1)
-s3.bucketName=<BUCKET_NAME>
 s3.externalPresignedEndpoint=<EXTERNAL_ENDPOINT>   # REQUIRED: External endpoint for presigned URLs
 ```
 
-**Complete MinIO Example:**
+**Complete RustFS Example:**
 ```properties
 s3.endpoint=http://localhost:9000
-s3.accessKey=minioadmin
-s3.secretKey=minioadmin
+s3.accessKey=<RUSTFS_ACCESS_KEY>
+s3.secretKey=<RUSTFS_SECRET_KEY>
 s3.region=us-east-1
-s3.bucketName=dsp-artifacts
 s3.externalPresignedEndpoint=http://192.168.1.100:9000
 ```
 
-**MinIO Setup Steps:**
-1. Deploy MinIO server (Docker, Kubernetes, or standalone)
-2. Access MinIO console and create access credentials
+**RustFS Setup Steps:**
+1. Deploy RustFS server (Docker, Kubernetes, or standalone)
+2. Access RustFS console and create access credentials
 3. Create a bucket for the connector
-4. Set `s3.endpoint` to your MinIO server's internal URL
+4. Set `s3.endpoint` to your RustFS server's internal URL
 5. Set `s3.externalPresignedEndpoint` to the externally accessible URL (important for presigned URLs)
 
 ---
@@ -77,7 +75,6 @@ s3.endpoint=                           # MUST be empty for AWS S3 (uses default 
 s3.accessKey=<YOUR_AWS_ACCESS_KEY_ID>
 s3.secretKey=<YOUR_AWS_SECRET_ACCESS_KEY>
 s3.region=<AWS_REGION>                 # e.g., us-east-1, eu-west-1, ap-southeast-1
-s3.bucketName=<YOUR_BUCKET_NAME>
 s3.externalPresignedEndpoint=          # MUST be empty for AWS S3 (uses AWS regional endpoints)
 ```
 
@@ -87,7 +84,6 @@ s3.endpoint=
 s3.accessKey=AKIAIOSFODNN7EXAMPLE
 s3.secretKey=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 s3.region=us-east-1
-s3.bucketName=my-dsp-connector-bucket
 s3.externalPresignedEndpoint=
 ```
 
@@ -104,13 +100,12 @@ s3.externalPresignedEndpoint=
 
 The following properties are used regardless of which storage backend you choose:
 
-| Property | MinIO | AWS S3 | Description |
+| Property | RustFS | AWS S3 | Description |
 |----------|-------|--------|-------------|
 | `s3.endpoint` | **Required** (e.g., `http://localhost:9000`) | **Empty** | The S3 service endpoint URL |
-| `s3.accessKey` | MinIO Access Key | AWS Access Key ID | Your S3 access key ID |
-| `s3.secretKey` | MinIO Secret Key | AWS Secret Access Key | Your S3 secret access key |
+| `s3.accessKey` | RustFS Access Key | AWS Access Key ID | Your S3 access key ID |
+| `s3.secretKey` | RustFS Secret Key | AWS Secret Access Key | Your S3 secret access key |
 | `s3.region` | Any value (e.g., `us-east-1`) | AWS Region (e.g., `us-east-1`) | S3 region identifier |
-| `s3.bucketName` | MinIO Bucket Name | AWS Bucket Name | Name of the S3 bucket to store data |
 | `s3.externalPresignedEndpoint` | **Required** (externally accessible URL) | **Empty** | External endpoint URL for presigned URL generation |
 
 ### Detailed Property Descriptions
@@ -118,30 +113,28 @@ The following properties are used regardless of which storage backend you choose
 ### Detailed Property Descriptions
 
 - **`s3.endpoint`**: The S3 service endpoint URL
-  - **MinIO**: Your MinIO server endpoint URL (e.g., `http://localhost:9000` or `https://minio.example.com`)
+  - **RustFS**: Your RustFS server endpoint URL (e.g., `http://localhost:9000` or `https://rustfs.example.com`)
   - **AWS S3**: Leave empty (connector uses default AWS regional endpoints automatically)
   
 - **`s3.accessKey`**: Your S3 access key ID
-  - **MinIO**: MinIO access key
+  - **RustFS**: RustFS access key
   - **AWS S3**: AWS Access Key ID (format: AKIA...)
   
 - **`s3.secretKey`**: Your S3 secret access key
-  - **MinIO**: MinIO secret key
+  - **RustFS**: RustFS secret key
   - **AWS S3**: AWS Secret Access Key
   
 - **`s3.region`**: S3 region identifier
-  - **MinIO**: Can be any value (often set to `us-east-1` by convention)
+  - **RustFS**: Can be any value (often set to `us-east-1` by convention)
   - **AWS S3**: Must match actual AWS region (e.g., `us-east-1`, `eu-west-1`, `ap-southeast-1`)
   
-- **`s3.bucketName`**: Name of the S3 bucket to store data
-  
 - **`s3.externalPresignedEndpoint`**: External endpoint URL used for presigned URL generation
-  - **MinIO**: **Critical** - Must be set to the externally accessible URL for presigned URLs to work correctly
+  - **RustFS**: **Critical** - Must be set to the externally accessible URL for presigned URLs to work correctly
   - **AWS S3**: Leave empty(AWS handles this automatically using regional endpoints)
 
-## MinIO vs AWS S3: Quick Comparison
+## RustFS vs AWS S3: Quick Comparison
 
-| Feature | MinIO | AWS S3 |
+| Feature | RustFS | AWS S3 |
 |---------|-------|--------|
 | **Hosting** | Self-hosted on your infrastructure | Cloud-managed by Amazon |
 | **Cost Model** | Free software, you pay for infrastructure | Pay-per-use (storage + requests) |
@@ -153,7 +146,7 @@ The following properties are used regardless of which storage backend you choose
 | **Security** | You manage all security aspects | AWS IAM, policies, encryption |
 | **Scalability** | Limited by your infrastructure | Unlimited (AWS managed) |
 
-**Key Takeaway**: Choose **MinIO** for on-premise control and self-hosted environments, or **AWS S3** for cloud-native deployments with minimal infrastructure management.
+**Key Takeaway**: Choose **RustFS** for on-premise control and self-hosted environments, or **AWS S3** for cloud-native deployments with minimal infrastructure management.
 
 ## Usage in Data Transfer
 
@@ -220,7 +213,7 @@ To verify your S3 configuration:
 - Verify external endpoint configuration
 - Check URL expiration settings
 - **AWS S3**: Leave `s3.externalPresignedEndpoint` empty (AWS handles this automatically)
-- **MinIO**: Ensure the `s3.externalPresignedEndpoint` is set to the MinIO server URL:
+- **RustFS**: Ensure the `s3.externalPresignedEndpoint` is set to the RustFS server URL:
     - Running locally (from an IDE): use http://localhost:9000
     - Running in a container (e.g., Docker): set it to the local IP address of the machine (Ethernet adapter - IPv4
       Address; http://192.168.x.x:9000), or the public URL if running in a production environment

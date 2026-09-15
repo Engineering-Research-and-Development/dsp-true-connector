@@ -4,10 +4,10 @@ variable "mongodb_image" {
   default     = "mongo:7.0.12"
 }
 
-variable "minio_image" {
-  description = "MinIO image to use"
+variable "rustfs_image" {
+  description = "RustFS image to use"
   type        = string
-  default     = "minio/minio:RELEASE.2025-04-22T22-12-26Z"
+  default     = "rustfs/rustfs:1.0.0-rc.6"
 }
 
 variable "connector_image" {
@@ -30,7 +30,7 @@ variable "connector_a_base_url" {
 
 variable "keystore_connector_a_config" {
   description = "Keystore configuration for Connector A"
-  type = map(string)
+  type        = map(string)
   default = {
     KEYSTORE_ALIAS      = "connector-a"
     KEY_PASSWORD        = "password"
@@ -43,7 +43,7 @@ variable "keystore_connector_a_config" {
 
 variable "keystore_connector_b_config" {
   description = "Keystore configuration for Connector B"
-  type = map(string)
+  type        = map(string)
   default = {
     KEYSTORE_ALIAS      = "connector-b"
     KEY_PASSWORD        = "password"
@@ -88,32 +88,32 @@ variable "mongo_password" {
 variable "connector_a_config" {
   description = "Connector A application configuration properties"
   type = object({
-    automatic_transfer      = bool
-    automatic_negotiation   = bool
-    mongodb_host            = string
-    mongodb_port            = number
-    mongodb_database        = string
-    ssl_enabled             = bool
-    s3_endpoint             = string
-    s3_access_key           = string
-    s3_secret_key           = string
-    s3_region               = string
-    s3_external_endpoint    = string
-    jwt_secret              = string
+    automatic_transfer    = bool
+    automatic_negotiation = bool
+    mongodb_host          = string
+    mongodb_port          = number
+    mongodb_database      = string
+    ssl_enabled           = bool
+    s3_endpoint           = string
+    s3_access_key         = string
+    s3_secret_key         = string
+    s3_region             = string
+    s3_external_endpoint  = string
+    jwt_secret            = string
   })
   default = {
-    automatic_transfer      = false
-    automatic_negotiation   = false
-    mongodb_host            = "mongodb"
-    mongodb_port            = 27017
-    mongodb_database        = "true_connector_a"
-    ssl_enabled             = false
-    s3_endpoint             = "http://minio:9000"
-    s3_access_key           = "minioadmin"
-    s3_secret_key           = "minioadmin"
-    s3_region               = "us-east-1"
-    s3_external_endpoint    = "http://localhost:9000"
-    jwt_secret              = "connector-jwt-dev-secret-change-in-prod-min-32-bytes"
+    automatic_transfer    = false
+    automatic_negotiation = false
+    mongodb_host          = "mongodb"
+    mongodb_port          = 27017
+    mongodb_database      = "true_connector_a"
+    ssl_enabled           = false
+    s3_endpoint           = "http://rustfs:9000"
+    s3_access_key         = "rustfsadmin"
+    s3_secret_key         = "rustfsadmin"
+    s3_region             = "us-east-1"
+    s3_external_endpoint  = "http://localhost:9000"
+    jwt_secret            = "connector-jwt-dev-secret-change-in-prod-min-32-bytes"
   }
 }
 
@@ -121,31 +121,31 @@ variable "connector_a_config" {
 variable "connector_b_config" {
   description = "Connector B application configuration properties"
   type = object({
-    automatic_transfer      = bool
-    automatic_negotiation   = bool
-    mongodb_host            = string
-    mongodb_port            = number
-    mongodb_database        = string
-    ssl_enabled             = bool
-    s3_endpoint             = string
-    s3_access_key           = string
-    s3_secret_key           = string
-    s3_region               = string
-    s3_external_endpoint    = string
-    jwt_secret              = string
+    automatic_transfer    = bool
+    automatic_negotiation = bool
+    mongodb_host          = string
+    mongodb_port          = number
+    mongodb_database      = string
+    ssl_enabled           = bool
+    s3_endpoint           = string
+    s3_access_key         = string
+    s3_secret_key         = string
+    s3_region             = string
+    s3_external_endpoint  = string
+    jwt_secret            = string
   })
   default = {
-    automatic_transfer      = false
-    automatic_negotiation   = false
-    mongodb_host            = "mongodb"
-    mongodb_port            = 27017
-    mongodb_database        = "true_connector_b"
-    ssl_enabled             = false
-    s3_endpoint             = "http://minio:9000"
-    s3_access_key           = "minioadmin"
-    s3_secret_key           = "minioadmin"
-    s3_region               = "us-east-1"
-    s3_external_endpoint    = "http://172.17.0.1:9000"
-    jwt_secret              = "connector-jwt-dev-secret-change-in-prod-min-32-bytes"
+    automatic_transfer    = false
+    automatic_negotiation = false
+    mongodb_host          = "mongodb"
+    mongodb_port          = 27017
+    mongodb_database      = "true_connector_b"
+    ssl_enabled           = false
+    s3_endpoint           = "http://rustfs:9000"
+    s3_access_key         = "rustfsadmin"
+    s3_secret_key         = "rustfsadmin"
+    s3_region             = "us-east-1"
+    s3_external_endpoint  = "http://172.17.0.1:9000"
+    jwt_secret            = "connector-jwt-dev-secret-change-in-prod-min-32-bytes"
   }
 }
