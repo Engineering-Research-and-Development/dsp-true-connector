@@ -16,6 +16,8 @@ services:
       - "9001:9001"
     volumes:
       - rustfs_data:/data
+      ## Uncomment the following line to enable TLS (make sure to provide your own certs)
+#      - ./tc_cert/rustfs:/opt/tls:ro
     environment:
       - RUSTFS_VOLUMES=/data
       - RUSTFS_ADDRESS=0.0.0.0:9000
@@ -23,6 +25,8 @@ services:
       - RUSTFS_CONSOLE_ADDRESS=0.0.0.0:9001
       - RUSTFS_ACCESS_KEY=rustfsadmin
       - RUSTFS_SECRET_KEY=rustfsadmin
+      ## Uncomment the following line to enable TLS (make sure to provide your own certs)
+#      - RUSTFS_TLS_PATH=/opt/tls/
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9000/health" ]
       interval: 30s

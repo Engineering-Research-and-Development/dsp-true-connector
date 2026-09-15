@@ -31,7 +31,6 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -70,7 +69,7 @@ public class BaseIntegrationTest {
                     .withReuse(false);
 
     private static final int S3_PORT = 9000;
-    protected static final GenericContainer<?> minIOContainer = new GenericContainer<>(
+    protected static final GenericContainer<?> s3StorageContainer = new GenericContainer<>(
             DockerImageName.parse("rustfs/rustfs:1.0.0-rc.6"))
             .withEnv("RUSTFS_ACCESS_KEY", S3Utils.ACCESS_KEY)
             .withEnv("RUSTFS_SECRET_KEY", S3Utils.SECRET_KEY)
@@ -94,13 +93,13 @@ public class BaseIntegrationTest {
         mongoDBContainer.start();
         // used for checking S3 storage during test debugging; will be exposed on random localhost port which can be checked with `docker ps`or some docker GUI
 //        minIOContainer.addExposedPort(9001);
-        minIOContainer.start();
+        s3StorageContainer.start();
     }
 
     protected static String getS3Url() {
         return "http://%s:%d".formatted(
-                minIOContainer.getHost(),
-                minIOContainer.getMappedPort(S3_PORT)
+                s3StorageContainer.getHost(),
+                s3StorageContainer.getMappedPort(S3_PORT)
         );
     }
 

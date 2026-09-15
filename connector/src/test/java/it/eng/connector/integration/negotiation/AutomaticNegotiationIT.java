@@ -109,7 +109,7 @@ public class AutomaticNegotiationIT {
                     .waitingFor(Wait.forLogMessage(".*Waiting for connections.*", 1))
                     .withReuse(false);
     private static final int S3_PORT = 9000;
-    protected static final GenericContainer<?> providerMinIO = new GenericContainer<>(
+    protected static final GenericContainer<?> providerS3Storage = new GenericContainer<>(
             DockerImageName.parse("rustfs/rustfs:1.0.0-rc.6"))
             .withEnv("RUSTFS_ACCESS_KEY", S3Utils.ACCESS_KEY)
             .withEnv("RUSTFS_SECRET_KEY", S3Utils.SECRET_KEY)
@@ -142,8 +142,8 @@ public class AutomaticNegotiationIT {
 
     protected static String getS3Url() {
         return "http://%s:%d".formatted(
-                providerMinIO.getHost(),
-                providerMinIO.getMappedPort(S3_PORT)
+                providerS3Storage.getHost(),
+                providerS3Storage.getMappedPort(S3_PORT)
         );
     }
 
@@ -152,7 +152,7 @@ public class AutomaticNegotiationIT {
     @BeforeAll
     static void startApplications() {
         mongoDBContainer.start();
-        providerMinIO.start();
+        providerS3Storage.start();
 
         String mongoHost = mongoDBContainer.getHost();
         int    mongoPort = mongoDBContainer.getMappedPort(27017);
@@ -277,7 +277,7 @@ public class AutomaticNegotiationIT {
             wireMockServer.stop();
         }
         mongoDBContainer.stop();
-        providerMinIO.stop();
+        providerS3Storage.stop();
     }
 
     // ── catalog setup ─────────────────────────────────────────────────────────────

@@ -103,7 +103,7 @@ public class AutomaticDataTransferIT {
                     .waitingFor(Wait.forLogMessage(".*Waiting for connections.*", 1))
                     .withReuse(false);
 
-    protected static final GenericContainer<?> providerMinIO = new GenericContainer<>(
+    protected static final GenericContainer<?> providerS3Storage = new GenericContainer<>(
             DockerImageName.parse("rustfs/rustfs:1.0.0-rc.6"))
             .withEnv("RUSTFS_ACCESS_KEY", PROVIDER_S3_ACCESS_KEY)
             .withEnv("RUSTFS_SECRET_KEY", PROVIDER_S3_SECRET_KEY)
@@ -112,7 +112,7 @@ public class AutomaticDataTransferIT {
             .withCommand("/data")
             .waitingFor(Wait.forHttp("/health").forPort(S3_PORT));
 
-    protected static final GenericContainer<?> consumerMinIO = new GenericContainer<>(
+    protected static final GenericContainer<?> consumerS3Storage = new GenericContainer<>(
             DockerImageName.parse("rustfs/rustfs:1.0.0-rc.6"))
             .withEnv("RUSTFS_ACCESS_KEY", CONSUMER_S3_ACCESS_KEY)
             .withEnv("RUSTFS_SECRET_KEY", CONSUMER_S3_SECRET_KEY)
@@ -148,8 +148,8 @@ public class AutomaticDataTransferIT {
     @BeforeAll
     static void startApplications() {
         mongoDBContainer.start();
-        providerMinIO.start();
-        consumerMinIO.start();
+        providerS3Storage.start();
+        consumerS3Storage.start();
 
         String mongoHost = mongoDBContainer.getHost();
         int    mongoPort = mongoDBContainer.getMappedPort(27017);
@@ -162,13 +162,13 @@ public class AutomaticDataTransferIT {
         // ── Provider — source artifact lives in providerMinIO ─────────────────────
         providerCtx = startInstance(mongoHost, mongoPort, PROVIDER_PORT,
                 "provider", "provider_db", PROVIDER_BASE_URL,
-                getS3Url(providerMinIO), PROVIDER_S3_ACCESS_KEY, PROVIDER_S3_SECRET_KEY,
+                getS3Url(providerS3Storage), PROVIDER_S3_ACCESS_KEY, PROVIDER_S3_SECRET_KEY,
                 "dsp-true-connector-provider");
 
         // ── Consumer — downloaded artifact will land in consumerMinIO ─────────────
         consumerCtx = startInstance(mongoHost, mongoPort, CONSUMER_PORT,
                 "consumer", "consumer_db", CONSUMER_BASE_URL,
-                getS3Url(consumerMinIO), CONSUMER_S3_ACCESS_KEY, CONSUMER_S3_SECRET_KEY,
+                getS3Url(consumerS3Storage), CONSUMER_S3_ACCESS_KEY, CONSUMER_S3_SECRET_KEY,
                 "dsp-true-connector-consumer");
 
         // ── WireMock consumer — callbackAddress points to WireMock ────────────────
@@ -177,7 +177,7 @@ public class AutomaticDataTransferIT {
         wiremockConsumerCtx = startInstance(mongoHost, mongoPort, WIREMOCK_CONSUMER_PORT,
                 "consumer-wiremock", "consumer_wiremock_db",
                 "http://localhost:" + WIREMOCK_PORT,
-                getS3Url(consumerMinIO), CONSUMER_S3_ACCESS_KEY, CONSUMER_S3_SECRET_KEY,
+                getS3Url(consumerS3Storage), CONSUMER_S3_ACCESS_KEY, CONSUMER_S3_SECRET_KEY,
                 "dsp-true-connector-consumer");
 
         populateProviderCatalog();
@@ -297,8 +297,8 @@ public class AutomaticDataTransferIT {
             wireMockServer.stop();
         }
         mongoDBContainer.stop();
-        providerMinIO.stop();
-        consumerMinIO.stop();
+        providerS3Storage.stop();
+        consumerS3Storage.stop();
     }
 
     // ── catalog + artifact setup ──────────────────────────────────────────────────

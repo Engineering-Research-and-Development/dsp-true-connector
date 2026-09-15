@@ -6,7 +6,7 @@ This document analyses the RAM usage characteristics of the HTTP-PUSH and HTTP-P
 
 1. `HttpPushTransferStrategy` / `HttpPullTransferStrategy` — downloads the file via a presigned GET URL
 2. `S3ClientServiceImpl.uploadFile` — delegates to the configured upload strategy
-3. `S3SyncUploadStrategy` / `S3AsyncUploadStrategy` — uploads the file to the destination S3/MinIO bucket using S3 Multipart Upload
+3. `S3SyncUploadStrategy` / `S3AsyncUploadStrategy` — uploads the file to the destination S3/RustFS bucket using S3 Multipart Upload
 
 ---
 

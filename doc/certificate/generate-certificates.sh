@@ -489,6 +489,9 @@ else
 fi
 echo ""
 
+# Ensure proper permissions for the RustFS container user
+chmod 644 rustfs_cert.pem rustfs_key.pem || true
+
 echo "RustFS certificate files generated:"
 echo "  - private.key (Private key in PEM format)"
 echo "  - public.crt (Certificate in PEM format, signed by Intermediate CA)"

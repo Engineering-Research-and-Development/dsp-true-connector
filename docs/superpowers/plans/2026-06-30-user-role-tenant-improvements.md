@@ -6,7 +6,7 @@
 
 **Architecture:** The Role enum is renamed (ROLE_ADMIN → ADMIN etc.) and gains an `authorityName()` helper that produces the Spring Security `"ROLE_"` prefix needed by `User.getAuthorities()`. ConnectorSecurityConfig is updated to add per-endpoint matchers that open the three user self-service endpoints to ADMIN in addition to SUPER_ADMIN, while all other user management remains SUPER_ADMIN-only. TenantService.updateTenant() is fixed to always use the existing participantId, ignoring any value in the request body.
 
-**Tech Stack:** Java 17, Spring Boot 3.5.x, Spring Security 6.x, MongoDB / Spring Data MongoDB, JUnit 5, MockMvc, Testcontainers (MongoDB + MinIO), Mockito.
+**Tech Stack:** Java 17, Spring Boot 3.5.x, Spring Security 6.x, MongoDB / Spring Data MongoDB, JUnit 5, MockMvc, Testcontainers (MongoDB + RustFS), Mockito.
 
 ---
 
@@ -982,7 +982,7 @@ git commit -m "test: add tests for findCurrentUser, GET /me, participantId immut
 mvn clean verify -q
 ```
 
-Expected: `BUILD SUCCESS`. Docker must be running for Testcontainers (MongoDB + MinIO).
+Expected: `BUILD SUCCESS`. Docker must be running for Testcontainers (MongoDB + RustFS).
 
 If any test fails:
 - Compile errors → re-check Task 7 for missed enum references
