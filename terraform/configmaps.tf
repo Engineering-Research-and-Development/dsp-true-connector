@@ -128,6 +128,7 @@ resource "local_file" "connector_a_properties" {
     S3_SECRET_KEY                     = "$${S3_SECRET_KEY}"
     S3_REGION                         = var.connector_a_config.s3_region
     S3_EXTERNAL_PRESIGNED_ENDPOINT    = var.connector_a_config.s3_external_endpoint
+    S3_BUCKET_NAME                    = var.connector_a_config.s3_bucket_name
   })
   filename = "${path.module}/.terraform/connector_a_application.properties"
 }
@@ -164,6 +165,7 @@ resource "local_file" "connector_b_properties" {
     S3_SECRET_KEY                     = "$${S3_SECRET_KEY}"
     S3_REGION                         = var.connector_b_config.s3_region
     S3_EXTERNAL_PRESIGNED_ENDPOINT    = var.connector_b_config.s3_external_endpoint
+    S3_BUCKET_NAME                    = var.connector_b_config.s3_bucket_name
   })
   filename = "${path.module}/.terraform/connector_b_application.properties"
 }

@@ -44,6 +44,7 @@ connector_a_config = {
   s3_access_key         = "rustfsadmin"
   s3_secret_key         = "rustfsadmin"
   s3_region             = "us-east-1"
+  s3_bucket_name        = "dsp-true-connector-default-bucket"
   # put your local IP address here to access the S3 bucket from outside the docker network
   s3_external_endpoint = "http://192.168.0.12:9000"
   # Shared HMAC-SHA256 secret for INTERNAL-mode JWT login (must be at least 32 bytes)
@@ -62,6 +63,7 @@ connector_b_config = {
   s3_access_key         = "rustfsadmin"
   s3_secret_key         = "rustfsadmin"
   s3_region             = "us-east-1"
+  s3_bucket_name        = "dsp-true-connector-b-default-bucket"
   # put your local IP address here to access the S3 bucket from outside the docker network
   s3_external_endpoint = "http://192.168.0.12:9000"
   # Shared HMAC-SHA256 secret for INTERNAL-mode JWT login (must be at least 32 bytes)

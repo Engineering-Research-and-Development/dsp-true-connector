@@ -99,6 +99,7 @@ variable "connector_a_config" {
     s3_secret_key         = string
     s3_region             = string
     s3_external_endpoint  = string
+    s3_bucket_name        = string
     jwt_secret            = string
   })
   default = {
@@ -113,6 +114,7 @@ variable "connector_a_config" {
     s3_secret_key         = "rustfsadmin"
     s3_region             = "us-east-1"
     s3_external_endpoint  = "http://localhost:9000"
+    s3_bucket_name        = "dsp-true-connector-a-default-bucket"
     jwt_secret            = "connector-jwt-dev-secret-change-in-prod-min-32-bytes"
   }
 }
@@ -132,6 +134,7 @@ variable "connector_b_config" {
     s3_secret_key         = string
     s3_region             = string
     s3_external_endpoint  = string
+    s3_bucket_name        = string
     jwt_secret            = string
   })
   default = {
@@ -146,6 +149,7 @@ variable "connector_b_config" {
     s3_secret_key         = "rustfsadmin"
     s3_region             = "us-east-1"
     s3_external_endpoint  = "http://172.17.0.1:9000"
+    s3_bucket_name        = "dsp-true-connector-b-default-bucket"
     jwt_secret            = "connector-jwt-dev-secret-change-in-prod-min-32-bytes"
   }
 }
