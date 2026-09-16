@@ -1,7 +1,7 @@
 # This file defines the Kubernetes services for RustFS.
-resource "kubernetes_service" "rustfs" {
+resource "kubernetes_service" "s3storage" {
   metadata {
-    name = "rustfs"
+    name = "s3storage"
   }
   spec {
     type = "NodePort"

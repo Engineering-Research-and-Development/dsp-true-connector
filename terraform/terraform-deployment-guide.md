@@ -30,7 +30,7 @@ This document analyses the existing Terraform setup and describes how to deploy 
 | 3 | All resources deploy to the **default namespace**. The remote cluster uses `endurance-playground` namespace. | Namespace must be set for remote deploy. |
 | 4 | `rustfs` and `mongodb` are deployed as in-cluster services. A remote deployment must provide a compatible RustFS service and credentials. | Skip the in-cluster `rustfs` deployment only when the remote service is available. |
 | 5 | RustFS credentials are configured through Terraform S3 variables. | Provide the remote service credentials through a secret-backed Terraform configuration. |
-| 6 | The default S3 endpoint is `http://rustfs:9000`. | Override it with the remote RustFS service endpoint. |
+| 6 | The default S3 endpoint is `http://s3storage:9000`. | Override it with the remote RustFS service endpoint. |
 | 7 | NodePort service type works for Kind. Remote cluster may require `ClusterIP` + ingress, or the same NodePort if the cluster allows it. | Verify with cluster admin; NodePort range 30000-32767 is usually allowed. |
 | 8 | `modules/connector/main.tf` sets `image_pull_policy = "Never"` (with `IfNotPresent` commented out above it); `modules/frontend/main.tf` uses `IfNotPresent`. `Never` requires the image to be pre-loaded into Kind via `kind load docker-image` — a remote-registry image will never be pulled. | See local setup below for the `kind load` workflow. For remote deployment (registry-hosted images), switch back to `IfNotPresent` or `Always`. |
 
@@ -278,7 +278,7 @@ s3_endpoint      = "http://rustfs.endurance-playground.svc.cluster.local:9000"
 Add the corresponding variables to `variables.tf`:
 
 ```hcl
-variable "s3_endpoint"   { type = string; default = "http://rustfs:9000" }
+variable "s3_endpoint"   { type = string; default = "http://s3storage:9000" }
 variable "s3_access_key" { type = string; sensitive = true }
 variable "s3_secret_key" { type = string; sensitive = true }
 ```
@@ -309,7 +309,7 @@ In `app-resources/connector_a_resources/application.properties` (and `_b_`), cha
 
 ```properties
 # FROM (local):
-s3.endpoint=http://rustfs:9000
+s3.endpoint=http://s3storage:9000
 s3.accessKey=rustfsadmin
 s3.secretKey=rustfsadmin
 
@@ -501,7 +501,7 @@ Pods inside the cluster never go through the Ingress. They talk directly to each
 > The short form (e.g. just `mongodb`) also works when both pods are in the same namespace, which is how `application.properties` refers to it:
 > ```properties
 > spring.data.mongodb.host=mongodb
-> s3.endpoint=http://rustfs:9000
+> s3.endpoint=http://s3storage:9000
 > ```
 
 #### Summary table

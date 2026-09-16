@@ -57,9 +57,9 @@ module "connector_b_ui" {
 }
 
 # This file defines the Kubernetes deployment for RustFS.
-resource "kubernetes_deployment" "rustfs" {
+resource "kubernetes_deployment" "s3storage" {
   metadata {
-    name = "rustfs"
+    name = "s3storage"
   }
   spec {
     replicas = 1
@@ -76,7 +76,7 @@ resource "kubernetes_deployment" "rustfs" {
       }
       spec {
         container {
-          name              = "rustfs"
+          name              = "s3storage"
           image             = var.rustfs_image
           image_pull_policy = "IfNotPresent"
           port {

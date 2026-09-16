@@ -108,7 +108,7 @@ variable "connector_a_config" {
     mongodb_port          = 27017
     mongodb_database      = "true_connector_a"
     ssl_enabled           = false
-    s3_endpoint           = "http://rustfs:9000"
+    s3_endpoint           = "http://s3storage:9000"
     s3_access_key         = "rustfsadmin"
     s3_secret_key         = "rustfsadmin"
     s3_region             = "us-east-1"
@@ -141,7 +141,7 @@ variable "connector_b_config" {
     mongodb_port          = 27017
     mongodb_database      = "true_connector_b"
     ssl_enabled           = false
-    s3_endpoint           = "http://rustfs:9000"
+    s3_endpoint           = "http://s3storage:9000"
     s3_access_key         = "rustfsadmin"
     s3_secret_key         = "rustfsadmin"
     s3_region             = "us-east-1"

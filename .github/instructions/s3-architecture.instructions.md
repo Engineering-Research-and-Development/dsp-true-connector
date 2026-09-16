@@ -31,7 +31,7 @@ Spring prefix: `s3`
 
 Connector A (provider, `ci/docker/connector_a_resources/application.properties`):
 ```properties
-s3.endpoint=http://rustfs:9000
+s3.endpoint=http://s3storage:9000
 s3.accessKey=rustfsadmin
 s3.secretKey=rustfsadmin
 s3.region=us-east-1
@@ -312,7 +312,7 @@ allCatalogs.forEach(catalog -> catalog.getDataset().removeIf(
 
 3. **Secret key encryption**: The `@Encrypted` annotation on `BucketCredentialsEntity.secretKey` and `TemporaryBucketUser.secretKey` causes automatic transparent encryption at persistence and decryption at read. Never manually encrypt/decrypt in service code — use the repository + service abstraction.
 
-4. **External presigned endpoint**: When RustFS runs behind Docker NAT, `s3.endpoint` uses the Docker network hostname (e.g. `http://rustfs:9000`) but presigned URL recipients need the host-accessible URL (e.g. `http://172.17.0.1:9000`). Always use `s3.externalPresignedEndpoint` when embedding URLs in DSP protocol messages. On AWS this is blank and the SDK generates the correct public URL.
+4. **External presigned endpoint**: When RustFS runs behind Docker NAT, `s3.endpoint` uses the Docker network hostname (e.g. `http://s3storage:9000`) but presigned URL recipients need the host-accessible URL (e.g. `http://172.17.0.1:9000`). Always use `s3.externalPresignedEndpoint` when embedding URLs in DSP protocol messages. On AWS this is blank and the SDK generates the correct public URL.
 
 5. **AWS vs RustFS bucket policy format**: Both use `"Version": "2012-10-17"` IAM policy JSON. On AWS, `Principal.AWS` ARNs reference real IAM users. On RustFS, the same format works because RustFS supports the AWS IAM policy model. The code uses `"arn:aws:iam::*:user/<accessKey>"` format which is compatible with both.
 

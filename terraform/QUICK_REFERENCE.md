@@ -72,7 +72,7 @@ Only non-sensitive configuration values are in ConfigMaps:
 ### Non-Sensitive (ConfigMap)
 | Property | Variable | Default (A / B) |
 |----------|----------|---------|
-| `s3.endpoint` | `connector_a_config.s3_endpoint` | `"http://rustfs:9000"` |
+| `s3.endpoint` | `connector_a_config.s3_endpoint` | `"http://s3storage:9000"` |
 | `s3.region` | `connector_a_config.s3_region` | `"us-east-1"` |
 | `s3.bucketName` | `connector_a_config.s3_bucket_name` | `"dsp-true-connector-a"` / `"dsp-true-connector-b"` |
 | `s3.externalPresignedEndpoint` | `connector_a_config.s3_external_endpoint` | `"http://localhost:9000"` / `"http://172.17.0.1:9000"` |

@@ -12,7 +12,7 @@ services:
 
   rustfs:
     image: rustfs/rustfs:1.0.0-rc.6
-    container_name: rustfs
+    container_name: s3storage
     ports:
       - "9000:9000"
       - "9001:9001"
