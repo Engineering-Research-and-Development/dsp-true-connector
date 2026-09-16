@@ -4,9 +4,9 @@ applyTo: "**"
 
 # S3 Architecture — Reference for Copilot Implementations
 
-> **Critical compatibility requirement**: every S3 feature MUST work with **both MinIO and real AWS S3**.
+> **Critical compatibility requirement**: every S3 feature MUST work with **both RustFS and real AWS S3**.
 > The code detects the target by checking whether `s3.endpoint` is blank or contains `.amazonaws.com`/`.aws.`.
-> MinIO uses path-style URLs and IAM-compatible user management via its Admin API.
+> RustFS uses path-style URLs and IAM-compatible user management via its Admin API.
 > AWS S3 uses virtual-hosted-style URLs and real IAM. Never add code that works for only one of them.
 
 ---
@@ -18,12 +18,12 @@ Spring prefix: `s3`
 
 | Property | Key | Description |
 |---|---|---|
-| `endpoint` | `s3.endpoint` | Base URL of the S3 server. **Blank or AWS URL = AWS mode; non-blank local URL = MinIO mode.** |
-| `accessKey` | `s3.accessKey` | Admin access key (`minioadmin` for MinIO, IAM key for AWS). |
+| `endpoint` | `s3.endpoint` | Base URL of the S3 server. **Blank or AWS URL = AWS mode; non-blank local URL = RustFS mode.** |
+| `accessKey` | `s3.accessKey` | Admin access key (`rustfsadmin` for RustFS, IAM key for AWS). |
 | `secretKey` | `s3.secretKey` | Admin secret key. |
-| `region` | `s3.region` | AWS/MinIO region, e.g. `us-east-1`. |
+| `region` | `s3.region` | AWS/RustFS region, e.g. `us-east-1`. |
 | `bucketName` | `s3.bucketName` | **Global fallback** bucket name. Used when a tenant has no per-tenant bucket. |
-| `externalPresignedEndpoint` | `s3.externalPresignedEndpoint` | Public-facing endpoint embedded into presigned GET URLs. Required when MinIO is behind a Docker/NAT boundary (e.g. `http://172.17.0.1:9000`). Leave blank for AWS. |
+| `externalPresignedEndpoint` | `s3.externalPresignedEndpoint` | Public-facing endpoint embedded into presigned GET URLs. Required when RustFS is behind a Docker/NAT boundary (e.g. `http://172.17.0.1:9000`). Leave blank for AWS. |
 | `uploadMode` | `s3.upload-mode` | `SYNC` (default, `S3Client`) or `ASYNC` (`S3AsyncClient`). Overridable at runtime via MongoDB. |
 | `chunkSize` | `s3.chunkSize` | Multipart chunk size in bytes. Default 10 MB. |
 
@@ -31,9 +31,9 @@ Spring prefix: `s3`
 
 Connector A (provider, `ci/docker/connector_a_resources/application.properties`):
 ```properties
-s3.endpoint=http://minio:9000
-s3.accessKey=minioadmin
-s3.secretKey=minioadmin
+s3.endpoint=http://s3storage:9000
+s3.accessKey=rustfsadmin
+s3.secretKey=rustfsadmin
 s3.region=us-east-1
 s3.bucketName=dsp-true-connector-a
 s3.externalPresignedEndpoint=http://172.17.0.1:9000
@@ -114,20 +114,20 @@ neither?            →  createSecureBucket(bucketName) = createBucket() + creat
 Used in `InitialDataLoader` on startup: iterates all tenants, resolves the effective bucket name, and ensures credentials exist.
 
 ### `createSecureBucket(bucketName)` — full provisioning
-1. `createBucket()` — creates the bucket in S3/MinIO.
+1. `createBucket()` — creates the bucket in S3/RustFS.
    - AWS non-`us-east-1`: adds `LocationConstraint`.
    - `BucketAlreadyExistsException` / `BucketAlreadyOwnedByYouException` → silently ignored (idempotent).
 2. `createBucketCredentials(bucketName)` — generates IAM credentials and stores them.
 
-### `createBucketCredentials(bucketName)` — AWS vs MinIO divergence
+### `createBucketCredentials(bucketName)` — AWS vs RustFS divergence
 
 **AWS mode** (`s3.endpoint` is blank or contains `.amazonaws.com`):
 - Reuses `s3.accessKey` / `s3.secretKey` (admin key) — IAM user creation is skipped.
 - Saves those credentials under the bucket name in MongoDB.
 
-**MinIO mode** (all other endpoints):
+**RustFS mode** (all other endpoints):
 - Generates `accessKey = "GetBucketUser-<8-char-uuid>"` and `secretKey = UUID`.
-- Calls `IamUserManagementService.createUser()` — creates a MinIO IAM user.
+- Calls `IamUserManagementService.createUser()` — creates a RustFS IAM user.
 - Calls `IamUserManagementService.attachPolicyToUser()` — attaches a user-level policy.
 - Calls `updateBucketPolicy(bucketName, accessKey)` — appends an `Allow` statement to the bucket policy granting `s3:GetObject`, `s3:PutObject` to the new user. Handles merging with existing statements.
 - Saves credentials to MongoDB (secret key encrypted).
@@ -147,17 +147,17 @@ Steps:
 1. Validates bucket name format.
 2. Loads bucket credentials from MongoDB (decrypted secret key).
 3. Resolves the external endpoint for URL embedding:
-   - If `s3.externalPresignedEndpoint` is set → use it (MinIO Docker scenario).
+   - If `s3.externalPresignedEndpoint` is set → use it (RustFS Docker scenario).
    - Otherwise use `s3.endpoint` (or null for AWS).
 4. Builds an `S3Presigner` using the bucket-scoped credentials.
-   - MinIO: `pathStyleAccessEnabled(true)` + `endpointOverride(externalEndpoint)`.
+   - RustFS: `pathStyleAccessEnabled(true)` + `endpointOverride(externalEndpoint)`.
    - AWS: no `endpointOverride`, no path-style flag.
 5. Creates a `GetObjectPresignRequest` with the expiration duration.
 6. Returns the presigned URL string.
 
-**Important**: AWS presigned URLs expire in max 7 days. MinIO supports up to 7 days by default. Keep expiration ≤ 7 days.
+**Important**: AWS presigned URLs expire in max 7 days. RustFS supports up to 7 days by default. Keep expiration ≤ 7 days.
 
-**Range headers on presigned GET URLs**: The `Range` header is safe to add to requests against a presigned URL because it is NOT included in `X-Amz-SignedHeaders`. Adding `Range: bytes=N-` does not invalidate the signature — MinIO and AWS both return HTTP 206 (verified by `MinioPresignedUrlRangeIT`).
+**Range headers on presigned GET URLs**: The `Range` header is safe to add to requests against a presigned URL because it is NOT included in `X-Amz-SignedHeaders`. Adding `Range: bytes=N-` does not invalidate the signature — RustFS and AWS both return HTTP 206 (verified by `MinioPresignedUrlRangeIT`).
 
 ---
 
@@ -175,7 +175,7 @@ CompletableFuture<String> etag = s3ClientService.uploadFile(inputStream, destina
 | `S3Utils.OBJECT_KEY` | `"objectKey"` | Yes |
 | `S3Utils.ACCESS_KEY` | `"accessKey"` | Yes |
 | `S3Utils.SECRET_KEY` | `"secretKey"` | Yes |
-| `S3Utils.ENDPOINT_OVERRIDE` | `"endpointOverride"` | MinIO only |
+| `S3Utils.ENDPOINT_OVERRIDE` | `"endpointOverride"` | RustFS only |
 | `S3Utils.REGION` | `"region"` | Yes |
 
 `uploadFile()` builds a `BucketCredentialsEntity` from the map properties (without saving to MongoDB) and dispatches to the configured `S3UploadStrategy` (`SYNC` or `ASYNC`).
@@ -203,7 +203,7 @@ CompletableFuture<String> etag = s3ClientService.uploadFile(inputStream, destina
 6. Object stored in consumer bucket with key = `transferProcess.getId()`.
 
 ```
-Provider MinIO                Consumer Connector         Consumer MinIO
+Provider RustFS                Consumer Connector         Consumer RustFS
    |                               |                          |
    |<-- GET presigned URL ---------|                          |
    |--- 200 + artifact stream ---->|                          |
@@ -238,10 +238,10 @@ Provider MinIO                Consumer Connector         Consumer MinIO
    - `objectKey` — `transferProcessId`
    - `accessKey` — temp user's access key
    - `secretKey` — temp user's **plain** secret key (will be stored encrypted in MongoDB via the TransferProcess)
-   - `endpointOverride` — `s3.externalPresignedEndpoint` (MinIO external URL) or `s3.endpoint`
+   - `endpointOverride` — `s3.externalPresignedEndpoint` (RustFS external URL) or `s3.endpoint`
 4. Sends `TransferRequestMessage` with `dataAddress` to the Provider.
 
-> **AWS note**: `IamUserManagementService` must use the AWS IAM SDK on AWS. On MinIO it uses the MinIO Admin Client. The interface (`createUser`, `attachPolicyToUser`, `attachTemporaryPolicy`, `deleteUser`, `deletePolicy`) abstracts this. Both implementations must be maintained.
+> **AWS note**: `IamUserManagementService` must use the AWS IAM SDK on AWS. On RustFS it uses the RustFS Admin Client. The interface (`createUser`, `attachPolicyToUser`, `attachTemporaryPolicy`, `deleteUser`, `deletePolicy`) abstracts this. Both implementations must be maintained.
 
 ### Provider side — pushing artifact (`HttpPushTransferStrategy.transfer`)
 1. Receives `TransferRequestMessage` with consumer's `dataAddress.endpointProperties`.
@@ -258,7 +258,7 @@ Provider MinIO                Consumer Connector         Consumer MinIO
 6. Uploads to consumer's S3 via `s3ClientService.uploadFile(stream, destinationS3Properties, ...)` using the **temporary consumer credentials**.
 
 ```
-Provider MinIO    Provider Connector     Consumer MinIO
+Provider RustFS    Provider Connector     Consumer RustFS
    |                    |                    |
    |<-- GET presigned - |                    |
    |--- artifact ------>|                    |
@@ -312,10 +312,10 @@ allCatalogs.forEach(catalog -> catalog.getDataset().removeIf(
 
 3. **Secret key encryption**: The `@Encrypted` annotation on `BucketCredentialsEntity.secretKey` and `TemporaryBucketUser.secretKey` causes automatic transparent encryption at persistence and decryption at read. Never manually encrypt/decrypt in service code — use the repository + service abstraction.
 
-4. **External presigned endpoint**: When MinIO runs behind Docker NAT, `s3.endpoint` uses the Docker network hostname (e.g. `http://minio:9000`) but presigned URL recipients need the host-accessible URL (e.g. `http://172.17.0.1:9000`). Always use `s3.externalPresignedEndpoint` when embedding URLs in DSP protocol messages. On AWS this is blank and the SDK generates the correct public URL.
+4. **External presigned endpoint**: When RustFS runs behind Docker NAT, `s3.endpoint` uses the Docker network hostname (e.g. `http://s3storage:9000`) but presigned URL recipients need the host-accessible URL (e.g. `http://172.17.0.1:9000`). Always use `s3.externalPresignedEndpoint` when embedding URLs in DSP protocol messages. On AWS this is blank and the SDK generates the correct public URL.
 
-5. **AWS vs MinIO bucket policy format**: Both use `"Version": "2012-10-17"` IAM policy JSON. On AWS, `Principal.AWS` ARNs reference real IAM users. On MinIO, the same format works because MinIO supports the AWS IAM policy model. The code uses `"arn:aws:iam::*:user/<accessKey>"` format which is compatible with both.
+5. **AWS vs RustFS bucket policy format**: Both use `"Version": "2012-10-17"` IAM policy JSON. On AWS, `Principal.AWS` ARNs reference real IAM users. On RustFS, the same format works because RustFS supports the AWS IAM policy model. The code uses `"arn:aws:iam::*:user/<accessKey>"` format which is compatible with both.
 
 6. **Bucket name validation**: Names must match `^[a-z0-9][a-z0-9\-]{1,61}[a-z0-9]$`. Enforce this before any S3 operation to avoid cryptic SDK errors.
 
-7. **Presigned URL max expiration**: 7 days for both AWS and MinIO. Never exceed this; the SDK will throw or the URL will be silently invalid.
+7. **Presigned URL max expiration**: 7 days for both AWS and RustFS. Never exceed this; the SDK will throw or the URL will be silently invalid.

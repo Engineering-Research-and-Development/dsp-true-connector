@@ -6,7 +6,7 @@
 - Canonical full verification command:
   - `mvn clean verify`
   - This is the command used in the docs and CI. It runs Checkstyle in `validate`, unit tests, integration tests, and JaCoCo reporting.
-  - Docker must be running for integration tests because `connector` integration tests use Testcontainers for MongoDB and MinIO.
+  - Docker must be running for integration tests because `connector` integration tests use Testcontainers for MongoDB and RustFS.
 - Lint / style gate:
   - `mvn validate`
   - `mvn checkstyle:check` is also valid when you only want the Checkstyle gate.
@@ -40,7 +40,7 @@
 ## High-level architecture
 
 - `connector` is the only executable module. `connector/src/main/java/it/eng/connector/ApplicationConnector.java` is the Spring Boot entry point and component-scans all five module package trees.
-- `tools` is the shared substrate used everywhere else. It owns cross-cutting pieces such as authentication helpers, S3/MinIO support, REST clients, shared serializers/utilities, audit/event infrastructure, and shared controller constants.
+- `tools` is the shared substrate used everywhere else. It owns cross-cutting pieces such as authentication helpers, S3/RustFS support, REST clients, shared serializers/utilities, audit/event infrastructure, and shared controller constants.
 - `catalog` handles catalog, dataset, distribution, offer, and artifact management for the dataspace catalog side.
 - `negotiation` owns contract negotiation plus policy evaluation and enforcement.
 - `data-transfer` owns transfer lifecycle handling and transfer strategies for the actual data movement step.
@@ -112,7 +112,7 @@
   - the TCK test is `connector/src/test/java/it/eng/connector/tck/TCKCompliance.java`
 - Many integration tests extend `connector/src/test/java/it/eng/connector/integration/BaseIntegrationTest.java`.
   - That base class boots the app on port `8080`
-  - starts MongoDB and MinIO Testcontainers
+  - starts MongoDB and RustFS Testcontainers
   - enables MockMvc and WireMock
 - Data-transfer strategy resolution is centralized in `DataTransferStrategyFactory`. At the moment, `HTTP_PULL` and `HTTP_PUSH` are wired; there is an `S3TransferStrategy` type in the constructor, but it is not currently registered in the strategy map.
 - Packaging is not a standard Spring Boot fat-jar flow. `connector/pom.xml` builds `dsp-true-connector.jar` plus `target/dependency-jars/`, and the Docker image in `connector/Dockerfile` expects that layout. If you change packaging, startup, or resource loading, update both files together.

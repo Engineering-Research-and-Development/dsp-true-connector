@@ -1,22 +1,24 @@
 services:
-  ### minio (simulated S3 cloud storage)
-  minio:
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
-    networks:
-      - network-a
-      - network-b
-    container_name: minio
+  rustfs:
+    image: rustfs/rustfs:1.0.0-rc.6
+    container_name: s3storage
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - minio_data:/data
+      - rustfs_data:/data
     environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
-    command: server /data --console-address ":9001"
+      - RUSTFS_VOLUMES=/data
+      - RUSTFS_ADDRESS=0.0.0.0:9000
+      - RUSTFS_CONSOLE_ENABLE=true
+      - RUSTFS_CONSOLE_ADDRESS=0.0.0.0:9001
+      - RUSTFS_ACCESS_KEY=rustfsadmin
+      - RUSTFS_SECRET_KEY=rustfsadmin
+    networks:
+      - network-a
+      - network-b
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/health" ]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -41,7 +43,7 @@ services:
       - "8080:8080"
     depends_on:
       - mongodb-a
-      - minio
+      - rustfs
     environment:
       - "JDK_JAVA_OPTIONS=-Xmx1024m"
       - BASE_URL=${CONNECTOR_A_BASE_URL}
@@ -56,7 +58,6 @@ services:
       - ./tc_cert:/cert
       - ./:/home/nobody/ftp
       - tc_a_log:/var/log/tc
-
 
   mongodb-a:
     container_name: mongodb-a
@@ -89,7 +90,7 @@ services:
       - "8090:8080"
     depends_on:
       - mongodb-b
-      - minio
+      - rustfs
     environment:
       - "JDK_JAVA_OPTIONS=-Xmx1024m"
       - BASE_URL=${CONNECTOR_B_BASE_URL}
@@ -121,7 +122,7 @@ networks:
   network-b: { }
 
 volumes:
-  minio_data: { }
+  rustfs_data: { }
   tc_a_log: { }
   mongodb-data_a: { }
   mongodb-configdb_a: { }

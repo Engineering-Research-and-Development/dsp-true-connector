@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+
+## [0.7.1] - 10.09.2026 - RustFS - MinIO replacement
+
+### Changed
+- replaced MinioTestContainer with GenericContainer running RustFS image for integration tests
+- replaced MinIO Terraform deployment and service resources with RustFS, preserving S3 API and console ports
+
 ## [0.7.0] - 10.09.2026 - Multi-Tenant Support
 
 - **Updated java from 17 to 21**
