@@ -14,7 +14,7 @@ DSP TRUEConnector is licensed under the Apache 2.0 License - see the [LICENSE fi
 
  - IDE : Eclipse STS, IntelliJ, VS Code etc.
   - Resources: 16 GB RAM, 5 GB of disk space, 4 Cores multithreaded processor
- - Languages/Frameworks: Java 17, Maven 3.9.4 (compatible with java 17), SpringBoot 3.1.2 (Spring framework 6)
+ - Languages/Frameworks: Java 21, Maven 3.9.4 (compatible with java 21), SpringBoot 3.1.2 (Spring framework 6)
  - Database: MongoDB 7.0.12
  - Optional: Keycloak 26.x (see doc/keycloak.md)
  - Libraries: lombok, fasterxml.jackson, okhttp3, com.auth0:java-jwt, org.apache.commons:commons-lang3, org.apache.sshd:sshd-core, org.apache.sshd:sshd-sftp

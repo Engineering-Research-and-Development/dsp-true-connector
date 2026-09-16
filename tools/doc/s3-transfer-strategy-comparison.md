@@ -2,21 +2,21 @@
 
 ## Context
 
-Each instance of the application is deployed on a separate machine with its own Minio/AWS storage.
+Each instance of the application is deployed on a separate machine with its own RustFS/AWS storage.
 The application uses chunked multipart upload for large file transfers.
 
 ---
 
-## Current Implementation: Temp IAM User (Minio-oriented)
+## Current Implementation: Temp IAM User (RustFS-oriented)
 
 ### How It Works
 1. Server creates a temporary IAM user scoped to a single S3 object via a policy.
 2. Credentials (access key + secret) are handed to the consumer.
-3. Consumer uploads directly to Minio using standard S3 multipart upload.
+3. Consumer uploads directly to RustFS using standard S3 multipart upload.
 4. Server deletes the temporary IAM user after transfer completes.
 
 ### Pros
-- Works well with Minio (self-hosted S3-compatible storage).
+- Works well with RustFS (self-hosted S3-compatible storage).
 - Consumer uploads directly — server never proxies data.
 - Integrates cleanly with existing multipart upload logic.
 - Per-instance deployment model naturally distributes load.
@@ -69,7 +69,7 @@ Credentials creds = stsClient.assumeRole(assumeRoleRequest).credentials();
 - Scoped to exact object.
 
 ### Cons
-- Minio STS support is limited/partial.
+- RustFS STS support is limited/partial.
 - Requires a pre-existing IAM Role setup.
 
 ---
@@ -84,7 +84,7 @@ Credentials creds = stsClient.assumeRole(assumeRoleRequest).credentials();
 - Very low consumer complexity (plain HTTP PUT).
 - No IAM user or role management.
 - Auto-expiry — no cleanup.
-- Works on both AWS and Minio.
+- Works on both AWS and RustFS.
 
 ### Cons
 - **5 GB object size limit.**
@@ -98,7 +98,7 @@ Credentials creds = stsClient.assumeRole(assumeRoleRequest).credentials();
 ### How It Works
 1. Server initiates a multipart upload → receives an `uploadId`.
 2. Server generates N presigned URLs — one per part (min 5 MB, max 5 GB per part).
-3. Consumer uploads each part directly to S3/Minio using the presigned URLs.
+3. Consumer uploads each part directly to S3/RustFS using the presigned URLs.
 4. Consumer sends the ETag list back to the server.
 5. Server calls `CompleteMultipartUpload` with the ETag list.
 
@@ -106,7 +106,7 @@ Credentials creds = stsClient.assumeRole(assumeRoleRequest).credentials();
 - No RAM pressure — consumer streams chunk by chunk.
 - No IAM user created.
 - URLs auto-expire.
-- Works with both AWS and Minio.
+- Works with both AWS and RustFS.
 - No 5 GB single-object limit.
 
 ### Cons
@@ -121,16 +121,16 @@ Credentials creds = stsClient.assumeRole(assumeRoleRequest).credentials();
 The current push strategy proxies data through the server:
 
 ```
-Source Server → downloads from own Minio → re-uploads to Consumer's S3/Minio
+Source Server → downloads from own RustFS → re-uploads to Consumer's S3/RustFS
 ```
 
 This makes **your server the bottleneck** under concurrent transfers.
 
 ### Credential Delegation Approaches (IAM User, STS, Presigned Multipart)
-Consumer uploads **directly** to S3/Minio:
+Consumer uploads **directly** to S3/RustFS:
 
 ```
-Consumer → uploads directly to Source S3/Minio (using delegated credentials)
+Consumer → uploads directly to Source S3/RustFS (using delegated credentials)
 ```
 
 - Server never touches the data stream.
@@ -158,7 +158,7 @@ Since each instance has its own storage and handles only its own transfers:
 | **IAM user cleanup** | ✅ required | ❌ not needed | ❌ not needed | ❌ not needed |
 | **IAM user limits** | ⚠️ 5,000 cap | ❌ not applicable | ❌ not applicable | ❌ not applicable |
 | **AWS best practice** | ⚠️ no | ✅ yes | ✅ yes | ✅ yes |
-| **Minio compatible** | ✅ full | ⚠️ partial | ✅ full | ✅ full |
+| **RustFS compatible** | ✅ full | ⚠️ partial | ✅ full | ✅ full |
 | **Consumer complexity** | Medium | Medium | Low | Medium |
 | **Extra callback needed** | ❌ | ❌ | ❌ | ✅ yes |
 | **Auto-expiry** | ❌ manual cleanup | ✅ yes | ✅ yes | ✅ yes |
@@ -171,16 +171,16 @@ Since each instance has its own storage and handles only its own transfers:
 
 | Environment | Recommended Approach |
 |---|---|
-| **Minio only** | Current temp IAM user — pragmatic, works well, fits per-instance model |
+| **RustFS only** | Current temp IAM user — pragmatic, works well, fits per-instance model |
 | **AWS only** | STS AssumeRole — drop-in replacement, same flow, AWS best practice |
-| **Both (Minio + AWS)** | Abstract behind an interface: IAM user for Minio, STS for AWS |
+| **Both (RustFS + AWS)** | Abstract behind an interface: IAM user for RustFS, STS for AWS |
 | **Future-proof / protocol redesign** | Presigned Multipart — cleanest long-term, but requires callback protocol change |
 
 ---
 
 ## Architectural Note
 
-The current per-instance deployment model (each instance has its own Minio/AWS) is well-suited
+The current per-instance deployment model (each instance has its own RustFS/AWS) is well-suited
 to the temp IAM user + multipart approach:
 
 - No cross-instance coordination needed.

@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.7.1] — Dashboard Metrics API
+## [0.7.2] — Dashboard Metrics API
 
 ### Added
 - Dashboard admin API endpoints for `/api/v1/dashboard/summary`, `/api/v1/dashboard/runtime`, `/api/v1/dashboard/negotiations`, `/api/v1/dashboard/transfers`, and `/api/v1/dashboard/events`.
@@ -26,6 +26,11 @@ All notable changes to this project will be documented in this file.
   - Updated `doc/dashboard-metrics.md` with new "Metrics Aggregation Pattern" section explaining the per-tenant vs. super-admin distinction and showing implementation examples.
   - All 284 existing unit and integration tests pass; no regressions.
 
+## [0.7.1] - 10.09.2026 - RustFS - MinIO replacement
+
+### Changed
+- replaced MinioTestContainer with GenericContainer running RustFS image for integration tests
+- replaced MinIO Terraform deployment and service resources with RustFS, preserving S3 API and console ports
 
 ## [0.7.0] - 10.09.2026 - Multi-Tenant Support
 

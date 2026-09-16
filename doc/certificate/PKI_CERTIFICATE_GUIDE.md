@@ -155,10 +155,10 @@ The **DSP TRUE Connector** uses a robust **3-tier Public Key Infrastructure (PKI
 │  └──────────────────────────────────────────────────┘      │
 │                                                            │
 │  ┌──────────────────────────────────────────────────┐      │
-│  │ MinIO (private.key + public.crt)                 │      │
+│  │ RustFS (private.key + public.crt)                 │      │
 │  │ • Format: PEM                                    │      │
-│  │ • CN: minio                                      │      │
-│  │ • SANs: localhost, minio, 127.0.0.1              │      │
+│  │ • CN: rustfs                                      │      │
+│  │ • SANs: localhost, rustfs, 127.0.0.1              │      │
 │  └──────────────────────────────────────────────────┘      │
 │                                                            │
 │  ┌──────────────────────────────────────────────────┐      │
@@ -324,8 +324,8 @@ Key Algorithm: RSA 2048-bit
 | **Intermediate CA** | `dsp-intermediate-ca.p12` | PKCS12 | ~3 KB | ✅ Yes | Intermediate certificate authority |
 | **Connector A** | `connector-a.p12` | PKCS12 | ~4 KB | ✅ Yes | Connector A server certificate |
 | **Connector B** | `connector-b.p12` | PKCS12 | ~4 KB | ✅ Yes | Connector B server certificate |
-| **MinIO Key** | `private.key` | PEM | ~2 KB | ❌ No | MinIO private key |
-| **MinIO Cert** | `public.crt` | PEM | ~2 KB | ❌ No | MinIO certificate |
+| **RustFS Key** | `private.key` | PEM | ~2 KB | ❌ No | RustFS private key |
+| **RustFS Cert** | `public.crt` | PEM | ~2 KB | ❌ No | RustFS certificate |
 | **UI-A Key** | `ui-a-cert.key` | PEM | ~2 KB | ❌ No | UI-A private key |
 | **UI-A Cert** | `ui-a-fullchain.crt` | PEM | ~4 KB | ❌ No | UI-A certificate + chain |
 | **UI-B Key** | `ui-b-cert.key` | PEM | ~2 KB | ❌ No | UI-B private key |
@@ -369,7 +369,7 @@ keytool -list -v -keystore connector-a.p12 -storepass password
 
 #### PEM Format (.key, .crt, .pem)
 
-**Used by**: Non-Java applications (MinIO, Nginx, Apache)
+**Used by**: Non-Java applications (RustFS, Nginx, Apache)
 
 **Contains**: Separate files for each component
 - `.key` - Private key (unencrypted, Base64 encoded)
@@ -388,9 +388,9 @@ ssl_certificate /etc/nginx/ssl/ui-a-fullchain.crt;
 ssl_certificate_key /etc/nginx/ssl/ui-a-cert.key;
 ```
 
-**Usage in MinIO**:
+**Usage in RustFS**:
 ```
-/root/.minio/certs/
+/root/.rustfs/certs/
 ├── private.key
 └── public.crt
 ```
@@ -437,7 +437,7 @@ This allows clients to validate the entire certificate chain without needing the
 - **OpenSSL** for Windows
   - Download: https://slproweb.com/products/Win32OpenSSL.html
   - Or use Git Bash (includes OpenSSL)
-  - Required for PEM format conversion (MinIO, Nginx)
+  - Required for PEM format conversion (RustFS, Nginx)
 
 **Verification**:
 ```cmd
@@ -523,7 +523,7 @@ set SERVER_PASSWORD=password
 REM Subject Alternative Names per service
 set SAN_CONNECTOR_A=DNS:localhost,DNS:connector-a,IP:127.0.0.1
 set SAN_CONNECTOR_B=DNS:localhost,DNS:connector-b,IP:127.0.0.1
-set SAN_MINIO=DNS:localhost,DNS:minio,IP:127.0.0.1
+set SAN_RUSTFS=DNS:localhost,DNS:rustfs,IP:127.0.0.1
 set SAN_UI_A=DNS:localhost,DNS:ui-a,IP:127.0.0.1
 set SAN_UI_B=DNS:localhost,DNS:ui-b,IP:127.0.0.1
 ```
@@ -575,8 +575,8 @@ dir *.crt
 - `connector-a.p12`
 - `connector-b.p12`
 - `dsp-truststore.p12`
-- `private.key` (MinIO)
-- `public.crt` (MinIO)
+- `private.key` (RustFS)
+- `public.crt` (RustFS)
 - `ui-a-cert.key`, `ui-a-fullchain.crt`
 - `ui-b-cert.key`, `ui-b-fullchain.crt`
 
@@ -610,7 +610,7 @@ SERVER_PASSWORD="password"
 # Subject Alternative Names per service
 SAN_CONNECTOR_A="DNS:localhost,DNS:connector-a,IP:127.0.0.1"
 SAN_CONNECTOR_B="DNS:localhost,DNS:connector-b,IP:127.0.0.1"
-SAN_MINIO="DNS:localhost,DNS:minio,IP:127.0.0.1"
+SAN_RUSTFS="DNS:localhost,DNS:rustfs,IP:127.0.0.1"
 SAN_UI_A="DNS:localhost,DNS:ui-a,IP:127.0.0.1"
 SAN_UI_B="DNS:localhost,DNS:ui-b,IP:127.0.0.1"
 ```
@@ -631,7 +631,7 @@ This script will generate:
   1. Root CA (self-signed)
   2. Intermediate CA (signed by Root CA)
   3. Server certificates for connector-a and connector-b
-  4. MinIO certificate (PEM format)
+  4. RustFS certificate (PEM format)
   5. UI-A and UI-B certificates (PEM format with fullchain)
   6. Truststore with Intermediate CA certificate
 
@@ -695,7 +695,7 @@ The Intermediate CA includes `pathlen:0` constraint to prevent it from signing o
 
 #### 3. Generate Server Certificates
 
-For each server (connector-a, connector-b, minio, ui-a, ui-b), the script:
+For each server (connector-a, connector-b, rustfs, ui-a, ui-b), the script:
 - Generates a new RSA 2048-bit key pair
 - Creates a Certificate Signing Request (CSR)
 - Signs the CSR with the Intermediate CA
@@ -712,7 +712,7 @@ This truststore is used by connectors to validate certificates from other connec
 
 #### 5. Convert to PEM Format
 
-For services that require PEM format (MinIO, Nginx):
+For services that require PEM format (RustFS, Nginx):
 - Extracts the private key from PKCS12 keystore
 - Extracts the certificate
 - Creates fullchain certificates (certificate + intermediate CA) for Nginx
@@ -1009,7 +1009,7 @@ REM Option 2: Use Git Bash
 "C:\Program Files\Git\bin\bash.exe" -c "openssl version"
 
 REM Option 3: Manual PEM conversion using keytool only
-keytool -importkeystore -srckeystore minio.p12 -destkeystore minio.jks -deststoretype JKS
+keytool -importkeystore -srckeystore rustfs.p12 -destkeystore rustfs.jks -deststoretype JKS
 ```
 
 ### Debugging Commands

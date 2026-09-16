@@ -30,8 +30,9 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.testcontainers.containers.MinIOContainer;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import org.wiremock.spring.EnableWireMock;
@@ -66,9 +67,15 @@ public class BaseIntegrationTest {
     protected static final MongoDBContainer mongoDBContainer =
             new MongoDBContainer(DockerImageName.parse("mongo:7.0.12"))
                     .withReuse(false);
-    protected static final MinIOContainer minIOContainer =
-            new MinIOContainer(DockerImageName.parse("minio/minio"))
-                    .withReuse(false);
+
+    private static final int S3_PORT = 9000;
+    protected static final GenericContainer<?> s3StorageContainer = new GenericContainer<>(
+            DockerImageName.parse("rustfs/rustfs:1.0.0-rc.6"))
+            .withEnv("RUSTFS_ACCESS_KEY", S3Utils.ACCESS_KEY)
+            .withEnv("RUSTFS_SECRET_KEY", S3Utils.SECRET_KEY)
+            .withExposedPorts(S3_PORT)
+            .withCommand("/data")
+            .waitingFor(Wait.forHttp("/health").forPort(S3_PORT));
 
     @Autowired
     protected MockMvc mockMvc;
@@ -85,17 +92,26 @@ public class BaseIntegrationTest {
     static {
         mongoDBContainer.start();
         // used for checking S3 storage during test debugging; will be exposed on random localhost port which can be checked with `docker ps`or some docker GUI
-        minIOContainer.addExposedPort(9001);
-        minIOContainer.start();
+//        minIOContainer.addExposedPort(9001);
+        s3StorageContainer.start();
+    }
+
+    protected static String getS3Url() {
+        return "http://%s:%d".formatted(
+                s3StorageContainer.getHost(),
+                s3StorageContainer.getMappedPort(S3_PORT)
+        );
     }
 
     @DynamicPropertySource
     static void containersProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.host", mongoDBContainer::getHost);
         registry.add("spring.data.mongodb.port", mongoDBContainer::getFirstMappedPort);
-        registry.add("s3.endpoint", minIOContainer::getS3URL);
-        registry.add("s3.externalPresignedEndpoint", minIOContainer::getS3URL);
+        registry.add("s3.endpoint", BaseIntegrationTest::getS3Url);
+        registry.add("s3.externalPresignedEndpoint", BaseIntegrationTest::getS3Url);
 
+        registry.add("s3.accessKey", () -> S3Utils.ACCESS_KEY);
+        registry.add("s3.secretKey", () -> S3Utils.SECRET_KEY);
     }
 
     @BeforeEach

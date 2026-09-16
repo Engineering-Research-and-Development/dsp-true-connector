@@ -48,7 +48,7 @@ Services configured in current configuration are:
 | `connector-a-ui` | NodePort  | 4200         | External access to Connector A UI         |
 | `connector-b`    | ClusterIP | 8090         | Internal service for Connector B          |
 | `connector-b-ui` | NodePort  | 4300         | External access to Connector B UI         |
-| `minio`          | ClusterIP | 9000         | Internal service for MinIO object storage |
+| `rustfs`         | ClusterIP | 9000         | Internal service for RustFS object storage |
 | `mongodb`        | ClusterIP | 27017        | Internal service for MongoDB database     |
 
 ### Deployments
