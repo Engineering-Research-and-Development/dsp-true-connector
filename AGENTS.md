@@ -1,6 +1,6 @@
 # DSP TRUE Connector — Agent Instructions
 
-Production-grade connector implementing the [Dataspace Protocol (DSP) 2025-1](https://eclipse-dataspace-protocol-base.github.io/DataspaceProtocol/2025-1/) for secure, sovereign data sharing in dataspaces. Java 17, Spring Boot 3.5.x, multi-module Maven, MongoDB. A single codebase runs as either a **provider** or a **consumer** connector, selected via Spring profile.
+Production-grade connector implementing the [Dataspace Protocol (DSP) 2025-1](https://eclipse-dataspace-protocol-base.github.io/DataspaceProtocol/2025-1/) for secure, sovereign data sharing in dataspaces. Java 21, Spring Boot 3.5.x, multi-module Maven, MongoDB. A single codebase runs as either a **provider** or a **consumer** connector, selected via Spring profile.
 
 ## Key Documents
 

@@ -4,8 +4,8 @@ This guide is the contributor entry point. The full process definition lives in 
 
 ## Prerequisites
 
-- Java 17
-- Maven 3.9.4 (compatible with Java 17)
+- Java 21
+- Maven 3.9.4 (compatible with Java 21)
 - Docker (required — integration tests use Testcontainers)
 - MongoDB 7.0.12 (local or Docker) for running the connector
 - 16 GB RAM, 5 GB disk, 4-core processor recommended

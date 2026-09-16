@@ -35,6 +35,7 @@ s3.endpoint=<S3_ENDPOINT_URL>                      # REQUIRED: e.g., http://loca
 s3.accessKey=<YOUR_ACCESS_KEY>
 s3.secretKey=<YOUR_SECRET_KEY>
 s3.region=<S3_REGION>                              # Can be any value (e.g., us-east-1)
+s3.bucketName=<BUCKET_NAME>
 s3.externalPresignedEndpoint=<EXTERNAL_ENDPOINT>   # REQUIRED: External endpoint for presigned URLs
 ```
 
@@ -44,6 +45,7 @@ s3.endpoint=http://localhost:9000
 s3.accessKey=<RUSTFS_ACCESS_KEY>
 s3.secretKey=<RUSTFS_SECRET_KEY>
 s3.region=us-east-1
+s3.bucketName=dsp-artifacts
 s3.externalPresignedEndpoint=http://192.168.1.100:9000
 ```
 
@@ -75,6 +77,7 @@ s3.endpoint=                           # MUST be empty for AWS S3 (uses default 
 s3.accessKey=<YOUR_AWS_ACCESS_KEY_ID>
 s3.secretKey=<YOUR_AWS_SECRET_ACCESS_KEY>
 s3.region=<AWS_REGION>                 # e.g., us-east-1, eu-west-1, ap-southeast-1
+s3.bucketName=<YOUR_BUCKET_NAME>
 s3.externalPresignedEndpoint=          # MUST be empty for AWS S3 (uses AWS regional endpoints)
 ```
 
@@ -84,6 +87,7 @@ s3.endpoint=
 s3.accessKey=AKIAIOSFODNN7EXAMPLE
 s3.secretKey=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
 s3.region=us-east-1
+s3.bucketName=my-dsp-connector-bucket
 s3.externalPresignedEndpoint=
 ```
 
@@ -106,6 +110,7 @@ The following properties are used regardless of which storage backend you choose
 | `s3.accessKey` | RustFS Access Key | AWS Access Key ID | Your S3 access key ID |
 | `s3.secretKey` | RustFS Secret Key | AWS Secret Access Key | Your S3 secret access key |
 | `s3.region` | Any value (e.g., `us-east-1`) | AWS Region (e.g., `us-east-1`) | S3 region identifier |
+| `s3.bucketName` | S3 Storage Bucket Name | AWS Bucket Name | Name of the S3 bucket to store data |
 | `s3.externalPresignedEndpoint` | **Required** (externally accessible URL) | **Empty** | External endpoint URL for presigned URL generation |
 
 ### Detailed Property Descriptions
@@ -127,6 +132,10 @@ The following properties are used regardless of which storage backend you choose
 - **`s3.region`**: S3 region identifier
   - **RustFS**: Can be any value (often set to `us-east-1` by convention)
   - **AWS S3**: Must match actual AWS region (e.g., `us-east-1`, `eu-west-1`, `ap-southeast-1`)
+
+- **`s3.bucketName`**: Name of the S3 bucket to store data
+  - **RustFS**: Name of the bucket created in your RustFS server
+  - **AWS S3**: Name of the bucket created in your AWS account
   
 - **`s3.externalPresignedEndpoint`**: External endpoint URL used for presigned URL generation
   - **RustFS**: **Critical** - Must be set to the externally accessible URL for presigned URLs to work correctly
