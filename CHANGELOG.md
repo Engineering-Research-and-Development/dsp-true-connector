@@ -15,7 +15,6 @@ All notable changes to this project will be documented in this file.
   - `AuditEventMetricsService`: Added four parallel aggregation methods with tenant-aware grouping (`*WithTenant`); added `buildByTenant()` method and helper records (`TenantKeyCount`, `TenantTimeBucketCount`, `TenantCount`).
   - `DashboardMetricsControllerTest` and `DashboardMetricsServiceTest`: Added end-to-end verification that `byTenant` flows correctly through the orchestration layer for superadmin (populated) and tenant-scoped (null) scenarios.
 - Updated `doc/dashboard-metrics.md` with "Per-tenant breakdown (`byTenant`)" section documenting structure, request/response examples, and tenant-scoped behavior.
-- Updated `doc/dashboard-ui-handoff.md` with `TenantMetrics<T>` TypeScript interface, `byTenant` fields on all three metrics models, and mock data fixtures including `byTenant` examples.
 
 ### Fixed
 - **Dashboard metrics aggregation for super-admin scope** — Fixed duplicate key issue in `NegotiationMetricsService` and `TransferMetricsService` when tenantId=null (super-admin request). Previously, metrics returned duplicate keys with per-tenant counts instead of aggregating to a single summed count.

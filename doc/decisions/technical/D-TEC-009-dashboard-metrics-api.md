@@ -114,7 +114,6 @@ payloads.
   [D-TEC-006](D-TEC-006-dbref-tenant-filter-mitigation.md) — @DBRef tenant-filter limitation and
   service-layer mitigation
 - Docs: [Dashboard Metrics API](../../dashboard-metrics.md);
-  [Dashboard UI Handoff](../../dashboard-ui-handoff.md);
   [Architecture overview](../../architecture.md)
 - Implementation: `DashboardMetricsController`, `DashboardMetricsService`,
   `NegotiationMetricsService`, `TransferMetricsService`, and `AuditEventMetricsService`
