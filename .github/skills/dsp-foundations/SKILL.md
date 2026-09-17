@@ -99,7 +99,7 @@ The Dataspace Protocol is designed for multi-vendor interoperability. In any rea
 
 ## How presigned GET URLs are used
 
-TRUE Connector uses **presigned GET URLs** from S3-compatible storage (MinIO/AWS S3) as the mechanism
+TRUE Connector uses **presigned GET URLs** from S3-compatible storage (RustFS/AWS S3) as the mechanism
 for making artifact data available during a transfer. A presigned GET URL embeds all required
 authentication and access parameters in the URL itself and is valid for a configured time window.
 
@@ -122,7 +122,7 @@ credentials arrive in `TransferRequestMessage.dataAddress.endpointProperties`.
 AWS Signature V4 only validates headers explicitly listed in `X-Amz-SignedHeaders`. The `Range`
 header is **not** included in `X-Amz-SignedHeaders` by default when generating a presigned GET URL.
 Therefore, adding `Range: bytes=N-` to an HTTP connection opened from a presigned URL does NOT
-invalidate the signature — MinIO (and AWS S3) return HTTP 206 Partial Content.
+invalidate the signature — RustFS (and AWS S3) return HTTP 206 Partial Content.
 
 **The earlier claim that Range headers break presigned URL signatures was incorrect.**
 

@@ -78,12 +78,12 @@ tenantBucketResolver.resolveBucketName(transferProcess.getTenantId());
 tenantBucketResolver.resolveBucketName();
 ```
 
-## MinIO vs AWS S3
+## RustFS vs AWS S3
 
-The bucket provisioning logic differentiates between MinIO and AWS S3 based on `s3.endpoint`:
+The bucket provisioning logic differentiates between RustFS and AWS S3 based on `s3.endpoint`:
 
 - **Blank or AWS URL** → AWS mode; reuses the admin access/secret key for per-bucket credentials.
-- **Non-blank local URL** → MinIO mode; creates a dedicated IAM user (`GetBucketUser-<uuid>`)
+- **Non-blank local URL** → RustFS mode; creates a dedicated IAM user (`GetBucketUser-<uuid>`)
   and attaches a bucket-scoped policy before saving credentials to MongoDB.
 
 See the S3 Architecture reference instruction (`.github/instructions/s3-architecture.instructions.md`)

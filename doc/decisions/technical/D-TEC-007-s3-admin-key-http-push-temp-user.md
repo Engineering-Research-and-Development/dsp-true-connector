@@ -1,13 +1,13 @@
 # D-TEC-007 — S3 Admin Key for HTTP-PUSH Temporary User Creation
 
 ## Metadata
-- Status: Accepted
+- Status: Superseded
 - Date: 2026-07-02
 - Owner: TRUE Connector team
 - Reviewers: —
 - Confidence: High
 - Supersedes: —
-- Superseded by: —
+- Superseded by: [D-TEC-008](D-TEC-008-rustfs-s3-storage-backend.md)
 - Tags: s3, minio, http-push, security, iam, multi-tenancy
 - Risk Level: Medium
 

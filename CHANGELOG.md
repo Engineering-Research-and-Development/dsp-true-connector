@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.2] — Dashboard Metrics API
+
+### Added
+- Dashboard admin API endpoints for `/api/v1/dashboard/summary`, `/api/v1/dashboard/runtime`, `/api/v1/dashboard/negotiations`, `/api/v1/dashboard/transfers`, and `/api/v1/dashboard/events`.
+- Metric services across modules: `DashboardMetricsService` and `RuntimeMetricsService` in `connector`, `NegotiationMetricsService` in `negotiation`, `TransferMetricsService` in `data-transfer`, and `AuditEventMetricsService` in `tools`.
+- `ApiEndpoints` constants for dashboard routes: `DASHBOARD_V1`, `DASHBOARD_RUNTIME_V1`, `DASHBOARD_NEGOTIATIONS_V1`, `DASHBOARD_TRANSFERS_V1`, `DASHBOARD_EVENTS_V1`, and `DASHBOARD_SUMMARY_V1`.
+- `doc/dashboard-metrics.md` documenting the dashboard metrics backend contract and `DashboardMetricsAPIIT` integration coverage for the summary endpoint.
+- **Per-tenant breakdown (`byTenant`) in dashboard metrics** — superadmin users requesting dashboard data without a tenant scope now receive per-tenant metric slices via a new `byTenant` field on `NegotiationSnapshotMetrics`, `TransferSnapshotMetrics`, and `HistoricalEventMetrics`. The `byTenant` field contains a list of `{ tenantId, tenantName, metrics }` entries, one per registered tenant (including disabled tenants), zero-filled for tenants with no data. Tenant-scoped requests always have `byTenant = null`.
+  - `NegotiationMetricsService`: Added per-tenant aggregation with `$group` by `(role, state, tenantId)` and `buildByTenant()` method.
+  - `TransferMetricsService`: Updated all five `$facet` sub-pipelines to include `tenantId` grouping; added `buildByTenant()` method and helper records (`TenantCount`).
+  - `AuditEventMetricsService`: Added four parallel aggregation methods with tenant-aware grouping (`*WithTenant`); added `buildByTenant()` method and helper records (`TenantKeyCount`, `TenantTimeBucketCount`, `TenantCount`).
+  - `DashboardMetricsControllerTest` and `DashboardMetricsServiceTest`: Added end-to-end verification that `byTenant` flows correctly through the orchestration layer for superadmin (populated) and tenant-scoped (null) scenarios.
+- Updated `doc/dashboard-metrics.md` with "Per-tenant breakdown (`byTenant`)" section documenting structure, request/response examples, and tenant-scoped behavior.
+
+### Fixed
+- **Dashboard metrics aggregation for super-admin scope** — Fixed duplicate key issue in `NegotiationMetricsService` and `TransferMetricsService` when tenantId=null (super-admin request). Previously, metrics returned duplicate keys with per-tenant counts instead of aggregating to a single summed count.
+  - `NegotiationMetricsService.getCountsByRoleAndState()` and `getCountsByState()` now accept `tenantId` parameter and aggregate counts by key using `Collectors.groupingBy()` when tenantId is null.
+  - `TransferMetricsService.getCounts()` now accepts `tenantId` parameter; added `aggregateCountsByKey()` helper method to sum counts for identical keys in super-admin scope. Affects `byRoleAndState` and `byFormat` fields.
+  - `TransferMetricsService.getCountByKey()` now accepts and uses `tenantId` parameter.
+  - Aggregation pattern aligns with the already-correct implementation in `AuditEventMetricsService`.
+  - Updated `doc/dashboard-metrics.md` with new "Metrics Aggregation Pattern" section explaining the per-tenant vs. super-admin distinction and showing implementation examples.
+  - All 284 existing unit and integration tests pass; no regressions.
+
+## [0.7.1] - 10.09.2026 - RustFS - MinIO replacement
+
+### Changed
+- replaced MinioTestContainer with GenericContainer running RustFS image for integration tests
+- replaced MinIO Terraform deployment and service resources with RustFS, preserving S3 API and console ports
+
 ## [0.7.0] - 10.09.2026 - Multi-Tenant Support
 
 - **Updated java from 17 to 21**

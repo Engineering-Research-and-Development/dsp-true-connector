@@ -42,7 +42,6 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MinIOContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
@@ -109,10 +108,14 @@ public class AutomaticNegotiationIT {
                     .withExposedPorts(27017)
                     .waitingFor(Wait.forLogMessage(".*Waiting for connections.*", 1))
                     .withReuse(false);
-
-    private static final MinIOContainer providerMinIO =
-            new MinIOContainer(DockerImageName.parse("minio/minio"))
-                    .withReuse(false);
+    private static final int S3_PORT = 9000;
+    protected static final GenericContainer<?> providerS3Storage = new GenericContainer<>(
+            DockerImageName.parse("rustfs/rustfs:1.0.0-rc.6"))
+            .withEnv("RUSTFS_ACCESS_KEY", S3Utils.ACCESS_KEY)
+            .withEnv("RUSTFS_SECRET_KEY", S3Utils.SECRET_KEY)
+            .withExposedPorts(S3_PORT)
+            .withCommand("/data")
+            .waitingFor(Wait.forHttp("/health"));//.forPort(S3_PORT));
 
     private static ConfigurableApplicationContext consumerCtx;
     private static ConfigurableApplicationContext providerCtx;
@@ -137,12 +140,19 @@ public class AutomaticNegotiationIT {
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .build();
 
+    protected static String getS3Url() {
+        return "http://%s:%d".formatted(
+                providerS3Storage.getHost(),
+                providerS3Storage.getMappedPort(S3_PORT)
+        );
+    }
+
     // ── lifecycle ────────────────────────────────────────────────────────────────
 
     @BeforeAll
     static void startApplications() {
         mongoDBContainer.start();
-        providerMinIO.start();
+        providerS3Storage.start();
 
         String mongoHost = mongoDBContainer.getHost();
         int    mongoPort = mongoDBContainer.getMappedPort(27017);
@@ -155,7 +165,7 @@ public class AutomaticNegotiationIT {
         // ── Provider instance first — needs S3 properties ─────────────────────────
         providerCtx = startInstance(mongoHost, mongoPort, PROVIDER_PORT,
                 "provider", "provider_db", PROVIDER_BASE_URL,
-                providerMinIO.getS3URL(), providerMinIO.getUserName(), providerMinIO.getPassword());
+                getS3Url(), S3Utils.ACCESS_KEY, S3Utils.SECRET_KEY);
 
         // ── Consumer instance — no S3 needed for negotiation flow ─────────────────
         consumerCtx = startInstance(mongoHost, mongoPort, CONSUMER_PORT,
@@ -267,7 +277,7 @@ public class AutomaticNegotiationIT {
             wireMockServer.stop();
         }
         mongoDBContainer.stop();
-        providerMinIO.stop();
+        providerS3Storage.stop();
     }
 
     // ── catalog setup ─────────────────────────────────────────────────────────────

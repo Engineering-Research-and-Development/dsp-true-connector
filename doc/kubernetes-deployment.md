@@ -1,6 +1,6 @@
 # Kubernetes Deployment Guide — DSP True Connector
 
-This guide describes how to deploy the **connector module** (and its dependencies: MongoDB, MinIO, UI) to Kubernetes using **Terraform Infrastructure as Code (IaC)**.
+This guide describes how to deploy the **connector module** (and its dependencies: MongoDB, RustFS, UI) to Kubernetes using **Terraform Infrastructure as Code (IaC)**.
 
 > **Important:** This project uses Terraform to manage all Kubernetes resources. Do **not** manually create resources with kubectl — Terraform will handle all ConfigMaps, Secrets, Deployments, and Services automatically.
 
@@ -33,7 +33,7 @@ Configure deployment variables by creating or editing `terraform.tfvars`:
 ```hcl
 # Docker Images
 mongodb_image      = "mongo:7.0.12"
-minio_image        = "minio/minio:RELEASE.2025-04-22T22-12-26Z"
+rustfs_image        = "rustfs/rustfs:1.0.0-rc.6"
 connector_image    = "ghcr.io/engineering-research-and-development/dsp-true-connector:test"
 connector_ui_image = "ghcr.io/engineering-research-and-development/dsp-true-connector-ui:0.6.1"
 
@@ -69,9 +69,9 @@ connector_a_config = {
   mongodb_port            = 27017
   mongodb_database        = "true_connector_a"
   ssl_enabled             = false
-  s3_endpoint             = "http://minio:9000"
-  s3_access_key           = "minioadmin"
-  s3_secret_key           = "minioadmin"
+  s3_endpoint             = "http://s3storage:9000"
+  s3_access_key           = "rustfsadmin"
+  s3_secret_key           = "rustfsadmin"
   s3_region               = "us-east-1"
   s3_bucket_name          = "dsp-true-connector-a"
   s3_external_endpoint    = "http://localhost:9000"
@@ -85,9 +85,9 @@ connector_b_config = {
   mongodb_port            = 27017
   mongodb_database        = "true_connector_b"
   ssl_enabled             = false
-  s3_endpoint             = "http://minio:9000"
-  s3_access_key           = "minioadmin"
-  s3_secret_key           = "minioadmin"
+  s3_endpoint             = "http://s3storage:9000"
+  s3_access_key           = "rustfsadmin"
+  s3_secret_key           = "rustfsadmin"
   s3_region               = "us-east-1"
   s3_bucket_name          = "dsp-true-connector-b"
   s3_external_endpoint    = "http://localhost:9000"
@@ -136,7 +136,7 @@ terraform plan
 Review the output to verify all resources that will be created:
 - ✅ Kubernetes Secrets for credentials
 - ✅ ConfigMaps for application properties and configuration
-- ✅ Deployments for connectors, UIs, MongoDB, and MinIO
+- ✅ Deployments for connectors, UIs, MongoDB, and RustFS
 - ✅ Services for all components
 - ✅ Generated `application.properties` files with values substituted
 
@@ -170,11 +170,11 @@ Terraform will create:
 | | `connector-a-ui` | Connector A web UI |
 | | `connector-b-ui` | Connector B web UI |
 | | `mongodb` | MongoDB database |
-| | `minio` | S3-compatible object storage |
+| | `rustfs` | S3-compatible object storage |
 | **Services** | `connector-a`, `connector-b` | ClusterIP + NodePort (30080, 30090) |
 | | `connector-a-ui`, `connector-b-ui` | ClusterIP + NodePort (30420, 30430) |
 | | `mongodb` | ClusterIP |
-| | `minio` | ClusterIP + NodePort (30000, 30001) |
+| | `rustfs` | ClusterIP + NodePort (30000, 30001) |
 
 ---
 
@@ -220,8 +220,8 @@ kubectl port-forward svc/connector-a-ui 4200:4200
 # Connector B UI
 kubectl port-forward svc/connector-b-ui 4300:4300
 
-# MinIO console
-kubectl port-forward svc/minio 9000:9000 9001:9001
+# RustFS console
+kubectl port-forward svc/rustfs 9000:9000 9001:9001
 ```
 
 | Service | Local URL |
@@ -230,7 +230,7 @@ kubectl port-forward svc/minio 9000:9000 9001:9001
 | connector-b API | `http://localhost:8090` |
 | connector-a UI | `http://localhost:4200` |
 | connector-b UI | `http://localhost:4300` |
-| MinIO console | `http://localhost:9001` (or `http://localhost:9000`) |
+| RustFS console | `http://localhost:9001` (or `http://localhost:9000`) |
 
 ### NodePort Access (if exposed externally)
 
@@ -242,7 +242,7 @@ Services are exposed via NodePort:
 | connector-b | 30090 |
 | connector-a-ui | 30420 |
 | connector-b-ui | 30430 |
-| minio | 30000 (API), 30001 (console) |
+| rustfs | 30000 (API), 30001 (console) |
 
 ---
 
@@ -371,7 +371,7 @@ terraform destroy
 ```
 
 This will delete:
-- All Deployments (connector, UI, MongoDB, MinIO)
+- All Deployments (connector, UI, MongoDB, RustFS)
 - All Services
 - All ConfigMaps and Secrets
 - All volumes (data will be lost)
@@ -432,7 +432,7 @@ terraform/
 ├── variables.tf               # Variable definitions
 ├── terraform.tfvars           # Values (git-ignored, create manually)
 ├── configmaps.tf              # Secrets, ConfigMaps, properties files
-├── deployments.tf             # Connector, UI, MongoDB, MinIO deployments
+├── deployments.tf             # Connector, UI, MongoDB, RustFS deployments
 ├── services.tf                # Kubernetes Services
 ├── modules/
 │   ├── connector/             # Connector pod deployment module

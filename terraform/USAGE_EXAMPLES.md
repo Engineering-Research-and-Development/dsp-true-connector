@@ -12,9 +12,9 @@ connector_a_config = {
   mongodb_port            = 27017
   mongodb_database        = "true_connector_a_dev"
   ssl_enabled             = false
-  s3_endpoint             = "http://minio-dev:9000"
-  s3_access_key           = "minioadmin"
-  s3_secret_key           = "minioadmin"
+  s3_endpoint             = "http://rustfs-dev:9000"
+  s3_access_key           = "rustfsadmin"
+  s3_secret_key           = "rustfsadmin"
   s3_region               = "us-east-1"
   s3_external_endpoint    = "http://localhost:9000"
   jwt_secret              = "dev-jwt-secret-change-me-min-32-bytes-long"
@@ -27,9 +27,9 @@ connector_b_config = {
   mongodb_port            = 27017
   mongodb_database        = "true_connector_b_dev"
   ssl_enabled             = false
-  s3_endpoint             = "http://minio-dev:9000"
-  s3_access_key           = "minioadmin"
-  s3_secret_key           = "minioadmin"
+  s3_endpoint             = "http://rustfs-dev:9000"
+  s3_access_key           = "rustfsadmin"
+  s3_secret_key           = "rustfsadmin"
   s3_region               = "us-east-1"
   s3_external_endpoint    = "http://localhost:9000"
   jwt_secret              = "dev-jwt-secret-change-me-min-32-bytes-long"
@@ -205,4 +205,3 @@ terraform fmt -check
 - **Sensitive Values**: Consider storing S3 credentials in Terraform Cloud/Enterprise or using environment variables
 - **MongoDB Credentials**: If authentication is required, update the `application.properties` files to use the appropriate Spring Data MongoDB properties
 - **SSL Certificates**: Ensure certificate files are in place in `/cert/` directory when `ssl_enabled=true`
-

@@ -33,7 +33,7 @@ Map of all documentation in this repository. For agent instructions and non-nego
 |---|---|
 | [profiles.md](profiles.md) | Spring profiles — running as provider vs consumer |
 | [update_properties.md](update_properties.md) | Runtime property updates (database-backed properties) |
-| [s3_configuration.md](s3_configuration.md) | S3-compatible storage (MinIO / AWS S3) setup |
+| [s3_configuration.md](s3_configuration.md) | S3-compatible storage (RustFS / AWS S3) setup |
 | [solutions/s3_upload_mode_configuration.md](solutions/s3_upload_mode_configuration.md) | Synchronous vs asynchronous S3 upload strategies |
 | [solutions/async_s3_upload_improvements.md](solutions/async_s3_upload_improvements.md) | Async multipart upload design and tuning |
 
