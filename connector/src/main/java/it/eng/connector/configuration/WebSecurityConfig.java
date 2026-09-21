@@ -1,5 +1,6 @@
 package it.eng.connector.configuration;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.connector.repository.UserRepository;
 import it.eng.tools.service.ApplicationPropertiesService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,7 +29,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -36,9 +36,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.io.IOException;
 import java.util.Arrays;
 
-@Configuration
-@EnableWebSecurity
-@EnableMethodSecurity
 public class WebSecurityConfig {
 
     @Value("${application.cors.allowed.origins:}")
@@ -53,8 +50,6 @@ public class WebSecurityConfig {
     @Value("${application.cors.allowed.credentials:}")
     private String allowedCredentials;
 
-    @Autowired
-    @Qualifier("delegatedAuthenticationEntryPoint")
     private AuthenticationEntryPoint authEntryPoint;
 
     private final DcpVerifierAuthenticationProvider dcpVerifierAuthenticationProvider;
@@ -91,18 +86,6 @@ public class WebSecurityConfig {
         return new BasicAuthenticationFilter(authenticationManager());
     }
     
-    /**
-     * Bean for Dataspace Protocol endpoints authentication filter.
-     * This filter enables/disables authentication based on application configuration.
-     *
-     * @param applicationPropertiesService Service providing application configuration properties
-     * @return The configured DataspaceProtocolEndpointsAuthenticationFilter instance
-     */
-    @Bean
-    DataspaceProtocolEndpointsAuthenticationFilter protocolEndpointsAuthenticationFilter(ApplicationPropertiesService applicationPropertiesService) {
-    	return new DataspaceProtocolEndpointsAuthenticationFilter(applicationPropertiesService);
-    }
-
     /**
      * Authentication manager bean.
      * Configures authentication providers: DCP VP provider first, then DAO provider (Basic auth fallback).
@@ -150,8 +133,7 @@ public class WebSecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                             com.fasterxml.jackson.databind.ObjectMapper objectMapper) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, ObjectMapper objectMapper) throws Exception {
         http
                 .csrf(crsf -> crsf.disable())
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -168,27 +150,25 @@ public class WebSecurityConfig {
                 .authorizeHttpRequests((authorize) -> {
                     authorize
                             // Allow public access to health endpoint for Docker healthchecks
-                            .requestMatchers(new AntPathRequestMatcher("/actuator/health")).permitAll()
+                            .requestMatchers("/actuator/health").permitAll()
                             // Other actuator endpoints require ADMIN role
-                            .requestMatchers(new AntPathRequestMatcher("/env"), new AntPathRequestMatcher("/actuator/**")).hasRole("ADMIN")
+                            .requestMatchers("/env", "/actuator/**").hasRole("ADMIN")
                             // DSP protocol endpoints require CONNECTOR role
                             // These are authenticated via DCP VP (if enabled) or Basic auth (fallback)
                             .requestMatchers(
-                                    new AntPathRequestMatcher("/catalog/**"),
-                                    new AntPathRequestMatcher("/negotiations/**"),
-                                    new AntPathRequestMatcher("/consumer/negotiations/**"),
-                                    new AntPathRequestMatcher("/transfers/**"),
-                                    new AntPathRequestMatcher("/consumer/transfers/**"))
+                                    "/catalog/**",
+                                    "/negotiations/**",
+                                    "/consumer/negotiations/**",
+                                    "/transfers/**",
+                                    "/consumer/transfers/**")
                             .hasRole("CONNECTOR")
                             // Development/Testing token generator (disable in production)
-                            .requestMatchers(new AntPathRequestMatcher("/api/dev/token/**")).permitAll()
-                            .requestMatchers(new AntPathRequestMatcher("/api/**")).hasRole("ADMIN")
+                            .requestMatchers("/api/dev/token/**").permitAll()
+                            .requestMatchers("/api/**").hasRole("ADMIN")
                             // DCP endpoints handle their own authentication (Self-Issued ID Tokens)
-                            .requestMatchers(new AntPathRequestMatcher("/dcp/**"))
-                                .permitAll()
+                            .requestMatchers("/dcp/**").permitAll()
                             .anyRequest().permitAll();
                 })
-                .addFilterBefore(protocolEndpointsAuthenticationFilter(applicationPropertiesService), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(dcpVerifierAuthenticationFilterV2(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(basicAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
                 .exceptionHandling((exHandler) -> exHandler.authenticationEntryPoint(authEntryPoint));

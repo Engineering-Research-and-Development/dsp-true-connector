@@ -96,6 +96,8 @@ public class ConnectorSecurityConfig {
     @Qualifier("delegatedAuthenticationEntryPoint")
     private AuthenticationEntryPoint authEntryPoint;
 
+    private final DcpVerifierAuthenticationProvider dcpVerifierAuthenticationProvider;
+
     private final AuthenticationMode authMode;
     private final boolean dcpEnabled;
 
@@ -104,7 +106,8 @@ public class ConnectorSecurityConfig {
      *
      * @param environment the Spring environment
      */
-    public ConnectorSecurityConfig(Environment environment) {
+    public ConnectorSecurityConfig(DcpVerifierAuthenticationProvider dcpVerifierAuthenticationProvider, Environment environment) {
+        this.dcpVerifierAuthenticationProvider = dcpVerifierAuthenticationProvider;
         this.authMode = AuthenticationModeResolver.resolve(environment);
         this.dcpEnabled = AuthenticationModeResolver.isDcpEnabled(environment);
     }

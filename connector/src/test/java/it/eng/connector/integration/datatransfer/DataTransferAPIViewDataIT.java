@@ -30,6 +30,7 @@ import org.wiremock.spring.InjectWireMock;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.URL;
 import java.time.Instant;
 import java.util.Collections;
@@ -144,7 +145,7 @@ public class DataTransferAPIViewDataIT extends BaseIntegrationTest {
 
         // response is presignedUrl for download data
         assertNotNull(response);
-        new URL(response).toURI();
+        new URI(response).toURL();
 
         // check if the TransferProcess is inserted in the database
         TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessCompleted.getId()).get();

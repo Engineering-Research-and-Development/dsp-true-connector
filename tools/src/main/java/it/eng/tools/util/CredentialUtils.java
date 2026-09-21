@@ -3,7 +3,6 @@ package it.eng.tools.util;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
-import okhttp3.Credentials;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -93,14 +92,16 @@ public class CredentialUtils {
 
 	@Autowired
 	public CredentialUtils(OkHttpClient okHttpClient,
-						   SelfIssuedIdTokenService selfIssuedIdTokenService,
-						   BaseDidDocumentConfiguration didDocumentConfig) {
+                           SelfIssuedIdTokenService selfIssuedIdTokenService,
+                           BaseDidDocumentConfiguration didDocumentConfig, AuthenticationCache authenticationCache, M2mTokenCache m2mTokenCache, ObjectProvider<ConnectorCredentialProvider> connectorCredentialProvider, ObjectProvider<InternalServiceTokenIssuer> internalServiceTokenIssuer) {
 		this.okHttpClient = okHttpClient;
 		this.selfIssuedIdTokenService = selfIssuedIdTokenService;
 		this.didDocumentConfig = didDocumentConfig;
-	}
-
-
+        this.authenticationCache = authenticationCache;
+        this.m2mTokenCache = m2mTokenCache;
+        this.connectorCredentialProvider = connectorCredentialProvider;
+        this.internalServiceTokenIssuer = internalServiceTokenIssuer;
+    }
 
 	/**
 	 * Get connector credentials for protocol communication.
