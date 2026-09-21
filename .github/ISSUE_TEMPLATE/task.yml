@@ -1,0 +1,279 @@
+name: "AI Task"
+description: "Implementation task optimized for AI agent execution"
+title: "[TASK] "
+labels: []
+body:
+
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for **implementation tasks** only.
+
+        - Use `.github/ISSUE_TEMPLATE/qa-task.yml` for slice-level QA.
+        - Use `.github/ISSUE_TEMPLATE/docs-task.yml` for slice-level documentation.
+
+        After issue creation, update the title to include the shared slice tag and the issue-derived alias, for example `[TASK][X1][T107] ...`. If this issue's **Type** is `bug`, use `B107` instead of `T107`. Apply the matching GitHub label/tag `slice:X1` and record both values in **Source & Parent Traceability**. The slice tag can be `C1`, `B1`, `X1`, or another short moderator/tag chosen for the slice set.
+
+        Task-local docs (Javadoc on new public/protected methods, module doc notes scoped to this task) stay inside this implementation task. Slice-level architecture updates, API documentation, API-change records, and CHANGELOG entries belong in the slice's dedicated docs task.
+
+        Detailed workflows:
+        - `.github/skills/task-decomposition/SKILL.md`
+        - `.github/skills/task-implementation/SKILL.md`
+
+  # ── Context ──────────────────────────────────────────────────────────
+
+  - type: textarea
+    id: context
+    attributes:
+      label: "Context"
+      description: >
+        What this task is about, why it matters, and where in the codebase it lives.
+        Reference the requirement source, affected module, and protocol flow.
+      placeholder: |
+        **What**: ...
+        **Why**: ...
+        **Where**: `negotiation/src/main/java/...`, `tools/src/main/java/...`
+        **Requirement source**: #... or DSP 2025-1 spec section ...
+        **Architecture reference**: `doc/architecture.md` section ..., module doc ...
+    validations:
+      required: true
+
+  # ── Source Traceability ───────────────────────────────────────────────
+
+  - type: textarea
+    id: source-traceability
+    attributes:
+      label: "Source & Parent Traceability"
+      description: >
+        Record exactly what this task was decomposed from so the parent backlog
+        item, requirement slice, shared slice tag, and issue alias stay linked.
+      placeholder: |
+        **Slice tag**: `X1`
+        **Issue alias**: `T107` / `B107` (derived from this issue number after creation)
+        **Source type**: backlog issue / spec section / release slice
+        **Source**: #123 or DSP 2025-1 spec section ...
+        **Parent / root issue**: #...
+        **Decomposition batch**: issue links created together in this split
+    validations:
+      required: true
+
+  # ── Implementation Prompt ────────────────────────────────────────────
+
+  - type: textarea
+    id: implementation-prompt
+    attributes:
+      label: "Implementation Prompt"
+      description: >
+        Detailed instructions an AI agent reads to implement this task.
+        Reference specific files, patterns to follow (builder/validation for
+        protocol models, Testcontainers base class for integration tests),
+        services to call, and expected behavior.
+        Write this as if the agent has no context beyond AGENTS.md and this prompt.
+      placeholder: |
+        ## Files to create or modify
+        - `negotiation/src/main/java/...` — create: ...
+        - `connector/src/test/java/...` — add integration test: ...
+
+        ## Patterns to follow
+        - Protocol model classes: builder + `@NotNull` validation per `negotiation/doc/model.md`
+        - Integration tests: extend the Testcontainers base class (`doc/test_containers_starting_guide.md`)
+        - Shared logic goes in `tools` — no cross-module reach-ins
+
+        ## Services / repositories involved
+        - `XxxService.method(...)` — returns ...
+        - `XxxRepository` — Spring Data MongoDB
+
+        ## Behavior
+        - Happy path: ...
+        - Error / protocol error message: ...
+        - State transition: ... → ...
+
+        ## Configuration
+        - Property keys: ... (provider/consumer profile differences if any)
+        - initial_data seed changes: ...
+    validations:
+      required: true
+
+  # ── Dependencies ─────────────────────────────────────────────────────
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: "Dependencies"
+      description: >
+        Relationship to other issues. Use the exact prefixes shown.
+        One relationship per line.
+      placeholder: |
+        Relates to: #
+        Depends on: # (must be done first)
+        Blocked by: # (cannot start until resolved)
+    validations:
+      required: false
+
+  # ── DSP Protocol / TCK Impact ────────────────────────────────────────
+
+  - type: textarea
+    id: protocol-impact
+    attributes:
+      label: "DSP Protocol / TCK Impact"
+      description: >
+        Does this task touch protocol-facing behavior (catalog, negotiation,
+        or transfer endpoints and message models)? If yes, name the affected
+        endpoints/messages and state whether a TCK compliance run is required
+        (see doc/tck/tck_compliancy.md). Write `None` for purely internal changes.
+      placeholder: |
+        **Protocol-facing**: yes / no
+        **Affected endpoints / messages**: `TransferRequestMessage`, `/transfers/request`, ...
+        **TCK run required**: yes / no
+        **DSP spec reference**: 2025-1 section ...
+    validations:
+      required: false
+
+  # ── Security & Quality Requirements ──────────────────────────────────
+
+  - type: textarea
+    id: security-quality
+    attributes:
+      label: "Security & Quality Requirements"
+      description: >
+        Task-specific security and quality requirements beyond the baseline rules
+        in AGENTS.md. Only list task-specific items — do not repeat the global
+        rules (Javadoc on public/protected methods, Checkstyle, Java conventions,
+        module boundaries).
+      placeholder: |
+        - Touches authentication / certificates / TLS: ... (see `doc/security.md`)
+        - New dependency introduced: ... (check CVEs, record in CHANGELOG via docs task)
+        - SpotBugs / Find Security Bugs attention areas: ...
+        - Input validation on protocol message fields: ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: parallelization
+    attributes:
+      label: "Delivery Stream & Parallelization"
+      description: >
+        Describe the independent stream this task belongs to and how it relates
+        to sibling tasks so multiple agents can run in parallel safely.
+      placeholder: |
+        **Stream**: `catalog` / `negotiation` / `data-transfer` / `tools-shared` / `infra`
+        **Can run in parallel with**: #..., #...
+        **Must wait for**: #... (or `None`)
+        **Why this is a separate stream**: ...
+    validations:
+      required: true
+
+  # ── Classification ───────────────────────────────────────────────────
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: "Type"
+      options:
+        - feature
+        - enhancement
+        - bug
+        - refactor
+        - docs
+        - test
+        - chore
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "Priority"
+      options:
+        - "P0 — blocker"
+        - "P1 — high"
+        - "P2 — medium"
+        - "P3 — low"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: milestone
+    attributes:
+      label: "Milestone"
+      options:
+        - "Next release"
+        - "Future release"
+        - "Maintenance / hotfix"
+    validations:
+      required: true
+
+  # ── AI Agent Configuration ──────────────────────────────────────────
+
+  - type: dropdown
+    id: ai-model
+    attributes:
+      label: "AI Model"
+      description: "Which model should implement this task."
+      options:
+        - "Sonnet 4.6 (standard implementation)"
+        - "Opus 4.8 (complex, multi-file, architectural)"
+        - "Fable 5 (most capable — cross-module or protocol-critical work)"
+        - "Haiku 4.5 (simple, mechanical changes)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: agent-mode
+    attributes:
+      label: "Agent Mode"
+      description: "How agents should execute this task."
+      options:
+        - "Single agent — sequential execution"
+        - "Parallel agents — independent sub-tasks"
+        - "Human-assisted — agent implements, human validates interactively"
+    validations:
+      required: true
+
+  - type: textarea
+    id: agent-instructions
+    attributes:
+      label: "Agent Instructions"
+      description: >
+        Additional instructions for the agent beyond the implementation prompt.
+        Skills or MCPs to invoke, files to read first, constraints.
+      placeholder: |
+        **Read first**: `AGENTS.md`, `doc/architecture.md` section ..., `negotiation/doc/...`
+        **Skills / MCPs**: GitHub MCP
+        **Constraints**: Do not modify ...
+    validations:
+      required: false
+
+  # ── Verification Checklist ──────────────────────────────────────────
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: "Verification Checklist"
+      description: >
+        Deterministic pass/fail items checked during per-task verification.
+        Each item must be independently verifiable. Use task list syntax.
+        Prefix items that cannot be automated with [manual]. Docker must be
+        running — integration tests use Testcontainers.
+      placeholder: |
+        **Build**
+        - [ ] `mvn clean verify` exits 0 (unit + integration tests, Docker running)
+        - [ ] Checkstyle passes (Javadoc on new public/protected methods)
+
+        **Functional**
+        - [ ] New endpoint `...` returns ... for valid input
+        - [ ] Protocol error message returned when ...
+        - [ ] State transition ... → ... persisted in MongoDB
+
+        **Tests**
+        - [ ] Unit tests cover builder validation (valid + ValidationException paths)
+        - [ ] Integration test extends Testcontainers base and covers ...
+
+        **Protocol compliance** (when protocol-facing)
+        - [ ] TCK profile run passes (see `doc/tck/tck_compliancy.md`)
+
+        **Security / quality**
+        - [ ] SpotBugs scan shows no new findings (`./spotbugs-scan.sh`)
+        - [ ] [manual] Postman collection request ... succeeds against local provider/consumer
+    validations:
+      required: true

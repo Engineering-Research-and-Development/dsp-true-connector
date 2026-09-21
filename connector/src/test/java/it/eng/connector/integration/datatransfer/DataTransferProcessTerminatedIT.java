@@ -32,6 +32,7 @@ public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
 
     // REQUESTED, STARTED, SUSPENDED -> TERMINATED
 
+
     @Autowired
     private TransferProcessRepository transferProcessRepository;
 
@@ -51,6 +52,7 @@ public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
                 .providerPid(createNewId())
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .state(state)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessRequested);
 
@@ -62,7 +64,7 @@ public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
                 .build();
 
         mockMvc.perform(
-                        post("/transfers/" + transferTerminationMessage.getProviderPid() + "/termination")
+                        post("/" + TENANT_ID + "/transfers/" + transferTerminationMessage.getProviderPid() + "/termination")
                                 .content(TransferSerializer.serializeProtocol(transferTerminationMessage))
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
@@ -84,6 +86,7 @@ public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
                 .providerPid(createNewId())
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .state(state)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessRequested);
 
@@ -95,7 +98,7 @@ public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
                 .build();
 
         mockMvc.perform(
-                        post("/consumer/transfers/" + transferTerminationMessage.getConsumerPid() + "/termination")
+                        post("/" + TENANT_ID + "/consumer/transfers/" + transferTerminationMessage.getConsumerPid() + "/termination")
                                 .content(TransferSerializer.serializeProtocol(transferTerminationMessage))
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
@@ -119,7 +122,7 @@ public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/" + transferTerminationMessage.getProviderPid() + "/start")
+                        post("/" + TENANT_ID + "/transfers/" + transferTerminationMessage.getProviderPid() + "/start")
                                 .content(TransferSerializer.serializeProtocol(transferTerminationMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());
@@ -142,7 +145,7 @@ public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/consumer/transfers/" + transferTerminationMessage.getConsumerPid() + "/start")
+                        post("/" + TENANT_ID + "/consumer/transfers/" + transferTerminationMessage.getConsumerPid() + "/start")
                                 .content(TransferSerializer.serializeProtocol(transferTerminationMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());
@@ -159,7 +162,7 @@ public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
     private TransferProcess getTransferProcessForProviderPid(String providerPid)
             throws Exception, UnsupportedEncodingException, JsonMappingException, JsonProcessingException {
         MvcResult resultCompletedMessage = mockMvc.perform(
-                        get("/transfers/" + providerPid)
+                        get("/" + TENANT_ID + "/transfers/" + providerPid)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andReturn();

@@ -82,7 +82,7 @@ class PolicyInformationPointTest {
 		PolicyEnforcement policyEnforcement = new PolicyEnforcement();
 		policyEnforcement.setAgreementId(agreement.getId());
 		policyEnforcement.setCount(3);
-		when(policyEnforcementRepository.findByAgreementId(any())).thenReturn(Optional.of(policyEnforcement));
+		when(policyEnforcementRepository.findByAgreementIdAndTenantId(any(), any())).thenReturn(Optional.of(policyEnforcement));
 		when(locationService.getConnectorLocation()).thenReturn("EU");
 		when(purposeService.getPurpose()).thenReturn("dsp");
 		

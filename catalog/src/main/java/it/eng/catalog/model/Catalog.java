@@ -66,6 +66,9 @@ public class Catalog extends AbstractCatalogObject {
     private String participantId;
 
     @JsonIgnore
+    private String tenantId;
+
+    @JsonIgnore
     @CreatedBy
     private String createdBy;
 
@@ -189,6 +192,17 @@ public class Catalog extends AbstractCatalogObject {
             return this;
         }
 
+        /**
+         * Sets the tenant identifier for this catalog.
+         *
+         * @param tenantId the tenant ID
+         * @return this builder
+         */
+        public Builder tenantId(String tenantId) {
+            catalog.tenantId = tenantId;
+            return this;
+        }
+
         public Catalog build() {
             if (catalog.id == null) {
                 catalog.id = catalog.createNewPid();
@@ -204,6 +218,16 @@ public class Catalog extends AbstractCatalogObject {
                             .map(v -> v.getPropertyPath() + " " + v.getMessage())
                             .collect(Collectors.joining(",")));
         }
+    }
+
+    /**
+     * Directly sets the tenant identifier on this instance, bypassing the builder.
+     * Used by the service layer to stamp tenant ownership before persisting.
+     *
+     * @param tenantId the tenant ID to associate with this catalog
+     */
+    public void injectTenantId(String tenantId) {
+        this.tenantId = tenantId;
     }
 
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
@@ -224,6 +248,7 @@ public class Catalog extends AbstractCatalogObject {
                 .version(this.version)
                 .issued(this.issued)
                 .createdBy(this.createdBy)
+                .tenantId(this.tenantId)
                 .keyword(updatedCatalogData.getKeyword() != null ? updatedCatalogData.getKeyword() : this.keyword)
                 .theme(updatedCatalogData.getTheme() != null ? updatedCatalogData.getTheme() : this.theme)
                 .conformsTo(updatedCatalogData.getConformsTo() != null ? updatedCatalogData.getConformsTo() : this.conformsTo)

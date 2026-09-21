@@ -7,32 +7,42 @@
   Format reference:
     https://spotbugs.readthedocs.io/en/latest/filter.html
 
+  Regex matching: prefix the value with ~ e.g. name="~.*Test"
+  Exact matching: name="com.example.MyClass"
+
   Each <Match> element can combine:
-    <Bug pattern="RULE_CODE"/>              — specific rule
-    <Class name="com.example.Foo"/>         — exact class
-    <Class ~=".*Test"/>                     — regex on class name
+    <Bug pattern="RULE_CODE"/>
+    <Class name="com.example.Foo"/>          — exact class name
+    <Class name="~.*Test"/>                  — regex on binary class name
     <Method name="myMethod"/>
     <Field name="myField"/>
 
-  ─── Entries below ───────────────────────────────────────────────────────────
+  NOTE: namePattern="..." is NOT a valid SpotBugs attribute and will cause
+        "Class element missing name attribute". Always use name="~<regex>".
 -->
 <FindBugsFilter>
 
-    <!-- ── Exclude all test classes ─────────────────────────────────────────── -->
+    <!-- ── Exclude all unit test classes ────────────────────────────────────── -->
     <Match>
-        <Class ~=".*Test$"/>
+        <Class name="~.*Test"/>
+    </Match>
+
+    <!-- ── Exclude all integration test classes ─────────────────────────────── -->
+    <Match>
+        <Class name="~.*IT"/>
+    </Match>
+
+    <!-- ── Exclude test utility / base classes ───────────────────────────────── -->
+    <Match>
+        <Class name="~.*TestBase"/>
     </Match>
     <Match>
-        <Class ~=".*IT$"/>
-    </Match>
-    <Match>
-        <!-- Test utility / base classes -->
-        <Class ~=".*TestBase$"/>
+        <Class name="~.*MockObjectUtil"/>
     </Match>
 
     <!-- ── Exclude generated sources ────────────────────────────────────────── -->
     <Match>
-        <Class ~=".*\.generated\..*"/>
+        <Class name="~.*\.generated\..*"/>
     </Match>
 
     <!--
@@ -44,7 +54,7 @@
     Example — trust-all TLS used only in dev/test profiles:
     <Match>
         <Bug pattern="UNTRUSTWORTHY_SSL_SERVER_SOCKET_FACTORY"/>
-        <Class ~=".*DevTlsConfig"/>
+        <Class name="it.eng.connector.configuration.DevTlsConfig"/>
     </Match>
     -->
 

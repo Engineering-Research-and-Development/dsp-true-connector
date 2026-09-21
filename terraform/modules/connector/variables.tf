@@ -7,6 +7,7 @@ variable "env_config_map" { type = string }
 variable "config_map" { type = string }
 variable "initial_data_config_map" { type = string }
 variable "certs_config_map" { type = string }
+variable "credentials_secret" { type = string }
 variable "employee_data_config_map" {
   type    = string
   default = null

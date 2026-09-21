@@ -17,6 +17,8 @@ import it.eng.negotiation.model.*;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.service.FieldEncryptionService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,6 +30,9 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -50,10 +55,15 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
     private DatasetRepository datasetRepository;
     @Autowired
     private DistributionRepository distributionRepository;
-
+    @Autowired
+    private FieldEncryptionService fieldEncryptionService;
     private Catalog catalog;
     private Dataset dataset;
     private Distribution distribution;
+    private Distribution distributionHttpPush;
+
+    // from initial_data
+    private static final String TENANT_ID = "engineering";
 
     @BeforeEach
     public void populateCatalog() {
@@ -61,15 +71,22 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .accessService(CatalogMockObjectUtil.DATA_SERVICE)
                 .build();
+        distributionHttpPush = Distribution.Builder.newInstance()
+                .format(DataTransferFormat.HTTP_PUSH.format())
+                .accessService(CatalogMockObjectUtil.DATA_SERVICE)
+                .build();
         dataset = Dataset.Builder.newInstance()
                 .hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
-                .distribution(Collections.singleton(distribution))
+                .distribution(new HashSet<>(Arrays.asList(distribution, distributionHttpPush)))
+                .tenantId(TENANT_ID)
                 .build();
         catalog = Catalog.Builder.newInstance()
                 .dataset(Collections.singleton(dataset))
+                .tenantId(TENANT_ID)
                 .build();
 
         distributionRepository.save(distribution);
+        distributionRepository.save(distributionHttpPush);
         datasetRepository.save(dataset);
         catalogRepository.save(catalog);
     }
@@ -91,7 +108,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
         // finalized contract negotiation
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
-                .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                .constraint(Collections.singletonList(Constraint.Builder.newInstance()
                         .leftOperand(LeftOperand.COUNT)
                         .operator(Operator.LTEQ)
                         .rightOperand("5")
@@ -101,7 +118,8 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .assignee("assignee")
                 .assigner("assigner")
                 .target("test_dataset")
-                .permission(Arrays.asList(permission))
+                .permission(Collections.singletonList(permission))
+                .tenantId(TENANT_ID)
                 .build();
         agreementRepository.save(agreement);
 
@@ -113,6 +131,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .agreement(agreement)
                 .state(ContractNegotiationState.FINALIZED)
                 .role(IConstants.ROLE_PROVIDER)
+                .tenantId(TENANT_ID)
                 .build();
         contractNegotiationRepository.save(contractNegotiationFinalized);
 
@@ -123,6 +142,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .agreementId(agreement.getId())
                 .state(TransferState.INITIALIZED)
                 .datasetId(dataset.getId())
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessInitialized);
 
@@ -135,7 +155,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/request")
+                        post("/" + TENANT_ID + "/transfers/request")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isCreated())
@@ -181,7 +201,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/request")
+                        post("/" + TENANT_ID + "/transfers/request")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
@@ -201,7 +221,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
         // finalized contract negotiation
         Permission permission = Permission.Builder.newInstance()
                 .action(Action.USE)
-                .constraint(Arrays.asList(Constraint.Builder.newInstance()
+                .constraint(Collections.singletonList(Constraint.Builder.newInstance()
                         .leftOperand(LeftOperand.COUNT)
                         .operator(Operator.LTEQ)
                         .rightOperand("5")
@@ -211,7 +231,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
                 .assignee("assignee")
                 .assigner("assigner")
                 .target("test_dataset")
-                .permission(Arrays.asList(permission))
+                .permission(Collections.singletonList(permission))
                 .build();
         agreementRepository.save(agreement);
 
@@ -245,7 +265,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/request")
+                        post("/" + TENANT_ID + "/transfers/request")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
@@ -291,7 +311,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/request")
+                        post("/" + TENANT_ID + "/transfers/request")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
@@ -318,7 +338,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/request")
+                        post("/" + TENANT_ID + "/transfers/request")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .header("Authorization", "Basic YXNkckBtYWlsLmNvbTpwYXNzd29yZA=="));
@@ -327,5 +347,90 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
         String response = result.andReturn().getResponse().getContentAsString();
         TransferError transferError = TransferSerializer.deserializeProtocol(response, TransferError.class);
         assertNotNull(transferError);
+    }
+
+    @Test
+    @DisplayName("DataTransfer requested - HTTP_PUSH - secretKey is encrypted before being stored in MongoDB")
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void initiateDataTransfer_httpPush_secretKeyEncryptedInMongoDB() throws Exception {
+        String plainSecretKey = "plain-secret-key-for-test";
+
+        Agreement agreement = Agreement.Builder.newInstance()
+                .assignee("assignee")
+                .assigner("assigner")
+                .target("test_dataset")
+                .permission(Collections.singletonList(Permission.Builder.newInstance().action(Action.USE).build()))
+                .tenantId(TENANT_ID)
+                .build();
+        agreementRepository.save(agreement);
+
+        ContractNegotiation contractNegotiation = ContractNegotiation.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .callbackAddress("callbackAddress.test")
+                .agreement(agreement)
+                .state(ContractNegotiationState.FINALIZED)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(TENANT_ID)
+                .build();
+        contractNegotiationRepository.save(contractNegotiation);
+
+        TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
+                .consumerPid(IConstants.TEMPORARY_CONSUMER_PID)
+                .providerPid(createNewId())
+                .format(DataTransferFormat.HTTP_PUSH.format())
+                .agreementId(agreement.getId())
+                .state(TransferState.INITIALIZED)
+                .datasetId(dataset.getId())
+                .tenantId(TENANT_ID)
+                .build();
+        transferProcessRepository.save(transferProcessInitialized);
+
+        // DataAddress carries a plain secretKey, as the consumer sends it to the provider
+        DataAddress httpPushDataAddress = DataAddress.Builder.newInstance()
+                .endpointProperties(List.of(
+                        EndpointProperty.Builder.newInstance().name(S3Utils.BUCKET_NAME).value("consumer-bucket").build(),
+                        EndpointProperty.Builder.newInstance().name(S3Utils.REGION).value("us-east-1").build(),
+                        EndpointProperty.Builder.newInstance().name(S3Utils.OBJECT_KEY).value("consumer-object-key").build(),
+                        EndpointProperty.Builder.newInstance().name(S3Utils.ACCESS_KEY).value("consumer-access-key").build(),
+                        EndpointProperty.Builder.newInstance().name(S3Utils.SECRET_KEY).value(plainSecretKey).build(),
+                        EndpointProperty.Builder.newInstance().name(S3Utils.ENDPOINT_OVERRIDE).value("http://consumer-minio:9000").build()
+                ))
+                .build();
+
+        TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
+                .consumerPid(createNewId())
+                .agreementId(agreement.getId())
+                .format(DataTransferFormat.HTTP_PUSH.format())
+                .callbackAddress(DataTransferMockObjectUtil.CALLBACK_ADDRESS)
+                .dataAddress(httpPushDataAddress)
+                .build();
+
+        mockMvc.perform(
+                post("/" + TENANT_ID + "/transfers/request")
+                        .content(TransferSerializer.serializeProtocol(transferRequestMessage))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isCreated());
+
+        // Load the persisted TransferProcess from MongoDB
+        Optional<TransferProcess> saved = transferProcessRepository.findById(transferProcessInitialized.getId());
+        assertTrue(saved.isPresent(), "TransferProcess must be saved to MongoDB");
+
+        String storedSecretKey = saved.get().getDataAddress().getEndpointProperties().stream()
+                .filter(p -> S3Utils.SECRET_KEY.equals(p.getName()))
+                .findFirst()
+                .map(EndpointProperty::getValue)
+                .orElse(null);
+
+        assertNotNull(storedSecretKey, "secretKey endpoint property must be present in stored DataAddress");
+        assertNotEquals(plainSecretKey, storedSecretKey,
+                "secretKey must be encrypted in MongoDB — plain text must never be stored");
+        assertEquals(plainSecretKey, fieldEncryptionService.decrypt(storedSecretKey),
+                "Decrypting the stored secretKey must yield the original plain value");
+
+        // cleanup
+        agreementRepository.delete(agreement);
+        contractNegotiationRepository.delete(contractNegotiation);
+        transferProcessRepository.deleteById(transferProcessInitialized.getId());
     }
 }

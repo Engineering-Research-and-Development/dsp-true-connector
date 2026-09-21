@@ -5,9 +5,15 @@ import io.minio.admin.UserInfo;
 import it.eng.tools.exception.S3ServerException;
 import it.eng.tools.s3.model.BucketCredentialsEntity;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Component;
 
+/**
+ * Minio-specific IAM user management.
+ * Only active when MinioAdminClient bean exists.
+ */
 @Component
+@ConditionalOnBean(MinioAdminClient.class)
 @Slf4j
 public class MinioUserManagementService implements IamUserManagementService {
 
@@ -15,6 +21,7 @@ public class MinioUserManagementService implements IamUserManagementService {
 
     public MinioUserManagementService(MinioAdminClient minioAdminClient) {
         this.minioAdminClient = minioAdminClient;
+        log.info("MinioUserManagementService initialized - Minio IAM enabled");
     }
 
     @Override
@@ -77,5 +84,40 @@ public class MinioUserManagementService implements IamUserManagementService {
                     ]
                 }
                 """, bucketName, bucketName);
+    }
+
+    @Override
+    public void attachTemporaryPolicy(String accessKey, String policyName, String policyJson) {
+        try {
+            log.debug("Creating temporary policy {} with content: {}", policyName, policyJson);
+            minioAdminClient.addCannedPolicy(policyName, policyJson);
+            log.debug("Attaching temporary policy {} to user {}", policyName, accessKey);
+            minioAdminClient.setPolicy(accessKey, false, policyName);
+        } catch (Exception e) {
+            log.error("Failed to attach temporary policy {} to user {}: {}", policyName, accessKey, e.getMessage());
+            throw new S3ServerException("Failed to attach temporary policy to user", e);
+        }
+    }
+
+    @Override
+    public void deleteUser(String accessKey) {
+        try {
+            minioAdminClient.deleteUser(accessKey);
+            log.info("User {} deleted successfully", accessKey);
+        } catch (Exception e) {
+            log.error("Failed to delete user {}: {}", accessKey, e.getMessage());
+            throw new S3ServerException("Failed to delete user", e);
+        }
+    }
+
+    @Override
+    public void deletePolicy(String policyName) {
+        try {
+            minioAdminClient.removeCannedPolicy(policyName);
+            log.info("Policy {} deleted successfully", policyName);
+        } catch (Exception e) {
+            log.error("Failed to delete policy {}: {}", policyName, e.getMessage());
+            throw new S3ServerException("Failed to delete policy", e);
+        }
     }
 }

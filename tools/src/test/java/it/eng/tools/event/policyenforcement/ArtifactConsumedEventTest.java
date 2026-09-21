@@ -14,8 +14,9 @@ public class ArtifactConsumedEventTest {
     @DisplayName("Test ArtifactConsumedEvent creation and getters")
     public void testArtifactConsumedEvent() throws Exception {
         String agreementId = EventTestUtil.TEST_AGREEMENT_ID;
-        
-        ArtifactConsumedEvent event = new ArtifactConsumedEvent(agreementId);
+        String tenantId = EventTestUtil.TENANT_ID;
+
+        ArtifactConsumedEvent event = new ArtifactConsumedEvent(agreementId, tenantId);
         
         assertNotNull(event);
         assertEquals(agreementId, event.getAgreementId());

@@ -45,7 +45,7 @@ Response
 Request
 
 ```
-curl --location 'http://localhost:8080/api/properties/?key_prefix=application.daps' \
+curl --location 'http://localhost:8080/api/properties/?key_prefix=application.protocol.authentication' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ='
 ```
@@ -55,16 +55,8 @@ Response
 ```
 [
     {
-        "key": "application.daps.dapsJWKSUrl",
-        "value": "https://daps.aisec.fraunhofer.de/.well-known/jwks.json",
-        "mandatory": false,
-        "issued": 1719246360.000000000,
-        "modified": 1719246360.000000000,
-        "type": "ApplicationProperty"
-    },
-    {
-        "key": "application.daps.dapsUrl",
-        "value": "https://daps.aisec.fraunhofer.de/v2/token",
+        "key": "application.protocol.authentication.enabled",
+        "value": "false",
         "mandatory": false,
         "issued": 1719246360.000000000,
         "modified": 1719246360.000000000,
@@ -106,7 +98,7 @@ curl --location --request PUT 'http://localhost:8080/api/properties/' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: Basic YWRtaW5AbWFpbC5jb206cGFzc3dvcmQ=' \
 --data '{
-        "key": "application.daps.enabledDapsInteraction",
+        "key": "application.protocol.authentication.enabled",
         "value": "false",
         "mandatory": false,
         "issued": 1718629303.981000000,
@@ -119,7 +111,7 @@ Response
 
 ```
 {
-    "key": "application.daps.enabledDapsInteraction",
+    "key": "application.protocol.authentication.enabled",
     "value": "false",
     "mandatory": false,
     "issued": 1.71924636E+9,

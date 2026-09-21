@@ -10,6 +10,7 @@ module "connector_a" {
   config_map               = kubernetes_config_map.connector_a_config.metadata[0].name
   initial_data_config_map  = kubernetes_config_map.connector_a_initial_data.metadata[0].name
   certs_config_map         = kubernetes_config_map.connector_a_certs.metadata[0].name
+  credentials_secret       = kubernetes_secret.connector_a_credentials.metadata[0].name
   employee_data_config_map = null
 }
 
@@ -38,6 +39,7 @@ module "connector_b" {
   config_map               = kubernetes_config_map.connector_b_config.metadata[0].name
   initial_data_config_map  = kubernetes_config_map.connector_b_initial_data.metadata[0].name
   certs_config_map         = kubernetes_config_map.connector_b_certs.metadata[0].name
+  credentials_secret       = kubernetes_secret.connector_b_credentials.metadata[0].name
   employee_data_config_map = kubernetes_config_map.employee_data.metadata[0].name
 }
 
@@ -54,35 +56,29 @@ module "connector_b_ui" {
   ssl_secret            = kubernetes_secret.ui_b_ssl.metadata[0].name
 }
 
-# This file defines the Kubernetes services for MinIO.
-resource "kubernetes_deployment" "minio" {
+# This file defines the Kubernetes deployment for RustFS.
+resource "kubernetes_deployment" "s3storage" {
   metadata {
-    name = "minio"
+    name = "s3storage"
   }
   spec {
     replicas = 1
     selector {
       match_labels = {
-        app = "minio"
+        app = "rustfs"
       }
     }
     template {
       metadata {
         labels = {
-          app = "minio"
+          app = "rustfs"
         }
       }
       spec {
         container {
-          name  = "minio"
-          image = var.minio_image
-          command = [
-            "minio",
-            "server",
-            "/data",
-            "--console-address",
-            ":9001"
-          ]
+          name              = "s3storage"
+          image             = var.rustfs_image
+          image_pull_policy = "IfNotPresent"
           port {
             name           = "api"
             container_port = 9000
@@ -92,32 +88,24 @@ resource "kubernetes_deployment" "minio" {
             container_port = 9001
           }
           env {
-            name  = "MINIO_ROOT_USER"
-            value = "minioadmin"
+            name  = "RUSTFS_ACCESS_KEY"
+            value = "rustfsadmin"
           }
           env {
-            name  = "MINIO_ROOT_PASSWORD"
-            value = "minioadmin"
+            name  = "RUSTFS_SECRET_KEY"
+            value = "rustfsadmin"
           }
           env {
-            name  = "MINIO_API_PORT_NUMBER"
-            value = "9000"
-          }
-          env {
-            name  = "MINIO_CONSOLE_PORT_NUMBER"
-            value = "9001"
-          }
-          env {
-            name  = "MINIO_SKIP_CLIENT"
-            value = "yes"
+            name  = "RUSTFS_ADDRESS"
+            value = ":9000"
           }
           volume_mount {
-            name       = "minio-data"
+            name       = "rustfs-data"
             mount_path = "/data"
           }
         }
         volume {
-          name = "minio-data"
+          name = "rustfs-data"
           empty_dir {}
         }
       }
@@ -145,8 +133,9 @@ resource "kubernetes_deployment" "mongodb" {
       }
       spec {
         container {
-          name  = "mongodb"
-          image = var.mongodb_image
+          name              = "mongodb"
+          image             = var.mongodb_image
+          image_pull_policy = "IfNotPresent"
           port {
             container_port = 27017
           }

@@ -2,6 +2,7 @@ package it.eng.tools.configuration;
 
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.model.ApplicationProperty;
+import it.eng.tools.model.Tenant;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.web.HateoasPageableHandlerMethodArgumentResolver;
@@ -17,6 +18,12 @@ public class HateoasConfig {
 
     @Bean
     public PagedResourcesAssembler<AuditEvent> auditEventPagedResourcesAssembler(
+            HateoasPageableHandlerMethodArgumentResolver resolver) {
+        return new PagedResourcesAssembler<>(resolver, null);
+    }
+
+    @Bean
+    public PagedResourcesAssembler<Tenant> tenantPagedResourcesAssembler(
             HateoasPageableHandlerMethodArgumentResolver resolver) {
         return new PagedResourcesAssembler<>(resolver, null);
     }

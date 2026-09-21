@@ -13,6 +13,8 @@ import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.model.Tenant;
+import it.eng.tools.repository.TenantRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.serializer.InstantDeserializer;
@@ -28,8 +30,9 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.testcontainers.containers.MinIOContainer;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MongoDBContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import org.wiremock.spring.EnableWireMock;
@@ -57,18 +60,29 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Testcontainers
 public class BaseIntegrationTest {
 
+    /** Default tenant ID used across all integration tests. */
+    protected static final String TENANT_ID = "engineering";
+
     // starts a mongodb and s3 simulated cloud storage container; the containers are shared among all tests; docker must be running
     protected static final MongoDBContainer mongoDBContainer =
             new MongoDBContainer(DockerImageName.parse("mongo:7.0.12"))
                     .withReuse(false);
-    protected static final MinIOContainer minIOContainer =
-            new MinIOContainer(DockerImageName.parse("minio/minio"))
-                    .withReuse(false);
+
+    private static final int S3_PORT = 9000;
+    protected static final GenericContainer<?> s3StorageContainer = new GenericContainer<>(
+            DockerImageName.parse("rustfs/rustfs:1.0.0-rc.6"))
+            .withEnv("RUSTFS_ACCESS_KEY", S3Utils.ACCESS_KEY)
+            .withEnv("RUSTFS_SECRET_KEY", S3Utils.SECRET_KEY)
+            .withExposedPorts(S3_PORT)
+            .withCommand("/data")
+            .waitingFor(Wait.forHttp("/health").forPort(S3_PORT));
 
     @Autowired
     protected MockMvc mockMvc;
     @Autowired
     protected S3Properties s3Properties;
+    @Autowired
+    protected TenantRepository tenantRepository;
     protected JsonMapper jsonMapper;
 
     protected String createNewId() {
@@ -78,17 +92,26 @@ public class BaseIntegrationTest {
     static {
         mongoDBContainer.start();
         // used for checking S3 storage during test debugging; will be exposed on random localhost port which can be checked with `docker ps`or some docker GUI
-        minIOContainer.addExposedPort(9001);
-        minIOContainer.start();
+//        minIOContainer.addExposedPort(9001);
+        s3StorageContainer.start();
+    }
+
+    protected static String getS3Url() {
+        return "http://%s:%d".formatted(
+                s3StorageContainer.getHost(),
+                s3StorageContainer.getMappedPort(S3_PORT)
+        );
     }
 
     @DynamicPropertySource
     static void containersProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.host", mongoDBContainer::getHost);
         registry.add("spring.data.mongodb.port", mongoDBContainer::getFirstMappedPort);
-        registry.add("s3.endpoint", minIOContainer::getS3URL);
-        registry.add("s3.externalPresignedEndpoint", minIOContainer::getS3URL);
+        registry.add("s3.endpoint", BaseIntegrationTest::getS3Url);
+        registry.add("s3.externalPresignedEndpoint", BaseIntegrationTest::getS3Url);
 
+        registry.add("s3.accessKey", () -> S3Utils.ACCESS_KEY);
+        registry.add("s3.secretKey", () -> S3Utils.SECRET_KEY);
     }
 
     @BeforeEach
@@ -102,6 +125,24 @@ public class BaseIntegrationTest {
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
                 .addModule(instantConverterModule)
                 .build();
+        ensureDefaultTenant();
+    }
+
+    /**
+     * Idempotently ensures the default Engineering tenant exists in the test database.
+     * Called from {@code @BeforeEach} so each test method starts with a valid tenant,
+     * even if a previous test's {@code @AfterEach} removed it.
+     */
+    protected void ensureDefaultTenant() {
+        if (tenantRepository.findById(TENANT_ID).isEmpty()) {
+            tenantRepository.save(Tenant.Builder.newInstance()
+                    .id(TENANT_ID)
+                    .name("Engineering")
+                    .participantId("connector-engineering")
+                    .bucketName(s3Properties.getBucketName())
+                    .enabled(true)
+                    .build());
+        }
     }
 
     protected JsonNode getContractNegotiationOverAPI() throws Exception {

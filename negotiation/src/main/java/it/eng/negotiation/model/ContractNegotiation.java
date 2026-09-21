@@ -75,6 +75,13 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     @Field("version")
     private Long version;
 
+    @JsonIgnore
+    @Field("retryCount")
+    private int retryCount;
+
+    @JsonIgnore
+    private String tenantId;
+
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Builder {
@@ -174,6 +181,22 @@ public class ContractNegotiation extends AbstractNegotiationObject {
             return this;
         }
 
+        public Builder retryCount(int retryCount) {
+            message.retryCount = retryCount;
+            return this;
+        }
+
+        /**
+         * Sets the tenant identifier for this contract negotiation.
+         *
+         * @param tenantId the tenant identifier
+         * @return this builder
+         */
+        public Builder tenantId(String tenantId) {
+            message.tenantId = tenantId;
+            return this;
+        }
+
         public ContractNegotiation build() {
             if (message.id == null) {
                 message.id = message.createNewPid();
@@ -202,6 +225,16 @@ public class ContractNegotiation extends AbstractNegotiationObject {
     }
 
     /**
+     * Injects the tenant identifier into this contract negotiation instance.
+     * Used by the service layer to associate a negotiation with a specific tenant.
+     *
+     * @param tenantId the tenant identifier to inject
+     */
+    public void injectTenantId(String tenantId) {
+        this.tenantId = tenantId;
+    }
+
+    /**
      * Create new ContractNegotiation from initial, with new state.
      *
      * @param newState new ContractNegotiationState
@@ -223,7 +256,37 @@ public class ContractNegotiation extends AbstractNegotiationObject {
                 .lastModifiedBy(this.lastModifiedBy)
                 .modified(modified)
                 .version(this.version)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
                 .state(newState)
+                .build();
+    }
+
+    /**
+     * Creates a new ContractNegotiation with the specified retryCount.
+     * All other fields remain unchanged.
+     *
+     * @param retryCount the retry count value to persist
+     * @return new ContractNegotiation instance with updated retryCount
+     */
+    public ContractNegotiation withRetryCount(int retryCount) {
+        return ContractNegotiation.Builder.newInstance()
+                .id(this.id)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .offer(this.offer)
+                .assigner(this.assigner)
+                .role(this.role)
+                .agreement(this.agreement)
+                .state(this.state)
+                .retryCount(retryCount)
+                .tenantId(this.tenantId)
+                .createdBy(this.createdBy)
+                .created(this.created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(this.modified)
+                .version(this.version)
                 .build();
     }
 }

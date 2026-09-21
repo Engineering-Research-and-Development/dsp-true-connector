@@ -59,6 +59,9 @@ public class Dataset extends AbstractCatalogObject {
     private Artifact artifact;
 
     @JsonIgnore
+    private String tenantId;
+
+    @JsonIgnore
     @CreatedBy
     private String createdBy;
     @JsonIgnore
@@ -169,6 +172,17 @@ public class Dataset extends AbstractCatalogObject {
             return this;
         }
 
+        /**
+         * Sets the tenant identifier for this dataset.
+         *
+         * @param tenantId the tenant ID
+         * @return this builder
+         */
+        public Builder tenantId(String tenantId) {
+            dataset.tenantId = tenantId;
+            return this;
+        }
+
         public Dataset build() {
             if (dataset.id == null) {
                 dataset.id = dataset.createNewPid();
@@ -184,6 +198,16 @@ public class Dataset extends AbstractCatalogObject {
                             .map(v -> v.getPropertyPath() + " " + v.getMessage())
                             .collect(Collectors.joining(",")));
         }
+    }
+
+    /**
+     * Directly sets the tenant identifier on this instance, bypassing the builder.
+     * Used by the service layer to stamp tenant ownership before persisting.
+     *
+     * @param tenantId the tenant ID to associate with this dataset
+     */
+    public void injectTenantId(String tenantId) {
+        this.tenantId = tenantId;
     }
 
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
@@ -204,6 +228,7 @@ public class Dataset extends AbstractCatalogObject {
                 .version(this.version)
                 .issued(this.issued)
                 .createdBy(this.createdBy)
+                .tenantId(this.tenantId)
                 .keyword(updatedDataset.getKeyword() != null ? updatedDataset.getKeyword() : this.keyword)
                 .theme(updatedDataset.getTheme() != null ? updatedDataset.getTheme() : this.theme)
                 .conformsTo(updatedDataset.getConformsTo() != null ? updatedDataset.getConformsTo() : this.conformsTo)

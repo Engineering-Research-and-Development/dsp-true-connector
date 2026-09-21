@@ -18,6 +18,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -89,12 +90,18 @@ public class S3BucketProvisionIT extends BaseIntegrationTest {
                     .build());
         });
 
-        // Verify the exception message contains access denied
-        assertTrue(exception.getMessage().contains("The Access Key Id you provided does not exist in our records."));
+        // Verify unauthorized access via status and AWS error code instead of brittle message text
+        S3Exception s3Exception = (S3Exception) exception;
+        assertTrue(s3Exception.statusCode() == 403 || s3Exception.statusCode() == 401,
+                "Expected HTTP 401/403, got: " + s3Exception.statusCode());
+        assertNotNull(s3Exception.awsErrorDetails());
+        String errorCode = s3Exception.awsErrorDetails().errorCode();
+        assertTrue("InvalidAccessKeyId".equals(errorCode) || "AccessDenied".equals(errorCode),
+                "Unexpected error code: " + errorCode);
     }
 
     private String generateSecretKey() {
-        return java.util.UUID.randomUUID().toString();
+        return UUID.randomUUID().toString();
     }
 
 }

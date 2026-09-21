@@ -183,7 +183,7 @@ public class ContractNegotiationAPIController {
      */
     @PutMapping(path = "/{contractNegotiationId}/offer")
     public ResponseEntity<GenericApiResponse<JsonNode>> sendContractOfferMessageAsCounteroffer(@PathVariable String contractNegotiationId,
-                                                                          @RequestBody JsonNode counteroffer) {
+                                                                                               @RequestBody JsonNode counteroffer) {
         ContractNegotiation response = apiService.sendContractOfferMessageAsCounteroffer(contractNegotiationId, counteroffer);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(NegotiationSerializer.serializePlainJsonNode(response), "Counter offer sent"));

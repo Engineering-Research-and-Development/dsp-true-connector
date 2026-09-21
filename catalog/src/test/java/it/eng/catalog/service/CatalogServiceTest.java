@@ -1,15 +1,17 @@
 package it.eng.catalog.service;
 
 import it.eng.catalog.exceptions.CatalogErrorException;
+import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.model.*;
 import it.eng.catalog.repository.CatalogRepository;
-import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
+import it.eng.tools.event.AuditEventType;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantBucketResolver;
+import it.eng.tools.service.TenantContextHolder;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,12 +25,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,6 +38,7 @@ import static org.mockito.Mockito.when;
 public class CatalogServiceTest {
 
     private static final String BUCKET_NAME = "bucket-name";
+    private static final String TENANT_ID = "engineering";
 
     private Catalog catalog;
 
@@ -47,9 +50,9 @@ public class CatalogServiceTest {
     private S3Properties s3Properties;
     @Mock
     private S3ClientService s3ClientService;
+    @Mock
+    private TenantBucketResolver tenantBucketResolver;
 
-    @Captor
-    private ArgumentCaptor<ContractNegotiationOfferResponseEvent> argCaptorContractNegotiationOfferResponse;
 
     @Captor
     private ArgumentCaptor<Catalog> argCaptorCatalog;
@@ -60,6 +63,12 @@ public class CatalogServiceTest {
     @BeforeEach
     public void setUp() {
         catalog = CatalogMockObjectUtil.createNewCatalog();
+        TenantContextHolder.setTenantId(TENANT_ID);
+    }
+
+    @AfterEach
+    public void tearDown() {
+        TenantContextHolder.clear();
     }
 
     @Test
@@ -74,22 +83,22 @@ public class CatalogServiceTest {
     @Test
     @DisplayName("Get catalog successfully")
     public void getCatalog_success() {
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
-        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
+        when(tenantBucketResolver.resolveBucketName()).thenReturn(BUCKET_NAME);
         when(s3ClientService.listFiles(BUCKET_NAME))
                 .thenReturn(catalog.getDataset().stream()
                         .map(Dataset::getId).collect(Collectors.toList()));
         Catalog retrievedCatalog = service.getCatalog();
         assertNotNull(retrievedCatalog);
-        verify(repository).findAll();
+        verify(repository).findAllByTenantId(TENANT_ID);
     }
 
     @Test
     @DisplayName("Get catalog check if uploading dataset is removed")
     public void getCatalog_checkIfUploadingDatasetIsRemoved() {
         assertFalse(catalog.getDataset().isEmpty());
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
-        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
+        when(tenantBucketResolver.resolveBucketName()).thenReturn(BUCKET_NAME);
         when(s3ClientService.listFiles(BUCKET_NAME))
                 .thenReturn(Collections.emptyList());
         assertThrows(CatalogErrorException.class, () -> service.getCatalog());
@@ -98,38 +107,39 @@ public class CatalogServiceTest {
     @Test
     @DisplayName("Get catalog throws exception when not found")
     public void getCatalog_notFound() {
-        when(repository.findAll()).thenReturn(Collections.emptyList());
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.emptyList());
         assertThrows(CatalogErrorException.class, () -> service.getCatalog());
     }
 
     @Test
     @DisplayName("Get catalog by ID successfully")
     public void getCatalogById_success() {
-        when(repository.findById(anyString())).thenReturn(Optional.of(catalog));
+        when(repository.findByIdAndTenantId(anyString(), anyString())).thenReturn(Optional.of(catalog));
         Catalog retrievedCatalog = service.getCatalogById(catalog.getId());
         assertNotNull(retrievedCatalog);
-        verify(repository).findById(catalog.getId());
+        verify(repository).findByIdAndTenantId(catalog.getId(), TENANT_ID);
     }
 
     @Test
     @DisplayName("Delete catalog successfully")
     public void deleteCatalog_success() {
-        when(repository.findById(anyString())).thenReturn(Optional.of(catalog));
+        when(repository.findByIdAndTenantId(anyString(), anyString())).thenReturn(Optional.of(catalog));
         service.deleteCatalog(catalog.getId());
         verify(repository).deleteById(catalog.getId());
+        verify(publisher).publishEvent(eq(AuditEventType.CATALOG_DELETED), anyString(), any());
     }
 
     @Test
     @DisplayName("Update catalog successfully")
     public void updateCatalog_success() {
-        when(repository.findById(anyString())).thenReturn(Optional.of(catalog));
+        when(repository.findByIdAndTenantId(anyString(), anyString())).thenReturn(Optional.of(catalog));
         when(repository.save(any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG_FOR_UPDATE);
 
         Catalog updatedCatalogData = CatalogMockObjectUtil.CATALOG_FOR_UPDATE;
 
         Catalog updatedCatalog = service.updateCatalog(catalog.getId(), updatedCatalogData);
         assertNotNull(updatedCatalog);
-        verify(repository).findById(catalog.getId());
+        verify(repository).findByIdAndTenantId(catalog.getId(), TENANT_ID);
         verify(repository).save(argCaptorCatalog.capture());
         assertTrue(argCaptorCatalog.getValue().getDescription().stream().anyMatch(d -> d.getValue().contains("update")));
         assertTrue(argCaptorCatalog.getValue().getDistribution().stream().anyMatch(d -> d.getTitle().contains("update")));
@@ -143,6 +153,7 @@ public class CatalogServiceTest {
                 .anyMatch(s -> s.getCreator().contains("update")
                         && s.getEndpointURL().contains("update")
                         && s.getEndpointDescription().contains("update")));
+        verify(publisher).publishEvent(eq(AuditEventType.CATALOG_UPDATED), anyString(), any());
     }
 
     @Test
@@ -150,7 +161,7 @@ public class CatalogServiceTest {
     public void updateCatalogDataServiceAfterDelete_success() {
 
         DataService dataService = CatalogMockObjectUtil.DATA_SERVICE;
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
         when(repository.save(any(Catalog.class))).thenReturn(catalog);
 
         service.updateCatalogDataServiceAfterDelete(dataService);
@@ -159,48 +170,47 @@ public class CatalogServiceTest {
     }
 
     @Test
-    public void providedOfferExists() {
-        Offer offer = Offer.Builder.newInstance()
-                .id(catalog.getDataset().stream().findFirst().get().getHasPolicy().stream().findFirst().get().getId())
-                .target(catalog.getDataset().stream().findFirst().get().getId())
-                .permission(catalog.getDataset().stream().findFirst().get().getHasPolicy().stream().findFirst().get().getPermission())
+    @DisplayName("updateCatalogDatasetAfterSave rejects cross-tenant dataset with InternalServerErrorAPIException")
+    public void updateCatalogDatasetAfterSave_crossTenantDataset_throws() {
+        Dataset crossTenantDataset = Dataset.Builder.newInstance()
+                .id("urn:dataset:cross-tenant")
+                .tenantId("other-tenant")
+                .hasPolicy(new HashSet<>())
                 .build();
 
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
-        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
-        when(s3ClientService.listFiles(BUCKET_NAME))
-                .thenReturn(catalog.getDataset().stream()
-                        .map(Dataset::getId).collect(Collectors.toList()));
-        ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(CatalogMockObjectUtil.CONSUMER_PID,
-                CatalogMockObjectUtil.PROVIDER_PID,
-                CatalogSerializer.serializeProtocolJsonNode(offer));
-        service.validateOffer(offerRequest);
-
-        verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
-        assertTrue(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());
+        assertThrows(InternalServerErrorAPIException.class,
+                () -> service.updateCatalogDatasetAfterSave(crossTenantDataset),
+                "A dataset from a different tenant must be rejected");
     }
 
     @Test
-    public void providedOfferNotFound() {
-        Offer differentOffer = Offer.Builder.newInstance()
-                .id("urn:offer_id")
-                .target(CatalogMockObjectUtil.TARGET)
-                .permission(Set.of(CatalogMockObjectUtil.PERMISSION_ANONYMIZE))
+    @DisplayName("updateCatalogDataServiceAfterSave rejects cross-tenant dataService with InternalServerErrorAPIException")
+    public void updateCatalogDataServiceAfterSave_crossTenantDataService_throws() {
+        DataService crossTenantService = DataService.Builder.newInstance()
+                .id("urn:ds:cross-tenant")
+                .tenantId("other-tenant")
                 .build();
 
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
-        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
-        when(s3ClientService.listFiles(BUCKET_NAME))
-                .thenReturn(catalog.getDataset().stream()
-                        .map(Dataset::getId).collect(Collectors.toList()));
-
-        ContractNegotationOfferRequestEvent offerRequest = new ContractNegotationOfferRequestEvent(CatalogMockObjectUtil.CONSUMER_PID,
-                CatalogMockObjectUtil.PROVIDER_PID, CatalogSerializer.serializeProtocolJsonNode(differentOffer));
-        service.validateOffer(offerRequest);
-
-        verify(publisher).publishEvent(argCaptorContractNegotiationOfferResponse.capture());
-        assertFalse(argCaptorContractNegotiationOfferResponse.getValue().isOfferAccepted());
+        assertThrows(InternalServerErrorAPIException.class,
+                () -> service.updateCatalogDataServiceAfterSave(crossTenantService),
+                "A data service from a different tenant must be rejected");
     }
+
+    @Test
+    @DisplayName("updateCatalogDistributionAfterSave rejects cross-tenant distribution with InternalServerErrorAPIException")
+    public void updateCatalogDistributionAfterSave_crossTenantDistribution_throws() {
+        Distribution crossTenantDist = Distribution.Builder.newInstance()
+                .id("urn:dist:cross-tenant")
+                .tenantId("other-tenant")
+                .format(CatalogMockObjectUtil.DISTRIBUTION.getFormat())
+                .accessService(CatalogMockObjectUtil.DATA_SERVICE)
+                .build();
+
+        assertThrows(InternalServerErrorAPIException.class,
+                () -> service.updateCatalogDistributionAfterSave(crossTenantDist),
+                "A distribution from a different tenant must be rejected");
+    }
+
 
     @Test
     @DisplayName("Offer valid")
@@ -211,8 +221,8 @@ public class CatalogServiceTest {
                 .permission(catalog.getDataset().stream().findFirst().get().getHasPolicy().stream().findFirst().get().getPermission())
                 .build();
 
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
-        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
+        when(tenantBucketResolver.resolveBucketName()).thenReturn(BUCKET_NAME);
         when(s3ClientService.listFiles(BUCKET_NAME))
                 .thenReturn(catalog.getDataset().stream()
                         .map(Dataset::getId).collect(Collectors.toList()));
@@ -231,8 +241,8 @@ public class CatalogServiceTest {
                 .permission(new HashSet<>(Collections.singletonList(CatalogMockObjectUtil.PERMISSION)))
                 .build();
 
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
-        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
+        when(tenantBucketResolver.resolveBucketName()).thenReturn(BUCKET_NAME);
         when(s3ClientService.listFiles(BUCKET_NAME))
                 .thenReturn(catalog.getDataset().stream()
                         .map(Dataset::getId).collect(Collectors.toList()));
@@ -261,8 +271,8 @@ public class CatalogServiceTest {
                 .permission(new HashSet<>(Collections.singletonList(permission)))
                 .build();
 
-        when(repository.findAll()).thenReturn(Collections.singletonList(catalog));
-        when(s3Properties.getBucketName()).thenReturn(BUCKET_NAME);
+        when(repository.findAllByTenantId(TENANT_ID)).thenReturn(Collections.singletonList(catalog));
+        when(tenantBucketResolver.resolveBucketName()).thenReturn(BUCKET_NAME);
         when(s3ClientService.listFiles(BUCKET_NAME))
                 .thenReturn(catalog.getDataset().stream()
                         .map(Dataset::getId).collect(Collectors.toList()));

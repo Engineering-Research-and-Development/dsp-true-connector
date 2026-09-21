@@ -15,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -72,7 +73,7 @@ public class ContractOfferMessage extends AbstractNegotiationObject {
             }
 
             // Collect existing validator messages
-            java.util.List<String> messages = violations
+            List<String> messages = violations
                     .stream()
                     .map(v -> v.getPropertyPath() + " " + v.getMessage())
                     .collect(Collectors.toList());

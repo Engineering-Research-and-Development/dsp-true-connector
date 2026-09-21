@@ -60,4 +60,26 @@ public interface ApiEndpoints {
     public static final String PROPERTIES_V1 = "/api/v1/properties";
 
     public static final String AUDIT_V1 = "/api/v1/audit";
+
+    /**
+     * Tools module - v1 API endpoint for tenant management.
+     */
+    public static final String TENANTS_V1 = "/api/v1/tenants";
+
+    public static final String DASHBOARD_V1 = "/api/v1/dashboard";
+
+    public static final String DASHBOARD_RUNTIME_V1 = DASHBOARD_V1 + "/runtime";
+
+    public static final String DASHBOARD_NEGOTIATIONS_V1 = DASHBOARD_V1 + "/negotiations";
+
+    public static final String DASHBOARD_TRANSFERS_V1 = DASHBOARD_V1 + "/transfers";
+
+    public static final String DASHBOARD_EVENTS_V1 = DASHBOARD_V1 + "/events";
+
+    public static final String DASHBOARD_SUMMARY_V1 = DASHBOARD_V1 + "/summary";
+
+    /**
+     * Connector module - v1 API endpoint for the unified auth contract (login/refresh/logout).
+     */
+    public static final String AUTH_V1 = "/api/v1/auth";
 }

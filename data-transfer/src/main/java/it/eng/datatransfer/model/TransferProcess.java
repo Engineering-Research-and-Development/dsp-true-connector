@@ -68,6 +68,15 @@ public class TransferProcess extends AbstractTransferMessage {
     private boolean isDownloaded;
 
     /**
+     * Flag to indicate that a download is currently in progress on consumer side.
+     * Set to {@code true} when download starts and reset to {@code false} when the
+     * download finishes (success or failure). Visible in plain API responses so the
+     * frontend can drive a download spinner.
+     */
+    @JsonIgnore
+    private boolean isDownloadInProgress;
+
+    /**
      * Id of the downloaded and stored data on consumer side.
      */
     @JsonIgnore
@@ -94,6 +103,16 @@ public class TransferProcess extends AbstractTransferMessage {
     @Version
     @Field("version")
     private Long version;
+
+    @JsonIgnore
+    @Field("retryCount")
+    private int retryCount;
+
+    /**
+     * Tenant this transfer process belongs to. Null for super-admin scope.
+     */
+    @JsonIgnore
+    private String tenantId;
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -145,13 +164,29 @@ public class TransferProcess extends AbstractTransferMessage {
             return this;
         }
 
+        public Builder isDownloadInProgress(boolean isDownloadInProgress) {
+            message.isDownloadInProgress = isDownloadInProgress;
+            return this;
+        }
+
         public Builder dataId(String dataId) {
             message.dataId = dataId;
             return this;
         }
 
+
         public Builder format(String format) {
             message.format = format;
+            return this;
+        }
+
+        public Builder retryCount(int retryCount) {
+            message.retryCount = retryCount;
+            return this;
+        }
+
+        public Builder tenantId(String tenantId) {
+            message.tenantId = tenantId;
             return this;
         }
 
@@ -231,6 +266,16 @@ public class TransferProcess extends AbstractTransferMessage {
     }
 
     /**
+     * Injects the tenant identifier into this transfer process.
+     * Called after loading from DB or event, when tenant context is not available via TenantContextHolder.
+     *
+     * @param tenantId the tenant identifier to set
+     */
+    public void injectTenantId(String tenantId) {
+        this.tenantId = tenantId;
+    }
+
+    /**
      * Create new TransferProcess from origin, with new TransferState.<br>
      * Used to update state when transition happens.
      *
@@ -246,11 +291,80 @@ public class TransferProcess extends AbstractTransferMessage {
                 .callbackAddress(this.callbackAddress)
                 .dataAddress(this.dataAddress)
                 .isDownloaded(this.isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
                 .dataId(this.dataId)
                 .format(this.format)
                 .state(newTransferState)
                 .role(this.role)
                 .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
+                // auditable fields
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified retryCount.
+     * All other fields remain unchanged.
+     *
+     * @param retryCount the retry count value to persist
+     * @return new TransferProcess instance with updated retryCount
+     */
+    public TransferProcess withRetryCount(int retryCount) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .isDownloadInProgress(this.isDownloadInProgress)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(retryCount)
+                .tenantId(this.tenantId)
+                // auditable fields
+                .createdBy(this.createdBy)
+                .created(created)
+                .lastModifiedBy(this.lastModifiedBy)
+                .modified(modified)
+                .version(this.version)
+                .build();
+    }
+
+    /**
+     * Creates a new TransferProcess with the specified isDownloadInProgress flag.
+     * All other fields remain unchanged.
+     *
+     * @param isDownloadInProgress {@code true} if a download is currently in progress, {@code false} otherwise
+     * @return new TransferProcess instance with updated isDownloadInProgress flag
+     */
+    public TransferProcess withIsDownloadInProgress(boolean isDownloadInProgress) {
+        return TransferProcess.Builder.newInstance()
+                .id(this.id)
+                .agreementId(this.agreementId)
+                .consumerPid(this.consumerPid)
+                .providerPid(this.providerPid)
+                .callbackAddress(this.callbackAddress)
+                .dataAddress(this.dataAddress)
+                .isDownloaded(this.isDownloaded)
+                .isDownloadInProgress(isDownloadInProgress)
+                .dataId(this.dataId)
+                .format(this.format)
+                .state(this.state)
+                .role(this.role)
+                .datasetId(this.datasetId)
+                .retryCount(this.retryCount)
+                .tenantId(this.tenantId)
                 // auditable fields
                 .createdBy(this.createdBy)
                 .created(created)

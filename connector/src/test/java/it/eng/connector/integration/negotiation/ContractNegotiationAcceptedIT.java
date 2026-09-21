@@ -30,6 +30,7 @@ public class ContractNegotiationAcceptedIT extends BaseIntegrationTest {
 // https://provider.com/:callback/negotiations/:providerPid/events	POST	ContractNegotiationEventMessage
 // @PostMapping("/negotiations/{providerPid}/events")
 
+
     @Autowired
     private ContractNegotiationRepository contractNegotiationRepository;
     @Autowired
@@ -74,6 +75,7 @@ public class ContractNegotiationAcceptedIT extends BaseIntegrationTest {
                 .role(IConstants.ROLE_PROVIDER)
                 .build();
 
+        contractNegotiationOffered.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(contractNegotiationOffered);
 
         ContractNegotiationEventMessage contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
@@ -84,7 +86,7 @@ public class ContractNegotiationAcceptedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/negotiations/" + contractNegotiationOffered.getProviderPid() + "/events")
+                        post("/" + TENANT_ID + "/negotiations/" + contractNegotiationOffered.getProviderPid() + "/events")
                                 .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(contractNegotiationEventMessage)))
                                 .contentType(MediaType.APPLICATION_JSON));
         // no response required
@@ -152,7 +154,7 @@ public class ContractNegotiationAcceptedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/negotiations/" + contractNegotiationEventMessage.getProviderPid() + "/events")
+                        post("/" + TENANT_ID + "/negotiations/" + contractNegotiationEventMessage.getProviderPid() + "/events")
                                 .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(contractNegotiationEventMessage)))
                                 .contentType(MediaType.APPLICATION_JSON));
 
@@ -174,6 +176,7 @@ public class ContractNegotiationAcceptedIT extends BaseIntegrationTest {
                 .callbackAddress("http://callback.test")
                 .build();
 
+        contractNegotiationRequested.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(contractNegotiationRequested);
 
         ContractNegotiationEventMessage contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
@@ -184,7 +187,7 @@ public class ContractNegotiationAcceptedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/negotiations/" + contractNegotiationRequested.getProviderPid() + "/events")
+                        post("/" + TENANT_ID + "/negotiations/" + contractNegotiationRequested.getProviderPid() + "/events")
                                 .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(contractNegotiationEventMessage)))
                                 .contentType(MediaType.APPLICATION_JSON));
 
@@ -213,6 +216,7 @@ public class ContractNegotiationAcceptedIT extends BaseIntegrationTest {
                 .callbackAddress("http://callback.test")
                 .build();
 
+        contractNegotiationOffered.injectTenantId(TENANT_ID);
         contractNegotiationRepository.save(contractNegotiationOffered);
 
         ContractNegotiationEventMessage contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
@@ -224,7 +228,7 @@ public class ContractNegotiationAcceptedIT extends BaseIntegrationTest {
         String wrongProviderPid = createNewId();
         final ResultActions result =
                 mockMvc.perform(
-                        post("/negotiations/" + wrongProviderPid + "/events")
+                        post("/" + TENANT_ID + "/negotiations/" + wrongProviderPid + "/events")
                                 .content(Objects.requireNonNull(NegotiationSerializer.serializeProtocol(contractNegotiationEventMessage)))
                                 .contentType(MediaType.APPLICATION_JSON));
 

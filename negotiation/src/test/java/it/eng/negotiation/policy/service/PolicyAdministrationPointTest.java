@@ -25,6 +25,7 @@ import it.eng.negotiation.repository.PolicyEnforcementRepository;
 class PolicyAdministrationPointTest {
 	
 	private static final String AGREEMENT_ID = "agreement_id";
+	private static final String TENANT_ID = "tenant_id";
 	
 	@Mock
 	private PolicyEnforcementRepository policyEnforcementRepository;
@@ -37,14 +38,15 @@ class PolicyAdministrationPointTest {
 	
 	@Test
 	@DisplayName("Update access count")
-	void opdateAccessCount() {
+	void updateAccessCount() {
 		PolicyEnforcement pe = new PolicyEnforcement();
 		pe.setId(UUID.randomUUID().toString());
 		pe.setAgreementId(AGREEMENT_ID);
 		pe.setCount(5);
-		when(policyEnforcementRepository.findByAgreementId(AGREEMENT_ID)).thenReturn(Optional.of(pe));
+		pe.setTenantId(TENANT_ID);
+		when(policyEnforcementRepository.findByAgreementIdAndTenantId(AGREEMENT_ID, TENANT_ID)).thenReturn(Optional.of(pe));
 		
-		policyAdministrationPoint.updateAccessCount(AGREEMENT_ID);
+		policyAdministrationPoint.updateAccessCount(AGREEMENT_ID, TENANT_ID);
 		
 		verify(policyEnforcementRepository).save(argPolicyEnforcement.capture());
 		assertEquals(6, argPolicyEnforcement.getValue().getCount());
@@ -52,33 +54,34 @@ class PolicyAdministrationPointTest {
 	
 	@Test
 	@DisplayName("Update access count - exception")
-	void opdateAccessCount_exception() {
-		when(policyEnforcementRepository.findByAgreementId(AGREEMENT_ID)).thenReturn(Optional.empty());
+	void updateAccessCount_exception() {
+		when(policyEnforcementRepository.findByAgreementIdAndTenantId(AGREEMENT_ID, TENANT_ID))
+				.thenReturn(Optional.empty());
 		
 		assertThrows(PolicyEnforcementException.class, 
-				() -> policyAdministrationPoint.updateAccessCount(AGREEMENT_ID));
+				() -> policyAdministrationPoint.updateAccessCount(AGREEMENT_ID, TENANT_ID));
 		
 		verify(policyEnforcementRepository, times(0)).save(argPolicyEnforcement.capture());
 	}
 	
 	@Test
 	public void policyEnforcementExists() {
-		PolicyEnforcement pe = new PolicyEnforcement(UUID.randomUUID().toString(), AGREEMENT_ID, 0);
+		PolicyEnforcement pe = new PolicyEnforcement(UUID.randomUUID().toString(), AGREEMENT_ID, 0, "TENANT_ID");
 
-		when(policyEnforcementRepository.findByAgreementId(AGREEMENT_ID)).thenReturn(Optional.of(pe));
+		when(policyEnforcementRepository.findByAgreementIdAndTenantId(AGREEMENT_ID, TENANT_ID)).thenReturn(Optional.of(pe));
 
-		assertTrue(policyAdministrationPoint.policyEnforcementExists(AGREEMENT_ID));
+		assertTrue(policyAdministrationPoint.policyEnforcementExists(AGREEMENT_ID, TENANT_ID));
 
-		verify(policyEnforcementRepository).findByAgreementId(AGREEMENT_ID);
+		verify(policyEnforcementRepository).findByAgreementIdAndTenantId(AGREEMENT_ID, TENANT_ID);
 	}
 	
 	@Test
 	public void policyEnforcementDoesNotExists() {
-		when(policyEnforcementRepository.findByAgreementId(AGREEMENT_ID)).thenReturn(Optional.empty());
+		when(policyEnforcementRepository.findByAgreementIdAndTenantId(AGREEMENT_ID, TENANT_ID)).thenReturn(Optional.empty());
 
-		assertFalse(policyAdministrationPoint.policyEnforcementExists(AGREEMENT_ID));
+		assertFalse(policyAdministrationPoint.policyEnforcementExists(AGREEMENT_ID, TENANT_ID));
 
-		verify(policyEnforcementRepository).findByAgreementId(AGREEMENT_ID);
+		verify(policyEnforcementRepository).findByAgreementIdAndTenantId(AGREEMENT_ID, TENANT_ID);
 	}
 	
 }

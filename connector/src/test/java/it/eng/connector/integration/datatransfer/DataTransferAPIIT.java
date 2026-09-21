@@ -13,8 +13,8 @@ import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.repository.TemporaryBucketUserRepository;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,11 +24,11 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 import org.wiremock.spring.InjectWireMock;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -40,8 +40,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 public class DataTransferAPIIT extends BaseIntegrationTest {
 
+
     @Autowired
     private TransferProcessRepository transferProcessRepository;
+
+    @Autowired
+    private TemporaryBucketUserRepository temporaryBucketUserRepository;
 
     @InjectWireMock
     private WireMockServer wiremock;
@@ -49,6 +53,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
     @AfterEach
     public void cleanup() {
         transferProcessRepository.deleteAll();
+        temporaryBucketUserRepository.deleteAll();
     }
 
     @Test
@@ -59,6 +64,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .consumerPid(createNewId())
                 .providerPid(createNewId())
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessRequested);
 
@@ -66,6 +72,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .consumerPid(createNewId())
                 .providerPid(createNewId())
                 .state(TransferState.STARTED)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
@@ -116,9 +123,10 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .consumerPid(createNewId())
                 .providerPid(IConstants.TEMPORARY_PROVIDER_PID)
                 .agreementId(createNewId())
-                .callbackAddress(wiremock.baseUrl())
+                .callbackAddress(wiremock.baseUrl() + "/" + TENANT_ID)
                 .state(TransferState.INITIALIZED)
                 .role(IConstants.ROLE_CONSUMER)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessInitialized);
 
@@ -130,10 +138,11 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .consumerPid(transferProcessInitialized.getId())
                 .providerPid(createNewId())
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/transfers/request")
-                .withBasicAuth("connector@mail.com", "password")
+        WireMock.stubFor(WireMock.post("/" + TENANT_ID + "/transfers/request")
+                .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(WireMock.containing("TransferRequestMessage"))
                 .willReturn(
                         aResponse().withHeader("Content-Type", "application/json")
@@ -165,6 +174,61 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("Request transfer process - HTTP-PUSH creates temporary user")
+    @WithUserDetails(TestUtil.API_USER)
+    public void initiateDataTransfer_httpPush_createsTemporaryUser() throws Exception {
+        TransferProcess transferProcessInitialized = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(IConstants.TEMPORARY_PROVIDER_PID)
+                .agreementId(createNewId())
+                .callbackAddress(wiremock.baseUrl() + "/" + TENANT_ID)
+                .state(TransferState.INITIALIZED)
+                .role(IConstants.ROLE_CONSUMER)
+                .tenantId(TENANT_ID)
+                .build();
+        transferProcessRepository.save(transferProcessInitialized);
+
+        DataTransferRequest dataTransferRequest = new DataTransferRequest(transferProcessInitialized.getId(),
+                DataTransferFormat.HTTP_PUSH.format(), null);
+
+        // mock provider success response for HTTP-PUSH TransferRequestMessage
+        TransferProcess providerResponse = TransferProcess.Builder.newInstance()
+                .consumerPid(transferProcessInitialized.getConsumerPid())
+                .providerPid(createNewId())
+                .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
+                .build();
+
+        WireMock.stubFor(WireMock.post("/" + TENANT_ID + "/transfers/request")
+                .withHeader("Authorization", containing("Bearer"))
+                .withRequestBody(WireMock.containing("TransferRequestMessage"))
+                .willReturn(
+                        aResponse().withHeader("Content-Type", "application/json")
+                                .withBody(TransferSerializer.serializeProtocol(providerResponse))));
+
+        assertFalse(temporaryBucketUserRepository.existsById(transferProcessInitialized.getId()),
+                "Temporary bucket user should not exist before the transfer request");
+
+        final ResultActions result =
+                mockMvc.perform(
+                        post(ApiEndpoints.TRANSFER_DATATRANSFER_V1)
+                                .content(jsonMapper.convertValue(dataTransferRequest, JsonNode.class).toString())
+                                .contentType(MediaType.APPLICATION_JSON));
+
+        result.andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+
+        String json = result.andReturn().getResponse().getContentAsString();
+        JavaType javaType = jsonMapper.getTypeFactory().constructParametricType(GenericApiResponse.class, TransferProcess.class);
+        GenericApiResponse<TransferProcess> genericApiResponse = jsonMapper.readValue(json, javaType);
+        assertNotNull(genericApiResponse);
+        assertTrue(genericApiResponse.isSuccess());
+
+        assertTrue(temporaryBucketUserRepository.existsById(transferProcessInitialized.getId()),
+                "Temporary bucket user should be created after HTTP-PUSH transfer request");
+    }
+
+    @Test
     @DisplayName("Request transfer process - provider error")
     @WithUserDetails(TestUtil.API_USER)
     public void initiateDataTransfer_provider_error() throws Exception {
@@ -172,8 +236,9 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .consumerPid(createNewId())
                 .providerPid(createNewId())
                 .agreementId(createNewId())
-                .callbackAddress(wiremock.baseUrl())
+                .callbackAddress(wiremock.baseUrl() + "/" + TENANT_ID)
                 .state(TransferState.INITIALIZED)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessInitialized);
 
@@ -188,8 +253,8 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .reason(Collections.singletonList(Reason.Builder.newInstance().language("en").value("TEST").build()))
                 .build();
 
-        WireMock.stubFor(com.github.tomakehurst.wiremock.client.WireMock.post("/transfers/request")
-                .withBasicAuth("connector@mail.com", "password")
+        WireMock.stubFor(WireMock.post("/" + TENANT_ID + "/transfers/request")
+                .withHeader("Authorization", containing("Bearer"))
                 .withRequestBody(WireMock.containing("TransferRequestMessage"))
                 .willReturn(
                         aResponse().withHeader("Content-Type", "application/json")
@@ -232,6 +297,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-1")
                 .role(IConstants.ROLE_CONSUMER)
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         TransferProcess process2 = TransferProcess.Builder.newInstance()
@@ -240,6 +306,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-1")
                 .role(IConstants.ROLE_PROVIDER)
                 .state(TransferState.STARTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         TransferProcess process3 = TransferProcess.Builder.newInstance()
@@ -248,6 +315,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-2")
                 .role(IConstants.ROLE_CONSUMER)
                 .state(TransferState.COMPLETED)
+                .tenantId(TENANT_ID)
                 .build();
 
         transferProcessRepository.saveAll(List.of(process1, process2, process3));
@@ -286,6 +354,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-1")
                 .role(IConstants.ROLE_CONSUMER)
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         TransferProcess process2 = TransferProcess.Builder.newInstance()
@@ -294,6 +363,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-2")
                 .role(IConstants.ROLE_PROVIDER)
                 .state(TransferState.STARTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         transferProcessRepository.saveAll(List.of(process1, process2));
@@ -329,6 +399,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-1")
                 .role(IConstants.ROLE_CONSUMER)
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         TransferProcess process2 = TransferProcess.Builder.newInstance()
@@ -337,6 +408,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-2")
                 .role(IConstants.ROLE_PROVIDER)
                 .state(TransferState.STARTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         transferProcessRepository.saveAll(List.of(process1, process2));
@@ -370,6 +442,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-1")
                 .role(IConstants.ROLE_CONSUMER)
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         TransferProcess process2 = TransferProcess.Builder.newInstance()
@@ -378,6 +451,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-1")
                 .role(IConstants.ROLE_PROVIDER)
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         TransferProcess process3 = TransferProcess.Builder.newInstance()
@@ -386,6 +460,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("dataset-1")
                 .role(IConstants.ROLE_CONSUMER)
                 .state(TransferState.STARTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         transferProcessRepository.saveAll(List.of(process1, process2, process3));
@@ -426,6 +501,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("target-dataset")
                 .role(IConstants.ROLE_CONSUMER)
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         TransferProcess nonMatchingProcess = TransferProcess.Builder.newInstance()
@@ -434,6 +510,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("other-dataset")
                 .role(IConstants.ROLE_PROVIDER)
                 .state(TransferState.STARTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         transferProcessRepository.saveAll(List.of(matchingProcess, nonMatchingProcess));
@@ -462,46 +539,6 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Transfer process ID takes priority over filters")
-    @WithUserDetails(TestUtil.API_USER)
-    @Disabled("Disabled since this test is not applicable to the current API design")
-    public void transferProcessIdTakesPriority() throws Exception {
-        TransferProcess process = TransferProcess.Builder.newInstance()
-                .consumerPid(createNewId())
-                .providerPid(createNewId())
-                .datasetId("actual-dataset")
-                .role(IConstants.ROLE_CONSUMER)
-                .state(TransferState.REQUESTED)
-                .build();
-
-        transferProcessRepository.save(process);
-
-        MvcResult result = mockMvc.perform(
-                        get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + process.getId())
-                                .param("datasetId", "different-dataset")  // Should be ignored
-                                .param("state", TransferState.COMPLETED.name())  // Should be ignored
-                                .param("role", IConstants.ROLE_PROVIDER)         // Should be ignored
-                                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andReturn();
-
-        String json = result.getResponse().getContentAsString();
-        GenericApiResponse<TransferProcess> genericApiResponse = TransferSerializer.deserializePlain(json,
-                new TypeReference<GenericApiResponse<TransferProcess>>() {
-                });
-
-        assertNotNull(genericApiResponse);
-        assertTrue(genericApiResponse.isSuccess());
-        TransferProcess returnedProcess = genericApiResponse.getData();
-        assertEquals(process.getId(), returnedProcess.getId());
-        // Verify actual values are returned, not filter values
-        assertEquals("actual-dataset", returnedProcess.getDatasetId());
-        assertEquals(TransferState.REQUESTED, returnedProcess.getState());
-        assertEquals(IConstants.ROLE_CONSUMER, returnedProcess.getRole());
-    }
-
-    @Test
     @DisplayName("Filter returns empty result when no matches")
     @WithUserDetails(TestUtil.API_USER)
     public void filterReturnsEmptyWhenNoMatches() throws Exception {
@@ -511,6 +548,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
                 .datasetId("existing-dataset")
                 .role(IConstants.ROLE_CONSUMER)
                 .state(TransferState.REQUESTED)
+                .tenantId(TENANT_ID)
                 .build();
 
         transferProcessRepository.save(process);
@@ -529,6 +567,46 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
         assertNotNull(genericApiResponse);
         assertTrue(genericApiResponse.isSuccess());
         assertTrue(genericApiResponse.getData().isEmpty());
+    }
+
+    @Test
+    @DisplayName("TransferProcess - get by consumerPid - success")
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void getTransferProcessByConsumerPid() throws Exception {
+        TransferProcess transferProcess = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .state(TransferState.STARTED)
+                .tenantId(TENANT_ID)
+                .build();
+        transferProcessRepository.save(transferProcess);
+
+        MvcResult result = mockMvc.perform(
+                        get("/" + TENANT_ID + "/consumer/transfers/" + transferProcess.getConsumerPid())
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andReturn();
+
+        String response = result.getResponse().getContentAsString();
+        TransferProcess transferProcessFromResponse = TransferSerializer.deserializeProtocol(response, TransferProcess.class);
+        assertNotNull(transferProcessFromResponse);
+        assertEquals(TransferState.STARTED, transferProcessFromResponse.getState());
+    }
+
+    @Test
+    @DisplayName("TransferProcess - get by consumerPid - not found")
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void getTransferProcessByConsumerPid_notFound() throws Exception {
+        MvcResult result = mockMvc.perform(
+                        get("/" + TENANT_ID + "/consumer/transfers/" + createNewId())
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andReturn();
+
+        String response = result.getResponse().getContentAsString();
+        TransferError transferError = TransferSerializer.deserializeProtocol(response, TransferError.class);
+        assertNotNull(transferError);
     }
 
     private GenericApiResponse<List<TransferProcess>> parseResponse(String json) throws Exception {

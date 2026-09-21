@@ -12,7 +12,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = ApiEndpoints.NEGOTIATION_AGREEMENTS_V1)
+@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE,
+        path = ApiEndpoints.NEGOTIATION_AGREEMENTS_V1)
 @Slf4j
 public class AgreementAPIController {
 
@@ -31,7 +32,7 @@ public class AgreementAPIController {
      */
     @PostMapping(path = "/{agreementId}/enforce")
     public ResponseEntity<GenericApiResponse<String>> enforceAgreement(@PathVariable String agreementId) {
-        log.info("Enforcing agreement");
+        log.info("Enforcing agreement - DSP ID {}", agreementId);
         agreementAPIService.enforceAgreement(agreementId);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)

@@ -14,6 +14,7 @@ import java.util.UUID;
 
 public class DataTransferMockObjectUtil {
 
+    public static final String TENANT_ID = "engineering";
     public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
     public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";
     public static final String RIGHT_EXPRESSION = "EU";
@@ -60,6 +61,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_CONSUMER)
+            .tenantId(TENANT_ID)
             .state(TransferState.INITIALIZED)
             .build();
 
@@ -70,6 +72,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
             .state(TransferState.REQUESTED)
             .build();
 
@@ -80,6 +83,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_CONSUMER)
+            .tenantId(TENANT_ID)
             .state(TransferState.REQUESTED)
             .build();
 
@@ -89,10 +93,29 @@ public class DataTransferMockObjectUtil {
             .dataAddress(DATA_ADDRESS)
             .datasetId(DATASET_ID)
             .isDownloaded(false)
+            .isDownloadInProgress(false)
             .dataId(null)
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
+            .state(TransferState.STARTED)
+            .format(DataTransferFormat.HTTP_PULL.name())
+            .build();
+
+    /** Transfer process in STARTED state with an active download in progress. */
+    public static final TransferProcess TRANSFER_PROCESS_STARTED_DOWNLOADING = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .datasetId(DATASET_ID)
+            .isDownloaded(false)
+            .isDownloadInProgress(true)
+            .dataId(null)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_CONSUMER)
+            .tenantId(TENANT_ID)
             .state(TransferState.STARTED)
             .format(DataTransferFormat.HTTP_PULL.name())
             .build();
@@ -107,6 +130,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
             .state(TransferState.STARTED)
             .format(DataTransferFormat.HTTP_PULL.name())
             .build();
@@ -118,7 +142,21 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_CONSUMER)
+            .tenantId(TENANT_ID)
             .state(TransferState.COMPLETED)
+            .isDownloaded(true)
+            .build();
+
+    public static final TransferProcess TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED = TransferProcess.Builder.newInstance()
+            .consumerPid(CONSUMER_PID)
+            .providerPid(PROVIDER_PID)
+            .dataAddress(DATA_ADDRESS)
+            .agreementId(AGREEMENT_ID)
+            .callbackAddress(CALLBACK_ADDRESS)
+            .role(IConstants.ROLE_CONSUMER)
+            .tenantId(TENANT_ID)
+            .state(TransferState.COMPLETED)
+            .isDownloaded(false)
             .build();
 
     public static final TransferProcess TRANSFER_PROCESS_SUSPENDED_PROVIDER = TransferProcess.Builder.newInstance()
@@ -128,6 +166,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
             .state(TransferState.SUSPENDED)
             .build();
 
@@ -138,6 +177,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
             .state(TransferState.SUSPENDED)
             .build();
 
@@ -148,6 +188,7 @@ public class DataTransferMockObjectUtil {
             .agreementId(AGREEMENT_ID)
             .callbackAddress(CALLBACK_ADDRESS)
             .role(IConstants.ROLE_PROVIDER)
+            .tenantId(TENANT_ID)
             .state(TransferState.TERMINATED)
             .build();
 

@@ -1,12 +1,15 @@
 package it.eng.datatransfer.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import it.eng.datatransfer.event.AutoTransferDownloadEvent;
+import it.eng.datatransfer.event.AutoTransferStartEvent;
 import it.eng.datatransfer.event.TransferProcessChangeEvent;
 import it.eng.datatransfer.exceptions.TransferProcessInternalException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidFormatException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
 import it.eng.datatransfer.model.*;
+import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
@@ -15,7 +18,11 @@ import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.s3.service.TemporaryBucketUserService;
+import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.FieldEncryptionService;
+import it.eng.tools.service.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpMethod;
@@ -33,15 +40,24 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
 
     // Consider this for removal
     private final TransferRequestMessageRepository transferRequestMessageRepository;
+    private final DataTransferProperties transferProperties;
+    private final TemporaryBucketUserService temporaryBucketUserService;
+    private final FieldEncryptionService fieldEncryptionService;
 
     protected AbstractDataTransferService(TransferProcessRepository transferProcessRepository,
                                           AuditEventPublisher publisher,
                                           OkHttpRestClient okHttpRestClient,
-                                          TransferRequestMessageRepository transferRequestMessageRepository) {
+                                          TransferRequestMessageRepository transferRequestMessageRepository,
+                                          DataTransferProperties transferProperties,
+                                          TemporaryBucketUserService temporaryBucketUserService,
+                                          FieldEncryptionService fieldEncryptionService) {
         this.transferProcessRepository = transferProcessRepository;
         this.publisher = publisher;
         this.okHttpRestClient = okHttpRestClient;
         this.transferRequestMessageRepository = transferRequestMessageRepository;
+        this.transferProperties = transferProperties;
+        this.temporaryBucketUserService = temporaryBucketUserService;
+        this.fieldEncryptionService = fieldEncryptionService;
     }
 
     /**
@@ -52,7 +68,10 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
      */
     @Override
     public TransferProcess findTransferProcessByProviderPid(String providerPid) {
-        TransferProcess tp = transferProcessRepository.findByProviderPid(providerPid)
+        String tenantId = TenantContextHolder.getTenantId();
+        TransferProcess tp = (tenantId != null
+                ? transferProcessRepository.findByProviderPidAndTenantId(providerPid, tenantId)
+                : transferProcessRepository.findByProviderPid(providerPid))
                 .orElseThrow(() -> new TransferProcessNotFoundException("No transfer process found for providerPid: " + providerPid));
         log.info("Found transfer process: consumerPid {}, providerPid{} , state {}", tp.getConsumerPid(), tp.getProviderPid(), tp.getState());
         return tp;
@@ -66,7 +85,10 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
      */
     @Override
     public TransferProcess findTransferProcessByConsumerPid(String consumerPid) {
-        return transferProcessRepository.findByConsumerPid(consumerPid)
+        String tenantId = TenantContextHolder.getTenantId();
+        return (tenantId != null
+                ? transferProcessRepository.findByConsumerPidAndTenantId(consumerPid, tenantId)
+                : transferProcessRepository.findByConsumerPid(consumerPid))
                 .orElseThrow(() -> new TransferProcessNotFoundException("No transfer process found for consumerPid: " + consumerPid));
     }
 
@@ -78,7 +100,10 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
      * @return TransferProcess
      */
     public TransferProcess findByConsumerPidAndProviderPid(String consumerPid, String providerPid) {
-        return transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
+        String tenantId = TenantContextHolder.getTenantId();
+        return (tenantId != null
+                ? transferProcessRepository.findByConsumerPidAndProviderPidAndTenantId(consumerPid, providerPid, tenantId)
+                : transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid))
                 .orElseThrow(() -> new TransferProcessNotFoundException("No transfer process found"));
     }
 
@@ -89,7 +114,10 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
      * @return TransferProcess
      */
     public TransferProcess findByAgreementId(String agreementId) {
-        return transferProcessRepository.findByAgreementId(agreementId)
+        String tenantId = TenantContextHolder.getTenantId();
+        return (tenantId != null
+                ? transferProcessRepository.findByAgreementIdAndTenantId(agreementId, tenantId)
+                : transferProcessRepository.findByAgreementId(agreementId))
                 .orElseThrow(() -> new TransferProcessNotFoundException("No transfer process found for agreementId: " + agreementId));
     }
 
@@ -124,7 +152,10 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
      * @return TransferProcess with status REQUESTED
      */
     public TransferProcess initiateDataTransfer(TransferRequestMessage transferRequestMessage) {
-        TransferProcess transferProcessInitialized = transferProcessRepository.findByAgreementId(transferRequestMessage.getAgreementId())
+        String tenantId = TenantContextHolder.getTenantId();
+        TransferProcess transferProcessInitialized = (tenantId != null
+                ? transferProcessRepository.findByAgreementIdAndTenantId(transferRequestMessage.getAgreementId(), tenantId)
+                : transferProcessRepository.findByAgreementId(transferRequestMessage.getAgreementId()))
                 .orElseThrow(() ->
                 {
                     String errorMessage = "No agreement with id " + transferRequestMessage.getAgreementId() +
@@ -144,6 +175,25 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
 
         transferRequestMessageRepository.save(transferRequestMessage);
 
+        // For HTTP_PUSH, encrypt the secretKey in the DataAddress before persisting to MongoDB
+        DataAddress dataAddress = transferRequestMessage.getDataAddress();
+        if (DataTransferFormat.HTTP_PUSH.format().equals(transferRequestMessage.getFormat()) && dataAddress != null) {
+            List<EndpointProperty> encryptedProperties = dataAddress.getEndpointProperties().stream()
+                    .map(prop -> S3Utils.SECRET_KEY.equals(prop.getName())
+                            ? EndpointProperty.Builder.newInstance()
+                                    .name(prop.getName())
+                                    .value(fieldEncryptionService.encrypt(prop.getValue()))
+                                    .build()
+                            : prop)
+                    .toList();
+            dataAddress = DataAddress.Builder.newInstance()
+                    .endpointType(dataAddress.getEndpointType())
+                    .endpoint(dataAddress.getEndpoint())
+                    .endpointProperties(encryptedProperties)
+                    .build();
+            log.debug("Encrypted secretKey in DataAddress for HTTP_PUSH transfer process");
+        }
+
         TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
                 .id(transferProcessInitialized.getId())
                 .agreementId(transferRequestMessage.getAgreementId())
@@ -151,10 +201,12 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .consumerPid(transferRequestMessage.getConsumerPid())
                 .providerPid(transferProcessInitialized.getProviderPid())
                 .format(transferRequestMessage.getFormat())
-                .dataAddress(transferRequestMessage.getDataAddress())
+                .dataAddress(dataAddress)
                 .state(TransferState.REQUESTED)
                 .role(IConstants.ROLE_PROVIDER)
+                .retryCount(transferProcessInitialized.getRetryCount())
                 .datasetId(transferProcessInitialized.getDatasetId())
+                .tenantId(transferProcessInitialized.getTenantId())
                 .created(transferProcessInitialized.getCreated())
                 .createdBy(transferProcessInitialized.getCreatedBy())
                 .modified(transferProcessInitialized.getModified())
@@ -169,6 +221,11 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                         "consumerPid", transferProcessRequested.getConsumerPid(),
                         "providerPid", transferProcessRequested.getProviderPid()));
         log.info("Requested TransferProcess created");
+        // Automatic transfer trigger
+        if (transferProcessRequested.getRole().equals(IConstants.ROLE_PROVIDER)
+                && transferProperties.isAutomaticTransfer()) {
+            publisher.publishEvent(new AutoTransferStartEvent(transferProcessRequested.getId()));
+        }
         return transferProcessRequested;
     }
 
@@ -216,6 +273,8 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .state(TransferState.STARTED)
                 .role(transferProcessRequested.getRole())
                 .datasetId(transferProcessRequested.getDatasetId())
+                .retryCount(transferProcessRequested.getRetryCount())
+                .tenantId(transferProcessRequested.getTenantId())
                 .created(transferProcessRequested.getCreated())
                 .createdBy(transferProcessRequested.getCreatedBy())
                 .modified(transferProcessRequested.getModified())
@@ -235,6 +294,12 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                         "transferProcess", transferProcessStarted,
                         "consumerPid", transferProcessStarted.getConsumerPid(),
                         "providerPid", transferProcessStarted.getProviderPid()));
+        // Automatic download trigger
+        if (transferProcessStarted.getRole().equals(IConstants.ROLE_CONSUMER)
+                && transferProperties.isAutomaticTransfer()
+                && DataTransferFormat.HTTP_PULL.format().equals(transferProcessStarted.getFormat())) {
+            publisher.publishEvent(new AutoTransferDownloadEvent(transferProcessStarted.getId()));
+        }
         return transferProcessStarted;
     }
 
@@ -268,6 +333,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .state(TransferState.COMPLETED)
                 .role(transferProcessStarted.getRole())
                 .datasetId(transferProcessStarted.getDatasetId())
+                .tenantId(transferProcessStarted.getTenantId())
                 .created(transferProcessStarted.getCreated())
                 .createdBy(transferProcessStarted.getCreatedBy())
                 .modified(transferProcessStarted.getModified())
@@ -276,6 +342,12 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
                 .build();
 
         saveTransferProcess(transferProcessCompleted);
+        // Clean up temporary S3 user created for HTTP-PUSH (best-effort)
+        try {
+            temporaryBucketUserService.deleteTemporaryUser(transferProcessStarted.getId());
+        } catch (Exception e) {
+            log.warn("Could not clean up temporary bucket user for transfer process {}: {}", transferProcessStarted.getId(), e.getMessage());
+        }
         publisher.publishEvent(TransferProcessChangeEvent.Builder.newInstance()
                 .oldTransferProcess(transferProcessStarted)
                 .newTransferProcess(transferProcessCompleted)
@@ -365,7 +437,10 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
      * @return TransferProcess
      */
     public TransferProcess findTransferProcess(String consumerPid, String providerPid) {
-        return transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
+        String tenantId = TenantContextHolder.getTenantId();
+        return (tenantId != null
+                ? transferProcessRepository.findByConsumerPidAndProviderPidAndTenantId(consumerPid, providerPid, tenantId)
+                : transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid))
                 .orElseThrow(() ->
                 {
                     publisher.publishEvent(

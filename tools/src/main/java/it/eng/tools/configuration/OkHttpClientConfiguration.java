@@ -3,6 +3,8 @@ package it.eng.tools.configuration;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
@@ -74,7 +76,7 @@ public class OkHttpClientConfiguration {
 
 		// Create SSL context with OCSP-enabled trust managers
 		SSLContext sslContext = SSLContext.getInstance("TLS");
-		sslContext.init(null, trustManagers, new java.security.SecureRandom());
+		sslContext.init(null, trustManagers, new SecureRandom());
 		log.debug("SSLContext initialized with TLS protocol");
 
 		// Create OkHttpClient with OCSP validation
@@ -107,21 +109,21 @@ public class OkHttpClientConfiguration {
 		TrustManager[] trustAllCerts = new TrustManager[]{
 			    new X509TrustManager() {
 			        @Override
-			        public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+			        public void checkClientTrusted(X509Certificate[] chain, String authType) {
 			        }
 
 			        @Override
-			        public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+			        public void checkServerTrusted(X509Certificate[] chain, String authType) {
 			        }
 
 			        @Override
-			        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
-			            return new java.security.cert.X509Certificate[]{};
+			        public X509Certificate[] getAcceptedIssuers() {
+			            return new X509Certificate[]{};
 			        }
 			    }
 			};
 		SSLContext sslContextTrustAllCerts = SSLContext.getInstance("TLS");
-		sslContextTrustAllCerts.init(null, trustAllCerts, new java.security.SecureRandom());
+		sslContextTrustAllCerts.init(null, trustAllCerts, new SecureRandom());
 				
 		OkHttpClient client;
 		//@formatter:off

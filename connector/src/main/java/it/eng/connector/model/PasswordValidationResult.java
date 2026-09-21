@@ -15,7 +15,7 @@ public class PasswordValidationResult {
 	private boolean isValid;
 	private List<String> violations;
 	
-	public PasswordValidationResult valid(String passwod) {
+	public PasswordValidationResult valid(String password) {
 		return new PasswordValidationResult(password, true, List.of());
 	}
 	

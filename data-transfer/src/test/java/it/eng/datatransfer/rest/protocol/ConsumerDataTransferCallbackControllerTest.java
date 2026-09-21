@@ -8,7 +8,12 @@ import it.eng.datatransfer.model.TransferTerminationMessage;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.DataTransferService;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
+import it.eng.tools.model.Tenant;
+import it.eng.tools.service.TenantContextHolder;
+import it.eng.tools.service.TenantService;
 import jakarta.validation.ValidationException;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,11 +32,28 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class ConsumerDataTransferCallbackControllerTest {
 
+    private static final String TENANT_ID = DataTransferMockObjectUtil.TENANT_ID;
+
     @Mock
     private DataTransferService dataTransferService;
+    @Mock
+    private TenantService tenantService;
 
     @InjectMocks
     private ConsumerDataTransferCallbackController controller;
+
+    @BeforeEach
+    public void setUp() {
+        Tenant tenant = Tenant.Builder.newInstance()
+                .id(TENANT_ID).name("Engineering").participantId("c1")
+                .enabled(true).build();
+        when(tenantService.findEnabledTenantById(TENANT_ID)).thenReturn(tenant);
+    }
+
+    @AfterEach
+    public void tearDown() {
+        TenantContextHolder.clear();
+    }
 
     @Test
     @DisplayName("Start TransferProcess")
@@ -39,7 +61,7 @@ public class ConsumerDataTransferCallbackControllerTest {
         when(dataTransferService.startDataTransfer(any(TransferStartMessage.class), any(String.class), isNull()))
                 .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED);
         assertEquals(HttpStatus.OK,
-                controller.startDataTransfer(DataTransferMockObjectUtil.CONSUMER_PID,
+                controller.startDataTransfer(TENANT_ID, DataTransferMockObjectUtil.CONSUMER_PID,
                         TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE)).getStatusCode());
     }
 
@@ -47,7 +69,7 @@ public class ConsumerDataTransferCallbackControllerTest {
     @DisplayName("Start TransferProcess - invalid request body")
     public void startDataTransfer_invalidBody() {
         assertThrows(ValidationException.class, () ->
-                controller.startDataTransfer(DataTransferMockObjectUtil.CONSUMER_PID,
+                controller.startDataTransfer(TENANT_ID, DataTransferMockObjectUtil.CONSUMER_PID,
                         TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE)));
     }
 
@@ -57,7 +79,7 @@ public class ConsumerDataTransferCallbackControllerTest {
         when(dataTransferService.startDataTransfer(any(TransferStartMessage.class), any(String.class), isNull()))
                 .thenThrow(new TransferProcessNotFoundException("TransferProcess not found test"));
         assertThrows(TransferProcessNotFoundException.class, () ->
-                controller.startDataTransfer(DataTransferMockObjectUtil.CONSUMER_PID,
+                controller.startDataTransfer(TENANT_ID, DataTransferMockObjectUtil.CONSUMER_PID,
                         TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE)));
     }
 
@@ -67,7 +89,7 @@ public class ConsumerDataTransferCallbackControllerTest {
     public void completeDataTransfer() {
         when(dataTransferService.completeDataTransfer(any(TransferCompletionMessage.class), any(String.class), isNull()))
                 .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED);
-        ResponseEntity<Void> response = controller.completeDataTransfer(DataTransferMockObjectUtil.CONSUMER_PID,
+        ResponseEntity<Void> response = controller.completeDataTransfer(TENANT_ID, DataTransferMockObjectUtil.CONSUMER_PID,
                 TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE));
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
@@ -76,7 +98,7 @@ public class ConsumerDataTransferCallbackControllerTest {
     @DisplayName("Complete TransferProcess - invalid request body")
     public void completeDataTransfer_invalidBody() {
         assertThrows(ValidationException.class, () ->
-                controller.completeDataTransfer(DataTransferMockObjectUtil.CONSUMER_PID,
+                controller.completeDataTransfer(TENANT_ID, DataTransferMockObjectUtil.CONSUMER_PID,
                         TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE)));
     }
 
@@ -86,7 +108,7 @@ public class ConsumerDataTransferCallbackControllerTest {
         when(dataTransferService.completeDataTransfer(any(TransferCompletionMessage.class), any(String.class), isNull()))
                 .thenThrow(TransferProcessNotFoundException.class);
         assertThrows(TransferProcessNotFoundException.class,
-                () -> controller.completeDataTransfer(DataTransferMockObjectUtil.CONSUMER_PID,
+                () -> controller.completeDataTransfer(TENANT_ID, DataTransferMockObjectUtil.CONSUMER_PID,
                         TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE)));
     }
 
@@ -96,7 +118,7 @@ public class ConsumerDataTransferCallbackControllerTest {
     public void terminateDataTransfer() {
         when(dataTransferService.terminateDataTransfer(any(TransferTerminationMessage.class), any(String.class), isNull()))
                 .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_TERMINATED);
-        ResponseEntity<Void> response = controller.terminateDataTransfer(DataTransferMockObjectUtil.CONSUMER_PID,
+        ResponseEntity<Void> response = controller.terminateDataTransfer(TENANT_ID, DataTransferMockObjectUtil.CONSUMER_PID,
                 TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE));
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
@@ -105,7 +127,7 @@ public class ConsumerDataTransferCallbackControllerTest {
     @DisplayName("Terminate TransferProcess - invalid request body")
     public void terminateDataTransfer_invalidBody() {
         assertThrows(ValidationException.class, () ->
-                controller.terminateDataTransfer(DataTransferMockObjectUtil.CONSUMER_PID,
+                controller.terminateDataTransfer(TENANT_ID, DataTransferMockObjectUtil.CONSUMER_PID,
                         TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE)));
     }
 
@@ -115,7 +137,7 @@ public class ConsumerDataTransferCallbackControllerTest {
         when(dataTransferService.terminateDataTransfer(any(TransferTerminationMessage.class), any(String.class), isNull()))
                 .thenThrow(TransferProcessNotFoundException.class);
         assertThrows(TransferProcessNotFoundException.class,
-                () -> controller.terminateDataTransfer(DataTransferMockObjectUtil.CONSUMER_PID,
+                () -> controller.terminateDataTransfer(TENANT_ID, DataTransferMockObjectUtil.CONSUMER_PID,
                         TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE)));
     }
 
@@ -125,7 +147,7 @@ public class ConsumerDataTransferCallbackControllerTest {
     public void suspenseDataTransfer() {
         when(dataTransferService.suspendDataTransfer(any(TransferSuspensionMessage.class), any(String.class), isNull()))
                 .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED);
-        ResponseEntity<Void> response = controller.suspenseDataTransfer(DataTransferMockObjectUtil.CONSUMER_PID,
+        ResponseEntity<Void> response = controller.suspenseDataTransfer(TENANT_ID, DataTransferMockObjectUtil.CONSUMER_PID,
                 TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_SUSPENSION_MESSAGE));
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
@@ -134,7 +156,7 @@ public class ConsumerDataTransferCallbackControllerTest {
     @DisplayName("Suspend TransferProcess - invalid request body")
     public void suspenseDataTransfer_invalidBody() {
         assertThrows(ValidationException.class, () ->
-                controller.suspenseDataTransfer(DataTransferMockObjectUtil.CONSUMER_PID,
+                controller.suspenseDataTransfer(TENANT_ID, DataTransferMockObjectUtil.CONSUMER_PID,
                         TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_START_MESSAGE)));
     }
 
@@ -144,7 +166,7 @@ public class ConsumerDataTransferCallbackControllerTest {
         when(dataTransferService.suspendDataTransfer(any(TransferSuspensionMessage.class), any(String.class), isNull()))
                 .thenThrow(TransferProcessNotFoundException.class);
         assertThrows(TransferProcessNotFoundException.class,
-                () -> controller.suspenseDataTransfer(DataTransferMockObjectUtil.CONSUMER_PID,
+                () -> controller.suspenseDataTransfer(TENANT_ID, DataTransferMockObjectUtil.CONSUMER_PID,
                         TransferSerializer.serializeProtocolJsonNode(DataTransferMockObjectUtil.TRANSFER_SUSPENSION_MESSAGE)));
     }
 }

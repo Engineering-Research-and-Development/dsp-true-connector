@@ -1,5 +1,6 @@
 package it.eng.negotiation.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonProperty.Access;
@@ -13,6 +14,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.io.Serial;
@@ -31,6 +33,17 @@ public class Agreement implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
+    /**
+     * Tenant-independent MongoDB technical primary key, distinct from the DSP protocol {@code @id}.
+     * The protocol {@code id} is legitimately shared between the provider's and the consumer's local
+     * copies of the same agreement, so it cannot be used as the document's technical key in a
+     * single-instance, multi-tenant deployment where both copies live in the same collection.
+     * Left {@code null} on construction; MongoDB generates a value on first save.
+     */
+    @Id
+    @JsonIgnore
+    private String technicalId;
+
     @NotNull
     @JsonProperty(DSpaceConstants.ID)
     private String id;
@@ -47,6 +60,9 @@ public class Agreement implements Serializable {
     private String timestamp;
 
     private List<Permission> permission;
+
+    @JsonIgnore
+    private String tenantId;
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -93,6 +109,17 @@ public class Agreement implements Serializable {
             return this;
         }
 
+        /**
+         * Sets the tenant identifier for this agreement.
+         *
+         * @param tenantId the tenant identifier
+         * @return this builder
+         */
+        public Builder tenantId(String tenantId) {
+            agreement.tenantId = tenantId;
+            return this;
+        }
+
         public Agreement build() {
             if (agreement.id == null) {
                 agreement.id = "urn:uuid:" + UUID.randomUUID();
@@ -113,6 +140,16 @@ public class Agreement implements Serializable {
     @JsonProperty(value = DSpaceConstants.TYPE, access = Access.READ_ONLY)
     public String getType() {
         return Agreement.class.getSimpleName();
+    }
+
+    /**
+     * Injects the tenant identifier into this agreement instance.
+     * Used by the service layer to associate an agreement with a specific tenant.
+     *
+     * @param tenantId the tenant identifier to inject
+     */
+    public void injectTenantId(String tenantId) {
+        this.tenantId = tenantId;
     }
 
 }

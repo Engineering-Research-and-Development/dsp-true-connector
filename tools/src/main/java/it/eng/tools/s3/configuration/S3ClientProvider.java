@@ -53,6 +53,20 @@ public class S3ClientProvider {
     }
 
     /**
+     * Detects if the endpoint indicates AWS S3 vs Minio/custom S3.
+     *
+     * @param endpoint the S3 endpoint URL, may be null or blank
+     * @return true if AWS S3, false for Minio/custom S3
+     */
+    private boolean isAwsEndpoint(String endpoint) {
+        if (StringUtils.isBlank(endpoint)) {
+            return true;
+        }
+        String lower = endpoint.toLowerCase();
+        return lower.contains(".amazonaws.com") || lower.contains(".aws.");
+    }
+
+    /**
      * Creates a S3Client for administrative operations on S3 buckets.
      * This client is used for operations that require admin privileges.
      * AccessKey and SecretKey are read from the S3Properties configuration.
@@ -62,22 +76,30 @@ public class S3ClientProvider {
     public S3Client adminS3Client() {
         S3Client cached = adminS3ClientCache.get();
         if (cached == null) {
-            log.info("Creating new admin S3Client with endpoint: {}, region: {}, pathStyle: true, chunkedEncoding: false",
-                    s3Properties.getEndpoint(), s3Properties.getRegion());
-            log.debug("Admin S3Client using accessKey: {}", s3Properties.getAccessKey());
+            String endpoint = s3Properties.getEndpoint();
+            boolean isAws = isAwsEndpoint(endpoint);
 
-            cached = S3Client.builder()
+            log.info("Creating admin S3Client - AWS mode: {}, endpoint: {}, region: {}",
+                    isAws, endpoint, s3Properties.getRegion());
+
+            var builder = S3Client.builder()
                     .httpClient(sdkHttpClient)
-                    .endpointOverride(URI.create(s3Properties.getEndpoint()))
                     .credentialsProvider(StaticCredentialsProvider.create(
                             AwsBasicCredentials.create(s3Properties.getAccessKey(), s3Properties.getSecretKey())))
-                    .region(Region.of(s3Properties.getRegion()))
-                    .serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
-                            .pathStyleAccessEnabled(true)
-//                            .chunkedEncodingEnabled(false)
-//                            .checksumValidationEnabled(false)
-                            .build())
-                    .build();
+                    .region(Region.of(s3Properties.getRegion()));
+
+            if (isAws) {
+                builder.serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
+                        .pathStyleAccessEnabled(false)
+                        .build());
+            } else {
+                builder.serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
+                        .pathStyleAccessEnabled(true)
+                        .build())
+                        .endpointOverride(URI.create(endpoint));
+            }
+
+            cached = builder.build();
             adminS3ClientCache.set(cached);
             log.info("Admin S3Client created successfully");
         }
@@ -93,8 +115,8 @@ public class S3ClientProvider {
      * @return a configured general privileges S3Client instance
      */
     public S3Client s3Client(S3ClientRequest s3ClientRequest) {
-        String bucketName = s3ClientRequest.bucketCredentials().getBucketName();
-        return s3ClientCache.computeIfAbsent(bucketName, bn -> createS3Client(s3ClientRequest));
+        String cacheKey = buildCacheKey(s3ClientRequest);
+        return s3ClientCache.computeIfAbsent(cacheKey, k -> createS3Client(s3ClientRequest));
     }
 
     /**
@@ -106,8 +128,24 @@ public class S3ClientProvider {
      * @return a configured general privileges S3AsyncClient instance
      */
     public S3AsyncClient s3AsyncClient(S3ClientRequest s3ClientRequest) {
-        String bucketName = s3ClientRequest.bucketCredentials().getBucketName();
-        return asyncS3ClientCache.computeIfAbsent(bucketName, bn -> createS3AsyncClient(s3ClientRequest));
+        String cacheKey = buildCacheKey(s3ClientRequest);
+        return asyncS3ClientCache.computeIfAbsent(cacheKey, k -> createS3AsyncClient(s3ClientRequest));
+    }
+
+    /**
+     * Builds a cache key that includes both bucket name and access key so that
+     * different credentials for the same bucket never share a cached client.
+     *
+     * @param s3ClientRequest the request containing the bucket credentials, region, and endpoint
+     * @return a composite key in the form {@code bucketName|accessKey}, or
+     *         {@code region|endpointOverride} when no credentials are present
+     */
+    private String buildCacheKey(S3ClientRequest s3ClientRequest) {
+        var creds = s3ClientRequest.bucketCredentials();
+        if (creds == null) {
+            return s3ClientRequest.region() + "|" + s3ClientRequest.endpointOverride();
+        }
+        return creds.getBucketName() + "|" + creds.getAccessKey();
     }
 
     private S3Client createS3Client(S3ClientRequest s3ClientRequest) {
@@ -132,8 +170,9 @@ public class S3ClientProvider {
      */
     public void clearBucketCache(String bucketName) {
         log.info("Clearing S3 client cache for bucket: {}", bucketName);
-        s3ClientCache.remove(bucketName);
-        asyncS3ClientCache.remove(bucketName);
+        String prefix = bucketName + "|";
+        s3ClientCache.keySet().removeIf(k -> k.startsWith(prefix));
+        asyncS3ClientCache.keySet().removeIf(k -> k.startsWith(prefix));
     }
 
     private S3Client createS3Client(AwsCredentialsProvider credentialsProvider, String region, String endpointOverride) {
@@ -187,20 +226,21 @@ public class S3ClientProvider {
     }
 
     private void handleBaseEndpointOverride(S3BaseClientBuilder<?, ?> builder, String endpointOverride) {
-        URI endpointOverrideUri;
-
-        if (StringUtils.isNotBlank(endpointOverride)) {
-            endpointOverrideUri = URI.create(endpointOverride);
-            log.debug("Using provided endpoint override: {}", endpointOverrideUri);
+        if (isAwsEndpoint(endpointOverride)) {
+            log.debug("Configuring for AWS S3 (virtual-hosted style)");
+            builder.serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
+                    .pathStyleAccessEnabled(false)
+                    .build());
         } else {
-            endpointOverrideUri = URI.create(s3Properties.getEndpoint());
-            log.debug("Using default endpoint from properties: {}", endpointOverrideUri);
+            URI uri = URI.create(StringUtils.isNotBlank(endpointOverride)
+                    ? endpointOverride
+                    : s3Properties.getEndpoint());
+            log.debug("Configuring for Minio (path-style), endpoint: {}", uri);
+            builder.serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
+                    .pathStyleAccessEnabled(true)
+                    .build())
+                    .endpointOverride(uri);
         }
-
-        builder.serviceConfiguration(software.amazon.awssdk.services.s3.S3Configuration.builder()
-                        .pathStyleAccessEnabled(true)
-                        .build())
-                .endpointOverride(endpointOverrideUri);
     }
 
 }

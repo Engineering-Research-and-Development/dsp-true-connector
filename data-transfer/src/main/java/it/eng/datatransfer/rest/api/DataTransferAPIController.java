@@ -2,7 +2,6 @@ package it.eng.datatransfer.rest.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.model.DataTransferRequest;
-import it.eng.datatransfer.model.TCKRequest;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.DataTransferAPIService;
@@ -72,7 +71,11 @@ public class DataTransferAPIController {
     public ResponseEntity<GenericApiResponse<String>> downloadData(
             @PathVariable String transferProcessId) {
         log.info("Downloading transfer process id - {} data", transferProcessId);
-        apiService.downloadData(transferProcessId).join();
+        apiService.downloadData(transferProcessId)
+                .exceptionally(throwable -> {
+                    log.error("Download failed for transfer process {}: {}", transferProcessId, throwable.getMessage());
+                    return null;
+                });
 
         return ResponseEntity.accepted()
                 .contentType(MediaType.APPLICATION_JSON)
@@ -135,7 +138,7 @@ public class DataTransferAPIController {
 
         log.info("Fetching transfer processes with generic filtering");
 
-        Sort.Direction direction = sort[1].equalsIgnoreCase("desc") ?
+        Sort.Direction direction = (sort.length > 1 && sort[1].equalsIgnoreCase("desc")) ?
                 Sort.Direction.DESC : Sort.Direction.ASC;
         Sort sorting = Sort.by(direction, sort[0]);
         Pageable pageable = PageRequest.of(page, size, sorting);

@@ -7,11 +7,16 @@ import okhttp3.Credentials;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import it.eng.tools.auth.AuthenticationCache;
+import it.eng.tools.auth.ConnectorCredentialProvider;
+import it.eng.tools.auth.M2mTokenCache;
+import it.eng.tools.auth.internal.InternalServiceTokenIssuer;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.net.URI;
@@ -39,9 +44,13 @@ import java.util.concurrent.ConcurrentMap;
  * </ul>
  */
 @Component
+@Slf4j
 public class CredentialUtils {
 
-	private static final Logger logger = LoggerFactory.getLogger(CredentialUtils.class);
+	/** {@link M2mTokenCache} slot for the connector-to-connector M2M token (see {@link #getConnectorCredentials()}). */
+	static final String CONNECTOR_M2M_CACHE_KEY = "connector-m2m";
+	/** {@link M2mTokenCache} slot for the internal-service M2M token (see {@link #getAPICredentials()}). */
+	static final String INTERNAL_API_CACHE_KEY = "internal-api";
 
 	private final OkHttpClient okHttpClient;
 	private final ObjectMapper objectMapper = new ObjectMapper();
@@ -49,6 +58,11 @@ public class CredentialUtils {
 	// DCP services for JWT token generation
 	private final SelfIssuedIdTokenService selfIssuedIdTokenService;
 	private final BaseDidDocumentConfiguration didDocumentConfig;
+
+	private final AuthenticationCache authenticationCache;
+	private final M2mTokenCache m2mTokenCache;
+	private final ObjectProvider<ConnectorCredentialProvider> connectorCredentialProvider;
+	private final ObjectProvider<InternalServiceTokenIssuer> internalServiceTokenIssuer;
 
 	/**
 	 * Cached DID document entry with expiry time.
@@ -79,8 +93,8 @@ public class CredentialUtils {
 
 	@Autowired
 	public CredentialUtils(OkHttpClient okHttpClient,
-	                       SelfIssuedIdTokenService selfIssuedIdTokenService,
-	                       BaseDidDocumentConfiguration didDocumentConfig) {
+						   SelfIssuedIdTokenService selfIssuedIdTokenService,
+						   BaseDidDocumentConfiguration didDocumentConfig) {
 		this.okHttpClient = okHttpClient;
 		this.selfIssuedIdTokenService = selfIssuedIdTokenService;
 		this.didDocumentConfig = didDocumentConfig;
@@ -137,11 +151,11 @@ public class CredentialUtils {
 					audienceDid = resolveDidFromUrl(targetUrl);
 
 					if (audienceDid == null) {
-						logger.warn("Failed to resolve DID from target URL: {} - falling back to basic auth", targetUrl);
+						log.warn("Failed to resolve DID from target URL: {} - falling back to basic auth", targetUrl);
 						return getFallbackCredentials();
 					}
 				} else {
-					logger.warn("No target URL provided for VP JWT generation - falling back to basic auth");
+					log.warn("No target URL provided for VP JWT generation - falling back to basic auth");
 					return getFallbackCredentials();
 				}
 
@@ -149,22 +163,22 @@ public class CredentialUtils {
 				String[] scopes = parseScopes(vpScope);
 
 				// Generate JWT token using SelfIssuedIdTokenService
-				logger.debug("Generating VP JWT token for audience DID: {}", audienceDid);
+				log.debug("Generating VP JWT token for audience DID: {}", audienceDid);
 				String token = selfIssuedIdTokenService.createStsCompatibleToken(
-					audienceDid,
-					didDocumentConfig.getDidDocumentConfig(),
-					scopes
+						audienceDid,
+						didDocumentConfig.getDidDocumentConfig(),
+						scopes
 				);
 
 				if (token != null && !token.isBlank()) {
-					logger.info("Successfully generated VP JWT token for audience: {}", audienceDid);
+					log.info("Successfully generated VP JWT token for audience: {}", audienceDid);
 					return "Bearer " + token;
 				} else {
-					logger.warn("VP JWT generation returned null or empty - falling back to basic auth");
+					log.warn("VP JWT generation returned null or empty - falling back to basic auth");
 				}
 
 			} catch (Exception e) {
-				logger.error("Failed to generate VP JWT - falling back to basic auth: {}", e.getMessage(), e);
+				log.error("Failed to generate VP JWT - falling back to basic auth: {}", e.getMessage(), e);
 			}
 		}
 
@@ -181,7 +195,7 @@ public class CredentialUtils {
 	 */
 	private String[] parseScopes(String vpScope) {
 		if (vpScope == null || vpScope.trim().isEmpty()) {
-			logger.debug("No scopes configured - token will grant access to all presentations");
+			log.debug("No scopes configured - token will grant access to all presentations");
 			return new String[0];
 		}
 
@@ -190,7 +204,7 @@ public class CredentialUtils {
 			scopes[i] = scopes[i].trim();
 		}
 
-		logger.debug("Configured scopes: {}", String.join(", ", scopes));
+		log.debug("Configured scopes: {}", String.join(", ", scopes));
 		return scopes;
 	}
 
@@ -200,8 +214,21 @@ public class CredentialUtils {
 	 * @return Basic authentication credentials
 	 */
 	private String getFallbackCredentials() {
-		logger.debug("Using basic authentication for connector credentials");
-		return Credentials.basic("connector@mail.com", "password");
+		ConnectorCredentialProvider provider = connectorCredentialProvider.getIfAvailable();
+		if (provider != null) {
+			String token = m2mTokenCache.getOrFetch(CONNECTOR_M2M_CACHE_KEY, provider::issueConnectorToken);
+			if (token != null) {
+				return "Bearer " + token;
+			}
+		}
+		String token = authenticationCache.getToken("ROLE_CONNECTOR");
+		if (token == null) {
+			// Fall back to basic auth if no token is available
+			log.info("getConnectorCredentials() - No valid token available");
+			//TODO consider to move users from connector to tools module so user can be loaded from Mongo and not hardcoded.
+			return null;
+		}
+		return "Bearer " + token;
 	}
 
 	/**
@@ -232,27 +259,27 @@ public class CredentialUtils {
 			Instant now = Instant.now();
 
 			if (cached != null && cached.expiresAt.isAfter(now)) {
-				logger.debug("Using cached DID for URL {}: {}", didDocumentUrl, cached.did);
+				log.debug("Using cached DID for URL {}: {}", didDocumentUrl, cached.did);
 				return cached.did;
 			}
 
 			// Step 4: Fetch DID document from remote system
-			logger.debug("Fetching DID document from: {}", didDocumentUrl);
+			log.debug("Fetching DID document from: {}", didDocumentUrl);
 			String did = fetchDidFromDocument(didDocumentUrl);
 
 			if (did != null) {
 				// Cache the result
 				Instant expiresAt = now.plusSeconds(cacheTtlSeconds);
 				didDocumentCache.put(didDocumentUrl, new CachedDidDocument(did, expiresAt));
-				logger.info("Successfully resolved and cached DID from {}: {}", didDocumentUrl, did);
+				log.info("Successfully resolved and cached DID from {}: {}", didDocumentUrl, did);
 				return did;
 			} else {
-				logger.warn("DID document fetched but 'id' field is missing or null");
+				log.warn("DID document fetched but 'id' field is missing or null");
 				return null;
 			}
 
 		} catch (Exception e) {
-			logger.error("Failed to resolve DID from URL {}: {}", targetUrl, e.getMessage(), e);
+			log.error("Failed to resolve DID from URL {}: {}", targetUrl, e.getMessage(), e);
 			return null;
 		}
 	}
@@ -282,7 +309,7 @@ public class CredentialUtils {
 				return scheme + "://" + host;
 			}
 		} catch (Exception e) {
-			logger.error("Failed to normalize URL {}: {}", url, e.getMessage());
+			log.error("Failed to normalize URL {}: {}", url, e.getMessage());
 			// Fallback: try simple string manipulation
 			int pathStart = url.indexOf('/', url.indexOf("://") + 3);
 			if (pathStart > 0) {
@@ -306,37 +333,74 @@ public class CredentialUtils {
 
 		try (Response response = okHttpClient.newCall(request).execute()) {
 			if (!response.isSuccessful()) {
-				logger.warn("Failed to fetch DID document from {}: HTTP {}", didDocumentUrl, response.code());
+				log.warn("Failed to fetch DID document from {}: HTTP {}", didDocumentUrl, response.code());
 				return null;
 			}
 
 			if (response.body() == null) {
-				logger.warn("DID document response body is null for URL: {}", didDocumentUrl);
+				log.warn("DID document response body is null for URL: {}", didDocumentUrl);
 				return null;
 			}
 
 			String responseBody = response.body().string();
-			logger.debug("DID document fetched successfully from {}", didDocumentUrl);
+			log.debug("DID document fetched successfully from {}", didDocumentUrl);
 
 			// Parse JSON and extract "id" field
 			Map<String, Object> didDocument = objectMapper.readValue(responseBody, Map.class);
 			String did = (String) didDocument.get("id");
 
 			if (did == null || did.isBlank()) {
-				logger.warn("DID document does not contain an 'id' field or it is empty");
+				log.warn("DID document does not contain an 'id' field or it is empty");
 				return null;
 			}
 
 			return did;
 
 		} catch (IOException e) {
-			logger.error("Error fetching DID document from {}: {}", didDocumentUrl, e.getMessage());
+			log.error("Error fetching DID document from {}: {}", didDocumentUrl, e.getMessage());
 			return null;
 		}
 	}
 
+	/**
+	 * Retrieves API credentials for internal API calls.
+	 *
+	 * <p>In {@code INTERNAL} mode, issues (and caches, via {@link M2mTokenCache}) a JWT via {@link
+	 * InternalServiceTokenIssuer}, whose principal has {@code tenantId=null}, allowing {@code
+	 * ApiTenantContextFilter} to honour the {@code X-Tenant-Id} request header for correct
+	 * multi-tenant routing. Otherwise falls back to the existing Keycloak {@link
+	 * AuthenticationCache} flow.
+	 *
+	 * @return the Authorization header value
+	 */
 	public String getAPICredentials() {
-		// get from users or from property file instead hardcoded
-		 return okhttp3.Credentials.basic("admin@mail.com", "password");
+		log.info("getAPICredentials() - Requesting credentials for internal API call");
+		InternalServiceTokenIssuer issuer = internalServiceTokenIssuer.getIfAvailable();
+		if (issuer != null) {
+			String token = m2mTokenCache.getOrFetch(INTERNAL_API_CACHE_KEY, issuer::issueInternalServiceToken);
+			if (token != null) {
+				log.info("getAPICredentials() - Using internal-service JWT for authentication");
+				return "Bearer " + token;
+			}
+		}
+		String token = authenticationCache.getToken("ROLE_ADMIN");
+		log.info("getAPICredentials() - Token from cache: {}", token);
+		return "Bearer " + token;
+	}
+
+	/**
+	 * Evicts any cached {@code INTERNAL}-mode M2M tokens (both {@link #getConnectorCredentials()}
+	 * and {@link #getAPICredentials()} slots), forcing the next call to each method to mint a
+	 * fresh token. Invoked after a downstream call receives an HTTP 401, so a stale/rotated secret
+	 * or expired-early token is not retried indefinitely.
+	 *
+	 * <p>Evicting both slots unconditionally (rather than trying to determine which one is stale)
+	 * is deliberate: it is harmless (a slot that was not actually stale simply gets refetched once,
+	 * on its next use) and keeps the calling code in {@code OkHttpRestClient} decoupled from which
+	 * cache key backs which credential method.
+	 */
+	public void invalidateCachedCredentials() {
+		m2mTokenCache.invalidate(CONNECTOR_M2M_CACHE_KEY);
+		m2mTokenCache.invalidate(INTERNAL_API_CACHE_KEY);
 	}
 }

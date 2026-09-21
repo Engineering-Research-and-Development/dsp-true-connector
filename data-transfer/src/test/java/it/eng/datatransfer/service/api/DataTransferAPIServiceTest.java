@@ -17,8 +17,8 @@ import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
-import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
+import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
@@ -41,6 +41,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -66,15 +67,13 @@ class DataTransferAPIServiceTest {
     @Mock
     private S3ClientService s3ClientService;
     @Mock
-    private S3Properties s3Properties;
+    private TenantBucketResolver tenantBucketResolver;
     @Mock
     private AuditEventPublisher publisher;
     @Mock
     private DataTransferStrategyFactory transferStrategyFactory;
     @Mock
     private HttpPullTransferStrategy httpPullTransferStrategy;
-    @Mock
-    private ArtifactTransferService artifactTransferService;
     @Mock
     private Pageable pageable;
 
@@ -219,8 +218,7 @@ class DataTransferAPIServiceTest {
     @DisplayName("Request transfer process success")
     public void startNegotiation_success() {
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
-        when(credentialUtils.getConnectorCredentials(anyString())).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.getData()).thenReturn(TransferSerializer.serializeProtocol(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
         when(apiResponse.isSuccess()).thenReturn(true);
         when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
@@ -238,8 +236,7 @@ class DataTransferAPIServiceTest {
     @DisplayName("Request transfer process failed")
     public void startNegotiation_failed() {
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
-        when(credentialUtils.getConnectorCredentials(anyString())).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.getData()).thenReturn(TransferSerializer.serializeProtocol(DataTransferMockObjectUtil.TRANSFER_ERROR));
         when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
 
@@ -255,8 +252,7 @@ class DataTransferAPIServiceTest {
     @DisplayName("Request transfer process json exception")
     public void startNegotiation_jsonException() {
         when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
-        when(credentialUtils.getConnectorCredentials(anyString())).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.getData()).thenReturn("not a JSON");
         when(apiResponse.isSuccess()).thenReturn(true);
         when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
@@ -270,13 +266,10 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Start transfer process success")
     public void startTransfer_success_requestedState() {
-        when(credentialUtils.getConnectorCredentials(anyString())).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
-        when(artifactTransferService.findArtifact(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER))
-                .thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
 
         apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId());
 
@@ -290,7 +283,7 @@ class DataTransferAPIServiceTest {
     public void startTransfer_failedNegotiationNotFound() {
         assertThrows(DataTransferAPIException.class, () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()));
 
-        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
@@ -303,8 +296,6 @@ class DataTransferAPIServiceTest {
 
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(input));
-        when(artifactTransferService.findArtifact(input))
-                .thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
 
         assertThrows(TransferProcessInvalidStateException.class, //DataTransferAPIException.class,
                 () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
@@ -318,18 +309,15 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Start transfer process failed - bad request")
     public void startTransfer_failedBadRequest() {
-        when(credentialUtils.getConnectorCredentials(anyString())).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(false);
         when(apiResponse.getMessage()).thenReturn("error");
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER));
-        when(artifactTransferService.findArtifact(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER))
-                .thenReturn(DataTransferMockObjectUtil.ARTIFACT_FILE);
 
         assertThrows(DataTransferAPIException.class, () -> apiService.startTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_REQUESTED_PROVIDER.getId()));
 
-        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_STARTED, null);
@@ -338,8 +326,7 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Complete transfer process success")
     public void completeTransfer_success_requestedState() {
-        when(credentialUtils.getConnectorCredentials(anyString())).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
@@ -356,7 +343,7 @@ class DataTransferAPIServiceTest {
     public void completeTransfer_failedNegotiationNotFound() {
         assertThrows(DataTransferAPIException.class, () -> apiService.completeTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
@@ -382,8 +369,7 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Complete transfer process failed - bad request")
     public void completeTransfer_failedBadRequest() {
-        when(credentialUtils.getConnectorCredentials(anyString())).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(false);
         when(apiResponse.getMessage()).thenReturn("error");
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
@@ -391,7 +377,7 @@ class DataTransferAPIServiceTest {
 
         assertThrows(DataTransferAPIException.class, () -> apiService.completeTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_COMPLETED, null);
@@ -400,8 +386,7 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Suspend transfer process success")
     public void suspendTransfer_success_requestedState() {
-        when(credentialUtils.getConnectorCredentials(anyString())).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
@@ -418,7 +403,7 @@ class DataTransferAPIServiceTest {
     public void suspendTransfer_failedNegotiationNotFound() {
         assertThrows(DataTransferAPIException.class, () -> apiService.suspendTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
@@ -444,8 +429,7 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Suspend transfer process failed - bad request")
     public void suspendTransfer_failedBadRequest() {
-        when(credentialUtils.getConnectorCredentials(anyString())).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(false);
         when(apiResponse.getMessage()).thenReturn("error");
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
@@ -453,7 +437,7 @@ class DataTransferAPIServiceTest {
 
         assertThrows(DataTransferAPIException.class, () -> apiService.suspendTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_SUSPENDED, null);
@@ -462,8 +446,7 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Terminate transfer process success")
     public void terminateTransfer_success_requestedState() {
-        when(credentialUtils.getConnectorCredentials(anyString())).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
@@ -480,7 +463,7 @@ class DataTransferAPIServiceTest {
     public void terminateTransfer_failedNegotiationNotFound() {
         assertThrows(DataTransferAPIException.class, () -> apiService.terminateTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(okHttpRestClient, times(0)).sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_NOT_FOUND, null);
@@ -506,8 +489,7 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("Terminate transfer process failed - bad request")
     public void terminateTransfer_failedBadRequest() {
-        when(credentialUtils.getConnectorCredentials(anyString())).thenReturn("credentials");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class))).thenReturn(apiResponse);
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(false);
         when(apiResponse.getMessage()).thenReturn("Terminate transfer process failed");
         when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
@@ -515,7 +497,7 @@ class DataTransferAPIServiceTest {
 
         assertThrows(DataTransferAPIException.class, () -> apiService.terminateTransfer(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
 
-        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(String.class));
+        verify(okHttpRestClient).sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class));
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_TERMINATED, null);
@@ -533,7 +515,10 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
+        // First save (isDownloadInProgress=true): return the saved object as-is (realistic DB save behaviour).
+        // Second save (completion): return the fully downloaded process.
         when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0))
                 .thenReturn(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED);
         when(transferStrategyFactory.getStrategy(any(String.class))).thenReturn(httpPullTransferStrategy);
         when(httpPullTransferStrategy.transfer(isA(TransferProcess.class)))
@@ -543,11 +528,14 @@ class DataTransferAPIServiceTest {
 
         verify(transferStrategyFactory, times(1)).getStrategy(any(String.class));
         verify(httpPullTransferStrategy).transfer(argCaptorTransferProcess.capture());
-        verify(transferProcessRepository, times(1)).save(any(TransferProcess.class));
+        // Two saves: once to mark isDownloadInProgress=true, once to mark isDownloaded=true on completion
+        verify(transferProcessRepository, times(2)).save(argCaptorTransferProcess.capture());
 
-        TransferProcess capturedProcess = argCaptorTransferProcess.getValue();
-        assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), capturedProcess.getId());
-        assertEquals(DataTransferFormat.HTTP_PULL.name(), capturedProcess.getFormat());
+        // The process passed to the strategy should have isDownloadInProgress=true
+        TransferProcess processPassedToStrategy = argCaptorTransferProcess.getAllValues().get(0);
+        assertEquals(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId(), processPassedToStrategy.getId());
+        assertTrue(processPassedToStrategy.isDownloadInProgress());
+        assertEquals(DataTransferFormat.HTTP_PULL.name(), processPassedToStrategy.getFormat());
     }
 
     @Test
@@ -561,11 +549,17 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
         when(transferStrategyFactory.getStrategy(any(String.class))).thenReturn(httpPullTransferStrategy);
+        // save returns the input as-is (realistic DB save); used for both isDownloadInProgress=true and the reset
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         doThrow(DataTransferAPIException.class).when(httpPullTransferStrategy).transfer(isA(TransferProcess.class));
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+
+        // Two saves: isDownloadInProgress=true at start, then isDownloadInProgress=false on failure reset
+        verify(transferProcessRepository, times(2)).save(any(TransferProcess.class));
     }
 
     @Test
@@ -578,12 +572,17 @@ class DataTransferAPIServiceTest {
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         when(transferStrategyFactory.getStrategy(any(String.class)))
                 .thenThrow(DataTransferAPIException.class);
 
         assertThrows(DataTransferAPIException.class,
                 () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+
+        // Two saves: isDownloadInProgress=true at start, then isDownloadInProgress=false on strategy error
+        verify(transferProcessRepository, times(2)).save(any(TransferProcess.class));
     }
 
     @Test
@@ -596,12 +595,18 @@ class DataTransferAPIServiceTest {
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
+        // save is called once for isDownloadInProgress=true, then once to reset on policy failure
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         CompletableFuture<Void> future = apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId());
 
         assertTrue(future.isCompletedExceptionally());
         ExecutionException ex = assertThrows(ExecutionException.class, future::get);
         assertInstanceOf(DataTransferAPIException.class, ex.getCause());
+
+        // Two saves: isDownloadInProgress=true at start, then isDownloadInProgress=false on policy failure reset
+        verify(transferProcessRepository, times(2)).save(any(TransferProcess.class));
     }
 
     @ParameterizedTest
@@ -611,11 +616,65 @@ class DataTransferAPIServiceTest {
         when(transferProcessRepository.findById(input.getId()))
                 .thenReturn(Optional.of(input));
 
-        CompletableFuture<Void> future = apiService.downloadData(input.getId());
+        // Validation throws synchronously so the exception propagates directly to the caller.
+        assertThrows(DataTransferAPIException.class, () -> apiService.downloadData(input.getId()));
+    }
 
-        assertTrue(future.isCompletedExceptionally());
-        ExecutionException ex = assertThrows(ExecutionException.class, future::get);
-        assertInstanceOf(DataTransferAPIException.class, ex.getCause());
+    @Test
+    @DisplayName("Download data - fail - already downloaded")
+    public void downloadData_fail_alreadyDownloaded() {
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED));
+
+        // Validation throws synchronously so the exception propagates directly to the caller.
+        DataTransferAPIException ex = assertThrows(DataTransferAPIException.class,
+                () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_AND_DOWNLOADED.getId()));
+        assertTrue(ex.getMessage().contains("has already been downloaded"));
+    }
+
+    @Test
+    @DisplayName("Download data - fail - download already in progress (isDownloadInProgress=true)")
+    public void downloadData_fail_concurrentDownload() {
+        // Simulate a transfer process that already has isDownloadInProgress=true in the DB
+        // (set by a previous request that is still running or by the startup recovery scenario).
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING));
+
+        // Should throw synchronously since the guard check happens before the async work.
+        DataTransferAPIException ex = assertThrows(DataTransferAPIException.class,
+                () -> apiService.downloadData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING.getId()));
+        assertTrue(ex.getMessage().contains("already in progress"));
+
+        // No save should be called — the guard aborted before any DB write.
+        verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
+    }
+
+    @Test
+    @DisplayName("Reset stale isDownloadInProgress flags on startup")
+    public void resetStaleDownloadingFlags_resetsStaleRecords() {
+        List<TransferProcess> staleProcesses = List.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED_DOWNLOADING);
+        when(transferProcessRepository.findAllByIsDownloadInProgressTrue()).thenReturn(staleProcesses);
+        when(transferProcessRepository.save(any(TransferProcess.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        // PostConstruct is not called by @InjectMocks, so invoke it directly.
+        apiService.resetStaleDownloadingFlags();
+
+        verify(transferProcessRepository).findAllByIsDownloadInProgressTrue();
+        verify(transferProcessRepository).save(argCaptorTransferProcess.capture());
+        TransferProcess savedProcess = argCaptorTransferProcess.getValue();
+        assertFalse(savedProcess.isDownloadInProgress());
+    }
+
+    @Test
+    @DisplayName("Reset stale isDownloadInProgress flags on startup - no stale records")
+    public void resetStaleDownloadingFlags_noStaleRecords() {
+        when(transferProcessRepository.findAllByIsDownloadInProgressTrue()).thenReturn(List.of());
+
+        apiService.resetStaleDownloadingFlags();
+
+        verify(transferProcessRepository).findAllByIsDownloadInProgressTrue();
+        verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
     }
 
     @Test
@@ -631,7 +690,7 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
-        when(s3Properties.getBucketName()).thenReturn(bucketName);
+        when(tenantBucketResolver.resolveBucketName(any())).thenReturn(bucketName);
         when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(true);
 
         when(s3ClientService.generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L)))
@@ -657,7 +716,7 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
-        when(s3Properties.getBucketName()).thenReturn(bucketName);
+        when(tenantBucketResolver.resolveBucketName(any())).thenReturn(bucketName);
         when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(true);
         doThrow(RuntimeException.class).when(s3ClientService).generateGetPresignedUrl(bucketName, objectKey, Duration.ofDays(7L));
 
@@ -678,7 +737,7 @@ class DataTransferAPIServiceTest {
         when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
-        when(s3Properties.getBucketName()).thenReturn(bucketName);
+        when(tenantBucketResolver.resolveBucketName(any())).thenReturn(bucketName);
         when(s3ClientService.fileExists(bucketName, objectKey)).thenReturn(false);
 
         assertThrows(DataTransferAPIException.class,
@@ -709,11 +768,11 @@ class DataTransferAPIServiceTest {
     @Test
     @DisplayName("View data - fail - not downloaded")
     public void viewData_fail_notDownloaded() {
-        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()))
-                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        when(transferProcessRepository.findById(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED.getId()))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED));
 
         assertThrows(DataTransferAPIException.class,
-                () -> apiService.viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getId()));
+                () -> apiService.viewData(DataTransferMockObjectUtil.TRANSFER_PROCESS_COMPLETED_NOT_DOWNLOADED.getId()));
 
         verify(s3ClientService, times(0)).fileExists(anyString(), anyString());
         verify(s3ClientService, times(0)).generateGetPresignedUrl(anyString(), anyString(), any(Duration.class));

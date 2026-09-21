@@ -6,6 +6,7 @@ import it.eng.negotiation.model.Agreement;
 import it.eng.negotiation.policy.model.PolicyDecision;
 import it.eng.negotiation.policy.service.PolicyEnforcementPoint;
 import it.eng.negotiation.repository.AgreementRepository;
+import it.eng.tools.service.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -22,13 +23,28 @@ public class AgreementAPIService {
         this.agreementRepository = agreementRepository;
     }
 
+    /**
+     * Enforces the agreement policy for the given agreement identifier.
+     * Scopes the lookup to the current tenant when one is set.
+     *
+     * @param agreementId the identifier of the agreement to enforce
+     * @throws ContractNegotiationAPIException if the agreement is not found
+     * @throws PolicyEnforcementException if the agreement is evaluated as invalid
+     */
     public void enforceAgreement(String agreementId) {
-        Agreement agreement = agreementRepository.findById(agreementId)
-                .orElseThrow(() -> new ContractNegotiationAPIException("Agreement with Id " + agreementId + " not found."));
+        String tenantId = TenantContextHolder.getTenantId();
+        Agreement agreement;
+        if (tenantId != null) {
+            agreement = agreementRepository.findByIdAndTenantId(agreementId, tenantId)
+                    .orElseThrow(() -> new ContractNegotiationAPIException("Agreement with Id " + agreementId + " not found."));
+        } else {
+            agreement = agreementRepository.findAgreementById(agreementId)
+                    .orElseThrow(() -> new ContractNegotiationAPIException("Agreement with Id " + agreementId + " not found."));
+        }
         // TODO add additional checks like contract dates
         //		LocalDateTime agreementStartDate = LocalDateTime.parse(agreement.getTimestamp(), FORMATTER);
         //		agreementStartDate.isBefore(LocalDateTime.now());
-
+        log.debug("Found Agreement with DSP id {}", agreementId);
         PolicyDecision policyDecision = policyEnforcementPoint.enforcePolicy(agreement, "enforceAgreement");
 
         if (policyDecision.isAllowed()) {

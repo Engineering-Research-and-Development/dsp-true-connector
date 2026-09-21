@@ -10,7 +10,6 @@ import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.rest.protocol.ContractNegotiationCallback;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.AuditEventPublisher;
@@ -44,49 +43,6 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
         this.policyAdministrationPoint = policyAdministrationPoint;
     }
 
-    @Deprecated
-    public void handleContractNegotiationOfferResponse(ContractNegotiationOfferResponseEvent offerResponse) {
-        String result = offerResponse.isOfferAccepted() ? "accepted" : "declined";
-        log.info("Contract offer {}", result);
-        // TODO get callbackAddress and send Agreement message
-        log.info("ConsumerPid - {}, providerPid - {}", offerResponse.getConsumerPid(), offerResponse.getProviderPid());
-        ContractNegotiation contractNegotiation = findContractNegotiationByPids(offerResponse.getConsumerPid(), offerResponse.getProviderPid());
-        log.info("Found initial negotiation  - CallbackAddress {}", contractNegotiation.getCallbackAddress());
-        if (offerResponse.isOfferAccepted()) {
-            ContractAgreementMessage agreementMessage = ContractAgreementMessage.Builder.newInstance()
-                    .consumerPid(contractNegotiation.getConsumerPid())
-                    .providerPid(contractNegotiation.getProviderPid())
-                    .agreement(agreementFromOffer(NegotiationSerializer.deserializePlain(offerResponse.getOffer().toPrettyString(), Offer.class), contractNegotiation.getAssigner()))
-                    .build();
-
-            GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
-                    ContractNegotiationCallback.getContractAgreementCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid()),
-                    NegotiationSerializer.serializeProtocolJsonNode(agreementMessage),
-                    credentialUtils.getConnectorCredentials());
-            if (response.isSuccess()) {
-                log.info("Updating status for negotiation {} to agreed", contractNegotiation.getId());
-                ContractNegotiation contractNegotiationUpdate = ContractNegotiation.Builder.newInstance()
-                        .id(contractNegotiation.getId())
-                        .callbackAddress(contractNegotiation.getCallbackAddress())
-                        .consumerPid(contractNegotiation.getConsumerPid())
-                        .providerPid(contractNegotiation.getProviderPid())
-                        .state(ContractNegotiationState.AGREED)
-                        .callbackAddress(contractNegotiation.getCallbackAddress())
-                        .created(contractNegotiation.getCreated())
-                        .createdBy(contractNegotiation.getCreatedBy())
-                        .modified(contractNegotiation.getModified())
-                        .lastModifiedBy(contractNegotiation.getLastModifiedBy())
-                        .version(contractNegotiation.getVersion())
-                        .build();
-                contractNegotiationRepository.save(contractNegotiationUpdate);
-                log.info("Saving agreement..." + agreementMessage.getAgreement().getId());
-                agreementRepository.save(agreementMessage.getAgreement());
-            } else {
-                log.error("Response status not 200 - consumer did not process AgreementMessage correct");
-                throw new ContractNegotiationAPIException("consumer did not process AgreementMessage correct");
-            }
-        }
-    }
 
     public ContractNegotiation handleContractNegotiationTerminated(String contractNegotiationId) {
         ContractNegotiation contractNegotiation = findContractNegotiationById(contractNegotiationId);
@@ -102,7 +58,7 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(
                 ContractNegotiationCallback.getContractTerminationCallback(contractNegotiation.getCallbackAddress(), contractNegotiation.getConsumerPid()),
                 NegotiationSerializer.serializeProtocolJsonNode(negotiationTerminatedEventMessage),
-                credentialUtils.getConnectorCredentials());
+                credentialUtils::getConnectorCredentials);
         if (response.isSuccess()) {
             log.info("Updating status for negotiation {} to terminated", contractNegotiation.getId());
             ContractNegotiation contractNegotiationTerminated = contractNegotiation.withNewContractNegotiationState(ContractNegotiationState.TERMINATED);
@@ -142,7 +98,7 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
         log.info("Sending verification message to provider to {}", callbackAddress);
         GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(callbackAddress,
                 NegotiationSerializer.serializeProtocolJsonNode(verificationMessage),
-                credentialUtils.getConnectorCredentials());
+                credentialUtils::getConnectorCredentials);
 
         if (response.isSuccess()) {
             log.info("Updating status for negotiation {} to verified", contractNegotiation.getId());
@@ -162,6 +118,6 @@ public class ContractNegotiationEventHandlerService extends BaseProtocolService 
 
     public void artifactConsumedEvent(ArtifactConsumedEvent artifactConsumedEvent) {
         log.info("Increasing access count for artifactId {}", artifactConsumedEvent.getAgreementId());
-        policyAdministrationPoint.updateAccessCount(artifactConsumedEvent.getAgreementId());
+        policyAdministrationPoint.updateAccessCount(artifactConsumedEvent.getAgreementId(), artifactConsumedEvent.getTenantId());
     }
 }

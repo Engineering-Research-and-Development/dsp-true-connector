@@ -7,29 +7,75 @@ services:
     volumes:
       - mongodb-data:/data/db
       - mongodb-configdb:/data/configdb
-    healthcheck:
-      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
 
-  minio:
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
-    #docker.io/bitnami/minio:2025
+  rustfs:
+    image: rustfs/rustfs:1.0.0-rc.6
+    container_name: s3storage
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - minio_data:/data
-      # Enable below line to use custom SSL certificates
-#      - ./src/main/resources/certs/minio_certs:/root/.minio/certs:ro
+      - rustfs_data:/data
+      ## Uncomment the following line to enable TLS (make sure to provide your own certs)
+#      - ./tc_cert/rustfs:/opt/tls:ro
     environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
-    command: server /data --console-address ":9001"
+      - RUSTFS_VOLUMES=/data
+      - RUSTFS_ADDRESS=0.0.0.0:9000
+      - RUSTFS_CONSOLE_ENABLE=true
+      - RUSTFS_CONSOLE_ADDRESS=0.0.0.0:9001
+      - RUSTFS_ACCESS_KEY=rustfsadmin
+      - RUSTFS_SECRET_KEY=rustfsadmin
+      ## Uncomment the following line to enable TLS (make sure to provide your own certs)
+#      - RUSTFS_TLS_PATH=/opt/tls/
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/health" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  keycloak-db:
+    profiles: ["keycloak"]
+    image: postgres:16
+    container_name: keycloak-db
+    environment:
+      - POSTGRES_DB=keycloak
+      - POSTGRES_USER=keycloak
+      - POSTGRES_PASSWORD=keycloak
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U keycloak" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    profiles: ["keycloak"]
+    image: quay.io/keycloak/keycloak:26.0.0
+    container_name: keycloak
+    ports:
+      - "8180:8080"
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://keycloak-db:5432/keycloak
+      - KC_DB_USERNAME=keycloak
+      - KC_DB_PASSWORD=keycloak
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    volumes:
+      - ../ci/docker/keycloak_resources:/opt/keycloak/data/import:ro
+    command: start-dev --import-realm
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health/ready" ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
 volumes:
   mongodb-data:
   mongodb-configdb:
-  minio_data:
+  rustfs_data:
+  keycloak_db_data:

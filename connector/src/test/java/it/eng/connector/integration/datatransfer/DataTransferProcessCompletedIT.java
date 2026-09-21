@@ -7,6 +7,8 @@ import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.s3.model.TemporaryBucketUser;
+import it.eng.tools.s3.repository.TemporaryBucketUserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,7 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
 
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -24,12 +26,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 // STARTED -> COMPLETED
 
+
     @Autowired
     private TransferProcessRepository transferProcessRepository;
+
+    @Autowired
+    private TemporaryBucketUserRepository temporaryBucketUserRepository;
 
     @AfterEach
     public void cleanup() {
         transferProcessRepository.deleteAll();
+        temporaryBucketUserRepository.deleteAll();
     }
 
     // Provider
@@ -44,6 +51,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .state(TransferState.STARTED)
                 .role(IConstants.ROLE_PROVIDER)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
@@ -54,21 +62,22 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/" + transferCompletionMessage.getProviderPid() + "/completion")
+                        post("/" + TENANT_ID + "/transfers/" + transferCompletionMessage.getProviderPid() + "/completion")
                                 .content(TransferSerializer.serializeProtocol(transferCompletionMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isOk());
 //    		.andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
         ResultActions transferProcessStartedAction = mockMvc.perform(
-                get("/transfers/" + transferProcessStarted.getProviderPid())
+                get("/" + TENANT_ID + "/transfers/" + transferProcessStarted.getProviderPid())
                         .contentType(MediaType.APPLICATION_JSON));
-        // check if status is STARTED
+        // check if status is COMPLETED
         transferProcessStartedAction.andExpect(status().isOk()).andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
         String response = transferProcessStartedAction.andReturn().getResponse().getContentAsString();
         TransferProcess transferProcessStarted2 = TransferSerializer.deserializeProtocol(response, TransferProcess.class);
         assertNotNull(transferProcessStarted2);
+        assertEquals(TransferState.COMPLETED, transferProcessStarted2.getState());
     }
 
     @Test
@@ -82,7 +91,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/" + transferProcessStarted.getProviderPid() + "/completion")
+                        post("/" + TENANT_ID + "/transfers/" + transferProcessStarted.getProviderPid() + "/completion")
                                 .content(TransferSerializer.serializeProtocol(transferProcessStarted))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());
@@ -105,7 +114,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/" + transferRequestMessage.getConsumerPid() + "/completion")
+                        post("/" + TENANT_ID + "/transfers/" + transferRequestMessage.getConsumerPid() + "/completion")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());
@@ -121,6 +130,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .state(TransferState.REQUESTED)
                 .role(IConstants.ROLE_PROVIDER)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessRequested);
 
@@ -131,7 +141,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/" + transferProcessStarted.getProviderPid() + "/completion")
+                        post("/" + TENANT_ID + "/transfers/" + transferProcessStarted.getProviderPid() + "/completion")
                                 .content(TransferSerializer.serializeProtocol(transferProcessStarted))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());
@@ -143,15 +153,16 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 
     // Consumer
     @Test
-    @DisplayName("Complete transfer process - from requested - consumer")
+    @DisplayName("Complete transfer process - from started - consumer")
     @WithUserDetails(TestUtil.CONNECTOR_USER)
-    public void startTransferProcess_consumer() throws Exception {
+    public void completeTransferProcess_consumer() throws Exception {
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
                 .providerPid(createNewId())
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .state(TransferState.STARTED)
                 .role(IConstants.ROLE_PROVIDER)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
@@ -162,22 +173,21 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/consumer/transfers/" + transferCompletionMessage.getConsumerPid() + "/completion")
+                        post("/" + TENANT_ID + "/consumer/transfers/" + transferCompletionMessage.getConsumerPid() + "/completion")
                                 .content(TransferSerializer.serializeProtocol(transferCompletionMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isOk());
 
-        //?? not sure if this is correct endpoint or it should be consumer/transfers/{consumerPid}
-        // but such endpoint does not exists in protocol specification
         ResultActions transferProcessStartedAction = mockMvc.perform(
-                get("/transfers/" + transferProcessStarted.getProviderPid())
+                get("/" + TENANT_ID + "/transfers/" + transferProcessStarted.getProviderPid())
                         .contentType(MediaType.APPLICATION_JSON));
-        // check if status is STARTED
+        // check if status is COMPLETED
         transferProcessStartedAction.andExpect(status().isOk()).andExpect(content().contentType(MediaType.APPLICATION_JSON));
 
         String response = transferProcessStartedAction.andReturn().getResponse().getContentAsString();
-        TransferProcess transferProcessStarted2 = TransferSerializer.deserializeProtocol(response, TransferProcess.class);
-        assertNotNull(transferProcessStarted2);
+        TransferProcess transferProcessCompleted = TransferSerializer.deserializeProtocol(response, TransferProcess.class);
+        assertNotNull(transferProcessCompleted);
+        assertEquals(TransferState.COMPLETED, transferProcessCompleted.getState());
     }
 
     @Test
@@ -191,7 +201,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/consumer/transfers/" + transferProcessStarted.getConsumerPid() + "/completion")
+                        post("/" + TENANT_ID + "/consumer/transfers/" + transferProcessStarted.getConsumerPid() + "/completion")
                                 .content(TransferSerializer.serializeProtocol(transferProcessStarted))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());
@@ -214,7 +224,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/consumer/transfers/" + transferRequestMessage.getConsumerPid() + "/completion")
+                        post("/" + TENANT_ID + "/consumer/transfers/" + transferRequestMessage.getConsumerPid() + "/completion")
                                 .content(TransferSerializer.serializeProtocol(transferRequestMessage))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());
@@ -230,6 +240,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
                 .format(DataTransferFormat.HTTP_PULL.format())
                 .state(TransferState.REQUESTED)
                 .role(IConstants.ROLE_PROVIDER)
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessRequested);
 
@@ -240,7 +251,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 
         final ResultActions result =
                 mockMvc.perform(
-                        post("/transfers/" + transferProcessStarted.getConsumerPid() + "/completion")
+                        post("/" + TENANT_ID + "/transfers/" + transferProcessStarted.getConsumerPid() + "/completion")
                                 .content(TransferSerializer.serializeProtocol(transferProcessStarted))
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest());
@@ -248,5 +259,47 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
         String response = result.andReturn().getResponse().getContentAsString();
         TransferError transferError = TransferSerializer.deserializeProtocol(response, TransferError.class);
         assertNotNull(transferError);
+    }
+
+    @Test
+    @DisplayName("Complete transfer process - temporary user deleted after HTTP-PUSH completion")
+    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    public void completeTransferProcess_provider_httpPush_deletesTemporaryUser() throws Exception {
+        TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+                .consumerPid(createNewId())
+                .providerPid(createNewId())
+                .format(DataTransferFormat.HTTP_PUSH.format())
+                .state(TransferState.STARTED)
+                .role(IConstants.ROLE_PROVIDER)
+                .tenantId(TENANT_ID)
+                .build();
+        transferProcessRepository.save(transferProcessStarted);
+
+        // Simulate the temporary S3 user that is created before HTTP-PUSH data upload
+        TemporaryBucketUser temporaryBucketUser = TemporaryBucketUser.Builder.newInstance()
+                .transferProcessId(transferProcessStarted.getId())
+                .accessKey("temp-test-access-key")
+                .secretKey("temp-test-secret-key")
+                .bucketName("test-bucket")
+                .objectKey("test-object-key")
+                .build();
+        temporaryBucketUserRepository.save(temporaryBucketUser);
+
+        assertTrue(temporaryBucketUserRepository.existsById(transferProcessStarted.getId()),
+                "Temporary bucket user should exist before transfer completion");
+
+        TransferCompletionMessage transferCompletionMessage = TransferCompletionMessage.Builder.newInstance()
+                .consumerPid(transferProcessStarted.getConsumerPid())
+                .providerPid(transferProcessStarted.getProviderPid())
+                .build();
+
+        mockMvc.perform(
+                        post("/" + TENANT_ID + "/transfers/" + transferCompletionMessage.getProviderPid() + "/completion")
+                                .content(TransferSerializer.serializeProtocol(transferCompletionMessage))
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        assertFalse(temporaryBucketUserRepository.existsById(transferProcessStarted.getId()),
+                "Temporary bucket user should be removed after transfer completion");
     }
 }

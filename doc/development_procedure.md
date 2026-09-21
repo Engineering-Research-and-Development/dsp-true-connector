@@ -9,6 +9,11 @@ Currently this project is private so you will have to request access to it.
 This dashboard is used to keep track of backlog, current set of tasks that will be addressed in "sprint", tasks that are
 in progress, reviewing and that are done.
 
+The board uses six columns: **Backlog | To Do | Ready | In Progress | In Review | Done**. The **Ready** column is the
+human-approval gate of the AI-assisted task workflow: AI-decomposed tasks land in **To Do**, a human reviews and refines
+them, and only approved tasks move to **Ready** where implementation (AI or human) may pick them up. See the
+GitHub-Integrated Task Workflow section in [AGENTS.md](../AGENTS.md) for the full pipeline.
+
 - When new ticket is created, it should be in Backlog column.
 - Once ticket is estimated, refined and there is description and scope of the task defined, it can be put into Todo
   column. Estimation should be set from 8 to max 16 hours. If estimation is more than 16 hours, then consider to split

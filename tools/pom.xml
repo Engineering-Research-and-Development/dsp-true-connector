@@ -30,11 +30,14 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-hateoas</artifactId>
         </dependency>
-        <!-- <dependency> -->
-        <!-- <groupId>org.springframework.boot</groupId> -->
-        <!-- <artifactId>spring-boot-configuration-processor</artifactId> -->
-        <!-- <optional>true</optional> -->
-        <!-- </dependency> -->
+<!--        inject only    org.springframework.security.oauth2.jwt
+from spring-boot-starter-security scope provided-->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -60,16 +63,18 @@
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk18on</artifactId>
-            <version>1.80</version>
         </dependency>
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcpkix-jdk18on</artifactId>
-            <version>1.80</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -93,10 +98,11 @@
             <artifactId>apache-client</artifactId>
             <version>${aws.sdk.version}</version>
         </dependency>
-        <!-- AWS SDK Netty HTTP Client for async operations with SSL/TLS -->
+        <!-- AWS SDK AWS CRT HTTP Client for async operations - replaces Netty to avoid
+             URI percent-encoding validation issues (Netty 4.2.x rejects %3A in paths) -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
-            <artifactId>netty-nio-client</artifactId>
+            <artifactId>aws-crt-client</artifactId>
             <version>${aws.sdk.version}</version>
         </dependency>
         <!--  AWS Security Token Service -->
@@ -119,18 +125,15 @@
         <dependency>
             <groupId>software.amazon.awssdk.crt</groupId>
             <artifactId>aws-crt</artifactId>
-            <version>0.36.3</version>
         </dependency>
         <!-- MinIO SDK -->
         <dependency>
             <groupId>io.minio</groupId>
             <artifactId>minio-admin</artifactId>
-            <version>8.5.7</version>
         </dependency>
         <dependency>
             <groupId>dev.failsafe</groupId>
             <artifactId>failsafe</artifactId>
-            <version>3.3.2</version>
         </dependency>
 
         <!-- Test -->
@@ -152,10 +155,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-mongodb</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>jakarta.json</groupId>
-            <artifactId>jakarta.json-api</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>

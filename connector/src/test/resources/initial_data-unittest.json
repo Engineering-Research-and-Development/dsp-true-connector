@@ -1,0 +1,30 @@
+{
+  "test_collection": [
+    {
+      "_id": "test-id-1",
+      "name": "Test Document 1"
+    },
+    {
+      "_id": "test-id-2",
+      "name": "Test Document 2"
+    },
+    {
+      "name": "No ID Document"
+    }
+  ],
+  "tenants": [
+    {
+      "_class": "it.eng.tools.model.Tenant",
+      "_id": "engineering",
+      "name": "Engineering",
+      "description": "Default Engineering tenant",
+      "participantId": "urn:connector:engineering",
+      "callbackAddress": "http://localhost:8080",
+      "enabled": true,
+      "automaticNegotiation": false,
+      "automaticTransfer": false,
+      "version": 0,
+      "participantId": "urn:connector:engineering"
+    }
+  ]
+}

@@ -5,15 +5,13 @@ import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.*;
 import it.eng.catalog.repository.CatalogRepository;
-import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.tools.event.AuditEventType;
-import it.eng.tools.event.contractnegotiation.ContractNegotationOfferRequestEvent;
-import it.eng.tools.event.contractnegotiation.ContractNegotiationOfferResponseEvent;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.model.IConstants;
-import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantBucketResolver;
+import it.eng.tools.service.TenantContextHolder;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,19 +32,21 @@ public class CatalogService {
     private final CatalogRepository repository;
     private final AuditEventPublisher publisher;
     private final S3ClientService s3ClientService;
-    private final S3Properties s3Properties;
+    private final TenantBucketResolver tenantBucketResolver;
 
     public CatalogService(CatalogRepository repository, AuditEventPublisher publisher, S3ClientService s3ClientService,
-                          S3Properties s3Properties) {
+                          TenantBucketResolver tenantBucketResolver) {
         this.repository = repository;
         this.publisher = publisher;
         this.s3ClientService = s3ClientService;
-        this.s3Properties = s3Properties;
+        this.tenantBucketResolver = tenantBucketResolver;
     }
 
     /********* PROTOCOL ***********/
     /**
-     * Retrieves the catalog.
+     * Retrieves the catalog scoped to the current tenant context.
+     * When a tenant ID is set via {@link TenantContextHolder}, only catalogs owned
+     * by that tenant are returned. Super-admin requests (null tenant ID) see all catalogs.
      *
      * @return The retrieved catalog.
      * @throws CatalogErrorException Thrown if the catalog is not found.
@@ -54,9 +54,17 @@ public class CatalogService {
     public Catalog getCatalog() {
 // TODO: remove the filtering of datasets by files in S3, after the file upload and dataset insert are separated
 //  (choose artifact from files list instead of uploading when making a new dataset)
-        List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+        List<String> files = s3ClientService.listFiles(tenantBucketResolver.resolveBucketName());
+        String tenantId = TenantContextHolder.getTenantId();
 
-        List<Catalog> allCatalogs = repository.findAll();
+        List<Catalog> allCatalogs;
+        if (tenantId != null) {
+            allCatalogs = repository.findAllByTenantId(tenantId);
+        } else {
+            allCatalogs = repository.findAll();
+        }
+
+        log.info("Catalogs found: {}", allCatalogs.size());
 
         // remove datasets that do not have files in S3
         // external files can not be checked at the time of writing and will be automatically allowed
@@ -81,14 +89,21 @@ public class CatalogService {
     /* ******** API ***********/
 
     /**
-     * Public method for fetching the catalog for further API processing purposes.<br>
-     * It throws ResourceNotFoundAPIException instead of CatalogErrorException used in protocol requests
+     * Public method for fetching the catalog for further API processing purposes.
+     * Scoped to the current tenant context when a tenant ID is set.
+     * It throws ResourceNotFoundAPIException instead of CatalogErrorException used in protocol requests.
      *
      * @return Catalog
      * @throws ResourceNotFoundAPIException Thrown if the catalog is not found.
      */
     public Catalog getCatalogForApi() {
-        List<Catalog> allCatalogs = repository.findAll();
+        String tenantId = TenantContextHolder.getTenantId();
+        List<Catalog> allCatalogs;
+        if (tenantId != null) {
+            allCatalogs = repository.findAllByTenantId(tenantId);
+        } else {
+            allCatalogs = repository.findAll();
+        }
 
         if (allCatalogs.isEmpty()) {
             throw new ResourceNotFoundAPIException("Catalog not found");
@@ -98,11 +113,16 @@ public class CatalogService {
     }
 
     private Catalog getCatalogByIdForApi(String id) {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            return repository.findByIdAndTenantId(id, tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id: " + id + " not found"));
+        }
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id: " + id + " not found"));
     }
 
     /**
-     * Saves the given catalog.
+     * Saves the given catalog, stamping it with the current tenant ID if one is set.
      *
      * @param catalog The catalog to be saved.
      * @return Saved Catalog object
@@ -111,7 +131,12 @@ public class CatalogService {
         // TODO handle the situation when we insert catalog for the first time, and the object like dataSets, distributions, etc. should be stored into separate documents
         Catalog storedCatalog = null;
         try {
+            String tenantId = TenantContextHolder.getTenantId();
+            if (tenantId != null && catalog.getTenantId() == null) {
+                catalog.injectTenantId(tenantId);
+            }
             storedCatalog = repository.save(catalog);
+            publisher.publishEvent(AuditEventType.CATALOG_CREATED, "Catalog created", Map.of("catalogId", storedCatalog.getId()));
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             throw new InternalServerErrorAPIException("Catalog could not be saved");
@@ -120,12 +145,17 @@ public class CatalogService {
     }
 
     /**
-     * Retrieves the catalog by its ID.
+     * Retrieves the catalog by its ID, scoped to the current tenant context.
      *
      * @param id The ID of the catalog to retrieve.
      * @return An optional containing the retrieved catalog, or empty if not found.
      */
     public Catalog getCatalogById(String id) {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            return repository.findByIdAndTenantId(id, tenantId)
+                    .orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id" + id + " not found"));
+        }
         return repository.findById(id).orElseThrow(() -> new ResourceNotFoundAPIException("Catalog with id" + id + " not found"));
     }
 
@@ -138,6 +168,7 @@ public class CatalogService {
         getCatalogById(id);
         try {
             repository.deleteById(id);
+            publisher.publishEvent(AuditEventType.CATALOG_DELETED, "Catalog deleted", Map.of("catalogId", id));
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             throw new InternalServerErrorAPIException("Catalog could not be deleted");
@@ -148,22 +179,15 @@ public class CatalogService {
         Catalog existingCatalog = getCatalogByIdForApi(id);
         try {
             Catalog updatedCatalog = existingCatalog.updateInstance(cat);
-            return repository.save(updatedCatalog);
+            Catalog saved = repository.save(updatedCatalog);
+            publisher.publishEvent(AuditEventType.CATALOG_UPDATED, "Catalog updated", Map.of("catalogId", id));
+            return saved;
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             throw new InternalServerErrorAPIException("Catalog could not be updated");
         }
     }
 
-    @Deprecated
-    public void validateOffer(ContractNegotationOfferRequestEvent offerRequest) {
-        log.info("Comparing if offer is valid or not");
-        Offer offer = CatalogSerializer.deserializeProtocol(offerRequest.getOffer(), Offer.class);
-        boolean valid = validateOffer(offer);
-        ContractNegotiationOfferResponseEvent contractNegotiationOfferResponse = new ContractNegotiationOfferResponseEvent(offerRequest.getConsumerPid(),
-                offerRequest.getProviderPid(), valid, CatalogSerializer.serializeProtocolJsonNode(offer));
-        publisher.publishEvent(contractNegotiationOfferResponse);
-    }
 
     /**
      * Updates the catalog with a newly saved dataset reference.
@@ -173,6 +197,7 @@ public class CatalogService {
      */
     public void updateCatalogDatasetAfterSave(Dataset newDataset) {
         // TODO handle the situation when new dataset have distribution which is not present in catalog
+        assertSameTenant(TenantContextHolder.getTenantId(), newDataset.getTenantId(), Dataset.class.getSimpleName(), newDataset.getId());
         Catalog c = getCatalogForApi();
         c.getDataset().add(newDataset);
         saveCatalog(c);
@@ -197,6 +222,7 @@ public class CatalogService {
      * @param dataService The new data service reference to be added to the catalog.
      */
     public void updateCatalogDataServiceAfterSave(DataService dataService) {
+        assertSameTenant(TenantContextHolder.getTenantId(), dataService.getTenantId(), DataService.class.getSimpleName(), dataService.getId());
         Catalog c = getCatalogForApi();
         c.getService().add(dataService);
         saveCatalog(c);
@@ -223,6 +249,7 @@ public class CatalogService {
      * @param newDistribution The new distribution reference to be added to the catalog.
      */
     public void updateCatalogDistributionAfterSave(Distribution newDistribution) {
+        assertSameTenant(TenantContextHolder.getTenantId(), newDistribution.getTenantId(), Distribution.class.getSimpleName(), newDistribution.getId());
         Catalog c = getCatalogForApi();
         c.getDistribution().add(newDistribution);
         saveCatalog(c);
@@ -272,6 +299,25 @@ public class CatalogService {
         }
         log.info("Offer evaluated as {}", valid ? "valid" : "invalid");
         return valid;
+    }
+
+    /**
+     * Asserts that the caller tenant and the document tenant are the same, preventing cross-tenant
+     * references from being persisted.
+     *
+     * @param callerTenantId   the tenant ID of the current caller from {@link TenantContextHolder}
+     * @param documentTenantId the tenant ID stamped on the document being referenced
+     * @param documentType     a human-readable type label used in the error message and warning log
+     * @param documentId       the document identifier used in the error message and warning log
+     * @throws InternalServerErrorAPIException if both tenant IDs are non-null and not equal
+     */
+    private void assertSameTenant(String callerTenantId, String documentTenantId, String documentType, String documentId) {
+        if (callerTenantId != null && documentTenantId != null && !callerTenantId.equals(documentTenantId)) {
+            log.warn("Cross-tenant {} reference detected: caller tenant={}, document tenant={}, id={}",
+                    documentType, callerTenantId, documentTenantId, documentId);
+            throw new InternalServerErrorAPIException(
+                    "Cross-tenant reference rejected: " + documentType + " id=" + documentId);
+        }
     }
 
     private void validateCatalog(List<Catalog> allCatalogs) {

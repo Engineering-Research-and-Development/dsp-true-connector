@@ -35,13 +35,13 @@ REM Subject Alternative Names (SAN) - Edit these lists as needed for each servic
 REM Each server should only have the SANs it actually needs for security best practices
 set SAN_CONNECTOR_A=DNS:localhost,DNS:connector-a,IP:127.0.0.1
 set SAN_CONNECTOR_B=DNS:localhost,DNS:connector-b,IP:127.0.0.1
-set SAN_MINIO=DNS:localhost,DNS:minio,IP:127.0.0.1
+set SAN_S3_STORAGE=DNS:localhost,DNS:s3storage,IP:127.0.0.1
 set SAN_UI_A=DNS:localhost,DNS:ui-a,IP:127.0.0.1
 set SAN_UI_B=DNS:localhost,DNS:ui-b,IP:127.0.0.1
 set SAN_DCP_ISSUER=DNS:localhost,DNS:dcp-issuer,IP:127.0.0.1
 
 REM Legacy: All SANs combined (for backward compatibility or development)
-REM set SAN_LIST=DNS:localhost,DNS:connector-a,DNS:connector-b,DNS:minio,DNS:mongodb-a,DNS:mongodb-b,DNS:ui-a,DNS:ui-b,IP:127.0.0.1
+REM set SAN_LIST=DNS:localhost,DNS:connector-a,DNS:connector-b,DNS:s3storage,DNS:mongodb-a,DNS:mongodb-b,DNS:ui-a,DNS:ui-b,IP:127.0.0.1
 
 REM Truststore Configuration
 set TRUSTSTORE=dsp-truststore.p12
@@ -69,7 +69,7 @@ echo.
 echo Configuration:
 echo   - connector-a SANs: %SAN_CONNECTOR_A%
 echo   - connector-b SANs: %SAN_CONNECTOR_B%
-echo   - MinIO SANs: %SAN_MINIO%
+echo   - S3 Storage SANs: %SAN_S3_STORAGE%
 echo   - ui-a SANs: %SAN_UI_A%
 echo   - ui-b SANs: %SAN_UI_B%
 echo   - Key Algorithm: %KEY_ALG% %KEY_SIZE% bits
@@ -88,7 +88,7 @@ if exist %ROOT_KEYSTORE% del %ROOT_KEYSTORE%
 if exist %INTERMEDIATE_KEYSTORE% del %INTERMEDIATE_KEYSTORE%
 if exist connector-a.p12 del connector-a.p12
 if exist connector-b.p12 del connector-b.p12
-if exist minio-temp.p12 del minio-temp.p12
+if exist s3storage-temp.p12 del s3storage-temp.p12
 if exist ui-a-temp.p12 del ui-a-temp.p12
 if exist ui-b-temp.p12 del ui-b-temp.p12
 if exist dcp-issuer-temp.p12 del dcp-issuer-temp.p12
@@ -280,85 +280,84 @@ echo All server certificates generated successfully!
 echo.
 
 REM ==================================================================
-REM STEP 4: Generate MinIO Certificate (PEM format)
+REM STEP 4: Generate S3 Storage Certificate (PEM format)
 REM ==================================================================
 
 echo ==================================================================
-echo STEP 4: Generating MinIO Certificate (PEM format)
+echo STEP 4: Generating S3 Storage Certificate (PEM format)
 echo ==================================================================
 echo.
 
-set MINIO_NAME=minio
-set MINIO_DN=CN=minio, OU=Storage, O=DSP True Connector, L=Belgrade, ST=Serbia, C=RS
-set MINIO_KEYSTORE=minio-temp.p12
-set MINIO_ALIAS=minio
+set S3_STORAGE_DN=CN=s3storage, OU=Storage, O=DSP True Connector, L=Belgrade, ST=Serbia, C=RS
+set S3_STORAGE_KEYSTORE=s3storage-temp.p12
+set S3_STORAGE_ALIAS=s3storage
 
-echo Generating key pair for MinIO...
+echo Generating key pair for S3 Storage...
 keytool -genkeypair ^
-    -alias %MINIO_ALIAS% ^
+    -alias %S3_STORAGE_ALIAS% ^
     -keyalg %KEY_ALG% ^
     -keysize %KEY_SIZE% ^
-    -dname "%MINIO_DN%" ^
+    -dname "%S3_STORAGE_DN%" ^
     -validity %SERVER_VALIDITY% ^
-    -keystore %MINIO_KEYSTORE% ^
+    -keystore %S3_STORAGE_KEYSTORE% ^
     -storetype PKCS12 ^
     -storepass %SERVER_PASSWORD% ^
     -keypass %SERVER_PASSWORD% ^
     -ext KeyUsage:critical=digitalSignature,keyEncipherment ^
     -ext ExtendedKeyUsage=serverAuth,clientAuth ^
-    -ext "SAN=%SAN_MINIO%"
+    -ext "SAN=%SAN_S3_STORAGE%"
 
 if %ERRORLEVEL% NEQ 0 (
-    echo ERROR: Failed to generate key pair for MinIO
+    echo ERROR: Failed to generate key pair for S3 Storage
     exit /b 1
 )
 echo Done.
 echo.
 
-echo Generating Certificate Signing Request for MinIO...
+echo Generating Certificate Signing Request for S3 Storage...
 keytool -certreq ^
-    -alias %MINIO_ALIAS% ^
-    -keystore %MINIO_KEYSTORE% ^
+    -alias %S3_STORAGE_ALIAS% ^
+    -keystore %S3_STORAGE_KEYSTORE% ^
     -storetype PKCS12 ^
     -storepass %SERVER_PASSWORD% ^
-    -file minio.csr ^
+    -file s3storage.csr ^
     -ext KeyUsage:critical=digitalSignature,keyEncipherment ^
     -ext ExtendedKeyUsage=serverAuth,clientAuth ^
-    -ext "SAN=%SAN_MINIO%"
+    -ext "SAN=%SAN_S3_STORAGE%"
 
 if %ERRORLEVEL% NEQ 0 (
-    echo ERROR: Failed to generate CSR for MinIO
+    echo ERROR: Failed to generate CSR for S3 Storage
     exit /b 1
 )
 echo Done.
 echo.
 
-echo Signing MinIO certificate with Intermediate CA...
+echo Signing S3 Storage certificate with Intermediate CA...
 keytool -gencert ^
     -alias %INTERMEDIATE_ALIAS% ^
     -keystore %INTERMEDIATE_KEYSTORE% ^
     -storetype PKCS12 ^
     -storepass %INTERMEDIATE_PASSWORD% ^
-    -infile minio.csr ^
-    -outfile minio-signed.crt ^
+    -infile s3storage.csr ^
+    -outfile s3storage-signed.crt ^
     -validity %SERVER_VALIDITY% ^
     -ext KeyUsage:critical=digitalSignature,keyEncipherment ^
     -ext ExtendedKeyUsage=serverAuth,clientAuth ^
-    -ext "SAN=%SAN_MINIO%" ^
+    -ext "SAN=%SAN_S3_STORAGE%" ^
     -rfc
 
 if %ERRORLEVEL% NEQ 0 (
-    echo ERROR: Failed to sign certificate for MinIO
+    echo ERROR: Failed to sign certificate for S3 Storage
     exit /b 1
 )
 echo Done.
 echo.
 
-echo Importing certificate chain for MinIO...
+echo Importing certificate chain for S3 Storage...
 echo   - Importing Root CA...
 keytool -importcert ^
     -alias %ROOT_ALIAS% ^
-    -keystore %MINIO_KEYSTORE% ^
+    -keystore %S3_STORAGE_KEYSTORE% ^
     -storetype PKCS12 ^
     -storepass %SERVER_PASSWORD% ^
     -file root-ca.crt ^
@@ -367,63 +366,63 @@ keytool -importcert ^
 echo   - Importing Intermediate CA...
 keytool -importcert ^
     -alias %INTERMEDIATE_ALIAS% ^
-    -keystore %MINIO_KEYSTORE% ^
+    -keystore %S3_STORAGE_KEYSTORE% ^
     -storetype PKCS12 ^
     -storepass %SERVER_PASSWORD% ^
     -file intermediate-ca.crt ^
     -noprompt
 
-echo   - Importing signed MinIO certificate...
+echo   - Importing signed S3 Storage certificate...
 keytool -importcert ^
-    -alias %MINIO_ALIAS% ^
-    -keystore %MINIO_KEYSTORE% ^
+    -alias %S3_STORAGE_ALIAS% ^
+    -keystore %S3_STORAGE_KEYSTORE% ^
     -storetype PKCS12 ^
     -storepass %SERVER_PASSWORD% ^
-    -file minio-signed.crt ^
+    -file s3storage-signed.crt ^
     -noprompt
 
 if %ERRORLEVEL% NEQ 0 (
-    echo ERROR: Failed to import certificate chain for MinIO
+    echo ERROR: Failed to import certificate chain for S3 Storage
     exit /b 1
 )
 echo Done.
 echo.
 
-echo Exporting MinIO private key to PEM format (private.key)...
+echo Exporting S3 Storage private key to PEM format (private.key)...
 REM Export to PKCS12 then convert to PEM using OpenSSL
 REM Note: If OpenSSL is not available, the .p12 file can be manually converted
-openssl pkcs12 -in %MINIO_KEYSTORE% -nocerts -nodes -passin pass:%SERVER_PASSWORD% -out private.key 2>nul
+openssl pkcs12 -in %S3_STORAGE_KEYSTORE% -nocerts -nodes -passin pass:%SERVER_PASSWORD% -out private.key 2>nul
 
 if %ERRORLEVEL% NEQ 0 (
     echo WARNING: OpenSSL not found. Using alternative method...
-    echo You will need to manually convert minio-temp.p12 to private.key
-    echo Command: openssl pkcs12 -in minio-temp.p12 -nocerts -nodes -passin pass:%SERVER_PASSWORD% -out private.key
+    echo You will need to manually convert s3storage-temp.p12 to private.key
+    echo Command: openssl pkcs12 -in s3storage-temp.p12 -nocerts -nodes -passin pass:%SERVER_PASSWORD% -out private.key
     echo.
     echo Creating placeholder private.key file...
-    echo # MinIO Private Key > private.key
-    echo # Convert from minio-temp.p12 using OpenSSL >> private.key
-    echo # Command: openssl pkcs12 -in minio-temp.p12 -nocerts -nodes -passin pass:%SERVER_PASSWORD% -out private.key >> private.key
+    echo # S3 Storage Private Key > private.key
+    echo # Convert from s3storage-temp.p12 using OpenSSL >> private.key
+    echo # Command: openssl pkcs12 -in s3storage-temp.p12 -nocerts -nodes -passin pass:%SERVER_PASSWORD% -out private.key >> private.key
 ) else (
     echo Done.
 )
 echo.
 
-echo Exporting MinIO certificate to PEM format (public.crt)...
+echo Exporting S3 Storage certificate to PEM format (public.crt)...
 REM Export certificate chain (includes intermediate CA)
-openssl pkcs12 -in %MINIO_KEYSTORE% -clcerts -nokeys -passin pass:%SERVER_PASSWORD% -out public.crt 2>nul
+openssl pkcs12 -in %S3_STORAGE_KEYSTORE% -clcerts -nokeys -passin pass:%SERVER_PASSWORD% -out public.crt 2>nul
 
 if %ERRORLEVEL% NEQ 0 (
     echo WARNING: OpenSSL not found. Using keytool export...
     keytool -exportcert ^
-        -alias %MINIO_ALIAS% ^
-        -keystore %MINIO_KEYSTORE% ^
+        -alias %S3_STORAGE_ALIAS% ^
+        -keystore %S3_STORAGE_KEYSTORE% ^
         -storetype PKCS12 ^
         -storepass %SERVER_PASSWORD% ^
         -file public.crt ^
         -rfc
 
     if %ERRORLEVEL% NEQ 0 (
-        echo ERROR: Failed to export MinIO certificate
+        echo ERROR: Failed to export S3 Storage certificate
         exit /b 1
     )
 ) else (
@@ -431,11 +430,11 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo.
 
-echo MinIO certificate files generated:
+echo S3 Storage certificate files generated:
 echo   - private.key (Private key in PEM format)
 echo   - public.crt (Certificate in PEM format, signed by Intermediate CA)
-echo   - SAN: %SAN_MINIO%
-echo   - minio-temp.p12 (Temporary PKCS12 keystore, can be deleted)
+echo   - SAN: %SAN_S3_STORAGE%
+echo   - s3storage-temp.p12 (Temporary PKCS12 keystore, can be deleted)
 echo.
 
 REM ==================================================================
@@ -979,7 +978,7 @@ echo Connector-B Keystore:
 keytool -list -v -keystore connector-b.p12 -storepass %SERVER_PASSWORD% -storetype PKCS12 | findstr "Alias\|Owner\|Issuer\|Valid\|DNS"
 echo.
 
-echo MinIO Certificate Files:
+echo S3 Storage Certificate Files:
 echo   - private.key: Private key in PEM format
 echo   - public.crt: Certificate in PEM format
 if exist private.key (
@@ -1012,12 +1011,12 @@ echo.
 del *.csr
 del root-ca.crt
 del intermediate-ca.crt
-del minio-signed.crt
+del s3storage-signed.crt
 del ui-a-signed.crt
 del ui-b-signed.crt
 del dcp-issuer-signed.crt
-REM Keep public.crt for MinIO
-REM Keep private.key for MinIO
+REM Keep public.crt for S3 Storage
+REM Keep private.key for S3 Storage
 REM Keep ui-a-cert.crt and ui-a-cert.key for UI-A
 REM Keep ui-b-cert.crt and ui-b-cert.key for UI-B
 REM Keep dcp-issuer.crt and dcp-issuer.key for DCP-Issuer
@@ -1041,9 +1040,9 @@ echo   1. %ROOT_KEYSTORE% - Root CA (keep secure, used for signing Intermediate 
 echo   2. %INTERMEDIATE_KEYSTORE% - Intermediate CA (keep secure, used for signing server certs)
 echo   3. connector-a.p12 - Server certificate for connector-a
 echo   4. connector-b.p12 - Server certificate for connector-b
-echo   5. private.key - MinIO private key in PEM format (for MinIO certs/private.key)
-echo   6. public.crt - MinIO certificate in PEM format (for MinIO certs/public.crt)
-echo   7. minio-temp.p12 - MinIO certificate in PKCS12 format (optional, can be deleted)
+echo   5. private.key - S3 Storage private key in PEM format (for S3 Storage certs/private.key)
+echo   6. public.crt - S3 Storage certificate in PEM format (for S3 Storage certs/public.crt)
+echo   7. s3storage-temp.p12 - S3 Storage certificate in PKCS12 format (optional, can be deleted)
 echo   8. ui-a-cert.key - UI-A private key in PEM format (for nginx)
 echo   9. ui-a-cert.crt - UI-A certificate in PEM format (for nginx, signed by Intermediate CA)
 echo   10. ui-a-fullchain.crt - UI-A fullchain certificate in PEM format (server cert + intermediate CA)
@@ -1058,19 +1057,19 @@ echo   18. dcp-issuer-temp.p12 - DCP-Issuer certificate in PKCS12 format (option
 echo   19. %TRUSTSTORE% - Truststore with Intermediate CA (use for TLS validation)
 echo.
 echo Certificate Chain:
-echo   Root CA --signs--^> Intermediate CA --signs--^> Server Certificates (including MinIO)
+echo   Root CA --signs--^> Intermediate CA --signs--^> Server Certificates (including S3 Storage)
 echo.
 echo For TLS handshake:
-echo   - Servers present: connector-a.p12, connector-b.p12, or MinIO PEM files
+echo   - Servers present: connector-a.p12, connector-b.p12, or S3 Storage PEM files
 echo   - Clients trust: %TRUSTSTORE% (contains Intermediate CA)
 echo.
-echo For MinIO Docker setup:
-echo   Copy to MinIO certs directory:
-echo     - private.key --^> /root/.minio/certs/private.key
-echo     - public.crt --^> /root/.minio/certs/public.crt
+echo For S3 Storage Docker setup:
+echo   Copy to S3 Storage certs directory:
+echo     - private.key --^> /root/.s3storage/certs/private.key
+echo     - public.crt --^> /root/.s3storage/certs/public.crt
 echo   Or mount as Docker volume:
-echo     - ./private.key:/root/.minio/certs/private.key
-echo     - ./public.crt:/root/.minio/certs/public.crt
+echo     - ./private.key:/root/.s3storage/certs/private.key
+echo     - ./public.crt:/root/.s3storage/certs/public.crt
 echo.
 echo For nginx (UI-A and UI-B) Docker setup:
 echo   Copy to nginx ssl directory or mount as Docker volume:

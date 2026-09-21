@@ -36,6 +36,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 public class CatalogIT extends BaseIntegrationTest {
 
+    private static final String CATALOG_REQUEST_PATH = "/" + TENANT_ID + "/catalog/request";
+    private static final String CATALOG_DATASETS_PATH = "/" + TENANT_ID + "/catalog/datasets/";
+
     @Autowired
     private CatalogRepository catalogRepository;
 
@@ -63,7 +66,11 @@ public class CatalogIT extends BaseIntegrationTest {
     @BeforeEach
     public void populateCatalog() {
         catalog = CatalogMockObjectUtil.createNewCatalog();
+        catalog.injectTenantId(TENANT_ID);
         dataset = catalog.getDataset().stream().findFirst().orElse(null);
+        if (dataset != null) {
+            dataset.injectTenantId(TENANT_ID);
+        }
 
         catalogRepository.save(catalog);
         datasetRepository.saveAll(catalog.getDataset());
@@ -93,7 +100,7 @@ public class CatalogIT extends BaseIntegrationTest {
         assertNotNull(body);
         final ResultActions result =
                 mockMvc.perform(
-                        post("/catalog/request")
+                        post(CATALOG_REQUEST_PATH)
                                 .content(body)
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isOk())
@@ -128,7 +135,7 @@ public class CatalogIT extends BaseIntegrationTest {
         assertNotNull(body);
         final ResultActions result =
                 mockMvc.perform(
-                        post("/catalog/request")
+                        post(CATALOG_REQUEST_PATH)
                                 .content(body)
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isNotFound())
@@ -149,7 +156,7 @@ public class CatalogIT extends BaseIntegrationTest {
         assertNotNull(body);
         final ResultActions result =
                 mockMvc.perform(
-                        post("/catalog/request")
+                        post(CATALOG_REQUEST_PATH)
                                 .content(body)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .header("Authorization", "Basic YXNkckBtYWlsLmNvbTpwYXNzd29yZA=="));
@@ -171,7 +178,7 @@ public class CatalogIT extends BaseIntegrationTest {
         assertNotNull(body);
         final ResultActions result =
                 mockMvc.perform(
-                        post("/catalog/request")
+                        post(CATALOG_REQUEST_PATH)
                                 .content(body)
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isBadRequest())
@@ -196,7 +203,7 @@ public class CatalogIT extends BaseIntegrationTest {
         assertNotNull(body);
         final ResultActions result =
                 mockMvc.perform(
-                        get("/catalog/datasets/" + dataset.getId())
+                        get(CATALOG_DATASETS_PATH + dataset.getId())
                                 .content(body)
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isOk())
@@ -219,7 +226,7 @@ public class CatalogIT extends BaseIntegrationTest {
         assertNotNull(body);
         final ResultActions result =
                 mockMvc.perform(
-                        get("/catalog/datasets/1")
+                        get(CATALOG_DATASETS_PATH + "1")
                                 .content(body)
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isNotFound())
@@ -244,7 +251,7 @@ public class CatalogIT extends BaseIntegrationTest {
         assertNotNull(body);
         final ResultActions result =
                 mockMvc.perform(
-                        get("/catalog/datasets/" + dataset.getId())
+                        get(CATALOG_DATASETS_PATH + dataset.getId())
                                 .content(body)
                                 .contentType(MediaType.APPLICATION_JSON));
         result.andExpect(status().isNotFound())
@@ -265,6 +272,7 @@ public class CatalogIT extends BaseIntegrationTest {
                 .hasPolicy(new HashSet<>())
                 .distribution(new HashSet<>(Collections.singletonList(CatalogMockObjectUtil.DISTRIBUTION)))
                 .build();
+        datasetNullPolicies.injectTenantId(TENANT_ID);
         datasetRepository.save(datasetNullPolicies);
 
         String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
@@ -272,7 +280,7 @@ public class CatalogIT extends BaseIntegrationTest {
         // when
         assertNotNull(body);
         final ResultActions result = mockMvc.perform(
-                get("/catalog/datasets/" + datasetNullPolicies.getId())
+                get(CATALOG_DATASETS_PATH + datasetNullPolicies.getId())
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -298,6 +306,7 @@ public class CatalogIT extends BaseIntegrationTest {
                 .id("no-distributions-dataset")
                 .hasPolicy(new HashSet<>(Collections.singletonList(CatalogMockObjectUtil.OFFER)))
                 .build();
+        datasetNoDistributions.injectTenantId(TENANT_ID);
         datasetRepository.save(datasetNoDistributions);
 
         String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
@@ -305,7 +314,7 @@ public class CatalogIT extends BaseIntegrationTest {
         // when
         assertNotNull(body);
         final ResultActions result = mockMvc.perform(
-                get("/catalog/datasets/" + datasetNoDistributions.getId())
+                get(CATALOG_DATASETS_PATH + datasetNoDistributions.getId())
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -332,6 +341,7 @@ public class CatalogIT extends BaseIntegrationTest {
                 .hasPolicy(new HashSet<>(Collections.singletonList(CatalogMockObjectUtil.OFFER)))
                 .distribution(new HashSet<>())
                 .build();
+        datasetNullDistributions.injectTenantId(TENANT_ID);
         datasetRepository.save(datasetNullDistributions);
 
         String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
@@ -339,7 +349,7 @@ public class CatalogIT extends BaseIntegrationTest {
         // when
         assertNotNull(body);
         final ResultActions result = mockMvc.perform(
-                get("/catalog/datasets/" + datasetNullDistributions.getId())
+                get(CATALOG_DATASETS_PATH + datasetNullDistributions.getId())
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -370,6 +380,7 @@ public class CatalogIT extends BaseIntegrationTest {
                 .hasPolicy(new HashSet<>(Collections.singletonList(CatalogMockObjectUtil.OFFER)))
                 .distribution(new HashSet<>(Collections.singletonList(distributionNullServices)))
                 .build();
+        datasetNullServices.injectTenantId(TENANT_ID);
         datasetRepository.save(datasetNullServices);
 
         String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
@@ -377,7 +388,7 @@ public class CatalogIT extends BaseIntegrationTest {
         // when
         assertNotNull(body);
         final ResultActions result = mockMvc.perform(
-                get("/catalog/datasets/" + datasetNullServices.getId())
+                get(CATALOG_DATASETS_PATH + datasetNullServices.getId())
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -405,6 +416,7 @@ public class CatalogIT extends BaseIntegrationTest {
                 .distribution(new HashSet<>(Collections.singletonList(CatalogMockObjectUtil.DISTRIBUTION)))
                 .artifact(CatalogMockObjectUtil.ARTIFACT_FILE)  // Using local artifact type
                 .build();
+        datasetNoFile.injectTenantId(TENANT_ID);
         datasetRepository.save(datasetNoFile);
 
         String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
@@ -412,7 +424,7 @@ public class CatalogIT extends BaseIntegrationTest {
         // when
         assertNotNull(body);
         final ResultActions result = mockMvc.perform(
-                get("/catalog/datasets/" + datasetNoFile.getId())
+                get(CATALOG_DATASETS_PATH + datasetNoFile.getId())
                         .content(body)
                         .contentType(MediaType.APPLICATION_JSON));
 
@@ -467,3 +479,4 @@ public class CatalogIT extends BaseIntegrationTest {
         }
     }
 }
+

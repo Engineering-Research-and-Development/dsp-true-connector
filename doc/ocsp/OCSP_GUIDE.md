@@ -93,8 +93,6 @@ openssl ocsp -issuer ocsp/ocsp_components.pem -issuer subca/subca.pem -no_nonce 
 
 openssl ocsp -issuer ocsp/ocsp_components.pem -issuer subca/subca.pem -no_nonce -cert certs/connector.pem -CAfile subca/subca.pem -text -url http://localhost:8888
 
-openssl ocsp -issuer ocsp/ocsp_components.pem -issuer subca/subca.pem -no_nonce -cert certs/daps.pem -CAfile subca/subca.pem -text -url http://localhost:8888
-
 openssl ocsp -issuer ocsp/ocsp_components.pem -issuer subca/subca.pem -no_nonce -cert certs/connectorA.pem -CAfile subca/subca.pem -text -url http://localhost:8888
 
 openssl ocsp -issuer ocsp/ocsp_subcas.pem -issuer ca/ca.pem -no_nonce -cert subca/subca.pem -CAfile ca/ca.pem -text -url http://localhost:8887
@@ -156,10 +154,6 @@ openssl pkcs12 -export -out connectorexternalrevoked.p12 -in connectorexternalre
 openssl pkcs12 -in connectorexternalrevoked.p12 -clcerts -nokeys -out connectorexternalrevoked.crt -passin pass:password
 openssl pkcs12 -in connectorexternalrevoked.p12 -out connectorexternalrevoked.cert -nokeys -nodes -passin pass:password
 
-openssl pkcs12 -export -out daps.p12 -in daps.pem -inkey daps-key.pem -passout pass:password
-openssl pkcs12 -in daps.p12 -clcerts -nokeys -out daps.crt -passin pass:password
-openssl pkcs12 -in daps.p12 -out daps.cert -nokeys -nodes -passin pass:password
-
 openssl pkcs12 -export -out connector.p12 -in connector.pem -inkey connector-key.pem -passout pass:password
 openssl pkcs12 -in connector.p12 -clcerts -nokeys -out connector.crt -passin pass:password
 openssl pkcs12 -in connector.p12 -out connector.cert -nokeys -nodes -passin pass:password
@@ -172,8 +166,6 @@ openssl pkcs12 -export -out connectornorevocation.p12 -in connectornorevocation.
 openssl pkcs12 -in connectornorevocation.p12 -clcerts -nokeys -out connectornorevocation.crt -passin pass:password
 openssl pkcs12 -in connectornorevocation.p12 -out connectornorevocation.cert -nokeys -nodes -passin pass:password
 
-openssl pkcs8 -topk8 -inform PEM -outform PEM -in daps-key.pem -out testdelete1.pem -nocrypt
-openssl rsa -in testdelete1.pem -out daps.key
 openssl pkcs8 -topk8 -inform PEM -outform PEM -in connectorA-key.pem -out testdelete2.pem -nocrypt
 openssl rsa -in testdelete2.pem -out connectorA.key
 openssl pkcs8 -topk8 -inform PEM -outform PEM -in connector-key.pem -out testdelete3.pem -nocrypt
@@ -186,10 +178,6 @@ openssl pkcs8 -topk8 -inform PEM -outform PEM -in connectornorevocation-key.pem 
 openssl rsa -in testdelete6.pem -out connectornorevocation.key
 
 
-chmod 664 daps.cert
-chmod 664 daps.crt
-chmod 664 daps.key
-chmod 664 daps.p12
 chmod 664 connectorA.cert
 chmod 664 connectorA.crt
 chmod 664 connectorA.key

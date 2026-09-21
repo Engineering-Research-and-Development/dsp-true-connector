@@ -27,6 +27,8 @@ import it.eng.tools.s3.service.BucketCredentialsService;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.service.FieldEncryptionService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -93,10 +95,18 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
     @Autowired
     private BucketCredentialsService bucketCredentialsService;
 
+    @Autowired
+    private FieldEncryptionService fieldEncryptionService;
+
     private Dataset mockDataset;
 
     @BeforeEach
     public void setup() {
+        mockDataset = getMockDataset();
+    }
+
+    @AfterEach
+    public void cleanup() {
         transferProcessRepository.deleteAll();
         agreementRepository.deleteAll();
         contractNegotiationRepository.deleteAll();
@@ -111,7 +121,6 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 }
             }
         }
-        mockDataset = getMockDataset();
     }
 
     @Test
@@ -126,6 +135,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 .assigner(NegotiationMockObjectUtil.ASSIGNER)
                 .target(mockDataset.getId())
                 .timestamp(Instant.now().toString())
+                .tenantId(TENANT_ID)
                 .permission(Collections.singletonList(Permission.Builder.newInstance()
                         .action(Action.USE)
                         .constraint(Collections.singletonList(Constraint.Builder.newInstance()
@@ -138,7 +148,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
 
         agreementRepository.save(agreement);
 
-        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0, TENANT_ID);
 
         policyEnforcementRepository.save(policyEnforcement);
 
@@ -172,6 +182,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 .dataAddress(dataAddress)
                 .state(TransferState.STARTED)
                 .format(DataTransferFormat.HTTP_PULL.format())
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
@@ -200,8 +211,9 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
         assertNotNull(apiResp.getData());
         assertEquals("Download started for transfer process " + transferProcessStarted.getId(), apiResp.getData());
 
-        // check if the TransferProcess is inserted in the database
-        TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessStarted.getId()).get();
+        // Download is async — poll until COMPLETED or timeout
+        TransferProcess transferProcessFromDb = awaitTransferState(
+                transferProcessStarted.getId(), TransferState.COMPLETED, 5000);
 
         // this one should be skipped since we cannot guarantee that download will be done - transferProcessFromDb.isDownloaded() equal true
 //        assertNotNull(transferProcessFromDb.getDataId());
@@ -210,6 +222,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
         assertEquals(transferProcessStarted.getAgreementId(), transferProcessFromDb.getAgreementId());
         assertEquals(transferProcessStarted.getCallbackAddress(), transferProcessFromDb.getCallbackAddress());
         assertEquals(TransferState.COMPLETED, transferProcessFromDb.getState());
+        assertFalse(transferProcessFromDb.isDownloadInProgress());
         // +1 from test
         assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
     }
@@ -234,11 +247,12 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                                 .rightOperand("5")
                                 .build()))
                         .build()))
+                .tenantId(TENANT_ID)
                 .build();
 
         agreementRepository.save(agreement);
 
-        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0, TENANT_ID);
 
         policyEnforcementRepository.save(policyEnforcement);
 
@@ -269,7 +283,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                         .build(),
                 EndpointProperty.Builder.newInstance()
                         .name(S3Utils.SECRET_KEY)
-                        .value(bucketCredentials.getSecretKey())
+                        .value(fieldEncryptionService.encrypt(bucketCredentials.getSecretKey()))
                         .build(),
                 EndpointProperty.Builder.newInstance()
                         .name(S3Utils.ENDPOINT_OVERRIDE)
@@ -292,6 +306,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 .datasetId(mockDataset.getId())
                 .state(TransferState.STARTED)
                 .format(DataTransferFormat.HTTP_PUSH.format())
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
@@ -320,8 +335,9 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
         assertNotNull(apiResp.getData());
         assertEquals("Download started for transfer process " + transferProcessStarted.getId(), apiResp.getData());
 
-        // check if the TransferProcess is inserted in the database
-        TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessStarted.getId()).get();
+        // Download is async — poll until COMPLETED or timeout
+        TransferProcess transferProcessFromDb = awaitTransferState(
+                transferProcessStarted.getId(), TransferState.COMPLETED, 5000);
 
         // this one should be skipped since we cannot guarantee that download will be done - transferProcessFromDb.isDownloaded() equal true
 //        assertNotNull(transferProcessFromDb.getDataId());
@@ -330,6 +346,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
         assertEquals(transferProcessStarted.getAgreementId(), transferProcessFromDb.getAgreementId());
         assertEquals(transferProcessStarted.getCallbackAddress(), transferProcessFromDb.getCallbackAddress());
         assertEquals(TransferState.COMPLETED, transferProcessFromDb.getState());
+        assertFalse(transferProcessFromDb.isDownloadInProgress());
         // +1 from test
         assertEquals(startingTransferProcessCollectionSize + 1, transferProcessRepository.findAll().size());
     }
@@ -363,7 +380,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
 
         insertContractNegotiation(agreement, consumerPid, providerPid);
 
-        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0);
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), 0, null);
 
         policyEnforcementRepository.save(policyEnforcement);
 
@@ -393,6 +410,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 .dataAddress(dataAddress)
                 .state(TransferState.STARTED)
                 .format(DataTransferFormat.HTTP_PULL.format())
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
@@ -402,7 +420,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                         get(ApiEndpoints.TRANSFER_DATATRANSFER_V1 + "/" + transferProcessStarted.getId() + "/download")
                                 .contentType(MediaType.APPLICATION_JSON));
 
-        result.andExpect(status().isBadRequest());
+        result.andExpect(status().isAccepted());
 
         TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
         };
@@ -411,14 +429,16 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
         GenericApiResponse<String> apiResp = CatalogSerializer.deserializePlain(json, typeRef);
 
         assertNotNull(apiResp);
-        assertFalse(apiResp.isSuccess());
-        assertNull(apiResp.getData());
+        assertTrue(apiResp.isSuccess());
 
+        // Download failed asynchronously — wait briefly then verify state unchanged
+        Thread.sleep(3000);
 
         // check if the TransferProcess is inserted in the database
         TransferProcess transferProcessFromDb = transferProcessRepository.findById(transferProcessStarted.getId()).get();
 
         assertFalse(transferProcessFromDb.isDownloaded());
+        assertFalse(transferProcessFromDb.isDownloadInProgress());
         assertNull(transferProcessFromDb.getDataId());
         assertEquals(transferProcessStarted.getConsumerPid(), transferProcessFromDb.getConsumerPid());
         assertEquals(transferProcessStarted.getProviderPid(), transferProcessFromDb.getProviderPid());
@@ -435,9 +455,35 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 .agreement(agreement)
                 .consumerPid(consumerPid)
                 .providerPid(providerPid)
+                .tenantId(TENANT_ID)
                 .state(ContractNegotiationState.FINALIZED)
                 .build();
         contractNegotiationRepository.save(contractNegotiation);
+    }
+
+    /**
+     * Polls the repository until the transfer process reaches the expected state or the timeout elapses.
+     *
+     * @param transferProcessId the ID of the transfer process to poll
+     * @param expectedState the state to wait for
+     * @param timeoutMs maximum time in milliseconds to wait
+     * @return the transfer process once it reaches the expected state
+     * @throws AssertionError if the state is not reached within the timeout
+     */
+    private TransferProcess awaitTransferState(String transferProcessId, TransferState expectedState, long timeoutMs)
+            throws InterruptedException {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < deadline) {
+            TransferProcess tp = transferProcessRepository.findByIdAndTenantId(transferProcessId, TENANT_ID).orElseThrow();
+            if (expectedState.equals(tp.getState())) {
+                return tp;
+            }
+            Thread.sleep(500);
+        }
+        TransferProcess tp = transferProcessRepository.findById(transferProcessId).orElseThrow();
+        assertEquals(expectedState, tp.getState(),
+                "Transfer process did not reach state " + expectedState + " within " + timeoutMs + "ms");
+        return tp;
     }
 
     @Test
@@ -484,6 +530,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 .dataAddress(dataAddress)
                 .state(TransferState.STARTED)
                 .format(DataTransferFormat.HTTP_PULL.format())
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
@@ -560,6 +607,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 .dataAddress(dataAddress)
                 .state(TransferState.STARTED)
                 .format(DataTransferFormat.HTTP_PULL.format())
+                .tenantId(TENANT_ID)
                 .build();
         transferProcessRepository.save(transferProcessStarted);
 
