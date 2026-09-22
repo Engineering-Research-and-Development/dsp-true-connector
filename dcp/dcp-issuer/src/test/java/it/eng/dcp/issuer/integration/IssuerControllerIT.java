@@ -22,8 +22,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
@@ -59,10 +59,10 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
     @Autowired
     private BaseDidDocumentConfiguration config;
 
-    @MockBean
+    @MockitoBean
     private DidResolverService didResolverService;
 
-    @MockBean
+    @MockitoBean
     private CredentialDeliveryService credentialDeliveryService;
 
     private static final String ISSUER_DID = "did:test:issuer";
