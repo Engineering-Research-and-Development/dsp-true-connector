@@ -104,6 +104,7 @@ public class ConnectorSecurityConfig {
     /**
      * Constructs the config and resolves the active authentication mode and DCP flag.
      *
+     * @param dcpVerifierAuthenticationProvider the DCP verifier authentication provider
      * @param environment the Spring environment
      */
     public ConnectorSecurityConfig(DcpVerifierAuthenticationProvider dcpVerifierAuthenticationProvider, Environment environment) {
