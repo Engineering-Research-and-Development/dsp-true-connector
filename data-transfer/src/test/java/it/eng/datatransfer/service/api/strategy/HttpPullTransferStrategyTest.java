@@ -4,7 +4,9 @@ import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.BucketCredentialsService;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.TenantBucketResolver;
@@ -44,6 +46,8 @@ public class HttpPullTransferStrategyTest {
     private TenantBucketResolver tenantBucketResolver;
     @Mock
     private HttpURLConnection mockConnection;
+    @Mock
+    private BucketCredentialsService bucketCredentialsService;
 
     private HttpPullTransferStrategy strategy;
 
@@ -65,7 +69,7 @@ public class HttpPullTransferStrategyTest {
     @BeforeEach
     void setUp() {
         // Runnable::run is a valid Executor that executes tasks on the calling thread
-        strategy = new HttpPullTransferStrategy(s3ClientService, s3Properties, Runnable::run, tenantBucketResolver);
+        strategy = new HttpPullTransferStrategy(s3ClientService, s3Properties, Runnable::run, tenantBucketResolver, bucketCredentialsService);
         lenient().when(tenantBucketResolver.resolveBucketName(any())).thenReturn(TEST_BUCKET);
     }
 
@@ -320,8 +324,12 @@ public class HttpPullTransferStrategyTest {
         // Configure S3Properties mock
         when(s3Properties.getEndpoint()).thenReturn(TEST_ENDPOINT);
         when(s3Properties.getRegion()).thenReturn(TEST_REGION);
-        when(s3Properties.getAccessKey()).thenReturn(TEST_ACCESS_KEY);
-        when(s3Properties.getSecretKey()).thenReturn(TEST_SECRET_KEY);
+        BucketCredentialsEntity bucketCredentialsEntity = BucketCredentialsEntity.Builder.newInstance()
+                .accessKey(TEST_ACCESS_KEY)
+                .secretKey(TEST_SECRET_KEY)
+                .bucketName(TEST_BUCKET)
+                .build();
+        when(bucketCredentialsService.getBucketCredentials(TEST_BUCKET)).thenReturn(bucketCredentialsEntity);
 
         return Map.of(
                 S3Utils.OBJECT_KEY, objectKey,

@@ -6,7 +6,9 @@ import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.repository.ArtifactRepository;
+import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.BucketCredentialsService;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.AuditEventPublisher;
@@ -30,16 +32,18 @@ public class ArtifactService {
     private final S3Properties s3Properties;
     private final TenantBucketResolver tenantBucketResolver;
     private final AuditEventPublisher auditEventPublisher;
+    private final BucketCredentialsService bucketCredentialsService;
 
     public ArtifactService(ArtifactRepository artifactRepository, S3ClientService s3ClientService,
                            S3Properties s3Properties, TenantBucketResolver tenantBucketResolver,
-                           AuditEventPublisher auditEventPublisher) {
+                           AuditEventPublisher auditEventPublisher, BucketCredentialsService bucketCredentialsService) {
         super();
         this.artifactRepository = artifactRepository;
         this.s3ClientService = s3ClientService;
         this.s3Properties = s3Properties;
         this.tenantBucketResolver = tenantBucketResolver;
         this.auditEventPublisher = auditEventPublisher;
+        this.bucketCredentialsService = bucketCredentialsService;
     }
 
     public List<Artifact> getArtifacts(String artifactId) {
@@ -129,15 +133,16 @@ public class ArtifactService {
         ContentDisposition contentDisposition = ContentDisposition.attachment()
                 .filename(file.getOriginalFilename())
                 .build();
+        BucketCredentialsEntity bucketCredentialsEntity = bucketCredentialsService.getBucketCredentials(tenantBucketResolver.resolveBucketName());
 
         // Upload file to S3
         Map<String, String> destinationS3Properties = Map.of(
                 S3Utils.OBJECT_KEY, fileId,
-                S3Utils.BUCKET_NAME, tenantBucketResolver.resolveBucketName(),
+                S3Utils.BUCKET_NAME, bucketCredentialsEntity.getBucketName(),
                 S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
                 S3Utils.REGION, s3Properties.getRegion(),
-                S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),
-                S3Utils.SECRET_KEY, s3Properties.getSecretKey()
+                S3Utils.ACCESS_KEY, bucketCredentialsEntity.getAccessKey(),
+                S3Utils.SECRET_KEY, bucketCredentialsEntity.getSecretKey()
         );
         try {
             s3ClientService.uploadFile(

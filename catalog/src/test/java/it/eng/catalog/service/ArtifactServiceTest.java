@@ -5,7 +5,9 @@ import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.repository.ArtifactRepository;
+import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.BucketCredentialsService;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantBucketResolver;
@@ -46,6 +48,8 @@ public class ArtifactServiceTest {
     private ArtifactRepository artifactRepository;
     @Mock
     private AuditEventPublisher auditEventPublisher;
+    @Mock
+    private BucketCredentialsService bucketCredentialsService;
     @InjectMocks
     private ArtifactService artifactService;
 
@@ -84,10 +88,14 @@ public class ArtifactServiceTest {
     @DisplayName("Upload file - success")
     public void uploadFile_success() throws IOException {
         when(tenantBucketResolver.resolveBucketName()).thenReturn(TEST_BUCKET);
+        BucketCredentialsEntity bucketCredentialsEntity = BucketCredentialsEntity.Builder.newInstance()
+                .accessKey(TEST_ACCESS_KEY)
+                .secretKey(TEST_SECRET_KEY)
+                .bucketName(TEST_BUCKET)
+                .build();
+        when(bucketCredentialsService.getBucketCredentials(TEST_BUCKET)).thenReturn(bucketCredentialsEntity);
         when(s3Properties.getEndpoint()).thenReturn(TEST_ENDPOINT);
         when(s3Properties.getRegion()).thenReturn(TEST_REGION);
-        when(s3Properties.getAccessKey()).thenReturn(TEST_ACCESS_KEY);
-        when(s3Properties.getSecretKey()).thenReturn(TEST_SECRET_KEY);
         when(file.getContentType()).thenReturn(MediaType.APPLICATION_JSON_VALUE);
         when(file.getOriginalFilename()).thenReturn(CatalogMockObjectUtil.ARTIFACT_FILE.getFilename());
         when(file.getInputStream()).thenReturn(inputStream);
@@ -106,10 +114,14 @@ public class ArtifactServiceTest {
     @DisplayName("Upload file - fail")
     public void uploadFile_fail() throws IOException {
         when(tenantBucketResolver.resolveBucketName()).thenReturn(TEST_BUCKET);
+        BucketCredentialsEntity bucketCredentialsEntity = BucketCredentialsEntity.Builder.newInstance()
+                .accessKey(TEST_ACCESS_KEY)
+                .secretKey(TEST_SECRET_KEY)
+                .bucketName(TEST_BUCKET)
+                .build();
+        when(bucketCredentialsService.getBucketCredentials(TEST_BUCKET)).thenReturn(bucketCredentialsEntity);
         when(s3Properties.getEndpoint()).thenReturn(TEST_ENDPOINT);
         when(s3Properties.getRegion()).thenReturn(TEST_REGION);
-        when(s3Properties.getAccessKey()).thenReturn(TEST_ACCESS_KEY);
-        when(s3Properties.getSecretKey()).thenReturn(TEST_SECRET_KEY);
 
         when(file.getContentType()).thenReturn(MediaType.APPLICATION_JSON_VALUE);
         when(file.getInputStream()).thenReturn(inputStream);

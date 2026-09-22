@@ -2,7 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.7.2] — Dashboard Metrics API
+## [0.7.4] - 22.09.2026
+
+### Fixed
+- Refactor to use tenant-specific bucket credentials in S3 operations
+
+## [0.7.2] - 17.09.2026 — Dashboard Metrics API
 
 ### Added
 - Dashboard admin API endpoints for `/api/v1/dashboard/summary`, `/api/v1/dashboard/runtime`, `/api/v1/dashboard/negotiations`, `/api/v1/dashboard/transfers`, and `/api/v1/dashboard/events`.

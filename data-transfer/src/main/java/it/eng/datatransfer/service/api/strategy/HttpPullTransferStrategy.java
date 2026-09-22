@@ -5,7 +5,9 @@ import it.eng.datatransfer.model.EndpointProperty;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.service.api.DataTransferStrategy;
 import it.eng.tools.model.IConstants;
+import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.BucketCredentialsService;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.TenantBucketResolver;
@@ -42,6 +44,7 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
     private static final int FALLBACK_READ_TIMEOUT = 1_800_000; // 30 minutes
     /** Assumed minimum transfer speed in bytes/sec used for dynamic timeout (1 MB/s). */
     private static final long MIN_TRANSFER_SPEED_BYTES_PER_SEC = 1024L * 1024L;
+    private final BucketCredentialsService bucketCredentialsService;
 
     /**
      * Creates an instance using the Spring-managed {@code httpPullTransferExecutor} bean.
@@ -50,16 +53,18 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
      * @param s3Properties S3 configuration properties
      * @param transferExecutor Spring-managed executor for running async transfer tasks
      * @param tenantBucketResolver resolves the S3 bucket name for the current tenant
+     * @param bucketCredentialsService service for retrieving bucket credentials
      */
     @Autowired
     public HttpPullTransferStrategy(S3ClientService s3ClientService,
                                     S3Properties s3Properties,
                                     @Qualifier("httpPullTransferExecutor") Executor transferExecutor,
-                                    TenantBucketResolver tenantBucketResolver) {
+                                    TenantBucketResolver tenantBucketResolver, BucketCredentialsService bucketCredentialsService) {
         this.s3ClientService = s3ClientService;
         this.s3Properties = s3Properties;
         this.transferExecutor = transferExecutor;
         this.tenantBucketResolver = tenantBucketResolver;
+        this.bucketCredentialsService = bucketCredentialsService;
     }
 
     @Override
@@ -131,13 +136,16 @@ public class HttpPullTransferStrategy implements DataTransferStrategy {
 
                 String contentType = connection.getContentType();
                 String contentDisposition = connection.getHeaderField(HttpHeaders.CONTENT_DISPOSITION);
+
+                BucketCredentialsEntity bucketCredentialsEntity = bucketCredentialsService.getBucketCredentials(bucketName);
+
                 Map<String, String> destinationS3Properties = Map.of(
                         S3Utils.OBJECT_KEY, key,
-                        S3Utils.BUCKET_NAME, bucketName,
+                        S3Utils.BUCKET_NAME, bucketCredentialsEntity.getBucketName(),
                         S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
                         S3Utils.REGION, s3Properties.getRegion(),
-                        S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),
-                        S3Utils.SECRET_KEY, s3Properties.getSecretKey()
+                        S3Utils.ACCESS_KEY, bucketCredentialsEntity.getAccessKey(),
+                        S3Utils.SECRET_KEY, bucketCredentialsEntity.getSecretKey()
                 );
                 // uploadFile is non-blocking and returns a CompletableFuture<String>.
                 // Returning it here produces a CompletableFuture<CompletableFuture<String>>,

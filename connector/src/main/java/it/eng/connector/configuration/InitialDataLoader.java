@@ -9,7 +9,9 @@ import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.TenantRepository;
+import it.eng.tools.s3.model.BucketCredentialsEntity;
 import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.BucketCredentialsService;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
@@ -47,15 +49,18 @@ public class InitialDataLoader {
     private final S3Properties s3Properties;
     private final AuditEventPublisher publisher;
     private final TenantRepository tenantRepository;
+    private final BucketCredentialsService bucketCredentialsService;
 
     public InitialDataLoader(MongoTemplate mongoTemplate, Environment environment, S3ClientService s3ClientService,
                              S3BucketProvisionService s3BucketProvisionService, S3Properties s3Properties,
-                             AuditEventPublisher publisher, TenantRepository tenantRepository) {
+                             AuditEventPublisher publisher, TenantRepository tenantRepository,
+                             BucketCredentialsService bucketCredentialsService) {
         this.mongoTemplate = mongoTemplate;
         this.environment = environment;
         this.s3ClientService = s3ClientService;
         this.s3BucketProvisionService = s3BucketProvisionService;
         this.s3Properties = s3Properties;
+        this.bucketCredentialsService = bucketCredentialsService;
         this.publisher = publisher;
         this.tenantRepository = tenantRepository;
     }
@@ -156,6 +161,8 @@ public class InitialDataLoader {
             // to upload the mock file — the per-bucket user's secret is stored encrypted and is
             // only needed for presigned-URL generation at request time.
             s3BucketProvisionService.ensureBucketCredentials(bucketName);
+            BucketCredentialsEntity bucketCredentialsEntity = bucketCredentialsService.getBucketCredentials(bucketName);
+
 
             ClassPathResource file = new ClassPathResource("ENG-employee.json");
             if (file.exists()) {
@@ -168,11 +175,11 @@ public class InitialDataLoader {
 
                 Map<String, String> destinationS3Properties = Map.of(
                         S3Utils.OBJECT_KEY, fileKey,
-                        S3Utils.BUCKET_NAME, bucketName,
+                        S3Utils.BUCKET_NAME, bucketCredentialsEntity.getBucketName(),
                         S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
                         S3Utils.REGION, s3Properties.getRegion(),
-                        S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),
-                        S3Utils.SECRET_KEY, s3Properties.getSecretKey()
+                        S3Utils.ACCESS_KEY, bucketCredentialsEntity.getAccessKey(),
+                        S3Utils.SECRET_KEY, bucketCredentialsEntity.getSecretKey()
                 );
 
                 s3ClientService.uploadFile(
