@@ -199,24 +199,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Download DCP Issuer Docker image artifact
-        if: matrix.requires-dcp == true
-        uses: actions/download-artifact@v8
-        with:
-          name: dcp-issuer-image
-          path: /tmp
-
-      - name: Load DCP Issuer Docker image
-        if: matrix.requires-dcp == true
-        run: docker load --input /tmp/dcp-issuer-image.tar
-
-      - name: Verify DCP Docker image
-        if: matrix.requires-dcp == true
-        run: |
-          echo "Verifying DCP Issuer image..."
-          docker images
-          docker inspect ${{ env.DCP_ISSUER_IMAGE_NAME }}:test
-
       - name: Start Docker Compose services
         run: docker compose -f ${{ matrix.docker-compose-file }} --env-file ./ci/docker/.env up -d
 
