@@ -66,6 +66,7 @@ echo "  3. Server certificates for connector-a and connector-b"
 echo "  4. S3 Storage certificate (PEM format)"
 echo "  5. UI-A and UI-B certificates (PEM format with fullchain)"
 echo "  6. Truststore with Intermediate CA certificate"
+echo "  7. Verifying Generated Certificates"
 echo ""
 echo "Configuration:"
 echo "  - connector-a SANs: ${SAN_CONNECTOR_A}"
@@ -500,11 +501,11 @@ echo "  - s3storage-temp.p12 (Temporary PKCS12 keystore, can be deleted)"
 echo ""
 
 ##################################################################
-# STEP 4b: Generate UI-A Certificate (PEM format for nginx)
+# STEP 5: Generate UI-A Certificate (PEM format for nginx)
 ##################################################################
 
 echo "=================================================================="
-echo "STEP 4b: Generating UI-A Certificate (PEM format for nginx)"
+echo "STEP 5a: Generating UI-A Certificate (PEM format for nginx)"
 echo "=================================================================="
 echo ""
 
@@ -622,11 +623,11 @@ echo "  - ui-a-temp.p12 (Temporary PKCS12 keystore, can be deleted)"
 echo ""
 
 ##################################################################
-# STEP 4c: Generate UI-B Certificate (PEM format for nginx)
+# STEP 5b: Generate UI-B Certificate (PEM format for nginx)
 ##################################################################
 
 echo "=================================================================="
-echo "STEP 4c: Generating UI-B Certificate (PEM format for nginx)"
+echo "STEP 5b: Generating UI-B Certificate (PEM format for nginx)"
 echo "=================================================================="
 echo ""
 
@@ -744,148 +745,11 @@ echo "  - ui-b-temp.p12 (Temporary PKCS12 keystore, can be deleted)"
 echo ""
 
 ##################################################################
-# STEP 4c: Generate DCP-Issuer Certificate (PEM format)
+# STEP 6: Create Truststore with Intermediate CA
 ##################################################################
 
 echo "=================================================================="
-echo "STEP 4c: Generating DCP-Issuer Certificate (PEM format)"
-echo "=================================================================="
-echo ""
-
-# DCP-Issuer Certificate Configuration
-SAN_DCP_ISSUER="DNS:localhost,DNS:dcp-issuer,IP:127.0.0.1"
-DCP_ISSUER_NAME="dcp-issuer"
-DCP_ISSUER_DN="CN=dcp-issuer, OU=Issuer, O=DSP True Connector, L=Belgrade, ST=Serbia, C=RS"
-DCP_ISSUER_KEYSTORE="dcp-issuer-temp.p12"
-DCP_ISSUER_ALIAS="dcp-issuer"
-
-echo "Generating key pair for DCP-Issuer..."
-keytool -genkeypair \
-    -alias "${DCP_ISSUER_ALIAS}" \
-    -keyalg "${KEY_ALG}" \
-    -keysize "${KEY_SIZE}" \
-    -dname "${DCP_ISSUER_DN}" \
-    -validity "${SERVER_VALIDITY}" \
-    -keystore "${DCP_ISSUER_KEYSTORE}" \
-    -storetype PKCS12 \
-    -storepass "${SERVER_PASSWORD}" \
-    -keypass "${SERVER_PASSWORD}" \
-    -ext KeyUsage:critical=digitalSignature,keyEncipherment \
-    -ext ExtendedKeyUsage=serverAuth,clientAuth \
-    -ext "SAN=${SAN_DCP_ISSUER}"
-
-echo "Done."
-echo ""
-
-echo "Generating Certificate Signing Request for DCP-Issuer..."
-keytool -certreq \
-    -alias "${DCP_ISSUER_ALIAS}" \
-    -keystore "${DCP_ISSUER_KEYSTORE}" \
-    -storetype PKCS12 \
-    -storepass "${SERVER_PASSWORD}" \
-    -file dcp-issuer.csr \
-    -ext KeyUsage:critical=digitalSignature,keyEncipherment \
-    -ext ExtendedKeyUsage=serverAuth,clientAuth \
-    -ext "SAN=${SAN_DCP_ISSUER}"
-
-echo "Done."
-echo ""
-
-echo "Signing DCP-Issuer certificate with Intermediate CA..."
-keytool -gencert \
-    -alias "${INTERMEDIATE_ALIAS}" \
-    -keystore "${INTERMEDIATE_KEYSTORE}" \
-    -storetype PKCS12 \
-    -storepass "${INTERMEDIATE_PASSWORD}" \
-    -infile dcp-issuer.csr \
-    -outfile dcp-issuer-signed.crt \
-    -validity "${SERVER_VALIDITY}" \
-    -ext KeyUsage:critical=digitalSignature,keyEncipherment \
-    -ext ExtendedKeyUsage=serverAuth,clientAuth \
-    -ext "SAN=${SAN_DCP_ISSUER}" \
-    -rfc
-
-echo "Done."
-echo ""
-
-echo "Importing certificate chain for DCP-Issuer..."
-echo "  - Importing Root CA..."
-keytool -importcert \
-    -alias "${ROOT_ALIAS}" \
-    -keystore "${DCP_ISSUER_KEYSTORE}" \
-    -storetype PKCS12 \
-    -storepass "${SERVER_PASSWORD}" \
-    -file root-ca.crt \
-    -noprompt
-
-echo "  - Importing Intermediate CA..."
-keytool -importcert \
-    -alias "${INTERMEDIATE_ALIAS}" \
-    -keystore "${DCP_ISSUER_KEYSTORE}" \
-    -storetype PKCS12 \
-    -storepass "${SERVER_PASSWORD}" \
-    -file intermediate-ca.crt \
-    -noprompt
-
-echo "  - Importing signed DCP-Issuer certificate..."
-keytool -importcert \
-    -alias "${DCP_ISSUER_ALIAS}" \
-    -keystore "${DCP_ISSUER_KEYSTORE}" \
-    -storetype PKCS12 \
-    -storepass "${SERVER_PASSWORD}" \
-    -file dcp-issuer-signed.crt \
-    -noprompt
-
-echo "Done."
-echo ""
-
-echo "Exporting DCP-Issuer private key to PEM format (dcp-issuer.key)..."
-if command -v openssl &> /dev/null; then
-    openssl pkcs12 -in "${DCP_ISSUER_KEYSTORE}" -nocerts -nodes -passin pass:"${SERVER_PASSWORD}" -out dcp-issuer.key
-    echo "Done."
-else
-    echo "WARNING: OpenSSL not found. Cannot convert to PEM format automatically."
-    echo "Please convert manually using:"
-    echo "  openssl pkcs12 -in dcp-issuer-temp.p12 -nocerts -nodes -passin pass:${SERVER_PASSWORD} -out dcp-issuer.key"
-    echo ""
-    echo "Creating placeholder dcp-issuer.key file..."
-    cat > dcp-issuer.key << EOF
-# DCP-Issuer Private Key
-# Convert from dcp-issuer-temp.p12 using OpenSSL
-# Command: openssl pkcs12 -in dcp-issuer-temp.p12 -nocerts -nodes -passin pass:${SERVER_PASSWORD} -out dcp-issuer.key
-EOF
-fi
-echo ""
-
-echo "Exporting DCP-Issuer certificate to PEM format (dcp-issuer.crt)..."
-if command -v openssl &> /dev/null; then
-    openssl pkcs12 -in "${DCP_ISSUER_KEYSTORE}" -clcerts -nokeys -passin pass:"${SERVER_PASSWORD}" -out dcp-issuer.crt
-    echo "Done."
-else
-    echo "WARNING: OpenSSL not found. Using keytool export..."
-    keytool -exportcert \
-        -alias "${DCP_ISSUER_ALIAS}" \
-        -keystore "${DCP_ISSUER_KEYSTORE}" \
-        -storetype PKCS12 \
-        -storepass "${SERVER_PASSWORD}" \
-        -file dcp-issuer.crt \
-        -rfc
-    echo "Done."
-fi
-echo ""
-echo "DCP-Issuer certificate files generated:"
-echo "  - dcp-issuer.key (Private key in PEM format)"
-echo "  - dcp-issuer.crt (Certificate in PEM format, signed by Intermediate CA)"
-echo "  - SAN: ${SAN_DCP_ISSUER}"
-echo "  - dcp-issuer-temp.p12 (Temporary PKCS12 keystore, can be deleted)"
-echo ""
-
-##################################################################
-# STEP 5: Create Truststore with Intermediate CA
-##################################################################
-
-echo "=================================================================="
-echo "STEP 5: Creating Truststore"
+echo "STEP 6: Creating Truststore"
 echo "=================================================================="
 echo ""
 
@@ -914,11 +778,11 @@ echo "Done."
 echo ""
 
 ##################################################################
-# STEP 6: Verification
+# STEP 7: Verification
 ##################################################################
 
 echo "=================================================================="
-echo "STEP 6: Verifying Generated Certificates"
+echo "STEP 7: Verifying Generated Certificates"
 echo "=================================================================="
 echo ""
 
@@ -969,8 +833,8 @@ echo "=================================================================="
 echo ""
 
 rm -f *.csr
-rm -f root-ca.crt
-rm -f intermediate-ca.crt
+# rm -f root-ca.crt
+# rm -f intermediate-ca.crt
 rm -f s3storage-signed.crt
 rm -f ui-a-signed.crt
 rm -f ui-b-signed.crt
@@ -1012,7 +876,7 @@ echo "  14. ui-b-fullchain.crt - UI-B fullchain certificate (server cert + inter
 echo "  15. ui-b-temp.p12 - UI-B certificate in PKCS12 format (optional, can be deleted)"
 echo "  16. dcp-issuer.key - DCP-Issuer private key in PEM format (for DCP-Issuer certs/dcp-issuer.key)"
 echo "  17. dcp-issuer.crt - DCP-Issuer certificate in PEM format (for DCP-Issuer certs/dcp-issuer.crt)"
-echo "  18. dcp-issuer-temp.p12 - DCP-Issuer certificate in PKCS12 format (optional, can be deleted)"
+echo "  18. dcp-issuer.p12 - DCP-Issuer certificate in PKCS12 format"
 echo "  19. ${TRUSTSTORE} - Truststore with Intermediate CA (use for TLS validation)"
 echo ""
 echo "Certificate Chain:"
@@ -1047,7 +911,7 @@ echo "Update your application.properties:"
 echo "  spring.ssl.bundle.jks.connector.keystore.location=classpath:connector-a.p12 (or connector-b.p12)"
 echo "  spring.ssl.bundle.jks.connector.keystore.password=${SERVER_PASSWORD}"
 echo "  spring.ssl.bundle.jks.connector.keystore.alias=connector-a (or connector-b)"
-echo"   spring.ssl.bundle.jks.connector.key.password=${SERVER_PASSWORD}"
+echo "  spring.ssl.bundle.jks.connector.key.password=${SERVER_PASSWORD}"
 echo "  spring.ssl.bundle.jks.connector.truststore.location=classpath:${TRUSTSTORE}"
 echo "  spring.ssl.bundle.jks.connector.truststore.password=${TRUSTSTORE_PASSWORD}"
 echo ""

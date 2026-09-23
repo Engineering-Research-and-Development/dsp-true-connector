@@ -1,20 +1,19 @@
 
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:21-jre-alpine
 
 # Set working directory
-WORKDIR /app
+WORKDIR /home/nobody
 
 # Copy the executable JAR (note: Maven creates dcp-issuer-exec.jar due to classifier)
-COPY target/dcp-issuer-exec.jar /app/dcp-issuer.jar
+COPY target/dcp-issuer-exec.jar /home/nobody/dcp-issuer.jar
 
 # Expose the application port
 EXPOSE 8084
 
-# Set environment variables
-ENV JAVA_OPTS="-Xmx512m -Xms256m"
+USER 65534
 
 # Run the application
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/dcp-issuer.jar"]
+ENTRYPOINT ["java", "-jar",  "/home/nobody/dcp-issuer.jar"]
 
 
 

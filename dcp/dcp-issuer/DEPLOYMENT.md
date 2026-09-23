@@ -48,7 +48,7 @@ The issuer needs a cryptographic key for signing credentials. Generate one using
 
 ```bash
 keytool -genkeypair -alias issuer \
-  -keyalg EC -keysize 256 -sigalg SHA256withECDSA \
+  -keyalg EC -groupname secp256r1 -sigalg SHA256withECDSA \
   -validity 365 -keystore eckey-issuer.p12 \
   -storetype PKCS12 -storepass password \
   -dname "CN=Issuer, OU=DCP, O=TrueConnector, L=City, ST=State, C=IT"
