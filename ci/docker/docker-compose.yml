@@ -53,6 +53,7 @@ services:
       - KEYSTORE_ALIAS=${CONNECTOR_A_KEYSTORE_ALIAS}
       - TRUSTSTORE_NAME=${TRUSTSTORE_NAME}
       - TRUSTSTORE_PASSWORD=${TRUSTSTORE_PASSWORD}
+      - CONNECTOR_A_DCP_ENABLED=${CONNECTOR_A_DCP_ENABLED}
     volumes:
       - ./connector_a_resources:/config
       - ./tc_cert:/cert
@@ -100,6 +101,7 @@ services:
       - KEYSTORE_ALIAS=${CONNECTOR_B_KEYSTORE_ALIAS}
       - TRUSTSTORE_NAME=${TRUSTSTORE_NAME}
       - TRUSTSTORE_PASSWORD=${TRUSTSTORE_PASSWORD}
+      - CONNECTOR_B_DCP_ENABLED=${CONNECTOR_B_DCP_ENABLED}
     volumes:
       - ./connector_b_resources:/config
       - ./tc_cert:/cert
