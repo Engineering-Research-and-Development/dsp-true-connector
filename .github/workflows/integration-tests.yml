@@ -17,7 +17,7 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   CONNECTOR_IMAGE_NAME: engineering-research-and-development/dsp-true-connector
-  DCP_ISSUER_IMAGE_NAME: dcp-issuer
+  DCP_ISSUER_IMAGE_NAME: engineering-research-and-development/dcp-issuer
 
 jobs:
   build-connector-image:
