@@ -1,47 +1,32 @@
 services:
-  ### minio (simulated S3 cloud storage)
-  minio:
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
-    networks:
-      - network-a
-      - network-b
-    container_name: minio
+  ### simulated S3 cloud storage
+  rustfs:
+    image: rustfs/rustfs:1.0.0-rc.6
+    container_name: s3storage
     ports:
       - "9000:9000"
       - "9001:9001"
     volumes:
-      - minio_data:/data
+      - rustfs_data:/data
     environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
-    command: server /data --console-address ":9001"
+      - RUSTFS_VOLUMES=/data
+      - RUSTFS_ADDRESS=0.0.0.0:9000
+      - RUSTFS_CONSOLE_ENABLE=true
+      - RUSTFS_CONSOLE_ADDRESS=0.0.0.0:9001
+      - RUSTFS_ACCESS_KEY=rustfsadmin
+      - RUSTFS_SECRET_KEY=rustfsadmin
+    networks:
+      - network-a
+      - network-b
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/health" ]
       interval: 30s
       timeout: 20s
       retries: 3
 
-  minio-init:
-    image: minio/mc
-    networks:
-      - network-a
-      - network-b
-    container_name: minio-init
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      mc alias set myminio http://minio:9000 minioadmin minioadmin;
-      mc mb myminio/dsp-true-connector-provider --ignore-existing;
-      mc mb myminio/dsp-true-connector-consumer --ignore-existing;
-      echo 'MinIO buckets created successfully';
-      exit 0;
-      "
-
   ### DCP Issuer Service
   dcp-issuer:
-    image: dcp-issuer:test
+    image: ghcr.io/engineering-research-and-development/dcp-issuer:test
     container_name: dcp-issuer
     networks:
       - network-a
@@ -68,8 +53,7 @@ services:
       # Mount external cert directory for .p12 keystores and certificates
       - ./issuer/cert:/cert
     depends_on:
-      mongodb:
-        condition: service_healthy
+      - mongodb
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8084/actuator/health"]
@@ -77,6 +61,18 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  mongodb:
+    container_name: mongodb
+    image: mongo:7.0.12
+    networks:
+      - network-a
+      - network-b
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongodb-data:/data/db
+      - mongodb-configdb:/data/configdb
 
   ### connector instance a
   connector-a:
@@ -97,19 +93,16 @@ services:
       - "0.0.0.0:8888:2222" #FTP
       - "8080:8080"
     depends_on:
-      - mongodb
-      - minio
+      - mongodb-a
+      - rustfs
       - dcp-issuer
     environment:
       - "JDK_JAVA_OPTIONS=-Xmx1024m"
-      - CALLBACK_ADDRESS=${CONNECTOR_A_CALLBACK_ADDRESS}
+      - BASE_URL=${CONNECTOR_A_BASE_URL}
       - KEYSTORE_NAME=${CONNECTOR_A_KEYSTORE_NAME}
       - KEY_PASSWORD=${CONNECTOR_A_KEY_PASSWORD}
       - KEYSTORE_PASSWORD=${CONNECTOR_A_KEYSTORE_PASSWORD}
       - KEYSTORE_ALIAS=${CONNECTOR_A_KEYSTORE_ALIAS}
-      - DAPS_KEYSTORE_NAME=${DAPS_KEYSTORE_NAME}
-      - DAPS_KEYSTORE_PASSWORD=${DAPS_KEYSTORE_PASSWORD}
-      - DAPS_KEYSTORE_ALIAS=${DAPS_KEYSTORE_ALIAS}
       - TRUSTSTORE_NAME=${TRUSTSTORE_NAME}
       - TRUSTSTORE_PASSWORD=${TRUSTSTORE_PASSWORD}
       - CONNECTOR_A_DCP_ENABLED=true
@@ -119,23 +112,16 @@ services:
       - ./:/home/nobody/ftp
       - tc_a_log:/var/log/tc
 
-  mongodb:
-    container_name: mongodb
+  mongodb-a:
+    container_name: mongodb-a
     image: mongo:7.0.12
     networks:
       - network-a
-      - network-b
     ports:
       - "27017:27017"
     volumes:
-      - mongodb-data:/data/db
-      - mongodb-configdb:/data/configdb
-    healthcheck:
-      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      - mongodb-data_a:/data/db
+      - mongodb-configdb_a:/data/configdb
 
   ### connector instance b
   connector-b:
@@ -156,19 +142,16 @@ services:
       - "0.0.0.0:8889:2222" #FTP
       - "8090:8080"
     depends_on:
-      - mongodb
-      - minio
+      - mongodb-b
+      - rustfs
       - dcp-issuer
     environment:
       - "JDK_JAVA_OPTIONS=-Xmx1024m"
-      - CALLBACK_ADDRESS=${CONNECTOR_B_CALLBACK_ADDRESS}
+      - BASE_URL=${CONNECTOR_B_BASE_URL}
       - KEYSTORE_NAME=${CONNECTOR_B_KEYSTORE_NAME}
       - KEY_PASSWORD=${CONNECTOR_B_KEY_PASSWORD}
       - KEYSTORE_PASSWORD=${CONNECTOR_B_KEYSTORE_PASSWORD}
       - KEYSTORE_ALIAS=${CONNECTOR_B_KEYSTORE_ALIAS}
-      - DAPS_KEYSTORE_NAME=${DAPS_KEYSTORE_NAME}
-      - DAPS_KEYSTORE_PASSWORD=${DAPS_KEYSTORE_PASSWORD}
-      - DAPS_KEYSTORE_ALIAS=${DAPS_KEYSTORE_ALIAS}
       - TRUSTSTORE_NAME=${TRUSTSTORE_NAME}
       - TRUSTSTORE_PASSWORD=${TRUSTSTORE_PASSWORD}
       - CONNECTOR_B_DCP_ENABLED=true
@@ -178,14 +161,29 @@ services:
       - ./:/home/nobody/ftp
       - tc_b_log:/var/log/tc
 
+  mongodb-b:
+    container_name: mongodb-b
+    image: mongo:7.0.12
+    networks:
+      - network-b
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongodb-data_b:/data/db
+      - mongodb-configdb_b:/data/configdb
+
 networks:
   network-a: { }
   network-b: { }
 
 volumes:
-  minio_data: { }
+  rustfs_data: { }
   tc_a_log: { }
+  mongodb-data_a: { }
+  mongodb-configdb_a: { }
+  tc_b_log: { }
+  mongodb-data_b: { }
+  mongodb-configdb_b: { }
   mongodb-data: { }
   mongodb-configdb: { }
-  tc_b_log: { }
 

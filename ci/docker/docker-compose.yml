@@ -70,8 +70,8 @@ services:
     volumes:
       - mongodb-data_a:/data/db
       - mongodb-configdb_a:/data/configdb
-  ### instance b
 
+  ### instance b
   connector-b:
     image: ghcr.io/engineering-research-and-development/dsp-true-connector:test
     deploy:
