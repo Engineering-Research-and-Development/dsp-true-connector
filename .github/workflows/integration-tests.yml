@@ -98,10 +98,9 @@ jobs:
         with:
           context: ./dcp/dcp-issuer
           file: ./dcp/dcp-issuer/Dockerfile
-          push: false
+          push: true
           tags: ${{ env.REGISTRY }}/${{ env.DCP_ISSUER_IMAGE_NAME }}:test
           labels: ${{ steps.meta.outputs.labels }}
-#          outputs: type=docker,dest=/tmp/dcp-issuer-image.tar
 
       - name: Upload DCP Issuer Docker image artifact
         uses: actions/upload-artifact@v7
