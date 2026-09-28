@@ -53,6 +53,32 @@ EC_KEY_OUT="eckey-issuer.key"
 EC_CERT_OUT="eckey-issuer.crt"
 
 # ==================================================================
+# 3. EC Connector A (secp256r1 ECDSA) Constants
+# ==================================================================
+EC_CONNECTOR_A_KEYSTORE="eckey-connector-a.p12"
+EC_CONNECTOR_A_DN="CN=Issuer, OU=DCP, O=TrueConnector, L=City, ST=State, C=IT"
+EC_CONNECTOR_A_CSR="eckey-connector-a.csr"
+EC_CONNECTOR_A_ISSUER_ALIAS="connector-a"
+EC_CONNECTOR_A_SIGNED_CERT="eckey-connector-a-signed.crt"
+EC_CONNECTOR_A_KEY_OUT="eckey-connector-a.key"
+EC_CONNECTOR_A_CERT_OUT="eckey-connector-a.crt"
+EC_CONNECTOR_A_PASSWORD="password"
+EC_CONNECTOR_A_SAN="DNS:localhost,DNS:connector-a,IP:127.0.0.1"
+
+# ==================================================================
+# 4. EC Connector B (secp256r1 ECDSA) Constants
+# ==================================================================
+EC_CONNECTOR_B_KEYSTORE="eckey-connector-b.p12"
+EC_CONNECTOR_B_DN="CN=Issuer, OU=DCP, O=TrueConnector, L=City, ST=State, C=IT"
+EC_CONNECTOR_B_CSR="eckey-connector-b.csr"
+EC_CONNECTOR_B_ISSUER_ALIAS="connector-b"
+EC_CONNECTOR_B_SIGNED_CERT="eckey-connector-b-signed.crt"
+EC_CONNECTOR_B_KEY_OUT="eckey-connector-b.key"
+EC_CONNECTOR_B_CERT_OUT="eckey-connector-b.crt"
+EC_CONNECTOR_B_PASSWORD="password"
+EC_CONNECTOR_B_SAN="DNS:localhost,DNS:connector-b,IP:127.0.0.1"
+
+# ==================================================================
 # Pre-requisite Checks
 # ==================================================================
 if ! command -v keytool >/dev/null 2>&1; then
@@ -328,6 +354,266 @@ else
 fi
 echo "EC Issuer certificate generation complete."
 
+# ==================================================================================
+# SECTION 3: Generate & Sign EC Connector-A (Consumer) Certificate (secp256r1 ECDSA)
+# ==================================================================================
+echo ""
+echo "=============================================================================="
+echo "3. Generating EC Connector-A (Consumer)  Certificate ($EC_GROUP_NAME ECDSA)..."
+echo "=============================================================================="
+
+# Clean up old EC files
+rm -f "$EC_CONNECTOR_A_KEYSTORE" "$EC_CONNECTOR_A_CSR" "$EC_CONNECTOR_A_SIGNED_CERT" "$EC_CONNECTOR_A_KEY_OUT" "$EC_CONNECTOR_A_CERT_OUT" 2>/dev/null || true
+
+echo "Generating EC key pair for Connector A..."
+if ! keytool -genkeypair \
+    -alias "$EC_CONNECTOR_A_ISSUER_ALIAS" \
+    -keyalg "$EC_KEY_ALG" \
+    -groupname "$EC_GROUP_NAME" \
+    -sigalg "$EC_SIG_ALG" \
+    -validity "$EC_VALIDITY" \
+    -keystore "$EC_CONNECTOR_A_KEYSTORE" \
+    -storetype PKCS12 \
+    -storepass "$EC_CONNECTOR_A_PASSWORD" \
+    -keypass "$EC_CONNECTOR_A_PASSWORD" \
+    -dname "$EC_CONNECTOR_A_DN" \
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment \
+    -ext ExtendedKeyUsage=serverAuth,clientAuth \
+    -ext "SAN=$EC_CONNECTOR_A_SAN"; then
+    echo "ERROR: Failed to generate EC key pair for Connector A" >&2
+    exit 1
+fi
+echo "Done."
+
+echo "Generating Certificate Signing Request for EC Connector A..."
+if ! keytool -certreq \
+    -alias "$EC_CONNECTOR_A_ISSUER_ALIAS" \
+    -keystore "$EC_CONNECTOR_A_KEYSTORE" \
+    -storetype PKCS12 \
+    -storepass "$EC_CONNECTOR_A_PASSWORD" \
+    -sigalg "$EC_SIG_ALG" \
+    -file "$EC_CONNECTOR_A_CSR" \
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment \
+    -ext ExtendedKeyUsage=serverAuth,clientAuth \
+    -ext "SAN=$EC_CONNECTOR_A_SAN"; then
+    echo "ERROR: Failed to generate CSR for EC Connector A" >&2
+    exit 1
+fi
+echo "Done."
+
+echo "Signing EC Connector A certificate with Intermediate CA..."
+if ! keytool -gencert \
+    -alias "$INTERMEDIATE_ALIAS" \
+    -keystore "$INTERMEDIATE_KEYSTORE" \
+    -storetype PKCS12 \
+    -storepass "$INTERMEDIATE_PASSWORD" \
+    -infile "$EC_CONNECTOR_A_CSR" \
+    -outfile "$EC_CONNECTOR_A_SIGNED_CERT" \
+    -validity "$EC_VALIDITY" \
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment \
+    -ext ExtendedKeyUsage=serverAuth,clientAuth \
+    -ext "SAN=$EC_CONNECTOR_A_SAN" \
+    -rfc; then
+    echo "ERROR: Failed to sign EC certificate for Connector A" >&2
+    exit 1
+fi
+echo "Done."
+
+echo "Importing certificate chain for EC Connector A into $EC_CONNECTOR_A_KEYSTORE..."
+echo "  - Importing Root CA..."
+keytool -importcert \
+    -alias "$ROOT_ALIAS" \
+    -keystore "$EC_CONNECTOR_A_KEYSTORE" \
+    -storetype PKCS12 \
+    -storepass "$EC_CONNECTOR_A_PASSWORD" \
+    -file "$ROOT_CERT_FILE" \
+    -noprompt
+
+echo "  - Importing Intermediate CA..."
+keytool -importcert \
+    -alias "$INTERMEDIATE_ALIAS" \
+    -keystore "$EC_CONNECTOR_A_KEYSTORE" \
+    -storetype PKCS12 \
+    -storepass "$EC_CONNECTOR_A_PASSWORD" \
+    -file "$INTERMEDIATE_CERT_FILE" \
+    -noprompt
+
+echo "  - Importing signed EC Connector A certificate..."
+if ! keytool -importcert \
+    -alias "$EC_ISSUER_ALIAS" \
+    -keystore "$EC_CONNECTOR_A_KEYSTORE" \
+    -storetype PKCS12 \
+    -storepass "$EC_CONNECTOR_A_PASSWORD" \
+    -file "$EC_CONNECTOR_A_SIGNED_CERT" \
+    -noprompt; then
+    echo "ERROR: Failed to import certificate chain for EC Connector A" >&2
+    exit 1
+fi
+echo "Done."
+
+echo "Exporting EC Connector A private key to PEM format ($EC_CONNECTOR_A_KEY_OUT)..."
+if openssl pkcs12 -in "$EC_CONNECTOR_A_KEYSTORE" -nocerts -nodes -passin "pass:$EC_CONNECTOR_A_PASSWORD" -out "$EC_CONNECTOR_A_KEY_OUT" 2>/dev/null; then
+    echo "Done."
+else
+    echo "WARNING: OpenSSL not found or failed. Using alternative method..."
+    echo "You will need to manually convert $EC_CONNECTOR_A_KEYSTORE to $EC_CONNECTOR_A_KEY_OUT"
+    echo "Command: openssl pkcs12 -in $EC_CONNECTOR_A_KEYSTORE -nocerts -nodes -passin pass:$EC_CONNECTOR_A_PASSWORD -out $EC_CONNECTOR_A_KEY_OUT"
+    echo ""
+    echo "Creating placeholder $EC_CONNECTOR_A_KEY_OUT file..."
+    printf "# EC Connector A Private Key\n# Convert from %s using OpenSSL\n# Command: openssl pkcs12 -in %s -nocerts -nodes -passin pass:%s -out %s\n" \
+        "$EC_CONNECTOR_A_KEYSTORE" "$EC_CONNECTOR_A_KEYSTORE" "$EC_CONNECTOR_A_PASSWORD" "$EC_CONNECTOR_A_KEY_OUT" > "$EC_CONNECTOR_A_KEY_OUT"
+fi
+echo ""
+
+echo "Exporting EC Connector A certificate to PEM format ($EC_CONNECTOR_A_CERT_OUT)..."
+if openssl pkcs12 -in "$EC_CONNECTOR_A_KEYSTORE" -clcerts -nokeys -passin "pass:$EC_CONNECTOR_A_PASSWORD" -out "$EC_CONNECTOR_A_CERT_OUT" 2>/dev/null; then
+    echo "Done."
+else
+    echo "WARNING: OpenSSL not found. Using keytool export..."
+    if ! keytool -exportcert \
+        -alias "$EC_CONNECTOR_A_ISSUER_ALIAS" \
+        -keystore "$EC_CONNECTOR_A_KEYSTORE" \
+        -storetype PKCS12 \
+        -storepass "$EC_CONNECTOR_A_PASSWORD" \
+        -file "$EC_CONNECTOR_A_CERT_OUT" \
+        -rfc; then
+        echo "ERROR: Failed to export EC Connector A certificate" >&2
+        exit 1
+    fi
+    echo "Done."
+fi
+echo "EC Connector A certificate generation complete."
+
+# ==================================================================================
+# SECTION 4: Generate & Sign EC Connector-B (Provider) Certificate (secp256r1 ECDSA)
+# ==================================================================================
+echo ""
+echo "=============================================================================="
+echo "4. Generating EC Connector-B (Provider)  Certificate ($EC_GROUP_NAME ECDSA)..."
+echo "=============================================================================="
+
+# Clean up old EC files
+rm -f "$EC_CONNECTOR_B_KEYSTORE" "$EC_CONNECTOR_B_CSR" "$EC_CONNECTOR_B_SIGNED_CERT" "$EC_CONNECTOR_B_KEY_OUT" "$EC_CONNECTOR_B_CERT_OUT" 2>/dev/null || true
+
+echo "Generating EC key pair for Connector-B..."
+if ! keytool -genkeypair \
+    -alias "$EC_CONNECTOR_B_ISSUER_ALIAS" \
+    -keyalg "$EC_KEY_ALG" \
+    -groupname "$EC_GROUP_NAME" \
+    -sigalg "$EC_SIG_ALG" \
+    -validity "$EC_VALIDITY" \
+    -keystore "$EC_CONNECTOR_B_KEYSTORE" \
+    -storetype PKCS12 \
+    -storepass "$EC_CONNECTOR_B_PASSWORD" \
+    -keypass "$EC_CONNECTOR_B_PASSWORD" \
+    -dname "$EC_CONNECTOR_B_DN" \
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment \
+    -ext ExtendedKeyUsage=serverAuth,clientAuth \
+    -ext "SAN=$EC_CONNECTOR_B_SAN"; then
+    echo "ERROR: Failed to generate EC key pair for Connector B" >&2
+    exit 1
+fi
+echo "Done."
+
+echo "Generating Certificate Signing Request for EC Connector B..."
+if ! keytool -certreq \
+    -alias "$EC_CONNECTOR_B_ISSUER_ALIAS" \
+    -keystore "$EC_CONNECTOR_B_KEYSTORE" \
+    -storetype PKCS12 \
+    -storepass "$EC_CONNECTOR_B_PASSWORD" \
+    -sigalg "$EC_SIG_ALG" \
+    -file "$EC_CONNECTOR_B_CSR" \
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment \
+    -ext ExtendedKeyUsage=serverAuth,clientAuth \
+    -ext "SAN=$EC_CONNECTOR_B_SAN"; then
+    echo "ERROR: Failed to generate CSR for EC Connector B" >&2
+    exit 1
+fi
+echo "Done."
+
+echo "Signing EC Issuer certificate with Intermediate CA..."
+if ! keytool -gencert \
+    -alias "$INTERMEDIATE_ALIAS" \
+    -keystore "$INTERMEDIATE_KEYSTORE" \
+    -storetype PKCS12 \
+    -storepass "$INTERMEDIATE_PASSWORD" \
+    -infile "$EC_CONNECTOR_B_CSR" \
+    -outfile "$EC_CONNECTOR_B_SIGNED_CERT" \
+    -validity "$EC_VALIDITY" \
+    -ext KeyUsage:critical=digitalSignature,keyEncipherment \
+    -ext ExtendedKeyUsage=serverAuth,clientAuth \
+    -ext "SAN=$EC_CONNECTOR_B_SAN" \
+    -rfc; then
+    echo "ERROR: Failed to sign EC certificate for Connector B" >&2
+    exit 1
+fi
+echo "Done."
+
+echo "Importing certificate chain for EC Connector B into $EC_CONNECTOR_B_KEYSTORE..."
+echo "  - Importing Root CA..."
+keytool -importcert \
+    -alias "$ROOT_ALIAS" \
+    -keystore "$EC_CONNECTOR_B_KEYSTORE" \
+    -storetype PKCS12 \
+    -storepass "$EC_CONNECTOR_B_PASSWORD" \
+    -file "$ROOT_CERT_FILE" \
+    -noprompt
+
+echo "  - Importing Intermediate CA..."
+keytool -importcert \
+    -alias "$INTERMEDIATE_ALIAS" \
+    -keystore "$EC_CONNECTOR_B_KEYSTORE" \
+    -storetype PKCS12 \
+    -storepass "$EC_CONNECTOR_B_PASSWORD" \
+    -file "$INTERMEDIATE_CERT_FILE" \
+    -noprompt
+
+echo "  - Importing signed EC Connector B certificate..."
+if ! keytool -importcert \
+    -alias "$EC_ISSUER_ALIAS" \
+    -keystore "$EC_CONNECTOR_B_KEYSTORE" \
+    -storetype PKCS12 \
+    -storepass "$EC_CONNECTOR_B_PASSWORD" \
+    -file "$EC_CONNECTOR_B_SIGNED_CERT" \
+    -noprompt; then
+    echo "ERROR: Failed to import certificate chain for EC Connector B" >&2
+    exit 1
+fi
+echo "Done."
+
+echo "Exporting EC Connector B private key to PEM format ($EC_CONNECTOR_B_KEY_OUT)..."
+if openssl pkcs12 -in "$EC_CONNECTOR_B_KEYSTORE" -nocerts -nodes -passin "pass:$EC_CONNECTOR_B_PASSWORD" -out "$EC_CONNECTOR_B_KEY_OUT" 2>/dev/null; then
+    echo "Done."
+else
+    echo "WARNING: OpenSSL not found or failed. Using alternative method..."
+    echo "You will need to manually convert $EC_CONNECTOR_B_KEYSTORE to $EC_CONNECTOR_B_KEY_OUT"
+    echo "Command: openssl pkcs12 -in $EC_CONNECTOR_B_KEYSTORE -nocerts -nodes -passin pass:$EC_CONNECTOR_B_PASSWORD -out $EC_CONNECTOR_B_KEY_OUT"
+    echo ""
+    echo "Creating placeholder $EC_CONNECTOR_B_KEY_OUT file..."
+    printf "# EC Connector B Private Key\n# Convert from %s using OpenSSL\n# Command: openssl pkcs12 -in %s -nocerts -nodes -passin pass:%s -out %s\n" \
+        "$EC_CONNECTOR_B_KEYSTORE" "$EC_CONNECTOR_B_KEYSTORE" "$EC_CONNECTOR_B_PASSWORD" "$EC_CONNECTOR_B_KEY_OUT" > "$EC_CONNECTOR_B_KEY_OUT"
+fi
+echo ""
+
+echo "Exporting EC Connector B certificate to PEM format ($EC_CONNECTOR_B_CERT_OUT)..."
+if openssl pkcs12 -in "$EC_CONNECTOR_B_KEYSTORE" -clcerts -nokeys -passin "pass:$EC_CONNECTOR_B_PASSWORD" -out "$EC_CONNECTOR_B_CERT_OUT" 2>/dev/null; then
+    echo "Done."
+else
+    echo "WARNING: OpenSSL not found. Using keytool export..."
+    if ! keytool -exportcert \
+        -alias "$EC_CONNECTOR_B_ISSUER_ALIAS" \
+        -keystore "$EC_CONNECTOR_B_KEYSTORE" \
+        -storetype PKCS12 \
+        -storepass "$EC_CONNECTOR_A_PASSWORD" \B
+        -file "$EC_CONNECTOR_B_CERT_OUT" \
+        -rfc; then
+        echo "ERROR: Failed to export EC Connector B certificate" >&2
+        exit 1
+    fi
+    echo "Done."
+fi
+echo "EC Connector B certificate generation complete."
+
 echo ""
 echo "=================================================================="
 echo "Certificate generation completed successfully!"
@@ -341,5 +627,13 @@ echo "2. EC Issuer (secp256r1 ECDSA):"
 echo "   - Private Key: $EC_KEY_OUT"
 echo "   - Certificate: $EC_CERT_OUT (Signed by $INTERMEDIATE_ALIAS)"
 echo "   - Keystore:    $EC_KEYSTORE (PKCS12 with root & intermediate chain)"
+echo "3. EC Connector A (secp256r1 ECDSA):"
+echo "   - Private Key: $EC_CONNECTOR_A_KEY_OUT"
+echo "   - Certificate: $EC_CONNECTOR_A_CERT_OUT (Signed by $INTERMEDIATE_ALIAS)"
+echo "   - Keystore:    $EC_CONNECTOR_A_KEYSTORE (PKCS12 with root & intermediate chain)"
+echo "4. EC Connector B (secp256r1 ECDSA):"
+echo "   - Private Key: $EC_CONNECTOR_B_KEY_OUT"
+echo "   - Certificate: $EC_CONNECTOR_B_CERT_OUT (Signed by $INTERMEDIATE_ALIAS)"
+echo "   - Keystore:    $EC_CONNECTOR_B_KEYSTORE (PKCS12 with root & intermediate chain)"
 echo "=================================================================="
 echo ""
