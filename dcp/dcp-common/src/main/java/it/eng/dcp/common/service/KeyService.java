@@ -285,11 +285,9 @@ public class KeyService {
     public Map<String, Object> convertPublicKeyToJWK(DidDocumentConfig config, KeyPair keyPair) {
         String x = toBase64Url(((ECPublicKey) keyPair.getPublic()).getW().getAffineX());
         String y = toBase64Url(((ECPublicKey) keyPair.getPublic()).getW().getAffineY());
-        String d = toBase64Url(((ECPrivateKey) keyPair.getPrivate()).getS());
         String kid = config.getDid() + "#" + getKidFromPublicKey(config, keyPair);
         return Map.of(
                 "kty", "EC",
-                "d", d,
                 "use", "sig",
                 "crv", "P-256",
                 "kid", kid,

@@ -26,6 +26,7 @@ import java.security.KeyStore;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.Date;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -94,6 +95,25 @@ class KeyServiceTest {
         assertEquals(keyServiceSpy.getKidFromPublicKey(config), signing.getKeyID(), "kid must match computed kid from public key");
         assertNotNull(signing.toPublicJWK());
         assertEquals(Curve.P_256, signing.getCurve());
+    }
+
+    @Test
+    @DisplayName("convertPublicKeyToJWK exposes only public key material")
+    void convertPublicKeyToJWKExposesOnlyPublicKeyMaterial() throws Exception {
+        KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("EC");
+        keyPairGenerator.initialize(256);
+        KeyPair keyPair = keyPairGenerator.generateKeyPair();
+        DidDocumentConfig config = DidDocumentConfig.builder()
+                .did("did:web:example.com")
+                .build();
+
+        Map<String, Object> publicJwk = keyService.convertPublicKeyToJWK(config, keyPair);
+
+        assertEquals("EC", publicJwk.get("kty"));
+        assertEquals("P-256", publicJwk.get("crv"));
+        assertNotNull(publicJwk.get("x"));
+        assertNotNull(publicJwk.get("y"));
+        assertFalse(publicJwk.containsKey("d"));
     }
 
     @Test
