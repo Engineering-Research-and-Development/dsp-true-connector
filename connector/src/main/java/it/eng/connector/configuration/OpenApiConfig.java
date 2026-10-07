@@ -4,15 +4,18 @@ import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.parameters.Parameter;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.oas.models.tags.Tag;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.service.TenantContextHolder;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springdoc.core.customizers.OperationCustomizer;
 import org.springdoc.core.models.GroupedOpenApi;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.info.BuildProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -42,18 +45,18 @@ public class OpenApiConfig {
     /**
      * Creates OpenAPI metadata, server configuration, and the bearer authentication scheme.
      *
-     * @param projectVersion the connector version used in the API metadata
+     * @param buildProperties the connector build metadata
      * @param serverUrl the server URL displayed in the API documentation
      * @return the configured OpenAPI document
      */
     @Bean
     public OpenAPI openApiInfo(
-            @Value("${project.version:unknown}") final String projectVersion,
+            final BuildProperties buildProperties,
             @Value("${application.baseURL:/}") final String serverUrl) {
         return new OpenAPI()
                 .info(new Info()
                         .title("TRUE Connector API")
-                        .version(projectVersion)
+                        .version(buildProperties.getVersion())
                         .description("""
                                 Authenticate with `POST /api/v1/auth/login`, then use **Authorize** to provide the \
                                 returned JWT with the `bearerAuth` scheme. Use an `ADMIN` token for management \
@@ -78,6 +81,7 @@ public class OpenApiConfig {
                 .group("management-api")
                 .pathsToMatch("/api/**")
                 .addOperationCustomizer(managementTenantHeaderCustomizer())
+                .addOpenApiCustomizer(securityRequirementCustomizer())
                 .addOpenApiCustomizer(tagOrderingCustomizer())
                 .build();
     }
@@ -96,8 +100,28 @@ public class OpenApiConfig {
                         "/{tenantId}/negotiations/**",
                         "/{tenantId}/transfers/**",
                         "/{tenantId}/consumer/**")
+                .addOpenApiCustomizer(securityRequirementCustomizer())
                 .addOpenApiCustomizer(tagOrderingCustomizer())
                 .build();
+    }
+
+    /**
+     * Adds bearer authentication requirements to protected OpenAPI operations.
+     *
+     * @return the OpenAPI security customizer
+     */
+    @Bean
+    public OpenApiCustomizer securityRequirementCustomizer() {
+        return openApi -> {
+            if (openApi.getPaths() != null) {
+                openApi.getPaths().forEach((path, pathItem) -> {
+                    if (!path.startsWith(ApiEndpoints.AUTH_V1 + "/")) {
+                        pathItem.readOperations().forEach(operation ->
+                                operation.addSecurityItem(new SecurityRequirement().addList("bearerAuth")));
+                    }
+                });
+            }
+        };
     }
 
     /**
