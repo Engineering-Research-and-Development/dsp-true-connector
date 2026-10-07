@@ -137,13 +137,14 @@ public class OpenApiDocsLoader {
             }
             Map<String, Object> properties = immutableStringMap(fields);
             Object methodNameValue = properties.get("methodName");
-            if (methodNameValue != null && !(methodNameValue instanceof String)) {
+            boolean hasMethodName = properties.containsKey("methodName");
+            if (hasMethodName && !(methodNameValue instanceof String)) {
                 throw new IllegalArgumentException("An operation methodName must be a string");
             }
             Object methodParametersValue = properties.get("methodParameters");
             Optional<List<String>> methodParameters = properties.containsKey("methodParameters")
                     ? Optional.of(parseMethodParameters(methodParametersValue)) : Optional.empty();
-            String methodName = methodNameValue == null ? operationKey : (String) methodNameValue;
+            String methodName = hasMethodName ? (String) methodNameValue : operationKey;
             operations.put(operationKey, new OpenApiOperationDocs(methodName, methodParameters, properties));
         }
         return Collections.unmodifiableMap(operations);

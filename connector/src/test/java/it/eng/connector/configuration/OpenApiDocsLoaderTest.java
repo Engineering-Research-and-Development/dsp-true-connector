@@ -99,6 +99,40 @@ class OpenApiDocsLoaderTest {
     }
 
     @Test
+    @DisplayName("Present null method names reject their resource while absent names use operation keys")
+    void skipsResourceWithNullMethodNameAndFallsBackWhenMethodNameIsAbsent() throws IOException {
+        ResourcePatternResolver resolver = mock(ResourcePatternResolver.class);
+        when(resolver.getResources(DOCS_PATTERN)).thenReturn(new Resource[] {
+                resource("file:/openapi/null-method-name-docs.yaml", "null-method-name-docs.yaml", """
+                        tags:
+                          - name: Invalid
+                        operations:
+                          invalidOperation:
+                            methodName: null
+                        schemas:
+                          InvalidSchema: {}
+                        """),
+                resource("file:/openapi/valid-docs.yaml", "valid-docs.yaml", """
+                        tags:
+                          - name: Valid
+                        operations:
+                          validOperation: {}
+                        schemas:
+                          ValidSchema:
+                            type: object
+                        """)
+        });
+        when(resolver.getResources(EXAMPLES_PATTERN)).thenReturn(new Resource[0]);
+
+        OpenApiDocs documentation = new OpenApiDocsLoader(resolver).load();
+
+        assertEquals(List.of(Map.of("name", "Valid")), documentation.tags());
+        assertEquals(List.of("validOperation"), List.copyOf(documentation.operations().keySet()));
+        assertEquals("validOperation", documentation.operations().get("validOperation").methodName());
+        assertEquals(List.of("ValidSchema"), List.copyOf(documentation.schemas().keySet()));
+    }
+
+    @Test
     @DisplayName("Explicit null sections and method parameters reject their resources")
     void skipsResourcesWithNullSectionsOrInvalidMethodParameters() throws IOException {
         ResourcePatternResolver resolver = mock(ResourcePatternResolver.class);
