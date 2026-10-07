@@ -21,7 +21,7 @@
         <!-- Spring Boot -->
         <spring.boot.version>3.5.11</spring.boot.version>
         <!-- Springdoc OpenAPI -->
-        <springdoc-openapi-starter-webmvc-ui.version>3.1.1</springdoc-openapi-starter-webmvc-ui.version>
+        <springdoc-openapi-starter-webmvc-ui.version>2.8.17</springdoc-openapi-starter-webmvc-ui.version>
         <!-- Tomcat - override Boot BOM (CVE-2025-24813 and others) -->
         <tomcat.version>10.1.50</tomcat.version>
         <!-- Jackson - override Boot BOM (GHSA-72hv-8253-57qq DoS in async parser) -->
