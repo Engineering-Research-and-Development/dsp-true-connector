@@ -99,6 +99,90 @@ class OpenApiDocsLoaderTest {
     }
 
     @Test
+    @DisplayName("Explicit null sections and method parameters reject their resources")
+    void skipsResourcesWithNullSectionsOrInvalidMethodParameters() throws IOException {
+        ResourcePatternResolver resolver = mock(ResourcePatternResolver.class);
+        when(resolver.getResources(DOCS_PATTERN)).thenReturn(new Resource[] {
+                resource("file:/openapi/null-operations-docs.yaml", "null-operations-docs.yaml", """
+                        tags:
+                          - name: Null operations
+                        operations: null
+                        schemas:
+                          NullOperations: {}
+                        """),
+                resource("file:/openapi/null-tags-docs.yaml", "null-tags-docs.yaml", """
+                        tags: null
+                        operations:
+                          nullTags:
+                            methodName: nullTags
+                        schemas:
+                          NullTags: {}
+                        """),
+                resource("file:/openapi/null-schemas-docs.yaml", "null-schemas-docs.yaml", """
+                        tags:
+                          - name: Null schemas
+                        operations:
+                          nullSchemas:
+                            methodName: nullSchemas
+                        schemas: null
+                        """),
+                resource("file:/openapi/null-method-parameters-docs.yaml",
+                        "null-method-parameters-docs.yaml", """
+                        tags:
+                          - name: Null method parameters
+                        operations:
+                          nullMethodParameters:
+                            methodName: nullMethodParameters
+                            methodParameters: null
+                        schemas: {}
+                        """),
+                resource("file:/openapi/scalar-method-parameters-docs.yaml",
+                        "scalar-method-parameters-docs.yaml", """
+                        tags:
+                          - name: Scalar method parameters
+                        operations:
+                          scalarMethodParameters:
+                            methodName: scalarMethodParameters
+                            methodParameters: int
+                        schemas: {}
+                        """),
+                resource("file:/openapi/non-string-method-parameters-docs.yaml",
+                        "non-string-method-parameters-docs.yaml", """
+                        tags:
+                          - name: Non-string method parameters
+                        operations:
+                          nonStringMethodParameters:
+                            methodName: nonStringMethodParameters
+                            methodParameters:
+                              - int
+                              - 42
+                        schemas: {}
+                        """),
+                resource("file:/openapi/valid-docs.yaml", "valid-docs.yaml", """
+                        tags:
+                          - name: Valid
+                        operations:
+                          validOperation:
+                            methodName: validOperation
+                            methodParameters:
+                              - int
+                        schemas:
+                          ValidSchema:
+                            type: object
+                        """)
+        });
+        when(resolver.getResources(EXAMPLES_PATTERN)).thenReturn(new Resource[0]);
+
+        OpenApiDocs documentation = new OpenApiDocsLoader(resolver).load();
+
+        assertEquals(List.of(Map.of("name", "Valid")), documentation.tags());
+        assertEquals(List.of("validOperation"), List.copyOf(documentation.operations().keySet()));
+        assertEquals(List.of("int"),
+                documentation.operations().get("validOperation").methodParameters().orElseThrow());
+        assertEquals(List.of("ValidSchema"), List.copyOf(documentation.schemas().keySet()));
+    }
+
+    @Test
     @DisplayName("Documentation resources are merged in stable URL order")
     void loadsDocumentationResourcesInStableUrlOrder() throws IOException {
         ResourcePatternResolver resolver = mock(ResourcePatternResolver.class);

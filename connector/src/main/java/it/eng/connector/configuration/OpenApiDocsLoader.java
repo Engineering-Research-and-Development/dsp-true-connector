@@ -104,16 +104,15 @@ public class OpenApiDocsLoader {
     }
 
     private ParsedDocument parseDocument(final Map<?, ?> root) {
-        List<Map<String, Object>> tags = parseTags(root.get("tags"));
-        Map<String, OpenApiOperationDocs> operations = parseOperations(root.get("operations"));
-        Map<String, Object> schemas = parseMapping(root.get("schemas"), "schemas");
+        List<Map<String, Object>> tags = root.containsKey("tags") ? parseTags(root.get("tags")) : List.of();
+        Map<String, OpenApiOperationDocs> operations = root.containsKey("operations")
+                ? parseOperations(root.get("operations")) : Map.of();
+        Map<String, Object> schemas = root.containsKey("schemas")
+                ? parseMapping(root.get("schemas"), "schemas") : Map.of();
         return new ParsedDocument(tags, operations, schemas);
     }
 
     private List<Map<String, Object>> parseTags(final Object value) {
-        if (value == null) {
-            return List.of();
-        }
         if (!(value instanceof List<?> tagValues)) {
             throw new IllegalArgumentException("The tags value must be a list");
         }
@@ -128,9 +127,6 @@ public class OpenApiDocsLoader {
     }
 
     private Map<String, OpenApiOperationDocs> parseOperations(final Object value) {
-        if (value == null) {
-            return Map.of();
-        }
         if (!(value instanceof Map<?, ?> operationValues)) {
             throw new IllegalArgumentException("The operations value must be a mapping");
         }
@@ -145,17 +141,15 @@ public class OpenApiDocsLoader {
                 throw new IllegalArgumentException("An operation methodName must be a string");
             }
             Object methodParametersValue = properties.get("methodParameters");
-            Optional<List<String>> methodParameters = parseMethodParameters(methodParametersValue);
+            Optional<List<String>> methodParameters = properties.containsKey("methodParameters")
+                    ? Optional.of(parseMethodParameters(methodParametersValue)) : Optional.empty();
             String methodName = methodNameValue == null ? operationKey : (String) methodNameValue;
             operations.put(operationKey, new OpenApiOperationDocs(methodName, methodParameters, properties));
         }
         return Collections.unmodifiableMap(operations);
     }
 
-    private Optional<List<String>> parseMethodParameters(final Object value) {
-        if (value == null) {
-            return Optional.empty();
-        }
+    private List<String> parseMethodParameters(final Object value) {
         if (!(value instanceof List<?> parameterValues)) {
             throw new IllegalArgumentException("Operation methodParameters must be a list");
         }
@@ -166,13 +160,10 @@ public class OpenApiDocsLoader {
             }
             methodParameters.add(parameterType);
         }
-        return Optional.of(List.copyOf(methodParameters));
+        return List.copyOf(methodParameters);
     }
 
     private Map<String, Object> parseMapping(final Object value, final String name) {
-        if (value == null) {
-            return Map.of();
-        }
         if (!(value instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException("The " + name + " value must be a mapping");
         }
