@@ -79,6 +79,29 @@ class OpenApiDocsLoaderTest {
     }
 
     @Test
+    @DisplayName("Loads controller-keyed tag metadata")
+    void loadsControllerKeyedTagMetadata() throws IOException {
+        ResourcePatternResolver resolver = mock(ResourcePatternResolver.class);
+        when(resolver.getResources(DOCS_PATTERN)).thenReturn(new Resource[] {
+                resource("file:/openapi/tenants-docs.yaml", "tenants-docs.yaml", """
+                        tags:
+                          TenantAPIController:
+                            name: Tenant operations
+                            description: Tenant management endpoints.
+                        operations: {}
+                        schemas: {}
+                        """)
+        });
+        when(resolver.getResources(EXAMPLES_PATTERN)).thenReturn(new Resource[0]);
+
+        OpenApiDocs documentation = new OpenApiDocsLoader(resolver).load();
+
+        assertEquals(List.of(Map.of("TenantAPIController", Map.of(
+                "name", "Tenant operations",
+                "description", "Tenant management endpoints."))), documentation.tags());
+    }
+
+    @Test
     @DisplayName("Malformed YAML is skipped without preventing valid resources from loading")
     void skipsMalformedYamlAndLoadsValidResources() throws IOException {
         ResourcePatternResolver resolver = mock(ResourcePatternResolver.class);

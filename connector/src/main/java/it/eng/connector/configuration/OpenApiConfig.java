@@ -18,6 +18,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.util.Comparator;
 import java.util.List;
@@ -73,13 +74,15 @@ public class OpenApiConfig {
     /**
      * Creates the OpenAPI group for management endpoints.
      *
+     * @param openApiDocsCustomizer the YAML-backed operation customizer
      * @return the management API group
      */
     @Bean
-    public GroupedOpenApi managementApiGroup() {
+    public GroupedOpenApi managementApiGroup(final OpenApiDocsCustomizer openApiDocsCustomizer) {
         return GroupedOpenApi.builder()
                 .group("management-api")
                 .pathsToMatch("/api/**")
+                .addOperationCustomizer(openApiDocsCustomizer)
                 .addOperationCustomizer(managementTenantHeaderCustomizer())
                 .addOpenApiCustomizer(securityRequirementCustomizer())
                 .addOpenApiCustomizer(tagOrderingCustomizer())
@@ -89,10 +92,11 @@ public class OpenApiConfig {
     /**
      * Creates the OpenAPI group for tenant-scoped DSP protocol endpoints.
      *
+     * @param openApiDocsCustomizer the YAML-backed operation customizer
      * @return the DSP protocol API group
      */
     @Bean
-    public GroupedOpenApi dspProtocolGroup() {
+    public GroupedOpenApi dspProtocolGroup(final OpenApiDocsCustomizer openApiDocsCustomizer) {
         return GroupedOpenApi.builder()
                 .group("dsp-protocol")
                 .pathsToMatch(
@@ -100,9 +104,24 @@ public class OpenApiConfig {
                         "/{tenantId}/negotiations/**",
                         "/{tenantId}/transfers/**",
                         "/{tenantId}/consumer/**")
+                .addOperationCustomizer(openApiDocsCustomizer)
                 .addOpenApiCustomizer(securityRequirementCustomizer())
                 .addOpenApiCustomizer(tagOrderingCustomizer())
                 .build();
+    }
+
+    /**
+     * Creates the YAML-backed operation and schema customizer.
+     *
+     * @param docsLoader the loader for optional OpenAPI resources
+     * @param handlerMapping the registry used to resolve each handler's paths
+     * @return the OpenAPI documentation customizer
+     */
+    @Bean
+    public OpenApiDocsCustomizer openApiDocsCustomizer(
+            final OpenApiDocsLoader docsLoader,
+            final RequestMappingHandlerMapping handlerMapping) {
+        return new OpenApiDocsCustomizer(docsLoader, handlerMapping);
     }
 
     /**

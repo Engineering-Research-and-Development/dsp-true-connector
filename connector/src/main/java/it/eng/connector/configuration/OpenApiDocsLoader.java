@@ -113,8 +113,19 @@ public class OpenApiDocsLoader {
     }
 
     private List<Map<String, Object>> parseTags(final Object value) {
+        if (value instanceof Map<?, ?> controllerTags) {
+            List<Map<String, Object>> tags = new ArrayList<>();
+            for (Map.Entry<?, ?> entry : controllerTags.entrySet()) {
+                if (!(entry.getKey() instanceof String controllerName)
+                        || !(entry.getValue() instanceof Map<?, ?> metadata)) {
+                    throw new IllegalArgumentException("Each controller tag must have a mapping value");
+                }
+                tags.add(Map.of(controllerName, immutableStringMap(metadata)));
+            }
+            return List.copyOf(tags);
+        }
         if (!(value instanceof List<?> tagValues)) {
-            throw new IllegalArgumentException("The tags value must be a list");
+            throw new IllegalArgumentException("The tags value must be a list or controller mapping");
         }
         List<Map<String, Object>> tags = new ArrayList<>();
         for (Object tag : tagValues) {
