@@ -78,6 +78,14 @@ application.auth.provider=KEYCLOAK
 > **Note:** `provider=DISABLED` combined with `dcp.enabled=true` is explicitly rejected at startup
 > with an `IllegalStateException`.
 
+### Swagger/OpenAPI Documentation
+
+Swagger UI and the OpenAPI JSON endpoints are disabled by default. They are enabled only in the
+Docker demo and Terraform demo property files, where they are intended for seeded mock data. When
+enabled, the documentation endpoints are publicly reachable through the default security chain.
+This does not grant unauthenticated access to management or DSP operations; those requests remain
+subject to their existing security chains. Do not enable the documentation endpoints in production.
+
 ---
 
 ## Unified Authentication Contract (`/api/v1/auth/*`)
