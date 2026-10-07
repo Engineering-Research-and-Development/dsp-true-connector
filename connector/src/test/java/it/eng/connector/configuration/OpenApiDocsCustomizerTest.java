@@ -1,12 +1,14 @@
 package it.eng.connector.configuration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -97,7 +99,9 @@ class OpenApiDocsCustomizerTest {
 
         assertEquals(1, openAPI.getComponents().getExamples().size());
         Example registeredExample = openAPI.getComponents().getExamples().get("tenant-create.plain");
-        assertEquals("{\"name\":\"Acme\"}", registeredExample.getValue().toString());
+        JsonNode exampleValue = assertInstanceOf(JsonNode.class, registeredExample.getValue());
+        assertTrue(exampleValue.isObject());
+        assertEquals("Acme", exampleValue.get("name").asText());
         assertEquals("#/components/examples/tenant-create.plain",
                 operation.getRequestBody().getContent().get("application/json")
                         .getExamples().get("tenant-create").get$ref());
