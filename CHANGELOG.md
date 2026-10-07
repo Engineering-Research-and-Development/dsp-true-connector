@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.4] — Swagger API Documentation
+
+### Added
+- Swagger UI and OpenAPI 3.0 JSON dependency
+- properties for enabling Swagger UI and OpenAPI JSON endpoint
+
 ## [0.7.2] — Dashboard Metrics API
 
 ### Added

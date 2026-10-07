@@ -20,6 +20,8 @@
         <maven.build.timestamp.format>dd-MM-yyyy</maven.build.timestamp.format>
         <!-- Spring Boot -->
         <spring.boot.version>3.5.11</spring.boot.version>
+        <!-- Springdoc OpenAPI -->
+        <springdoc-openapi-starter-webmvc-ui.version>3.1.1</springdoc-openapi-starter-webmvc-ui.version>
         <!-- Tomcat - override Boot BOM (CVE-2025-24813 and others) -->
         <tomcat.version>10.1.50</tomcat.version>
         <!-- Jackson - override Boot BOM (GHSA-72hv-8253-57qq DoS in async parser) -->
@@ -95,6 +97,11 @@
                         <artifactId>android-json</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc-openapi-starter-webmvc-ui.version}</version>
             </dependency>
             <dependency>
                 <groupId>it.eng</groupId>
