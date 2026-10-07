@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.4] — Swagger API Documentation
+
+### Added
+- Swagger UI and OpenAPI 3.0 JSON dependency
+- springdoc-openapi-starter-webmvc-ui.version = 2.8.17 aligned with SpringBoot 3 used in project
+- properties for enabling Swagger UI and OpenAPI JSON endpoint
+
 ## [0.7.2] — Dashboard Metrics API
 
 ### Added
