@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -12,10 +13,14 @@ import io.swagger.v3.oas.models.Paths;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springdoc.core.customizers.GlobalOpenApiCustomizer;
 import org.springdoc.core.customizers.OpenApiCustomizer;
+import org.springdoc.core.customizers.OperationCustomizer;
 import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.boot.info.BuildProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.util.Properties;
 import java.util.Set;
@@ -26,6 +31,9 @@ class OpenApiConfigTest {
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withUserConfiguration(OpenApiConfig.class)
             .withBean(BuildProperties.class, OpenApiConfigTest::buildProperties)
+            .withBean(OpenApiDocsLoader.class,
+                    () -> new OpenApiDocsLoader(new PathMatchingResourcePatternResolver()))
+            .withBean(RequestMappingHandlerMapping.class, () -> mock(RequestMappingHandlerMapping.class))
             .withPropertyValues(
                     "application.baseURL=https://connector.example.test",
                     "project.version=not-the-build-version");
@@ -68,7 +76,23 @@ class OpenApiConfigTest {
                             .map(GroupedOpenApi::getGroup)
                             .collect(Collectors.toSet());
                     assertEquals(Set.of("management-api", "dsp-protocol"), groups);
+                    OpenApiDocsCustomizer docsCustomizer = context.getBean(OpenApiDocsCustomizer.class);
+                    assertEquals(1, context.getBeansOfType(GlobalOpenApiCustomizer.class).size());
+                    assertEquals(1, context.getBeansOfType(OperationCustomizer.class).size());
+                    context.getBeansOfType(GroupedOpenApi.class).values().forEach(group ->
+                            assertTrue(group.getOperationCustomizers().contains(docsCustomizer)));
                 });
+    }
+
+    @Test
+    @DisplayName("OpenAPI beans use the MVC handler mapping when Actuator is present")
+    void createsOpenApiBeansWhenActuatorHandlerMappingIsPresent() {
+        contextRunner
+                .withBean("controllerEndpointHandlerMapping",
+                        RequestMappingHandlerMapping.class,
+                        () -> mock(RequestMappingHandlerMapping.class))
+                .withPropertyValues("springdoc.swagger-ui.enabled=true")
+                .run(context -> assertNull(context.getStartupFailure()));
     }
 
     @Test
