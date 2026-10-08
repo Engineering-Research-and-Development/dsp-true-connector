@@ -44,7 +44,7 @@ public final class OpenApiExamplesGenerator {
 
     private static void writeExample(final String name, final Object payload)
             throws IOException, URISyntaxException {
-        Path example = examplesDirectory().resolve(name + "-plain.json");
+        Path example = examplesDirectory().resolve(name + ".plain.json");
         Files.writeString(example, CatalogSerializer.serializePlain(payload), StandardCharsets.UTF_8);
     }
 

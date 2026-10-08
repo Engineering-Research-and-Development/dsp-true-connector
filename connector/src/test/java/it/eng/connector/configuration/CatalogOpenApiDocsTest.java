@@ -2,6 +2,7 @@ package it.eng.connector.configuration;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.rest.api.ArtifactAPIController;
 import it.eng.catalog.rest.api.CatalogAPIController;
 import it.eng.catalog.rest.api.DataServiceAPIController;
@@ -10,6 +11,7 @@ import it.eng.catalog.rest.api.DistributionAPIController;
 import it.eng.catalog.rest.api.OfferAPIController;
 import it.eng.catalog.rest.api.ProxyAPIController;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 class CatalogOpenApiDocsTest {
@@ -76,6 +79,39 @@ class CatalogOpenApiDocsTest {
 
         assertTrue(missingTags.isEmpty(),
                 () -> "Catalog controllers are missing OpenAPI tags: " + String.join(", ", missingTags));
+    }
+
+    @Test
+    @DisplayName("JSON request bodies are structured and catalog examples use resolvable names")
+    void jsonRequestBodiesAreStructuredAndCatalogExamplesUseResolvableNames() {
+        List<Class<?>> controllers = List.of(
+                CatalogAPIController.class,
+                DistributionAPIController.class,
+                DataServiceAPIController.class,
+                OfferAPIController.class,
+                ProxyAPIController.class);
+        List<String> unstructuredRequestBodies = new ArrayList<>();
+        controllers.forEach(controller -> Arrays.stream(controller.getDeclaredMethods())
+                .filter(CatalogOpenApiDocsTest::isRequestMapping)
+                .forEach(method -> Arrays.stream(method.getParameters())
+                        .filter(parameter -> parameter.isAnnotationPresent(RequestBody.class))
+                        .filter(parameter -> parameter.getType() != JsonNode.class)
+                        .forEach(parameter -> unstructuredRequestBodies.add(
+                                controller.getSimpleName() + "." + method.getName()))));
+        OpenApiDocs documentation = new OpenApiDocsLoader(new PathMatchingResourcePatternResolver()).load();
+
+        assertTrue(unstructuredRequestBodies.isEmpty(),
+                () -> "JSON request bodies should use JsonNode for OpenAPI schemas: "
+                        + String.join(", ", unstructuredRequestBodies));
+        assertTrue(documentation.examples().keySet().containsAll(List.of(
+                        "catalog.plain",
+                        "dataset.plain",
+                        "distribution.plain",
+                        "data-service.plain",
+                        "offer.plain",
+                        "forwarded-catalog.plain",
+                        "forwarded-formats.plain")),
+                "Generated example names should match the suffix expected by the OpenAPI customizer");
     }
 
     private static List<ControllerOperation> operationsFor(final List<Class<?>> controllers) {

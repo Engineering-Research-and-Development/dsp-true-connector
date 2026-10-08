@@ -44,7 +44,7 @@ public class CatalogAPIController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<GenericApiResponse<JsonNode>> createCatalog(@RequestBody String catalog) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> createCatalog(@RequestBody JsonNode catalog) {
         Catalog c = CatalogSerializer.deserializePlain(catalog, Catalog.class);
 
         log.info("Saving new catalog");
@@ -65,7 +65,7 @@ public class CatalogAPIController {
     }
 
     @PutMapping(path = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<GenericApiResponse<JsonNode>> updateCatalog(@PathVariable String id, @RequestBody String catalog) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> updateCatalog(@PathVariable String id, @RequestBody JsonNode catalog) {
         Catalog c = CatalogSerializer.deserializePlain(catalog, Catalog.class);
 
         log.info("Updating catalog with id: " + id);

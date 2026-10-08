@@ -41,7 +41,7 @@ public class DistributionAPIController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<GenericApiResponse<JsonNode>> saveDistribution(@RequestBody String distribution) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> saveDistribution(@RequestBody JsonNode distribution) {
         Distribution ds = CatalogSerializer.deserializePlain(distribution, Distribution.class);
 
         log.info("Saving new distribution");
@@ -63,7 +63,7 @@ public class DistributionAPIController {
     }
 
     @PutMapping(path = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<GenericApiResponse<JsonNode>> updateDistribution(@PathVariable String id, @RequestBody String distribution) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> updateDistribution(@PathVariable String id, @RequestBody JsonNode distribution) {
         Distribution ds = CatalogSerializer.deserializePlain(distribution, Distribution.class);
 
         log.info("Updating distribution with id: " + id);

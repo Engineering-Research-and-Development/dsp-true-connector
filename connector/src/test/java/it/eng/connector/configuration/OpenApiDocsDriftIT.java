@@ -1,9 +1,11 @@
 package it.eng.connector.configuration;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.rest.api.CatalogAPIController;
 import it.eng.catalog.rest.api.DataServiceAPIController;
 import it.eng.catalog.rest.api.DatasetAPIController;
@@ -19,10 +21,19 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@TestPropertySource(properties = {
+        "springdoc.api-docs.enabled=true",
+        "springdoc.swagger-ui.enabled=true"
+})
 class OpenApiDocsDriftIT extends BaseIntegrationTest {
 
     private static final Set<Class<?>> FULLY_DOCUMENTED_CONTROLLERS = Set.of(
@@ -63,6 +74,27 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
         assertTrue(undocumentedOperations.isEmpty(),
                 () -> "Catalog operations are missing summaries or descriptions: "
                         + String.join("; ", undocumentedOperations));
+    }
+
+    @Test
+    @DisplayName("Catalog create documents a structured JSON body and its request example")
+    void catalogCreateDocumentsStructuredJsonRequestExample() throws Exception {
+        String document = mockMvc.perform(get("/v3/api-docs/management-api")
+                        .with(user("swagger-test").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        JsonNode openApi = jsonMapper.readTree(document);
+        JsonNode mediaType = openApi.path("paths").path("/api/v1/catalogs").path("post")
+                .path("requestBody").path("content").path("application/json");
+
+        assertFalse("string".equals(mediaType.path("schema").path("type").asText()),
+                "The catalog request body should not be documented as a string");
+        assertEquals("#/components/examples/catalog.plain",
+                mediaType.path("examples").path("Catalog").path("$ref").asText());
+        assertTrue(openApi.path("components").path("examples")
+                .path("catalog.plain").path("value").isObject());
     }
 
     @Test

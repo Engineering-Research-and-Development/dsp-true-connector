@@ -1,5 +1,6 @@
 package it.eng.catalog.rest.api;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -36,7 +37,8 @@ public class OfferAPIControllerTest {
 	        Offer offer = CatalogMockObjectUtil.OFFER;
 	    	when(catalogService.validateOffer(any(Offer.class))).thenReturn(true);
 	        
-	        ResponseEntity<GenericApiResponse<String>> response = offerAPIController.validateOffer(CatalogSerializer.serializePlain(offer));
+            JsonNode offerJson = CatalogSerializer.serializePlainJsonNode(offer);
+            ResponseEntity<GenericApiResponse<String>> response = offerAPIController.validateOffer(offerJson);
 
 	        verify(catalogService).validateOffer(any(Offer.class));
 	        assertNotNull(response);
@@ -50,7 +52,8 @@ public class OfferAPIControllerTest {
 	    	Offer offer = CatalogMockObjectUtil.OFFER;
 	    	when(catalogService.validateOffer(any(Offer.class))).thenReturn(false);
 		    
-	    	ResponseEntity<GenericApiResponse<String>> response = offerAPIController.validateOffer(CatalogSerializer.serializePlain(offer));
+            JsonNode offerJson = CatalogSerializer.serializePlainJsonNode(offer);
+            ResponseEntity<GenericApiResponse<String>> response = offerAPIController.validateOffer(offerJson);
 
 		    verify(catalogService).validateOffer(any(Offer.class));
 	        assertNotNull(response);

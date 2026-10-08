@@ -16,13 +16,13 @@ class OpenApiExamplesGeneratorTest {
 
     private static final String GENERATOR_CLASS_NAME = "it.eng.catalog.openapi.OpenApiExamplesGenerator";
     private static final List<String> EXAMPLE_FILES = List.of(
-            "catalog-plain.json",
-            "dataset-plain.json",
-            "distribution-plain.json",
-            "data-service-plain.json",
-            "offer-plain.json",
-            "forwarded-catalog-plain.json",
-            "forwarded-formats-plain.json");
+            "catalog.plain.json",
+            "dataset.plain.json",
+            "distribution.plain.json",
+            "data-service.plain.json",
+            "offer.plain.json",
+            "forwarded-catalog.plain.json",
+            "forwarded-formats.plain.json");
 
     @Test
     @DisplayName("Generator writes plain JSON examples for catalog API payloads")
@@ -38,7 +38,7 @@ class OpenApiExamplesGeneratorTest {
             assertTrue(Files.isRegularFile(example) && Files.size(example) > 0,
                     () -> "Expected a non-empty generated example at " + example);
         }
-        String datasetExample = Files.readString(examplesDirectory().resolve("dataset-plain.json"));
+        String datasetExample = Files.readString(examplesDirectory().resolve("dataset.plain.json"));
         assertTrue(datasetExample.contains(CatalogMockObjectUtil.DATASET_ID),
                 "Dataset example should use the seeded dataset ID");
     }

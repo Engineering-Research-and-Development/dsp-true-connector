@@ -43,7 +43,7 @@ public class DataServiceAPIController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<GenericApiResponse<JsonNode>> saveDataService(@RequestBody String dataService) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> saveDataService(@RequestBody JsonNode dataService) {
         DataService ds = CatalogSerializer.deserializePlain(dataService, DataService.class);
 
         log.info("Saving new data service");
@@ -65,7 +65,7 @@ public class DataServiceAPIController {
     }
 
     @PutMapping(path = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<GenericApiResponse<JsonNode>> updateDataService(@PathVariable String id, @RequestBody String dataService) {
+    public ResponseEntity<GenericApiResponse<JsonNode>> updateDataService(@PathVariable String id, @RequestBody JsonNode dataService) {
         DataService ds = CatalogSerializer.deserializePlain(dataService, DataService.class);
 
         log.info("Updating data service with id: " + id);
