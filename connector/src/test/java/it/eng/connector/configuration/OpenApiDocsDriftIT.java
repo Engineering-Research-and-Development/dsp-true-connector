@@ -12,6 +12,9 @@ import it.eng.catalog.rest.api.DatasetAPIController;
 import it.eng.catalog.rest.api.DistributionAPIController;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.rest.api.DSpaceVersionController;
+import it.eng.datatransfer.rest.api.DataTransferAPIController;
+import it.eng.negotiation.rest.api.AgreementAPIController;
+import it.eng.negotiation.rest.api.ContractNegotiationAPIController;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +27,7 @@ import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
@@ -46,7 +50,10 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
             CatalogAPIController.class,
             DatasetAPIController.class,
             DistributionAPIController.class,
-            DataServiceAPIController.class);
+            DataServiceAPIController.class,
+            ContractNegotiationAPIController.class,
+            AgreementAPIController.class,
+            DataTransferAPIController.class);
 
     @Autowired
     private OpenApiDocsLoader docsLoader;
@@ -66,8 +73,8 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Fully documented catalog controllers have summaries and descriptions")
-    void fullyDocumentedCatalogControllersHaveSummariesAndDescriptions() {
+    @DisplayName("Fully documented management API controllers have summaries and descriptions")
+    void fullyDocumentedControllersHaveSummariesAndDescriptions() {
         Map<RequestMappingInfo, HandlerMethod> mappings = handlerMapping.getHandlerMethods();
         Map<String, OpenApiOperationDocs> operations = docsLoader.load().operations();
         List<String> undocumentedOperations = mappings.values().stream()
@@ -78,8 +85,24 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
                 .toList();
 
         assertTrue(undocumentedOperations.isEmpty(),
-                () -> "Catalog operations are missing summaries or descriptions: "
+                () -> "Management API operations are missing summaries or descriptions: "
                         + String.join("; ", undocumentedOperations));
+    }
+
+    @Test
+    @DisplayName("Negotiation and transfer GET mappings do not require a JSON content type")
+    void negotiationAndTransferGetMappingsDoNotRequireJsonContentType() {
+        Map<RequestMappingInfo, HandlerMethod> mappings = handlerMapping.getHandlerMethods();
+        List<String> constrainedGetMappings = mappings.entrySet().stream()
+                .filter(entry -> FULLY_DOCUMENTED_CONTROLLERS.contains(entry.getValue().getBeanType()))
+                .filter(entry -> entry.getValue().getMethod().isAnnotationPresent(GetMapping.class))
+                .filter(entry -> !entry.getKey().getConsumesCondition().isEmpty())
+                .map(entry -> entry.getValue().getBeanType().getSimpleName()
+                        + "." + entry.getValue().getMethod().getName())
+                .toList();
+
+        assertTrue(constrainedGetMappings.isEmpty(),
+                () -> "GET mappings must not require Content-Type: " + String.join("; ", constrainedGetMappings));
     }
 
     @Test

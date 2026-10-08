@@ -11,6 +11,10 @@
 	<artifactId>datatransfer</artifactId>
 	<name>Data Transfer</name>
 
+	<properties>
+		<openapi.examples.generator>it.eng.datatransfer.openapi.OpenApiExamplesGenerator</openapi.examples.generator>
+	</properties>
+
 	<dependencies>
 		<dependency>
 			<groupId>it.eng</groupId>
@@ -80,6 +84,10 @@
 
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
