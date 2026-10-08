@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = ApiEndpoints.CATALOG_CATALOGS_V1)
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE, path = ApiEndpoints.CATALOG_CATALOGS_V1)
 @Slf4j
 public class CatalogAPIController {
 
@@ -43,8 +43,8 @@ public class CatalogAPIController {
                 .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(catalog), "Fetched catalog"));
     }
 
-    @PostMapping
-    public ResponseEntity<GenericApiResponse<JsonNode>> createCatalog(@RequestBody String catalog) {
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<GenericApiResponse<JsonNode>> createCatalog(@RequestBody JsonNode catalog) {
         Catalog c = CatalogSerializer.deserializePlain(catalog, Catalog.class);
 
         log.info("Saving new catalog");
@@ -64,8 +64,8 @@ public class CatalogAPIController {
         		.body(GenericApiResponse.success(null, "Catalog deleted successfully"));
     }
 
-    @PutMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<JsonNode>> updateCatalog(@PathVariable String id, @RequestBody String catalog) {
+    @PutMapping(path = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<GenericApiResponse<JsonNode>> updateCatalog(@PathVariable String id, @RequestBody JsonNode catalog) {
         Catalog c = CatalogSerializer.deserializePlain(catalog, Catalog.class);
 
         log.info("Updating catalog with id: " + id);

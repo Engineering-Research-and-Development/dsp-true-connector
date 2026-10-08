@@ -59,8 +59,8 @@ class OpenApiDocsLoaderTest {
                         """)
         });
         when(resolver.getResources(EXAMPLES_PATTERN)).thenReturn(new Resource[] {
-                resource("file:/openapi/examples/getAllTenants-plain.json",
-                        "getAllTenants-plain.json", "{\"page\":1}")
+                resource("file:/openapi/examples/getAllTenants.plain.json",
+                        "getAllTenants.plain.json", "{\"page\":1}")
         });
 
         OpenApiDocs documentation = new OpenApiDocsLoader(resolver).load();
@@ -75,7 +75,7 @@ class OpenApiDocsLoaderTest {
                 "java.lang.String[]"), operation.methodParameters().orElseThrow());
         assertEquals("List tenants", operation.properties().get("summary"));
         assertEquals("object", ((Map<?, ?>) documentation.schemas().get("Tenant")).get("type"));
-        assertEquals("{\"page\":1}", documentation.examples().get("getAllTenants-plain").toString());
+        assertEquals("{\"page\":1}", documentation.examples().get("getAllTenants.plain").toString());
     }
 
     @Test

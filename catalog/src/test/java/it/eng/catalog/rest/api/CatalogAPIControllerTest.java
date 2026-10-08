@@ -72,7 +72,7 @@ public class CatalogAPIControllerTest {
     @Test
     @DisplayName("Create catalog - success")
     public void createCatalogSuccessfulTest() {
-        String catalog = CatalogSerializer.serializePlain(CatalogMockObjectUtil.CATALOG);
+        JsonNode catalog = CatalogSerializer.serializePlainJsonNode(CatalogMockObjectUtil.CATALOG);
         when(catalogService.saveCatalog(any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG);
 
         ResponseEntity<GenericApiResponse<JsonNode>> response = catalogAPIController.createCatalog(catalog);
@@ -97,7 +97,7 @@ public class CatalogAPIControllerTest {
     @Test
     @DisplayName("Update catalog - success")
     public void updateCatalogSuccessfulTest() {
-        String catalog = CatalogSerializer.serializePlain(CatalogMockObjectUtil.CATALOG_FOR_UPDATE);
+        JsonNode catalog = CatalogSerializer.serializePlainJsonNode(CatalogMockObjectUtil.CATALOG_FOR_UPDATE);
         when(catalogService.updateCatalog(any(String.class), any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG_FOR_UPDATE);
 
         ResponseEntity<GenericApiResponse<JsonNode>> response = catalogAPIController.updateCatalog(CatalogMockObjectUtil.CATALOG_FOR_UPDATE.getId(), catalog);
