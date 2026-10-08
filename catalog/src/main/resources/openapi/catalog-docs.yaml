@@ -1,0 +1,135 @@
+tags:
+  CatalogAPIController:
+    name: Catalog
+    description: Manage the provider catalog and its relationships to datasets, distributions, and data services.
+  DatasetAPIController:
+    name: Dataset
+    description: Manage DCAT datasets, their policies and distributions, and their associated file or external artifacts.
+  DistributionAPIController:
+    name: Distribution
+    description: Manage DCAT distributions that describe how a dataset is made available through a data service.
+  DataServiceAPIController:
+    name: Data Service
+    description: Manage the DCAT data services referenced by catalog distributions.
+  OfferAPIController:
+    name: Offer
+    description: Validate a catalog policy offer.
+  ArtifactAPIController:
+    name: Artifact
+    description: Retrieve artifact metadata associated with catalog datasets.
+  ProxyAPIController:
+    name: Proxy
+    description: Forward catalog and dataset-format lookups to a configured provider.
+
+operations:
+  getCatalog:
+    summary: Retrieve a catalog
+    description: >-
+      Return catalog title, description, keywords, themes, participant ID, and linked datasets, distributions,
+      and data services. The catalog management lookup omits FILE datasets whose S3 object is not present; the
+      proxy lookup forwards the request to the provider named by the Forward-To field.
+    requestExamples:
+      Forwarded catalog request: forwarded-catalog
+  getCatalogById:
+    summary: Retrieve a catalog by ID
+    description: Return the catalog document identified by the supplied catalog ID, including its DCAT metadata and linked resources.
+  createCatalog:
+    summary: Create a catalog
+    description: Create a catalog from a plain JSON catalog document. Dataset, distribution, and service links should refer to resources managed by the same tenant.
+    requestExamples:
+      Catalog: catalog
+  deleteCatalog:
+    summary: Delete a catalog
+    description: Delete the catalog identified by the supplied ID.
+  updateCatalog:
+    summary: Update a catalog
+    description: Replace catalog metadata and resource relationships for the supplied catalog ID with the submitted plain JSON catalog document.
+    requestExamples:
+      Catalog: catalog
+
+  getDatasetById:
+    summary: Retrieve a dataset
+    description: >-
+      Return the DCAT dataset identified by its ID, including title, description, keywords, themes, conforms-to,
+      creator, identifier, issued and modified dates, policies, and distributions. Artifact content and storage
+      metadata are managed separately.
+  getAllDatasets:
+    summary: List datasets
+    description: Return all datasets visible to the current tenant, including their DCAT metadata, policies, and distributions.
+  getFormatsFromDataset:
+    summary: Retrieve dataset formats
+    description: Return the available distribution formats for a dataset. The proxy variant accepts Forward-To and retrieves the formats from that provider.
+    requestExamples:
+      Forwarded formats request: forwarded-formats
+  getArtifactFromDataset:
+    summary: Retrieve a dataset artifact
+    description: Return artifact metadata associated with the dataset. FILE artifacts are stored in S3 using the dataset ID as the object key; EXTERNAL artifacts refer to an external URL.
+  saveDataset:
+    summary: Create a dataset
+    description: >-
+      Create a DCAT dataset using the required dataset multipart field. Supply an optional file part for a FILE
+      artifact, or a URL part and optional authorization part for an EXTERNAL artifact. A FILE object is stored
+      in S3 with the dataset ID as its key.
+    requestExamples:
+      Dataset: dataset
+  updateDataset:
+    summary: Update a dataset
+    description: >-
+      Update the dataset identified by ID. The optional dataset multipart field changes DCAT metadata; optional
+      file, URL, and authorization parts update the artifact. FILE artifacts use the dataset ID as the S3 object key.
+    requestExamples:
+      Dataset: dataset
+  deleteDataset:
+    summary: Delete a dataset
+    description: Delete the dataset identified by ID and its catalog relationships.
+
+  getDistributionById:
+    summary: Retrieve a distribution
+    description: >-
+      Return the DCAT distribution identified by ID, including title, description, issued and modified dates,
+      format, policies, and its linked access service.
+  getAllDistributions:
+    summary: List distributions
+    description: Return all distributions visible to the current tenant.
+  saveDistribution:
+    summary: Create a distribution
+    description: Create a distribution with its DCAT metadata and required access-service reference.
+    requestExamples:
+      Distribution: distribution
+  deleteDistribution:
+    summary: Delete a distribution
+    description: Delete the distribution identified by ID and remove its catalog relationships.
+  updateDistribution:
+    summary: Update a distribution
+    description: Update the DCAT metadata, format, policies, and access-service reference for the supplied distribution ID.
+    requestExamples:
+      Distribution: distribution
+
+  getDataServiceById:
+    summary: Retrieve a data service
+    description: >-
+      Return the DCAT data service identified by ID, including title, description, keywords, themes, conforms-to,
+      creator, identifier, issued and modified dates, endpoint URL, and endpoint description.
+  getAllDataServices:
+    summary: List data services
+    description: Return all data services visible to the current tenant.
+  saveDataService:
+    summary: Create a data service
+    description: Create a data service containing the endpoint URL and descriptive DCAT metadata used by linked distributions.
+    requestExamples:
+      Data service: data-service
+  deleteDataService:
+    summary: Delete a data service
+    description: Delete the data service identified by ID and remove its catalog relationships.
+  updateDataService:
+    summary: Update a data service
+    description: Update the endpoint URL and descriptive DCAT metadata for the supplied data-service ID.
+    requestExamples:
+      Data service: data-service
+
+  validateOffer:
+    summary: Validate a policy offer
+    requestExamples:
+      Offer: offer
+  getArtifacts:
+    summary: Retrieve artifacts
