@@ -247,33 +247,19 @@ All tenant lifecycle operations produce `AuditEvent` records with the following 
 
 ## Database Collections
 
-| Collection | Tenant-aware | Notes |
-|------------|--------------|-------|
+| Collection | Tenant-aware             | Notes |
+|------------|--------------------------|-|
 | `tenants` | N/A (tenant list itself) | Managed by `TenantService` |
-| `catalog` | ✅ `tenantId` field | `@Document(collection = "catalog")` |
-| `dataset` | ✅ `tenantId` field | |
-| `distribution` | ✅ `tenantId` field | |
-| `data_service` | ✅ `tenantId` field | |
-| `artifact` | ✅ `tenantId` field | |
-| `contract_negotiation` | ✅ `tenantId` field | |
-| `agreement` | ✅ `tenantId` field | |
-| `transfer_process` | ✅ `tenantId` field | |
-| `users` | ✅ `tenantId` field | User is scoped to one tenant |
-| `application_properties` | ⚠️ Not yet tenant-aware | Phase 5 item |
-
----
-
-## Known Limitations and Deferred Items
-
-| Item | Status | Notes |
-|------|--------|-------|
-| `EndpointAvailableFilter` (artifact access) | Deferred (Phase 5) | Uses non-tenant fallback queries for `isAgreementValid` / `isDataTransferStarted` |
-| `DataTransferProperties.consumerCallbackAddress()` | Deferred (Phase 5) | Static property; per-tenant callback address requires Phase 5 |
-| `ContractNegotiationProperties.connectorId()` | Deferred (Phase 5) | Hardcoded; per-tenant connector ID requires Phase 5 |
-| S3 storage isolation | Deferred (Phase 6) | Team decision needed on separate bucket vs. key prefix |
-| Keycloak JWT tenant binding | Deferred (Phase 7) | JWT claim → tenantId mapping |
-| AuditEvent `tenantId` field | Deferred | Add `tenantId` to `AuditEvent` model for per-tenant audit log filtering |
-| User management in Keycloak mode | N/A | `/api/v1/users` not available when Keycloak auth is active |
+| `catalog` | ✅ `tenantId` field       | `@Document(collection = "catalog")` |
+| `dataset` | ✅ `tenantId` field       | |
+| `distribution` | ✅ `tenantId` field       | |
+| `data_service` | ✅ `tenantId` field       | |
+| `artifact` | ✅ `tenantId` field       | |
+| `contract_negotiation` | ✅ `tenantId` field       | |
+| `agreement` | ✅ `tenantId` field       | |
+| `transfer_process` | ✅ `tenantId` field       | |
+| `users` | ✅ `tenantId` field       | User is scoped to one tenant |
+| `application_properties` | ⚠️ Semi tenant-aware | |
 
 ---
 

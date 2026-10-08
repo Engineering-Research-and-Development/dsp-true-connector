@@ -8,6 +8,7 @@ This directory captures architecturally significant decisions: choices that shap
 |--------------------------------------------------------------------------|---|---|---|
 | [D-ARC-001](architecture/D-ARC-001-multi-module-maven-structure.md)      | Multi-module Maven structure by protocol concern | Accepted | Architecture |
 | [D-ARC-002](architecture/D-ARC-002-provider-consumer-spring-profiles.md) | Provider/consumer roles via Spring profiles | Accepted | Architecture |
+| [D-ARC-003](architecture/D-ARC-003-multi-realm-oidc-realm-per-tenant.md) | Multi-realm OIDC with one identity-provider realm per tenant | Proposed | Architecture |
 | [D-TEC-001](technical/D-TEC-001-mongodb-persistence.md)                  | MongoDB as the persistence layer | Accepted | Technical |
 | [D-TEC-002](technical/D-TEC-002-testcontainers-integration-testing.md)   | Testcontainers for integration testing | Accepted | Technical |
 | [D-TEC-003](technical/D-TEC-003-async-s3-multipart-upload.md)            | Asynchronous parallel S3 multipart upload | Accepted | Technical |

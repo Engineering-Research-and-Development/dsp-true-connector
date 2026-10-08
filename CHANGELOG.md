@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] — Multi-realm OIDC (`KEYCLOAK` mode, one realm per tenant)
+
+Specified in issue #350 and [D-ARC-003](doc/decisions/architecture/D-ARC-003-multi-realm-oidc-realm-per-tenant.md) (Proposed).
+
+### Added
+- `KEYCLOAK` mode trusts the platform realm plus the realm of every enabled tenant (`Tenant.realm`); the tenant is derived from the verified token issuer and the audience is validated.
+- `PUT /api/v1/tenants/{id}/realm-credentials` (super-admin) to set a tenant realm's client secret without restarting the connector. The secret is validated against the realm, stored encrypted in MongoDB and never returned; tenant responses expose only `credentialsConfigured`.
+- `CurrentUserProvider` abstraction so `GET /api/v1/users/me` is served by one controller in both `KEYCLOAK` and `INTERNAL` modes.
+
+### Changed
+- **Breaking:** `GET /api/v1/users/me` no longer returns `roles` or the super-admin flag in any mode; the UI must read roles from the JWT. Tenant-less identities get `super-admin` as `tenantId` and `tenantName`, and the tenant id `super-admin` is reserved.
+- **Breaking:** login, refresh and logout accept an optional `tenant` field; every login/refresh failure returns the same generic 401 (no disclosure of tenant existence or status).
+- **Breaking:** `application.keycloak.*` configuration is replaced (`base-url`, `platform-realm`, `client-id`, `audience`, `platform-client-secret`, `user-admin.enabled`); the single `issuer-uri` and the `backend.*`, `login.*`, `admin.*` properties are removed.
+- Keycloak must emit a top-level `roles` claim containing the final authorities (`ROLE_ADMIN`, `ROLE_CONNECTOR`, `ROLE_SUPER_ADMIN`).
+
+### Removed
+- `KeycloakRealmRoleConverter`, the custom `tenantId` claim and the hand-written client-credentials token client with `AuthenticationCache` in `KEYCLOAK` mode.
+
+### Security
+- Untrusted issuers are rejected before any discovery or key-set request; disabling a tenant immediately revokes its realm. The identity provider is trusted to emit authorities correctly (no platform-only guard on `ROLE_SUPER_ADMIN`).
+
 ## [0.7.2] — Dashboard Metrics API
 
 ### Added

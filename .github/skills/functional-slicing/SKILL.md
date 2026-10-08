@@ -122,7 +122,8 @@ Presentation rules:
 - keep all 3 options functionally valid, not strawmen
 - if the user already suggested a direction, include it as one of the 3 options when possible
 - do not create GitHub issues until the user selects an option, unless they explicitly delegate the choice to the agent
-- if the user delegates, pick the **Recommended** option and state that choice before creating issues
+- if the user delegates, pick the **Recommended** 
+- nd state that choice before creating issues
 
 ## Functional slicing rules
 
