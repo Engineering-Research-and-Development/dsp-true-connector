@@ -4,6 +4,7 @@ import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.BucketProvisioningMode;
+import it.eng.tools.auth.keycloak.realm.RealmCredentialsService;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.model.TenantBucketCredentialsRequest;
 import it.eng.tools.repository.TenantRepository;
@@ -60,6 +61,9 @@ class TenantServiceTest {
     private BucketConnectionVerificationService bucketConnectionVerificationService;
 
     @Mock
+    private RealmCredentialsService realmCredentialsService;
+
+    @Mock
     private Pageable pageable;
 
     private TenantService tenantService;
@@ -68,7 +72,7 @@ class TenantServiceTest {
     void setUp() {
         tenantService = new TenantService(tenantRepository, auditEventPublisher,
                 s3BucketProvisionService, bucketCredentialsService,
-                bucketProvisioningModeResolver, bucketConnectionVerificationService, BASE_CALLBACK_URL);
+                bucketProvisioningModeResolver, bucketConnectionVerificationService, realmCredentialsService, BASE_CALLBACK_URL);
     }
 
     private Tenant buildTenant(boolean enabled) {
@@ -811,6 +815,61 @@ class TenantServiceTest {
         Tenant saved = tenantService.updateTenant(TENANT_ID, existing);
 
         assertEquals("realm-a", saved.getRealm());
+    }
+
+    @Test
+    @DisplayName("updateTenant deletes realm credentials when the realm changes")
+    void updateTenant_realmChanged_deletesCredentials() {
+        Tenant existing = Tenant.Builder.newInstance()
+                .id(TENANT_ID).name("Engineering").participantId("urn:connector:engineering")
+                .realm("realm-a").build();
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
+        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(BucketProvisioningMode.AUTOMATIC);
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+        Tenant changed = Tenant.Builder.newInstance()
+                .id(TENANT_ID).name("Engineering").participantId("urn:connector:engineering")
+                .realm("realm-b").build();
+
+        tenantService.updateTenant(TENANT_ID, changed);
+
+        verify(realmCredentialsService).delete(TENANT_ID);
+    }
+
+    @Test
+    @DisplayName("updateTenant deletes realm credentials when the realm is cleared")
+    void updateTenant_realmCleared_deletesCredentials() {
+        Tenant existing = Tenant.Builder.newInstance()
+                .id(TENANT_ID).name("Engineering").participantId("urn:connector:engineering")
+                .realm("realm-a").build();
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
+        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(BucketProvisioningMode.AUTOMATIC);
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+        Tenant cleared = Tenant.Builder.newInstance()
+                .id(TENANT_ID).name("Engineering").participantId("urn:connector:engineering").build();
+
+        tenantService.updateTenant(TENANT_ID, cleared);
+
+        verify(realmCredentialsService).delete(TENANT_ID);
+    }
+
+    @Test
+    @DisplayName("updateTenant keeps realm credentials when the realm is unchanged")
+    void updateTenant_realmUnchanged_keepsCredentials() {
+        updateTenant_sameRealmOwnTenant_allowed();
+
+        verify(realmCredentialsService, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("deleteTenant removes the tenant's realm credentials")
+    void deleteTenant_deletesCredentials() {
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(buildTenant(true)));
+
+        tenantService.deleteTenant(TENANT_ID);
+
+        verify(realmCredentialsService).delete(TENANT_ID);
     }
 
     @Test

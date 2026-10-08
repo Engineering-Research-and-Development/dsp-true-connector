@@ -1,5 +1,6 @@
 package it.eng.tools.service;
 
+import it.eng.tools.auth.keycloak.realm.RealmCredentialsService;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.exception.TenantNotFoundException;
@@ -52,6 +53,7 @@ public class TenantService {
     private final BucketCredentialsService bucketCredentialsService;
     private final BucketProvisioningModeResolver bucketProvisioningModeResolver;
     private final BucketConnectionVerificationService bucketConnectionVerificationService;
+    private final RealmCredentialsService realmCredentialsService;
     private final String baseCallbackAddress;
 
     /**
@@ -64,6 +66,7 @@ public class TenantService {
      * @param bucketCredentialsService the bucket credentials service
      * @param bucketProvisioningModeResolver the resolver for tenant bucket provisioning mode
      * @param bucketConnectionVerificationService the service verifying externally supplied bucket credentials
+     * @param realmCredentialsService the service managing per-realm Keycloak client credentials
      * @param baseCallbackAddress      the base URL used to derive per-tenant callback addresses;
      *                                 injected from {@code application.baseURL}
      */
@@ -73,6 +76,7 @@ public class TenantService {
                          BucketCredentialsService bucketCredentialsService,
                          BucketProvisioningModeResolver bucketProvisioningModeResolver,
                          BucketConnectionVerificationService bucketConnectionVerificationService,
+                         RealmCredentialsService realmCredentialsService,
                          @Value("${application.baseURL}") String baseCallbackAddress) {
         this.tenantRepository = tenantRepository;
         this.auditEventPublisher = auditEventPublisher;
@@ -80,6 +84,7 @@ public class TenantService {
         this.bucketCredentialsService = bucketCredentialsService;
         this.bucketProvisioningModeResolver = bucketProvisioningModeResolver;
         this.bucketConnectionVerificationService = bucketConnectionVerificationService;
+        this.realmCredentialsService = realmCredentialsService;
         this.baseCallbackAddress = baseCallbackAddress;
     }
 
@@ -243,6 +248,7 @@ public class TenantService {
     public void deleteTenant(String tenantId) {
         Tenant tenant = findById(tenantId);
         tenantRepository.delete(tenant);
+        realmCredentialsService.delete(tenantId);
         if (StringUtils.hasText(tenant.getBucketName())) {
             log.warn("Tenant '{}' was deleted but its S3 bucket '{}' was NOT removed. "
                     + "Clean up the bucket manually once all artifact data has been migrated or is no longer needed.",
@@ -370,6 +376,10 @@ public class TenantService {
                 .realm(updates.getRealm())
                 .build();
         Tenant saved = tenantRepository.save(updated);
+        if (!Objects.equals(existing.getRealm(), saved.getRealm())) {
+            realmCredentialsService.delete(tenantId);
+            log.info("Realm of tenant '{}' changed; stored realm credentials were removed.", tenantId);
+        }
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("tenantId", tenantId);
         details.put("tenantName", saved.getName());
