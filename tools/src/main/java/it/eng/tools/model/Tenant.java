@@ -105,6 +105,17 @@ public class Tenant {
     private Long version;
 
     /**
+     * Marks whether realm credentials are configured; used to decorate read responses only.
+     *
+     * @param configured whether realm credentials exist for this tenant
+     * @return this tenant
+     */
+    public Tenant markCredentialsConfigured(boolean configured) {
+        this.credentialsConfigured = configured;
+        return this;
+    }
+
+    /**
      * Computes the callback address for this tenant.
      * Strips a trailing slash from {@code baseCallbackAddress} if present and appends
      * {@code "/" + id}.

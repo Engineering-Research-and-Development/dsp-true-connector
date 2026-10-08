@@ -66,6 +66,11 @@ public interface ApiEndpoints {
      */
     public static final String TENANTS_V1 = "/api/v1/tenants";
 
+    /**
+     * Tools module - sub-path of a tenant for configuring its Keycloak realm client credentials.
+     */
+    public static final String TENANT_REALM_CREDENTIALS = "/realm-credentials";
+
     public static final String DASHBOARD_V1 = "/api/v1/dashboard";
 
     public static final String DASHBOARD_RUNTIME_V1 = DASHBOARD_V1 + "/runtime";
