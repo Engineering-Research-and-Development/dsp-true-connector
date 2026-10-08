@@ -2,6 +2,7 @@
 
 ## Metadata
 - Status: Proposed
+- Implementation: slice KC1 (#363) delivers `Tenant.realm`, `realm_credentials`, typed `KeycloakProperties` and the realm-credentials endpoint
 - Date: 2026-10-05
 - Owner: TRUE Connector team
 - Reviewers: —
