@@ -85,6 +85,17 @@ class OpenApiConfigTest {
     }
 
     @Test
+    @DisplayName("OpenAPI beans use the MVC handler mapping when Actuator is present")
+    void createsOpenApiBeansWhenActuatorHandlerMappingIsPresent() {
+        contextRunner
+                .withBean("controllerEndpointHandlerMapping",
+                        RequestMappingHandlerMapping.class,
+                        () -> mock(RequestMappingHandlerMapping.class))
+                .withPropertyValues("springdoc.swagger-ui.enabled=true")
+                .run(context -> assertNull(context.getStartupFailure()));
+    }
+
+    @Test
     @DisplayName("Protected operations require authentication but login remains public")
     void securityCustomizerDoesNotRequireAuthenticationForAuthEndpoints() {
         contextRunner.withPropertyValues("springdoc.swagger-ui.enabled=true")

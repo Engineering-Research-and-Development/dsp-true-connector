@@ -13,6 +13,7 @@ import it.eng.tools.service.TenantContextHolder;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springdoc.core.customizers.OperationCustomizer;
 import org.springdoc.core.models.GroupedOpenApi;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.info.BuildProperties;
@@ -120,7 +121,7 @@ public class OpenApiConfig {
     @Bean
     public OpenApiDocsCustomizer openApiDocsCustomizer(
             final OpenApiDocsLoader docsLoader,
-            final RequestMappingHandlerMapping handlerMapping) {
+            @Qualifier("requestMappingHandlerMapping") final RequestMappingHandlerMapping handlerMapping) {
         return new OpenApiDocsCustomizer(docsLoader, handlerMapping);
     }
 
