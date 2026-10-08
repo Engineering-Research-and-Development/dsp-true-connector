@@ -19,6 +19,8 @@ import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.test.context.TestPropertySource;
@@ -34,6 +36,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "springdoc.api-docs.enabled=true",
         "springdoc.swagger-ui.enabled=true"
 })
+// Springdoc creates a separate context, so use a random port to avoid colliding with the shared 8080 server.
+@SpringBootTest(
+        webEnvironment = WebEnvironment.RANDOM_PORT,
+        properties = "server.port=0")
 class OpenApiDocsDriftIT extends BaseIntegrationTest {
 
     private static final Set<Class<?>> FULLY_DOCUMENTED_CONTROLLERS = Set.of(
