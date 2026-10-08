@@ -1,0 +1,67 @@
+tags:
+  DataTransferAPIController:
+    name: Transfer
+    description: >-
+      Manage transfer processes. A valid agreement is required before a transfer is requested. The process moves
+      from INITIALIZED to REQUESTED to STARTED, may be suspended and restarted, and finishes as COMPLETED or
+      TERMINATED. HTTP_PULL gives the consumer a provider artifact endpoint; HTTP_PUSH lets the provider write to
+      the consumer's destination using temporary credentials.
+  FTPClientAPIController:
+    name: FTP client
+    description: Request an FTP artifact download using the configured FTP client.
+
+operations:
+  requestTransfer:
+    summary: Request a data transfer
+    description: >-
+      Initiate a transfer for an existing transfer process linked to a negotiated agreement. The consumer sends the
+      selected format (HTTP_PULL or HTTP_PUSH) to the provider and records REQUESTED after a successful response.
+      HTTP_PUSH provisions temporary write credentials and includes the consumer destination address; HTTP_PULL
+      leaves artifact retrieval to the consumer using the provider endpoint supplied when the transfer starts.
+    requestExamples:
+      HTTP_PULL transfer request: transfer-request
+  downloadData:
+    summary: Download transfer data
+    description: >-
+      Start the consumer-side asynchronous download for a STARTED HTTP_PULL transfer. The consumer retrieves the
+      artifact from the provider's endpoint, stores it locally, enforces the agreement, and completes the process
+      after a successful download. HTTP_PUSH sends the artifact directly from the provider to the consumer's S3
+      destination and does not use this download step. The endpoint returns an accepted JSON response while a
+      download runs.
+  viewData:
+    summary: View downloaded transfer data
+    description: >-
+      Return a presigned URL for locally stored data only after the transfer is COMPLETED and marked downloaded.
+      The connector re-evaluates the agreement policy and checks that the S3 object exists before returning the URL
+      in an application/json response.
+  getTransferProcessById:
+    summary: Get a transfer process
+    description: Return the transfer process identified by its ID, including its current state, role, agreement, format, and endpoint data when available.
+  getTransfersProcess:
+    summary: List transfer processes
+    description: >-
+      Return a paginated list of transfer processes matching dynamic request-parameter filters. Page defaults to 0,
+      size to 20, and sort to timestamp,desc. This read does not send protocol messages.
+  startTransfer:
+    summary: Start a transfer
+    description: >-
+      Start a transfer process. The provider sends a TransferStartMessage to the consumer; for HTTP_PULL the message
+      includes the provider artifact endpoint (a presigned S3 URL for FILE artifacts or the connector artifact
+      endpoint for EXTERNAL artifacts). A consumer cannot start a transfer that is still REQUESTED. STARTED is
+      persisted after the peer acknowledges the message.
+  completeTransfer:
+    summary: Complete a transfer
+    description: >-
+      Send a TransferCompletionMessage to the counterparty and record COMPLETED after a successful response. The
+      process must be in a state that permits completion; data download and policy checks are handled by the
+      consumer download/view flow.
+  suspendTransfer:
+    summary: Suspend a transfer
+    description: Send a TransferSuspensionMessage to the counterparty and record SUSPENDED after a successful response.
+  terminateTransfer:
+    summary: Terminate a transfer
+    description: >-
+      Send a TransferTerminationMessage to the counterparty and record TERMINATED after a successful response.
+      Temporary HTTP_PUSH bucket credentials are cleaned up after the termination succeeds.
+  downloadArtifact:
+    summary: Download an artifact through FTP

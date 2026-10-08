@@ -9,9 +9,11 @@ All notable changes to this project will be documented in this file.
 - springdoc-openapi-starter-webmvc-ui.version = 2.8.17 aligned with SpringBoot 3 used in project
 - properties for enabling Swagger UI and OpenAPI JSON endpoint
 - Enabled public Swagger UI/OpenAPI documentation only in the Docker and Terraform demo configurations; other profiles remain disabled by default.
+- Added YAML-backed OpenAPI descriptions and generated JSON request examples for negotiation, agreement, transfer, and FTP management operations.
 
 ### Fixed
 - Scoped JSON request media-type constraints to body-bearing catalog API methods so bodyless GET and DELETE requests do not require a `Content-Type` header.
+- Scoped JSON request media-type constraints on negotiation and FTP APIs to non-GET methods so bodyless GET requests do not require a `Content-Type` header.
 - Documented catalog management JSON request bodies as structured JSON and aligned generated example filenames with the OpenAPI example references, so Swagger UI can prefill request examples.
 
 ## [0.7.2] — Dashboard Metrics API
