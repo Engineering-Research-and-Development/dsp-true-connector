@@ -4,10 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
 import it.eng.tools.auth.keycloak.KeycloakAuthenticationService;
+import it.eng.tools.auth.keycloak.KeycloakProperties;
 import it.eng.tools.exception.BadRequestException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Service;
 
@@ -39,19 +39,16 @@ public class KeycloakUserService {
      * Creates the service with its required dependencies.
      *
      * @param keycloakAuthService the service used to obtain a client-credentials access token
-     * @param adminServerUrl      the Keycloak server base URL, e.g. {@code http://localhost:8180};
-     *                            injected from {@code application.keycloak.admin.server-url}
-     * @param adminRealm          the Keycloak realm name, e.g. {@code dsp-connector};
-     *                            injected from {@code application.keycloak.admin.realm}
+     * @param keycloakProperties  the typed Keycloak configuration providing the server base URL
+     *                            and platform realm
      */
     @Autowired
     public KeycloakUserService(
             KeycloakAuthenticationService keycloakAuthService,
-            @Value("${application.keycloak.admin.server-url}") String adminServerUrl,
-            @Value("${application.keycloak.admin.realm}") String adminRealm) {
+            KeycloakProperties keycloakProperties) {
         this.keycloakAuthService = keycloakAuthService;
-        this.adminServerUrl = adminServerUrl;
-        this.adminRealm = adminRealm;
+        this.adminServerUrl = keycloakProperties.baseUrl();
+        this.adminRealm = keycloakProperties.platformRealm();
         this.httpClient = HttpClient.newHttpClient();
         this.objectMapper = new ObjectMapper();
     }
