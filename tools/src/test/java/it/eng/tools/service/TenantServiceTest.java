@@ -769,4 +769,66 @@ class TenantServiceTest {
         verify(bucketCredentialsService, never()).saveBucketCredentials(any(BucketCredentialsEntity.class));
         verify(s3BucketProvisionService, never()).ensureBucketCredentials(anyString());
     }
+
+    @Test
+    @DisplayName("saveTenant rejects reserved super-admin tenant id")
+    void saveTenant_reservedId_throws() {
+        Tenant tenant = Tenant.Builder.newInstance()
+                .id("super-admin").name("SA").participantId("urn:sa").build();
+
+        assertThrows(IllegalArgumentException.class, () -> tenantService.saveTenant(tenant));
+
+        verify(tenantRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("saveTenant rejects a realm already bound to another tenant")
+    void saveTenant_duplicateRealm_throws() {
+        Tenant other = Tenant.Builder.newInstance()
+                .id("other").name("Other").participantId("urn:other").realm("realm-a").build();
+        when(tenantRepository.findByRealm("realm-a")).thenReturn(Optional.of(other));
+        Tenant tenant = Tenant.Builder.newInstance()
+                .id(TENANT_ID).name("Engineering").participantId("urn:connector:engineering")
+                .realm("realm-a").build();
+
+        assertThrows(IllegalArgumentException.class, () -> tenantService.saveTenant(tenant));
+
+        verify(tenantRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("updateTenant allows a tenant to keep its own realm")
+    void updateTenant_sameRealmOwnTenant_allowed() {
+        Tenant existing = Tenant.Builder.newInstance()
+                .id(TENANT_ID).name("Engineering").participantId("urn:connector:engineering")
+                .realm("realm-a").build();
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
+        when(tenantRepository.findByRealm("realm-a")).thenReturn(Optional.of(existing));
+        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(BucketProvisioningMode.AUTOMATIC);
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Tenant saved = tenantService.updateTenant(TENANT_ID, existing);
+
+        assertEquals("realm-a", saved.getRealm());
+    }
+
+    @Test
+    @DisplayName("updateTenant rejects a realm owned by another tenant")
+    void updateTenant_realmOwnedByOther_throws() {
+        Tenant existing = buildTenant(true);
+        Tenant other = Tenant.Builder.newInstance()
+                .id("other").name("Other").participantId("urn:other").realm("realm-a").build();
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
+        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(BucketProvisioningMode.AUTOMATIC);
+        when(tenantRepository.findByRealm("realm-a")).thenReturn(Optional.of(other));
+        Tenant updates = Tenant.Builder.newInstance()
+                .id(TENANT_ID).name("Engineering").participantId("urn:connector:engineering")
+                .realm("realm-a").build();
+
+        assertThrows(IllegalArgumentException.class, () -> tenantService.updateTenant(TENANT_ID, updates));
+
+        verify(tenantRepository, never()).save(any());
+    }
 }

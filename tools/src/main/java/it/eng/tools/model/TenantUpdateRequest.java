@@ -21,6 +21,8 @@ public class TenantUpdateRequest {
     private boolean automaticNegotiation;
     private boolean automaticTransfer;
     private String bucketName;
+    private String realm;
+    private boolean realmProvided;
     private String accessKey;
     private String secretKey;
     private boolean verifyConnection;
@@ -39,6 +41,7 @@ public class TenantUpdateRequest {
                 .description(description)
                 .automaticNegotiation(automaticNegotiation)
                 .automaticTransfer(automaticTransfer)
+                .realm(realmProvided ? realm : existingTenant.getRealm())
                 .build();
     }
 
@@ -76,6 +79,19 @@ public class TenantUpdateRequest {
          */
         public static Builder newInstance() {
             return new Builder();
+        }
+
+        /**
+         * Sets the Keycloak realm; marks the realm as explicitly provided so that
+         * a {@code null} or blank value clears the binding.
+         *
+         * @param realm realm name, or {@code null}/blank to clear
+         * @return this builder
+         */
+        public Builder realm(String realm) {
+            request.realm = realm;
+            request.realmProvided = true;
+            return this;
         }
 
         /**

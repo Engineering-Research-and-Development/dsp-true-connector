@@ -38,6 +38,9 @@ public class TenantService {
 
     /** Prefix used when auto-deriving an S3 bucket name from the tenant identifier. */
     static final String BUCKET_NAME_PREFIX = "dsp-";
+
+    /** Tenant id reserved for the super-admin context; it cannot be used by a real tenant. */
+    public static final String RESERVED_SUPER_ADMIN_ID = "super-admin";
     private static final String CHANGE_TYPE_KEY = "changeType";
     private static final String CHANGE_TYPE_ORDINARY_UPDATE = "ORDINARY_UPDATE";
     private static final String CHANGE_TYPE_CREDENTIALS_ROTATED = "CREDENTIALS_ROTATED";
@@ -168,6 +171,9 @@ public class TenantService {
             throw new IllegalArgumentException(
                     "Tenant id '" + tenantId + "' is invalid: only alphanumeric characters and hyphens are allowed.");
         }
+        if (RESERVED_SUPER_ADMIN_ID.equalsIgnoreCase(tenantId)) {
+            throw new IllegalArgumentException("Tenant id '" + tenantId + "' is reserved.");
+        }
         tenantRepository.findById(tenantId)
                 .ifPresent(existing -> {
                     throw new IllegalArgumentException(
@@ -178,6 +184,8 @@ public class TenantService {
                     throw new IllegalArgumentException(
                             "Tenant with participantId '" + tenant.getParticipantId() + "' already exists: " + existing.getId());
                 });
+
+        validateRealmAvailable(tenant.getRealm(), tenantId);
 
         String effectiveBucketName = resolveEffectiveBucketName(tenantId, credentialsRequest, provisioningMode);
         validateBucketNameFormat(effectiveBucketName);
@@ -191,6 +199,7 @@ public class TenantService {
                 .automaticTransfer(tenant.isAutomaticTransfer())
                 .enabled(tenant.isEnabled())
                 .bucketName(effectiveBucketName)
+                .realm(tenant.getRealm())
                 .build();
 
         validateBucketOwnership(effectiveBucketName);
@@ -344,6 +353,8 @@ public class TenantService {
             validateBucketOwnershipForUpdate(effectiveBucketName, tenantId);
         }
 
+        validateRealmAvailable(updates.getRealm(), tenantId);
+
         applyUpdateBucketProvisioning(tenantId, existing, credentialsRequest, effectiveBucketName, provisioningMode);
 
         Tenant updated = Tenant.Builder.newInstance()
@@ -356,6 +367,7 @@ public class TenantService {
                 .automaticTransfer(updates.isAutomaticTransfer())
                 .enabled(existing.isEnabled())
                 .bucketName(effectiveBucketName)
+                .realm(updates.getRealm())
                 .build();
         Tenant saved = tenantRepository.save(updated);
         Map<String, Object> details = new LinkedHashMap<>();
@@ -389,6 +401,7 @@ public class TenantService {
                 .automaticTransfer(source.isAutomaticTransfer())
                 .enabled(enabled)
                 .bucketName(source.getBucketName())
+                .realm(source.getRealm())
                 .build();
     }
 
@@ -409,6 +422,18 @@ public class TenantService {
             return BUCKET_NAME_PREFIX + tenantId.toLowerCase();
         }
         return credentialsRequest.getBucketName();
+    }
+
+    private void validateRealmAvailable(String realm, String tenantId) {
+        if (realm == null) {
+            return;
+        }
+        tenantRepository.findByRealm(realm)
+                .filter(other -> !other.getId().equals(tenantId))
+                .ifPresent(other -> {
+                    throw new IllegalArgumentException(
+                            "Realm '" + realm + "' is already bound to tenant: " + other.getId());
+                });
     }
 
     private void validateBucketOwnership(String bucketName) {

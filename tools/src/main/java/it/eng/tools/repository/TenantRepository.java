@@ -50,4 +50,12 @@ public interface TenantRepository extends MongoRepository<Tenant, String>,
      * @return an optional containing the tenant with this participant ID, if any
      */
     Optional<Tenant> findByParticipantId(String participantId);
+
+    /**
+     * Finds the tenant bound to the given Keycloak realm.
+     *
+     * @param realm the realm name
+     * @return an optional containing the tenant bound to this realm, if any
+     */
+    Optional<Tenant> findByRealm(String realm);
 }
