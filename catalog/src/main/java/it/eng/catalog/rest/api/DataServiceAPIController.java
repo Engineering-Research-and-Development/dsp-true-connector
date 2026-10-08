@@ -12,8 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
-	path = ApiEndpoints.CATALOG_DATA_SERVICES_V1)
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE,
+        path = ApiEndpoints.CATALOG_DATA_SERVICES_V1)
 @Slf4j
 public class DataServiceAPIController {
 
@@ -42,7 +42,7 @@ public class DataServiceAPIController {
                 .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(dataServices), "Fetched all data service"));
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GenericApiResponse<JsonNode>> saveDataService(@RequestBody String dataService) {
         DataService ds = CatalogSerializer.deserializePlain(dataService, DataService.class);
 
@@ -64,7 +64,7 @@ public class DataServiceAPIController {
                 .body(GenericApiResponse.success(null, "Data service deleted successfully"));
     }
 
-    @PutMapping(path = "/{id}")
+    @PutMapping(path = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GenericApiResponse<JsonNode>> updateDataService(@PathVariable String id, @RequestBody String dataService) {
         DataService ds = CatalogSerializer.deserializePlain(dataService, DataService.class);
 

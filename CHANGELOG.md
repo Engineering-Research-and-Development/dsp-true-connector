@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
 - properties for enabling Swagger UI and OpenAPI JSON endpoint
 - Enabled public Swagger UI/OpenAPI documentation only in the Docker and Terraform demo configurations; other profiles remain disabled by default.
 
+### Fixed
+- Scoped JSON request media-type constraints to body-bearing catalog API methods so bodyless GET and DELETE requests do not require a `Content-Type` header.
+
 ## [0.7.2] — Dashboard Metrics API
 
 ### Added

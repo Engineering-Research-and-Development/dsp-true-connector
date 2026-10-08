@@ -93,8 +93,7 @@ public class DataServiceAPIIT extends BaseIntegrationTest {
     public void getDataServiceById_success() throws Exception {
         // Test getting a data service by ID
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId())
-                        .contentType(MediaType.APPLICATION_JSON));
+                get(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId()));
 
         result.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -119,8 +118,7 @@ public class DataServiceAPIIT extends BaseIntegrationTest {
     public void getDataServiceById_notFound() throws Exception {
         // Test getting a non-existent data service
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/non-existent-id")
-                        .contentType(MediaType.APPLICATION_JSON));
+                get(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/non-existent-id"));
 
         result.andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -137,8 +135,7 @@ public class DataServiceAPIIT extends BaseIntegrationTest {
     public void getAllDataServices_success() throws Exception {
         // Test getting all data services
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_DATA_SERVICES_V1)
-                        .contentType(MediaType.APPLICATION_JSON));
+                get(ApiEndpoints.CATALOG_DATA_SERVICES_V1));
 
         result.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -275,8 +272,7 @@ public class DataServiceAPIIT extends BaseIntegrationTest {
     public void deleteDataService_success() throws Exception {
         // Test deleting an existing data service
         final ResultActions result = mockMvc.perform(
-                delete(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId())
-                        .contentType(MediaType.APPLICATION_JSON));
+                delete(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/" + dataService.getId()));
 
         result.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -302,8 +298,7 @@ public class DataServiceAPIIT extends BaseIntegrationTest {
     public void deleteDataService_notFound() throws Exception {
         // Test deleting a non-existent data service
         final ResultActions result = mockMvc.perform(
-                delete(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/non-existent-id")
-                        .contentType(MediaType.APPLICATION_JSON));
+                delete(ApiEndpoints.CATALOG_DATA_SERVICES_V1 + "/non-existent-id"));
 
         result.andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -318,8 +313,7 @@ public class DataServiceAPIIT extends BaseIntegrationTest {
     public void unauthorized_access() throws Exception {
         // Test unauthorized access
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_DATA_SERVICES_V1)
-                        .contentType(MediaType.APPLICATION_JSON));
+                get(ApiEndpoints.CATALOG_DATA_SERVICES_V1));
 
         result.andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
