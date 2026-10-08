@@ -106,7 +106,7 @@ token response:
 **Why backend-mediated**: UI and other API clients never call Keycloak (or any identity provider)
 directly. They only ever call the connector's own `/api/v1/auth/*` endpoints. In `KEYCLOAK` mode,
 `AuthController` delegates to `KeycloakAuthServiceImpl`, which proxies the request to Keycloak's
-token endpoint using the `application.keycloak.login.*` client (see
+token endpoint using the configured `client-id` and platform realm (see
 [Keycloak Authentication Mode](#keycloak-authentication-mode-keycloak) below) and re-shapes
 Keycloak's response into the same `LoginResponse` contract. In `INTERNAL` mode, `AuthController`
 delegates to `InternalAuthServiceImpl`, which validates credentials against MongoDB and mints a
@@ -130,37 +130,52 @@ application.auth.provider=KEYCLOAK
 
 ### Configuration Properties
 
-> **Two separate Keycloak clients are always used and must never be merged.** They serve
-> different purposes, are configured under different property prefixes, and have different
-> client types (public vs. confidential):
+Configuration is bound to the typed `KeycloakProperties` record (`application.keycloak.*`), which is
+registered only in `KEYCLOAK` mode. Missing required values fail startup with a message naming the
+kebab-case property; an unreachable Keycloak does not (JWKS are fetched lazily).
 
 ```properties
-# JWT validation - Keycloak as resource server (both admin-zone and protocol-zone tokens
-# are validated against this same realm/JWK set)
-spring.security.oauth2.resourceserver.jwt.issuer-uri=http://localhost:8180/realms/dsp-connector
-spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://localhost:8180/realms/dsp-connector/protocol/openid-connect/certs
-
-# --- UI login client: used ONLY by AuthController/KeycloakAuthServiceImpl to proxy
-# --- POST /api/v1/auth/login|refresh|logout on behalf of human users (ROLE_ADMIN / ROLE_SUPER_ADMIN).
-# --- Public client (resource-owner-password-credentials grant) - no secret required.
-application.keycloak.login.client-id=dsp-connector-ui
-#application.keycloak.login.client-secret=dsp-connector-ui-secret
-application.keycloak.login.token-url=http://localhost:8180/realms/dsp-connector/protocol/openid-connect/token
-application.keycloak.login.logout-url=http://localhost:8180/realms/dsp-connector/protocol/openid-connect/logout
-
-# --- Backend service-account client: used ONLY by KeycloakAuthenticationService for
-# --- connector-to-connector (M2M) protocol calls (ROLE_CONNECTOR), via client-credentials grant.
-# --- Confidential client - requires a client secret.
-application.keycloak.backend.client-id=dsp-connector-consumer-backend
-application.keycloak.backend.client-secret=dsp-connector-consumer-secret
-application.keycloak.backend.token-url=http://localhost:8180/realms/dsp-connector/protocol/openid-connect/token
-application.keycloak.backend.token-caching=true
+application.keycloak.base-url=http://localhost:8180
+application.keycloak.platform-realm=dsp-platform
+application.keycloak.client-id=dsp-connector
+application.keycloak.audience=dsp-connector
+application.keycloak.platform-client-secret=${KEYCLOAK_PLATFORM_CLIENT_SECRET}
+# Optional: enable Keycloak user administration (default false)
+application.keycloak.user-admin.enabled=false
 ```
 
-`application.keycloak.login.*` and `application.keycloak.backend.*` are independent
-`@ConfigurationProperties` beans (`KeycloakLoginProperties` and `KeycloakAuthenticationProperties`)
-with no shared state. Rotating the backend client's secret has no effect on UI login, and vice
-versa.
+| Property | Purpose |
+|---|---|
+| `base-url` | Keycloak server base URL; realm URLs are derived as `<base-url>/realms/<realm>` |
+| `platform-realm` | Realm used for platform-level (super-admin) identities and connector-to-connector tokens |
+| `client-id` | Client id used in every realm for token and credential-validation requests |
+| `audience` | Audience that tokens must carry |
+| `platform-client-secret` | Secret of `client-id` in the platform realm (never logged) |
+
+> **Breaking change:** the former `application.keycloak.backend.*`, `login.*`, `admin.*` and
+> `spring.security.oauth2.resourceserver.jwt.*` properties are removed. See `CHANGELOG.md`.
+
+### Tenant realm binding and realm credentials
+
+Each tenant may be bound to one Keycloak realm through `Tenant.realm` (letters, digits, `.`, `_`, `-`).
+A realm can belong to at most one tenant (unique partial index `tenant_realm_unique`; seeded `null` realms
+do not collide). The tenant id `super-admin` is reserved. Changing or clearing a tenant's realm, or deleting
+the tenant, removes its stored realm credentials.
+
+The client secret of the shared `client-id` in a tenant's realm is stored per tenant in the
+`realm_credentials` collection, encrypted at rest, and set at runtime (no restart):
+
+```http
+PUT /api/v1/tenants/{id}/realm-credentials      (ROLE_SUPER_ADMIN only)
+{ "clientSecret": "..." }
+```
+
+The secret is validated with a real client-credentials request to
+`<base-url>/realms/<tenant realm>/protocol/openid-connect/token`; on failure a generic `400` is returned and
+nothing is stored. On success the secret is stored encrypted and a `RealmCredentialsChangedEvent` is published
+so consumers can evict cached tokens. The secret is never returned or logged; tenant responses expose only
+`realm` and the computed `credentialsConfigured` flag. In `KEYCLOAK` mode a startup `WARN` lists tenants that
+have a realm but no credentials.
 
 ### What Happens in Keycloak Mode
 
@@ -177,14 +192,14 @@ versa.
 
 **Outbound connector-to-connector requests**:
 - `AuthenticationCache` (via `KeycloakAuthenticationService`) acquires and caches a
-  client-credentials token from the `application.keycloak.backend.*` client for M2M protocol calls
+  client-credentials token with `application.keycloak.client-id` and the platform client secret for M2M protocol calls
 
 ### Getting Tokens
 
 Clients never call Keycloak directly. All tokens are obtained through the connector's own unified
 endpoints:
 
-**User login (proxies to the `application.keycloak.login.*` client)**:
+**User login (proxies to the platform realm)**:
 ```bash
 curl -X POST http://localhost:8080/api/v1/auth/login \
   -H "Content-Type: application/json" \

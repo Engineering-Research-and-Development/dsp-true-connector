@@ -2,7 +2,7 @@ package it.eng.connector.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
-import it.eng.tools.auth.keycloak.KeycloakLoginProperties;
+import it.eng.tools.auth.keycloak.KeycloakProperties;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
@@ -24,14 +24,14 @@ import java.util.Map;
 @Conditional(KeycloakAuthenticationModeCondition.class)
 public class KeycloakAuthServiceImpl implements AuthService {
 
-    private final KeycloakLoginProperties keycloakLoginProperties;
+    private final KeycloakProperties keycloakProperties;
     private final OkHttpRestClient okHttpRestClient;
     private final AuditEventPublisher publisher;
 
-    public KeycloakAuthServiceImpl(KeycloakLoginProperties keycloakLoginProperties,
+    public KeycloakAuthServiceImpl(KeycloakProperties keycloakProperties,
                                    OkHttpRestClient okHttpRestClient,
                                    AuditEventPublisher publisher) {
-        this.keycloakLoginProperties = keycloakLoginProperties;
+        this.keycloakProperties = keycloakProperties;
         this.okHttpRestClient = okHttpRestClient;
         this.publisher = publisher;
     }
@@ -40,21 +40,21 @@ public class KeycloakAuthServiceImpl implements AuthService {
     public AuthTokens login(String email, String password) {
         FormBody.Builder formBuilder = new FormBody.Builder()
                 .add("grant_type", "password")
-                .add("client_id", keycloakLoginProperties.getClientId())
+                .add("client_id", keycloakProperties.clientId())
                 .add("username", email)
                 .add("password", password)
                 .add("scope", "openid");
 
         // Include client_secret only if your Keycloak client is confidential
-        if (keycloakLoginProperties.getClientSecret() != null && !keycloakLoginProperties.getClientSecret().trim().isEmpty()) {
-            formBuilder.add("client_secret", keycloakLoginProperties.getClientSecret());
+        if (keycloakProperties.platformClientSecret() != null && !keycloakProperties.platformClientSecret().trim().isEmpty()) {
+            formBuilder.add("client_secret", keycloakProperties.platformClientSecret());
         }
 
         RequestBody requestBody = formBuilder.build();
 
         // Build the HTTP POST request
         Request request = new Request.Builder()
-                .url(keycloakLoginProperties.getTokenUrl())
+                .url(keycloakProperties.tokenUrl(keycloakProperties.platformRealm()))
                 .post(requestBody)
                 .addHeader("Content-Type", "application/x-www-form-urlencoded")
                 .build();
@@ -102,19 +102,19 @@ public class KeycloakAuthServiceImpl implements AuthService {
     public AuthTokens refresh(String refreshTokenId) {
         FormBody.Builder formBuilder = new FormBody.Builder()
                 .add("grant_type", "refresh_token")
-                .add("client_id", keycloakLoginProperties.getClientId())
+                .add("client_id", keycloakProperties.clientId())
                 .add("refresh_token", refreshTokenId);
 
         // Include client_secret only if your Keycloak client is confidential
-        if (keycloakLoginProperties.getClientSecret() != null && !keycloakLoginProperties.getClientSecret().trim().isEmpty()) {
-            formBuilder.add("client_secret", keycloakLoginProperties.getClientSecret());
+        if (keycloakProperties.platformClientSecret() != null && !keycloakProperties.platformClientSecret().trim().isEmpty()) {
+            formBuilder.add("client_secret", keycloakProperties.platformClientSecret());
         }
 
         RequestBody requestBody = formBuilder.build();
 
         // Build the HTTP POST request
         Request request = new Request.Builder()
-                .url(keycloakLoginProperties.getTokenUrl())
+                .url(keycloakProperties.tokenUrl(keycloakProperties.platformRealm()))
                 .post(requestBody)
                 .addHeader("Content-Type", "application/x-www-form-urlencoded")
                 .build();
@@ -160,19 +160,19 @@ public class KeycloakAuthServiceImpl implements AuthService {
         // Build the x-www-form-urlencoded request body
         // Keycloak requires the refresh_token to identify and terminate the specific session
         FormBody.Builder formBuilder = new FormBody.Builder()
-                .add("client_id", keycloakLoginProperties.getClientId())
+                .add("client_id", keycloakProperties.clientId())
                 .add("refresh_token", refreshTokenId);
 
         // Include client_secret only if your Keycloak client is confidential
-        if (keycloakLoginProperties.getClientSecret() != null && !keycloakLoginProperties.getClientSecret().trim().isEmpty()) {
-            formBuilder.add("client_secret", keycloakLoginProperties.getClientSecret());
+        if (keycloakProperties.platformClientSecret() != null && !keycloakProperties.platformClientSecret().trim().isEmpty()) {
+            formBuilder.add("client_secret", keycloakProperties.platformClientSecret());
         }
 
         RequestBody requestBody = formBuilder.build();
 
         // Build the HTTP POST request
         Request request = new Request.Builder()
-                .url(keycloakLoginProperties.getLogoutUrl())
+                .url(keycloakProperties.logoutUrl(keycloakProperties.platformRealm()))
                 .post(requestBody)
                 .addHeader("Content-Type", "application/x-www-form-urlencoded")
                 .build();

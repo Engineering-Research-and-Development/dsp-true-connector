@@ -208,9 +208,9 @@ body:
       label: "AI Model"
       description: "Which model should execute this docs task."
       options:
-        - "Sonnet 4.6 (standard implementation)"
-        - "Opus 4.8 (complex, multi-file, architectural)"
-        - "Fable 5 (most capable — cross-module or protocol-critical work)"
+        - "Sonnet 5.5 (standard implementation)"
+        - "Opus 5.5 (complex, multi-file, architectural)"
+        - "Fable 5.1 (most capable — cross-module or protocol-critical work)"
         - "Haiku 4.5 (simple, mechanical changes)"
     validations:
       required: true

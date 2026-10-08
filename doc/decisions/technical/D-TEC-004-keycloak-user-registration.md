@@ -71,6 +71,6 @@ avoids a second authentication path.
   realm import are updated as part of this implementation.
 
 ## Related
-- Decisions: —
+- Decisions: [D-ARC-003](../architecture/D-ARC-003-multi-realm-oidc-realm-per-tenant.md) (makes this capability optional via `application.keycloak.user-admin.enabled` and realm-aware via `Tenant.realm`)
 - Docs: `connector/documentation/users.md`, `doc/security.md`
 - Tickets: #248 (MT1 slice), #254

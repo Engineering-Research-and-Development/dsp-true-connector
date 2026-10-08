@@ -1,6 +1,9 @@
 package it.eng.tools.rest.api;
 
+import it.eng.tools.auth.keycloak.realm.RealmCredentialsService;
+import it.eng.tools.auth.keycloak.realm.RealmCredentialsValidator;
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.exception.BadRequestException;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.model.TenantCreateRequest;
 import it.eng.tools.model.TenantUpdateRequest;
@@ -39,6 +42,8 @@ public class TenantAPIController {
     private final PlainTenantAssembler plainAssembler;
 
     private final TenantService tenantService;
+    private final RealmCredentialsService realmCredentialsService;
+    private final RealmCredentialsValidator realmCredentialsValidator;
 
     /**
      * Constructs the controller with its service dependency.
@@ -47,13 +52,19 @@ public class TenantAPIController {
      * @param pagedResourcesAssembler the paged resources assembler
      * @param plainAssembler the plain tenant assembler
      * @param tenantService the tenant service
+     * @param realmCredentialsService the realm credentials service
+     * @param realmCredentialsValidator the validator checking secrets against Keycloak
      * */
     public TenantAPIController(GenericFilterBuilder filterBuilder, PagedResourcesAssembler<Tenant> pagedResourcesAssembler,
-                               PlainTenantAssembler plainAssembler, TenantService tenantService) {
+                               PlainTenantAssembler plainAssembler, TenantService tenantService,
+                               RealmCredentialsService realmCredentialsService,
+                               RealmCredentialsValidator realmCredentialsValidator) {
         this.filterBuilder = filterBuilder;
         this.pagedResourcesAssembler = pagedResourcesAssembler;
         this.plainAssembler = plainAssembler;
         this.tenantService = tenantService;
+        this.realmCredentialsService = realmCredentialsService;
+        this.realmCredentialsValidator = realmCredentialsValidator;
     }
 
     /**
@@ -106,6 +117,7 @@ public class TenantAPIController {
     public ResponseEntity<GenericApiResponse<List<Tenant>>> getAllTenants() {
         log.info("Fetching all tenants");
         List<Tenant> tenants = tenantService.findAllAsList();
+        tenants.forEach(t -> t.markCredentialsConfigured(realmCredentialsService.exists(t.getId())));
         return ResponseEntity.ok(GenericApiResponse.success(tenants, "Fetching all tenants"));
     }
 
@@ -118,7 +130,7 @@ public class TenantAPIController {
     @GetMapping(path = "/{id}", consumes = MediaType.ALL_VALUE)
     public ResponseEntity<GenericApiResponse<Tenant>> getTenantById(@PathVariable String id) {
         log.info("Fetching tenant: {}", id);
-        Tenant tenant = tenantService.findById(id);
+        Tenant tenant = tenantService.findById(id).markCredentialsConfigured(realmCredentialsService.exists(id));
         return ResponseEntity.ok(GenericApiResponse.success(tenant, "Tenant found"));
     }
 
@@ -193,5 +205,34 @@ public class TenantAPIController {
         log.info("Deleting tenant: {}", id);
         tenantService.deleteTenant(id);
         return ResponseEntity.ok(GenericApiResponse.success(null, "Tenant deleted"));
+    }
+
+    /**
+     * Validates and stores the Keycloak client secret for the tenant's realm.
+     *
+     * <p>The secret is verified with a real client-credentials request against the tenant's realm
+     * and is stored encrypted only when Keycloak accepts it. The secret is never returned or logged.
+     *
+     * @param id      the tenant identifier
+     * @param request the request body carrying the client secret
+     * @return 200 OK without the secret, or 400 with a generic error
+     */
+    @PutMapping(path = "/{id}" + ApiEndpoints.TENANT_REALM_CREDENTIALS, consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<GenericApiResponse<Void>> configureRealmCredentials(
+            @PathVariable String id, @RequestBody RealmCredentialsRequest request) {
+        Tenant tenant = tenantService.findById(id);
+        if (tenant.getRealm() == null || tenant.getRealm().isBlank()) {
+            throw new BadRequestException("Tenant is not bound to a realm.");
+        }
+        if (request == null || request.clientSecret() == null || request.clientSecret().isBlank()) {
+            throw new BadRequestException("clientSecret is required.");
+        }
+        log.info("Configuring realm credentials for tenant: {}", id);
+        if (!realmCredentialsValidator.isAvailable()
+                || !realmCredentialsValidator.isValid(tenant.getRealm(), request.clientSecret())) {
+            throw new BadRequestException("Realm credentials could not be validated.");
+        }
+        realmCredentialsService.save(id, request.clientSecret());
+        return ResponseEntity.ok(GenericApiResponse.success(null, "Realm credentials configured"));
     }
 }

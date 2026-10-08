@@ -584,6 +584,41 @@
               "response": []
             },
             {
+              "name": "Configure Realm Credentials",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{CONSUMER}}/api/v1/tenants/{{TENANT_ID}}/realm-credentials",
+                  "host": [
+                    "{{CONSUMER}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "tenants",
+                    "{{TENANT_ID}}",
+                    "realm-credentials"
+                  ]
+                },
+                "description": "List all tenants. Requires ROLE_SUPER_ADMIN.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"clientSecret\": \"<realm client secret>\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              }
+            },
+            {
               "name": "Get Tenant by ID",
               "request": {
                 "method": "GET",

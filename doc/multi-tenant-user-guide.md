@@ -222,4 +222,4 @@ A: Not in the current implementation. A user is associated with exactly one tena
 A: New requests for a disabled tenant are rejected (403). Existing, in-progress negotiations and transfers in the database are not automatically terminated.
 
 **Q: What happens if two tenants have a negotiation between them on the same connector instance?**  
-A: This is not the typical use case. The connector is designed for inter-connector communication. Two tenants on the same instance negotiating with each other is not supported in the current implementation.
+A: Each tenant's data is isolated. Negotiations and transfers are scoped to the tenant that initiated them. A negotiation between two tenants can occur both on the same connector instance and across different connector instances.

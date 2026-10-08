@@ -1,5 +1,6 @@
 package it.eng.tools.service;
 
+import it.eng.tools.auth.keycloak.realm.RealmCredentialsService;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.exception.TenantNotFoundException;
@@ -38,6 +39,9 @@ public class TenantService {
 
     /** Prefix used when auto-deriving an S3 bucket name from the tenant identifier. */
     static final String BUCKET_NAME_PREFIX = "dsp-";
+
+    /** Tenant id reserved for the super-admin context; it cannot be used by a real tenant. */
+    public static final String RESERVED_SUPER_ADMIN_ID = "super-admin";
     private static final String CHANGE_TYPE_KEY = "changeType";
     private static final String CHANGE_TYPE_ORDINARY_UPDATE = "ORDINARY_UPDATE";
     private static final String CHANGE_TYPE_CREDENTIALS_ROTATED = "CREDENTIALS_ROTATED";
@@ -49,6 +53,7 @@ public class TenantService {
     private final BucketCredentialsService bucketCredentialsService;
     private final BucketProvisioningModeResolver bucketProvisioningModeResolver;
     private final BucketConnectionVerificationService bucketConnectionVerificationService;
+    private final RealmCredentialsService realmCredentialsService;
     private final String baseCallbackAddress;
 
     /**
@@ -61,6 +66,7 @@ public class TenantService {
      * @param bucketCredentialsService the bucket credentials service
      * @param bucketProvisioningModeResolver the resolver for tenant bucket provisioning mode
      * @param bucketConnectionVerificationService the service verifying externally supplied bucket credentials
+     * @param realmCredentialsService the service managing per-realm Keycloak client credentials
      * @param baseCallbackAddress      the base URL used to derive per-tenant callback addresses;
      *                                 injected from {@code application.baseURL}
      */
@@ -70,6 +76,7 @@ public class TenantService {
                          BucketCredentialsService bucketCredentialsService,
                          BucketProvisioningModeResolver bucketProvisioningModeResolver,
                          BucketConnectionVerificationService bucketConnectionVerificationService,
+                         RealmCredentialsService realmCredentialsService,
                          @Value("${application.baseURL}") String baseCallbackAddress) {
         this.tenantRepository = tenantRepository;
         this.auditEventPublisher = auditEventPublisher;
@@ -77,6 +84,7 @@ public class TenantService {
         this.bucketCredentialsService = bucketCredentialsService;
         this.bucketProvisioningModeResolver = bucketProvisioningModeResolver;
         this.bucketConnectionVerificationService = bucketConnectionVerificationService;
+        this.realmCredentialsService = realmCredentialsService;
         this.baseCallbackAddress = baseCallbackAddress;
     }
 
@@ -168,6 +176,9 @@ public class TenantService {
             throw new IllegalArgumentException(
                     "Tenant id '" + tenantId + "' is invalid: only alphanumeric characters and hyphens are allowed.");
         }
+        if (RESERVED_SUPER_ADMIN_ID.equalsIgnoreCase(tenantId)) {
+            throw new IllegalArgumentException("Tenant id '" + tenantId + "' is reserved.");
+        }
         tenantRepository.findById(tenantId)
                 .ifPresent(existing -> {
                     throw new IllegalArgumentException(
@@ -178,6 +189,8 @@ public class TenantService {
                     throw new IllegalArgumentException(
                             "Tenant with participantId '" + tenant.getParticipantId() + "' already exists: " + existing.getId());
                 });
+
+        validateRealmAvailable(tenant.getRealm(), tenantId);
 
         String effectiveBucketName = resolveEffectiveBucketName(tenantId, credentialsRequest, provisioningMode);
         validateBucketNameFormat(effectiveBucketName);
@@ -191,6 +204,7 @@ public class TenantService {
                 .automaticTransfer(tenant.isAutomaticTransfer())
                 .enabled(tenant.isEnabled())
                 .bucketName(effectiveBucketName)
+                .realm(tenant.getRealm())
                 .build();
 
         validateBucketOwnership(effectiveBucketName);
@@ -234,6 +248,7 @@ public class TenantService {
     public void deleteTenant(String tenantId) {
         Tenant tenant = findById(tenantId);
         tenantRepository.delete(tenant);
+        realmCredentialsService.delete(tenantId);
         if (StringUtils.hasText(tenant.getBucketName())) {
             log.warn("Tenant '{}' was deleted but its S3 bucket '{}' was NOT removed. "
                     + "Clean up the bucket manually once all artifact data has been migrated or is no longer needed.",
@@ -344,6 +359,8 @@ public class TenantService {
             validateBucketOwnershipForUpdate(effectiveBucketName, tenantId);
         }
 
+        validateRealmAvailable(updates.getRealm(), tenantId);
+
         applyUpdateBucketProvisioning(tenantId, existing, credentialsRequest, effectiveBucketName, provisioningMode);
 
         Tenant updated = Tenant.Builder.newInstance()
@@ -356,8 +373,13 @@ public class TenantService {
                 .automaticTransfer(updates.isAutomaticTransfer())
                 .enabled(existing.isEnabled())
                 .bucketName(effectiveBucketName)
+                .realm(updates.getRealm())
                 .build();
         Tenant saved = tenantRepository.save(updated);
+        if (!Objects.equals(existing.getRealm(), saved.getRealm())) {
+            realmCredentialsService.delete(tenantId);
+            log.info("Realm of tenant '{}' changed; stored realm credentials were removed.", tenantId);
+        }
         Map<String, Object> details = new LinkedHashMap<>();
         details.put("tenantId", tenantId);
         details.put("tenantName", saved.getName());
@@ -389,6 +411,7 @@ public class TenantService {
                 .automaticTransfer(source.isAutomaticTransfer())
                 .enabled(enabled)
                 .bucketName(source.getBucketName())
+                .realm(source.getRealm())
                 .build();
     }
 
@@ -409,6 +432,18 @@ public class TenantService {
             return BUCKET_NAME_PREFIX + tenantId.toLowerCase();
         }
         return credentialsRequest.getBucketName();
+    }
+
+    private void validateRealmAvailable(String realm, String tenantId) {
+        if (realm == null) {
+            return;
+        }
+        tenantRepository.findByRealm(realm)
+                .filter(other -> !other.getId().equals(tenantId))
+                .ifPresent(other -> {
+                    throw new IllegalArgumentException(
+                            "Realm '" + realm + "' is already bound to tenant: " + other.getId());
+                });
     }
 
     private void validateBucketOwnership(String bucketName) {

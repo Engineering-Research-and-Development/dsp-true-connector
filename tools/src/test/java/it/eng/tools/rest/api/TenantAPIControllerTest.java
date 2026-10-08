@@ -1,5 +1,8 @@
 package it.eng.tools.rest.api;
 
+import it.eng.tools.auth.keycloak.realm.RealmCredentialsService;
+import it.eng.tools.auth.keycloak.realm.RealmCredentialsValidator;
+import it.eng.tools.exception.BadRequestException;
 import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.model.TenantBucketCredentialsRequest;
@@ -49,6 +52,10 @@ class TenantAPIControllerTest {
     private PlainTenantAssembler plainAssembler;
     @Mock
     private GenericFilterBuilder filterBuilder;
+    @Mock
+    private RealmCredentialsService realmCredentialsService;
+    @Mock
+    private RealmCredentialsValidator realmCredentialsValidator;
 
     @InjectMocks
     private TenantAPIController controller;
@@ -234,5 +241,58 @@ class TenantAPIControllerTest {
         when(tenantService.disableTenant(TENANT_ID)).thenThrow(new TenantNotFoundException("Not found"));
 
         assertThrows(TenantNotFoundException.class, () -> controller.disableTenant(TENANT_ID));
+    }
+
+    private Tenant buildTenantWithRealm() {
+        return Tenant.Builder.newInstance().id(TENANT_ID).name("Engineering")
+                .participantId("urn:connector:engineering").realm("eng-realm").build();
+    }
+
+    @Test
+    @DisplayName("Valid realm secret is stored and the response never contains it")
+    void configureRealmCredentials_valid_stores() {
+        when(tenantService.findById(TENANT_ID)).thenReturn(buildTenantWithRealm());
+        when(realmCredentialsValidator.isAvailable()).thenReturn(true);
+        when(realmCredentialsValidator.isValid("eng-realm", "s3cret")).thenReturn(true);
+
+        ResponseEntity<GenericApiResponse<Void>> response =
+                controller.configureRealmCredentials(TENANT_ID, new RealmCredentialsRequest("s3cret"));
+
+        assertTrue(response.getBody().isSuccess());
+        assertFalse(response.getBody().toString().contains("s3cret"));
+        verify(realmCredentialsService).save(TENANT_ID, "s3cret");
+    }
+
+    @Test
+    @DisplayName("Invalid realm secret yields a generic error and stores nothing")
+    void configureRealmCredentials_invalid_rejected() {
+        when(tenantService.findById(TENANT_ID)).thenReturn(buildTenantWithRealm());
+        when(realmCredentialsValidator.isAvailable()).thenReturn(true);
+        when(realmCredentialsValidator.isValid("eng-realm", "bad")).thenReturn(false);
+
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> controller.configureRealmCredentials(TENANT_ID, new RealmCredentialsRequest("bad")));
+
+        assertFalse(ex.getMessage().contains("bad"));
+        verify(realmCredentialsService, never()).save(any(), any());
+    }
+
+    @Test
+    @DisplayName("Tenant without a realm is rejected")
+    void configureRealmCredentials_noRealm_rejected() {
+        when(tenantService.findById(TENANT_ID)).thenReturn(buildTenant());
+
+        assertThrows(BadRequestException.class,
+                () -> controller.configureRealmCredentials(TENANT_ID, new RealmCredentialsRequest("x")));
+        verify(realmCredentialsService, never()).save(any(), any());
+    }
+
+    @Test
+    @DisplayName("Get tenant by id reports credentialsConfigured")
+    void getTenantById_populatesCredentialsConfigured() {
+        when(tenantService.findById(TENANT_ID)).thenReturn(buildTenantWithRealm());
+        when(realmCredentialsService.exists(TENANT_ID)).thenReturn(true);
+
+        assertTrue(controller.getTenantById(TENANT_ID).getBody().getData().isCredentialsConfigured());
     }
 }
