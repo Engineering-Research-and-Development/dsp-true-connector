@@ -399,6 +399,7 @@
       "name": "Engineering Connector B",
       "description": "Default Engineering tenant",
       "participantId": "urn:connector:engineering-tenant-b",
+      "realm": null,
       "bucketName": "dsp-true-connector-tenant-b",
       "enabled": true,
       "automaticNegotiation": true,

@@ -330,6 +330,7 @@
       "name": "Engineering",
       "description": "Default Engineering Provider tenant",
       "participantId": "urn:connector:engineering-provider",
+      "realm": null,
       "bucketName": "dsp-true-connector-provider",
       "enabled": true,
       "automaticNegotiation": false,

@@ -19,6 +19,7 @@
       "name": "Engineering",
       "description": "Default Engineering tenant",
       "participantId": "urn:connector:engineering",
+      "realm": null,
       "callbackAddress": "http://localhost:8080",
       "enabled": true,
       "automaticNegotiation": false,
