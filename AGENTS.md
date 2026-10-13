@@ -234,3 +234,8 @@ Commit and push the feature branch, create a PR against `develop` with summary a
 | Merge conflict on `develop` | Agent rebases feature branch, re-runs per-task verification |
 | Missing service function referenced in issue | Fail the task, comment on issue — missing function is an untracked dependency |
 | Multiple agents pick the same issue | First agent to move to In Progress owns it; others skip |
+
+
+### Restrictions
+
+- do not include files in docs/supoerpowers/** directory, they are important only during implementation, and they should not be commited with other files.
