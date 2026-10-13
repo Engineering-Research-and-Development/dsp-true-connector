@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import it.eng.tools.s3.encrypt.Encrypted;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
@@ -13,13 +14,7 @@ import jakarta.validation.constraints.Pattern;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedBy;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedBy;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.annotation.Transient;
-import org.springframework.data.annotation.Version;
+import org.springframework.data.annotation.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -77,6 +72,14 @@ public class Tenant {
     private String realm;
 
     /**
+     * Keycloak realm client secret for a tenant.
+     * The client secret is stored encrypted at rest and is never included in {@link #toString()}.
+     */
+    @Encrypted
+    @JsonIgnore
+    private String clientSecret;
+
+    /**
      * Whether realm client credentials are configured for this tenant. Computed at read time
      * and never persisted.
      */
@@ -128,6 +131,11 @@ public class Tenant {
                 ? baseCallbackAddress.substring(0, baseCallbackAddress.length() - 1)
                 : baseCallbackAddress;
         return base + "/" + this.id;
+    }
+
+    @Override
+    public String toString() {
+        return "Tenant{id='" + id + "', name='" + name + "'}";
     }
 
     /**
@@ -249,6 +257,18 @@ public class Tenant {
          */
         public Builder realm(String realm) {
             tenant.realm = realm == null || realm.isBlank() ? null : realm.trim();
+            return this;
+        }
+
+        /**
+         * Sets the Keycloak realm client secret for this tenant.
+         * The client secret is stored encrypted at rest and is never included in {@link #toString()}.
+         *
+         * @param clientSecret the plain client secret
+         * @return this builder
+         */
+        public Builder clientSecret(String clientSecret) {
+            tenant.clientSecret = clientSecret;
             return this;
         }
 

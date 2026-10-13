@@ -1,29 +1,23 @@
 package it.eng.connector.integration.tenant;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.tools.auth.keycloak.realm.RealmCredentialsService;
 import it.eng.tools.configuration.TenantIndexInitializer;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.TenantRepository;
-import org.bson.Document;
+import it.eng.tools.service.FieldEncryptionService;
+import it.eng.tools.service.TenantService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.MediaType;
-import org.springframework.data.mongodb.core.MongoTemplate;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 public class TenantRealmIT extends BaseIntegrationTest {
 
@@ -32,9 +26,9 @@ public class TenantRealmIT extends BaseIntegrationTest {
     @Autowired
     private TenantRepository tenantRepository;
     @Autowired
-    private RealmCredentialsService realmCredentialsService;
+    private TenantService tenantService;
     @Autowired
-    private MongoTemplate mongoTemplate;
+    private FieldEncryptionService fieldEncryptionService;
     @Autowired
     private TenantIndexInitializer tenantIndexInitializer;
 
@@ -42,11 +36,17 @@ public class TenantRealmIT extends BaseIntegrationTest {
     void cleanup() {
         tenantRepository.deleteById("realm-it-a");
         tenantRepository.deleteById("realm-it-b");
-        realmCredentialsService.delete("realm-it-a");
     }
 
     private Tenant tenant(String id, String realm) {
-        return Tenant.Builder.newInstance().id(id).name(id).participantId("urn:" + id).realm(realm).build();
+        return Tenant.Builder.newInstance()
+                .id(id)
+                .name(id)
+                .participantId("urn:" + id)
+                .realm(realm)
+                .clientSecret(SECRET)
+                .credentialsConfigured(true)
+                .build();
     }
 
     @Test
@@ -61,16 +61,22 @@ public class TenantRealmIT extends BaseIntegrationTest {
     @Test
     @DisplayName("Realm secret is persisted encrypted")
     void secretStoredAsCiphertext() {
-        realmCredentialsService.save("realm-it-a", SECRET);
+        Tenant tenant = tenant("realm-it-a", "shared-realm");
+        Tenant tenantFromResponse = tenantService.saveTenant(tenant);
 
-        Document raw = mongoTemplate.getCollection("realm_credentials")
-                .find(new Document("_id", "realm-it-a")).first();
+        assertNotNull(tenantFromResponse.getId());
+        assertNull(tenantFromResponse.getClientSecret());
+        assertEquals(tenant.getName(), tenantFromResponse.getName());
+        assertEquals(tenant.getParticipantId(), tenantFromResponse.getParticipantId());
+        assertEquals(tenant.getRealm(), tenantFromResponse.getRealm());
 
-        assertNotNull(raw);
-        assertNotEquals(SECRET, raw.getString("clientSecret"));
-        assertFalse(raw.toJson().contains(SECRET));
-        assertEquals(SECRET, realmCredentialsService.getDecrypted("realm-it-a").orElseThrow());
-        assertTrue(realmCredentialsService.exists("realm-it-a"));
+
+        Tenant tenantInDb = tenantRepository.findById(tenant.getId()).get();
+
+        assertNotEquals(SECRET, tenantInDb.getClientSecret());
+        assertEquals(SECRET, fieldEncryptionService.decrypt(tenantInDb.getClientSecret()));
+        assertEquals(SECRET, tenantService.getDecryptedClientSecret("realm-it-a").orElseThrow());
+        assertTrue(tenantService.exists("realm-it-a"));
     }
 
     @Test

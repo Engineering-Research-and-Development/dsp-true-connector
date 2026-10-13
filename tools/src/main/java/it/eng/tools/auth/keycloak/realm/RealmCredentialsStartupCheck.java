@@ -2,7 +2,7 @@ package it.eng.tools.auth.keycloak.realm;
 
 import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
 import it.eng.tools.model.Tenant;
-import it.eng.tools.repository.TenantRepository;
+import it.eng.tools.service.TenantService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Conditional;
@@ -18,19 +18,15 @@ import org.springframework.util.StringUtils;
 @Conditional(KeycloakAuthenticationModeCondition.class)
 public class RealmCredentialsStartupCheck {
 
-    private final TenantRepository tenantRepository;
-    private final RealmCredentialsService realmCredentialsService;
+    private final TenantService tenantService;
 
     /**
      * Constructs the startup check.
      *
-     * @param tenantRepository        the tenant repository
-     * @param realmCredentialsService the realm credentials service
+     * @param tenantService        the tenant service
      */
-    public RealmCredentialsStartupCheck(TenantRepository tenantRepository,
-                                        RealmCredentialsService realmCredentialsService) {
-        this.tenantRepository = tenantRepository;
-        this.realmCredentialsService = realmCredentialsService;
+    public RealmCredentialsStartupCheck(TenantService tenantService) {
+        this.tenantService = tenantService;
     }
 
     /**
@@ -38,8 +34,8 @@ public class RealmCredentialsStartupCheck {
      */
     @EventListener(ApplicationReadyEvent.class)
     public void warnAboutMissingCredentials() {
-        for (Tenant tenant : tenantRepository.findAll()) {
-            if (StringUtils.hasText(tenant.getRealm()) && !realmCredentialsService.exists(tenant.getId())) {
+        for (Tenant tenant : tenantService.findAllAsList()) {
+            if (StringUtils.hasText(tenant.getRealm()) && !StringUtils.hasText(tenant.getClientSecret())) {
                 log.warn("Tenant '{}' is bound to realm '{}' but has no realm credentials configured.",
                         tenant.getId(), tenant.getRealm());
             }

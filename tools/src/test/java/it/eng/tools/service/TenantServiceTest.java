@@ -1,10 +1,10 @@
 package it.eng.tools.service;
 
+import it.eng.tools.auth.keycloak.realm.RealmCredentialsValidator;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.BucketProvisioningMode;
-import it.eng.tools.auth.keycloak.realm.RealmCredentialsService;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.model.TenantBucketCredentialsRequest;
 import it.eng.tools.repository.TenantRepository;
@@ -25,16 +25,9 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TenantServiceTest {
@@ -61,7 +54,10 @@ class TenantServiceTest {
     private BucketConnectionVerificationService bucketConnectionVerificationService;
 
     @Mock
-    private RealmCredentialsService realmCredentialsService;
+    private FieldEncryptionService fieldEncryptionService;
+
+    @Mock
+    private RealmCredentialsValidator realmCredentialsValidator;
 
     @Mock
     private Pageable pageable;
@@ -72,7 +68,7 @@ class TenantServiceTest {
     void setUp() {
         tenantService = new TenantService(tenantRepository, auditEventPublisher,
                 s3BucketProvisionService, bucketCredentialsService,
-                bucketProvisioningModeResolver, bucketConnectionVerificationService, realmCredentialsService, BASE_CALLBACK_URL);
+                bucketProvisioningModeResolver, bucketConnectionVerificationService, fieldEncryptionService, null, realmCredentialsValidator);
     }
 
     private Tenant buildTenant(boolean enabled) {
@@ -772,122 +768,5 @@ class TenantServiceTest {
         verify(tenantRepository, never()).save(any(Tenant.class));
         verify(bucketCredentialsService, never()).saveBucketCredentials(any(BucketCredentialsEntity.class));
         verify(s3BucketProvisionService, never()).ensureBucketCredentials(anyString());
-    }
-
-    @Test
-    @DisplayName("saveTenant rejects reserved super-admin tenant id")
-    void saveTenant_reservedId_throws() {
-        Tenant tenant = Tenant.Builder.newInstance()
-                .id("super-admin").name("SA").participantId("urn:sa").build();
-
-        assertThrows(IllegalArgumentException.class, () -> tenantService.saveTenant(tenant));
-
-        verify(tenantRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("saveTenant rejects a realm already bound to another tenant")
-    void saveTenant_duplicateRealm_throws() {
-        Tenant other = Tenant.Builder.newInstance()
-                .id("other").name("Other").participantId("urn:other").realm("realm-a").build();
-        when(tenantRepository.findByRealm("realm-a")).thenReturn(Optional.of(other));
-        Tenant tenant = Tenant.Builder.newInstance()
-                .id(TENANT_ID).name("Engineering").participantId("urn:connector:engineering")
-                .realm("realm-a").build();
-
-        assertThrows(IllegalArgumentException.class, () -> tenantService.saveTenant(tenant));
-
-        verify(tenantRepository, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("updateTenant allows a tenant to keep its own realm")
-    void updateTenant_sameRealmOwnTenant_allowed() {
-        Tenant existing = Tenant.Builder.newInstance()
-                .id(TENANT_ID).name("Engineering").participantId("urn:connector:engineering")
-                .realm("realm-a").build();
-        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
-        when(tenantRepository.findByRealm("realm-a")).thenReturn(Optional.of(existing));
-        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
-                .thenReturn(BucketProvisioningMode.AUTOMATIC);
-        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
-
-        Tenant saved = tenantService.updateTenant(TENANT_ID, existing);
-
-        assertEquals("realm-a", saved.getRealm());
-    }
-
-    @Test
-    @DisplayName("updateTenant deletes realm credentials when the realm changes")
-    void updateTenant_realmChanged_deletesCredentials() {
-        Tenant existing = Tenant.Builder.newInstance()
-                .id(TENANT_ID).name("Engineering").participantId("urn:connector:engineering")
-                .realm("realm-a").build();
-        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
-        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
-                .thenReturn(BucketProvisioningMode.AUTOMATIC);
-        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
-        Tenant changed = Tenant.Builder.newInstance()
-                .id(TENANT_ID).name("Engineering").participantId("urn:connector:engineering")
-                .realm("realm-b").build();
-
-        tenantService.updateTenant(TENANT_ID, changed);
-
-        verify(realmCredentialsService).delete(TENANT_ID);
-    }
-
-    @Test
-    @DisplayName("updateTenant deletes realm credentials when the realm is cleared")
-    void updateTenant_realmCleared_deletesCredentials() {
-        Tenant existing = Tenant.Builder.newInstance()
-                .id(TENANT_ID).name("Engineering").participantId("urn:connector:engineering")
-                .realm("realm-a").build();
-        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
-        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
-                .thenReturn(BucketProvisioningMode.AUTOMATIC);
-        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
-        Tenant cleared = Tenant.Builder.newInstance()
-                .id(TENANT_ID).name("Engineering").participantId("urn:connector:engineering").build();
-
-        tenantService.updateTenant(TENANT_ID, cleared);
-
-        verify(realmCredentialsService).delete(TENANT_ID);
-    }
-
-    @Test
-    @DisplayName("updateTenant keeps realm credentials when the realm is unchanged")
-    void updateTenant_realmUnchanged_keepsCredentials() {
-        updateTenant_sameRealmOwnTenant_allowed();
-
-        verify(realmCredentialsService, never()).delete(any());
-    }
-
-    @Test
-    @DisplayName("deleteTenant removes the tenant's realm credentials")
-    void deleteTenant_deletesCredentials() {
-        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(buildTenant(true)));
-
-        tenantService.deleteTenant(TENANT_ID);
-
-        verify(realmCredentialsService).delete(TENANT_ID);
-    }
-
-    @Test
-    @DisplayName("updateTenant rejects a realm owned by another tenant")
-    void updateTenant_realmOwnedByOther_throws() {
-        Tenant existing = buildTenant(true);
-        Tenant other = Tenant.Builder.newInstance()
-                .id("other").name("Other").participantId("urn:other").realm("realm-a").build();
-        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
-        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
-                .thenReturn(BucketProvisioningMode.AUTOMATIC);
-        when(tenantRepository.findByRealm("realm-a")).thenReturn(Optional.of(other));
-        Tenant updates = Tenant.Builder.newInstance()
-                .id(TENANT_ID).name("Engineering").participantId("urn:connector:engineering")
-                .realm("realm-a").build();
-
-        assertThrows(IllegalArgumentException.class, () -> tenantService.updateTenant(TENANT_ID, updates));
-
-        verify(tenantRepository, never()).save(any());
     }
 }
