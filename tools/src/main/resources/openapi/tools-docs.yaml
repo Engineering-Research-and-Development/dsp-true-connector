@@ -1,0 +1,71 @@
+tags:
+  TenantAPIController:
+    name: Tenants
+    description: >-
+      Manage tenant lifecycle and configuration. All tenant operations require ROLE_SUPER_ADMIN.
+      Each tenant has isolated management/protocol data and its own S3 bucket. For other
+      tenant-scoped management APIs, a super-admin can pass X-Tenant-Id to scope a request to
+      one tenant; without it, super-admin requests are not tenant-scoped. A regular tenant admin
+      uses the tenant in their authenticated identity and cannot override it with this header.
+  AuditEventController:
+    name: Audit Events
+    description: Browse tenant-scoped audit events and event types.
+  ApplicationPropertiesAPIController:
+    name: Application Properties
+    description: Read and update runtime application properties.
+
+operations:
+  getAllTenants:
+    summary: List tenants
+    description: >-
+      Return tenant records to a super-admin. The paged endpoint accepts page, size, sort, and
+      dynamic filters; the unpaged /list endpoint supports tenant selection during user creation.
+      Tenant inventory is not scoped by X-Tenant-Id.
+  getTenantById:
+    summary: Get a tenant
+    description: Return the tenant record for the supplied tenant ID, including its enabled state and configured bucket name.
+  createTenant:
+    summary: Create a tenant
+    description: >-
+      Create a tenant with a caller-supplied ID containing only letters, digits, or hyphens and
+      a participant ID unique across tenants. Bucket provisioning can be automatic, use an
+      existing bucket, or persist externally supplied credentials. The tenant must be enabled
+      before its tenant-prefixed DSP protocol endpoints accept requests.
+  updateTenant:
+    summary: Update tenant settings
+    description: >-
+      Update mutable tenant settings and, when supplied, rotate bucket credentials or migrate
+      to another bucket. The participant ID is read-only. Bucket migration does not remove the
+      previous bucket or its data; operators must clean it up explicitly when it is safe.
+  enableTenant:
+    summary: Enable a tenant
+    description: Enable the tenant so its tenant-prefixed DSP protocol requests can be processed.
+  disableTenant:
+    summary: Disable a tenant
+    description: >-
+      Disable the tenant. Tenant-prefixed DSP protocol requests for a disabled tenant are rejected;
+      disabling does not delete the tenant data or its S3 bucket.
+  deleteTenant:
+    summary: Delete a tenant
+    description: >-
+      Delete the tenant record. The associated S3 bucket and its objects are deliberately retained
+      to avoid data loss; clean up the bucket manually after confirming its data is no longer needed.
+
+  getAuditEventById:
+    summary: Get an audit event
+    description: Return the audit event identified by its ID.
+  getAuditEvents:
+    summary: List audit events
+    description: Return a paginated, filterable list of audit events visible to the current tenant context.
+  getAuditEventTypes:
+    summary: List audit event types
+    description: Return the event types that can appear in the audit log.
+
+  getProperties:
+    summary: Get application properties
+    description: Return all application properties, or restrict the result to keys beginning with key_prefix.
+  modifyProperty:
+    summary: Update application properties
+    description: Update the supplied application properties and return their persisted values.
+    requestExamples:
+      Updated application properties: application-properties

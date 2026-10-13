@@ -12,6 +12,10 @@
     <name>Connector module</name>
     <description>Wrapper module - assemble and run connector</description>
 
+    <properties>
+        <openapi.examples.generator>it.eng.connector.openapi.OpenApiExamplesGenerator</openapi.examples.generator>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>it.eng.catalog</groupId>
@@ -196,6 +200,10 @@
     <build>
         <finalName>${project.artifactId}</finalName>
         <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

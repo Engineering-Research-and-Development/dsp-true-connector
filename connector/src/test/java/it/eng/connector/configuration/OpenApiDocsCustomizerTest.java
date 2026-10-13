@@ -2,6 +2,7 @@ package it.eng.connector.configuration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -50,7 +51,7 @@ class OpenApiDocsCustomizerTest {
                 Map.of(),
                 Map.of());
         OpenApiDocsCustomizer customizer = customizer(docs, Map.of());
-        Operation operation = new Operation();
+        Operation operation = new Operation().addTagsItem("tenant-api-controller");
 
         Operation customized = customizer.customize(operation, handlerMethod);
 
@@ -79,6 +80,20 @@ class OpenApiDocsCustomizerTest {
         assertSame(operation, customized);
         assertEquals("Existing summary", operation.getSummary());
         assertNull(operation.getTags());
+    }
+
+    @Test
+    @DisplayName("Includes only methods with matching YAML documentation")
+    void includesOnlyMethodsWithMatchingDocumentation() throws NoSuchMethodException {
+        HandlerMethod handlerMethod = handlerMethod("createTenant", TenantCreateRequest.class);
+        Map<String, HandlerMethod> mappings = Map.of("/api/v1/tenants", handlerMethod);
+        OpenApiDocs undocumented = docs(List.of(), Map.of(), Map.of(), Map.of());
+        OpenApiDocs documented = docs(List.of(), Map.of(
+                "createTenant", operationDocs("createTenant", Map.of("summary", "Create a tenant"))),
+                Map.of(), Map.of());
+
+        assertFalse(customizer(undocumented, mappings).isMethodToInclude(handlerMethod.getMethod()));
+        assertTrue(customizer(documented, mappings).isMethodToInclude(handlerMethod.getMethod()));
     }
 
     @Test
@@ -192,13 +207,17 @@ class OpenApiDocsCustomizerTest {
                         "java.lang.String[]")),
                 Map.of("summary", "List tenants with pagination."))),
                 Map.of(), Map.of());
-        OpenApiDocsCustomizer customizer = customizer(docs, Map.of());
+        OpenApiDocsCustomizer customizer = customizer(docs, Map.of(
+                "/api/v1/tenants", pagedHandler,
+                "/api/v1/tenants/all", listHandler));
         Operation pagedOperation = new Operation();
         Operation listOperation = new Operation();
 
         customizer.customize(pagedOperation, pagedHandler);
         customizer.customize(listOperation, listHandler);
 
+        assertTrue(customizer.isMethodToInclude(pagedMethod));
+        assertFalse(customizer.isMethodToInclude(listMethod));
         assertEquals("List tenants with pagination.", pagedOperation.getSummary());
         assertNull(listOperation.getSummary());
         assertNull(listOperation.getTags());

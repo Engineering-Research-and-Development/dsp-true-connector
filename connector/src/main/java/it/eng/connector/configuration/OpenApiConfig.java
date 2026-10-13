@@ -83,6 +83,7 @@ public class OpenApiConfig {
         return GroupedOpenApi.builder()
                 .group("management-api")
                 .pathsToMatch("/api/**")
+                .addOpenApiMethodFilter(openApiDocsCustomizer)
                 .addOperationCustomizer(openApiDocsCustomizer)
                 .addOperationCustomizer(managementTenantHeaderCustomizer())
                 .addOpenApiCustomizer(securityRequirementCustomizer())
@@ -105,6 +106,7 @@ public class OpenApiConfig {
                         "/{tenantId}/negotiations/**",
                         "/{tenantId}/transfers/**",
                         "/{tenantId}/consumer/**")
+                .addOpenApiMethodFilter(openApiDocsCustomizer)
                 .addOperationCustomizer(openApiDocsCustomizer)
                 .addOpenApiCustomizer(securityRequirementCustomizer())
                 .addOpenApiCustomizer(tagOrderingCustomizer())

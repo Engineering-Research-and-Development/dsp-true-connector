@@ -25,7 +25,6 @@ import java.util.Collection;
  */
 @RestController
 @RequestMapping(
-        consumes = MediaType.APPLICATION_JSON_VALUE,
         produces = MediaType.APPLICATION_JSON_VALUE,
         path = ApiEndpoints.USERS_V1)
 @Slf4j

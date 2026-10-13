@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springdoc.core.customizers.GlobalOpenApiCustomizer;
 import org.springdoc.core.customizers.OperationCustomizer;
+import org.springdoc.core.filters.OpenApiMethodFilter;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
@@ -34,7 +35,8 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 /**
  * Applies connector OpenAPI documentation resources to generated operations and schemas.
  */
-public final class OpenApiDocsCustomizer implements OperationCustomizer, GlobalOpenApiCustomizer {
+public final class OpenApiDocsCustomizer
+        implements OperationCustomizer, GlobalOpenApiCustomizer, OpenApiMethodFilter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenApiDocsCustomizer.class);
     private static final String PLAIN_EXAMPLE_SUFFIX = ".plain";
@@ -64,6 +66,19 @@ public final class OpenApiDocsCustomizer implements OperationCustomizer, GlobalO
     }
 
     /**
+     * Includes only handler methods with matching YAML documentation.
+     *
+     * @param method the Spring MVC method to evaluate
+     * @return whether the method has a matching documentation entry
+     */
+    @Override
+    public boolean isMethodToInclude(final Method method) {
+        return handlerMapping.getHandlerMethods().values().stream()
+                .filter(handlerMethod -> handlerMethod.getMethod().equals(method))
+                .anyMatch(handlerMethod -> findOperationDocs(handlerMethod).isPresent());
+    }
+
+    /**
      * Applies YAML documentation to the operation associated with the handler method.
      *
      * @param operation the generated OpenAPI operation
@@ -85,7 +100,7 @@ public final class OpenApiDocsCustomizer implements OperationCustomizer, GlobalO
             readResponses(properties.get("responses"), handlerMethod.getMethod().getName())
                     .ifPresent(operation::setResponses);
         }
-        operation.addTagsItem(resolveTagName(handlerMethod.getBeanType().getSimpleName()));
+        operation.setTags(List.of(resolveTagName(handlerMethod.getBeanType().getSimpleName())));
         applyRequestExamples(operation, handlerMethod, properties.get("requestExamples"));
         return operation;
     }
