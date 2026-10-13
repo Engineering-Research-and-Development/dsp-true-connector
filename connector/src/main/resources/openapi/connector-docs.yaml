@@ -1,0 +1,100 @@
+tags:
+  UserAPIController:
+    name: Users
+    description: >-
+      Manage INTERNAL-mode users. Most user operations require ROLE_SUPER_ADMIN. ROLE_ADMIN may
+      read /me and change their own password; the service verifies ownership. The updateNames
+      operation currently remains protected by the ROLE_SUPER_ADMIN users rule. UserAPIController
+      is inactive in KEYCLOAK mode, where KeycloakUserApiController exposes read-only user listing
+      and user creation or updates are managed in Keycloak. User list results exclude ROLE_CONNECTOR
+      accounts. New passwords must be 8 to 16 characters and contain at least one lowercase letter,
+      uppercase letter, digit, and special character.
+  KeycloakUserApiController:
+    name: Keycloak Users
+    description: Read users from Keycloak when KEYCLOAK authentication mode is active.
+  AuthController:
+    name: Authentication
+    description: >-
+      The unified login, refresh, and logout API is permit-all in INTERNAL and KEYCLOAK modes.
+      INTERNAL validates credentials against MongoDB and issues connector JWTs; KEYCLOAK delegates
+      the same contract to Keycloak.
+  DashboardMetricsController:
+    name: Dashboard Metrics
+    description: Retrieve operational metrics for the authenticated user's tenant context.
+  DSpaceVersionController:
+    name: DSpace Version
+    description: Retrieve the connector's Dataspace Protocol version information.
+
+operations:
+  getUserById:
+    summary: Get a user
+    description: >-
+      Return a user by ID. This cross-user lookup requires ROLE_SUPER_ADMIN; ROLE_ADMIN access is
+      limited to the current-user and own-password self-service routes.
+  getCurrentUser:
+    summary: Get the current user
+    description: Return the authenticated user's profile. ROLE_ADMIN and ROLE_SUPER_ADMIN may access this endpoint.
+  getAllUsers:
+    summary: List users
+    description: >-
+      Return a paginated, filterable user list. ROLE_SUPER_ADMIN is required. ROLE_CONNECTOR users
+      are excluded from the list, including when the role filter explicitly requests CONNECTOR.
+  createUser:
+    summary: Create a user
+    description: >-
+      Create a user with ROLE_SUPER_ADMIN. A tenant ID assigns the new user to that tenant as
+      ROLE_ADMIN; omitting the tenant ID creates a ROLE_SUPER_ADMIN. The tenant must be enabled
+      and the password must meet the configured strength rules.
+  updateUser:
+    summary: Update a user
+    description: Update a user's profile and account state. This cross-user update requires ROLE_SUPER_ADMIN.
+  updateUserNames:
+    summary: Update user names
+    description: >-
+      Change a user's first and last name. The service checks that non-super-admin callers target
+      their own account, but this route is currently protected by the broad ROLE_SUPER_ADMIN
+      users rule; the ROLE_ADMIN security exception applies to /me and /{id}/password.
+  updatePassword:
+    summary: Change a user password
+    description: >-
+      Change the target user's password after verifying the current password. ROLE_ADMIN may use
+      this only for their own account; ROLE_SUPER_ADMIN may change any user's password. The new
+      password must be 8 to 16 characters and include a lowercase letter, uppercase letter, digit,
+      and special character.
+
+  getUsers:
+    summary: List Keycloak users
+    description: Return Keycloak users, optionally filtered by email. User creation and updates are managed in Keycloak.
+
+  login:
+    summary: Log in
+    description: Authenticate with a seeded admin or connector account and return an access and refresh token pair.
+    requestExamples:
+      Seeded admin account: login-admin
+      Seeded connector account: login-connector
+  refresh:
+    summary: Refresh tokens
+    description: Rotate a valid refresh token and return a new access and refresh token pair.
+  logout:
+    summary: Log out
+    description: Revoke a refresh token. The endpoint is idempotent and returns success for unknown or already-revoked tokens.
+
+  getSummary:
+    summary: Get dashboard summary
+    description: Return aggregate counts for dashboard activity in the authenticated tenant context.
+  getRuntime:
+    summary: Get runtime metrics
+    description: Return current runtime metrics for the connector process.
+  getNegotiations:
+    summary: Get negotiation metrics
+    description: Return negotiation state counts for the authenticated tenant context.
+  getTransfers:
+    summary: Get transfer metrics
+    description: Return transfer state and format counts for the authenticated tenant context.
+  getEvents:
+    summary: Get event metrics
+    description: Return audit event metrics for the requested time window and authenticated tenant context.
+
+  getVersion:
+    summary: Get DSpace version
+    description: Return the Dataspace Protocol version supported by this connector.

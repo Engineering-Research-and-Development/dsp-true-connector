@@ -11,10 +11,17 @@ import it.eng.catalog.rest.api.DataServiceAPIController;
 import it.eng.catalog.rest.api.DatasetAPIController;
 import it.eng.catalog.rest.api.DistributionAPIController;
 import it.eng.connector.integration.BaseIntegrationTest;
+import it.eng.connector.rest.api.AuthController;
+import it.eng.connector.rest.api.DashboardMetricsController;
 import it.eng.connector.rest.api.DSpaceVersionController;
+import it.eng.connector.rest.api.KeycloakUserApiController;
+import it.eng.connector.rest.api.UserAPIController;
 import it.eng.datatransfer.rest.api.DataTransferAPIController;
 import it.eng.negotiation.rest.api.AgreementAPIController;
 import it.eng.negotiation.rest.api.ContractNegotiationAPIController;
+import it.eng.tools.rest.api.ApplicationPropertiesAPIController;
+import it.eng.tools.rest.api.AuditEventController;
+import it.eng.tools.rest.api.TenantAPIController;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -26,14 +33,17 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @TestPropertySource(properties = {
@@ -54,6 +64,15 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
             ContractNegotiationAPIController.class,
             AgreementAPIController.class,
             DataTransferAPIController.class);
+    private static final Set<Class<?>> ADMIN_API_CONTROLLERS = Set.of(
+            TenantAPIController.class,
+            UserAPIController.class,
+            KeycloakUserApiController.class,
+            AuthController.class,
+            AuditEventController.class,
+            ApplicationPropertiesAPIController.class,
+            DashboardMetricsController.class,
+            DSpaceVersionController.class);
 
     @Autowired
     private OpenApiDocsLoader docsLoader;
@@ -69,7 +88,7 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
 
         assertFalse(documentation.operations().isEmpty());
         assertDoesNotThrow(() -> OpenApiDocsDriftValidator.validate(
-                documentation, handlerMapping.getHandlerMethods()));
+                documentation, handlerMapping.getHandlerMethods(), KeycloakUserApiController.class));
     }
 
     @Test
@@ -106,6 +125,43 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("Administration GET mappings do not require a JSON content type")
+    void administrationGetMappingsDoNotRequireJsonContentType() {
+        Map<RequestMappingInfo, HandlerMethod> mappings = handlerMapping.getHandlerMethods();
+        List<String> constrainedGetMappings = mappings.entrySet().stream()
+                .filter(entry -> ADMIN_API_CONTROLLERS.contains(entry.getValue().getBeanType()))
+                .filter(entry -> entry.getValue().getMethod().isAnnotationPresent(GetMapping.class))
+                .filter(entry -> entry.getKey().getConsumesCondition().getConsumableMediaTypes()
+                        .contains(MediaType.APPLICATION_JSON))
+                .map(entry -> entry.getValue().getBeanType().getSimpleName()
+                        + "." + entry.getValue().getMethod().getName())
+                .toList();
+
+        assertTrue(constrainedGetMappings.isEmpty(),
+                () -> "Administration GET mappings must not require Content-Type: "
+                        + String.join("; ", constrainedGetMappings));
+    }
+
+    @Test
+    @DisplayName("Administration request-body mappings consume JSON")
+    void administrationRequestBodiesConsumeJson() {
+        Map<RequestMappingInfo, HandlerMethod> mappings = handlerMapping.getHandlerMethods();
+        List<String> nonJsonRequestBodies = mappings.entrySet().stream()
+                .filter(entry -> ADMIN_API_CONTROLLERS.contains(entry.getValue().getBeanType()))
+                .filter(entry -> Arrays.stream(entry.getValue().getMethod().getParameters())
+                        .anyMatch(parameter -> parameter.isAnnotationPresent(RequestBody.class)))
+                .filter(entry -> !entry.getKey().getConsumesCondition().getConsumableMediaTypes()
+                        .contains(MediaType.APPLICATION_JSON))
+                .map(entry -> entry.getValue().getBeanType().getSimpleName()
+                        + "." + entry.getValue().getMethod().getName())
+                .toList();
+
+        assertTrue(nonJsonRequestBodies.isEmpty(),
+                () -> "Administration request-body mappings must consume application/json: "
+                        + String.join("; ", nonJsonRequestBodies));
+    }
+
+    @Test
     @DisplayName("Catalog create documents a structured JSON body and its request example")
     void catalogCreateDocumentsStructuredJsonRequestExample() throws Exception {
         String document = mockMvc.perform(get("/v3/api-docs/management-api")
@@ -124,6 +180,27 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
                 mediaType.path("examples").path("Catalog").path("$ref").asText());
         assertTrue(openApi.path("components").path("examples")
                 .path("catalog.plain").path("value").isObject());
+    }
+
+    @Test
+    @DisplayName("Generated login examples authenticate the seeded admin and connector users")
+    void generatedLoginExamplesAuthenticateSeededUsers() throws Exception {
+        String document = mockMvc.perform(get("/v3/api-docs/management-api")
+                        .with(user("swagger-test").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        JsonNode examples = jsonMapper.readTree(document).path("components").path("examples");
+
+        for (String exampleName : List.of("login-admin.plain", "login-connector.plain")) {
+            JsonNode loginRequest = examples.path(exampleName).path("value");
+            assertTrue(loginRequest.isObject(), () -> "Missing generated login request example " + exampleName);
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(loginRequest.toString()))
+                    .andExpect(status().isOk());
+        }
     }
 
     @Test

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
+import it.eng.connector.rest.api.KeycloakUserApiController;
 import it.eng.tools.rest.api.TenantAPIController;
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.Method;
@@ -37,6 +38,16 @@ class OpenApiDocsDriftValidatorTest {
 
         assertDoesNotThrow(() -> OpenApiDocsDriftValidator.validate(
                 documentation, handlerMethods(unpagedHandler, pagedHandler)));
+    }
+
+    @Test
+    @DisplayName("A documented handler on a conditional controller passes validation")
+    void acceptsOperationOnConditionalController() throws NoSuchMethodException {
+        OpenApiDocs documentation = documentation(
+                "getUsers", Optional.of(List.of("java.lang.String")));
+
+        assertDoesNotThrow(() -> OpenApiDocsDriftValidator.validate(
+                documentation, Map.of(), KeycloakUserApiController.class));
     }
 
     @Test
