@@ -22,6 +22,7 @@ import it.eng.negotiation.rest.api.ContractNegotiationAPIController;
 import it.eng.tools.rest.api.ApplicationPropertiesAPIController;
 import it.eng.tools.rest.api.AuditEventController;
 import it.eng.tools.rest.api.TenantAPIController;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -89,6 +90,15 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
         assertFalse(documentation.operations().isEmpty());
         assertDoesNotThrow(() -> OpenApiDocsDriftValidator.validate(
                 documentation, handlerMapping.getHandlerMethods(), KeycloakUserApiController.class));
+    }
+
+    @Test
+    @DisplayName("Swagger groups expose only documented operations with one configured tag")
+    void swaggerGroupsExposeOnlyDocumentedOperationsWithOneConfiguredTag() throws Exception {
+        OpenApiDocs documentation = docsLoader.load();
+
+        assertDocumentedOperationsOnly("/v3/api-docs/management-api", documentation);
+        assertDocumentedOperationsOnly("/v3/api-docs/dsp-protocol", documentation);
     }
 
     @Test
@@ -238,5 +248,33 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
         Object description = operation.properties().get("description");
         return summary instanceof String summaryText && !summaryText.isBlank()
                 && description instanceof String descriptionText && !descriptionText.isBlank();
+    }
+
+    private void assertDocumentedOperationsOnly(final String endpoint, final OpenApiDocs documentation)
+            throws Exception {
+        String content = mockMvc.perform(get(endpoint).with(user("swagger-test").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        JsonNode paths = jsonMapper.readTree(content).path("paths");
+        List<JsonNode> operations = new ArrayList<>();
+        paths.elements().forEachRemaining(path -> path.fields().forEachRemaining(method -> {
+            if (method.getValue().has("operationId")) {
+                operations.add(method.getValue());
+            }
+        }));
+
+        assertFalse(operations.isEmpty(), () -> "No OpenAPI operations were returned by " + endpoint);
+        for (JsonNode operation : operations) {
+            String operationId = operation.path("operationId").asText();
+            String documentedMethodName = operationId.replaceFirst("_\\d+$", "");
+            assertTrue(documentation.operations().containsKey(documentedMethodName),
+                    () -> "Undocumented operation " + operationId + " is present in " + endpoint);
+            JsonNode tags = operation.path("tags");
+            assertEquals(1, tags.size(), () -> "Expected one YAML tag for " + operationId);
+            assertFalse(tags.get(0).asText().endsWith("-api-controller"),
+                    () -> "Generated controller tag remains for " + operationId);
+        }
     }
 }

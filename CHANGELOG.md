@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Scoped JSON request media-type constraints on negotiation and FTP APIs to non-GET methods so bodyless GET requests do not require a `Content-Type` header.
 - Scoped JSON request media-type constraints on administration API methods with request bodies so bodyless GET requests do not require a `Content-Type` header.
 - Documented catalog management JSON request bodies as structured JSON and aligned generated example filenames with the OpenAPI example references, so Swagger UI can prefill request examples.
+- Swagger groups now include only YAML-documented operations and use their documented tags without duplicate generated controller sections.
 
 ## [0.7.2] — Dashboard Metrics API
 
