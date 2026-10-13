@@ -17,7 +17,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableMongoAuditing
-@EnableMongoRepositories(basePackages = {"it.eng.tools.repository", "it.eng.tools.s3.repository", "it.eng.tools.auth.keycloak.realm",
+@EnableMongoRepositories(basePackages = {"it.eng.tools.repository", "it.eng.tools.s3.repository",
         "it.eng.connector.repository",
         "it.eng.catalog.repository",
         "it.eng.negotiation.repository",

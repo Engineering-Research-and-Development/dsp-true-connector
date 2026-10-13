@@ -159,11 +159,10 @@ application.keycloak.user-admin.enabled=false
 
 Each tenant may be bound to one Keycloak realm through `Tenant.realm` (letters, digits, `.`, `_`, `-`).
 A realm can belong to at most one tenant (unique partial index `tenant_realm_unique`; seeded `null` realms
-do not collide). The tenant id `super-admin` is reserved. Changing or clearing a tenant's realm, or deleting
-the tenant, removes its stored realm credentials.
+do not collide). The tenant id `super-admin` is reserved.
 
-The client secret of the shared `client-id` in a tenant's realm is stored per tenant in the
-`realm_credentials` collection, encrypted at rest, and set at runtime (no restart):
+The client secret of the shared `client-id` in a tenant's realm is stored per tenant directly on the
+`Tenant` document (`Tenant.clientSecret`), encrypted at rest, and set at runtime (no restart):
 
 ```http
 PUT /api/v1/tenants/{id}/realm-credentials      (ROLE_SUPER_ADMIN only)
@@ -402,9 +401,9 @@ application.ocsp.validation.default-cache-duration-minutes=60
 application.ocsp.validation.timeout-seconds=10
 ```
 
-Current implementation, if OCSP is **DISABLED** (default configuration) will create OkHttpRestClient with truststore that allows ALL certificates. 
+Current implementation, if OCSP is **DISABLED** (default configuration) will create OkHttpRestClient with truststore that allows ALL certificates.
 
-If you want to have proper TLS communication, with hostname validation enabled, this can be achieved by setting 
+If you want to have proper TLS communication, with hostname validation enabled, this can be achieved by setting
 
 ```
 application.ocsp.validation.enabled=true
@@ -412,10 +411,10 @@ application.ocsp.validation.enabled=true
 
 This will create proper *OcspX509TrustManager* that will load provided truststore, and perform:
 
- - hostname validation (PKIX)
- - OCSP check
- 
-If certificate does not have 
+- hostname validation (PKIX)
+- OCSP check
+
+If certificate does not have
 
 ```
 Authority Information Access [1]: 
