@@ -269,12 +269,30 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
         for (JsonNode operation : operations) {
             String operationId = operation.path("operationId").asText();
             String documentedMethodName = operationId.replaceFirst("_\\d+$", "");
-            assertTrue(documentation.operations().containsKey(documentedMethodName),
+            String tagName = operation.path("tags").path(0).asText();
+            Optional<String> controllerName = documentation.tags().stream()
+                    .flatMap(tag -> tag.entrySet().stream())
+                    .filter(entry -> tagName.equals(documentedTagName(entry.getKey(), entry.getValue())))
+                    .map(Map.Entry::getKey)
+                    .findFirst();
+            String operationKey = controllerName
+                    .map(name -> name + "." + documentedMethodName)
+                    .filter(documentation.operations()::containsKey)
+                    .orElse(documentedMethodName);
+            assertTrue(documentation.operations().containsKey(operationKey),
                     () -> "Undocumented operation " + operationId + " is present in " + endpoint);
             JsonNode tags = operation.path("tags");
             assertEquals(1, tags.size(), () -> "Expected one YAML tag for " + operationId);
             assertFalse(tags.get(0).asText().endsWith("-api-controller"),
                     () -> "Generated controller tag remains for " + operationId);
         }
+    }
+
+    private static String documentedTagName(final String controllerName, final Object metadata) {
+        if (metadata instanceof Map<?, ?> controllerMetadata
+                && controllerMetadata.get("name") instanceof String name) {
+            return name;
+        }
+        return controllerName;
     }
 }

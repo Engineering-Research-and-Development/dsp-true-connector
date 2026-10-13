@@ -10,6 +10,16 @@ tags:
   AgreementAPIController:
     name: Agreement
     description: Evaluate policy constraints for an existing contract agreement.
+  ContractNegotiationProviderController:
+    name: DSP negotiation (provider)
+    description: >-
+      Receive consumer negotiation messages as the provider. DSP 2025-1 JSON-LD requests require
+      ROLE_CONNECTOR authentication.
+  ContractNegotiationConsumerCallbackController:
+    name: DSP negotiation (consumer callbacks)
+    description: >-
+      Receive provider negotiation messages as the consumer. DSP 2025-1 JSON-LD requests require
+      ROLE_CONNECTOR authentication.
 
 operations:
   getContractNegotiationById:
@@ -88,3 +98,235 @@ operations:
       Load the agreement by ID (scoped to the current tenant when one is active) and evaluate its policy using the
       agreement enforcement point. A valid decision returns success; a denied decision raises a policy enforcement
       error. This endpoint does not alter negotiation state.
+  ContractNegotiationProviderController.getNegotiationByProviderPid:
+    controllerName: ContractNegotiationProviderController
+    methodName: getNegotiationByProviderPid
+    summary: Retrieve a provider-side negotiation
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Return the JSON-LD negotiation associated with the provider PID for
+      this tenant.
+    responses:
+      "200":
+        description: JSON-LD ContractNegotiation document.
+      "400":
+        description: JSON-LD ContractNegotiationErrorMessage with consumerPid, providerPid, code, and reason.
+      "404":
+        description: JSON-LD ContractNegotiationErrorMessage when the provider PID is not found.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ContractNegotiationProviderController.handleContractRequestMessage:
+    controllerName: ContractNegotiationProviderController
+    methodName: handleContractRequestMessage
+    summary: Receive an initial contract request
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process a consumer ContractRequestMessage and create a provider-side
+      negotiation in REQUESTED state.
+    requestExamples:
+      Initial contract request: contract-request-initial
+    responses:
+      "201":
+        description: JSON-LD ContractNegotiation created for the request.
+      "400":
+        description: JSON-LD ContractNegotiationErrorMessage with consumerPid, providerPid, code, and reason.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ContractNegotiationProviderController.handleContractRequestMessageAsCounteroffer:
+    controllerName: ContractNegotiationProviderController
+    methodName: handleContractRequestMessageAsCounteroffer
+    summary: Receive a consumer counteroffer
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process a counteroffer for the existing provider PID and update the
+      negotiation after validation.
+    requestExamples:
+      Consumer counteroffer: contract-request-counteroffer
+    responses:
+      "200":
+        description: JSON-LD updated ContractNegotiation document.
+      "400":
+        description: JSON-LD ContractNegotiationErrorMessage with consumerPid, providerPid, code, and reason.
+      "404":
+        description: JSON-LD ContractNegotiationErrorMessage when the provider PID is not found.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ContractNegotiationProviderController.handleContractNegotiationEventMessageAccepted:
+    controllerName: ContractNegotiationProviderController
+    methodName: handleContractNegotiationEventMessageAccepted
+    summary: Receive consumer acceptance
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process an ACCEPTED ContractNegotiationEventMessage from the consumer
+      and advance the provider-side negotiation.
+    requestExamples:
+      Accepted event: contract-negotiation-event-accepted
+    responses:
+      "200":
+        description: JSON-LD updated ContractNegotiation document.
+      "400":
+        description: JSON-LD ContractNegotiationErrorMessage with consumerPid, providerPid, code, and reason.
+      "404":
+        description: JSON-LD ContractNegotiationErrorMessage when the provider PID is not found.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ContractNegotiationProviderController.handleContractAgreementVerificationMessage:
+    controllerName: ContractNegotiationProviderController
+    methodName: handleContractAgreementVerificationMessage
+    summary: Receive agreement verification
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process the consumer's ContractAgreementVerificationMessage and advance
+      the negotiation only when verification succeeds.
+    requestExamples:
+      Agreement verification: contract-agreement-verification
+    responses:
+      "200":
+        description: Empty response after agreement verification is processed.
+      "400":
+        description: JSON-LD ContractNegotiationErrorMessage with consumerPid, providerPid, code, and reason.
+      "404":
+        description: JSON-LD ContractNegotiationErrorMessage when the provider PID is not found.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ContractNegotiationProviderController.handleContractNegotiationTerminationMessage:
+    controllerName: ContractNegotiationProviderController
+    methodName: handleContractNegotiationTerminationMessage
+    summary: Receive a consumer termination
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process a consumer ContractNegotiationTerminationMessage and terminate
+      the provider-side negotiation when its current state permits.
+    requestExamples:
+      Termination: contract-negotiation-termination
+    responses:
+      "200":
+        description: Empty response after termination is processed.
+      "400":
+        description: JSON-LD ContractNegotiationErrorMessage with consumerPid, providerPid, code, and reason.
+      "404":
+        description: JSON-LD ContractNegotiationErrorMessage when the provider PID is not found.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ContractNegotiationConsumerCallbackController.getNegotiationByConsumerPid:
+    controllerName: ContractNegotiationConsumerCallbackController
+    methodName: getNegotiationByConsumerPid
+    summary: Retrieve a consumer-side negotiation
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Return the JSON-LD negotiation associated with the consumer PID for
+      this tenant.
+    responses:
+      "200":
+        description: JSON-LD ContractNegotiation document.
+      "400":
+        description: JSON-LD ContractNegotiationErrorMessage with consumerPid, providerPid, code, and reason.
+      "404":
+        description: JSON-LD ContractNegotiationErrorMessage when the consumer PID is not found.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ContractNegotiationConsumerCallbackController.handleContractOfferMessage:
+    controllerName: ContractNegotiationConsumerCallbackController
+    methodName: handleContractOfferMessage
+    summary: Receive an initial contract offer
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process the provider's initial ContractOfferMessage and create the
+      consumer-side negotiation.
+    requestExamples:
+      Initial contract offer: contract-offer-initial
+    responses:
+      "201":
+        description: JSON-LD ContractNegotiation created for the offer.
+      "400":
+        description: JSON-LD ContractNegotiationErrorMessage with consumerPid, providerPid, code, and reason.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ContractNegotiationConsumerCallbackController.handleContractOfferMessageAsCounteroffer:
+    controllerName: ContractNegotiationConsumerCallbackController
+    methodName: handleContractOfferMessageAsCounteroffer
+    summary: Receive a provider counteroffer
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process a provider counteroffer for the existing consumer PID and
+      update the consumer-side negotiation after validation.
+    requestExamples:
+      Provider counteroffer: contract-offer-counteroffer
+    responses:
+      "200":
+        description: JSON-LD updated ContractNegotiation document.
+      "400":
+        description: JSON-LD ContractNegotiationErrorMessage with consumerPid, providerPid, code, and reason.
+      "404":
+        description: JSON-LD ContractNegotiationErrorMessage when the consumer PID is not found.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ContractNegotiationConsumerCallbackController.handleContractAgreementMessage:
+    controllerName: ContractNegotiationConsumerCallbackController
+    methodName: handleContractAgreementMessage
+    summary: Receive a contract agreement
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process the provider's ContractAgreementMessage and store the
+      agreement for the consumer-side negotiation.
+    requestExamples:
+      Agreement: contract-agreement
+    responses:
+      "200":
+        description: Empty response after the agreement is processed.
+      "400":
+        description: JSON-LD ContractNegotiationErrorMessage with consumerPid, providerPid, code, and reason.
+      "404":
+        description: JSON-LD ContractNegotiationErrorMessage when the consumer PID is not found.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ContractNegotiationConsumerCallbackController.handleContractNegotiationEventMessageFinalize:
+    controllerName: ContractNegotiationConsumerCallbackController
+    methodName: handleContractNegotiationEventMessageFinalize
+    summary: Receive negotiation finalization
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process the provider's FINALIZED ContractNegotiationEventMessage and
+      finalize the consumer-side negotiation.
+    requestExamples:
+      Finalized event: contract-negotiation-event-finalized
+    responses:
+      "200":
+        description: Empty response after finalization is processed.
+      "400":
+        description: JSON-LD ContractNegotiationErrorMessage with consumerPid, providerPid, code, and reason.
+      "404":
+        description: JSON-LD ContractNegotiationErrorMessage when the consumer PID is not found.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ContractNegotiationConsumerCallbackController.handleContractNegotiationTerminationMessage:
+    controllerName: ContractNegotiationConsumerCallbackController
+    methodName: handleContractNegotiationTerminationMessage
+    summary: Receive a provider termination
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process a provider ContractNegotiationTerminationMessage and terminate
+      the consumer-side negotiation when its current state permits.
+    requestExamples:
+      Termination: contract-negotiation-termination
+    responses:
+      "200":
+        description: JSON-LD termination acknowledgment.
+      "400":
+        description: JSON-LD ContractNegotiationErrorMessage with consumerPid, providerPid, code, and reason.
+      "404":
+        description: JSON-LD ContractNegotiationErrorMessage when the consumer PID is not found.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.

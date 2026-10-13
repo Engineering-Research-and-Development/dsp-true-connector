@@ -5,6 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import it.eng.catalog.rest.api.CatalogAPIController;
+import it.eng.catalog.rest.protocol.CatalogController;
 import it.eng.connector.rest.api.KeycloakUserApiController;
 import it.eng.tools.rest.api.TenantAPIController;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,6 +51,28 @@ class OpenApiDocsDriftValidatorTest {
 
         assertDoesNotThrow(() -> OpenApiDocsDriftValidator.validate(
                 documentation, Map.of(), KeycloakUserApiController.class));
+    }
+
+    @Test
+    @DisplayName("Controller-scoped operation keys disambiguate methods with the same name")
+    void acceptsControllerScopedOperationId() throws NoSuchMethodException {
+        Method apiMethod = CatalogAPIController.class.getDeclaredMethod("getCatalog");
+        Method protocolMethod = CatalogController.class.getDeclaredMethod(
+                "getCatalog", String.class, String.class, JsonNode.class);
+        HandlerMethod apiHandler = new HandlerMethod(mock(CatalogAPIController.class), apiMethod);
+        HandlerMethod protocolHandler = new HandlerMethod(mock(CatalogController.class), protocolMethod);
+        OpenApiOperationDocs operation = new OpenApiOperationDocs(
+                "getCatalog",
+                Optional.empty(),
+                Map.of("controllerName", "CatalogController"));
+        OpenApiDocs documentation = new OpenApiDocs(
+                List.of(),
+                Map.of("CatalogController.getCatalog", operation),
+                Map.of(),
+                Map.of());
+
+        assertDoesNotThrow(() -> OpenApiDocsDriftValidator.validate(
+                documentation, handlerMethods(apiHandler, protocolHandler)));
     }
 
     @Test

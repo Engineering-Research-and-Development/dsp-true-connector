@@ -138,14 +138,35 @@ public final class OpenApiDocsCustomizer
     }
 
     private Optional<OpenApiOperationDocs> findOperationDocs(final HandlerMethod handlerMethod) {
-        OpenApiOperationDocs operationDocs =
-                documentation.operations().get(handlerMethod.getMethod().getName());
-        if (operationDocs == null || !operationDocs.methodName().equals(handlerMethod.getMethod().getName())) {
-            return Optional.empty();
+        String methodName = handlerMethod.getMethod().getName();
+        String controllerName = handlerMethod.getBeanType().getSimpleName();
+        OpenApiOperationDocs controllerSpecificDocs =
+                documentation.operations().get(controllerName + "." + methodName);
+        if (matchesHandler(controllerSpecificDocs, handlerMethod, controllerName)) {
+            return Optional.of(controllerSpecificDocs);
         }
-        return methodParametersMatch(operationDocs, handlerMethod.getMethod())
-                ? Optional.of(operationDocs)
+
+        OpenApiOperationDocs methodDocs = documentation.operations().get(methodName);
+        return matchesHandler(methodDocs, handlerMethod, controllerName)
+                ? Optional.of(methodDocs)
                 : Optional.empty();
+    }
+
+    private boolean matchesHandler(
+            final OpenApiOperationDocs operationDocs,
+            final HandlerMethod handlerMethod,
+            final String controllerName) {
+        if (operationDocs == null
+                || !operationDocs.methodName().equals(handlerMethod.getMethod().getName())
+                || !controllerNameMatches(operationDocs, controllerName)) {
+            return false;
+        }
+        return methodParametersMatch(operationDocs, handlerMethod.getMethod());
+    }
+
+    private boolean controllerNameMatches(final OpenApiOperationDocs operationDocs, final String controllerName) {
+        Object documentedController = operationDocs.properties().get("controllerName");
+        return !(documentedController instanceof String name) || name.equals(controllerName);
     }
 
     private boolean methodParametersMatch(final OpenApiOperationDocs operationDocs, final Method method) {
@@ -383,8 +404,11 @@ public final class OpenApiDocsCustomizer
     }
 
     private String exampleSuffix(final OpenApiOperationDocs operationDocs) {
+        Object documentedController = operationDocs.properties().get("controllerName");
         Optional<HandlerMethod> handlerMethod = handlerMapping.getHandlerMethods().values().stream()
                 .filter(candidate -> candidate.getMethod().getName().equals(operationDocs.methodName()))
+                .filter(candidate -> !(documentedController instanceof String name)
+                        || name.equals(candidate.getBeanType().getSimpleName()))
                 .filter(candidate -> methodParametersMatch(operationDocs, candidate.getMethod()))
                 .findFirst();
         return handlerMethod.map(this::exampleSuffix).orElse(PROTOCOL_EXAMPLE_SUFFIX);
