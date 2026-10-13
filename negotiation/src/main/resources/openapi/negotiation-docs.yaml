@@ -1,0 +1,90 @@
+tags:
+  ContractNegotiationAPIController:
+    name: Contract negotiation
+    description: >-
+      Manage negotiations as either consumer or provider. The state machine progresses through REQUESTED, OFFERED,
+      ACCEPTED, AGREED, VERIFIED, and FINALIZED, with TERMINATED available from intermediate states. Actual
+      transitions depend on the current state: REQUESTED may become OFFERED, AGREED, or TERMINATED; OFFERED may
+      return to REQUESTED, become ACCEPTED, or terminate; ACCEPTED may become AGREED or terminate; AGREED may
+      become VERIFIED or terminate; VERIFIED may become FINALIZED or terminate.
+  AgreementAPIController:
+    name: Agreement
+    description: Evaluate policy constraints for an existing contract agreement.
+
+operations:
+  getContractNegotiationById:
+    summary: Get a contract negotiation
+    description: >-
+      Return a negotiation by its internal ID, including its current state, consumer and provider PIDs, offer,
+      agreement, and participant role where available. This lookup does not trigger a protocol message.
+  getContractNegotiations:
+    summary: List contract negotiations
+    description: >-
+      Return a paginated list of negotiations matching dynamic request-parameter filters. Query parameters matching
+      persisted negotiation fields are interpreted by the filter builder; page defaults to 0, size to 20, and sort
+      to timestamp,desc. This read does not send protocol messages.
+  sendContractRequestMessage:
+    summary: Start a negotiation as consumer
+    description: >-
+      Start a new negotiation by supplying Forward-To and an offer. The connector sends a ContractRequestMessage to
+      the provider, stores the returned negotiation and offer on success, and returns the resulting negotiation.
+      This is the new-negotiation variant; use /{contractNegotiationId}/request to send a counteroffer on an
+      existing negotiation.
+    requestExamples:
+      New contract request: contract-request
+  sendContractRequestMessageAsCounteroffer:
+    summary: Send a consumer counteroffer
+    description: >-
+      Send a revised offer for an existing negotiation. The connector validates the offer, sends a
+      ContractRequestMessage to the provider callback, and updates the stored negotiation when the peer accepts it.
+    requestExamples:
+      Consumer counteroffer: contract-counteroffer
+  sendContractNegotiationEventMessageAccepted:
+    summary: Accept a negotiation
+    description: >-
+      Accept the current offer as the consumer. The connector sends a ContractNegotiationEventMessage with event
+      type ACCEPTED to the provider and records ACCEPTED after a successful callback response.
+  sendContractAgreementVerificationMessage:
+    summary: Verify an agreement
+    description: >-
+      Verify the agreed contract as the consumer. The connector sends a ContractAgreementVerificationMessage to the
+      provider and records VERIFIED only after the provider responds successfully.
+  sendContractOfferMessage:
+    summary: Start a negotiation as provider
+    description: >-
+      Start a new negotiation by supplying Forward-To and an offer. The connector sends a ContractOfferMessage to
+      the consumer and stores the returned negotiation and offer on success. This is the new-negotiation variant;
+      use /{contractNegotiationId}/offer to send a counteroffer on an existing negotiation.
+    requestExamples:
+      New contract offer: contract-offer
+  sendContractOfferMessageAsCounteroffer:
+    summary: Send a provider counteroffer
+    description: >-
+      Send a revised offer to the consumer for an existing negotiation. The connector validates the offer and
+      current transition, sends a ContractOfferMessage to the consumer callback, and updates the stored offer and
+      negotiation after a successful response.
+    requestExamples:
+      Provider counteroffer: offer-counteroffer
+  sendContractAgreementMessage:
+    summary: Agree to a negotiation
+    description: >-
+      Agree to the negotiation as provider. The connector derives an Agreement from the current offer, sends a
+      ContractAgreementMessage to the consumer, and saves the agreement and AGREED negotiation state after a
+      successful callback response.
+  sendContractNegotiationEventMessageFinalize:
+    summary: Finalize a negotiation
+    description: >-
+      Finalize a verified negotiation as provider. The connector sends a ContractNegotiationEventMessage with event
+      type FINALIZED to the consumer, records FINALIZED after a successful callback, and initializes the transfer
+      process for the resulting agreement. The endpoint returns a success response rather than the updated negotiation.
+  sendContractNegotiationTerminationMessage:
+    summary: Terminate a negotiation
+    description: >-
+      Terminate an existing negotiation from either participant role. The connector sends a
+      ContractNegotiationTerminationMessage to the counterparty callback, then records TERMINATED after success.
+  enforceAgreement:
+    summary: Enforce an agreement
+    description: >-
+      Load the agreement by ID (scoped to the current tenant when one is active) and evaluate its policy using the
+      agreement enforcement point. A valid decision returns success; a denied decision raises a policy enforcement
+      error. This endpoint does not alter negotiation state.
