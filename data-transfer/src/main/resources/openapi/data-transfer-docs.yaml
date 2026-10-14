@@ -6,9 +6,9 @@ tags:
       from INITIALIZED to REQUESTED to STARTED, may be suspended and restarted, and finishes as COMPLETED or
       TERMINATED. HTTP_PULL gives the consumer a provider artifact endpoint; HTTP_PUSH lets the provider write to
       the consumer's destination using temporary credentials.
-  FTPClientAPIController:
-    name: FTP client
-    description: Request an FTP artifact download using the configured FTP client.
+#  FTPClientAPIController:
+#    name: FTP client
+#    description: Request an FTP artifact download using the configured FTP client.
   ProviderDataTransferController:
     name: DSP transfer (provider)
     description: >-
@@ -74,8 +74,8 @@ operations:
     description: >-
       Send a TransferTerminationMessage to the counterparty and record TERMINATED after a successful response.
       Temporary HTTP_PUSH bucket credentials are cleaned up after the termination succeeds.
-  downloadArtifact:
-    summary: Download an artifact through FTP
+#  downloadArtifact:
+#    summary: Download an artifact through FTP
   ProviderDataTransferController.getTransferProcessByProviderPid:
     controllerName: ProviderDataTransferController
     methodName: getTransferProcessByProviderPid

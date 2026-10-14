@@ -116,6 +116,7 @@ public final class OpenApiDocsCustomizer
             openApi.setTags(new ArrayList<>());
         }
         addDocumentedTags(openApi);
+        removeUnusedTags(openApi);
         applySchemaDescriptions(openApi);
         registerReferencedExamples(openApi);
     }
@@ -329,6 +330,24 @@ public final class OpenApiDocsCustomizer
                 }
             }
         }
+    }
+
+    private void removeUnusedTags(final OpenAPI openApi) {
+        if (openApi.getTags() == null) {
+            return;
+        }
+        Set<String> operationTags = new LinkedHashSet<>();
+        if (openApi.getPaths() != null) {
+            openApi.getPaths().values().forEach(pathItem -> pathItem.readOperations().forEach(operation -> {
+                if (operation.getTags() != null) {
+                    operationTags.addAll(operation.getTags());
+                }
+            }));
+        }
+        List<Tag> usedTags = openApi.getTags().stream()
+                .filter(tag -> operationTags.contains(tag.getName()))
+                .toList();
+        openApi.setTags(new ArrayList<>(usedTags));
     }
 
     private void addTag(final OpenAPI openApi, final String controllerName, final Map<String, Object> metadata) {

@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -99,6 +100,24 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
 
         assertDocumentedOperationsOnly("/v3/api-docs/management-api", documentation);
         assertDocumentedOperationsOnly("/v3/api-docs/dsp-protocol", documentation);
+    }
+
+    @Test
+    @DisplayName("Swagger groups expose only their respective endpoint paths")
+    void swaggerGroupsExposeOnlyTheirRespectiveEndpointPaths() throws Exception {
+        Set<String> managementPaths = openApiPaths("/v3/api-docs/management-api");
+        Set<String> protocolPaths = openApiPaths("/v3/api-docs/dsp-protocol");
+
+        assertFalse(managementPaths.isEmpty(), "The management API group should expose paths");
+        assertTrue(managementPaths.stream().allMatch(path -> path.startsWith("/api/")),
+                () -> "Unexpected non-management paths: " + managementPaths.stream()
+                        .filter(path -> !path.startsWith("/api/"))
+                        .collect(Collectors.joining(", ")));
+        assertFalse(protocolPaths.isEmpty(), "The DSP protocol group should expose paths");
+        assertTrue(protocolPaths.stream().allMatch(path -> path.startsWith("/{tenantId}/")),
+                () -> "Unexpected non-protocol paths: " + protocolPaths.stream()
+                        .filter(path -> !path.startsWith("/{tenantId}/"))
+                        .collect(Collectors.joining(", ")));
     }
 
     @Test
@@ -252,18 +271,17 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
 
     private void assertDocumentedOperationsOnly(final String endpoint, final OpenApiDocs documentation)
             throws Exception {
-        String content = mockMvc.perform(get(endpoint).with(user("swagger-test").roles("ADMIN")))
-                .andExpect(status().isOk())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        JsonNode paths = jsonMapper.readTree(content).path("paths");
+        JsonNode openApi = jsonMapper.readTree(openApiDocument(endpoint));
+        JsonNode paths = openApi.path("paths");
         List<JsonNode> operations = new ArrayList<>();
         paths.elements().forEachRemaining(path -> path.fields().forEachRemaining(method -> {
             if (method.getValue().has("operationId")) {
                 operations.add(method.getValue());
             }
         }));
+        Set<String> operationTags = operations.stream()
+                .map(operation -> operation.path("tags").path(0).asText())
+                .collect(Collectors.toSet());
 
         assertFalse(operations.isEmpty(), () -> "No OpenAPI operations were returned by " + endpoint);
         for (JsonNode operation : operations) {
@@ -286,6 +304,26 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
             assertFalse(tags.get(0).asText().endsWith("-api-controller"),
                     () -> "Generated controller tag remains for " + operationId);
         }
+        for (JsonNode tag : openApi.path("tags")) {
+            String tagName = tag.path("name").asText();
+            assertTrue(operationTags.contains(tagName),
+                    () -> "Unused tag " + tagName + " is present in " + endpoint);
+        }
+    }
+
+    private Set<String> openApiPaths(final String endpoint) throws Exception {
+        JsonNode paths = jsonMapper.readTree(openApiDocument(endpoint)).path("paths");
+        List<String> pathNames = new ArrayList<>();
+        paths.fieldNames().forEachRemaining(pathNames::add);
+        return Set.copyOf(pathNames);
+    }
+
+    private String openApiDocument(final String endpoint) throws Exception {
+        return mockMvc.perform(get(endpoint).with(user("swagger-test").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
     }
 
     private static String documentedTagName(final String controllerName, final Object metadata) {

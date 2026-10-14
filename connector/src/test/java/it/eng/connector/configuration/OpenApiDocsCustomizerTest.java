@@ -13,6 +13,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.PathItem;
+import io.swagger.v3.oas.models.Paths;
 import io.swagger.v3.oas.models.examples.Example;
 import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
@@ -64,7 +66,8 @@ class OpenApiDocsCustomizerTest {
         assertEquals(List.of(CONTROLLER_NAME), operation.getTags());
         assertEquals("Tenant created", operation.getResponses().get("201").getDescription());
 
-        OpenAPI openAPI = new OpenAPI().components(new Components());
+        OpenAPI openAPI = new OpenAPI().components(new Components()).paths(
+                new Paths().addPathItem("/api/v1/tenants", new PathItem().post(operation)));
         customizer.customise(openAPI);
 
         assertEquals(CONTROLLER_NAME, openAPI.getTags().get(0).getName());
