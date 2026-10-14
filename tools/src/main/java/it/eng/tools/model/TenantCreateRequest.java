@@ -41,6 +41,10 @@ public class TenantCreateRequest {
 
     private String bucketName;
 
+    private String realm;
+
+    private String clientSecret;
+
     private String accessKey;
 
     private String secretKey;
@@ -61,6 +65,8 @@ public class TenantCreateRequest {
                 .automaticNegotiation(automaticNegotiation)
                 .automaticTransfer(automaticTransfer)
                 .enabled(enabled)
+                .realm(realm)
+                .clientSecret(clientSecret)
                 .build();
     }
 
@@ -141,6 +147,28 @@ public class TenantCreateRequest {
          */
         public Builder participantId(String participantId) {
             request.participantId = participantId;
+            return this;
+        }
+
+        /**
+         * Sets the Keycloak realm bound to the tenant.
+         *
+         * @param realm realm name, or {@code null}
+         * @return this builder
+         */
+        public Builder realm(String realm) {
+            request.realm = realm;
+            return this;
+        }
+
+        /**
+         * Sets the Keycloak client secret bound to the tenant.
+         *
+         * @param clientSecret client secret, or {@code null}
+         * @return this builder
+         */
+        public Builder clientSecret(String clientSecret) {
+            request.clientSecret = clientSecret;
             return this;
         }
 

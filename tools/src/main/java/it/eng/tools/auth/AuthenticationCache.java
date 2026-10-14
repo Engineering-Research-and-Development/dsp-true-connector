@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 
-import it.eng.tools.auth.keycloak.KeycloakAuthenticationProperties;
+import it.eng.tools.auth.keycloak.KeycloakProperties;
 import it.eng.tools.auth.keycloak.KeycloakAuthenticationService;
 import lombok.extern.slf4j.Slf4j;
 
@@ -23,14 +23,14 @@ import lombok.extern.slf4j.Slf4j;
 public class AuthenticationCache {
 
 	private final List<AuthProvider> authenticationProviders;
-	private final KeycloakAuthenticationProperties keycloakProperties;
+	private final KeycloakProperties keycloakProperties;
 
 	private volatile String cachedToken;
 	private volatile LocalDateTime expirationTime;
 
 	@Autowired(required = false)
 	public AuthenticationCache(List<AuthProvider> authenticationProviders,
-	                           @Autowired(required = false) KeycloakAuthenticationProperties keycloakProperties) {
+	                           @Autowired(required = false) KeycloakProperties keycloakProperties) {
 		this.authenticationProviders = authenticationProviders;
 		this.keycloakProperties = keycloakProperties;
 	}
@@ -122,7 +122,7 @@ public class AuthenticationCache {
 	 */
 	private boolean isTokenCachingEnabled() {
 		if (keycloakProperties != null) {
-			return keycloakProperties.isTokenCaching();
+			return true;
 		}
 		return false;
 	}

@@ -8,7 +8,6 @@ Specified in issue #350 and [D-ARC-003](doc/decisions/architecture/D-ARC-003-mul
 
 ### Added
 - `KEYCLOAK` mode trusts the platform realm plus the realm of every enabled tenant (`Tenant.realm`); the tenant is derived from the verified token issuer and the audience is validated.
-- `PUT /api/v1/tenants/{id}/realm-credentials` (super-admin) to set a tenant realm's client secret without restarting the connector. The secret is validated against the realm, stored encrypted in MongoDB and never returned; tenant responses expose only `credentialsConfigured`.
 - `CurrentUserProvider` abstraction so `GET /api/v1/users/me` is served by one controller in both `KEYCLOAK` and `INTERNAL` modes.
 
 ### Changed

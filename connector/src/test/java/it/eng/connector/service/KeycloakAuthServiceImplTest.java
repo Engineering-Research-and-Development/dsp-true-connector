@@ -1,6 +1,6 @@
 package it.eng.connector.service;
 
-import it.eng.tools.auth.keycloak.KeycloakLoginProperties;
+import it.eng.tools.auth.keycloak.KeycloakProperties;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.service.AuditEventPublisher;
@@ -8,10 +8,10 @@ import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -25,8 +25,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class KeycloakAuthServiceImplTest {
 
-    @Mock
-    private KeycloakLoginProperties keycloakLoginProperties;
+    private final KeycloakProperties keycloakProperties = new KeycloakProperties("http://localhost:8080/auth",
+            "myrealm", "my-client-id", "aud", "my-client-secret", new KeycloakProperties.UserAdmin(false));
     @Mock
     private OkHttpRestClient okHttpRestClient;
     @Mock
@@ -35,15 +35,16 @@ class KeycloakAuthServiceImplTest {
     @Mock
     private Response response;
 
-    @InjectMocks
     private KeycloakAuthServiceImpl keycloakAuthServiceImpl;
+
+    @BeforeEach
+    void setUp() {
+        keycloakAuthServiceImpl = new KeycloakAuthServiceImpl(keycloakProperties, okHttpRestClient, auditEventPublisher);
+    }
 
     @Test
     @DisplayName("Test login functionality")
     void login() {
-        when(keycloakLoginProperties.getClientId()).thenReturn("my-client-id");
-        when(keycloakLoginProperties.getClientSecret()).thenReturn("my-client-secret");
-        when(keycloakLoginProperties.getTokenUrl()).thenReturn("http://localhost:8080/auth/realms/myrealm/protocol/openid-connect/token");
         when(okHttpRestClient.executeCall(any(Request.class))).thenReturn(response);
 
         when(response.isSuccessful()).thenReturn(true);
@@ -62,9 +63,6 @@ class KeycloakAuthServiceImplTest {
     @Test
     @DisplayName("keycloak returned error during login")
     void loginError() {
-        when(keycloakLoginProperties.getClientId()).thenReturn("my-client-id");
-        when(keycloakLoginProperties.getClientSecret()).thenReturn("my-client-secret");
-        when(keycloakLoginProperties.getTokenUrl()).thenReturn("http://localhost:8080/auth/realms/myrealm/protocol/openid-connect/token");
         when(okHttpRestClient.executeCall(any(Request.class))).thenReturn(response);
 
         when(response.isSuccessful()).thenReturn(false);
@@ -78,9 +76,6 @@ class KeycloakAuthServiceImplTest {
     @Test
     @DisplayName("Test refresh functionality")
     void refresh() {
-        when(keycloakLoginProperties.getClientId()).thenReturn("my-client-id");
-        when(keycloakLoginProperties.getClientSecret()).thenReturn("my-client-secret");
-        when(keycloakLoginProperties.getTokenUrl()).thenReturn("http://localhost:8080/auth/realms/myrealm/protocol/openid-connect/token");
         when(okHttpRestClient.executeCall(any(Request.class))).thenReturn(response);
 
         when(response.isSuccessful()).thenReturn(true);
@@ -99,9 +94,6 @@ class KeycloakAuthServiceImplTest {
     @Test
     @DisplayName("keycloak returned error during refresh")
     void refreshError() {
-        when(keycloakLoginProperties.getClientId()).thenReturn("my-client-id");
-        when(keycloakLoginProperties.getClientSecret()).thenReturn("my-client-secret");
-        when(keycloakLoginProperties.getTokenUrl()).thenReturn("http://localhost:8080/auth/realms/myrealm/protocol/openid-connect/token");
         when(okHttpRestClient.executeCall(any(Request.class))).thenReturn(response);
 
         when(response.isSuccessful()).thenReturn(false);
@@ -117,9 +109,6 @@ class KeycloakAuthServiceImplTest {
     @Test
     @DisplayName("Logout successful")
     void logout() {
-        when(keycloakLoginProperties.getClientId()).thenReturn("my-client-id");
-        when(keycloakLoginProperties.getClientSecret()).thenReturn("my-client-secret");
-        when(keycloakLoginProperties.getLogoutUrl()).thenReturn("http://localhost:8080/auth/realms/myrealm/protocol/openid-connect/logout");
         when(okHttpRestClient.executeCall(any(Request.class))).thenReturn(response);
 
         when(response.isSuccessful()).thenReturn(true);
@@ -133,9 +122,6 @@ class KeycloakAuthServiceImplTest {
     @Test
     @DisplayName("Logout failed")
     void logoutError() {
-        when(keycloakLoginProperties.getClientId()).thenReturn("my-client-id");
-        when(keycloakLoginProperties.getClientSecret()).thenReturn("my-client-secret");
-        when(keycloakLoginProperties.getLogoutUrl()).thenReturn("http://localhost:8080/auth/realms/myrealm/protocol/openid-connect/logout");
         when(okHttpRestClient.executeCall(any(Request.class))).thenReturn(response);
 
         when(response.isSuccessful()).thenReturn(false);

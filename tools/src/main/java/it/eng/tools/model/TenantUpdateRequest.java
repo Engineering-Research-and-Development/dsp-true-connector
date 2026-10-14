@@ -21,6 +21,8 @@ public class TenantUpdateRequest {
     private boolean automaticNegotiation;
     private boolean automaticTransfer;
     private String bucketName;
+    private String realm;
+    private String clientSecret;
     private String accessKey;
     private String secretKey;
     private boolean verifyConnection;
@@ -39,6 +41,8 @@ public class TenantUpdateRequest {
                 .description(description)
                 .automaticNegotiation(automaticNegotiation)
                 .automaticTransfer(automaticTransfer)
+                .realm(realm != null ? realm : existingTenant.getRealm())
+                .clientSecret(clientSecret != null ? clientSecret : existingTenant.getClientSecret())
                 .build();
     }
 
@@ -76,6 +80,28 @@ public class TenantUpdateRequest {
          */
         public static Builder newInstance() {
             return new Builder();
+        }
+
+        /**
+         * Sets the Keycloak realm.
+         *
+         * @param realm realm name, or {@code null}/blank to clear
+         * @return this builder
+         */
+        public Builder realm(String realm) {
+            request.realm = realm;
+            return this;
+        }
+
+        /**
+         * Sets the Keycloak client secret.
+         *
+         * @param clientSecret client secret, or {@code null}/blank to clear
+         * @return this builder
+         */
+        public Builder clientSecret(String clientSecret) {
+            request.clientSecret = clientSecret;
+            return this;
         }
 
         /**

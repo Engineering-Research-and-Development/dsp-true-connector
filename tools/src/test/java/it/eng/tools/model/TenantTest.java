@@ -82,4 +82,28 @@ class TenantTest {
 
         assertEquals("http://example.com/my-tenant", tenant.getCallbackAddress("http://example.com/"));
     }
+
+    private static Tenant.Builder baseBuilder() {
+        return Tenant.Builder.newInstance().id("t").name("T").participantId("urn:t");
+    }
+
+    @Test
+    @DisplayName("Blank realm is normalised to null")
+    void blankRealmNormalisedToNull() {
+        assertEquals(null, baseBuilder().realm("  ").build().getRealm());
+        assertEquals(null, baseBuilder().realm(null).build().getRealm());
+    }
+
+    @Test
+    @DisplayName("Valid realm is kept")
+    void validRealmKept() {
+        assertEquals("my-realm_1.x", baseBuilder().realm("my-realm_1.x").build().getRealm());
+    }
+
+    @Test
+    @DisplayName("Realm with path or URL characters is rejected")
+    void invalidRealmRejected() {
+        assertThrows(ValidationException.class, () -> baseBuilder().realm("a/b").build());
+        assertThrows(ValidationException.class, () -> baseBuilder().realm("http://x").build());
+    }
 }

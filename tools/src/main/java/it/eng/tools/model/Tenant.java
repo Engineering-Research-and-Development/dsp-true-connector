@@ -5,19 +5,16 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import it.eng.tools.s3.encrypt.Encrypted;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedBy;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedBy;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.annotation.Version;
+import org.springframework.data.annotation.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -34,7 +31,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = Tenant.Builder.class)
 @JsonPropertyOrder({"id", "name", "description", "participantId",
-        "automaticNegotiation", "automaticTransfer", "enabled", "bucketName"})
+        "automaticNegotiation", "automaticTransfer", "enabled", "bucketName", "realm", "credentialsConfigured"})
 @Document(collection = "tenants")
 public class Tenant {
 
@@ -67,6 +64,28 @@ public class Tenant {
      */
     private String bucketName;
 
+    /**
+     * The Keycloak realm bound to this tenant. A null realm means the tenant is not reachable
+     * via Keycloak authentication. A given realm may be bound to at most one tenant.
+     */
+    @Pattern(regexp = "^[A-Za-z0-9._-]+$", message = "must contain only letters, digits, '.', '_' or '-'")
+    private String realm;
+
+    /**
+     * Keycloak realm client secret for a tenant.
+     * The client secret is stored encrypted at rest and is never included in {@link #toString()}.
+     */
+    @Encrypted
+    @JsonIgnore
+    private String clientSecret;
+
+    /**
+     * Whether realm client credentials are configured for this tenant. Computed at read time
+     * and never persisted.
+     */
+    @Transient
+    private boolean credentialsConfigured;
+
     @JsonIgnore
     @CreatedDate
     private Instant issued;
@@ -89,6 +108,17 @@ public class Tenant {
     private Long version;
 
     /**
+     * Marks whether realm credentials are configured; used to decorate read responses only.
+     *
+     * @param configured whether realm credentials exist for this tenant
+     * @return this tenant
+     */
+    public Tenant markCredentialsConfigured(boolean configured) {
+        this.credentialsConfigured = configured;
+        return this;
+    }
+
+    /**
      * Computes the callback address for this tenant.
      * Strips a trailing slash from {@code baseCallbackAddress} if present and appends
      * {@code "/" + id}.
@@ -101,6 +131,11 @@ public class Tenant {
                 ? baseCallbackAddress.substring(0, baseCallbackAddress.length() - 1)
                 : baseCallbackAddress;
         return base + "/" + this.id;
+    }
+
+    @Override
+    public String toString() {
+        return "Tenant{id='" + id + "', name='" + name + "'}";
     }
 
     /**
@@ -211,6 +246,40 @@ public class Tenant {
          */
         public Builder bucketName(String bucketName) {
             tenant.bucketName = bucketName;
+            return this;
+        }
+
+        /**
+         * Sets the Keycloak realm bound to this tenant. A blank value is normalised to {@code null}.
+         *
+         * @param realm the realm name, or {@code null}/blank for no binding
+         * @return this builder
+         */
+        public Builder realm(String realm) {
+            tenant.realm = realm == null || realm.isBlank() ? null : realm.trim();
+            return this;
+        }
+
+        /**
+         * Sets the Keycloak realm client secret for this tenant.
+         * The client secret is stored encrypted at rest and is never included in {@link #toString()}.
+         *
+         * @param clientSecret the plain client secret
+         * @return this builder
+         */
+        public Builder clientSecret(String clientSecret) {
+            tenant.clientSecret = clientSecret;
+            return this;
+        }
+
+        /**
+         * Sets whether realm credentials are configured for this tenant.
+         *
+         * @param credentialsConfigured the computed flag
+         * @return this builder
+         */
+        public Builder credentialsConfigured(boolean credentialsConfigured) {
+            tenant.credentialsConfigured = credentialsConfigured;
             return this;
         }
 

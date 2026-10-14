@@ -2,6 +2,7 @@
 
 ## Metadata
 - Status: Proposed
+- Implementation: slice KC1 (#363) delivers `Tenant.realm`, `Tenant.clientSecret`, typed `KeycloakProperties`
 - Date: 2026-10-05
 - Owner: TRUE Connector team
 - Reviewers: —
@@ -56,28 +57,28 @@ request is derived from the verified token issuer, never from a custom claim.
 Concretely:
 
 1. **Inbound validation.**
-   - Spring Security's `JwtIssuerAuthenticationManagerResolver` checks the issuer against an
-     allowlist made of `{base-url}/realms/{Tenant.realm}` for enabled tenants plus
-     `{base-url}/realms/{platform-realm}`.
-   - Unknown issuers are rejected before any discovery or JWKS request.
-   - Each trusted issuer gets its own lazily created decoder that validates signature, issuer,
-     expiry and a configurable audience (`aud`).
+    - Spring Security's `JwtIssuerAuthenticationManagerResolver` checks the issuer against an
+      allowlist made of `{base-url}/realms/{Tenant.realm}` for enabled tenants plus
+      `{base-url}/realms/{platform-realm}`.
+    - Unknown issuers are rejected before any discovery or JWKS request.
+    - Each trusted issuer gets its own lazily created decoder that validates signature, issuer,
+      expiry and a configurable audience (`aud`).
 2. **Tenant resolution.** The issuer is mapped to `Tenant.id`. Platform-realm tokens carry no tenant
    and keep the existing `X-Tenant-Id` delegation for super-admins.
 3. **Authorization.**
-   - Keycloak is configured to emit a top-level `roles` claim whose values are already the connector's
-     authorities (`ROLE_ADMIN`, `ROLE_CONNECTOR`, `ROLE_SUPER_ADMIN`). Spring's stock
-     `JwtGrantedAuthoritiesConverter` reads it directly, so the custom `KeycloakRealmRoleConverter`
-     and any role-mapping configuration are removed.
-   - There is no extra guard restricting `ROLE_SUPER_ADMIN` to the platform realm: the identity
-     provider is trusted to emit authorities correctly. Tenant-header delegation stays limited to
-     tenant-less (platform-realm) tokens, and tenant-realm tokens stay pinned to their tenant.
+    - Keycloak is configured to emit a top-level `roles` claim whose values are already the connector's
+      authorities (`ROLE_ADMIN`, `ROLE_CONNECTOR`, `ROLE_SUPER_ADMIN`). Spring's stock
+      `JwtGrantedAuthoritiesConverter` reads it directly, so the custom `KeycloakRealmRoleConverter`
+      and any role-mapping configuration are removed.
+    - There is no extra guard restricting `ROLE_SUPER_ADMIN` to the platform realm: the identity
+      provider is trusted to emit authorities correctly. Tenant-header delegation stays limited to
+      tenant-less (platform-realm) tokens, and tenant-realm tokens stay pinned to their tenant.
 4. **Outbound tokens.**
-   - Spring `OAuth2AuthorizedClientManager` handles token acquisition, with one client registration
-     per trusted realm (same client id, per-realm secret).
-   - DSP protocol calls use the acting tenant's realm.
-   - The connector's calls to its own `/api/**` endpoints (`OkHttpRestClient.sendInternalRequest`)
-     use the platform realm.
+    - Spring `OAuth2AuthorizedClientManager` handles token acquisition, with one client registration
+      per trusted realm (same client id, per-realm secret).
+    - DSP protocol calls use the acting tenant's realm.
+    - The connector's calls to its own `/api/**` endpoints (`OkHttpRestClient.sendInternalRequest`)
+      use the platform realm.
 5. **Login proxy.** `/api/v1/auth/login|refresh|logout` stay. The request carries an explicit
    `tenant` field that selects `Tenant.realm`; when it's absent, the platform realm is used.
    Every login or refresh failure (unknown, disabled or realm-less tenant, missing or wrong
@@ -86,15 +87,13 @@ Concretely:
    Tokens obtained directly from a trusted realm are accepted the same way as tokens obtained
    through the proxy.
 6. **Client secrets.**
-   - The platform realm secret stays in configuration/environment
-     (`application.keycloak.platform-client-secret`) so the connector can bootstrap.
-   - Tenant realm secrets are stored encrypted in MongoDB (`realm_credentials`, keyed by tenant id,
-     using the existing `@Encrypted`/`FieldEncryptionService` mechanism). They are set through
-     `PUT /api/v1/tenants/{id}/realm-credentials` (super-admin only), validated with a real
-     client-credentials request, write-only, and exposed only as `credentialsConfigured`. Setting
-     them evicts the realm's cached client registration and tokens. Changing `Tenant.realm` or
-     deleting the tenant deletes the credentials. This allows onboarding and rotation without a
-     restart.
+    - The platform realm secret stays in configuration/environment
+      (`application.keycloak.platform-client-secret`) so the connector can bootstrap.
+    - Tenant realm secrets are stored encrypted directly on the `Tenant` document in MongoDB
+      (`Tenant.clientSecret`, using the existing `@Encrypted`/`FieldEncryptionService` mechanism).
+      They are set through `POST /api/v1/tenants` (super-admin only),
+      validated with a real client-credentials request, write-only. Setting them evicts the realm's cached client registration and tokens.
+      This allows onboarding and rotation without a restart.
 7. **User administration** through the Keycloak Admin REST API stays available behind
    `application.keycloak.user-admin.enabled` (default `false`). `GET /api/v1/users/me` is always
    available and shared by both auth modes (one controller and DTO behind a `CurrentUserProvider`
@@ -120,8 +119,9 @@ Concretely:
   the realm allowlist drift from tenant enablement.
 - **Tenant client secrets in configuration/environment** → rejected: static properties can't change at
   runtime, so every onboarding or rotation would need a restart. Only the platform secret stays there.
-- **Client secrets stored encrypted on the `Tenant` document** → rejected: a separate
-  `realm_credentials` collection keeps secrets out of tenant payloads, audit diffs and normal reads.
+- **A separate `realm_credentials` collection for client secrets** → rejected: adds unnecessary
+  collection lifecycle synchronization and complexity when field-level encryption (`@Encrypted`) on the
+  `Tenant` document already protects secrets and write-only API handling keeps them out of normal reads.
 - **Configurable role claim and role-name mapping, or a `ROLE_SUPER_ADMIN` platform-only guard** →
   rejected: Keycloak can be tailored to emit final authorities, so the extra configuration and
   converter are unnecessary.
@@ -161,7 +161,7 @@ Keeping the login proxy and `/users/me` contract preserves the client-facing API
   retired in `KEYCLOAK` mode.
 
 ### Negative
-- `Tenant` gains a field, so all 12 `initial_data*.json` seed files must change together.
+- `Tenant` gains fields (`realm`, `clientSecret`), so all 12 `initial_data*.json` seed files must change together.
 - Tenant realm secrets live (encrypted) in MongoDB, so a database compromise together with the
   encryption key exposes them. Onboarding a tenant needs a realm binding and a secret through the
   management API, without a restart.
@@ -183,10 +183,10 @@ Keeping the login proxy and `/users/me` contract preserves the client-facing API
   assumption: the connector doesn't second-guess the authorities the identity provider emits.
   Mitigation: audit of mapper configuration with the identity-provider operator. The tenant is
   still derived from the issuer, so delegation stays tenant-less only.
-- **A missing realm secret breaks login and outbound calls for a tenant.** Mitigation: startup WARN
-  and the `credentialsConfigured` flag for tenants with a realm but no stored secret.
-- **Tenant secrets in MongoDB.** Mitigation: field-level encryption, write-only API, a separate
-  collection and validation on save.
+- **A missing realm secret breaks login and outbound calls for a tenant.** Mitigation: startup WARN 
+  for tenants with a realm but no stored secret.
+- **Tenant secrets in MongoDB.** Mitigation: field-level encryption, write-only API handling, and
+  validation on save.
 - **Protocol regression.** Mitigation: the TCK profile and Newman suites keep running in `INTERNAL`
   mode and remain mandatory before merge.
 

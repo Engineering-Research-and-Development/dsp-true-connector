@@ -1,5 +1,6 @@
 package it.eng.tools.service;
 
+import it.eng.tools.auth.keycloak.realm.RealmCredentialsValidator;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.exception.TenantNotFoundException;
@@ -24,16 +25,9 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TenantServiceTest {
@@ -60,6 +54,12 @@ class TenantServiceTest {
     private BucketConnectionVerificationService bucketConnectionVerificationService;
 
     @Mock
+    private FieldEncryptionService fieldEncryptionService;
+
+    @Mock
+    private RealmCredentialsValidator realmCredentialsValidator;
+
+    @Mock
     private Pageable pageable;
 
     private TenantService tenantService;
@@ -68,7 +68,7 @@ class TenantServiceTest {
     void setUp() {
         tenantService = new TenantService(tenantRepository, auditEventPublisher,
                 s3BucketProvisionService, bucketCredentialsService,
-                bucketProvisioningModeResolver, bucketConnectionVerificationService, BASE_CALLBACK_URL);
+                bucketProvisioningModeResolver, bucketConnectionVerificationService, fieldEncryptionService, null, realmCredentialsValidator);
     }
 
     private Tenant buildTenant(boolean enabled) {

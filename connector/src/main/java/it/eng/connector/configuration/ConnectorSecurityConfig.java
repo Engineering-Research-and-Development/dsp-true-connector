@@ -4,6 +4,7 @@ import it.eng.connector.filter.ApiTenantContextFilter;
 import it.eng.connector.model.Role;
 import it.eng.connector.repository.UserRepository;
 import it.eng.tools.auth.AuthenticationMode;
+import it.eng.tools.auth.keycloak.KeycloakProperties;
 import it.eng.tools.auth.AuthenticationModeResolver;
 import it.eng.tools.auth.condition.InternalAuthenticationModeCondition;
 import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
@@ -36,7 +37,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
-import org.springframework.security.oauth2.jwt.JwtDecoders;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
@@ -85,12 +86,6 @@ public class ConnectorSecurityConfig {
 
     @Value("${application.cors.allowed.credentials:}")
     private String allowedCredentials;
-
-    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:}")
-    private String issuerUri;
-
-    @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri:}")
-    private String jwkSetUri;
 
     @Autowired
     @Qualifier("delegatedAuthenticationEntryPoint")
@@ -264,19 +259,18 @@ public class ConnectorSecurityConfig {
      * Creates the JWT decoder for validating Keycloak-issued tokens.
      * Active only in Keycloak mode.
      *
+     * The JWKS is fetched lazily so startup succeeds when Keycloak is unreachable.
+     *
+     * @param keycloakProperties the typed Keycloak configuration
      * @return a configured {@link JwtDecoder}
-     * @throws IllegalStateException if neither issuer-uri nor jwk-set-uri is configured
      */
     @Bean
     @Conditional(KeycloakAuthenticationModeCondition.class)
-    JwtDecoder keycloakJwtDecoder() {
-        if (StringUtils.isNotBlank(issuerUri)) {
-            return JwtDecoders.fromIssuerLocation(issuerUri);
-        }
-        if (StringUtils.isNotBlank(jwkSetUri)) {
-            return NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
-        }
-        throw new IllegalStateException("Keycloak issuer-uri or jwk-set-uri must be configured.");
+    JwtDecoder keycloakJwtDecoder(KeycloakProperties keycloakProperties) {
+        String issuer = keycloakProperties.realmUrl(keycloakProperties.platformRealm());
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(issuer + "/protocol/openid-connect/certs").build();
+        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(issuer));
+        return decoder;
     }
 
     /**

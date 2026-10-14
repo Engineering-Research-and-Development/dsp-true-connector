@@ -27,10 +27,10 @@ import okhttp3.Response;
 @Conditional(KeycloakAuthenticationModeCondition.class)
 public class KeycloakAuthenticationService implements AuthProvider {
 
-    private final KeycloakAuthenticationProperties keycloakProperties;
+    private final KeycloakProperties keycloakProperties;
     private final OkHttpClient okHttpClient;
 
-    public KeycloakAuthenticationService(KeycloakAuthenticationProperties keycloakProperties, OkHttpClient okHttpClient) {
+    public KeycloakAuthenticationService(KeycloakProperties keycloakProperties, OkHttpClient okHttpClient) {
         this.keycloakProperties = keycloakProperties;
         this.okHttpClient = okHttpClient;
     }
@@ -38,9 +38,8 @@ public class KeycloakAuthenticationService implements AuthProvider {
     @PostConstruct
     public void init() {
         log.info("=== KeycloakAuthenticationService INITIALIZED ===");
-        log.info("Keycloak client ID: {}", keycloakProperties != null ? keycloakProperties.getClientId() : "null");
-        log.info("Keycloak token URL: {}", keycloakProperties != null ? keycloakProperties.getTokenUrl() : "null");
-        log.info("Token caching enabled: {}", keycloakProperties != null && keycloakProperties.isTokenCaching());
+        log.info("Keycloak client ID: {}", keycloakProperties != null ? keycloakProperties.clientId() : "null");
+        log.info("Keycloak token URL: {}", keycloakProperties != null ? keycloakProperties.tokenUrl(keycloakProperties.platformRealm()) : "null");
         log.info("=== End KeycloakAuthenticationService initialization ===");
     }
 
@@ -59,12 +58,12 @@ public class KeycloakAuthenticationService implements AuthProvider {
 
             RequestBody formBody = new FormBody.Builder()
                     .add("grant_type", "client_credentials")
-                    .add("client_id", keycloakProperties.getClientId())
-                    .add("client_secret", keycloakProperties.getClientSecret())
+                    .add("client_id", keycloakProperties.clientId())
+                    .add("client_secret", keycloakProperties.platformClientSecret())
                     .build();
 
             Request request = new Request.Builder()
-                    .url(keycloakProperties.getTokenUrl())
+                    .url(keycloakProperties.tokenUrl(keycloakProperties.platformRealm()))
                     .post(formBody)
                     .build();
 

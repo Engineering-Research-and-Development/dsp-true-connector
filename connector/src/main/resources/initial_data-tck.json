@@ -2504,6 +2504,7 @@
       "name": "Engineering",
       "description": "Default Engineering tenant",
       "participantId": "urn:connector:engineering",
+      "realm": null,
       "bucketName": "dsp-true-connector-consumer",
       "enabled": true,
       "automaticNegotiation": false,

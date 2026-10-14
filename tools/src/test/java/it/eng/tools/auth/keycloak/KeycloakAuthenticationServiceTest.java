@@ -39,8 +39,7 @@ class KeycloakAuthenticationServiceTest {
 	@Mock
 	private Call call;
 
-	@Mock
-	private KeycloakAuthenticationProperties keycloakProperties;
+	private final KeycloakProperties keycloakProperties = new KeycloakProperties("http://localhost:8180", "test", "test-client", "aud", "test-secret", new KeycloakProperties.UserAdmin(false));
 
 	private KeycloakAuthenticationService service;
 
@@ -52,9 +51,6 @@ class KeycloakAuthenticationServiceTest {
 	@Test
 	void fetchToken_success() throws Exception {
 		// Arrange - setup properties only for tests that need them
-		when(keycloakProperties.getClientId()).thenReturn("test-client");
-		when(keycloakProperties.getClientSecret()).thenReturn("test-secret");
-		when(keycloakProperties.getTokenUrl()).thenReturn("http://localhost:8180/realms/test/protocol/openid-connect/token");
 		ObjectMapper mapper = new ObjectMapper();
 		ObjectNode responseJson = mapper.createObjectNode();
 		responseJson.put("access_token", "test-token-value");
@@ -83,9 +79,6 @@ class KeycloakAuthenticationServiceTest {
 	@Test
 	void fetchToken_httpError() throws Exception {
 		// Arrange
-		when(keycloakProperties.getClientId()).thenReturn("test-client");
-		when(keycloakProperties.getClientSecret()).thenReturn("test-secret");
-		when(keycloakProperties.getTokenUrl()).thenReturn("http://localhost:8180/realms/test/protocol/openid-connect/token");
 
 		Response response = new Response.Builder()
 				.request(new Request.Builder().url("http://test").build())
@@ -108,9 +101,6 @@ class KeycloakAuthenticationServiceTest {
 	@Test
 	void fetchToken_nullResponse() throws Exception {
 		// Arrange
-		when(keycloakProperties.getClientId()).thenReturn("test-client");
-		when(keycloakProperties.getClientSecret()).thenReturn("test-secret");
-		when(keycloakProperties.getTokenUrl()).thenReturn("http://localhost:8180/realms/test/protocol/openid-connect/token");
 
 		when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
 		when(call.execute()).thenThrow(new IOException("Connection refused"));
@@ -125,9 +115,6 @@ class KeycloakAuthenticationServiceTest {
 	@Test
 	void fetchToken_noAccessTokenInResponse() throws Exception {
 		// Arrange
-		when(keycloakProperties.getClientId()).thenReturn("test-client");
-		when(keycloakProperties.getClientSecret()).thenReturn("test-secret");
-		when(keycloakProperties.getTokenUrl()).thenReturn("http://localhost:8180/realms/test/protocol/openid-connect/token");
 
 		ObjectMapper mapper = new ObjectMapper();
 		ObjectNode responseJson = mapper.createObjectNode();

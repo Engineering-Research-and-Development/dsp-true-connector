@@ -51,18 +51,11 @@ public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
     static void keycloakProperties(DynamicPropertyRegistry registry) {
         registry.add("application.auth.provider", () -> "KEYCLOAK");
         registry.add("server.port", () -> "0");
-        registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri", BaseKeycloakIntegrationTest::realmUrl);
-        registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
-                () -> realmUrl() + "/protocol/openid-connect/certs");
-        registry.add("application.keycloak.backend.client-id", () -> KEYCLOAK_BACKEND_CLIENT_ID);
-        registry.add("application.keycloak.backend.client-secret", () -> KEYCLOAK_BACKEND_CLIENT_SECRET);
-        registry.add("application.keycloak.backend.token-url",
-                () -> realmUrl() + "/protocol/openid-connect/token");
-        registry.add("application.keycloak.login.client-id", () -> KEYCLOAK_UI_CLIENT_ID);
-        registry.add("application.keycloak.login.token-url",
-                () -> realmUrl() + "/protocol/openid-connect/token");
-        registry.add("application.keycloak.login.logout-url",
-                () -> realmUrl() + "/protocol/openid-connect/logout");
+        registry.add("application.keycloak.base-url", KEYCLOAK_CONTAINER::getAuthServerUrl);
+        registry.add("application.keycloak.platform-realm", () -> KEYCLOAK_REALM);
+        registry.add("application.keycloak.client-id", () -> KEYCLOAK_BACKEND_CLIENT_ID);
+        registry.add("application.keycloak.audience", () -> KEYCLOAK_BACKEND_CLIENT_ID);
+        registry.add("application.keycloak.platform-client-secret", () -> KEYCLOAK_BACKEND_CLIENT_SECRET);
         registry.add("application.baseURL", () -> "http://localhost:8080/");
         registry.add("application.automatic.negotiation", () -> "false");
         registry.add("application.encryption.key", () -> "5xplehys9mtcatb");
