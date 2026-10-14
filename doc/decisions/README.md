@@ -17,6 +17,7 @@ This directory captures architecturally significant decisions: choices that shap
 | [D-TEC-007](technical/D-TEC-007-s3-admin-key-http-push-temp-user.md)    | S3 admin key for HTTP-PUSH temporary user creation — accepted risk | Accepted | Technical |
 | [D-TEC-008](technical/D-TEC-008-rustfs-s3-storage-backend.md)           | RustFS as the self-hosted S3 storage backend | Accepted | Technical |
 | [D-TEC-009](technical/D-TEC-009-dashboard-metrics-api.md)                | Tenant-aware dashboard metrics API | Accepted | Technical |
+| [D-TEC-010](technical/D-TEC-010-springdoc-openapi-documentation.md)      | Property-gated springdoc OpenAPI documentation | Accepted | Technical |
 
 ## Structure
 

@@ -78,6 +78,10 @@ Load `dsp-foundations` and the relevant protocol skill together with this skill.
    - Base URL joining handles trailing slash variations.
    - Unknown `callbackAddress` in initiation messages is treated as an unrecoverable error.
 
+# OpenAPI protocol examples
+
+- Verify protocol example JSON matches the current `serializeProtocol` output, including JSON-LD context and type metadata.
+
 # Repository-specific review guidance
 
 - Read `.github/copilot-instructions.md` first.

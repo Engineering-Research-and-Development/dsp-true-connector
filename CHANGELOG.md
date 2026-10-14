@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 - Enabled public Swagger UI/OpenAPI documentation only in the Docker and Terraform demo configurations; other profiles remain disabled by default.
 - Added YAML-backed OpenAPI descriptions and generated JSON request examples for negotiation, agreement, transfer, and FTP management operations.
 - Added tenant, user, authentication, audit, properties, dashboard, and version OpenAPI documentation with build-generated administration request examples.
+- Added [doc/openapi.md](doc/openapi.md) with the Swagger group walkthrough, configuration switches, example usage, and tenant-scope security caveat.
 
 ### Fixed
 - Scoped JSON request media-type constraints to body-bearing catalog API methods so bodyless GET and DELETE requests do not require a `Content-Type` header.
