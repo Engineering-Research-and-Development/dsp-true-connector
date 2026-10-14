@@ -18,7 +18,7 @@ import java.util.List;
  * Controller for managing application properties; get and update.
  */
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE,
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE,
         path = ApiEndpoints.PROPERTIES_V1)
 @Slf4j
 public class ApplicationPropertiesAPIController {
@@ -59,7 +59,7 @@ public class ApplicationPropertiesAPIController {
      * @param properties for updating
      * @return GenericApiResponse
      */
-    @PutMapping(path = "/")
+    @PutMapping(path = "/", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GenericApiResponse<JsonNode>> modifyProperty(@RequestBody List<ApplicationProperty> properties) {
         log.info("modifyProperties(...) ");
 

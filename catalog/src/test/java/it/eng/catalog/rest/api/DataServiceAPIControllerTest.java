@@ -60,7 +60,7 @@ public class DataServiceAPIControllerTest {
     @Test
     @DisplayName("Save data service - success")
     public void saveDataService_success() {
-        String dataService = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DATA_SERVICE);
+        JsonNode dataService = CatalogSerializer.serializePlainJsonNode(CatalogMockObjectUtil.DATA_SERVICE);
         when(dataServiceService.saveDataService(any())).thenReturn(CatalogMockObjectUtil.DATA_SERVICE);
         ResponseEntity<GenericApiResponse<JsonNode>> response = dataServiceAPIController.saveDataService(dataService);
 
@@ -84,7 +84,7 @@ public class DataServiceAPIControllerTest {
     @Test
     @DisplayName("Update data service - success")
     public void updateDataService_success() {
-        String dataService = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE);
+        JsonNode dataService = CatalogSerializer.serializePlainJsonNode(CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE);
         when(dataServiceService.updateDataService(any(String.class), any())).thenReturn(CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE);
         ResponseEntity<GenericApiResponse<JsonNode>> response = dataServiceAPIController.updateDataService(CatalogMockObjectUtil.DATA_SERVICE_FOR_UPDATE.getId(), dataService);
 

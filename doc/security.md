@@ -78,6 +78,27 @@ application.auth.provider=KEYCLOAK
 > **Note:** `provider=DISABLED` combined with `dcp.enabled=true` is explicitly rejected at startup
 > with an `IllegalStateException`.
 
+### Swagger/OpenAPI Documentation
+
+Swagger UI and the OpenAPI JSON endpoints use `springdoc.swagger-ui.enabled` and
+`springdoc.api-docs.enabled`. They are disabled in standard and TCK configurations and enabled
+only in the Docker and Terraform demo property files, where they are intended for seeded mock
+data. When enabled, `/swagger-ui/**` and `/v3/api-docs/**` are publicly reachable through the
+default security chain. These routes return documentation and examples only; they do not grant
+unauthenticated access to management or DSP operations. Actual calls remain subject to the
+existing authentication and role requirements. Do not enable the documentation endpoints in
+production.
+
+The `ROLE_CONNECTOR` role is not bound to a specific tenant by the JWT. A protocol request's
+`{tenantId}` path selects the enabled tenant whose data is returned; an otherwise valid connector
+token can address another enabled tenant route. Do not treat connector tokens as tenant-specific
+credentials. Deployments that require tenant-bound identities must enforce an explicit tenant
+authorization rule or equivalent deployment boundary. This behavior is covered by
+`CrossTenantIsolationIT`.
+
+See the [OpenAPI guide](openapi.md) for the grouped documents and the Swagger authentication
+walkthrough.
+
 ---
 
 ## Unified Authentication Contract (`/api/v1/auth/*`)

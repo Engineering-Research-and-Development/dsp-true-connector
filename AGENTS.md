@@ -16,6 +16,7 @@ Always reference these before making decisions or writing code:
 | **Architecture decisions** | [`doc/decisions/`](doc/decisions/README.md) | ADRs — why things are the way they are |
 | **Changelog** | [`CHANGELOG.md`](CHANGELOG.md) | Version history; must be updated with every applicable change |
 | **Java conventions** | [`.github/instructions/java.instructions.md`](.github/instructions/java.instructions.md) | Authoritative Java coding rules |
+| **OpenAPI documentation** | [`.github/instructions/openapi-docs.instructions.md`](.github/instructions/openapi-docs.instructions.md) | Controller-to-YAML documentation rules |
 | **Testing conventions** | [`.github/instructions/junittest.instructions.md`](.github/instructions/junittest.instructions.md) | JUnit 5 test structure, coverage expectations |
 | **Model class rules** | [`.github/instructions/model-class-guidelines.instructions.md`](.github/instructions/model-class-guidelines.instructions.md) | Builder pattern, validation, Jackson serialization for protocol models |
 | **CI/CD practices** | [`.github/instructions/github-actions-ci-cd-best-practices.instructions.md`](.github/instructions/github-actions-ci-cd-best-practices.instructions.md) | Workflow authoring rules |
@@ -38,6 +39,7 @@ These apply to every change and must not be skipped:
 - **Javadoc is required on all public and protected methods** (Checkstyle `JavadocMethod`/`JavadocStyle`, config in `scripts/ci/checkstyle.xml`): capitalized one-sentence summary ending with a period, plus `@param`/`@return`/`@throws` tags where applicable.
 - **Protocol model classes follow the builder/validation pattern** in [`.github/instructions/model-class-guidelines.instructions.md`](.github/instructions/model-class-guidelines.instructions.md) and [`negotiation/doc/model.md`](negotiation/doc/model.md): private constructor, builder, `@NotNull` validation enforced in `build()`, junit coverage for valid construction and validation failure.
 - **New features and bug fixes must be covered by tests**: JUnit 5 + Mockito for units; MockMvc + Testcontainers for integration tests (see [`doc/test_containers_starting_guide.md`](doc/test_containers_starting_guide.md)).
+- **REST controller changes require matching OpenAPI YAML updates**: adding, renaming, or removing a controller method, path, parameter, request/response shape, role, or status code requires updating the corresponding `openapi/<module>-docs.yaml` entry in the same change. Update the example generator when a payload changes.
 - **Module boundaries are respected**: `catalog`, `negotiation`, and `data-transfer` implement their protocol concern independently; shared logic goes in `tools`; `connector` only wires modules together. No cross-module reach-ins.
 - **Architecturally significant decisions require an ADR** in [`doc/decisions/`](doc/decisions/README.md) before implementation. Invoke the `decisions` skill before creating, reviewing, or superseding an ADR; it selects the architecture or technical category and requires a complete, indexed decision document. Undocumented architectural drift is not acceptable.
 - **Security posture is actively maintained**: dependency upgrades addressing CVEs are documented in `CHANGELOG.md` under Security; run SpotBugs + Find Security Bugs via `spotbugs-scan.sh` / `spotbugs-scan.cmd` (see [`doc/spotbugs.md`](doc/spotbugs.md)).
@@ -234,3 +236,8 @@ Commit and push the feature branch, create a PR against `develop` with summary a
 | Merge conflict on `develop` | Agent rebases feature branch, re-runs per-task verification |
 | Missing service function referenced in issue | Fail the task, comment on issue — missing function is an untracked dependency |
 | Multiple agents pick the same issue | First agent to move to In Progress owns it; others skip |
+
+
+### Restrictions
+
+- do not include files in docs/supoerpowers/** directory, they are important only during implementation, and they should not be commited with other files.

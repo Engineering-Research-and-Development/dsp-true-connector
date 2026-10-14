@@ -164,8 +164,7 @@ public class CatalogAPIIT extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.API_USER)
     public void getCatalogById_success() throws Exception {
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_CATALOGS_V1 + "/" + catalog.getId())
-                        .contentType(MediaType.APPLICATION_JSON));
+                get(ApiEndpoints.CATALOG_CATALOGS_V1 + "/" + catalog.getId()));
 
         result.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -187,8 +186,7 @@ public class CatalogAPIIT extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.API_USER)
     public void getAllCatalogs_success() throws Exception {
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_CATALOGS_V1)
-                        .contentType(MediaType.APPLICATION_JSON));
+                get(ApiEndpoints.CATALOG_CATALOGS_V1));
 
         result.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -264,8 +262,7 @@ public class CatalogAPIIT extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.API_USER)
     public void deleteCatalog_success() throws Exception {
         final ResultActions result = mockMvc.perform(
-                delete(ApiEndpoints.CATALOG_CATALOGS_V1 + "/" + catalog.getId())
-                        .contentType(MediaType.APPLICATION_JSON));
+                delete(ApiEndpoints.CATALOG_CATALOGS_V1 + "/" + catalog.getId()));
 
         result.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -284,8 +281,7 @@ public class CatalogAPIIT extends BaseIntegrationTest {
     @DisplayName("Unauthorized access")
     public void unauthorized_access() throws Exception {
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_CATALOGS_V1)
-                        .contentType(MediaType.APPLICATION_JSON));
+                get(ApiEndpoints.CATALOG_CATALOGS_V1));
 
         result.andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));

@@ -12,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = ApiEndpoints.CATALOG_DISTRIBUTIONS_V1)
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE, path = ApiEndpoints.CATALOG_DISTRIBUTIONS_V1)
 @Slf4j
 public class DistributionAPIController {
 
@@ -40,8 +40,8 @@ public class DistributionAPIController {
                 .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(distributions), "Fetched all distributions"));
     }
 
-    @PostMapping
-    public ResponseEntity<GenericApiResponse<JsonNode>> saveDistribution(@RequestBody String distribution) {
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<GenericApiResponse<JsonNode>> saveDistribution(@RequestBody JsonNode distribution) {
         Distribution ds = CatalogSerializer.deserializePlain(distribution, Distribution.class);
 
         log.info("Saving new distribution");
@@ -62,8 +62,8 @@ public class DistributionAPIController {
                 .body(GenericApiResponse.success(null, "Distribution deleted successfully"));
     }
 
-    @PutMapping(path = "/{id}")
-    public ResponseEntity<GenericApiResponse<JsonNode>> updateDistribution(@PathVariable String id, @RequestBody String distribution) {
+    @PutMapping(path = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<GenericApiResponse<JsonNode>> updateDistribution(@PathVariable String id, @RequestBody JsonNode distribution) {
         Distribution ds = CatalogSerializer.deserializePlain(distribution, Distribution.class);
 
         log.info("Updating distribution with id: " + id);

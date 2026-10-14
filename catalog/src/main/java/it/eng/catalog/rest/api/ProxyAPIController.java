@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
-	path = ApiEndpoints.PROXY_V1)
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE,
+        path = ApiEndpoints.PROXY_V1)
 @Slf4j
 public class ProxyAPIController {
 
@@ -26,7 +26,7 @@ public class ProxyAPIController {
 		this.proxyApiService = proxyApiService;
 	}
 
-	@PostMapping(path = "/datasets/{id}/formats")
+	@PostMapping(path = "/datasets/{id}/formats", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<GenericApiResponse<List<String>>> getFormatsFromDataset(@PathVariable String id,
                                                                                   @RequestBody JsonNode formatsRequest) {
 		log.info("Fetching formats from dataset with id: '" + id + "'");
@@ -37,7 +37,7 @@ public class ProxyAPIController {
 				.body(GenericApiResponse.success(formats, "Fetched formats"));
 	}
 	
-	@PostMapping(path = "/catalogs")
+	@PostMapping(path = "/catalogs", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<GenericApiResponse<JsonNode>> getCatalog(@RequestBody JsonNode catalogRequest) {
 		log.info("Fetching proxy catalog");
 		String forwardTo = catalogRequest.get("Forward-To").asText();
