@@ -23,6 +23,7 @@ Map of all documentation in this repository. For agent instructions and non-nego
 | Document | Purpose |
 |---|---|
 | [security.md](security.md) | TLS configuration, OCSP validation, certificate requirements |
+| [openapi.md](openapi.md) | Swagger UI, OpenAPI groups, authentication walkthrough, and YAML maintenance |
 | [certificate/PKI_CERTIFICATE_GUIDE.md](certificate/PKI_CERTIFICATE_GUIDE.md) | Certificate generation, JKS keystore/truststore setup |
 | [ocsp/OCSP_GUIDE.md](ocsp/OCSP_GUIDE.md) | OCSP responder setup and certificate revocation checking |
 | [spotbugs.md](spotbugs.md) | SpotBugs + Find Security Bugs scanning (scan-only and gate modes) |

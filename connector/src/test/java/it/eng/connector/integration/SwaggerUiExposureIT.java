@@ -1,17 +1,23 @@
 package it.eng.connector.integration;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import it.eng.catalog.serializer.CatalogSerializer;
+import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.tools.controller.ApiEndpoints;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -53,5 +59,49 @@ class SwaggerUiExposureIT extends BaseIntegrationTest {
         assertEquals(Map.of(
                 "management-api", "/v3/api-docs/management-api",
                 "dsp-protocol", "/v3/api-docs/dsp-protocol"), groups);
+    }
+
+    @Test
+    @DisplayName("Documented login examples authenticate management and protocol requests")
+    void documentedLoginExamplesAuthorizeManagementAndProtocolRequests() throws Exception {
+        String document = mockMvc.perform(get("/v3/api-docs/management-api"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        JsonNode managementApi = jsonMapper.readTree(document);
+        JsonNode examples = managementApi.path("components").path("examples");
+        assertTrue(managementApi.path("paths").has(ApiEndpoints.USERS_V1 + "/me"));
+        assertTrue(examples.has("login-admin.plain"));
+        assertTrue(examples.has("login-connector.plain"));
+
+        String adminToken = loginAndGetAccessToken(examples.path("login-admin.plain").path("value"));
+        String connectorToken = loginAndGetAccessToken(examples.path("login-connector.plain").path("value"));
+        mockMvc.perform(get(ApiEndpoints.USERS_V1 + "/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isOk());
+
+        String protocolResponse = mockMvc.perform(post("/" + TENANT_ID + "/catalog/request")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + connectorToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(CatalogSerializer.serializeProtocol(
+                                CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE)))
+                .andExpect(status().isNotFound())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertEquals("CatalogError", jsonMapper.readTree(protocolResponse).path("@type").asText());
+    }
+
+    private String loginAndGetAccessToken(final JsonNode loginExample) throws Exception {
+        String loginResponse = mockMvc.perform(post(ApiEndpoints.AUTH_V1 + "/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginExample.toString()))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return jsonMapper.readTree(loginResponse).path("access_token").asText();
     }
 }

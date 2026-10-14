@@ -166,6 +166,7 @@ Every created child issue, regardless of family, must also include:
 - **Agent Mode**
 - **Agent Instructions**
 - **Verification Checklist** — covers only this task's own scope (per-task QA)
+- For implementation tasks that change a REST controller, include a checklist item to update the matching `openapi/<module>-docs.yaml` entry and refresh generated examples when the payload changes.
 
 ### Slice-level QA task — `.github/ISSUE_TEMPLATE/qa-task.yml`
 

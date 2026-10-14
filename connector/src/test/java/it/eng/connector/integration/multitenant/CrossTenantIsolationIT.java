@@ -11,6 +11,7 @@ import it.eng.catalog.service.CatalogService;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.util.TestUtil;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.model.Tenant;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.ResultActions;
@@ -29,7 +31,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -133,6 +137,49 @@ public class CrossTenantIsolationIT extends BaseIntegrationTest {
                 get("/" + TENANT_A + "/catalog/datasets/" + datasetB.getId())
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("Connector token receives only data for the tenant selected by the protocol route")
+    void connectorTokenCanAddressTenantRoutesAndDataRemainsScoped() throws Exception {
+        String loginResponse = mockMvc.perform(post(ApiEndpoints.AUTH_V1 + "/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonMapper.writeValueAsString(Map.of(
+                                "email", TestUtil.CONNECTOR_USER,
+                                "password", "password"))))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String connectorToken = jsonMapper.readTree(loginResponse).path("access_token").asText();
+
+        String requestBody = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
+        String tenantAResponse = mockMvc.perform(post("/" + TENANT_A + "/catalog/request")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + connectorToken)
+                        .content(requestBody)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertTrue(tenantAResponse.contains(datasetA.getId()));
+        assertFalse(tenantAResponse.contains(datasetB.getId()));
+
+        String tenantBResponse = mockMvc.perform(post("/" + TENANT_B + "/catalog/request")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + connectorToken)
+                        .content(requestBody)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertTrue(tenantBResponse.contains(datasetB.getId()));
+        assertFalse(tenantBResponse.contains(datasetA.getId()));
+
+        mockMvc.perform(get("/" + TENANT_B + "/catalog/datasets/" + datasetB.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + connectorToken)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
     }
 
     @Test

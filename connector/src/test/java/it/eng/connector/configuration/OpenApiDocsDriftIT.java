@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.rest.api.CatalogAPIController;
+import it.eng.catalog.rest.protocol.CatalogController;
 import it.eng.catalog.rest.api.DataServiceAPIController;
 import it.eng.catalog.rest.api.DatasetAPIController;
 import it.eng.catalog.rest.api.DistributionAPIController;
@@ -16,9 +17,13 @@ import it.eng.connector.rest.api.DashboardMetricsController;
 import it.eng.connector.rest.api.DSpaceVersionController;
 import it.eng.connector.rest.api.KeycloakUserApiController;
 import it.eng.connector.rest.api.UserAPIController;
+import it.eng.datatransfer.rest.protocol.ConsumerDataTransferCallbackController;
+import it.eng.datatransfer.rest.protocol.ProviderDataTransferController;
 import it.eng.datatransfer.rest.api.DataTransferAPIController;
 import it.eng.negotiation.rest.api.AgreementAPIController;
 import it.eng.negotiation.rest.api.ContractNegotiationAPIController;
+import it.eng.negotiation.rest.protocol.ContractNegotiationConsumerCallbackController;
+import it.eng.negotiation.rest.protocol.ContractNegotiationProviderController;
 import it.eng.tools.rest.api.ApplicationPropertiesAPIController;
 import it.eng.tools.rest.api.AuditEventController;
 import it.eng.tools.rest.api.TenantAPIController;
@@ -65,7 +70,14 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
             DataServiceAPIController.class,
             ContractNegotiationAPIController.class,
             AgreementAPIController.class,
-            DataTransferAPIController.class);
+            DataTransferAPIController.class,
+            TenantAPIController.class,
+            UserAPIController.class,
+            CatalogController.class,
+            ContractNegotiationProviderController.class,
+            ContractNegotiationConsumerCallbackController.class,
+            ProviderDataTransferController.class,
+            ConsumerDataTransferCallbackController.class);
     private static final Set<Class<?>> ADMIN_API_CONTROLLERS = Set.of(
             TenantAPIController.class,
             UserAPIController.class,
@@ -121,30 +133,44 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Fully documented management API controllers have summaries and descriptions")
+    @DisplayName("Fully documented API controllers have summaries and descriptions")
     void fullyDocumentedControllersHaveSummariesAndDescriptions() {
         Map<RequestMappingInfo, HandlerMethod> mappings = handlerMapping.getHandlerMethods();
         Map<String, OpenApiOperationDocs> operations = docsLoader.load().operations();
-        List<String> undocumentedOperations = mappings.values().stream()
-                .filter(handlerMethod -> FULLY_DOCUMENTED_CONTROLLERS.contains(handlerMethod.getBeanType()))
-                .filter(handlerMethod -> !hasSummaryAndDescription(handlerMethod, operations))
-                .map(handlerMethod -> handlerMethod.getBeanType().getSimpleName()
-                        + "." + handlerMethod.getMethod().getName())
+        List<String> undocumentedOperations = mappings.entrySet().stream()
+                .filter(entry -> FULLY_DOCUMENTED_CONTROLLERS.contains(entry.getValue().getBeanType()))
+                .filter(entry -> entry.getKey().getPatternValues().stream()
+                        .noneMatch(path -> path.endsWith("/tck")))
+                .filter(entry -> !hasSummaryAndDescription(entry.getValue(), operations))
+                .map(entry -> entry.getValue().getBeanType().getSimpleName()
+                        + "." + entry.getValue().getMethod().getName())
                 .toList();
 
         assertTrue(undocumentedOperations.isEmpty(),
-                () -> "Management API operations are missing summaries or descriptions: "
+                () -> "Documented API operations are missing summaries or descriptions: "
                         + String.join("; ", undocumentedOperations));
     }
 
     @Test
-    @DisplayName("Negotiation and transfer GET mappings do not require a JSON content type")
-    void negotiationAndTransferGetMappingsDoNotRequireJsonContentType() {
+    @DisplayName("Every tag in both OpenAPI groups has a description")
+    void everyOpenApiTagHasADescription() throws Exception {
+        for (String endpoint : List.of("/v3/api-docs/management-api", "/v3/api-docs/dsp-protocol")) {
+            JsonNode tags = jsonMapper.readTree(openApiDocument(endpoint)).path("tags");
+            assertFalse(tags.isEmpty(), () -> "No documented tags were returned by " + endpoint);
+            tags.forEach(tag -> assertTrue(!tag.path("description").asText().isBlank(),
+                    () -> "OpenAPI tag " + tag.path("name").asText() + " has no description in " + endpoint));
+        }
+    }
+
+    @Test
+    @DisplayName("Documented GET mappings do not require a JSON content type")
+    void documentedGetMappingsDoNotRequireJsonContentType() {
         Map<RequestMappingInfo, HandlerMethod> mappings = handlerMapping.getHandlerMethods();
         List<String> constrainedGetMappings = mappings.entrySet().stream()
                 .filter(entry -> FULLY_DOCUMENTED_CONTROLLERS.contains(entry.getValue().getBeanType()))
                 .filter(entry -> entry.getValue().getMethod().isAnnotationPresent(GetMapping.class))
-                .filter(entry -> !entry.getKey().getConsumesCondition().isEmpty())
+                .filter(entry -> entry.getKey().getConsumesCondition().getConsumableMediaTypes()
+                        .contains(MediaType.APPLICATION_JSON))
                 .map(entry -> entry.getValue().getBeanType().getSimpleName()
                         + "." + entry.getValue().getMethod().getName())
                 .toList();
@@ -252,8 +278,15 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
     private static boolean hasSummaryAndDescription(
             final HandlerMethod handlerMethod,
             final Map<String, OpenApiOperationDocs> operations) {
-        OpenApiOperationDocs operation = operations.get(handlerMethod.getMethod().getName());
-        if (operation == null || !operation.methodName().equals(handlerMethod.getMethod().getName())) {
+        String controllerName = handlerMethod.getBeanType().getSimpleName();
+        String methodName = handlerMethod.getMethod().getName();
+        OpenApiOperationDocs operation = operations.get(controllerName + "." + methodName);
+        if (operation == null) {
+            operation = operations.get(methodName);
+        }
+        if (operation == null || !operation.methodName().equals(methodName)
+                || (operation.properties().containsKey("controllerName")
+                        && !controllerName.equals(operation.properties().get("controllerName")))) {
             return false;
         }
         if (operation.methodParameters().isPresent()
