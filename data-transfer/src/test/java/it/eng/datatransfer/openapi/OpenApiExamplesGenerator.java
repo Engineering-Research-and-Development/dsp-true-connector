@@ -32,6 +32,11 @@ public final class OpenApiExamplesGenerator {
                 DataTransferFormat.HTTP_PULL.format(),
                 null);
         writeExample("transfer-request", request);
+        writeProtocolExample("transfer-request", DataTransferMockObjectUtil.TRANSFER_REQUEST_MESSAGE);
+        writeProtocolExample("transfer-start", DataTransferMockObjectUtil.TRANSFER_START_MESSAGE);
+        writeProtocolExample("transfer-completion", DataTransferMockObjectUtil.TRANSFER_COMPLETION_MESSAGE);
+        writeProtocolExample("transfer-suspension", DataTransferMockObjectUtil.TRANSFER_SUSPENSION_MESSAGE);
+        writeProtocolExample("transfer-termination", DataTransferMockObjectUtil.TRANSFER_TERMINATION_MESSAGE);
     }
 
     private static Path examplesDirectory() throws URISyntaxException {
@@ -44,5 +49,11 @@ public final class OpenApiExamplesGenerator {
             throws IOException, URISyntaxException {
         Path example = examplesDirectory().resolve(name + ".plain.json");
         Files.writeString(example, TransferSerializer.serializePlain(payload), StandardCharsets.UTF_8);
+    }
+
+    private static void writeProtocolExample(final String name, final Object payload)
+            throws IOException, URISyntaxException {
+        Path example = examplesDirectory().resolve(name + ".protocol.json");
+        Files.writeString(example, TransferSerializer.serializeProtocol(payload), StandardCharsets.UTF_8);
     }
 }

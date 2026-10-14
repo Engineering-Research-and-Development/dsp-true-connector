@@ -1,8 +1,10 @@
 package it.eng.catalog.openapi;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import java.lang.reflect.Method;
 import java.net.URISyntaxException;
@@ -41,6 +43,19 @@ class OpenApiExamplesGeneratorTest {
         String datasetExample = Files.readString(examplesDirectory().resolve("dataset.plain.json"));
         assertTrue(datasetExample.contains(CatalogMockObjectUtil.DATASET_ID),
                 "Dataset example should use the seeded dataset ID");
+    }
+
+    @Test
+    @DisplayName("Generator writes a protocol JSON-LD example for catalog requests")
+    void writesProtocolJsonExample() throws Exception {
+        Class<?> generator = Class.forName(GENERATOR_CLASS_NAME);
+        generator.getMethod("main", String[].class).invoke(null, (Object) new String[0]);
+
+        Path example = examplesDirectory().resolve("catalog-request.protocol.json");
+        assertTrue(Files.isRegularFile(example) && Files.size(example) > 0,
+                () -> "Expected a non-empty generated example at " + example);
+        assertEquals(CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE),
+                Files.readString(example));
     }
 
     private static Path examplesDirectory() throws URISyntaxException {

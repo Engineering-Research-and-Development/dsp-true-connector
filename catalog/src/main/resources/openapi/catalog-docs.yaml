@@ -20,6 +20,11 @@ tags:
   ProxyAPIController:
     name: Proxy
     description: Forward catalog and dataset-format lookups to a configured provider.
+  CatalogController:
+    name: DSP catalog
+    description: >-
+      Handle tenant-scoped Dataspace Protocol catalog and dataset requests. Requests use DSP 2025-1 JSON-LD
+      messages and require connector authentication.
 
 operations:
   getCatalog:
@@ -28,6 +33,11 @@ operations:
       Return catalog title, description, keywords, themes, participant ID, and linked datasets, distributions,
       and data services. The catalog management lookup omits FILE datasets whose S3 object is not present; the
       proxy lookup forwards the request to the provider named by the Forward-To field.
+  ProxyAPIController.getCatalog:
+    controllerName: ProxyAPIController
+    methodName: getCatalog
+    summary: Retrieve a catalog from a provider
+    description: Forward the catalog request to the provider identified by the Forward-To header.
     requestExamples:
       Forwarded catalog request: forwarded-catalog
   getCatalogById:
@@ -133,3 +143,41 @@ operations:
       Offer: offer
   getArtifacts:
     summary: Retrieve artifacts
+  CatalogController.getCatalog:
+    controllerName: CatalogController
+    methodName: getCatalog
+    summary: Request the DSP catalog
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Send a DSP 2025-1 CatalogRequestMessage as JSON-LD; the tenant-scoped
+      catalog is returned as a JSON-LD Catalog document. Invalid requests return CatalogError with code and reason.
+    requestExamples:
+      Catalog request: catalog-request
+    responses:
+      "200":
+        description: JSON-LD catalog document for the requested tenant.
+      "400":
+        description: JSON-LD CatalogError with @context, @type, code, and reason.
+      "404":
+        description: JSON-LD CatalogError with code and reason when the tenant has no catalog.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  CatalogController.getDataset:
+    controllerName: CatalogController
+    methodName: getDataset
+    summary: Request a DSP dataset
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Return the tenant-scoped dataset identified by the path ID as a
+      JSON-LD Dataset document. A missing dataset returns CatalogError with code and reason.
+    responses:
+      "200":
+        description: JSON-LD dataset document.
+      "400":
+        description: JSON-LD CatalogError with @context, @type, code, and reason.
+      "404":
+        description: JSON-LD CatalogError with code and reason when the dataset does not exist.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.

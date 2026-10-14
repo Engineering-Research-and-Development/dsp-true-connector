@@ -13,11 +13,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.PathItem;
+import io.swagger.v3.oas.models.Paths;
 import io.swagger.v3.oas.models.examples.Example;
 import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.parameters.RequestBody;
+import it.eng.catalog.rest.api.CatalogAPIController;
+import it.eng.catalog.rest.api.ProxyAPIController;
+import it.eng.catalog.rest.protocol.CatalogController;
 import it.eng.tools.model.TenantCreateRequest;
 import it.eng.tools.rest.api.TenantAPIController;
 import jakarta.servlet.http.HttpServletRequest;
@@ -61,7 +66,8 @@ class OpenApiDocsCustomizerTest {
         assertEquals(List.of(CONTROLLER_NAME), operation.getTags());
         assertEquals("Tenant created", operation.getResponses().get("201").getDescription());
 
-        OpenAPI openAPI = new OpenAPI().components(new Components());
+        OpenAPI openAPI = new OpenAPI().components(new Components()).paths(
+                new Paths().addPathItem("/api/v1/tenants", new PathItem().post(operation)));
         customizer.customise(openAPI);
 
         assertEquals(CONTROLLER_NAME, openAPI.getTags().get(0).getName());
@@ -165,6 +171,55 @@ class OpenApiDocsCustomizerTest {
         assertEquals("#/components/examples/tenant-create.protocol",
                 operation.getRequestBody().getContent().get("application/json")
                         .getExamples().get("tenant-create").get$ref());
+    }
+
+    @Test
+    @DisplayName("Selects controller-specific docs for matching operation names across API groups")
+    void selectsControllerSpecificDocumentationForDuplicateMethodNames() throws NoSuchMethodException {
+        Method apiMethod = CatalogAPIController.class.getDeclaredMethod("getCatalog");
+        Method proxyMethod = ProxyAPIController.class.getDeclaredMethod("getCatalog", JsonNode.class);
+        Method protocolMethod = CatalogController.class.getDeclaredMethod(
+                "getCatalog", String.class, String.class, JsonNode.class);
+        HandlerMethod apiHandler = new HandlerMethod(mock(CatalogAPIController.class), apiMethod);
+        HandlerMethod proxyHandler = new HandlerMethod(mock(ProxyAPIController.class), proxyMethod);
+        HandlerMethod protocolHandler = new HandlerMethod(mock(CatalogController.class), protocolMethod);
+        OpenApiDocs docs = docs(List.of(), Map.of(
+                        "getCatalog", operationDocs("getCatalog", Map.of(
+                                "controllerName", "CatalogAPIController",
+                                "summary", "Management catalog")),
+                        "ProxyAPIController.getCatalog", operationDocs("getCatalog", Map.of(
+                                "controllerName", "ProxyAPIController",
+                                "summary", "Forwarded catalog",
+                                "requestExamples", List.of("forwarded-catalog"))),
+                        "CatalogController.getCatalog", operationDocs("getCatalog", Map.of(
+                                "controllerName", "CatalogController",
+                                "summary", "DSP catalog",
+                                "description", "Requires ROLE_CONNECTOR.",
+                                "requestExamples", List.of("catalog-request")))),
+                Map.of(), Map.of("forwarded-catalog.plain", "{\"Forward-To\":\"https://provider\"}",
+                        "catalog-request.plain", "{\"filter\":[]}",
+                        "catalog-request.protocol", "{\"@type\":\"CatalogRequestMessage\"}"));
+        OpenApiDocsCustomizer customizer = customizer(docs, Map.of(
+                "/api/v1/catalog", apiHandler,
+                "/api/v1/catalogs/proxy", proxyHandler,
+                "/{tenantId}/catalog/request", protocolHandler));
+        Operation apiOperation = new Operation();
+        Operation proxyOperation = operationWithRequestBody();
+        Operation protocolOperation = operationWithRequestBody();
+
+        customizer.customize(apiOperation, apiHandler);
+        customizer.customize(proxyOperation, proxyHandler);
+        customizer.customize(protocolOperation, protocolHandler);
+
+        assertEquals("Management catalog", apiOperation.getSummary());
+        assertEquals("Forwarded catalog", proxyOperation.getSummary());
+        assertEquals("#/components/examples/forwarded-catalog.plain",
+                proxyOperation.getRequestBody().getContent().get("application/json")
+                        .getExamples().get("forwarded-catalog").get$ref());
+        assertEquals("DSP catalog", protocolOperation.getSummary());
+        assertEquals("#/components/examples/catalog-request.protocol",
+                protocolOperation.getRequestBody().getContent().get("application/json")
+                        .getExamples().get("catalog-request").get$ref());
     }
 
     @Test

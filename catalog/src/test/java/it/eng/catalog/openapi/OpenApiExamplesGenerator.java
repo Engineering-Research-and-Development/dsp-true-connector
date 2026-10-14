@@ -34,6 +34,7 @@ public final class OpenApiExamplesGenerator {
         writeExample("offer", CatalogMockObjectUtil.OFFER);
         writeExample("forwarded-catalog", forwardedRequest());
         writeExample("forwarded-formats", forwardedRequest());
+        writeProtocolExample("catalog-request", CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
     }
 
     private static Path examplesDirectory() throws URISyntaxException {
@@ -46,6 +47,12 @@ public final class OpenApiExamplesGenerator {
             throws IOException, URISyntaxException {
         Path example = examplesDirectory().resolve(name + ".plain.json");
         Files.writeString(example, CatalogSerializer.serializePlain(payload), StandardCharsets.UTF_8);
+    }
+
+    private static void writeProtocolExample(final String name, final Object payload)
+            throws IOException, URISyntaxException {
+        Path example = examplesDirectory().resolve(name + ".protocol.json");
+        Files.writeString(example, CatalogSerializer.serializeProtocol(payload), StandardCharsets.UTF_8);
     }
 
     private static ObjectNode forwardedRequest() {

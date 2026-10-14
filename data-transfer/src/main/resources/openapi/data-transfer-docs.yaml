@@ -6,9 +6,19 @@ tags:
       from INITIALIZED to REQUESTED to STARTED, may be suspended and restarted, and finishes as COMPLETED or
       TERMINATED. HTTP_PULL gives the consumer a provider artifact endpoint; HTTP_PUSH lets the provider write to
       the consumer's destination using temporary credentials.
-  FTPClientAPIController:
-    name: FTP client
-    description: Request an FTP artifact download using the configured FTP client.
+#  FTPClientAPIController:
+#    name: FTP client
+#    description: Request an FTP artifact download using the configured FTP client.
+  ProviderDataTransferController:
+    name: DSP transfer (provider)
+    description: >-
+      Receive consumer transfer requests and lifecycle messages as the provider. DSP 2025-1 JSON-LD requests
+      require ROLE_CONNECTOR authentication.
+  ConsumerDataTransferCallbackController:
+    name: DSP transfer (consumer callbacks)
+    description: >-
+      Receive provider transfer lifecycle messages as the consumer. DSP 2025-1 JSON-LD requests require
+      ROLE_CONNECTOR authentication.
 
 operations:
   requestTransfer:
@@ -64,5 +74,197 @@ operations:
     description: >-
       Send a TransferTerminationMessage to the counterparty and record TERMINATED after a successful response.
       Temporary HTTP_PUSH bucket credentials are cleaned up after the termination succeeds.
-  downloadArtifact:
-    summary: Download an artifact through FTP
+#  downloadArtifact:
+#    summary: Download an artifact through FTP
+  ProviderDataTransferController.getTransferProcessByProviderPid:
+    controllerName: ProviderDataTransferController
+    methodName: getTransferProcessByProviderPid
+    summary: Retrieve a provider-side transfer process
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Return the JSON-LD transfer process associated with this provider PID.
+    responses:
+      "200":
+        description: JSON-LD TransferProcess document.
+      "400":
+        description: JSON-LD TransferError with consumerPid, providerPid, code, and reason.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ProviderDataTransferController.initiateDataTransfer:
+    controllerName: ProviderDataTransferController
+    methodName: initiateDataTransfer
+    summary: Receive a transfer request
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process a consumer TransferRequestMessage and create a provider-side
+      transfer process in REQUESTED state.
+    requestExamples:
+      Transfer request: transfer-request
+    responses:
+      "201":
+        description: JSON-LD TransferProcess created for the request.
+      "400":
+        description: JSON-LD TransferError with consumerPid, providerPid, code, and reason.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ProviderDataTransferController.startDataTransfer:
+    controllerName: ProviderDataTransferController
+    methodName: startDataTransfer
+    summary: Receive transfer start
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process the consumer's TransferStartMessage and start the
+      provider-side transfer process.
+    requestExamples:
+      Transfer start: transfer-start
+    responses:
+      "200":
+        description: Empty response after the transfer starts.
+      "400":
+        description: JSON-LD TransferError with consumerPid, providerPid, code, and reason.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ProviderDataTransferController.completeDataTransfer:
+    controllerName: ProviderDataTransferController
+    methodName: completeDataTransfer
+    summary: Receive transfer completion
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process the consumer's TransferCompletionMessage and complete the
+      provider-side transfer process.
+    requestExamples:
+      Transfer completion: transfer-completion
+    responses:
+      "200":
+        description: Empty response after completion is processed.
+      "400":
+        description: JSON-LD TransferError with consumerPid, providerPid, code, and reason.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ProviderDataTransferController.terminateDataTransfer:
+    controllerName: ProviderDataTransferController
+    methodName: terminateDataTransfer
+    summary: Receive transfer termination
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process the consumer's TransferTerminationMessage and terminate the
+      provider-side transfer process.
+    requestExamples:
+      Transfer termination: transfer-termination
+    responses:
+      "200":
+        description: Empty response after termination is processed.
+      "400":
+        description: JSON-LD TransferError with consumerPid, providerPid, code, and reason.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ProviderDataTransferController.suspenseDataTransfer:
+    controllerName: ProviderDataTransferController
+    methodName: suspenseDataTransfer
+    summary: Receive transfer suspension
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process the consumer's TransferSuspensionMessage and suspend the
+      provider-side transfer process.
+    requestExamples:
+      Transfer suspension: transfer-suspension
+    responses:
+      "200":
+        description: Empty response after suspension is processed.
+      "400":
+        description: JSON-LD TransferError with consumerPid, providerPid, code, and reason.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ConsumerDataTransferCallbackController.getTransferProcessByConsumerPid:
+    controllerName: ConsumerDataTransferCallbackController
+    methodName: getTransferProcessByConsumerPid
+    summary: Retrieve a consumer-side transfer process
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Return the JSON-LD transfer process associated with this consumer PID.
+    responses:
+      "200":
+        description: JSON-LD TransferProcess document.
+      "400":
+        description: JSON-LD TransferError with consumerPid, providerPid, code, and reason.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ConsumerDataTransferCallbackController.startDataTransfer:
+    controllerName: ConsumerDataTransferCallbackController
+    methodName: startDataTransfer
+    summary: Receive transfer start
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process the provider's TransferStartMessage and start the
+      consumer-side transfer process.
+    requestExamples:
+      Transfer start: transfer-start
+    responses:
+      "200":
+        description: Empty response after the transfer starts.
+      "400":
+        description: JSON-LD TransferError with consumerPid, providerPid, code, and reason.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ConsumerDataTransferCallbackController.completeDataTransfer:
+    controllerName: ConsumerDataTransferCallbackController
+    methodName: completeDataTransfer
+    summary: Receive transfer completion
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process the provider's TransferCompletionMessage and complete the
+      consumer-side transfer process.
+    requestExamples:
+      Transfer completion: transfer-completion
+    responses:
+      "200":
+        description: Empty response after completion is processed.
+      "400":
+        description: JSON-LD TransferError with consumerPid, providerPid, code, and reason.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ConsumerDataTransferCallbackController.terminateDataTransfer:
+    controllerName: ConsumerDataTransferCallbackController
+    methodName: terminateDataTransfer
+    summary: Receive transfer termination
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process the provider's TransferTerminationMessage and terminate the
+      consumer-side transfer process.
+    requestExamples:
+      Transfer termination: transfer-termination
+    responses:
+      "200":
+        description: Empty response after termination is processed.
+      "400":
+        description: JSON-LD TransferError with consumerPid, providerPid, code, and reason.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.
+  ConsumerDataTransferCallbackController.suspenseDataTransfer:
+    controllerName: ConsumerDataTransferCallbackController
+    methodName: suspenseDataTransfer
+    summary: Receive transfer suspension
+    description: >-
+      Requires ROLE_CONNECTOR authorization. Process the provider's TransferSuspensionMessage and suspend the
+      consumer-side transfer process.
+    requestExamples:
+      Transfer suspension: transfer-suspension
+    responses:
+      "200":
+        description: Empty response after suspension is processed.
+      "400":
+        description: JSON-LD TransferError with consumerPid, providerPid, code, and reason.
+      "401":
+        description: Missing or invalid connector bearer token.
+      "403":
+        description: The authenticated token does not have ROLE_CONNECTOR.

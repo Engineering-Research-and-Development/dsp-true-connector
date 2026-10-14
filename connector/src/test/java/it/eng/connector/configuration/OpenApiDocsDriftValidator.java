@@ -65,11 +65,19 @@ public final class OpenApiDocsDriftValidator {
             final OpenApiOperationDocs operation,
             final Map<RequestMappingInfo, HandlerMethod> handlerMethods,
             final Class<?>[] conditionalControllerTypes) {
-        if (!operationId.equals(operation.methodName())) {
+        Object documentedController = operation.properties().get("controllerName");
+        String expectedOperationId = documentedController instanceof String controllerName
+                ? controllerName + "." + operation.methodName()
+                : operation.methodName();
+        if (!operationId.equals(expectedOperationId)) {
             return false;
         }
         boolean registeredHandlerMatches = handlerMethods.values().stream().anyMatch(handlerMethod -> {
-            if (!operationId.equals(handlerMethod.getMethod().getName())) {
+            if (!operation.methodName().equals(handlerMethod.getMethod().getName())) {
+                return false;
+            }
+            if (documentedController instanceof String controllerName
+                    && !controllerName.equals(handlerMethod.getBeanType().getSimpleName())) {
                 return false;
             }
             return operation.methodParameters()
@@ -82,14 +90,17 @@ public final class OpenApiDocsDriftValidator {
             return true;
         }
         return Arrays.stream(conditionalControllerTypes)
-                .flatMap(controllerType -> Arrays.stream(controllerType.getDeclaredMethods()))
-                .filter(method -> operationId.equals(method.getName()))
-                .filter(method -> AnnotatedElementUtils.findMergedAnnotation(method, RequestMapping.class) != null)
-                .anyMatch(method -> operation.methodParameters()
-                        .map(expected -> expected.equals(Arrays.stream(method.getParameterTypes())
-                                .map(Class::getTypeName)
-                                .toList()))
-                        .orElse(true));
+                .anyMatch(controllerType -> (!(documentedController instanceof String controllerName)
+                                || controllerName.equals(controllerType.getSimpleName()))
+                        && Arrays.stream(controllerType.getDeclaredMethods())
+                                .filter(method -> operation.methodName().equals(method.getName()))
+                                .filter(method -> AnnotatedElementUtils.findMergedAnnotation(
+                                        method, RequestMapping.class) != null)
+                                .anyMatch(method -> operation.methodParameters()
+                                        .map(expected -> expected.equals(Arrays.stream(method.getParameterTypes())
+                                                .map(Class::getTypeName)
+                                                .toList()))
+                                        .orElse(true)));
     }
 
     private static String describeUnmappedOperation(
