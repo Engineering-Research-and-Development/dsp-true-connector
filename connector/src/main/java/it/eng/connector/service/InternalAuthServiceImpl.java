@@ -37,10 +37,9 @@ import java.util.Optional;
  * <p>Unlike {@code UserService}, this service is active strictly in {@code INTERNAL} mode: it has
  * nothing to offer in {@code DISABLED} mode.
  *
- * <p>The access token mirrors a Keycloak access token: {@code sub} is the user id, followed by
- * {@code given_name}, {@code family_name}, {@code email}, {@code realm_access.roles} and, for a user
- * with a tenant, {@code tenant_id} and {@code tenant_name}. The claims are read from MongoDB on
- * every login and refresh, so a refreshed token reflects the user's current names, role and tenant.
+ * <p>The access token carries {@code sub} (user id), {@code given_name}, {@code family_name},
+ * {@code email}, {@code realm_access.roles} and, for a user with a tenant, {@code tenant_id} and
+ * {@code tenant_name}. The claims are read from MongoDB on every login and refresh.
  *
  * <p>Passwords, tokens, and the JWT signing secret are never logged, including at {@code DEBUG}
  * level.
@@ -90,7 +89,7 @@ public class InternalAuthServiceImpl implements AuthService {
 					.orElseThrow(() -> new BadCredentialsException("Bad credentials"));
 
 			TokenPair tokenPair = issueTokenPair(user);
-			String refreshTokenId = refreshTokenStore.issue(user.getId());
+			String refreshTokenId = refreshTokenStore.issue(user.getEmail());
 
 			log.info("User '{}' logged in successfully", user.getEmail());
 			publisher.publishEvent(AuditEvent.Builder.newInstance()
@@ -120,7 +119,7 @@ public class InternalAuthServiceImpl implements AuthService {
 		try {
 			RefreshTokenRecord rotated = refreshTokenStore.rotate(refreshTokenId)
 					.orElseThrow(() -> new BadCredentialsException("Bad credentials"));
-			User user = userRepository.findById(rotated.subject())
+			User user = userRepository.findByEmail(rotated.subject())
 					.orElseThrow(() -> new BadCredentialsException("Bad credentials"));
 
 			TokenPair tokenPair = issueTokenPair(user);
@@ -154,7 +153,7 @@ public class InternalAuthServiceImpl implements AuthService {
 			Optional<RefreshTokenRecord> rotated = refreshTokenStore.rotate(refreshTokenId);
 			Optional<User> user = Optional.empty();
 			if (rotated.isPresent()) {
-				user = userRepository.findById(rotated.get().subject());
+				user = userRepository.findByEmail(rotated.get().subject());
 			}
 			refreshTokenStore.revoke(refreshTokenId);
 			log.info("Refresh token revoked on logout");
@@ -184,34 +183,30 @@ public class InternalAuthServiceImpl implements AuthService {
 	 */
 	private TokenPair issueTokenPair(User user) {
 		Map<String, Object> claims = new HashMap<>();
-		putIfPresent(claims, JwtService.GIVEN_NAME_CLAIM, user.getFirstName());
-		putIfPresent(claims, JwtService.FAMILY_NAME_CLAIM, user.getLastName());
-		tenantName(user.getTenantId()).ifPresent(name -> claims.put(JwtService.TENANT_NAME_CLAIM, name));
+		if (user.getFirstName() != null) {
+			claims.put(JwtService.GIVEN_NAME_CLAIM, user.getFirstName());
+		}
+		if (user.getLastName() != null) {
+			claims.put(JwtService.FAMILY_NAME_CLAIM, user.getLastName());
+		}
+		String tenantName = tenantName(user.getTenantId());
+		if (tenantName != null) {
+			claims.put(JwtService.TENANT_NAME_CLAIM, tenantName);
+		}
 		return jwtService.issueTokenPair(user.getId(), user.getEmail(), List.of(user.getRole().name()),
 				user.getTenantId(), claims);
 	}
 
-	/**
-	 * Resolves the display name of the given tenant.
-	 *
-	 * @param tenantId the tenant identifier; may be {@code null} for a user without a tenant
-	 * @return the tenant name, or empty when the user has no tenant or the tenant no longer exists
-	 */
-	private Optional<String> tenantName(String tenantId) {
+	// Returns null when the user has no tenant or the tenant no longer exists.
+	private String tenantName(String tenantId) {
 		if (tenantId == null) {
-			return Optional.empty();
+			return null;
 		}
 		try {
-			return Optional.ofNullable(tenantService.findById(tenantId).getName());
+			return tenantService.findById(tenantId).getName();
 		} catch (TenantNotFoundException e) {
 			log.warn("Tenant '{}' not found; issuing token without the tenant name claim", tenantId);
-			return Optional.empty();
-		}
-	}
-
-	private static void putIfPresent(Map<String, Object> map, String key, Object value) {
-		if (value != null) {
-			map.put(key, value);
+			return null;
 		}
 	}
 

@@ -23,15 +23,9 @@ import java.util.*;
  * subject, email, role names, tenant identifier, and any additional claims explicitly, so new
  * claims can be introduced at the call site without changing this class.
  *
- * <p><b>Claim shape</b>: the tokens mirror a Keycloak access token, so clients read the same
- * claims whichever provider issued them. Role names are emitted under
- * {@code realm_access.roles} (e.g. {@code "ADMIN"}, without a {@code ROLE_} prefix) and the
- * tenant identifier as the top-level {@value #TENANT_ID_CLAIM} claim, which is omitted when the
- * subject has no tenant.
- *
  * <p><b>Access vs. refresh tokens</b>: both tokens share the same claim shape ({@code sub},
- * {@code email}, {@code realm_access}, {@code tenant_id}, {@code iat}, {@code exp}, {@code jti},
- * plus any caller-supplied extra claims). Refresh tokens additionally carry a {@value #TOKEN_TYPE_CLAIM}
+ * {@code email}, {@code realm_access.roles}, {@code tenant_id}, {@code iat}, {@code exp}, {@code jti},
+ * plus any caller-supplied extra claims). {@code tenant_id} is omitted when the subject has no tenant. Refresh tokens additionally carry a {@value #TOKEN_TYPE_CLAIM}
  * claim set to {@value #REFRESH_TOKEN_TYPE}; access tokens carry no {@value #TOKEN_TYPE_CLAIM}
  * claim. Callers validating a token for use as an access token must reject any decoded token that
  * carries a {@value #REFRESH_TOKEN_TYPE} {@value #TOKEN_TYPE_CLAIM} claim, so a refresh token
@@ -47,7 +41,7 @@ public class JwtService {
     /** Claim name for the subject's email address. */
     public static final String EMAIL_CLAIM = "email";
 
-    /** Claim name for the object holding the subject's realm-level role names. */
+    /** Claim name for the object holding the subject's role names. */
     public static final String REALM_ACCESS_CLAIM = "realm_access";
 
     /** Key, inside the {@value #REALM_ACCESS_CLAIM} claim, of the subject's role names. */
@@ -127,8 +121,7 @@ public class JwtService {
      *
      * @param subject     the subject (user id) embedded as the {@code sub} claim
      * @param email       the subject's email address, embedded as the {@value #EMAIL_CLAIM} claim
-     * @param roles       the subject's role names without a {@code ROLE_} prefix, embedded as
-     *                    {@code realm_access.roles}
+     * @param roles       the subject's role names, embedded as {@code realm_access.roles}
      * @param tenantId    the subject's tenant identifier, embedded as the
      *                    {@value #TENANT_ID_CLAIM} claim; {@code null} omits the claim
      * @param extraClaims additional claims merged into both tokens; may be {@code null} or empty

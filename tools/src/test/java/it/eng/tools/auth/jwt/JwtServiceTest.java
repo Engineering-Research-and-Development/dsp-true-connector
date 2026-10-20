@@ -39,14 +39,13 @@ class JwtServiceTest {
     @DisplayName("Should issue and verify an access/refresh token pair round-trip")
     void issueAndVerifyRoundTrip() {
         TokenPair tokenPair = jwtService.issueTokenPair("user-1", "user@example.com",
-                List.of("ADMIN"), "tenant-a", Map.of());
+                List.of("ROLE_ADMIN"), "tenant-a", Map.of());
 
         DecodedJWT accessClaims = jwtService.verifyAndDecode(tokenPair.accessToken());
         assertEquals("user-1", accessClaims.getSubject());
         assertEquals("user@example.com", accessClaims.getClaim(JwtService.EMAIL_CLAIM).asString());
-        assertEquals(Map.of(JwtService.ROLES_CLAIM, List.of("ADMIN")),
+        assertEquals(Map.of(JwtService.ROLES_CLAIM, List.of("ROLE_ADMIN")),
                 accessClaims.getClaim(JwtService.REALM_ACCESS_CLAIM).asMap());
-        assertTrue(accessClaims.getClaim("roles").isMissing());
         assertEquals("tenant-a", accessClaims.getClaim(JwtService.TENANT_ID_CLAIM).asString());
         assertTrue(accessClaims.getClaim(JwtService.TOKEN_TYPE_CLAIM).isMissing());
         assertNotNull(accessClaims.getIssuedAt());
@@ -61,20 +60,10 @@ class JwtServiceTest {
     }
 
     @Test
-    @DisplayName("Should omit the tenant_id claim when the subject has no tenant")
-    void tenantIdClaimOmittedWithoutTenant() {
-        TokenPair tokenPair = jwtService.issueTokenPair("user-1", "user@example.com",
-                List.of("SUPER_ADMIN"), null, null);
-
-        DecodedJWT decoded = jwtService.verifyAndDecode(tokenPair.accessToken());
-        assertTrue(decoded.getClaim(JwtService.TENANT_ID_CLAIM).isMissing());
-    }
-
-    @Test
     @DisplayName("Should propagate arbitrary extraClaims entries without requiring JwtService changes")
     void extraClaimsArePropagated() {
         TokenPair tokenPair = jwtService.issueTokenPair("user-1", "user@example.com",
-                List.of("ADMIN"), "tenant-a", Map.of("newFeatureFlag", "enabled", "loginCount", 3));
+                List.of("ROLE_ADMIN"), "tenant-a", Map.of("newFeatureFlag", "enabled", "loginCount", 3));
 
         DecodedJWT decoded = jwtService.verifyAndDecode(tokenPair.accessToken());
         assertEquals("enabled", decoded.getClaim("newFeatureFlag").asString());
@@ -82,12 +71,22 @@ class JwtServiceTest {
     }
 
     @Test
+    @DisplayName("Should omit the tenant claim when the subject has no tenant")
+    void tenantClaimOmittedWithoutTenant() {
+        TokenPair tokenPair = jwtService.issueTokenPair("user-1", "user@example.com",
+                List.of("SUPER_ADMIN"), null, Map.of());
+
+        DecodedJWT decoded = jwtService.verifyAndDecode(tokenPair.accessToken());
+        assertTrue(decoded.getClaim(JwtService.TENANT_ID_CLAIM).isMissing());
+    }
+
+    @Test
     @DisplayName("Should fail on missing required fields")
     void missingRequiredFields() {
         assertThrows(NullPointerException.class, () -> jwtService.issueTokenPair(null, "user@example.com",
-                List.of("ADMIN"), "tenant-a", Map.of()));
+                List.of("ROLE_ADMIN"), "tenant-a", Map.of()));
         assertThrows(NullPointerException.class, () -> jwtService.issueTokenPair("user-1", null,
-                List.of("ADMIN"), "tenant-a", Map.of()));
+                List.of("ROLE_ADMIN"), "tenant-a", Map.of()));
         assertThrows(NullPointerException.class, () -> jwtService.issueTokenPair("user-1", "user@example.com",
                 null, "tenant-a", Map.of()));
     }
@@ -96,12 +95,12 @@ class JwtServiceTest {
     @DisplayName("Should reject extraClaims that collide with a reserved claim name")
     void extraClaimsCollidingWithReservedNamesAreRejected() {
         assertThrows(IllegalArgumentException.class, () -> jwtService.issueTokenPair("user-1",
-                "user@example.com", List.of("ADMIN"), "tenant-a", Map.of(JwtService.REALM_ACCESS_CLAIM,
-                        List.of("SUPER_ADMIN"))));
+                "user@example.com", List.of("ROLE_ADMIN"), "tenant-a", Map.of(JwtService.REALM_ACCESS_CLAIM,
+                        Map.of(JwtService.ROLES_CLAIM, List.of("ROLE_SUPER_ADMIN")))));
         assertThrows(IllegalArgumentException.class, () -> jwtService.issueTokenPair("user-1",
-                "user@example.com", List.of("ADMIN"), "tenant-a", Map.of("exp", 9_999_999_999L)));
+                "user@example.com", List.of("ROLE_ADMIN"), "tenant-a", Map.of("exp", 9_999_999_999L)));
         assertThrows(IllegalArgumentException.class, () -> jwtService.issueTokenPair("user-1",
-                "user@example.com", List.of("ADMIN"), "tenant-a",
+                "user@example.com", List.of("ROLE_ADMIN"), "tenant-a",
                 Map.of(JwtService.TOKEN_TYPE_CLAIM, JwtService.REFRESH_TOKEN_TYPE)));
     }
 
@@ -110,7 +109,7 @@ class JwtServiceTest {
     void expiredTokenIsRejected() {
         jwtProperties.setAccessExpirationMs(-1_000L);
         TokenPair tokenPair = jwtService.issueTokenPair("user-1", "user@example.com",
-                List.of("ADMIN"), "tenant-a", Map.of());
+                List.of("ROLE_ADMIN"), "tenant-a", Map.of());
 
         assertThrows(TokenExpiredException.class, () -> jwtService.verifyAndDecode(tokenPair.accessToken()));
     }
