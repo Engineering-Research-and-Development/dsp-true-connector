@@ -113,7 +113,7 @@ public class ConnectorSecurityConfig {
      * Admin security filter chain covering {@code /api/**}, {@code /actuator/**} and {@code /env}.
      * Requires {@code ROLE_SUPER_ADMIN} for {@code /api/v1/tenants/**},
      * {@code /api/v1/properties/**}, and most {@code /api/v1/users/**} endpoints.
-     * {@code GET /api/v1/users/me}, {@code PUT /api/v1/users/*\/update}, and
+     * {@code PUT /api/v1/users/*\/update} and
      * {@code PUT /api/v1/users/*\/password} are accessible to {@code ROLE_ADMIN} and
      * {@code ROLE_SUPER_ADMIN} (self-service only — the service layer enforces ownership).
      * All other {@code /api/**} endpoints require at minimum {@code ROLE_ADMIN}.
@@ -145,8 +145,6 @@ public class ConnectorSecurityConfig {
                             // Health endpoint is unauthenticated for CI/CD and orchestration health checks
                             .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                             .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
-                            .requestMatchers(HttpMethod.GET, ApiEndpoints.USERS_V1 + "/me")
-                            .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
                             .requestMatchers(HttpMethod.PUT, ApiEndpoints.USERS_V1 + "/*/update")
                             .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
                             .requestMatchers(HttpMethod.PUT, ApiEndpoints.USERS_V1 + "/*/password")
@@ -168,8 +166,6 @@ public class ConnectorSecurityConfig {
                             // Health endpoint is unauthenticated for CI/CD and orchestration health checks
                             .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                             .requestMatchers(ApiEndpoints.TENANTS_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
-                            .requestMatchers(HttpMethod.GET, ApiEndpoints.USERS_V1 + "/me")
-                            .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
                             .requestMatchers(HttpMethod.PUT, ApiEndpoints.USERS_V1 + "/*/update")
                             .hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name())
                             .requestMatchers(HttpMethod.PUT, ApiEndpoints.USERS_V1 + "/*/password")

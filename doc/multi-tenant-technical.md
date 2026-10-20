@@ -184,7 +184,7 @@ Three user roles participate in the multi-tenant security model:
 When a module makes an internal management API call on behalf of the current request (e.g., negotiation module validates an offer against the catalog), the call uses a synthetic **internal service account**:
 
 - **INTERNAL mode**: `InternalServiceTokenIssuer` authenticates `internal-service:<secret>` without a MongoDB lookup. The synthetic user has `ROLE_ADMIN` and `tenantId=null`, so `ApiTenantContextFilter` reads `X-Tenant-Id` from the forwarded header.
-- **KEYCLOAK mode**: the backend client credentials JWT is used. The service account must not have a `tenantId` claim so tenant context is read from `X-Tenant-Id`.
+- **KEYCLOAK mode**: the backend client credentials JWT is used. The service account must not have a `tenant_id` attribute (and so no `tenant_id` claim) so tenant context is read from `X-Tenant-Id`.
 
 The forwarded `X-Tenant-Id` value comes from `TenantContextHolder.getTenantId()` captured on the originating request thread.
 
@@ -271,7 +271,7 @@ All tenant lifecycle operations produce `AuditEvent` records with the following 
 | `DataTransferProperties.consumerCallbackAddress()` | Deferred (Phase 5) | Static property; per-tenant callback address requires Phase 5 |
 | `ContractNegotiationProperties.connectorId()` | Deferred (Phase 5) | Hardcoded; per-tenant connector ID requires Phase 5 |
 | S3 storage isolation | Deferred (Phase 6) | Team decision needed on separate bucket vs. key prefix |
-| Keycloak JWT tenant binding | Deferred (Phase 7) | JWT claim → tenantId mapping |
+| Keycloak JWT tenant binding | Done | `tenant_id` user attribute → `tenant_id` claim → tenant context; see [security.md](security.md#keycloak-realm-setup) |
 | AuditEvent `tenantId` field | Deferred | Add `tenantId` to `AuditEvent` model for per-tenant audit log filtering |
 | User management in Keycloak mode | N/A | `/api/v1/users` not available when Keycloak auth is active |
 

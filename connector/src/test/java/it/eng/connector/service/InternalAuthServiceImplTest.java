@@ -9,7 +9,10 @@ import it.eng.tools.auth.jwt.RefreshTokenRecord;
 import it.eng.tools.auth.jwt.RefreshTokenStore;
 import it.eng.tools.auth.jwt.TokenPair;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.exception.TenantNotFoundException;
+import it.eng.tools.model.Tenant;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,6 +41,7 @@ class InternalAuthServiceImplTest {
 	private static final String PASSWORD = "password";
 	private static final String USER_ID = "user-1";
 	private static final String TENANT_ID = "tenant-1";
+	private static final String TENANT_NAME = "ACME";
 
 	@Mock
 	private AuthenticationManager authenticationManager;
@@ -51,6 +55,8 @@ class InternalAuthServiceImplTest {
 	private Authentication authentication;
 	@Mock
 	private AuditEventPublisher auditEventPublisher;
+	@Mock
+	private TenantService tenantService;
 
 	private InternalAuthServiceImpl authService;
 	private User user;
@@ -58,9 +64,11 @@ class InternalAuthServiceImplTest {
 	@BeforeEach
 	void setUp() {
 		authService = new InternalAuthServiceImpl(authenticationManager, userRepository, jwtService,
-				refreshTokenStore, auditEventPublisher);
+				refreshTokenStore, tenantService, auditEventPublisher);
 		user = User.builder()
 				.id(USER_ID)
+				.firstName("John")
+				.lastName("Doe")
 				.email(EMAIL)
 				.password("encoded")
 				.role(Role.ADMIN)
@@ -78,17 +86,21 @@ class InternalAuthServiceImplTest {
 				.thenReturn(authentication);
 		when(authentication.getName()).thenReturn(EMAIL);
 		when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+		when(tenantService.findById(TENANT_ID)).thenReturn(tenant(TENANT_NAME));
 		TokenPair tokenPair = new TokenPair("access-token", "unused-refresh-jwt", 900L);
-		when(jwtService.issueTokenPair(eq(EMAIL), eq(EMAIL), anyList(), eq(TENANT_ID), anyMap()))
+		when(jwtService.issueTokenPair(eq(USER_ID), eq(EMAIL), anyList(), eq(TENANT_ID), anyMap()))
 				.thenReturn(tokenPair);
-		when(refreshTokenStore.issue(EMAIL)).thenReturn("refresh-id-1");
+		when(refreshTokenStore.issue(USER_ID)).thenReturn("refresh-id-1");
 
 		AuthTokens tokens = authService.login(EMAIL, PASSWORD);
 
 		assertEquals("access-token", tokens.accessToken());
 		assertEquals("refresh-id-1", tokens.refreshToken());
 		assertEquals(900L, tokens.expiresInSeconds());
-		verify(jwtService).issueTokenPair(EMAIL, EMAIL, List.of(Role.ADMIN.authorityName()), TENANT_ID, Map.of());
+		verify(jwtService).issueTokenPair(USER_ID, EMAIL, List.of("ADMIN"), TENANT_ID,
+				Map.of(JwtService.GIVEN_NAME_CLAIM, "John",
+						JwtService.FAMILY_NAME_CLAIM, "Doe",
+						JwtService.TENANT_NAME_CLAIM, TENANT_NAME));
 		verify(auditEventPublisher).publishEvent(
 				argThat(event -> event.getEventType() == AuditEventType.APPLICATION_LOGIN));
 	}
@@ -148,11 +160,12 @@ class InternalAuthServiceImplTest {
 	@Test
 	@DisplayName("refresh() with a valid refresh token id returns a new access token and rotates the refresh id")
 	void refreshWithValidTokenRotatesAndReturnsNewAccessToken() {
-		RefreshTokenRecord rotated = new RefreshTokenRecord("new-refresh-id", EMAIL, Instant.now());
+		RefreshTokenRecord rotated = new RefreshTokenRecord("new-refresh-id", USER_ID, Instant.now());
 		when(refreshTokenStore.rotate("old-refresh-id")).thenReturn(Optional.of(rotated));
-		when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+		when(tenantService.findById(TENANT_ID)).thenReturn(tenant(TENANT_NAME));
 		TokenPair tokenPair = new TokenPair("new-access-token", "unused-refresh-jwt", 900L);
-		when(jwtService.issueTokenPair(eq(EMAIL), eq(EMAIL), anyList(), eq(TENANT_ID), anyMap()))
+		when(jwtService.issueTokenPair(eq(USER_ID), eq(EMAIL), anyList(), eq(TENANT_ID), anyMap()))
 				.thenReturn(tokenPair);
 
 		AuthTokens tokens = authService.refresh("old-refresh-id");
@@ -165,12 +178,81 @@ class InternalAuthServiceImplTest {
 	}
 
 	@Test
+	@DisplayName("refresh() builds the claims from the user's current record, not from the previous token")
+	void refreshUsesCurrentUserRecord() {
+		User moved = User.builder()
+				.id(USER_ID)
+				.firstName("Johnny")
+				.lastName("Doe")
+				.email(EMAIL)
+				.role(Role.ADMIN)
+				.tenantId("tenant-2")
+				.enabled(true)
+				.build();
+		when(refreshTokenStore.rotate("old-refresh-id"))
+				.thenReturn(Optional.of(new RefreshTokenRecord("new-refresh-id", USER_ID, Instant.now())));
+		when(userRepository.findById(USER_ID)).thenReturn(Optional.of(moved));
+		when(tenantService.findById("tenant-2")).thenReturn(tenant("Renamed Tenant"));
+		when(jwtService.issueTokenPair(anyString(), anyString(), anyList(), anyString(), anyMap()))
+				.thenReturn(new TokenPair("new-access-token", "unused-refresh-jwt", 900L));
+
+		authService.refresh("old-refresh-id");
+
+		verify(jwtService).issueTokenPair(USER_ID, EMAIL, List.of("ADMIN"), "tenant-2",
+				Map.of(JwtService.GIVEN_NAME_CLAIM, "Johnny",
+						JwtService.FAMILY_NAME_CLAIM, "Doe",
+						JwtService.TENANT_NAME_CLAIM, "Renamed Tenant"));
+	}
+
+	@Test
+	@DisplayName("login() for a super-admin without a tenant issues no tenant claims")
+	void loginForSuperAdminWithoutTenantOmitsTenantClaims() {
+		User superAdmin = User.builder()
+				.id("super-1")
+				.firstName("Super")
+				.lastName("Admin")
+				.email("superadmin@test.com")
+				.role(Role.SUPER_ADMIN)
+				.enabled(true)
+				.build();
+		when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+				.thenReturn(authentication);
+		when(authentication.getName()).thenReturn("superadmin@test.com");
+		when(userRepository.findByEmail("superadmin@test.com")).thenReturn(Optional.of(superAdmin));
+		when(jwtService.issueTokenPair(anyString(), anyString(), anyList(), isNull(), anyMap()))
+				.thenReturn(new TokenPair("access-token", "unused-refresh-jwt", 900L));
+
+		authService.login("superadmin@test.com", PASSWORD);
+
+		verify(jwtService).issueTokenPair("super-1", "superadmin@test.com", List.of("SUPER_ADMIN"), null,
+				Map.of(JwtService.GIVEN_NAME_CLAIM, "Super", JwtService.FAMILY_NAME_CLAIM, "Admin"));
+		verifyNoInteractions(tenantService);
+	}
+
+	@Test
+	@DisplayName("login() for a user whose tenant no longer exists omits the tenant name claim")
+	void loginWithMissingTenantOmitsTenantName() {
+		when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+				.thenReturn(authentication);
+		when(authentication.getName()).thenReturn(EMAIL);
+		when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+		when(tenantService.findById(TENANT_ID)).thenThrow(new TenantNotFoundException("gone"));
+		when(jwtService.issueTokenPair(anyString(), anyString(), anyList(), anyString(), anyMap()))
+				.thenReturn(new TokenPair("access-token", "unused-refresh-jwt", 900L));
+
+		authService.login(EMAIL, PASSWORD);
+
+		verify(jwtService).issueTokenPair(USER_ID, EMAIL, List.of("ADMIN"), TENANT_ID,
+				Map.of(JwtService.GIVEN_NAME_CLAIM, "John", JwtService.FAMILY_NAME_CLAIM, "Doe"));
+	}
+
+	@Test
 	@DisplayName("refresh() with an unknown/expired/already-rotated refresh token id throws BadCredentialsException")
 	void refreshWithInvalidTokenThrowsBadCredentialsException() {
 		when(refreshTokenStore.rotate("unknown-id")).thenReturn(Optional.empty());
 
 		assertThrows(BadCredentialsException.class, () -> authService.refresh("unknown-id"));
-		verify(userRepository, never()).findByEmail(anyString());
+		verify(userRepository, never()).findById(anyString());
 		verify(jwtService, never()).issueTokenPair(anyString(), anyString(), anyList(), anyString(), anyMap());
 		verify(auditEventPublisher).publishEvent(
 				argThat(event -> event.getEventType() == AuditEventType.APPLICATION_TOKEN_REFRESH_FAILED));
@@ -197,5 +279,13 @@ class InternalAuthServiceImplTest {
 		verify(refreshTokenStore, times(2)).revoke("unknown-id");
 		verify(auditEventPublisher, times(2)).publishEvent(
 				argThat(event -> event.getEventType() == AuditEventType.APPLICATION_LOGOUT));
+	}
+
+	private static Tenant tenant(String name) {
+		return Tenant.Builder.newInstance()
+				.id(TENANT_ID)
+				.name(name)
+				.participantId("urn:connector:" + name)
+				.build();
 	}
 }

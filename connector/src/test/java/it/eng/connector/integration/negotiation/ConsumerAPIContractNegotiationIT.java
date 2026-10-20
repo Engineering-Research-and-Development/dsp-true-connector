@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JavaType;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationErrorMessage;
 import it.eng.negotiation.model.ContractNegotiationState;
@@ -57,7 +56,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
 
     @BeforeEach
     public void fetchToken() {
-        TokenPair tokenPair = jwtService.issueTokenPair("INTERNAL_SERVICE_USERNAME", "INTERNAL_SERVICE_USERNAME", List.of("ROLE_ADMIN"), "engineering", null);
+        TokenPair tokenPair = jwtService.issueTokenPair("INTERNAL_SERVICE_USERNAME", "INTERNAL_SERVICE_USERNAME", List.of("ADMIN"), "engineering", null);
         apiToken = tokenPair.accessToken();
     }
 

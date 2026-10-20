@@ -1,11 +1,5 @@
 package it.eng.connector.configuration;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
-
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
@@ -25,6 +19,9 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 class OpenApiConfigTest {
 
@@ -105,7 +102,7 @@ class OpenApiConfigTest {
                     Operation protectedOperation = new Operation();
                     Operation loginOperation = new Operation();
                     OpenAPI openAPI = new OpenAPI().paths(new Paths()
-                            .addPathItem("/api/v1/users/me", new PathItem().get(protectedOperation))
+                            .addPathItem("/api/v1/users", new PathItem().get(protectedOperation))
                             .addPathItem("/api/v1/auth/login", new PathItem().post(loginOperation)));
 
                     customizer.customise(openAPI);

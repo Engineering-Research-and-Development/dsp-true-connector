@@ -1,25 +1,22 @@
 package it.eng.tools.auth.internal;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.util.List;
-
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import it.eng.tools.auth.jwt.JwtService;
+import it.eng.tools.auth.jwt.TokenPair;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.interfaces.DecodedJWT;
+import java.util.List;
+import java.util.Map;
 
-import it.eng.tools.auth.jwt.JwtService;
-import it.eng.tools.auth.jwt.TokenPair;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for {@link InternalServiceTokenIssuer}.
@@ -62,13 +59,13 @@ class InternalServiceTokenIssuerTest {
     @DisplayName("Should mint a token for the fixed internal-service subject/email, never the secret")
     void issuesTokenWithoutLeakingSecret() {
         InternalServiceTokenIssuer issuer = new InternalServiceTokenIssuer(jwtService, INTERNAL_SECRET);
-        when(jwtService.issueTokenPair("internal-service", "internal-service", List.of("ROLE_ADMIN"), null, null))
+        when(jwtService.issueTokenPair("internal-service", "internal-service", List.of("ADMIN"), null, null))
                 .thenReturn(new TokenPair("access-token", "refresh-token", 900L));
 
         String token = issuer.issueInternalServiceToken();
 
         assertEquals("access-token", token);
-        verify(jwtService).issueTokenPair("internal-service", "internal-service", List.of("ROLE_ADMIN"), null, null);
+        verify(jwtService).issueTokenPair("internal-service", "internal-service", List.of("ADMIN"), null, null);
     }
 
     @Test
@@ -80,9 +77,9 @@ class InternalServiceTokenIssuerTest {
         String realisticToken = JWT.create()
                 .withSubject("internal-service")
                 .withClaim("email", "internal-service")
-                .withClaim("roles", List.of("ROLE_ADMIN"))
+                .withClaim("realm_access", Map.of("roles", List.of("ADMIN")))
                 .sign(Algorithm.HMAC256("test-signing-key"));
-        when(jwtService.issueTokenPair("internal-service", "internal-service", List.of("ROLE_ADMIN"), null, null))
+        when(jwtService.issueTokenPair("internal-service", "internal-service", List.of("ADMIN"), null, null))
                 .thenReturn(new TokenPair(realisticToken, "refresh-token", 900L));
 
         String token = issuer.issueInternalServiceToken();

@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.5] — User identity in the access token
+
+### Added
+- The access tokens returned by `/api/v1/auth/login` and `/api/v1/auth/refresh` carry the current user's identity for both auth providers: `sub`, `given_name`, `family_name`, `email`, `realm_access.roles` (`ADMIN` / `SUPER_ADMIN`), and `tenant_id` / `tenant_name` for users with a tenant. The INTERNAL-mode JWT mirrors the Keycloak access token and builds its claims from MongoDB on every login and refresh.
+- Keycloak realm export provisions the `basic`, `profile` and `email` client scopes, a `tenant` client scope mapping the `tenant_id` / `tenant_name` user attributes, a User Profile declaring both attributes (admin-editable only), and `view-users` / `manage-users` for the backend service accounts.
+- `TenantUpdatedEvent`, published on every tenant update; in KEYCLOAK mode `KeycloakUserService` rewrites the `tenant_name` attribute of the tenant's Keycloak users.
+
+### Changed
+- **Breaking:** INTERNAL-mode JWT claims follow the Keycloak shape: roles moved from the top-level `roles` claim (`ROLE_ADMIN`) to `realm_access.roles` (`ADMIN`), `tenantId` was renamed to `tenant_id` and is omitted for users without a tenant, and `sub` is the user id instead of the email.
+- **Breaking:** Keycloak realm roles `admin` / `super_admin` renamed to `ADMIN` / `SUPER_ADMIN`, and the `tenantId` user attribute and token claim renamed to `tenant_id`. `ApiTenantContextFilter` reads the tenant from the `tenant_id` claim.
+- INTERNAL-mode refresh tokens are tracked by user id, so a refresh still works after the user's email changes.
+
+### Removed
+- **Breaking:** `GET /api/v1/users/me` and `UserCurrentUserResponse`. Clients read the current user from the access token claims. UI releases up to 0.7.2 still call it.
+
 ## [0.7.4] — Swagger API Documentation
 
 ### Added

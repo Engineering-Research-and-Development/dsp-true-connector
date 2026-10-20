@@ -4,8 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.controller.ApiEndpoints;
-import java.util.HashMap;
-import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,6 +11,9 @@ import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -72,13 +73,13 @@ class SwaggerUiExposureIT extends BaseIntegrationTest {
                 .getContentAsString();
         JsonNode managementApi = jsonMapper.readTree(document);
         JsonNode examples = managementApi.path("components").path("examples");
-        assertTrue(managementApi.path("paths").has(ApiEndpoints.USERS_V1 + "/me"));
+        assertTrue(managementApi.path("paths").has(ApiEndpoints.CATALOG_DATA_SERVICES_V1));
         assertTrue(examples.has("login-admin.plain"));
         assertTrue(examples.has("login-connector.plain"));
 
         String adminToken = loginAndGetAccessToken(examples.path("login-admin.plain").path("value"));
         String connectorToken = loginAndGetAccessToken(examples.path("login-connector.plain").path("value"));
-        mockMvc.perform(get(ApiEndpoints.USERS_V1 + "/me")
+        mockMvc.perform(get(ApiEndpoints.CATALOG_DATA_SERVICES_V1)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
                 .andExpect(status().isOk());
 

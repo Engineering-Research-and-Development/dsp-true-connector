@@ -1,16 +1,15 @@
 package it.eng.tools.auth.internal;
 
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Conditional;
-import org.springframework.stereotype.Component;
-
 import it.eng.tools.auth.condition.InternalAuthenticationModeCondition;
 import it.eng.tools.auth.jwt.JwtService;
 import it.eng.tools.auth.jwt.TokenPair;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 /**
  * Mints JWT access tokens for internal-service (super-admin, tenant-agnostic) machine-to-machine
@@ -39,8 +38,8 @@ public class InternalServiceTokenIssuer {
 	/** Subject/email claim value used for internal-service machine-to-machine tokens. */
 	static final String INTERNAL_SERVICE_USERNAME = "internal-service";
 
-	/** Role claim granted to internal-service tokens, mirroring {@code Role.ADMIN}'s authority name. */
-	static final String INTERNAL_SERVICE_ROLE = "ROLE_ADMIN";
+	/** Realm role granted to internal-service tokens, mirroring {@code Role.ADMIN}'s name. */
+	static final String INTERNAL_SERVICE_ROLE = "ADMIN";
 
 	private final JwtService jwtService;
 	private final String internalSecret;

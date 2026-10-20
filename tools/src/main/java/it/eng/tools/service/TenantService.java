@@ -2,6 +2,7 @@ package it.eng.tools.service;
 
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.event.TenantUpdatedEvent;
 import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.BucketProvisioningMode;
 import it.eng.tools.model.Tenant;
@@ -13,6 +14,7 @@ import it.eng.tools.s3.service.BucketCredentialsService;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -49,6 +51,7 @@ public class TenantService {
     private final BucketCredentialsService bucketCredentialsService;
     private final BucketProvisioningModeResolver bucketProvisioningModeResolver;
     private final BucketConnectionVerificationService bucketConnectionVerificationService;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final String baseCallbackAddress;
 
     /**
@@ -61,6 +64,7 @@ public class TenantService {
      * @param bucketCredentialsService the bucket credentials service
      * @param bucketProvisioningModeResolver the resolver for tenant bucket provisioning mode
      * @param bucketConnectionVerificationService the service verifying externally supplied bucket credentials
+     * @param applicationEventPublisher the publisher of {@link TenantUpdatedEvent}s
      * @param baseCallbackAddress      the base URL used to derive per-tenant callback addresses;
      *                                 injected from {@code application.baseURL}
      */
@@ -70,6 +74,7 @@ public class TenantService {
                          BucketCredentialsService bucketCredentialsService,
                          BucketProvisioningModeResolver bucketProvisioningModeResolver,
                          BucketConnectionVerificationService bucketConnectionVerificationService,
+                         ApplicationEventPublisher applicationEventPublisher,
                          @Value("${application.baseURL}") String baseCallbackAddress) {
         this.tenantRepository = tenantRepository;
         this.auditEventPublisher = auditEventPublisher;
@@ -77,6 +82,7 @@ public class TenantService {
         this.bucketCredentialsService = bucketCredentialsService;
         this.bucketProvisioningModeResolver = bucketProvisioningModeResolver;
         this.bucketConnectionVerificationService = bucketConnectionVerificationService;
+        this.applicationEventPublisher = applicationEventPublisher;
         this.baseCallbackAddress = baseCallbackAddress;
     }
 
@@ -314,6 +320,9 @@ public class TenantService {
      * <p>The {@code enabled} state and {@code participantId} are immutable in this endpoint
      * and are always preserved from the existing tenant.
      *
+     * <p>After saving, a {@link TenantUpdatedEvent} carrying the tenant's current name is published
+     * so that copies of the name kept outside MongoDB can be resynchronized.
+     *
      * <p>Mode behavior:
      * <ul>
      *     <li>{@link BucketProvisioningMode#AUTOMATIC}: existing bucket and credentials are preserved</li>
@@ -368,6 +377,7 @@ public class TenantService {
                 .details(details)
                 .build());
         log.info("Updated tenant: {}", tenantId);
+        applicationEventPublisher.publishEvent(new TenantUpdatedEvent(saved.getId(), saved.getName()));
         return saved;
     }
 

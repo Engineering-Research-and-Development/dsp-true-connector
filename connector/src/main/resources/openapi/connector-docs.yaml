@@ -3,7 +3,8 @@ tags:
     name: Users
     description: >-
       Manage INTERNAL-mode users. Most user operations require ROLE_SUPER_ADMIN. ROLE_ADMIN may
-      read /me and change their own password; the service verifies ownership. The updateNames
+      change their own password; the service verifies ownership. The current user's identity is
+      read from the access token claims returned by the login and refresh operations. The updateNames
       operation currently remains protected by the ROLE_SUPER_ADMIN users rule. UserAPIController
       is inactive in KEYCLOAK mode, where KeycloakUserApiController exposes read-only user listing
       and user creation or updates are managed in Keycloak. User list results exclude ROLE_CONNECTOR
@@ -30,10 +31,7 @@ operations:
     summary: Get a user
     description: >-
       Return a user by ID. This cross-user lookup requires ROLE_SUPER_ADMIN; ROLE_ADMIN access is
-      limited to the current-user and own-password self-service routes.
-  getCurrentUser:
-    summary: Get the current user
-    description: Return the authenticated user's profile. ROLE_ADMIN and ROLE_SUPER_ADMIN may access this endpoint.
+      limited to the own-password self-service route.
   getAllUsers:
     summary: List users
     description: >-
@@ -53,7 +51,7 @@ operations:
     description: >-
       Change a user's first and last name. The service checks that non-super-admin callers target
       their own account, but this route is currently protected by the broad ROLE_SUPER_ADMIN
-      users rule; the ROLE_ADMIN security exception applies to /me and /{id}/password.
+      users rule; the ROLE_ADMIN security exception applies to /{id}/password.
   updatePassword:
     summary: Change a user password
     description: >-

@@ -5,7 +5,6 @@ import it.eng.connector.model.*;
 import it.eng.connector.service.UserService;
 import it.eng.tools.auth.condition.InternalOrDisabledAuthenticationModeCondition;
 import it.eng.tools.controller.ApiEndpoints;
-import it.eng.tools.exception.BadRequestException;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.rest.api.PagedAPIResponse;
 import it.eng.tools.service.GenericFilterBuilder;
@@ -75,26 +74,6 @@ public class UserAPIController {
 		return ResponseEntity.ok(GenericApiResponse.success(user, "User found"));
 	}
 	
-	/**
-	 * Returns the currently authenticated user's own profile.
-	 *
-	 * <p>Returns {@code 400 Bad Request} when there is no authenticated principal (disabled-auth
-	 * mode), since there is no user identity to resolve.
-	 *
-	 * @param principal the authenticated principal injected by Spring Security
-	 * @return the current user as a {@link GenericApiResponse}
-	 */
-	@GetMapping(path = "/me")
-	public ResponseEntity<GenericApiResponse<UserCurrentUserResponse>> getCurrentUser(Principal principal) {
-		if (principal == null) {
-			throw new BadRequestException("No authenticated user in current context");
-		}
-		log.info("Fetching current user profile for principal '{}'", principal.getName());
-		UserCurrentUserResponse user = userService.findCurrentUser(principal.getName());
-		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
-				.body(GenericApiResponse.success(user, "Current user"));
-	}
-
 	/**
 	 * Returns all users.
 	 *

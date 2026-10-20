@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.context.SecurityContextHolderStrategy;
@@ -22,8 +21,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Instant;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Filter that validates JWT access tokens for INTERNAL mode admin endpoints.
@@ -32,7 +32,9 @@ import java.util.stream.Collectors;
  * and maintaining multiple sources of truth for the signing key.
  *
  * <p>On successful validation, populates the {@link SecurityContext} with a
- * {@link JwtAuthenticationToken} constructed from mapped claim values.
+ * {@link JwtAuthenticationToken} constructed from mapped claim values. Authorities are read from
+ * {@code realm_access.roles} with {@link KeycloakRealmRoleConverter}, and the principal name is the
+ * {@code email} claim.
  *
  * <p>If validation fails (e.g., token is expired or tampered), the filter clears
  * the security context and continues the filter chain, allowing the request to fall through
@@ -42,6 +44,7 @@ import java.util.stream.Collectors;
 public class InternalJwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final KeycloakRealmRoleConverter roleConverter = new KeycloakRealmRoleConverter();
     private final SecurityContextHolderStrategy securityContextHolderStrategy = SecurityContextHolder.getContextHolderStrategy();
 
     /**
@@ -82,16 +85,6 @@ public class InternalJwtAuthenticationFilter extends OncePerRequestFilter {
 
             log.debug("INTERNAL JWT decoded successfully. Subject: {}", decodedJWT.getSubject());
 
-            List<String> roles = decodedJWT.getClaim(JwtService.ROLES_CLAIM).asList(String.class);
-            Collection<GrantedAuthority> authorities = Collections.emptySet();
-            if (roles != null) {
-                authorities = roles.stream()
-                        .map(role -> role.toUpperCase(Locale.ROOT))
-                        .map(SimpleGrantedAuthority::new)
-                        .collect(Collectors.toUnmodifiableSet());
-            }
-            log.debug("Extracted authorities from INTERNAL JWT: {}", authorities);
-
             // Safe conversion of issuedAt/expiresAt to support older and newer Auth0 JWT dependency versions
             Instant issuedAt = decodedJWT.getIssuedAt() != null ? decodedJWT.getIssuedAt().toInstant() : Instant.now();
             Instant expiresAt = decodedJWT.getExpiresAt() != null ? decodedJWT.getExpiresAt().toInstant() : Instant.now();
@@ -99,18 +92,21 @@ public class InternalJwtAuthenticationFilter extends OncePerRequestFilter {
             Map<String, Object> headers = Map.of("alg", "HS256", "typ", "JWT");
             Map<String, Object> claims = new HashMap<>();
             claims.put("sub", decodedJWT.getSubject());
-            claims.put(JwtService.EMAIL_CLAIM, decodedJWT.getClaim(JwtService.EMAIL_CLAIM).asString());
-            claims.put(JwtService.ROLES_CLAIM, roles);
-            claims.put(JwtService.TENANT_ID_CLAIM, decodedJWT.getClaim(JwtService.TENANT_ID_CLAIM).asString());
-            if (decodedJWT.getId() != null) {
-                claims.put("jti", decodedJWT.getId());
-            }
+            putIfPresent(claims, JwtService.EMAIL_CLAIM, decodedJWT.getClaim(JwtService.EMAIL_CLAIM).asString());
+            putIfPresent(claims, JwtService.REALM_ACCESS_CLAIM, decodedJWT.getClaim(JwtService.REALM_ACCESS_CLAIM).asMap());
+            putIfPresent(claims, JwtService.TENANT_ID_CLAIM, decodedJWT.getClaim(JwtService.TENANT_ID_CLAIM).asString());
+            putIfPresent(claims, "jti", decodedJWT.getId());
             claims.put("iat", issuedAt);
             claims.put("exp", expiresAt);
 
             // Construct Spring Security Jwt and use it to instantiate JwtAuthenticationToken
             Jwt springJwt = new Jwt(tokenValue, issuedAt, expiresAt, headers, claims);
-            Authentication authentication = new JwtAuthenticationToken(springJwt, authorities);
+            // Roles sit under realm_access.roles, as in a Keycloak token, so the same converter applies.
+            Collection<GrantedAuthority> authorities = roleConverter.convert(springJwt);
+            log.debug("Extracted authorities from INTERNAL JWT: {}", authorities);
+            // The principal name stays the email, which the user services compare ownership against.
+            Authentication authentication = new JwtAuthenticationToken(springJwt, authorities,
+                    (String) claims.get(JwtService.EMAIL_CLAIM));
 
             SecurityContext context = securityContextHolderStrategy.createEmptyContext();
             context.setAuthentication(authentication);
@@ -123,5 +119,11 @@ public class InternalJwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private static void putIfPresent(Map<String, Object> claims, String name, Object value) {
+        if (value != null) {
+            claims.put(name, value);
+        }
     }
 }

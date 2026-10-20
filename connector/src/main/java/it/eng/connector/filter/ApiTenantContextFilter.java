@@ -32,6 +32,9 @@ public class ApiTenantContextFilter extends OncePerRequestFilter {
     /** Request header that allows super-admin users to act on behalf of a specific tenant. */
     public static final String HEADER_X_TENANT_ID = TenantContextHolder.HEADER_X_TENANT_ID;
 
+    /** Access token claim carrying the user's tenant identifier, for both Keycloak and INTERNAL tokens. */
+    static final String TENANT_ID_CLAIM = "tenant_id";
+
     /**
      * Constructs a new {@link ApiTenantContextFilter}.
      */
@@ -51,7 +54,7 @@ public class ApiTenantContextFilter extends OncePerRequestFilter {
                     tenantId = user.getTenantId();
                     log.debug("Set tenant context from User principal: {}", tenantId);
                 } else if (auth instanceof JwtAuthenticationToken jwtAuth) {
-                    tenantId = jwtAuth.getToken().getClaimAsString("tenantId");
+                    tenantId = jwtAuth.getToken().getClaimAsString(TENANT_ID_CLAIM);
                     log.debug("Set tenant context from JWT claim: {}", tenantId);
                 }
                 // Super-admin (null tenantId) may delegate to a specific tenant via header.
