@@ -71,6 +71,28 @@ class UserServiceTest {
 		assertThrows(ResourceNotFoundException.class, () -> userService.findUsers("not found"));
 	}
 
+	@Test
+	@DisplayName("findCurrentUser returns user for known id")
+	void findCurrentUser_returnsUser() {
+		when(userRepository.findByEmail(TestUtil.USER.getEmail()))
+				.thenReturn(Optional.of(TestUtil.USER));
+
+		UserCurrentUserResponse result = userService.findCurrentUser(TestUtil.USER.getEmail());
+
+		assertNotNull(result);
+		assertEquals(TestUtil.USER.getEmail(), result.getEmail());
+		verify(userRepository).findByEmail(TestUtil.USER.getEmail());
+	}
+
+	@Test
+	@DisplayName("findCurrentUser throws UserNotFoundException for unknown id")
+	void findCurrentUser_notFound_throws() {
+		when(userRepository.findByEmail("unknown@mail.com")).thenReturn(Optional.empty());
+
+		assertThrows(UserNotFoundException.class,
+				() -> userService.findCurrentUser("unknown@mail.com"));
+	}
+
 	private UserCreateRequest createRequest(String email, String password, String tenantId) {
 		return UserCreateRequest.Builder.newInstance()
 				.firstName("First")

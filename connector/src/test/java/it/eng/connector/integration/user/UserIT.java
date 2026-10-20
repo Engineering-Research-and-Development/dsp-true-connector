@@ -220,7 +220,7 @@ public class UserIT extends BaseIntegrationTest {
 
         UserPasswordUpdateRequest userDTO = UserPasswordUpdateRequest.Builder.newInstance()
                 .password("password").newPassword("NewUpdPass123!").build();
-        String jwt = jwtService.issueTokenPair(userObj.getEmail(), userObj.getEmail(), List.of(Role.SUPER_ADMIN.name()), null, null).accessToken();
+        String jwt = jwtService.issueTokenPair(userObj.getEmail(), userObj.getEmail(), List.of(Role.SUPER_ADMIN.authorityName()), null, null).accessToken();
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", "Bearer " + jwt);
 
@@ -314,11 +314,25 @@ public class UserIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/users/me no longer exists: as ROLE_SUPER_ADMIN it is a lookup of user id 'me' and returns 404")
-    public void getCurrentUser_removed_returns404() throws Exception {
+    @DisplayName("GET /api/v1/users/me as ROLE_ADMIN returns 200 with own profile")
+    @WithUserDetails(TestUtil.ADMIN_USER)
+    public void getCurrentUser_asAdmin_returns200() throws Exception {
+        mockMvc.perform(get(ApiEndpoints.USERS_V1 + "/me")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/users/me as ROLE_SUPER_ADMIN returns 200 with own profile")
+    public void getCurrentUser_asSuperAdmin_returns200() throws Exception {
+        // Use the permanent seed admin user (admin@mail.com) with SUPER_ADMIN role to verify
+        // the SUPER_ADMIN authority grants access to /me.  superadmin@mail.com is in the
+        // @AfterEach cleanup list and may be absent when this test runs.
         mockMvc.perform(get(ApiEndpoints.USERS_V1 + "/me")
                         .with(user(TestUtil.ADMIN_USER).roles("SUPER_ADMIN"))
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
 }

@@ -12,7 +12,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.verify;
@@ -59,13 +58,13 @@ class InternalServiceTokenIssuerTest {
     @DisplayName("Should mint a token for the fixed internal-service subject/email, never the secret")
     void issuesTokenWithoutLeakingSecret() {
         InternalServiceTokenIssuer issuer = new InternalServiceTokenIssuer(jwtService, INTERNAL_SECRET);
-        when(jwtService.issueTokenPair("internal-service", "internal-service", List.of("ADMIN"), null, null))
+        when(jwtService.issueTokenPair("internal-service", "internal-service", List.of("ROLE_ADMIN"), null, null))
                 .thenReturn(new TokenPair("access-token", "refresh-token", 900L));
 
         String token = issuer.issueInternalServiceToken();
 
         assertEquals("access-token", token);
-        verify(jwtService).issueTokenPair("internal-service", "internal-service", List.of("ADMIN"), null, null);
+        verify(jwtService).issueTokenPair("internal-service", "internal-service", List.of("ROLE_ADMIN"), null, null);
     }
 
     @Test
@@ -77,9 +76,9 @@ class InternalServiceTokenIssuerTest {
         String realisticToken = JWT.create()
                 .withSubject("internal-service")
                 .withClaim("email", "internal-service")
-                .withClaim("realm_access", Map.of("roles", List.of("ADMIN")))
+                .withClaim("roles", List.of("ROLE_ADMIN"))
                 .sign(Algorithm.HMAC256("test-signing-key"));
-        when(jwtService.issueTokenPair("internal-service", "internal-service", List.of("ADMIN"), null, null))
+        when(jwtService.issueTokenPair("internal-service", "internal-service", List.of("ROLE_ADMIN"), null, null))
                 .thenReturn(new TokenPair(realisticToken, "refresh-token", 900L));
 
         String token = issuer.issueInternalServiceToken();

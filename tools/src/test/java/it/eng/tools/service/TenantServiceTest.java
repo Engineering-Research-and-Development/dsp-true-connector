@@ -2,7 +2,6 @@ package it.eng.tools.service;
 
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
-import it.eng.tools.event.TenantUpdatedEvent;
 import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.BucketProvisioningMode;
 import it.eng.tools.model.Tenant;
@@ -19,7 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -55,9 +53,6 @@ class TenantServiceTest {
     private BucketConnectionVerificationService bucketConnectionVerificationService;
 
     @Mock
-    private ApplicationEventPublisher applicationEventPublisher;
-
-    @Mock
     private Pageable pageable;
 
     private TenantService tenantService;
@@ -66,8 +61,7 @@ class TenantServiceTest {
     void setUp() {
         tenantService = new TenantService(tenantRepository, auditEventPublisher,
                 s3BucketProvisionService, bucketCredentialsService,
-                bucketProvisioningModeResolver, bucketConnectionVerificationService, applicationEventPublisher,
-                BASE_CALLBACK_URL);
+                bucketProvisioningModeResolver, bucketConnectionVerificationService, BASE_CALLBACK_URL);
     }
 
     private Tenant buildTenant(boolean enabled) {
@@ -319,25 +313,6 @@ class TenantServiceTest {
         ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
         verify(auditEventPublisher).publishEvent(captor.capture());
         assertEquals(AuditEventType.TENANT_DISABLED, captor.getValue().getEventType());
-    }
-
-    @Test
-    @DisplayName("updateTenant publishes TenantUpdatedEvent with the tenant's new name")
-    void updateTenant_publishesTenantUpdatedEvent() {
-        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(buildTenant(true)));
-        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
-                .thenReturn(BucketProvisioningMode.AUTOMATIC);
-
-        Tenant updates = Tenant.Builder.newInstance()
-                .id(TENANT_ID)
-                .name("Renamed")
-                .participantId("urn:connector:engineering")
-                .build();
-
-        tenantService.updateTenant(TENANT_ID, updates);
-
-        verify(applicationEventPublisher).publishEvent(new TenantUpdatedEvent(TENANT_ID, "Renamed"));
     }
 
     @Test

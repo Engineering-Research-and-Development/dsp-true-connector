@@ -35,7 +35,7 @@ Use demo seed data only:
 2. Select the generated login example for `admin@mail.com` and use **Try it out**. The seeded
    example credentials are for local/demo environments only.
 3. Copy the returned `access_token`, select **Authorize**, and enter the token in the HTTP bearer
-   field. The admin token can call management endpoints such as `GET /api/v1/dataservices`.
+   field. The admin token can call management endpoints such as `GET /api/v1/users/me`.
 4. Repeat login with the generated `connector@mail.com` example and authorize with its returned
    token.
 5. In `dsp-protocol`, select a tenant-scoped operation such as `POST /{tenantId}/catalog/request`.

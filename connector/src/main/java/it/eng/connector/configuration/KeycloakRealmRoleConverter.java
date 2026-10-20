@@ -14,9 +14,6 @@ import java.util.stream.Collectors;
 
 /**
  * Extracts realm-level roles from a Keycloak JWT and converts them to Spring Security authorities.
- *
- * <p>Also used for INTERNAL-mode tokens, which carry their roles in the same
- * {@code realm_access.roles} claim.
  */
 @Slf4j
 final class KeycloakRealmRoleConverter implements Converter<Jwt, Collection<GrantedAuthority>> {

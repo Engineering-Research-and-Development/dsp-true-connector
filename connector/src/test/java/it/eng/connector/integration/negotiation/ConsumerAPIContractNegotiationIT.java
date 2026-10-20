@@ -56,7 +56,7 @@ public class ConsumerAPIContractNegotiationIT extends BaseIntegrationTest {
 
     @BeforeEach
     public void fetchToken() {
-        TokenPair tokenPair = jwtService.issueTokenPair("INTERNAL_SERVICE_USERNAME", "INTERNAL_SERVICE_USERNAME", List.of("ADMIN"), "engineering", null);
+        TokenPair tokenPair = jwtService.issueTokenPair("INTERNAL_SERVICE_USERNAME", "INTERNAL_SERVICE_USERNAME", List.of("ROLE_ADMIN"), "engineering", null);
         apiToken = tokenPair.accessToken();
     }
 

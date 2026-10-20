@@ -14,13 +14,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -63,25 +58,6 @@ class ApiTenantContextFilterTest {
 
         verify(filterChain).doFilter(request, response);
         // Context is cleared in finally block; verify doFilter was reached without exception
-    }
-
-    @Test
-    @DisplayName("doFilterInternal sets tenant ID from the tenant_id claim of a JWT principal")
-    void doFilterInternal_withJwtPrincipal_setsTenantIdFromTenantIdClaim() throws Exception {
-        Jwt jwt = Jwt.withTokenValue("token")
-                .header("alg", "HS256")
-                .subject("user-1")
-                .claim("tenant_id", "engineering")
-                .build();
-        Authentication auth = new JwtAuthenticationToken(jwt, List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
-        SecurityContext securityContext = mock(SecurityContext.class);
-        when(securityContext.getAuthentication()).thenReturn(auth);
-        SecurityContextHolder.setContext(securityContext);
-
-        String[] capturedTenantId = {null};
-        filter.doFilterInternal(request, response, (req, res) -> capturedTenantId[0] = TenantContextHolder.getTenantId());
-
-        assertEquals("engineering", capturedTenantId[0]);
     }
 
     @Test

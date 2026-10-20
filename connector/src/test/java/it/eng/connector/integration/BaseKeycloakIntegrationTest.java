@@ -63,8 +63,6 @@ public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
                 () -> realmUrl() + "/protocol/openid-connect/token");
         registry.add("application.keycloak.login.logout-url",
                 () -> realmUrl() + "/protocol/openid-connect/logout");
-        registry.add("application.keycloak.admin.server-url", KEYCLOAK_CONTAINER::getAuthServerUrl);
-        registry.add("application.keycloak.admin.realm", () -> KEYCLOAK_REALM);
         registry.add("application.baseURL", () -> "http://localhost:8080/");
         registry.add("application.automatic.negotiation", () -> "false");
         registry.add("application.encryption.key", () -> "5xplehys9mtcatb");
@@ -81,7 +79,7 @@ public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
     /**
      * Returns a bearer token for the Keycloak admin test user.
      *
-     * @return a valid bearer token with the ADMIN realm role
+     * @return a valid bearer token with the admin realm role
      * @throws Exception when the token cannot be obtained
      */
     protected String adminAccessToken() throws Exception {
@@ -101,7 +99,7 @@ public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
     /**
      * Returns a bearer token for the Keycloak super-admin test user.
      *
-     * @return a valid bearer token with the SUPER_ADMIN realm role
+     * @return a valid bearer token with the super_admin realm role
      * @throws Exception when the token cannot be obtained
      */
     protected String superAdminAccessToken() throws Exception {

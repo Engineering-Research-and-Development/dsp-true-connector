@@ -102,7 +102,7 @@ class OpenApiConfigTest {
                     Operation protectedOperation = new Operation();
                     Operation loginOperation = new Operation();
                     OpenAPI openAPI = new OpenAPI().paths(new Paths()
-                            .addPathItem("/api/v1/users", new PathItem().get(protectedOperation))
+                            .addPathItem("/api/v1/users/me", new PathItem().get(protectedOperation))
                             .addPathItem("/api/v1/auth/login", new PathItem().post(loginOperation)));
 
                     customizer.customise(openAPI);

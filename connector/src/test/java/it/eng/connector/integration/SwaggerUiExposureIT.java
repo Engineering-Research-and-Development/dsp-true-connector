@@ -73,13 +73,13 @@ class SwaggerUiExposureIT extends BaseIntegrationTest {
                 .getContentAsString();
         JsonNode managementApi = jsonMapper.readTree(document);
         JsonNode examples = managementApi.path("components").path("examples");
-        assertTrue(managementApi.path("paths").has(ApiEndpoints.CATALOG_DATA_SERVICES_V1));
+        assertTrue(managementApi.path("paths").has(ApiEndpoints.USERS_V1 + "/me"));
         assertTrue(examples.has("login-admin.plain"));
         assertTrue(examples.has("login-connector.plain"));
 
         String adminToken = loginAndGetAccessToken(examples.path("login-admin.plain").path("value"));
         String connectorToken = loginAndGetAccessToken(examples.path("login-connector.plain").path("value"));
-        mockMvc.perform(get(ApiEndpoints.CATALOG_DATA_SERVICES_V1)
+        mockMvc.perform(get(ApiEndpoints.USERS_V1 + "/me")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
                 .andExpect(status().isOk());
 

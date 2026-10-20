@@ -1,7 +1,5 @@
 package it.eng.connector.integration.auth;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.connector.integration.BaseIntegrationTest;
 import it.eng.connector.model.Role;
@@ -13,7 +11,6 @@ import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.tools.auth.jwt.JwtService;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
-import it.eng.tools.service.TenantService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,11 +22,9 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MvcResult;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -58,9 +53,6 @@ public class InternalAuthFlowIT extends BaseIntegrationTest {
     @Autowired(required = false)
     private JwtService jwtService;
 
-    @Autowired
-    private TenantService tenantService;
-
     @BeforeEach
     @AfterEach
     void cleanUpTestUsers() {
@@ -70,8 +62,6 @@ public class InternalAuthFlowIT extends BaseIntegrationTest {
         deleteUserIfExists("locked@test.com");
         deleteUserIfExists("connector@test.com");
         deleteUserIfExists("admin@test.com");
-        deleteUserIfExists("claims@test.com");
-        deleteUserIfExists("claims-super@test.com");
         contractNegotiationRepository.deleteAll();
     }
 
@@ -495,61 +485,6 @@ public class InternalAuthFlowIT extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
 
-    }
-
-    @Test
-    @DisplayName("Access token carries the user's identity claims, and a refresh rebuilds them from the database")
-    void accessTokenCarriesUserClaims() throws Exception {
-        String email = "claims@test.com";
-        String password = "password123";
-        createTestUserAPI(email, password, true, false);
-        User user = userRepository.findByEmail(email).orElseThrow();
-
-        Map<?, ?> login = authResponse("/login", Map.of("email", email, "password", password));
-        DecodedJWT accessToken = JWT.decode((String) login.get("access_token"));
-
-        assertThat(accessToken.getSubject()).isEqualTo(user.getId());
-        assertThat(accessToken.getClaim("given_name").asString()).isEqualTo("John");
-        assertThat(accessToken.getClaim("family_name").asString()).isEqualTo("Doe");
-        assertThat(accessToken.getClaim("email").asString()).isEqualTo(email);
-        assertThat(accessToken.getClaim("realm_access").asMap()).isEqualTo(Map.of("roles", List.of("ADMIN")));
-        assertThat(accessToken.getClaim("tenant_id").asString()).isEqualTo(TENANT_ID);
-        assertThat(accessToken.getClaim("tenant_name").asString())
-                .isEqualTo(tenantService.findById(TENANT_ID).getName());
-        assertThat(accessToken.getExpiresAt()).isNotNull();
-
-        user.setFirstName("Johnny");
-        userRepository.save(user);
-
-        Map<?, ?> refresh = authResponse("/refresh", Map.of("refresh_token", login.get("refresh_token")));
-        assertThat(refresh.get("refresh_token")).isNotNull();
-        DecodedJWT refreshedToken = JWT.decode((String) refresh.get("access_token"));
-        assertThat(refreshedToken.getClaim("given_name").asString()).isEqualTo("Johnny");
-    }
-
-    @Test
-    @DisplayName("Access token of a super-admin without a tenant has no tenant claims")
-    void superAdminAccessTokenHasNoTenantClaims() throws Exception {
-        String email = "claims-super@test.com";
-        String password = "password123";
-        userRepository.save(new User("urn:uuid:" + UUID.randomUUID(), "Super", "Admin",
-                email, passwordEncoder.encode(password), true, false, false, Role.SUPER_ADMIN, null));
-
-        Map<?, ?> login = authResponse("/login", Map.of("email", email, "password", password));
-        DecodedJWT accessToken = JWT.decode((String) login.get("access_token"));
-
-        assertThat(accessToken.getClaim("realm_access").asMap()).isEqualTo(Map.of("roles", List.of("SUPER_ADMIN")));
-        assertThat(accessToken.getClaim("tenant_id").isMissing()).isTrue();
-        assertThat(accessToken.getClaim("tenant_name").isMissing()).isTrue();
-    }
-
-    private Map<?, ?> authResponse(String path, Map<String, ?> body) throws Exception {
-        MvcResult result = mockMvc.perform(post(ApiEndpoints.AUTH_V1 + path)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(body)))
-                .andExpect(status().isOk())
-                .andReturn();
-        return objectMapper.readValue(result.getResponse().getContentAsString(), Map.class);
     }
 
     private void createTestUserAPI(String email, String password, boolean enabled, boolean locked) {

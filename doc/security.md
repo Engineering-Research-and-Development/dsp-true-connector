@@ -66,10 +66,10 @@ application.auth.provider=KEYCLOAK
 
 | `auth.provider` | `dcp.enabled` | `/api/**` `/actuator/**` | Protocol endpoints¹ |
 |-----------------|---------------|--------------------------|----------------------|
-| `KEYCLOAK`      | `false`       | Keycloak-issued JWT (obtained via `/api/v1/auth/login`) → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, most `/users/**`, `/properties/**`; `ROLE_ADMIN` may call own-account PUT endpoints | Keycloak JWT → `ROLE_CONNECTOR` |
-| `KEYCLOAK`      | `true`        | Keycloak-issued JWT (obtained via `/api/v1/auth/login`) → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, most `/users/**`, `/properties/**`; `ROLE_ADMIN` may call own-account PUT endpoints | DCP → `ROLE_CONNECTOR` |
-| `INTERNAL`      | `false`       | Self-issued JWT (obtained via `/api/v1/auth/login`) → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, most `/users/**`, `/properties/**`; `ROLE_ADMIN` may call own-account PUT endpoints | Self-issued JWT → `ROLE_CONNECTOR` |
-| `INTERNAL`      | `true`        | Self-issued JWT (obtained via `/api/v1/auth/login`) → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, most `/users/**`, `/properties/**`; `ROLE_ADMIN` may call own-account PUT endpoints | DCP → `ROLE_CONNECTOR` |
+| `KEYCLOAK`      | `false`       | Keycloak-issued JWT (obtained via `/api/v1/auth/login`) → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, most `/users/**`, `/properties/**`; `ROLE_ADMIN` may call `/users/me` and own-account PUT endpoints | Keycloak JWT → `ROLE_CONNECTOR` |
+| `KEYCLOAK`      | `true`        | Keycloak-issued JWT (obtained via `/api/v1/auth/login`) → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, most `/users/**`, `/properties/**`; `ROLE_ADMIN` may call `/users/me` and own-account PUT endpoints | DCP → `ROLE_CONNECTOR` |
+| `INTERNAL`      | `false`       | Self-issued JWT (obtained via `/api/v1/auth/login`) → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, most `/users/**`, `/properties/**`; `ROLE_ADMIN` may call `/users/me` and own-account PUT endpoints | Self-issued JWT → `ROLE_CONNECTOR` |
+| `INTERNAL`      | `true`        | Self-issued JWT (obtained via `/api/v1/auth/login`) → `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`; `ROLE_SUPER_ADMIN` required for `/tenants/**`, most `/users/**`, `/properties/**`; `ROLE_ADMIN` may call `/users/me` and own-account PUT endpoints | DCP → `ROLE_CONNECTOR` |
 | `DISABLED`      | `false`       | `permitAll()` — all management endpoints open, not for production | `permitAll()` |
 | `DISABLED`      | `true`        | ❌ startup error | ❌ startup error |
 
@@ -135,27 +135,6 @@ self-signed JWT (see [Internal Authentication Mode](#internal-authentication-mod
 Either way, the client-facing contract never changes — swapping `application.auth.provider` between
 `KEYCLOAK` and `INTERNAL` requires no client-side changes.
 
-### Access token claims
-
-Clients read the current user's identity from the access token returned by `/auth/login` and
-`/auth/refresh`; there is no "current user" endpoint. The Keycloak access token is the reference,
-and the self-issued INTERNAL token mirrors it:
-
-| Claim | Value |
-|---|---|
-| `sub` | The provider's user id (Keycloak user id; the MongoDB user id in `INTERNAL` mode) |
-| `given_name`, `family_name` | First and last name |
-| `email` | Email |
-| `realm_access.roles` | Realm role names without a `ROLE_` prefix: `ADMIN` or `SUPER_ADMIN` (Keycloak adds its own built-in roles) |
-| `tenant_id`, `tenant_name` | The user's tenant id and display name; omitted for a user without a tenant (e.g. `SUPER_ADMIN`) |
-| `exp` | Expiry, seconds since epoch |
-
-Both connector filters map `realm_access.roles` to `ROLE_*` authorities and `ApiTenantContextFilter`
-reads the tenant from `tenant_id`. `INTERNAL` mode builds the claims from MongoDB on every login
-and refresh, so a refreshed token reflects the user's current names, role and tenant. The claims
-are a convenience for the UI only: every endpoint still enforces role and tenant access on the
-server.
-
 ---
 
 ## Keycloak Authentication Mode (`KEYCLOAK`)
@@ -204,39 +183,12 @@ application.keycloak.backend.token-caching=true
 with no shared state. Rotating the backend client's secret has no effect on UI login, and vice
 versa.
 
-### Keycloak realm setup
-
-The realm export `ci/docker/keycloak_resources/realm-dsp-connector.json` provisions everything the
-[access token claims](#access-token-claims) need; replicate it in any other realm:
-
-- **Realm roles** `ADMIN` and `SUPER_ADMIN` (exact names, no `ROLE_` prefix). Client roles are not read.
-- **Client scopes** `basic` (`sub`), `profile` (`given_name`, `family_name`), `email` and `roles`
-  (`realm_access.roles`, `resource_access`). The export defines its client scopes explicitly, so
-  Keycloak does not create its built-in ones on import; they are therefore part of the export.
-- **User Profile** declares the attributes `tenant_id` and `tenant_name`, viewable and editable by
-  admins only. Since Keycloak 24, undeclared attributes are not stored.
-- **Client scope `tenant`**, a default scope of every client, maps both attributes into the
-  `tenant_id` and `tenant_name` token claims.
-- **Lightweight access tokens** stay off (`client.use.lightweight.access.token.enabled=false`);
-  they would strip these claims.
-- **Backend service accounts** hold the `realm-management` roles `view-users` and `manage-users`,
-  so the connector can read and update users through the Admin API
-  (`application.keycloak.admin.server-url` / `application.keycloak.admin.realm`).
-
-Users are created and assigned to a tenant in Keycloak, by setting their `tenant_id` and
-`tenant_name` attributes. The connector keeps `tenant_name` in sync: every tenant update
-(`PUT /api/v1/tenants/{id}`) publishes a `TenantUpdatedEvent`, and `KeycloakUserService` rewrites
-`tenant_name` on every user whose `tenant_id` matches. The listener runs asynchronously and logs a
-failure instead of failing the tenant update; saving the tenant again retries the sync.
-
 ### What Happens in Keycloak Mode
 
 **Admin zone (`/api/**`)**:
 - Requires `Authorization: Bearer <JWT>` with `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`, obtained via
   `POST /api/v1/auth/login` (see [Unified Authentication Contract](#unified-authentication-contract-apiv1auth))
 - Roles extracted from `realm_access.roles` claim in the JWT
-- The tenant is read from the `tenant_id` claim, which Keycloak maps from the `tenant_id` user
-  attribute (see [Keycloak realm setup](#keycloak-realm-setup))
 - `/api/v1/users` returns **404** - user management is handled in Keycloak Admin Console
 
 **Protocol zone (`/connector/**`, `/catalog/**`, `/negotiations/**`, `/transfers/**`)**:
@@ -322,6 +274,7 @@ The following endpoints are restricted to `ROLE_SUPER_ADMIN` in both `INTERNAL` 
 
 | Endpoint | Required role |
 |----------|---------------|
+| `GET /api/v1/users/me` | `ROLE_ADMIN`, `ROLE_SUPER_ADMIN` — self-service profile retrieval |
 | `PUT /api/v1/users/*/update` | `ROLE_ADMIN`, `ROLE_SUPER_ADMIN` — own account update (service layer enforces ownership) |
 | `PUT /api/v1/users/*/password` | `ROLE_ADMIN`, `ROLE_SUPER_ADMIN` — own password change (service layer enforces ownership) |
 | `* /api/v1/users/**` (all other) | `ROLE_SUPER_ADMIN` |
@@ -357,7 +310,7 @@ Three distinct user roles are used in `initial_data.json` and at runtime:
 | Role | Email | `tenantId` | Purpose |
 |------|-------|-----------|---------|
 | `ROLE_SUPER_ADMIN` | `superadmin@mail.com` | `null` | Manages tenants and cross-tenant operations. No data scope restriction — all tenant data is visible. |
-| `ROLE_ADMIN` | `admin@mail.com` | per-tenant (e.g., `engineering`) | Per-tenant admin. Manages catalog, dataset, negotiation, and transfer data for their assigned tenant only. May also call `PUT /api/v1/users/{id}/update` and `PUT /api/v1/users/{id}/password` for their own account. |
+| `ROLE_ADMIN` | `admin@mail.com` | per-tenant (e.g., `engineering`) | Per-tenant admin. Manages catalog, dataset, negotiation, and transfer data for their assigned tenant only. May also call `GET /api/v1/users/me`, `PUT /api/v1/users/{id}/update`, and `PUT /api/v1/users/{id}/password` for their own account. |
 | `ROLE_CONNECTOR` | `connector@mail.com` | per-tenant (e.g., `engineering`) | Per-tenant connector user. Authenticates DSP protocol calls (connector-to-connector). |
 
 Each tenant should have its own `ROLE_ADMIN` and `ROLE_CONNECTOR` users with `tenantId` set to that tenant's ID. Multiple tenants cannot share the same email address.
@@ -394,7 +347,7 @@ application.security.jwt.secret=${APPLICATION_SECURITY_JWT_SECRET:connector-jwt-
 active; `CredentialUtils` instead falls back to the existing Keycloak-backed paths
 (`KeycloakAuthenticationService`/`AuthenticationCache` for connector-to-connector calls, using the
 `application.keycloak.backend.*` client). Ensure the Keycloak backend service account does **not**
-have a `tenant_id` attribute, so `ApiTenantContextFilter` falls back to the `X-Tenant-Id`
+have a `tenantId` claim configured, so `ApiTenantContextFilter` falls back to the `X-Tenant-Id`
 header the same way it does for the self-issued M2M tokens above.
 
 ### Password Strength Requirements

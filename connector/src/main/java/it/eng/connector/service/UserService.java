@@ -73,6 +73,26 @@ public class UserService {
 	}
 
 	/**
+	 * Returns the authenticated user's own record by email.
+	 *
+	 * @param email the email of the authenticated principal
+	 * @return the user as a serialized JSON node
+	 * @throws UserNotFoundException if no user with the given email exists
+	 */
+	public UserCurrentUserResponse findCurrentUser(String email) {
+		UserCurrentUserResponse user = userRepository.findByEmail(email)
+				.map(u -> UserCurrentUserResponse.Builder.newInstance()
+						.firstName(u.getFirstName())
+						.lastName(u.getLastName())
+						.email(u.getEmail())
+						.tenantId(u.getTenantId())
+						.role(u.getRole().name())
+						.build())
+				.orElseThrow(() -> new UserNotFoundException("User not found: " + email));
+		return user;
+	}
+
+	/**
 	 * Returns all users, or only the user matching the given e-mail when {@code email} is non-blank.
 	 *
 	 * @param email optional e-mail filter; may be {@code null} or blank
