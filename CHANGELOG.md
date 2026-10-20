@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.5] — Access token user claims
+
+### Changed
+- INTERNAL-mode access tokens now carry the claims the UI reads: `sub` (user id), `given_name`, `family_name`, `email`, `realm_access.roles` (e.g. `ADMIN`) and, for a user with a tenant, `tenant_id` and `tenant_name`. They replace the former top-level `roles` and `tenantId` claims.
+
 ## [0.7.4] — Swagger API Documentation
 
 ### Added

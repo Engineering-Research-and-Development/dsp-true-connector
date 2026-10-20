@@ -1,21 +1,19 @@
 package it.eng.tools.auth.jwt;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.*;
-
-import org.springframework.context.annotation.Conditional;
-import org.springframework.stereotype.Component;
-
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
-
 import it.eng.tools.auth.condition.InternalAuthenticationModeCondition;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.stereotype.Component;
+
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.*;
 
 /**
  * Issues and validates HMAC-SHA256 signed JWT access/refresh token pairs for the unified
@@ -26,8 +24,8 @@ import lombok.extern.slf4j.Slf4j;
  * claims can be introduced at the call site without changing this class.
  *
  * <p><b>Access vs. refresh tokens</b>: both tokens share the same claim shape ({@code sub},
- * {@code email}, {@code roles}, {@code tenantId}, {@code iat}, {@code exp}, {@code jti}, plus any
- * caller-supplied extra claims). Refresh tokens additionally carry a {@value #TOKEN_TYPE_CLAIM}
+ * {@code email}, {@code realm_access.roles}, {@code tenant_id}, {@code iat}, {@code exp}, {@code jti},
+ * plus any caller-supplied extra claims). {@code tenant_id} is omitted when the subject has no tenant. Refresh tokens additionally carry a {@value #TOKEN_TYPE_CLAIM}
  * claim set to {@value #REFRESH_TOKEN_TYPE}; access tokens carry no {@value #TOKEN_TYPE_CLAIM}
  * claim. Callers validating a token for use as an access token must reject any decoded token that
  * carries a {@value #REFRESH_TOKEN_TYPE} {@value #TOKEN_TYPE_CLAIM} claim, so a refresh token
@@ -43,11 +41,23 @@ public class JwtService {
     /** Claim name for the subject's email address. */
     public static final String EMAIL_CLAIM = "email";
 
-    /** Claim name for the subject's role names. */
+    /** Claim name for the object holding the subject's role names. */
+    public static final String REALM_ACCESS_CLAIM = "realm_access";
+
+    /** Key, inside the {@value #REALM_ACCESS_CLAIM} claim, of the subject's role names. */
     public static final String ROLES_CLAIM = "roles";
 
     /** Claim name for the subject's tenant identifier. */
-    public static final String TENANT_ID_CLAIM = "tenantId";
+    public static final String TENANT_ID_CLAIM = "tenant_id";
+
+    /** Claim name for the subject's tenant display name. */
+    public static final String TENANT_NAME_CLAIM = "tenant_name";
+
+    /** Claim name for the subject's first name. */
+    public static final String GIVEN_NAME_CLAIM = "given_name";
+
+    /** Claim name for the subject's last name. */
+    public static final String FAMILY_NAME_CLAIM = "family_name";
 
     /** Claim name distinguishing refresh tokens from access tokens. */
     public static final String TOKEN_TYPE_CLAIM = "token_type";
@@ -61,7 +71,7 @@ public class JwtService {
     // these, since JWTCreator.Builder#withPayload silently overwrites already-set claims rather
     // than performing a safe no-clobber merge.
     private static final Set<String> RESERVED_CLAIM_NAMES =
-            Set.of("sub", EMAIL_CLAIM, ROLES_CLAIM, TENANT_ID_CLAIM, "iat", "exp", "jti", TOKEN_TYPE_CLAIM);
+            Set.of("sub", EMAIL_CLAIM, REALM_ACCESS_CLAIM, TENANT_ID_CLAIM, "iat", "exp", "jti", TOKEN_TYPE_CLAIM);
 
     private final JwtProperties jwtProperties;
 
@@ -111,14 +121,14 @@ public class JwtService {
      *
      * @param subject     the subject (user id) embedded as the {@code sub} claim
      * @param email       the subject's email address, embedded as the {@value #EMAIL_CLAIM} claim
-     * @param roles       the subject's role names, embedded as the {@value #ROLES_CLAIM} claim
+     * @param roles       the subject's role names, embedded as {@code realm_access.roles}
      * @param tenantId    the subject's tenant identifier, embedded as the
-     *                    {@value #TENANT_ID_CLAIM} claim
+     *                    {@value #TENANT_ID_CLAIM} claim; {@code null} omits the claim
      * @param extraClaims additional claims merged into both tokens; may be {@code null} or empty
      * @return the issued {@link TokenPair}
      * @throws IllegalArgumentException if {@code extraClaims} contains a key that collides with
      *                                    a reserved claim name ({@code sub}, {@value #EMAIL_CLAIM},
-     *                                    {@value #ROLES_CLAIM}, {@value #TENANT_ID_CLAIM},
+     *                                    {@value #REALM_ACCESS_CLAIM}, {@value #TENANT_ID_CLAIM},
      *                                    {@code iat}, {@code exp}, {@code jti}, or
      *                                    {@value #TOKEN_TYPE_CLAIM})
      */
@@ -163,11 +173,13 @@ public class JwtService {
         JWTCreator.Builder builder = JWT.create()
                 .withSubject(subject)
                 .withClaim(EMAIL_CLAIM, email)
-                .withClaim(ROLES_CLAIM, roles)
-                .withClaim(TENANT_ID_CLAIM, tenantId)
+                .withClaim(REALM_ACCESS_CLAIM, Map.of(ROLES_CLAIM, roles))
                 .withIssuedAt(Date.from(issuedAt))
                 .withExpiresAt(Date.from(expiresAt))
                 .withJWTId(UUID.randomUUID().toString());
+        if (tenantId != null) {
+            builder.withClaim(TENANT_ID_CLAIM, tenantId);
+        }
         if (extraClaims != null && !extraClaims.isEmpty()) {
             // Merges caller-supplied claims without requiring any change to this class. Reject
             // any key colliding with a reserved claim, since withPayload silently overwrites
