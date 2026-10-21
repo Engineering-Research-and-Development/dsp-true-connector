@@ -1,0 +1,369 @@
+package it.eng.connector.configuration;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import it.eng.catalog.rest.api.CatalogAPIController;
+import it.eng.catalog.rest.protocol.CatalogController;
+import it.eng.catalog.rest.api.DataServiceAPIController;
+import it.eng.catalog.rest.api.DatasetAPIController;
+import it.eng.catalog.rest.api.DistributionAPIController;
+import it.eng.connector.integration.BaseIntegrationTest;
+import it.eng.connector.rest.api.AuthController;
+import it.eng.connector.rest.api.DashboardMetricsController;
+import it.eng.connector.rest.api.DSpaceVersionController;
+import it.eng.connector.rest.api.KeycloakUserApiController;
+import it.eng.connector.rest.api.UserAPIController;
+import it.eng.datatransfer.rest.protocol.ConsumerDataTransferCallbackController;
+import it.eng.datatransfer.rest.protocol.ProviderDataTransferController;
+import it.eng.datatransfer.rest.api.DataTransferAPIController;
+import it.eng.negotiation.rest.api.AgreementAPIController;
+import it.eng.negotiation.rest.api.ContractNegotiationAPIController;
+import it.eng.negotiation.rest.protocol.ContractNegotiationConsumerCallbackController;
+import it.eng.negotiation.rest.protocol.ContractNegotiationProviderController;
+import it.eng.tools.rest.api.ApplicationPropertiesAPIController;
+import it.eng.tools.rest.api.AuditEventController;
+import it.eng.tools.rest.api.TenantAPIController;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@TestPropertySource(properties = {
+        "springdoc.api-docs.enabled=true",
+        "springdoc.swagger-ui.enabled=true"
+})
+// Springdoc creates a separate context, so use a random port to avoid colliding with the shared 8080 server.
+@SpringBootTest(
+        webEnvironment = WebEnvironment.RANDOM_PORT,
+        properties = "server.port=0")
+class OpenApiDocsDriftIT extends BaseIntegrationTest {
+
+    private static final Set<Class<?>> FULLY_DOCUMENTED_CONTROLLERS = Set.of(
+            CatalogAPIController.class,
+            DatasetAPIController.class,
+            DistributionAPIController.class,
+            DataServiceAPIController.class,
+            ContractNegotiationAPIController.class,
+            AgreementAPIController.class,
+            DataTransferAPIController.class,
+            TenantAPIController.class,
+            UserAPIController.class,
+            CatalogController.class,
+            ContractNegotiationProviderController.class,
+            ContractNegotiationConsumerCallbackController.class,
+            ProviderDataTransferController.class,
+            ConsumerDataTransferCallbackController.class);
+    private static final Set<Class<?>> ADMIN_API_CONTROLLERS = Set.of(
+            TenantAPIController.class,
+            UserAPIController.class,
+            KeycloakUserApiController.class,
+            AuthController.class,
+            AuditEventController.class,
+            ApplicationPropertiesAPIController.class,
+            DashboardMetricsController.class,
+            DSpaceVersionController.class);
+
+    @Autowired
+    private OpenApiDocsLoader docsLoader;
+
+    @Autowired
+    @Qualifier("requestMappingHandlerMapping")
+    private RequestMappingHandlerMapping handlerMapping;
+
+    @Test
+    @DisplayName("Loaded OpenAPI documentation maps to registered Spring MVC handlers")
+    void loadedDocumentationMapsToRegisteredHandlers() {
+        OpenApiDocs documentation = docsLoader.load();
+
+        assertFalse(documentation.operations().isEmpty());
+        assertDoesNotThrow(() -> OpenApiDocsDriftValidator.validate(
+                documentation, handlerMapping.getHandlerMethods(), KeycloakUserApiController.class));
+    }
+
+    @Test
+    @DisplayName("Swagger groups expose only documented operations with one configured tag")
+    void swaggerGroupsExposeOnlyDocumentedOperationsWithOneConfiguredTag() throws Exception {
+        OpenApiDocs documentation = docsLoader.load();
+
+        assertDocumentedOperationsOnly("/v3/api-docs/management-api", documentation);
+        assertDocumentedOperationsOnly("/v3/api-docs/dsp-protocol", documentation);
+    }
+
+    @Test
+    @DisplayName("Swagger groups expose only their respective endpoint paths")
+    void swaggerGroupsExposeOnlyTheirRespectiveEndpointPaths() throws Exception {
+        Set<String> managementPaths = openApiPaths("/v3/api-docs/management-api");
+        Set<String> protocolPaths = openApiPaths("/v3/api-docs/dsp-protocol");
+
+        assertFalse(managementPaths.isEmpty(), "The management API group should expose paths");
+        assertTrue(managementPaths.stream().allMatch(path -> path.startsWith("/api/")),
+                () -> "Unexpected non-management paths: " + managementPaths.stream()
+                        .filter(path -> !path.startsWith("/api/"))
+                        .collect(Collectors.joining(", ")));
+        assertFalse(protocolPaths.isEmpty(), "The DSP protocol group should expose paths");
+        assertTrue(protocolPaths.stream().allMatch(path -> path.startsWith("/{tenantId}/")),
+                () -> "Unexpected non-protocol paths: " + protocolPaths.stream()
+                        .filter(path -> !path.startsWith("/{tenantId}/"))
+                        .collect(Collectors.joining(", ")));
+    }
+
+    @Test
+    @DisplayName("Fully documented API controllers have summaries and descriptions")
+    void fullyDocumentedControllersHaveSummariesAndDescriptions() {
+        Map<RequestMappingInfo, HandlerMethod> mappings = handlerMapping.getHandlerMethods();
+        Map<String, OpenApiOperationDocs> operations = docsLoader.load().operations();
+        List<String> undocumentedOperations = mappings.entrySet().stream()
+                .filter(entry -> FULLY_DOCUMENTED_CONTROLLERS.contains(entry.getValue().getBeanType()))
+                .filter(entry -> entry.getKey().getPatternValues().stream()
+                        .noneMatch(path -> path.endsWith("/tck")))
+                .filter(entry -> !hasSummaryAndDescription(entry.getValue(), operations))
+                .map(entry -> entry.getValue().getBeanType().getSimpleName()
+                        + "." + entry.getValue().getMethod().getName())
+                .toList();
+
+        assertTrue(undocumentedOperations.isEmpty(),
+                () -> "Documented API operations are missing summaries or descriptions: "
+                        + String.join("; ", undocumentedOperations));
+    }
+
+    @Test
+    @DisplayName("Every tag in both OpenAPI groups has a description")
+    void everyOpenApiTagHasADescription() throws Exception {
+        for (String endpoint : List.of("/v3/api-docs/management-api", "/v3/api-docs/dsp-protocol")) {
+            JsonNode tags = jsonMapper.readTree(openApiDocument(endpoint)).path("tags");
+            assertFalse(tags.isEmpty(), () -> "No documented tags were returned by " + endpoint);
+            tags.forEach(tag -> assertTrue(!tag.path("description").asText().isBlank(),
+                    () -> "OpenAPI tag " + tag.path("name").asText() + " has no description in " + endpoint));
+        }
+    }
+
+    @Test
+    @DisplayName("Documented GET mappings do not require a JSON content type")
+    void documentedGetMappingsDoNotRequireJsonContentType() {
+        Map<RequestMappingInfo, HandlerMethod> mappings = handlerMapping.getHandlerMethods();
+        List<String> constrainedGetMappings = mappings.entrySet().stream()
+                .filter(entry -> FULLY_DOCUMENTED_CONTROLLERS.contains(entry.getValue().getBeanType()))
+                .filter(entry -> entry.getValue().getMethod().isAnnotationPresent(GetMapping.class))
+                .filter(entry -> entry.getKey().getConsumesCondition().getConsumableMediaTypes()
+                        .contains(MediaType.APPLICATION_JSON))
+                .map(entry -> entry.getValue().getBeanType().getSimpleName()
+                        + "." + entry.getValue().getMethod().getName())
+                .toList();
+
+        assertTrue(constrainedGetMappings.isEmpty(),
+                () -> "GET mappings must not require Content-Type: " + String.join("; ", constrainedGetMappings));
+    }
+
+    @Test
+    @DisplayName("Administration GET mappings do not require a JSON content type")
+    void administrationGetMappingsDoNotRequireJsonContentType() {
+        Map<RequestMappingInfo, HandlerMethod> mappings = handlerMapping.getHandlerMethods();
+        List<String> constrainedGetMappings = mappings.entrySet().stream()
+                .filter(entry -> ADMIN_API_CONTROLLERS.contains(entry.getValue().getBeanType()))
+                .filter(entry -> entry.getValue().getMethod().isAnnotationPresent(GetMapping.class))
+                .filter(entry -> entry.getKey().getConsumesCondition().getConsumableMediaTypes()
+                        .contains(MediaType.APPLICATION_JSON))
+                .map(entry -> entry.getValue().getBeanType().getSimpleName()
+                        + "." + entry.getValue().getMethod().getName())
+                .toList();
+
+        assertTrue(constrainedGetMappings.isEmpty(),
+                () -> "Administration GET mappings must not require Content-Type: "
+                        + String.join("; ", constrainedGetMappings));
+    }
+
+    @Test
+    @DisplayName("Administration request-body mappings consume JSON")
+    void administrationRequestBodiesConsumeJson() {
+        Map<RequestMappingInfo, HandlerMethod> mappings = handlerMapping.getHandlerMethods();
+        List<String> nonJsonRequestBodies = mappings.entrySet().stream()
+                .filter(entry -> ADMIN_API_CONTROLLERS.contains(entry.getValue().getBeanType()))
+                .filter(entry -> Arrays.stream(entry.getValue().getMethod().getParameters())
+                        .anyMatch(parameter -> parameter.isAnnotationPresent(RequestBody.class)))
+                .filter(entry -> !entry.getKey().getConsumesCondition().getConsumableMediaTypes()
+                        .contains(MediaType.APPLICATION_JSON))
+                .map(entry -> entry.getValue().getBeanType().getSimpleName()
+                        + "." + entry.getValue().getMethod().getName())
+                .toList();
+
+        assertTrue(nonJsonRequestBodies.isEmpty(),
+                () -> "Administration request-body mappings must consume application/json: "
+                        + String.join("; ", nonJsonRequestBodies));
+    }
+
+    @Test
+    @DisplayName("Catalog create documents a structured JSON body and its request example")
+    void catalogCreateDocumentsStructuredJsonRequestExample() throws Exception {
+        String document = mockMvc.perform(get("/v3/api-docs/management-api")
+                        .with(user("swagger-test").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        JsonNode openApi = jsonMapper.readTree(document);
+        JsonNode mediaType = openApi.path("paths").path("/api/v1/catalogs").path("post")
+                .path("requestBody").path("content").path("application/json");
+
+        assertFalse("string".equals(mediaType.path("schema").path("type").asText()),
+                "The catalog request body should not be documented as a string");
+        assertEquals("#/components/examples/catalog.plain",
+                mediaType.path("examples").path("Catalog").path("$ref").asText());
+        assertTrue(openApi.path("components").path("examples")
+                .path("catalog.plain").path("value").isObject());
+    }
+
+    @Test
+    @DisplayName("Generated login examples authenticate the seeded admin and connector users")
+    void generatedLoginExamplesAuthenticateSeededUsers() throws Exception {
+        String document = mockMvc.perform(get("/v3/api-docs/management-api")
+                        .with(user("swagger-test").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        JsonNode examples = jsonMapper.readTree(document).path("components").path("examples");
+
+        for (String exampleName : List.of("login-admin.plain", "login-connector.plain")) {
+            JsonNode loginRequest = examples.path(exampleName).path("value");
+            assertTrue(loginRequest.isObject(), () -> "Missing generated login request example " + exampleName);
+            mockMvc.perform(post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(loginRequest.toString()))
+                    .andExpect(status().isOk());
+        }
+    }
+
+    @Test
+    @DisplayName("A synthetic OpenAPI operation maps to a registered Spring MVC handler")
+    void syntheticOperationMapsToSpringMvcHandler() {
+        OpenApiDocs documentation = new OpenApiDocs(
+                List.of(),
+                Map.of("getVersion", new OpenApiOperationDocs(
+                        "getVersion", Optional.empty(), Map.of())),
+                Map.of(),
+                Map.of());
+
+        assertTrue(handlerMapping.getHandlerMethods().values().stream()
+                .anyMatch(handlerMethod -> handlerMethod.getBeanType().equals(DSpaceVersionController.class)
+                        && handlerMethod.getMethod().getName().equals("getVersion")));
+        assertDoesNotThrow(() -> OpenApiDocsDriftValidator.validate(
+                documentation, handlerMapping.getHandlerMethods()));
+    }
+
+    private static boolean hasSummaryAndDescription(
+            final HandlerMethod handlerMethod,
+            final Map<String, OpenApiOperationDocs> operations) {
+        String controllerName = handlerMethod.getBeanType().getSimpleName();
+        String methodName = handlerMethod.getMethod().getName();
+        OpenApiOperationDocs operation = operations.get(controllerName + "." + methodName);
+        if (operation == null) {
+            operation = operations.get(methodName);
+        }
+        if (operation == null || !operation.methodName().equals(methodName)
+                || (operation.properties().containsKey("controllerName")
+                        && !controllerName.equals(operation.properties().get("controllerName")))) {
+            return false;
+        }
+        if (operation.methodParameters().isPresent()
+                && !operation.methodParameters().get().equals(Arrays.stream(
+                        handlerMethod.getMethod().getParameterTypes())
+                        .map(Class::getTypeName)
+                        .toList())) {
+            return false;
+        }
+        Object summary = operation.properties().get("summary");
+        Object description = operation.properties().get("description");
+        return summary instanceof String summaryText && !summaryText.isBlank()
+                && description instanceof String descriptionText && !descriptionText.isBlank();
+    }
+
+    private void assertDocumentedOperationsOnly(final String endpoint, final OpenApiDocs documentation)
+            throws Exception {
+        JsonNode openApi = jsonMapper.readTree(openApiDocument(endpoint));
+        JsonNode paths = openApi.path("paths");
+        List<JsonNode> operations = new ArrayList<>();
+        paths.elements().forEachRemaining(path -> path.fields().forEachRemaining(method -> {
+            if (method.getValue().has("operationId")) {
+                operations.add(method.getValue());
+            }
+        }));
+        Set<String> operationTags = operations.stream()
+                .map(operation -> operation.path("tags").path(0).asText())
+                .collect(Collectors.toSet());
+
+        assertFalse(operations.isEmpty(), () -> "No OpenAPI operations were returned by " + endpoint);
+        for (JsonNode operation : operations) {
+            String operationId = operation.path("operationId").asText();
+            String documentedMethodName = operationId.replaceFirst("_\\d+$", "");
+            String tagName = operation.path("tags").path(0).asText();
+            Optional<String> controllerName = documentation.tags().stream()
+                    .flatMap(tag -> tag.entrySet().stream())
+                    .filter(entry -> tagName.equals(documentedTagName(entry.getKey(), entry.getValue())))
+                    .map(Map.Entry::getKey)
+                    .findFirst();
+            String operationKey = controllerName
+                    .map(name -> name + "." + documentedMethodName)
+                    .filter(documentation.operations()::containsKey)
+                    .orElse(documentedMethodName);
+            assertTrue(documentation.operations().containsKey(operationKey),
+                    () -> "Undocumented operation " + operationId + " is present in " + endpoint);
+            JsonNode tags = operation.path("tags");
+            assertEquals(1, tags.size(), () -> "Expected one YAML tag for " + operationId);
+            assertFalse(tags.get(0).asText().endsWith("-api-controller"),
+                    () -> "Generated controller tag remains for " + operationId);
+        }
+        for (JsonNode tag : openApi.path("tags")) {
+            String tagName = tag.path("name").asText();
+            assertTrue(operationTags.contains(tagName),
+                    () -> "Unused tag " + tagName + " is present in " + endpoint);
+        }
+    }
+
+    private Set<String> openApiPaths(final String endpoint) throws Exception {
+        JsonNode paths = jsonMapper.readTree(openApiDocument(endpoint)).path("paths");
+        List<String> pathNames = new ArrayList<>();
+        paths.fieldNames().forEachRemaining(pathNames::add);
+        return Set.copyOf(pathNames);
+    }
+
+    private String openApiDocument(final String endpoint) throws Exception {
+        return mockMvc.perform(get(endpoint).with(user("swagger-test").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+    }
+
+    private static String documentedTagName(final String controllerName, final Object metadata) {
+        if (metadata instanceof Map<?, ?> controllerMetadata
+                && controllerMetadata.get("name") instanceof String name) {
+            return name;
+        }
+        return controllerName;
+    }
+}

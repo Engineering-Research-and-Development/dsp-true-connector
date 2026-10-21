@@ -14,14 +14,14 @@ import it.eng.datatransfer.ftp.client.FTPClient;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/transfer")
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE, path = "/api/transfer")
 @Slf4j
 public class FTPClientAPIController {
 
 	@Autowired
 	FTPClient ftpClient;
 
-	@PostMapping
+	@PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<String> downloadArtifact(@RequestBody JsonNode request) {
 		log.info("Received download request");
 		boolean isDownloaded = ftpClient.downloadArtifact(request.get("artifact").asText(), request.get("host").asText(), request.get("port").asInt());

@@ -10,6 +10,10 @@
     <artifactId>tools</artifactId>
     <name>Various tools and utilities</name>
 
+    <properties>
+        <openapi.examples.generator>it.eng.tools.openapi.OpenApiExamplesGenerator</openapi.examples.generator>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -163,6 +167,10 @@ from spring-boot-starter-security scope provided-->
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>

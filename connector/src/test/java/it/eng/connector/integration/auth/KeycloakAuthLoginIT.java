@@ -10,7 +10,8 @@ import org.springframework.test.web.servlet.ResultActions;
 import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 public class KeycloakAuthLoginIT extends BaseKeycloakIntegrationTest {
 

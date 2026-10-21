@@ -172,6 +172,7 @@ Every created child issue, regardless of family, must also include:
 - **Agent Mode**
 - **Agent Instructions**
 - **Verification Checklist** — covers only this task's own scope (per-task QA); must always include a GitHub Actions item: `[ ] All GitHub Actions CI checks pass on the PR (verified via gh pr checks)`
+- For implementation tasks that change a REST controller, include a checklist item to update the matching `openapi/<module>-docs.yaml` entry and refresh generated examples when the payload changes.
 
 ### Slice-level QA task — `.github/ISSUE_TEMPLATE/qa-task.yml`
 
