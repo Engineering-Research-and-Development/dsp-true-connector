@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.6-SNAPSHOT] - 21.10.2026. - Release process fix
+
+### Changed
+- Updated release.yml script to do merge commit from main to develop after release process to avoid merge conflict later, when performing release (develop -> main)
+
 ## [0.7.5] — Access token user claims
 
 ### Changed
