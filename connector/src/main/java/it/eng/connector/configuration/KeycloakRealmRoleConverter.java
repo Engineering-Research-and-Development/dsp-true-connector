@@ -1,17 +1,16 @@
 package it.eng.connector.configuration;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Locale;
-import java.util.Map;
-import java.util.stream.Collectors;
-
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 
-import lombok.extern.slf4j.Slf4j;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Extracts realm-level roles from a Keycloak JWT and converts them to Spring Security authorities.

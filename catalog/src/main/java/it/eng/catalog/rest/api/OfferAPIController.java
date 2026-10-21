@@ -1,5 +1,6 @@
 package it.eng.catalog.rest.api;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,8 +16,8 @@ import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
-	path = ApiEndpoints.CATALOG_OFFERS_V1)
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE,
+        path = ApiEndpoints.CATALOG_OFFERS_V1)
 @Slf4j
 public class OfferAPIController {
 	
@@ -27,11 +28,11 @@ public class OfferAPIController {
         this.catalogService = service;
     }
 	
-    @PostMapping(path = "/validate")
-    public ResponseEntity<GenericApiResponse<String>> validateOffer(@RequestBody String offerString) {
+    @PostMapping(path = "/validate", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<GenericApiResponse<String>> validateOffer(@RequestBody JsonNode offerJson) {
         log.info("Validating offer");
         
-        Offer offer = CatalogSerializer.deserializePlain(offerString, Offer.class);
+        Offer offer = CatalogSerializer.deserializePlain(offerJson, Offer.class);
 
         boolean isValid = catalogService.validateOffer(offer);
         

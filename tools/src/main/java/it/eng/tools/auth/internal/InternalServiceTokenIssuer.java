@@ -1,16 +1,15 @@
 package it.eng.tools.auth.internal;
 
-import java.util.List;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Conditional;
-import org.springframework.stereotype.Component;
-
 import it.eng.tools.auth.condition.InternalAuthenticationModeCondition;
 import it.eng.tools.auth.jwt.JwtService;
 import it.eng.tools.auth.jwt.TokenPair;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 /**
  * Mints JWT access tokens for internal-service (super-admin, tenant-agnostic) machine-to-machine

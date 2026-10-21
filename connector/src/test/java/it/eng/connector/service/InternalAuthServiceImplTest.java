@@ -9,7 +9,10 @@ import it.eng.tools.auth.jwt.RefreshTokenRecord;
 import it.eng.tools.auth.jwt.RefreshTokenStore;
 import it.eng.tools.auth.jwt.TokenPair;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.exception.TenantNotFoundException;
+import it.eng.tools.model.Tenant;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -51,6 +54,8 @@ class InternalAuthServiceImplTest {
 	private Authentication authentication;
 	@Mock
 	private AuditEventPublisher auditEventPublisher;
+	@Mock
+	private TenantService tenantService;
 
 	private InternalAuthServiceImpl authService;
 	private User user;
@@ -58,9 +63,11 @@ class InternalAuthServiceImplTest {
 	@BeforeEach
 	void setUp() {
 		authService = new InternalAuthServiceImpl(authenticationManager, userRepository, jwtService,
-				refreshTokenStore, auditEventPublisher);
+				refreshTokenStore, tenantService, auditEventPublisher);
 		user = User.builder()
 				.id(USER_ID)
+				.firstName("John")
+				.lastName("Doe")
 				.email(EMAIL)
 				.password("encoded")
 				.role(Role.ADMIN)
@@ -79,16 +86,21 @@ class InternalAuthServiceImplTest {
 		when(authentication.getName()).thenReturn(EMAIL);
 		when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 		TokenPair tokenPair = new TokenPair("access-token", "unused-refresh-jwt", 900L);
-		when(jwtService.issueTokenPair(eq(EMAIL), eq(EMAIL), anyList(), eq(TENANT_ID), anyMap()))
+		when(jwtService.issueTokenPair(eq(USER_ID), eq(EMAIL), anyList(), eq(TENANT_ID), anyMap()))
 				.thenReturn(tokenPair);
 		when(refreshTokenStore.issue(EMAIL)).thenReturn("refresh-id-1");
+		Tenant tenant = mock(Tenant.class);
+		when(tenant.getName()).thenReturn("ACME");
+		when(tenantService.findById(TENANT_ID)).thenReturn(tenant);
 
 		AuthTokens tokens = authService.login(EMAIL, PASSWORD);
 
 		assertEquals("access-token", tokens.accessToken());
 		assertEquals("refresh-id-1", tokens.refreshToken());
 		assertEquals(900L, tokens.expiresInSeconds());
-		verify(jwtService).issueTokenPair(EMAIL, EMAIL, List.of(Role.ADMIN.authorityName()), TENANT_ID, Map.of());
+		verify(jwtService).issueTokenPair(USER_ID, EMAIL, List.of(Role.ADMIN.name()), TENANT_ID,
+				Map.of(JwtService.GIVEN_NAME_CLAIM, "John", JwtService.FAMILY_NAME_CLAIM, "Doe",
+						JwtService.TENANT_NAME_CLAIM, "ACME"));
 		verify(auditEventPublisher).publishEvent(
 				argThat(event -> event.getEventType() == AuditEventType.APPLICATION_LOGIN));
 	}
@@ -151,8 +163,9 @@ class InternalAuthServiceImplTest {
 		RefreshTokenRecord rotated = new RefreshTokenRecord("new-refresh-id", EMAIL, Instant.now());
 		when(refreshTokenStore.rotate("old-refresh-id")).thenReturn(Optional.of(rotated));
 		when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
+		when(tenantService.findById(TENANT_ID)).thenThrow(new TenantNotFoundException("missing"));
 		TokenPair tokenPair = new TokenPair("new-access-token", "unused-refresh-jwt", 900L);
-		when(jwtService.issueTokenPair(eq(EMAIL), eq(EMAIL), anyList(), eq(TENANT_ID), anyMap()))
+		when(jwtService.issueTokenPair(eq(USER_ID), eq(EMAIL), anyList(), eq(TENANT_ID), anyMap()))
 				.thenReturn(tokenPair);
 
 		AuthTokens tokens = authService.refresh("old-refresh-id");
@@ -160,6 +173,9 @@ class InternalAuthServiceImplTest {
 		assertEquals("new-access-token", tokens.accessToken());
 		assertEquals("new-refresh-id", tokens.refreshToken());
 		assertEquals(900L, tokens.expiresInSeconds());
+		// A missing tenant leaves out the tenant name claim instead of failing the refresh.
+		verify(jwtService).issueTokenPair(USER_ID, EMAIL, List.of(Role.ADMIN.name()), TENANT_ID,
+				Map.of(JwtService.GIVEN_NAME_CLAIM, "John", JwtService.FAMILY_NAME_CLAIM, "Doe"));
 		verify(auditEventPublisher).publishEvent(
 				argThat(event -> event.getEventType() == AuditEventType.APPLICATION_TOKEN_REFRESHED));
 	}

@@ -25,8 +25,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE,
-        path = ApiEndpoints.NEGOTIATION_V1)
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE, path = ApiEndpoints.NEGOTIATION_V1)
 @Slf4j
 public class ContractNegotiationAPIController {
 
@@ -105,7 +104,7 @@ public class ContractNegotiationAPIController {
      * @param contractRequestMessageRequest the request containing the target connector and offer details
      * @return ResponseEntity
      */
-    @PostMapping(path = "/request")
+    @PostMapping(path = "/request", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GenericApiResponse<JsonNode>> sendContractRequestMessage(@RequestBody JsonNode contractRequestMessageRequest) {
         log.info("Sending contract request message");
         ContractNegotiation response = apiService.sendContractRequestMessage(contractRequestMessageRequest);
@@ -120,7 +119,7 @@ public class ContractNegotiationAPIController {
      * @param counteroffer the counteroffer
      * @return ResponseEntity
      */
-    @PutMapping(path = "/{contractNegotiationId}/request")
+    @PutMapping(path = "/{contractNegotiationId}/request", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GenericApiResponse<JsonNode>> sendContractRequestMessageAsCounteroffer(@PathVariable String contractNegotiationId,
                                                                                                  @RequestBody JsonNode counteroffer) {
         log.info("Sending contract request message as counteroffer");
@@ -135,7 +134,7 @@ public class ContractNegotiationAPIController {
      * @param contractNegotiationId the ID of the contract negotiation to accept
      * @return ResponseEntity
      */
-    @PutMapping(path = "/{contractNegotiationId}/accept")
+    @PutMapping(path = "/{contractNegotiationId}/accept", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GenericApiResponse<JsonNode>> sendContractNegotiationEventMessageAccepted(@PathVariable String contractNegotiationId) {
         log.info("Handling contract negotiation accepted by consumer");
         ContractNegotiation contractNegotiationApproved = apiService.sendContractNegotiationEventMessageAccepted(contractNegotiationId);
@@ -150,7 +149,7 @@ public class ContractNegotiationAPIController {
      * @param contractNegotiationId the ID of the contract negotiation to verify
      * @return ResponseEntity
      */
-    @PutMapping(path = "/{contractNegotiationId}/verify")
+    @PutMapping(path = "/{contractNegotiationId}/verify", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GenericApiResponse<Void>> sendContractAgreementVerificationMessage(@PathVariable String contractNegotiationId) {
         log.info("Manual handling for verification message");
 
@@ -167,7 +166,7 @@ public class ContractNegotiationAPIController {
      * @param contractOfferMessageRequest the request containing the target connector and offer details
      * @return ResponseEntity
      */
-    @PostMapping(path = "/offer")
+    @PostMapping(path = "/offer", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GenericApiResponse<JsonNode>> sendContractOfferMessage(@RequestBody JsonNode contractOfferMessageRequest) {
         ContractNegotiation response = apiService.sendContractOfferMessage(contractOfferMessageRequest);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
@@ -181,7 +180,7 @@ public class ContractNegotiationAPIController {
      * @param counteroffer the counteroffer
      * @return ResponseEntity
      */
-    @PutMapping(path = "/{contractNegotiationId}/offer")
+    @PutMapping(path = "/{contractNegotiationId}/offer", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GenericApiResponse<JsonNode>> sendContractOfferMessageAsCounteroffer(@PathVariable String contractNegotiationId,
                                                                                                @RequestBody JsonNode counteroffer) {
         ContractNegotiation response = apiService.sendContractOfferMessageAsCounteroffer(contractNegotiationId, counteroffer);
@@ -195,7 +194,7 @@ public class ContractNegotiationAPIController {
      * @param contractNegotiationId the ID of the contract negotiation to agree to
      * @return ResponseEntity
      */
-    @PutMapping(path = "/{contractNegotiationId}/agree")
+    @PutMapping(path = "/{contractNegotiationId}/agree", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GenericApiResponse<JsonNode>> sendContractAgreementMessage(@PathVariable String contractNegotiationId) {
         log.info("Handling contract negotiation agreed");
         ContractNegotiation contractNegotiationAgreed = apiService.sendContractAgreementMessage(contractNegotiationId);
@@ -210,7 +209,7 @@ public class ContractNegotiationAPIController {
      * @param contractNegotiationId the ID of the contract negotiation to finalize
      * @return ResponseEntity
      */
-    @PutMapping(path = "/{contractNegotiationId}/finalize")
+    @PutMapping(path = "/{contractNegotiationId}/finalize", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GenericApiResponse<Void>> sendContractNegotiationEventMessageFinalize(@PathVariable String contractNegotiationId) {
         apiService.sendContractNegotiationEventMessageFinalize(contractNegotiationId);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
@@ -223,7 +222,7 @@ public class ContractNegotiationAPIController {
      * @param contractNegotiationId the ID of the contract negotiation to terminate
      * @return ResponseEntity
      */
-    @PutMapping(path = "/{contractNegotiationId}/terminate")
+    @PutMapping(path = "/{contractNegotiationId}/terminate", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GenericApiResponse<JsonNode>> sendContractNegotiationTerminationMessage(@PathVariable String contractNegotiationId) {
         log.info("Handling contract negotiation approved");
         ContractNegotiation contractNegotiationTerminated = apiService.sendContractNegotiationTerminationMessage(contractNegotiationId);

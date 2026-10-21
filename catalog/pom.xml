@@ -12,6 +12,10 @@
 	<name>Catalog business logic</name>
 	<description>Catalog business logic</description>
 
+	<properties>
+		<openapi.examples.generator>it.eng.catalog.openapi.OpenApiExamplesGenerator</openapi.examples.generator>
+	</properties>
+
 	<dependencies>
 		<dependency>
 			<groupId>it.eng</groupId>
@@ -63,6 +67,10 @@
 	
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>

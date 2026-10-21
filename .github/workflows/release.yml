@@ -98,28 +98,46 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ env.TOKEN }}
 
-      - name: Bump develop to next snapshot version
+      - name: Merge main into develop and bump to next snapshot version
         shell: bash -l {0}
         run: |
           # Calculate next version (increment patch version)
           CURRENT_VERSION="${{ github.event.inputs.releaseVersion }}"
           NEXT_VERSION=$(echo "$CURRENT_VERSION" | awk -F. -v OFS=. '{$NF++;print}')
           NEXT_SNAPSHOT="${NEXT_VERSION}-SNAPSHOT"
-          
+
           echo "Current release version: $CURRENT_VERSION"
           echo "Next snapshot version: $NEXT_SNAPSHOT"
-          
+
           # Switch to develop branch
-          git fetch origin develop
+          git fetch origin main develop
           git checkout develop
           git pull origin develop
-          
-          # Set next snapshot version
-          mvn versions:set-property -Dproperty=revision -DnewVersion=$NEXT_SNAPSHOT
-          
-          # Commit and push to develop
-          git add pom.xml
-          git commit -m "Bump version to $NEXT_SNAPSHOT after release $CURRENT_VERSION"
+
+          # Guard: only run this merge-back when this job is releasing from main,
+          # i.e. main actually contains the release commit/tag just created.
+          # This keeps main's release history as a real ancestor of develop and
+          # prevents the recurring pom.xml (revision) merge conflict on future
+          # main <-> develop merges.
+          if ! git merge-base --is-ancestor origin/main develop 2>/dev/null; then
+            # Merge main into develop, allowing the expected pom.xml conflict
+            # on the revision property to surface so it can be force-resolved.
+            git merge origin/main --no-commit --no-ff || true
+
+            # Force-resolve any conflicts (expected on pom.xml) by discarding
+            # develop's stale snapshot value and setting the next snapshot
+            # version explicitly, so the resulting merge commit is deterministic.
+            mvn versions:set-property -Dproperty=revision -DnewVersion=$NEXT_SNAPSHOT
+            git add -A
+            git commit -m "Merge main into develop after release $CURRENT_VERSION, bump to $NEXT_SNAPSHOT"
+          else
+            # main is already merged into develop (e.g. re-run); just set the
+            # next snapshot version without attempting another merge.
+            mvn versions:set-property -Dproperty=revision -DnewVersion=$NEXT_SNAPSHOT
+            git add pom.xml
+            git commit -m "Bump version to $NEXT_SNAPSHOT after release $CURRENT_VERSION"
+          fi
+
           git push origin develop
-          
-          echo "✅ Develop branch updated to $NEXT_SNAPSHOT"
+
+          echo "✅ Develop branch updated to $NEXT_SNAPSHOT (merged main, release $CURRENT_VERSION)"

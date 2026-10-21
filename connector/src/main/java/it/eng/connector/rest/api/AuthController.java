@@ -45,7 +45,6 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping(
-        consumes = MediaType.APPLICATION_JSON_VALUE,
         produces = MediaType.APPLICATION_JSON_VALUE,
         path = ApiEndpoints.AUTH_V1)
 @Slf4j
@@ -72,7 +71,7 @@ public class AuthController {
      * @param request the login credentials
      * @return 200 OK with the issued {@link LoginResponse}
      */
-    @PostMapping(path = "/login")
+    @PostMapping(path = "/login", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
         validate(request);
         log.debug("Login attempt for email {}", request.email());
@@ -87,7 +86,7 @@ public class AuthController {
      * @param request the refresh token to rotate
      * @return 200 OK with a newly issued {@link LoginResponse}
      */
-    @PostMapping(path = "/refresh")
+    @PostMapping(path = "/refresh", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<LoginResponse> refresh(@RequestBody RefreshRequest request) {
         validate(request);
         AuthService.AuthTokens tokens = authService.refresh(request.refreshToken());
@@ -102,7 +101,7 @@ public class AuthController {
      * @param request the refresh token to revoke
      * @return 200 OK with an empty body
      */
-    @PostMapping(path = "/logout")
+    @PostMapping(path = "/logout", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Void> logout(@RequestBody LogoutRequest request) {
         validate(request);
         authService.logout(request.refreshToken());

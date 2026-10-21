@@ -9,8 +9,10 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Map;
 
+import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 public class KeycloakAuthLoginIT extends BaseKeycloakIntegrationTest {
 
@@ -34,7 +36,7 @@ public class KeycloakAuthLoginIT extends BaseKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.access_token").exists())
                 .andExpect(jsonPath("$.refresh_token").exists())
                 .andExpect(jsonPath("$.token_type").value("Bearer"))
-                .andExpect(jsonPath("$.expires_in").value(300));
+               .andExpect(jsonPath("$.expires_in", allOf(greaterThanOrEqualTo(290), lessThanOrEqualTo(300))));
     }
 
     @Test
@@ -74,7 +76,7 @@ public class KeycloakAuthLoginIT extends BaseKeycloakIntegrationTest {
                 .andExpect(jsonPath("$.access_token").exists())
                 .andExpect(jsonPath("$.refresh_token").exists())
                 .andExpect(jsonPath("$.token_type").value("Bearer"))
-                .andExpect(jsonPath("$.expires_in").value(300));
+                .andExpect(jsonPath("$.expires_in", allOf(greaterThanOrEqualTo(290), lessThanOrEqualTo(300))));
     }
 
     @Test

@@ -60,7 +60,7 @@ public class DistributionAPIControllerTest {
     @Test
     @DisplayName("Save distribution - success")
     public void saveDistribution_success() {
-        String distribution = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DISTRIBUTION);
+        JsonNode distribution = CatalogSerializer.serializePlainJsonNode(CatalogMockObjectUtil.DISTRIBUTION);
         when(distributionService.saveDistribution(any())).thenReturn(CatalogMockObjectUtil.DISTRIBUTION);
         ResponseEntity<GenericApiResponse<JsonNode>> response = distributionAPIController.saveDistribution(distribution);
 
@@ -84,7 +84,7 @@ public class DistributionAPIControllerTest {
     @Test
     @DisplayName("Update distribution - success")
     public void updateDistribution_success() {
-        String distribution = CatalogSerializer.serializePlain(CatalogMockObjectUtil.DISTRIBUTION_FOR_UPDATE);
+        JsonNode distribution = CatalogSerializer.serializePlainJsonNode(CatalogMockObjectUtil.DISTRIBUTION_FOR_UPDATE);
         when(distributionService.updateDistribution(any(String.class), any())).thenReturn(CatalogMockObjectUtil.DISTRIBUTION_FOR_UPDATE);
         ResponseEntity<GenericApiResponse<JsonNode>> response = distributionAPIController.updateDistribution(CatalogMockObjectUtil.DISTRIBUTION_FOR_UPDATE.getId(), distribution);
 
@@ -96,4 +96,3 @@ public class DistributionAPIControllerTest {
 
     }
 }
-
