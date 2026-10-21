@@ -240,4 +240,4 @@ Commit and push the feature branch, create a PR against `develop` with summary a
 
 ### Restrictions
 
-- do not include files in docs/supoerpowers/** directory, they are important only during implementation, and they should not be commited with other files.
+- do not include files in docs/superpowers/** directory, they are important only during implementation, and they should not be commited with other files.
