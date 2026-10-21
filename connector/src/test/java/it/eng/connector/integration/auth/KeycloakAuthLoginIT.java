@@ -9,6 +9,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Map;
 
+import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -34,9 +35,8 @@ public class KeycloakAuthLoginIT extends BaseKeycloakIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.access_token").exists())
                 .andExpect(jsonPath("$.refresh_token").exists())
-                .andExpect(jsonPath("$.token_type").value("Bearer"));
-        // Running in GHA sometimes fails with the following error: 38 JSON path "$.expires_in" expected:<300> but was:<299>
-//                .andExpect(jsonPath("$.expires_in").value(300));
+                .andExpect(jsonPath("$.token_type").value("Bearer"))
+               .andExpect(jsonPath("$.expires_in", allOf(greaterThanOrEqualTo(290), lessThanOrEqualTo(300))));
     }
 
     @Test
@@ -75,8 +75,8 @@ public class KeycloakAuthLoginIT extends BaseKeycloakIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.access_token").exists())
                 .andExpect(jsonPath("$.refresh_token").exists())
-                .andExpect(jsonPath("$.token_type").value("Bearer"));
-//                .andExpect(jsonPath("$.expires_in").value(300));
+                .andExpect(jsonPath("$.token_type").value("Bearer"))
+                .andExpect(jsonPath("$.expires_in", allOf(greaterThanOrEqualTo(290), lessThanOrEqualTo(300))));
     }
 
     @Test
