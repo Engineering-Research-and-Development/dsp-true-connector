@@ -102,43 +102,26 @@ keycloak.credentials.secret=dsp-connector-consumer-secret
 
 ### Bundled Realm
 
-Realm export: `ci/docker/keycloak_resources/realm-dsp-connector.json`
+The Keycloak in `connector/docker-compose.yml` (profile `keycloak`, `http://localhost:8180`) imports every realm in `ci/docker/keycloak_resources/` on first start:
 
-| Item | Value |
-|------|-------|
-| Realm name | `dsp-connector` |
-| Keycloak URL | `http://localhost:8180` |
-| Consumer client | `dsp-connector-consumer-backend` / `dsp-connector-consumer-secret` |
-| Provider client | `dsp-connector-provider-backend` / `dsp-connector-provider-secret` |
-| UI client (public) | `dsp-connector-ui` |
-| Admin user | `admin@test.com` → `ROLE_ADMIN` |
-| Connector user | `connector@test.com` → `ROLE_CONNECTOR` |
+| Realm file | Realm | Users (username / password) |
+|------------|-------|-----------------------------|
+| `master-realm.json` | `master` | `admin` / `admin` |
+| `endurance-platform-realm.json` | `endurance-platform` | `test-authority`, `test-operator`, `test-service`, `test-tech` |
+| `tenant-Engineering-realm.json` | `tenant-Engineering` | `igor` |
+| `tenant-acme-realm.json` | `tenant-acme` | `coyote` / `coyote` (`operator-engineering`), `roadrunner` / `roadrunner` (`operator-analyst`) |
+
+Tenant realms issue tokens with an `org` claim (the tenant name) through the public `keycloak-api` client.
 
 ### Getting Tokens
 
-**Password grant (interactive login):**
+**Password grant (tenant user):**
 ```bash
-curl -X POST http://localhost:8180/realms/dsp-connector/protocol/openid-connect/token \
-  -d "client_id=dsp-connector-ui" \
-  -d "username=admin@test.com" \
-  -d "password=admin123" \
+curl -X POST http://localhost:8180/realms/tenant-acme/protocol/openid-connect/token \
+  -d "client_id=keycloak-api" \
+  -d "username=coyote" \
+  -d "password=coyote" \
   -d "grant_type=password"
-```
-
-**Client credentials (service account — consumer):**
-```bash
-curl -X POST http://localhost:8180/realms/dsp-connector/protocol/openid-connect/token \
-  -d "client_id=dsp-connector-consumer-backend" \
-  -d "client_secret=dsp-connector-consumer-secret" \
-  -d "grant_type=client_credentials"
-```
-
-**Client credentials (service account — provider):**
-```bash
-curl -X POST http://localhost:8180/realms/dsp-connector/protocol/openid-connect/token \
-  -d "client_id=dsp-connector-provider-backend" \
-  -d "client_secret=dsp-connector-provider-secret" \
-  -d "grant_type=client_credentials"
 ```
 
 Use the returned `access_token` as: `Authorization: Bearer <token>`
