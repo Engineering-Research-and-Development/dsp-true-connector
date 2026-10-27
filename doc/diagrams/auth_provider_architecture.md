@@ -355,8 +355,7 @@ connector/src/main/java/it/eng/connector/configuration/
 │  ┌──────────────────────────────────────────┐                   │
 │  │  Keycloak  (Port: 8180)                  │                   │
 │  │  Realm: dsp-connector                    │                   │
-│  │  Clients: consumer-backend,              │                   │
-│  │           provider-backend               │                   │
+│  │  Client: dsp-connector-backend           │                   │
 │  └──────────┬──────────────────────┬────────┘                   │
 │             │ JWT (ROLE_ADMIN/     │ JWT (ROLE_CONNECTOR)       │
 │             │  ROLE_CONNECTOR)     │                            │
@@ -404,8 +403,8 @@ spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://localhost:8180/real
 
 keycloak.auth-server-url=http://localhost:8180
 keycloak.realm=dsp-connector
-keycloak.resource=dsp-connector-consumer-backend
-keycloak.credentials.secret=dsp-connector-consumer-secret
+keycloak.resource=dsp-connector-backend
+keycloak.credentials.secret=dsp-connector-backend-secret
 ```
 
 `/api/v1/users` returns **404** in this mode — user management is handled in the Keycloak Admin Console.

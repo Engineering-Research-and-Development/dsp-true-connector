@@ -172,8 +172,8 @@ application.keycloak.login.logout-url=http://localhost:8180/realms/dsp-connector
 # --- Backend service-account client: used ONLY by KeycloakAuthenticationService for
 # --- connector-to-connector (M2M) protocol calls (ROLE_CONNECTOR), via client-credentials grant.
 # --- Confidential client - requires a client secret.
-application.keycloak.backend.client-id=dsp-connector-consumer-backend
-application.keycloak.backend.client-secret=dsp-connector-consumer-secret
+application.keycloak.backend.client-id=dsp-connector-backend
+application.keycloak.backend.client-secret=dsp-connector-backend-secret
 application.keycloak.backend.token-url=http://localhost:8180/realms/dsp-connector/protocol/openid-connect/token
 application.keycloak.backend.token-caching=true
 ```

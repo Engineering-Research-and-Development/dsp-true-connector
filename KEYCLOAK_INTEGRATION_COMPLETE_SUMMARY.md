@@ -96,32 +96,42 @@ spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://localhost:8180/real
 # Outbound authentication (connector-to-connector client credentials flow)
 keycloak.auth-server-url=http://localhost:8180
 keycloak.realm=dsp-connector
-keycloak.resource=dsp-connector-consumer-backend
-keycloak.credentials.secret=dsp-connector-consumer-secret
+keycloak.resource=dsp-connector-backend
+keycloak.credentials.secret=dsp-connector-backend-secret
 ```
 
-### Bundled Realm
+### Bundled Realms
 
-The Keycloak in `connector/docker-compose.yml` (profile `keycloak`, `http://localhost:8180`) imports every realm in `ci/docker/keycloak_resources/` on first start:
+Realm exports in `ci/docker/keycloak_resources/`, one realm per file and one client per realm, imported on first start by the Keycloak in `connector/docker-compose.yml` (profile `keycloak`). The Keycloak admin console login is `admin` / `admin`. Keycloak URL: `http://localhost:8180`. The exports contain no signing keys; Keycloak generates them on import.
 
-| Realm file | Realm | Users (username / password) |
-|------------|-------|-----------------------------|
-| `master-realm.json` | `master` | `admin` / `admin` |
-| `endurance-platform-realm.json` | `endurance-platform` | `test-authority`, `test-operator`, `test-service`, `test-tech` |
-| `tenant-Engineering-realm.json` | `tenant-Engineering` | `igor` |
-| `tenant-acme-realm.json` | `tenant-acme` | `coyote` / `coyote` (`operator-engineering`), `roadrunner` / `roadrunner` (`operator-analyst`) |
+| Realm (file) | Purpose | Client | Credentials | Realm role |
+|------|---------|--------|-------------|------------|
+| `platform` (`platform-realm.json`) | Connector-to-connector (machine-to-machine) | `dsp-connector-backend` (confidential, client credentials grant; the one client every connector deployment uses) | client secret `dsp-connector-backend-secret` | `CONNECTOR` (service account) |
+| `connector-admin` (`connector-admin-realm.json`) | Super-admins (tenant and user management) | `keycloak-api` (public) | `superadmin@mail.com` / `password` | `SUPER_ADMIN` |
+| `tenant-Engineering` (`tenant-Engineering-realm.json`) | Tenant admins of the `Engineering` tenant | `keycloak-api` (public) | `admin` (`admin@mail.com`) / `password` | `ADMIN` |
+| `tenant-acme` (`tenant-acme-realm.json`) | Demo tenant (not used in tests) | `keycloak-api` (public) | `coyote` / `coyote`, `roadrunner` / `roadrunner` | `ADMIN` |
 
-Tenant realms issue tokens with an `org` claim (the tenant name) through the public `keycloak-api` client.
+All tokens carry `aud` `dsp-true-connector` and `realm_access.roles`. Tenant realm tokens also carry `org` and `tenant_id` (for example `Engineering` and `tenant-Engineering`); platform and super-admin tokens carry no tenant.
+
+The connector currently trusts a single issuer (`spring.security.oauth2.resourceserver.jwt.issuer-uri`), so only one of these realms is accepted at a time.
 
 ### Getting Tokens
 
-**Password grant (tenant user):**
+**Password grant (tenant admin or super-admin):**
 ```bash
-curl -X POST http://localhost:8180/realms/tenant-acme/protocol/openid-connect/token \
+curl -X POST http://localhost:8180/realms/tenant-Engineering/protocol/openid-connect/token \
   -d "client_id=keycloak-api" \
-  -d "username=coyote" \
-  -d "password=coyote" \
+  -d "username=admin" \
+  -d "password=password" \
   -d "grant_type=password"
+```
+
+**Client credentials grant (machine-to-machine):**
+```bash
+curl -X POST http://localhost:8180/realms/platform/protocol/openid-connect/token \
+  -d "client_id=dsp-connector-backend" \
+  -d "client_secret=dsp-connector-backend-secret" \
+  -d "grant_type=client_credentials"
 ```
 
 Use the returned `access_token` as: `Authorization: Bearer <token>`

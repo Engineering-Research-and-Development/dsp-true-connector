@@ -159,26 +159,14 @@
 			"enabled": true
 		},
 		{
-			"key": "KEYCLOAK_CLIENT_ID_PROVIDER_BACKEND",
-			"value": "dsp-connector-provider-backend",
+			"key": "KEYCLOAK_CLIENT_ID_BACKEND",
+			"value": "dsp-connector-backend",
 			"type": "default",
 			"enabled": true
 		},
 		{
-			"key": "KEYCLOAK_CLIENT_SECRET_PROVIDER",
-			"value": "dsp-connector-provider-secret",
-			"type": "default",
-			"enabled": true
-		},
-		{
-			"key": "KEYCLOAK_CLIENT_ID_CONSUMER_BACKEND",
-			"value": "dsp-connector-consumer-backend",
-			"type": "default",
-			"enabled": true
-		},
-		{
-			"key": "KEYCLOAK_CLIENT_SECRET_CONSUMER",
-			"value": "dsp-connector-consumer-secret",
+			"key": "KEYCLOAK_CLIENT_SECRET_BACKEND",
+			"value": "dsp-connector-backend-secret",
 			"type": "default",
 			"enabled": true
 		},
