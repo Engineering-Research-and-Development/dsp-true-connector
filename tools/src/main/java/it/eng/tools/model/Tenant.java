@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = Tenant.Builder.class)
 @JsonPropertyOrder({"id", "name", "description", "participantId",
-        "automaticNegotiation", "automaticTransfer", "enabled", "bucketName"})
+        "realm", "automaticNegotiation", "automaticTransfer", "enabled", "bucketName"})
 @Document(collection = "tenants")
 public class Tenant {
 
@@ -53,6 +53,8 @@ public class Tenant {
 
     @NotNull
     private String participantId;
+
+    private String realm;
 
     private boolean automaticNegotiation;
 
@@ -166,6 +168,17 @@ public class Tenant {
          */
         public Builder participantId(String participantId) {
             tenant.participantId = participantId;
+            return this;
+        }
+
+        /**
+         * Sets the optional Keycloak realm for this tenant.
+         *
+         * @param realm the Keycloak realm
+         * @return this builder
+         */
+        public Builder realm(String realm) {
+            tenant.realm = realm;
             return this;
         }
 

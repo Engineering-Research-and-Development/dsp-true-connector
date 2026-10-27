@@ -7,6 +7,9 @@ tags:
       tenant-scoped management APIs, a super-admin can pass X-Tenant-Id to scope a request to
       one tenant; without it, super-admin requests are not tenant-scoped. A regular tenant admin
       uses the tenant in their authenticated identity and cannot override it with this header.
+  PublicTenantInfoController:
+    name: Public Tenant Information
+    description: Unauthenticated public information for enabled tenants.
   AuditEventController:
     name: Audit Events
     description: Browse tenant-scoped audit events and event types.
@@ -15,6 +18,13 @@ tags:
     description: Read and update runtime application properties.
 
 operations:
+  getPublicTenantInfo:
+    summary: Get public tenant information
+    description: >-
+      GET /public/tenant returns public information for enabled tenants. Each response item
+      contains only the tenant name and realm fields. The realm may be null for legacy or
+      unconfigured tenant records.
+
   getAllTenants:
     summary: List tenants
     description: >-

@@ -73,6 +73,16 @@ class TenantServiceTest {
                 .build();
     }
 
+    private Tenant buildTenantWithRealm(boolean enabled, String realm) {
+        return Tenant.Builder.newInstance()
+                .id(TENANT_ID)
+                .name("Engineering")
+                .participantId("urn:connector:engineering")
+                .realm(realm)
+                .enabled(enabled)
+                .build();
+    }
+
     private Tenant buildTenantWithBucket(boolean enabled, String bucketName) {
         return Tenant.Builder.newInstance()
                 .id(TENANT_ID)
@@ -94,6 +104,18 @@ class TenantServiceTest {
         assertNotNull(result);
         assertEquals(TENANT_ID, result.getId());
         assertTrue(result.isEnabled());
+    }
+
+    @Test
+    @DisplayName("findEnabledTenants returns enabled tenants from the repository")
+    void findEnabledTenants_returnsRepositoryResult() {
+        List<Tenant> enabledTenants = List.of(buildTenant(true));
+        when(tenantRepository.findByEnabled(true)).thenReturn(enabledTenants);
+
+        List<Tenant> result = tenantService.findEnabledTenants();
+
+        assertSame(enabledTenants, result);
+        verify(tenantRepository).findByEnabled(true);
     }
 
     @Test
@@ -179,7 +201,7 @@ class TenantServiceTest {
     @Test
     @DisplayName("saveTenant preserves caller-supplied fields")
     void saveTenant_preservesOtherFields() {
-        Tenant input = buildTenant(true);
+        Tenant input = buildTenantWithRealm(true, "engineering-realm");
         when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
                 .thenReturn(BucketProvisioningMode.AUTOMATIC);
         when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.empty());
@@ -192,6 +214,7 @@ class TenantServiceTest {
 
         assertEquals("Engineering", result.getName());
         assertEquals("urn:connector:engineering", result.getParticipantId());
+        assertEquals("engineering-realm", result.getRealm());
         assertTrue(result.isEnabled());
     }
 
@@ -288,13 +311,14 @@ class TenantServiceTest {
     @Test
     @DisplayName("enableTenant sets enabled=true, saves, and publishes TENANT_ENABLED")
     void enableTenant_success() {
-        Tenant disabled = buildTenant(false);
+        Tenant disabled = buildTenantWithRealm(false, "engineering-realm");
         when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(disabled));
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Tenant result = tenantService.enableTenant(TENANT_ID);
 
         assertTrue(result.isEnabled());
+        assertEquals("engineering-realm", result.getRealm());
         ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
         verify(auditEventPublisher).publishEvent(captor.capture());
         assertEquals(AuditEventType.TENANT_ENABLED, captor.getValue().getEventType());
@@ -303,13 +327,14 @@ class TenantServiceTest {
     @Test
     @DisplayName("disableTenant sets enabled=false, saves, and publishes TENANT_DISABLED")
     void disableTenant_success() {
-        Tenant enabled = buildTenant(true);
+        Tenant enabled = buildTenantWithRealm(true, "engineering-realm");
         when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(enabled));
         when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
 
         Tenant result = tenantService.disableTenant(TENANT_ID);
 
         assertFalse(result.isEnabled());
+        assertEquals("engineering-realm", result.getRealm());
         ArgumentCaptor<AuditEvent> captor = ArgumentCaptor.forClass(AuditEvent.class);
         verify(auditEventPublisher).publishEvent(captor.capture());
         assertEquals(AuditEventType.TENANT_DISABLED, captor.getValue().getEventType());
@@ -339,6 +364,45 @@ class TenantServiceTest {
         assertEquals(existingParticipantId, result.getParticipantId(),
                 "participantId must remain unchanged regardless of update body");
         assertEquals("New Name", result.getName());
+    }
+
+    @Test
+    @DisplayName("updateTenant preserves existing realm when the update omits it")
+    void updateTenant_preservesRealmWhenOmitted() {
+        Tenant existing = buildTenantWithRealm(true, "existing-realm");
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(BucketProvisioningMode.AUTOMATIC);
+        Tenant updates = Tenant.Builder.newInstance()
+                .id(TENANT_ID)
+                .name("Updated Engineering")
+                .participantId(existing.getParticipantId())
+                .build();
+
+        Tenant result = tenantService.updateTenant(TENANT_ID, updates);
+
+        assertEquals("existing-realm", result.getRealm());
+    }
+
+    @Test
+    @DisplayName("updateTenant replaces existing realm when a new realm is supplied")
+    void updateTenant_replacesRealmWhenSupplied() {
+        Tenant existing = buildTenantWithRealm(true, "existing-realm");
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(existing));
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(BucketProvisioningMode.AUTOMATIC);
+        Tenant updates = Tenant.Builder.newInstance()
+                .id(TENANT_ID)
+                .name("Updated Engineering")
+                .participantId(existing.getParticipantId())
+                .realm("updated-realm")
+                .build();
+
+        Tenant result = tenantService.updateTenant(TENANT_ID, updates);
+
+        assertEquals("updated-realm", result.getRealm());
     }
 
     @Test

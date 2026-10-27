@@ -2,10 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.8-SNAPSHOT] - 26.10.2026. - Keycloak multi realm support
+
+### Added
+- Unauthenticated `GET /public/tenant` endpoint exposing the name and realm of enabled tenants; tenant seed data now includes tenant realms.
+- Seed data for Keycloak, containing 2 realms: `tenant-Engineering` (the default tenant) and `tenant-acme` (the live demo tenant).
+Each realm has its own users, roles, and clients. The connector trusts only the tenant realm as the issuer of JWTs, so Keycloak integration tests that use platform or super-admin tokens fail until multi-issuer support is added.
+- Added connector-admin realm for super-admin users, with a single user
+- Added platform realm for machine-to-machine clients, with a single client
+
 ## [0.7.6-SNAPSHOT] - 21.10.2026. - Release process fix
 
 ### Changed
 - Updated release.yml script to do merge commit from main to develop after release process to avoid merge conflict later, when performing release (develop -> main)
+- Keycloak seed realms in `ci/docker/keycloak_resources` are split by purpose: `platform` (one machine-to-machine client `dsp-connector-backend` with `CONNECTOR`, client credentials grant, used by every connector deployment; it replaces `dsp-connector-consumer-backend` / `dsp-connector-provider-backend` in all connector configs and the Postman environment), `connector-admin` (super-admin `superadmin@mail.com` with `SUPER_ADMIN`, no tenant) and `tenant-Engineering` (tenant admin with `ADMIN`). Keycloak integration tests import these three realms and take each token from its own realm. The connector still trusts a single issuer (the tenant realm), so tests that use platform or super-admin tokens fail until multi-issuer support is added.
+- Keycloak seed realms no longer contain exported signing keys (private keys were readable by anyone with the repository); Keycloak generates new keys for each realm on import. `tenant-acme` (live demo realm) now uses only the `ADMIN` role and the same `connector-audience` scope and UI client settings as `tenant-Engineering`.
 
 ## [0.7.5] — Access token user claims
 

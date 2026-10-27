@@ -101,6 +101,15 @@ public class TenantService {
     }
 
     /**
+     * Finds all enabled tenants.
+     *
+     * @return the enabled tenants
+     */
+    public List<Tenant> findEnabledTenants() {
+        return tenantRepository.findByEnabled(true);
+    }
+
+    /**
      * Finds a tenant by ID regardless of its enabled state.
      *
      * @param tenantId the tenant identifier
@@ -187,6 +196,7 @@ public class TenantService {
                 .name(tenant.getName())
                 .description(tenant.getDescription())
                 .participantId(tenant.getParticipantId())
+                .realm(tenant.getRealm())
                 .automaticNegotiation(tenant.isAutomaticNegotiation())
                 .automaticTransfer(tenant.isAutomaticTransfer())
                 .enabled(tenant.isEnabled())
@@ -288,7 +298,7 @@ public class TenantService {
     }
 
     /**
-     * Updates the mutable settings of an existing tenant (name, description,
+     * Updates the mutable settings of an existing tenant (name, description, realm,
      * automaticNegotiation, automaticTransfer).
      *
      * <p>This overload preserves the historical update behavior and always applies
@@ -352,6 +362,7 @@ public class TenantService {
                 .name(updates.getName() != null ? updates.getName() : existing.getName())
                 .description(updates.getDescription() != null ? updates.getDescription() : existing.getDescription())
                 .participantId(existing.getParticipantId())  // immutable; any value in request body is silently ignored
+                .realm(updates.getRealm() != null ? updates.getRealm() : existing.getRealm())
                 .automaticNegotiation(updates.isAutomaticNegotiation())
                 .automaticTransfer(updates.isAutomaticTransfer())
                 .enabled(existing.isEnabled())
@@ -385,6 +396,7 @@ public class TenantService {
                 .name(source.getName())
                 .description(source.getDescription())
                 .participantId(source.getParticipantId())
+                .realm(source.getRealm())
                 .automaticNegotiation(source.isAutomaticNegotiation())
                 .automaticTransfer(source.isAutomaticTransfer())
                 .enabled(enabled)

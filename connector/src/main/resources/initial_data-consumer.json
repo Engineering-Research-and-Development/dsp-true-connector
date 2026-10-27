@@ -327,6 +327,7 @@
       "_class": "it.eng.tools.model.Tenant",
       "_id": "engineering",
       "name": "Engineering",
+      "realm": "tenant_Engineering",
       "description": "Default Engineering tenant",
       "participantId": "urn:connector:engineering",
       "callbackAddress": "http://localhost:8080/engineering",
