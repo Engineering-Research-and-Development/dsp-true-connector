@@ -18,6 +18,7 @@ public class TenantUpdateRequest {
 
     private String name;
     private String description;
+    private String realm;
     private boolean automaticNegotiation;
     private boolean automaticTransfer;
     private String bucketName;
@@ -36,6 +37,7 @@ public class TenantUpdateRequest {
                 .id(existingTenant.getId())
                 .name(name != null ? name : existingTenant.getName())
                 .participantId(existingTenant.getParticipantId())
+                .realm(realm != null ? realm : existingTenant.getRealm())
                 .description(description)
                 .automaticNegotiation(automaticNegotiation)
                 .automaticTransfer(automaticTransfer)
@@ -97,6 +99,17 @@ public class TenantUpdateRequest {
          */
         public Builder description(String description) {
             request.description = description;
+            return this;
+        }
+
+        /**
+         * Sets the optional Keycloak realm.
+         *
+         * @param realm the Keycloak realm
+         * @return this builder
+         */
+        public Builder realm(String realm) {
+            request.realm = realm;
             return this;
         }
 

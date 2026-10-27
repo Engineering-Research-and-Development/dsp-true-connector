@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.8-SNAPSHOT] - 26.10.2026. - Keycloak multi realm support
+
+### Added
+- Unauthenticated `GET /public/tenant` endpoint exposing the name and realm of enabled tenants; tenant seed data now includes tenant realms.
+- Seed data for Keycloak, containing 2 realms: `tenant-Engineering` (the default tenant) and `tenant-acme` (the live demo tenant).
+Each realm has its own users, roles, and clients. The connector trusts only the tenant realm as the issuer of JWTs, so Keycloak integration tests that use platform or super-admin tokens fail until multi-issuer support is added.
+- Added connector-admin realm for super-admin users, with a single user
+- Added platform realm for machine-to-machine clients, with a single client
+
 ## [0.7.6-SNAPSHOT] - 21.10.2026. - Release process fix
 
 ### Changed

@@ -38,6 +38,24 @@ class TenantUpdateRequestTest {
     }
 
     @Test
+    @DisplayName("TenantUpdateRequest toTenantUpdates maps a supplied realm")
+    void toTenantUpdates_mapsSuppliedRealm() {
+        TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance()
+                .realm("updated-realm")
+                .build();
+        Tenant existing = Tenant.Builder.newInstance()
+                .id("tenant-id")
+                .name("Existing name")
+                .participantId("urn:connector:tenant")
+                .realm("existing-realm")
+                .build();
+
+        Tenant updates = request.toTenantUpdates(existing);
+
+        assertEquals("updated-realm", updates.getRealm());
+    }
+
+    @Test
     @DisplayName("TenantUpdateRequest toCredentialsRequest maps optional credentials")
     void toCredentialsRequest_mapsCredentialsFields() {
         TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance()
@@ -74,6 +92,7 @@ class TenantUpdateRequestTest {
                 .id("tenant-id")
                 .name("Existing name")
                 .participantId("urn:connector:tenant")
+                .realm("existing-realm")
                 .automaticNegotiation(false)
                 .automaticTransfer(false)
                 .enabled(true)
@@ -88,5 +107,6 @@ class TenantUpdateRequestTest {
 
         assertEquals("Existing name", updates.getName());
         assertEquals("Only description changes", updates.getDescription());
+        assertEquals("existing-realm", updates.getRealm());
     }
 }

@@ -397,6 +397,7 @@
       "_class": "it.eng.tools.model.Tenant",
       "_id": "engineering-tenant-b",
       "name": "Engineering Connector B",
+      "realm": "tenant_Engineering Connector B",
       "description": "Default Engineering tenant",
       "participantId": "urn:connector:engineering-tenant-b",
       "bucketName": "dsp-true-connector-tenant-b",
