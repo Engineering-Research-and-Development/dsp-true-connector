@@ -2502,6 +2502,7 @@
     {
       "_id": "engineering",
       "name": "Engineering",
+      "realm": "tenant_Engineering",
       "description": "Engineering tenant",
       "participantId": "urn:connector:engineering",
       "enabled": true,

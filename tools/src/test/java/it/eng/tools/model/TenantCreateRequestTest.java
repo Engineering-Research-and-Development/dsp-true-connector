@@ -17,6 +17,7 @@ class TenantCreateRequestTest {
                 .id("tenant-a")
                 .name("Tenant A")
                 .description("Description")
+                .realm("tenant-realm")
                 .participantId("urn:connector:tenant-a")
                 .automaticNegotiation(true)
                 .automaticTransfer(false)
@@ -32,6 +33,7 @@ class TenantCreateRequestTest {
         assertEquals("tenant-a", tenant.getId());
         assertEquals("Tenant A", tenant.getName());
         assertEquals("Description", tenant.getDescription());
+        assertEquals("tenant-realm", tenant.getRealm());
         assertEquals("urn:connector:tenant-a", tenant.getParticipantId());
         assertTrue(tenant.isAutomaticNegotiation());
         assertFalse(tenant.isAutomaticTransfer());

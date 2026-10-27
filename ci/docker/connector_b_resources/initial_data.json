@@ -396,6 +396,7 @@
     {
       "_id": "connector_b_tenant_id",
       "name": "Engineering",
+      "realm": "tenant_Engineering",
       "description": "Engineering tenant",
       "participantId": "urn:connector_b:engineering",
       "bucketName": "dsp-true-connector-b",

@@ -328,6 +328,7 @@
       "_class": "it.eng.tools.model.Tenant",
       "_id": "engineering-provider",
       "name": "Engineering",
+      "realm": "tenant_Engineering",
       "description": "Default Engineering Provider tenant",
       "participantId": "urn:connector:engineering-provider",
       "bucketName": "dsp-true-connector-provider",
