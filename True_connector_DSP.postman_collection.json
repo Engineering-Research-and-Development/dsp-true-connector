@@ -9,7 +9,7 @@
   },
   "item": [
     {
-      "description": "Keycloak token management requests matching the realm configuration.\r\n\r\nPassword Grant Requests (for users):\r\n- Admin User (admin@test.com)\r\n- Normal User (user@test.com)\r\n- Connector User (connector@test.com)\r\n\r\nClient Credentials Requests (for services):\r\n- Provider Backend Service\r\n- Consumer Backend Service\r\n\r\nAll requests automatically store tokens in both collection and environment variables.",
+      "description": "Keycloak token management requests matching the realm configuration.\r\n\r\nPassword Grant Requests (for users):\r\n- Admin User (admin@test.com)\r\n- Normal User (user@test.com)\r\n- Connector User (connector@test.com)\r\n\r\nClient Credentials Request (for services):\r\n- Connector backend client (one client used by every connector)\r\n\r\nAll requests automatically store tokens in both collection and environment variables.",
       "name": "Keycloak Authentication",
       "item": [
         {
@@ -280,12 +280,12 @@
                 {
                   "key": "client_id",
                   "type": "text",
-                  "value": "{{KEYCLOAK_CLIENT_ID_PROVIDER_BACKEND}}"
+                  "value": "{{KEYCLOAK_CLIENT_ID_BACKEND}}"
                 },
                 {
                   "key": "client_secret",
                   "type": "text",
-                  "value": "{{KEYCLOAK_CLIENT_SECRET_PROVIDER}}"
+                  "value": "{{KEYCLOAK_CLIENT_SECRET_BACKEND}}"
                 },
                 {
                   "key": "grant_type",
@@ -303,65 +303,7 @@
               }
             ]
           },
-          "name": "Get Token (Client Credentials - Provider)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
-                  "pm.test(\"JWT does not contain tenantId claim\", function () {",
-                  "    const payload = JSON.parse(atob(jsonData.access_token.split('.')[1]));",
-                  "    pm.expect(payload.tenantId).to.be.undefined;",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "response": []
-        },
-        {
-          "request": {
-            "url": {
-              "raw": "{{KEYCLOAK_TOKEN_URL}}",
-              "host": [
-                "{{KEYCLOAK_TOKEN_URL}}"
-              ],
-              "path": []
-            },
-            "method": "POST",
-            "body": {
-              "urlencoded": [
-                {
-                  "key": "client_id",
-                  "type": "text",
-                  "value": "{{KEYCLOAK_CLIENT_ID_CONSUMER_BACKEND}}"
-                },
-                {
-                  "key": "client_secret",
-                  "type": "text",
-                  "value": "{{KEYCLOAK_CLIENT_SECRET_CONSUMER}}"
-                },
-                {
-                  "key": "grant_type",
-                  "type": "text",
-                  "value": "client_credentials"
-                }
-              ],
-              "mode": "urlencoded"
-            },
-            "header": [
-              {
-                "key": "Content-Type",
-                "type": "text",
-                "value": "application/x-www-form-urlencoded"
-              }
-            ]
-          },
-          "name": "Get Token (Client Credentials - Consumer)",
+          "name": "Get Token (Client Credentials - Connector)",
           "event": [
             {
               "listen": "test",

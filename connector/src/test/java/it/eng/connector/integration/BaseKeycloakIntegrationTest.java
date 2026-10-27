@@ -44,8 +44,8 @@ public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
             "platform-realm.json", "connector-admin-realm.json", "tenant-Engineering-realm.json");
     private static final String REALM_FRONTEND_URL_ATTRIBUTE = "frontendUrl";
     private static final String KEYCLOAK_UI_CLIENT_ID = "keycloak-api";
-    private static final String KEYCLOAK_BACKEND_CLIENT_ID = "dsp-connector-consumer-backend";
-    private static final String KEYCLOAK_BACKEND_CLIENT_SECRET = "dsp-connector-consumer-secret";
+    private static final String KEYCLOAK_BACKEND_CLIENT_ID = "dsp-connector-backend";
+    private static final String KEYCLOAK_BACKEND_CLIENT_SECRET = "dsp-connector-backend-secret";
     private static final String KEYCLOAK_ADMIN_USERNAME = "admin";
     private static final String KEYCLOAK_ADMIN_PASSWORD = "password";
     private static final String KEYCLOAK_SUPER_ADMIN_USERNAME = "superadmin@mail.com";
