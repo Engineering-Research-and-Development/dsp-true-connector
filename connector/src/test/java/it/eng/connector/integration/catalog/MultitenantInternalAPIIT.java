@@ -1,7 +1,9 @@
 package it.eng.connector.integration.catalog;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import it.eng.catalog.model.*;
+import it.eng.catalog.model.Catalog;
+import it.eng.catalog.model.Dataset;
+import it.eng.catalog.model.Offer;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.repository.DataServiceRepository;
 import it.eng.catalog.repository.DatasetRepository;
@@ -9,8 +11,7 @@ import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
-
+import it.eng.tools.auth.internal.InternalCallTokenIssuer;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.ArtifactRepository;
@@ -21,16 +22,21 @@ import it.eng.tools.service.TenantContextHolder;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -40,17 +46,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * with separate catalogs, datasets, and S3 artifacts.  The tests assert that:
  * <ol>
  *   <li>The DSP protocol catalog endpoint returns only the requesting tenant's data.</li>
- *   <li>The dataset listing API is scoped to the tenant when {@value TenantContextHolder#HEADER_X_TENANT_ID}
- *       is present.</li>
- *   <li>Offer validation via {@code /api/v1/offers/validate} is tenant-scoped: an offer from
- *       tenant A is invalid when validated in the context of tenant B.</li>
+ *   <li>The dataset listing API is scoped to the tenant when a super-admin sends
+ *       {@value TenantContextHolder#HEADER_X_TENANT_ID}; a tenant user that sends it gets 403, and an unknown
+ *       tenant gets 400.</li>
+ *   <li>Offer validation via {@code /internal/v1/offers/validate} is scoped to the tenant carried in the
+ *       internal-call token: an offer from tenant A is invalid when validated for tenant B, and the
+ *       {@value TenantContextHolder#HEADER_X_TENANT_ID} header never changes the tenant.</li>
+ *   <li>Internal dataset lookups ({@code /internal/v1/datasets/...}) follow the token's tenant too, and a
+ *       token without a tenant runs with no tenant context.</li>
  * </ol>
  *
- * <p>These three paths cover all internal API call sites that were updated to propagate
- * {@value TenantContextHolder#HEADER_X_TENANT_ID}:
+ * <p>The internal paths cover every loopback call site:
  * <ul>
- *   <li>{@code ContractNegotiationProviderService} → {@code /api/v1/offers/validate}</li>
- *   <li>{@code sendInternalRequest} (datasets / artifact fetch / agreement enforce)</li>
+ *   <li>{@code ContractNegotiationProviderService} → {@code /internal/v1/offers/validate}</li>
+ *   <li>{@code sendInternalRequest} (dataset formats / artifact fetch / agreement enforce)</li>
  * </ul>
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -66,6 +75,7 @@ public class MultitenantInternalAPIIT extends BaseIntegrationTest {
     @Autowired private ArtifactRepository   artifactRepository;
     @Autowired private S3ClientService      s3ClientService;
     @Autowired private S3Properties         s3Properties;
+    @Autowired private InternalCallTokenIssuer internalCallTokenIssuer;
 
     private Catalog catalogAlpha;
     private Catalog catalogBeta;
@@ -125,7 +135,7 @@ public class MultitenantInternalAPIIT extends BaseIntegrationTest {
 
         MvcResult result = mockMvc.perform(
                         post("/" + TENANT_ALPHA + "/catalog/request")
-                                .with(user(TestUtil.CONNECTOR_USER).password("password").roles("CONNECTOR"))
+                                .with(user("connector").password("password").roles("CONNECTOR"))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(catalogJson))
                 .andExpect(status().isOk())
@@ -153,7 +163,7 @@ public class MultitenantInternalAPIIT extends BaseIntegrationTest {
 
         MvcResult result = mockMvc.perform(
                         post("/" + TENANT_BETA + "/catalog/request")
-                                .with(user(TestUtil.CONNECTOR_USER).password("password").roles("CONNECTOR"))
+                                .with(user("connector").password("password").roles("CONNECTOR"))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(catalogJson))
                 .andExpect(status().isOk())
@@ -183,7 +193,7 @@ public class MultitenantInternalAPIIT extends BaseIntegrationTest {
     void datasetAPI_withAlphaTenantHeader_returnsOnlyAlphaDataset() throws Exception {
         MvcResult result = mockMvc.perform(
                         get(ApiEndpoints.CATALOG_DATASETS_V1)
-                                .with(user("admin@mail.com").roles("ADMIN"))
+                                .with(user("superadmin@mail.com").roles("SUPER_ADMIN"))
                                 .header(TenantContextHolder.HEADER_X_TENANT_ID, TENANT_ALPHA)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -210,7 +220,7 @@ public class MultitenantInternalAPIIT extends BaseIntegrationTest {
     void datasetAPI_withBetaTenantHeader_returnsOnlyBetaDataset() throws Exception {
         MvcResult result = mockMvc.perform(
                         get(ApiEndpoints.CATALOG_DATASETS_V1)
-                                .with(user("admin@mail.com").roles("ADMIN"))
+                                .with(user("superadmin@mail.com").roles("SUPER_ADMIN"))
                                 .header(TenantContextHolder.HEADER_X_TENANT_ID, TENANT_BETA)
                                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
@@ -231,20 +241,47 @@ public class MultitenantInternalAPIIT extends BaseIntegrationTest {
         assertTrue(hasBeta,   "Beta dataset must be present for X-Tenant-Id: " + TENANT_BETA);
     }
 
+    @Test
+    @Order(4)
+    @DisplayName("GET /api/v1/datasets with X-Tenant-Id from a tenant user returns 403")
+    void datasetAPI_tenantUserWithTenantHeader_returnsForbidden() throws Exception {
+        mockMvc.perform(
+                        get(ApiEndpoints.CATALOG_DATASETS_V1)
+                                .with(jwt().jwt(token -> token.claim("tenant_id", TENANT_ALPHA))
+                                        .authorities(new SimpleGrantedAuthority("ROLE_ADMIN")))
+                                .header(TenantContextHolder.HEADER_X_TENANT_ID, TENANT_BETA)
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @Order(4)
+    @DisplayName("GET /api/v1/datasets with X-Tenant-Id of an unknown tenant from a super-admin returns 400")
+    void datasetAPI_superAdminWithUnknownTenantHeader_returnsBadRequest() throws Exception {
+        mockMvc.perform(
+                        get(ApiEndpoints.CATALOG_DATASETS_V1)
+                                .with(user("superadmin@mail.com").roles("SUPER_ADMIN"))
+                                .header(TenantContextHolder.HEADER_X_TENANT_ID, "tenant-unknown")
+                                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
     // -----------------------------------------------------------------------
     // Offer validation — the primary internal call site
     // -----------------------------------------------------------------------
 
     @Test
     @Order(5)
-    @DisplayName("POST /api/v1/offers/validate with X-Tenant-Id: alpha accepts alpha's offer")
-    void offerValidate_withAlphaTenantHeader_acceptsAlphaOffer() throws Exception {
+    @DisplayName("POST /internal/v1/offers/validate with a token for alpha accepts alpha's offer, whatever X-Tenant-Id says")
+    void offerValidate_withAlphaToken_acceptsAlphaOffer() throws Exception {
         Offer alphaOffer = getFirstOffer(datasetAlpha);
 
         mockMvc.perform(
-                        post(ApiEndpoints.CATALOG_OFFERS_V1 + "/validate")
-                                .with(user("admin@mail.com").roles("ADMIN"))
-                                .header(TenantContextHolder.HEADER_X_TENANT_ID, TENANT_ALPHA)
+                        post(ApiEndpoints.INTERNAL_OFFERS_V1 + "/validate")
+                                .header(HttpHeaders.AUTHORIZATION, internalCallTokenIssuer.authorizationHeader(TENANT_ALPHA))
+                                .header(TenantContextHolder.HEADER_X_TENANT_ID, TENANT_BETA)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(CatalogSerializer.serializePlain(alphaOffer)))
                 .andExpect(status().isOk());
@@ -252,14 +289,14 @@ public class MultitenantInternalAPIIT extends BaseIntegrationTest {
 
     @Test
     @Order(6)
-    @DisplayName("POST /api/v1/offers/validate with X-Tenant-Id: beta rejects alpha's offer")
-    void offerValidate_withBetaTenantHeader_rejectsAlphaOffer() throws Exception {
+    @DisplayName("POST /internal/v1/offers/validate with a token for beta rejects alpha's offer, whatever X-Tenant-Id says")
+    void offerValidate_withBetaToken_rejectsAlphaOffer() throws Exception {
         Offer alphaOffer = getFirstOffer(datasetAlpha);
 
         mockMvc.perform(
-                        post(ApiEndpoints.CATALOG_OFFERS_V1 + "/validate")
-                                .with(user("admin@mail.com").roles("ADMIN"))
-                                .header(TenantContextHolder.HEADER_X_TENANT_ID, TENANT_BETA)
+                        post(ApiEndpoints.INTERNAL_OFFERS_V1 + "/validate")
+                                .header(HttpHeaders.AUTHORIZATION, internalCallTokenIssuer.authorizationHeader(TENANT_BETA))
+                                .header(TenantContextHolder.HEADER_X_TENANT_ID, TENANT_ALPHA)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(CatalogSerializer.serializePlain(alphaOffer)))
                 .andExpect(status().isBadRequest());
@@ -267,14 +304,13 @@ public class MultitenantInternalAPIIT extends BaseIntegrationTest {
 
     @Test
     @Order(7)
-    @DisplayName("POST /api/v1/offers/validate with X-Tenant-Id: beta accepts beta's offer")
-    void offerValidate_withBetaTenantHeader_acceptsBetaOffer() throws Exception {
+    @DisplayName("POST /internal/v1/offers/validate with a token for beta accepts beta's offer")
+    void offerValidate_withBetaToken_acceptsBetaOffer() throws Exception {
         Offer betaOffer = getFirstOffer(datasetBeta);
 
         mockMvc.perform(
-                        post(ApiEndpoints.CATALOG_OFFERS_V1 + "/validate")
-                                .with(user("admin@mail.com").roles("ADMIN"))
-                                .header(TenantContextHolder.HEADER_X_TENANT_ID, TENANT_BETA)
+                        post(ApiEndpoints.INTERNAL_OFFERS_V1 + "/validate")
+                                .header(HttpHeaders.AUTHORIZATION, internalCallTokenIssuer.authorizationHeader(TENANT_BETA))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(CatalogSerializer.serializePlain(betaOffer)))
                 .andExpect(status().isOk());
@@ -282,17 +318,60 @@ public class MultitenantInternalAPIIT extends BaseIntegrationTest {
 
     @Test
     @Order(8)
-    @DisplayName("POST /api/v1/offers/validate with X-Tenant-Id: alpha rejects beta's offer")
-    void offerValidate_withAlphaTenantHeader_rejectsBetaOffer() throws Exception {
+    @DisplayName("POST /internal/v1/offers/validate with a token for alpha rejects beta's offer")
+    void offerValidate_withAlphaToken_rejectsBetaOffer() throws Exception {
         Offer betaOffer = getFirstOffer(datasetBeta);
 
         mockMvc.perform(
-                        post(ApiEndpoints.CATALOG_OFFERS_V1 + "/validate")
-                                .with(user("admin@mail.com").roles("ADMIN"))
-                                .header(TenantContextHolder.HEADER_X_TENANT_ID, TENANT_ALPHA)
+                        post(ApiEndpoints.INTERNAL_OFFERS_V1 + "/validate")
+                                .header(HttpHeaders.AUTHORIZATION, internalCallTokenIssuer.authorizationHeader(TENANT_ALPHA))
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(CatalogSerializer.serializePlain(betaOffer)))
                 .andExpect(status().isBadRequest());
+    }
+
+    // -----------------------------------------------------------------------
+    // Internal dataset lookups — tenant from the token only
+    // -----------------------------------------------------------------------
+
+    @Test
+    @Order(9)
+    @DisplayName("GET /internal/v1/datasets/{alpha}/formats with a token for alpha and X-Tenant-Id: beta returns alpha's formats")
+    void internalFormats_withAlphaTokenAndBetaHeader_seesAlphaDataset() throws Exception {
+        mockMvc.perform(
+                        get(ApiEndpoints.INTERNAL_DATASETS_V1 + "/" + datasetAlpha.getId() + "/formats")
+                                .header(HttpHeaders.AUTHORIZATION, internalCallTokenIssuer.authorizationHeader(TENANT_ALPHA))
+                                .header(TenantContextHolder.HEADER_X_TENANT_ID, TENANT_BETA))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @Order(10)
+    @DisplayName("GET /internal/v1/datasets/{beta}/formats with a token for alpha and X-Tenant-Id: beta returns 404")
+    void internalFormats_withAlphaTokenAndBetaHeader_doesNotSeeBetaDataset() throws Exception {
+        mockMvc.perform(
+                        get(ApiEndpoints.INTERNAL_DATASETS_V1 + "/" + datasetBeta.getId() + "/formats")
+                                .header(HttpHeaders.AUTHORIZATION, internalCallTokenIssuer.authorizationHeader(TENANT_ALPHA))
+                                .header(TenantContextHolder.HEADER_X_TENANT_ID, TENANT_BETA))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @Order(11)
+    @DisplayName("GET /internal/v1/datasets/{id}/artifact with a token without tenant runs with no tenant context, ignoring X-Tenant-Id")
+    void internalArtifact_withoutTenantToken_runsWithoutTenantContext() throws Exception {
+        // No tenant context: the lookup is not tenant-scoped, so both tenants' datasets resolve, and the
+        // header (which names the other tenant) is not applied.
+        mockMvc.perform(
+                        get(ApiEndpoints.INTERNAL_DATASETS_V1 + "/" + datasetAlpha.getId() + "/artifact")
+                                .header(HttpHeaders.AUTHORIZATION, internalCallTokenIssuer.authorizationHeader(null))
+                                .header(TenantContextHolder.HEADER_X_TENANT_ID, TENANT_BETA))
+                .andExpect(status().isOk());
+        mockMvc.perform(
+                        get(ApiEndpoints.INTERNAL_DATASETS_V1 + "/" + datasetBeta.getId() + "/artifact")
+                                .header(HttpHeaders.AUTHORIZATION, internalCallTokenIssuer.authorizationHeader(null))
+                                .header(TenantContextHolder.HEADER_X_TENANT_ID, TENANT_ALPHA))
+                .andExpect(status().isOk());
     }
 
     // -----------------------------------------------------------------------

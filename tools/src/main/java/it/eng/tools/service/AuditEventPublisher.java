@@ -83,7 +83,9 @@ public class AuditEventPublisher {
                 && authentication.isAuthenticated()
                 && authentication.getPrincipal() instanceof Jwt) {
             Jwt jwt = (Jwt) authentication.getPrincipal();
-            auditEventBuilder.username(jwt.getClaimAsString("email"));
+            // A token without an email (the protocol token) is attributed to its principal name (sub).
+            String email = jwt.getClaimAsString("email");
+            auditEventBuilder.username(email != null ? email : authentication.getName());
         }
 
         // Add request information if available

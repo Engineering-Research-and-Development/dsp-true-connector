@@ -3,6 +3,7 @@ package it.eng.connector.integration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dasniko.testcontainers.keycloak.KeycloakContainer;
+import org.keycloak.admin.client.Keycloak;
 import org.keycloak.representations.idm.RealmRepresentation;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -27,27 +28,34 @@ import java.util.List;
  * <ul>
  *   <li>{@code platform} — machine-to-machine clients ({@code CONNECTOR}, client credentials grant)</li>
  *   <li>{@code connector-admin} — super-admins ({@code SUPER_ADMIN}, no tenant)</li>
- *   <li>{@code tenant-Engineering} — tenant admins ({@code ADMIN})</li>
+ *   <li>{@code tenant-EngineeringA} — tenant admins ({@code ADMIN}), tenant id {@code engineering-a}</li>
+ *   <li>{@code tenant-EngineeringB} — tenant admins ({@code ADMIN}), tenant id {@code engineering-b}</li>
  * </ul>
  *
- * <p>The connector currently trusts a single issuer, configured here as the tenant realm.
- * Tokens from the platform and super-admin realms are rejected until the connector
- * accepts several issuers.
+ * <p>The connector trusts the realm of every enabled tenant through the trusted-issuer registry. The test
+ * seed binds tenant {@code engineering-a} to {@code tenant-EngineeringA}; no tenant is bound to
+ * {@code tenant-EngineeringB} unless a test inserts one. Platform tokens are trusted on protocol routes
+ * (and get 403 on {@code /api/**}); super-admin tokens are trusted on {@code /api/**}.
  */
 @TestPropertySource(properties = "application.auth.provider=KEYCLOAK")
 public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
 
     private static final String PLATFORM_REALM = "platform";
     private static final String SUPER_ADMIN_REALM = "connector-admin";
-    private static final String TENANT_REALM = "tenant-Engineering";
+    private static final String TENANT_REALM = "tenant-EngineeringA";
+    private static final String TENANT_B_REALM = "tenant-EngineeringB";
     private static final List<String> REALM_IMPORT_FILES = List.of(
-            "platform-realm.json", "connector-admin-realm.json", "tenant-Engineering-realm.json");
+            "platform-realm.json", "connector-admin-realm.json", "tenant-EngineeringA-realm.json",
+            "tenant-EngineeringB-realm.json");
+    private static final String KEYCLOAK_AUDIENCE = "dsp-true-connector";
     private static final String REALM_FRONTEND_URL_ATTRIBUTE = "frontendUrl";
     private static final String KEYCLOAK_UI_CLIENT_ID = "keycloak-api";
     private static final String KEYCLOAK_BACKEND_CLIENT_ID = "dsp-connector-backend";
     private static final String KEYCLOAK_BACKEND_CLIENT_SECRET = "dsp-connector-backend-secret";
     private static final String KEYCLOAK_ADMIN_USERNAME = "admin";
     private static final String KEYCLOAK_ADMIN_PASSWORD = "password";
+    private static final String KEYCLOAK_TENANT_B_ADMIN_USERNAME = "adminB";
+    private static final String KEYCLOAK_TENANT_B_ADMIN_PASSWORD = "password";
     private static final String KEYCLOAK_SUPER_ADMIN_USERNAME = "superadmin@mail.com";
     private static final String KEYCLOAK_SUPER_ADMIN_PASSWORD = "password";
     private static final Duration KEYCLOAK_STARTUP_TIMEOUT = Duration.ofMinutes(3);
@@ -65,18 +73,13 @@ public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
     static void keycloakProperties(DynamicPropertyRegistry registry) {
         registry.add("application.auth.provider", () -> "KEYCLOAK");
         registry.add("server.port", () -> "0");
-        registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri", () -> realmUrl(TENANT_REALM));
-        registry.add("spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
-                () -> realmUrl(TENANT_REALM) + "/protocol/openid-connect/certs");
+        // Tokens are requested through the same URL, so their iss is <base-url>/realms/<realm>.
+        registry.add("application.keycloak.base-url", BaseKeycloakIntegrationTest::keycloakBaseUrl);
+        registry.add("application.keycloak.platform-realm", () -> PLATFORM_REALM);
+        registry.add("application.keycloak.admin-realm", () -> SUPER_ADMIN_REALM);
+        registry.add("application.keycloak.audience", () -> KEYCLOAK_AUDIENCE);
         registry.add("application.keycloak.backend.client-id", () -> KEYCLOAK_BACKEND_CLIENT_ID);
         registry.add("application.keycloak.backend.client-secret", () -> KEYCLOAK_BACKEND_CLIENT_SECRET);
-        registry.add("application.keycloak.backend.token-url",
-                () -> realmUrl(PLATFORM_REALM) + "/protocol/openid-connect/token");
-        registry.add("application.keycloak.login.client-id", () -> KEYCLOAK_UI_CLIENT_ID);
-        registry.add("application.keycloak.login.token-url",
-                () -> realmUrl(TENANT_REALM) + "/protocol/openid-connect/token");
-        registry.add("application.keycloak.login.logout-url",
-                () -> realmUrl(TENANT_REALM) + "/protocol/openid-connect/logout");
         registry.add("application.baseURL", () -> "http://localhost:8080/");
         registry.add("application.automatic.negotiation", () -> "false");
         registry.add("application.encryption.key", () -> "5xplehys9mtcatb");
@@ -91,13 +94,36 @@ public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
     }
 
     /**
-     * Returns a bearer token for the tenant admin of the {@code tenant-Engineering} realm.
+     * Returns a bearer token for the tenant admin of the {@code tenant-EngineeringA} realm.
      *
      * @return a valid bearer token with the {@code ADMIN} realm role
      * @throws Exception when the token cannot be obtained
      */
     protected String adminAccessToken() throws Exception {
         return accessToken(TENANT_REALM, passwordGrant(KEYCLOAK_ADMIN_USERNAME, KEYCLOAK_ADMIN_PASSWORD));
+    }
+
+    /**
+     * Returns a bearer token for the tenant admin of the {@code tenant-EngineeringA} realm, requested through
+     * another public client of that realm.
+     *
+     * @param clientId the public client with direct access grants, for example {@code admin-cli}
+     * @return a bearer token whose audience and scopes are those of {@code clientId}
+     * @throws Exception when the token cannot be obtained
+     */
+    protected String adminAccessToken(String clientId) throws Exception {
+        return accessToken(TENANT_REALM, passwordGrant(clientId, KEYCLOAK_ADMIN_USERNAME, KEYCLOAK_ADMIN_PASSWORD));
+    }
+
+    /**
+     * Returns a bearer token for the tenant admin of the {@code tenant-EngineeringB} realm.
+     *
+     * @return a valid bearer token with the {@code ADMIN} realm role and tenant id {@code engineering-b}
+     * @throws Exception when the token cannot be obtained
+     */
+    protected String tenantBAdminAccessToken() throws Exception {
+        return accessToken(TENANT_B_REALM,
+                passwordGrant(KEYCLOAK_TENANT_B_ADMIN_USERNAME, KEYCLOAK_TENANT_B_ADMIN_PASSWORD));
     }
 
     /**
@@ -168,8 +194,36 @@ public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
                 ));
     }
 
-    private static String realmUrl(String realm) {
-        return KEYCLOAK_CONTAINER.getAuthServerUrl() + "/realms/" + realm;
+    /**
+     * Returns the Keycloak base URL of the test container, without a trailing slash.
+     *
+     * @return the Keycloak base URL
+     */
+    protected static String keycloakBaseUrl() {
+        String authServerUrl = KEYCLOAK_CONTAINER.getAuthServerUrl();
+        return authServerUrl.endsWith("/") ? authServerUrl.substring(0, authServerUrl.length() - 1) : authServerUrl;
+    }
+
+    /**
+     * Returns the issuer URL of a realm in the test container, as carried in the {@code iss} claim.
+     *
+     * @param realm the realm name
+     * @return the realm's issuer URL
+     */
+    protected static String realmUrl(String realm) {
+        return keycloakBaseUrl() + "/realms/" + realm;
+    }
+
+    /**
+     * Returns an admin client for the {@code master} realm of the shared test container.
+     *
+     * <p>The container is shared by every Keycloak integration test: a test that changes a realm through
+     * this client must restore it.
+     *
+     * @return the Keycloak admin client
+     */
+    protected static Keycloak keycloakAdminClient() {
+        return KEYCLOAK_CONTAINER.getKeycloakAdminClient();
     }
 
     private static void importRealms() {
@@ -197,8 +251,12 @@ public abstract class BaseKeycloakIntegrationTest extends BaseIntegrationTest {
     }
 
     private static String passwordGrant(String username, String password) {
+        return passwordGrant(KEYCLOAK_UI_CLIENT_ID, username, password);
+    }
+
+    private static String passwordGrant(String clientId, String username, String password) {
         return "grant_type=password"
-                + "&client_id=" + encode(KEYCLOAK_UI_CLIENT_ID)
+                + "&client_id=" + encode(clientId)
                 + "&username=" + encode(username)
                 + "&password=" + encode(password);
     }

@@ -28,6 +28,7 @@ import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
+import jakarta.annotation.PostConstruct;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -38,7 +39,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
@@ -243,24 +243,17 @@ public class DataTransferAPIService {
         } else {
             log.info("Error response received!");
             log.error("Transfer process from response not valid");
+            if (StringUtils.isBlank(response.getData())) {
+                // No peer body, e.g. the request was not sent because no access token was available.
+                publishTransferRequestFailed(transferProcessInitialized, response.getMessage());
+                throw new DataTransferAPIException("Transfer request failed: " + response.getMessage());
+            }
             JsonNode jsonNode;
             try {
                 jsonNode = mapper.readTree(response.getData());
                 try {
                     TransferError transferError = TransferSerializer.deserializeProtocol(jsonNode, TransferError.class);
-                    Map<String, Object> details = new HashMap<>();
-                    details.put("transferProcess", transferProcessInitialized);
-                    details.put("role", IConstants.ROLE_API);
-                    details.put("errorMessage", transferError);
-                    if (transferProcessInitialized.getConsumerPid() != null) {
-                        details.put("consumerPid", transferProcessInitialized.getConsumerPid());
-                    }
-                    if (transferProcessInitialized.getProviderPid() != null) {
-                        details.put("providerPid", transferProcessInitialized.getProviderPid());
-                    }
-                    publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
-                            "Transfer process request failed",
-                            details);
+                    publishTransferRequestFailed(transferProcessInitialized, transferError);
                     throw new DataTransferAPIException(transferError, "Error making request");
                 } catch (ValidationException ve) {
                     log.warn("Provider error response is not a DSP TransferError: {}", response.getData());
@@ -789,6 +782,17 @@ public class DataTransferAPIService {
         }
     }
 
+    // Audits a failed transfer request; errorMessage is the peer's TransferError or the client-side reason.
+    private void publishTransferRequestFailed(TransferProcess transferProcess, Object errorMessage) {
+        publisher.publishEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED,
+                "Transfer process request failed",
+                auditMap("transferProcess", transferProcess,
+                        "role", IConstants.ROLE_API,
+                        "errorMessage", errorMessage,
+                        "consumerPid", transferProcess.getConsumerPid(),
+                        "providerPid", transferProcess.getProviderPid()));
+    }
+
     /**
      * Builds an audit event map, skipping entries where the value is null.
      * Avoids {@link Map#of} throwing NullPointerException when optional
@@ -851,7 +855,7 @@ public class DataTransferAPIService {
     private void policyCheck(TransferProcess transferProcess) {
         if (usageControlProperties.usageControlEnabled()) {
             String agreementId = transferProcess.getAgreementId();
-            String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.NEGOTIATION_AGREEMENTS_V1 + "/" + agreementId + "/enforce",
+            String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.INTERNAL_AGREEMENTS_V1 + "/" + agreementId + "/enforce",
                     HttpMethod.POST,
                     null);
             if (StringUtils.isBlank(response)) {

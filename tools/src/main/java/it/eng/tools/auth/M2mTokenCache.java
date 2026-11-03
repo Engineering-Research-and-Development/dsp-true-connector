@@ -1,5 +1,10 @@
 package it.eng.tools.auth;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.exceptions.JWTDecodeException;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Date;
@@ -7,23 +12,15 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-import org.springframework.stereotype.Component;
-
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.exceptions.JWTDecodeException;
-
-import lombok.extern.slf4j.Slf4j;
-
 /**
- * Generic, key-scoped cache for machine-to-machine JWT access tokens minted for the {@code
- * INTERNAL} authentication mode's outbound credential flows ({@code CredentialUtils
- * #getConnectorCredentials()} and {@code CredentialUtils#getAPICredentials()}).
+ * Generic, key-scoped cache for machine-to-machine JWT access tokens used by outbound credential flows:
+ * the {@code INTERNAL} mode connector token and the {@code KEYCLOAK} mode connector token (see {@code
+ * CredentialUtils#getConnectorCredentials()}).
  *
- * <p>Unlike {@link AuthenticationCache}, this cache has no knowledge of Keycloak or any specific
- * token source: callers identify a cache slot with an arbitrary {@code cacheKey} and supply a
- * {@link Supplier} that fetches a fresh token on a cache miss. Multiple independent M2M identities
- * (for example a connector-to-connector token and an internal-service token) can therefore share
- * one cache instance without colliding.
+ * <p>This cache has no knowledge of Keycloak or any specific token source: callers identify a cache
+ * slot with an arbitrary {@code cacheKey} and supply a {@link Supplier} that fetches a fresh token on a
+ * cache miss. Multiple independent M2M identities can therefore share one cache instance without
+ * colliding, as long as their keys differ.
  *
  * <p>Cached tokens are proactively treated as stale {@value #REFRESH_BEFORE_EXPIRY_SECONDS} seconds
  * before their actual {@code exp} claim, so an in-flight request is unlikely to present a token
@@ -39,12 +36,21 @@ public class M2mTokenCache {
 
     private final Map<String, CacheEntry> cache = new ConcurrentHashMap<>();
 
+    // One lock per cache key, so a slow fetch (network I/O in KEYCLOAK mode) only blocks callers of
+    // the same key. The set of keys is small and fixed, so locks are never removed.
+    private final Map<String, Object> locks = new ConcurrentHashMap<>();
+
     /**
      * Returns the cached token for {@code cacheKey} if still fresh, otherwise invokes
      * {@code fetcher} to mint a new one, caches it, and returns it.
      *
-     * @param cacheKey the cache slot identifier (for example {@code "connector-m2m"} or
-     *                 {@code "internal-api"})
+     * <p>When {@code fetcher} returns {@code null} or throws, the slot is emptied and the exception,
+     * if any, propagates: a failed fetch never leaves a token behind.
+     *
+     * <p>Concurrent misses on the same key run {@code fetcher} once; fetches for different keys do not
+     * block each other.
+     *
+     * @param cacheKey the cache slot identifier (for example {@code "connector-m2m"})
      * @param fetcher  supplies a fresh token on a cache miss or stale entry; may return
      *                 {@code null} if no token could be minted
      * @return the cached or freshly fetched token, or {@code null} if {@code fetcher} returned
@@ -55,13 +61,19 @@ public class M2mTokenCache {
         if (cached != null && LocalDateTime.now().isBefore(cached.refreshAt())) {
             return cached.token();
         }
-        synchronized (this) {
+        synchronized (locks.computeIfAbsent(cacheKey, key -> new Object())) {
             cached = cache.get(cacheKey);
             if (cached != null && LocalDateTime.now().isBefore(cached.refreshAt())) {
                 return cached.token();
             }
             log.debug("Fetching new M2M token for cache key '{}'", cacheKey);
-            String token = fetcher.get();
+            String token;
+            try {
+                token = fetcher.get();
+            } catch (RuntimeException e) {
+                cache.remove(cacheKey);
+                throw e;
+            }
             if (token == null) {
                 cache.remove(cacheKey);
                 return null;

@@ -1,25 +1,21 @@
 package it.eng.tools.auth;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.Date;
+import java.util.concurrent.*;
 import java.util.function.Supplier;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.algorithms.Algorithm;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for {@link M2mTokenCache}.
@@ -187,5 +183,56 @@ class M2mTokenCacheTest {
     void invalidateUnknownKeyIsNoop() {
         cache.invalidate("never-cached");
         // No exception expected; nothing further to assert.
+    }
+
+    @Test
+    @DisplayName("Should empty the slot and rethrow when the fetcher throws for a stale entry")
+    void fetcherExceptionEmptiesSlot() {
+        String staleToken = tokenExpiringIn(10_000L);
+        String freshToken = tokenExpiringIn(60_000L);
+        @SuppressWarnings("unchecked")
+        Supplier<String> fetcher = mock(Supplier.class);
+        when(fetcher.get()).thenReturn(staleToken)
+                .thenThrow(new IllegalStateException("token endpoint down"))
+                .thenReturn(freshToken);
+
+        cache.getOrFetch("key1", fetcher);
+        assertThrows(IllegalStateException.class, () -> cache.getOrFetch("key1", fetcher));
+        String result = cache.getOrFetch("key1", fetcher);
+
+        assertEquals(freshToken, result);
+        verify(fetcher, times(3)).get();
+    }
+
+    @Test
+    @DisplayName("Should not block a fetch for one key while a slow fetch for another key is running")
+    void slowFetchDoesNotBlockOtherKey() throws Exception {
+        CountDownLatch slowFetchStarted = new CountDownLatch(1);
+        CountDownLatch releaseSlowFetch = new CountDownLatch(1);
+        String tokenA = tokenExpiringIn(60_000L);
+        String tokenB = tokenExpiringIn(60_000L);
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CompletableFuture<String> slow = CompletableFuture.supplyAsync(() -> cache.getOrFetch("keyA", () -> {
+            slowFetchStarted.countDown();
+            try {
+                releaseSlowFetch.await(10, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            return tokenA;
+        }), executor);
+        try {
+            assertTrue(slowFetchStarted.await(5, TimeUnit.SECONDS));
+
+            String result = CompletableFuture.supplyAsync(() -> cache.getOrFetch("keyB", () -> tokenB), executor)
+                    .get(5, TimeUnit.SECONDS);
+
+            assertEquals(tokenB, result);
+        } finally {
+            releaseSlowFetch.countDown();
+            executor.shutdown();
+        }
+        assertEquals(tokenA, slow.get(5, TimeUnit.SECONDS));
     }
 }

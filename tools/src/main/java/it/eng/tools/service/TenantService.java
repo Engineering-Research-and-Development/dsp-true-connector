@@ -1,7 +1,14 @@
 package it.eng.tools.service;
 
+import it.eng.tools.auth.keycloak.KeycloakTrustProperties;
+import it.eng.tools.auth.keycloak.RealmCredentialsValidator;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.event.realm.RealmCredentialsChangedEvent;
+import it.eng.tools.exception.BadRequestException;
+import it.eng.tools.exception.DuplicateTenantRealmException;
+import it.eng.tools.exception.InvalidTenantRealmException;
 import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.BucketProvisioningMode;
 import it.eng.tools.model.Tenant;
@@ -12,16 +19,15 @@ import it.eng.tools.s3.service.BucketConnectionVerificationService;
 import it.eng.tools.s3.service.BucketCredentialsService;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.regex.Pattern;
 
 /**
@@ -33,12 +39,17 @@ public class TenantService {
 
     private static final Pattern TENANT_ID_PATTERN =
             Pattern.compile("^[a-zA-Z0-9-]+$");
+    // Tenant-prefixed paths of this tenant ID would fall into the /internal/** security chain.
+    private static final String RESERVED_TENANT_ID = ApiEndpoints.INTERNAL_ROOT.substring(1);
+    private static final int REALM_MAX_LENGTH = 255;
+    private static final String MASTER_REALM = "master";
     private static final Pattern BUCKET_NAME_PATTERN =
             Pattern.compile("^[a-z0-9][a-z0-9\\-]{1,61}[a-z0-9]$");
 
     /** Prefix used when auto-deriving an S3 bucket name from the tenant identifier. */
     static final String BUCKET_NAME_PREFIX = "dsp-";
     private static final String CHANGE_TYPE_KEY = "changeType";
+    private static final String REALM_CREDENTIALS_REMOVED = "REALM_CREDENTIALS_REMOVED";
     private static final String CHANGE_TYPE_ORDINARY_UPDATE = "ORDINARY_UPDATE";
     private static final String CHANGE_TYPE_CREDENTIALS_ROTATED = "CREDENTIALS_ROTATED";
     private static final String CHANGE_TYPE_BUCKET_MIGRATED = "BUCKET_MIGRATED";
@@ -50,6 +61,10 @@ public class TenantService {
     private final BucketProvisioningModeResolver bucketProvisioningModeResolver;
     private final BucketConnectionVerificationService bucketConnectionVerificationService;
     private final String baseCallbackAddress;
+    private final Set<String> reservedRealms;
+    private final FieldEncryptionService fieldEncryptionService;
+    private final ApplicationEventPublisher eventPublisher;
+    private final ObjectProvider<RealmCredentialsValidator> realmCredentialsValidator;
 
     /**
      * Constructs the service with its repository, audit publisher, S3 provisioning
@@ -63,6 +78,13 @@ public class TenantService {
      * @param bucketConnectionVerificationService the service verifying externally supplied bucket credentials
      * @param baseCallbackAddress      the base URL used to derive per-tenant callback addresses;
      *                                 injected from {@code application.baseURL}
+     * @param platformRealm            the platform realm name, reserved and never assignable to a tenant;
+     *                                 injected from {@code application.keycloak.platform-realm}
+     * @param adminRealm               the admin realm name, reserved and never assignable to a tenant;
+     *                                 injected from {@code application.keycloak.admin-realm}
+     * @param fieldEncryptionService   encrypts and decrypts the stored realm client secret
+     * @param eventPublisher           publishes {@link RealmCredentialsChangedEvent}
+     * @param realmCredentialsValidator checks a realm client secret; only available in Keycloak mode
      */
     public TenantService(TenantRepository tenantRepository,
                          AuditEventPublisher auditEventPublisher,
@@ -70,7 +92,12 @@ public class TenantService {
                          BucketCredentialsService bucketCredentialsService,
                          BucketProvisioningModeResolver bucketProvisioningModeResolver,
                          BucketConnectionVerificationService bucketConnectionVerificationService,
-                         @Value("${application.baseURL}") String baseCallbackAddress) {
+                         @Value("${application.baseURL}") String baseCallbackAddress,
+                         @Value("${application.keycloak.platform-realm:platform}") String platformRealm,
+                         @Value("${application.keycloak.admin-realm:connector-admin}") String adminRealm,
+                         FieldEncryptionService fieldEncryptionService,
+                         ApplicationEventPublisher eventPublisher,
+                         ObjectProvider<RealmCredentialsValidator> realmCredentialsValidator) {
         this.tenantRepository = tenantRepository;
         this.auditEventPublisher = auditEventPublisher;
         this.s3BucketProvisionService = s3BucketProvisionService;
@@ -78,6 +105,11 @@ public class TenantService {
         this.bucketProvisioningModeResolver = bucketProvisioningModeResolver;
         this.bucketConnectionVerificationService = bucketConnectionVerificationService;
         this.baseCallbackAddress = baseCallbackAddress;
+        this.reservedRealms = Set.of(MASTER_REALM,
+                platformRealm.toLowerCase(Locale.ROOT), adminRealm.toLowerCase(Locale.ROOT));
+        this.fieldEncryptionService = fieldEncryptionService;
+        this.eventPublisher = eventPublisher;
+        this.realmCredentialsValidator = realmCredentialsValidator;
     }
 
     /**
@@ -98,6 +130,15 @@ public class TenantService {
                             .build());
                     return new TenantNotFoundException("Tenant not found or disabled: " + tenantId);
                 });
+    }
+
+    /**
+     * Finds all enabled tenants.
+     *
+     * @return the enabled tenants
+     */
+    public List<Tenant> findEnabledTenants() {
+        return tenantRepository.findByEnabled(true);
     }
 
     /**
@@ -132,6 +173,10 @@ public class TenantService {
      * ({@code ^[a-zA-Z0-9-]+$}).  An {@link IllegalArgumentException} is thrown if the
      * format is invalid or if the id is already taken.
      *
+     * <p>A non-null {@code realm} must match {@code ^[A-Za-z0-9._-]+$}, be at most 255 characters,
+     * not be {@code .} or {@code ..}, not be {@code master} or the configured platform/admin realm
+     * (case-insensitive), and not be held by any other tenant (case-sensitive).
+     *
      * <p>Participant IDs must be unique across all tenants.  If another tenant with the same
      * {@code participantId} already exists, an {@link IllegalArgumentException} is thrown.
      *
@@ -156,9 +201,12 @@ public class TenantService {
      * @param tenant the tenant to save; {@code id} must be provided and valid
      * @param credentialsRequest optional request-only bucket credential fields
      * @return the saved tenant
-     * @throws IllegalArgumentException if the id format is invalid, the id already exists,
+     * @throws IllegalArgumentException if the id format is invalid or reserved ({@code internal}), the id
+     *                                  already exists,
      *                                  another tenant already owns the resolved bucket name,
      *                                  or a tenant with the same participantId already exists
+     * @throws InvalidTenantRealmException if the realm is malformed or reserved
+     * @throws DuplicateTenantRealmException if another tenant already holds the realm
      */
     public Tenant saveTenant(Tenant tenant, TenantBucketCredentialsRequest credentialsRequest) {
         BucketProvisioningMode provisioningMode = bucketProvisioningModeResolver.resolve(credentialsRequest);
@@ -167,6 +215,10 @@ public class TenantService {
         if (!TENANT_ID_PATTERN.matcher(tenantId).matches()) {
             throw new IllegalArgumentException(
                     "Tenant id '" + tenantId + "' is invalid: only alphanumeric characters and hyphens are allowed.");
+        }
+        if (RESERVED_TENANT_ID.equalsIgnoreCase(tenantId)) {
+            throw new IllegalArgumentException(
+                    "Tenant id '" + tenantId + "' is invalid: '" + RESERVED_TENANT_ID + "' is reserved.");
         }
         tenantRepository.findById(tenantId)
                 .ifPresent(existing -> {
@@ -179,6 +231,8 @@ public class TenantService {
                             "Tenant with participantId '" + tenant.getParticipantId() + "' already exists: " + existing.getId());
                 });
 
+        validateRealm(tenant.getRealm(), tenantId);
+
         String effectiveBucketName = resolveEffectiveBucketName(tenantId, credentialsRequest, provisioningMode);
         validateBucketNameFormat(effectiveBucketName);
 
@@ -187,6 +241,7 @@ public class TenantService {
                 .name(tenant.getName())
                 .description(tenant.getDescription())
                 .participantId(tenant.getParticipantId())
+                .realm(tenant.getRealm())
                 .automaticNegotiation(tenant.isAutomaticNegotiation())
                 .automaticTransfer(tenant.isAutomaticTransfer())
                 .enabled(tenant.isEnabled())
@@ -288,7 +343,7 @@ public class TenantService {
     }
 
     /**
-     * Updates the mutable settings of an existing tenant (name, description,
+     * Updates the mutable settings of an existing tenant (name, description, realm,
      * automaticNegotiation, automaticTransfer).
      *
      * <p>This overload preserves the historical update behavior and always applies
@@ -314,6 +369,10 @@ public class TenantService {
      * <p>The {@code enabled} state and {@code participantId} are immutable in this endpoint
      * and are always preserved from the existing tenant.
      *
+     * <p>When the update changes the realm, the stored realm client secret is removed (it belongs to the old
+     * realm's client) and a {@link RealmCredentialsChangedEvent} is published; if a secret was removed, a
+     * {@code TENANT_UPDATED} audit event with change type {@code REALM_CREDENTIALS_REMOVED} is published too.
+     *
      * <p>Mode behavior:
      * <ul>
      *     <li>{@link BucketProvisioningMode#AUTOMATIC}: existing bucket and credentials are preserved</li>
@@ -331,9 +390,12 @@ public class TenantService {
      * @throws TenantNotFoundException if tenant does not exist
      * @throws IllegalArgumentException if bucket ownership conflicts, bucket format is invalid,
      *                                  credential input is invalid, or verification fails
+     * @throws InvalidTenantRealmException if a supplied realm is malformed or reserved
+     * @throws DuplicateTenantRealmException if a supplied realm is held by another tenant
      */
     public Tenant updateTenant(String tenantId, Tenant updates, TenantBucketCredentialsRequest credentialsRequest) {
         Tenant existing = findById(tenantId);
+        validateRealm(updates.getRealm(), tenantId);
         BucketProvisioningMode provisioningMode = bucketProvisioningModeResolver.resolve(credentialsRequest);
 
         String effectiveBucketName = resolveEffectiveUpdateBucketName(existing, credentialsRequest, provisioningMode);
@@ -346,16 +408,22 @@ public class TenantService {
 
         applyUpdateBucketProvisioning(tenantId, existing, credentialsRequest, effectiveBucketName, provisioningMode);
 
+        String effectiveRealm = updates.getRealm() != null ? updates.getRealm() : existing.getRealm();
+        boolean realmChanged = !Objects.equals(existing.getRealm(), effectiveRealm);
+        // The stored secret belongs to the client of the old realm: it never carries over to another realm.
+        boolean secretDropped = realmChanged && StringUtils.hasText(existing.getClientSecret());
         Tenant updated = Tenant.Builder.newInstance()
                 .id(existing.getId())
                 .version(existing.getVersion())
                 .name(updates.getName() != null ? updates.getName() : existing.getName())
                 .description(updates.getDescription() != null ? updates.getDescription() : existing.getDescription())
                 .participantId(existing.getParticipantId())  // immutable; any value in request body is silently ignored
+                .realm(effectiveRealm)
                 .automaticNegotiation(updates.isAutomaticNegotiation())
                 .automaticTransfer(updates.isAutomaticTransfer())
                 .enabled(existing.isEnabled())
                 .bucketName(effectiveBucketName)
+                .clientSecret(realmChanged ? null : existing.getClientSecret())
                 .build();
         Tenant saved = tenantRepository.save(updated);
         Map<String, Object> details = new LinkedHashMap<>();
@@ -368,6 +436,11 @@ public class TenantService {
                 .details(details)
                 .build());
         log.info("Updated tenant: {}", tenantId);
+        if (secretDropped) {
+            publishRealmCredentialsChange(saved, REALM_CREDENTIALS_REMOVED);
+        } else if (realmChanged) {
+            eventPublisher.publishEvent(new RealmCredentialsChangedEvent(saved.getId()));
+        }
         return saved;
     }
 
@@ -385,11 +458,123 @@ public class TenantService {
                 .name(source.getName())
                 .description(source.getDescription())
                 .participantId(source.getParticipantId())
+                .realm(source.getRealm())
                 .automaticNegotiation(source.isAutomaticNegotiation())
                 .automaticTransfer(source.isAutomaticTransfer())
                 .enabled(enabled)
                 .bucketName(source.getBucketName())
+                .clientSecret(source.getClientSecret())
                 .build();
+    }
+
+    /**
+     * Stores the client secret of the tenant realm's user-management client, encrypted. The secret is first
+     * checked with a real client-credentials token request against the realm; on failure nothing is stored.
+     * Publishes a {@link RealmCredentialsChangedEvent} and a {@code TENANT_UPDATED} audit event (without the secret).
+     *
+     * @param tenantId the tenant identifier
+     * @param clientSecret the plain client secret
+     * @return the updated tenant, with {@code credentialsConfigured} set
+     * @throws BadRequestException when Keycloak mode is not active, the tenant does not exist or has no realm,
+     *         the secret is blank, or the realm does not accept the secret
+     */
+    public Tenant setRealmCredentials(String tenantId, String clientSecret) {
+        RealmCredentialsValidator validator = realmCredentialsValidator.getIfAvailable();
+        if (validator == null) {
+            throw new BadRequestException("Realm credentials are only supported with Keycloak authentication.");
+        }
+        Tenant existing = findTenantWithRealm(tenantId);
+        if (!StringUtils.hasText(clientSecret)) {
+            throw new BadRequestException("clientSecret must not be blank.");
+        }
+        if (!validator.accepts(existing.getRealm(), clientSecret)) {
+            throw new BadRequestException("The realm did not accept the client credentials.");
+        }
+        Tenant saved = tenantRepository.save(withClientSecret(existing, fieldEncryptionService.encrypt(clientSecret)));
+        publishRealmCredentialsChange(saved, "REALM_CREDENTIALS_SET");
+        return saved;
+    }
+
+    /**
+     * Removes the stored realm client secret of the tenant and publishes a {@link RealmCredentialsChangedEvent}
+     * and a {@code TENANT_UPDATED} audit event.
+     *
+     * @param tenantId the tenant identifier
+     * @return the updated tenant, with {@code credentialsConfigured} cleared
+     * @throws BadRequestException when Keycloak mode is not active or the tenant does not exist or has no realm
+     */
+    public Tenant clearRealmCredentials(String tenantId) {
+        if (realmCredentialsValidator.getIfAvailable() == null) {
+            throw new BadRequestException("Realm credentials are only supported with Keycloak authentication.");
+        }
+        Tenant existing = findTenantWithRealm(tenantId);
+        Tenant saved = tenantRepository.save(withClientSecret(existing, null));
+        publishRealmCredentialsChange(saved, REALM_CREDENTIALS_REMOVED);
+        return saved;
+    }
+
+    /**
+     * Returns the decrypted client secret of the tenant realm's user-management client. This is the only
+     * place that decrypts it; callers must not log or return the value.
+     *
+     * @param tenantId the tenant identifier
+     * @return the secret, or empty when the tenant is unknown or has no secret
+     */
+    public Optional<String> userManagementSecret(String tenantId) {
+        return tenantRepository.findById(tenantId).flatMap(this::userManagementSecret);
+    }
+
+    /**
+     * Returns the decrypted client secret of the given, already loaded tenant's user-management client. This
+     * and {@link #userManagementSecret(String)} share the only place that decrypts it; callers must not log or
+     * return the value.
+     *
+     * @param tenant the loaded tenant
+     * @return the secret, or empty when the tenant has no secret
+     */
+    public Optional<String> userManagementSecret(Tenant tenant) {
+        return Optional.ofNullable(tenant.getClientSecret())
+                .filter(StringUtils::hasText)
+                .map(fieldEncryptionService::decrypt);
+    }
+
+    private Tenant findTenantWithRealm(String tenantId) {
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new BadRequestException("Tenant not found: " + tenantId));
+        if (!StringUtils.hasText(tenant.getRealm())) {
+            throw new BadRequestException("Tenant " + tenantId + " has no realm.");
+        }
+        return tenant;
+    }
+
+    private Tenant withClientSecret(Tenant source, String encryptedSecret) {
+        return Tenant.Builder.newInstance()
+                .id(source.getId())
+                .version(source.getVersion())
+                .name(source.getName())
+                .description(source.getDescription())
+                .participantId(source.getParticipantId())
+                .realm(source.getRealm())
+                .automaticNegotiation(source.isAutomaticNegotiation())
+                .automaticTransfer(source.isAutomaticTransfer())
+                .enabled(source.isEnabled())
+                .bucketName(source.getBucketName())
+                .clientSecret(encryptedSecret)
+                .build();
+    }
+
+    private void publishRealmCredentialsChange(Tenant saved, String changeType) {
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("tenantId", saved.getId());
+        details.put("tenantName", saved.getName());
+        details.put(CHANGE_TYPE_KEY, changeType);
+        auditEventPublisher.publishEvent(AuditEvent.Builder.newInstance()
+                .eventType(AuditEventType.TENANT_UPDATED)
+                .description("Tenant realm credentials changed: " + saved.getId())
+                .details(details)
+                .build());
+        eventPublisher.publishEvent(new RealmCredentialsChangedEvent(saved.getId()));
+        log.info("Realm credentials changed for tenant: {}", saved.getId());
     }
 
     /**
@@ -409,6 +594,40 @@ public class TenantService {
             return BUCKET_NAME_PREFIX + tenantId.toLowerCase();
         }
         return credentialsRequest.getBucketName();
+    }
+
+    /**
+     * Validates a tenant realm. A {@code null} realm is allowed (the tenant then accepts no
+     * Keycloak tokens). A non-null realm must match {@link KeycloakTrustProperties#REALM_PATTERN}
+     * ({@code ^[A-Za-z0-9._-]+$}), be at most 255 characters long, not be {@code .} or {@code ..},
+     * not be {@code master} or the configured platform or admin realm
+     * (compared case-insensitively), and not be held by any other tenant, enabled or disabled
+     * (compared case-sensitively).
+     *
+     * @param realm    the realm to validate, may be {@code null}
+     * @param tenantId the tenant the realm is intended for, excluded from the uniqueness check
+     * @throws InvalidTenantRealmException if the realm is malformed or reserved
+     * @throws DuplicateTenantRealmException if another tenant already holds the realm
+     */
+    private void validateRealm(String realm, String tenantId) {
+        if (realm == null) {
+            return;
+        }
+        if (realm.length() > REALM_MAX_LENGTH
+                || !KeycloakTrustProperties.REALM_PATTERN.matcher(realm).matches()
+                || ".".equals(realm) || "..".equals(realm)) {
+            throw new InvalidTenantRealmException("Tenant realm '" + realm
+                    + "' is invalid: it must match " + KeycloakTrustProperties.REALM_PATTERN.pattern()
+                    + ", must not be . or .. and must be at most " + REALM_MAX_LENGTH + " characters.");
+        }
+        if (reservedRealms.contains(realm.toLowerCase(Locale.ROOT))) {
+            throw new InvalidTenantRealmException("Tenant realm '" + realm
+                    + "' is invalid: it is a reserved realm name (platform, admin or master).");
+        }
+        if (tenantRepository.existsByRealmAndIdNot(realm, tenantId)) {
+            throw new DuplicateTenantRealmException(
+                    "Tenant realm '" + realm + "' is already assigned to another tenant.");
+        }
     }
 
     private void validateBucketOwnership(String bucketName) {

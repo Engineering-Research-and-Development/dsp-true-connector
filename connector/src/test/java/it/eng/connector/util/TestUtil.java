@@ -5,7 +5,6 @@ import it.eng.connector.model.User;
 
 public class TestUtil {
 	//all values in this class are from the initial_data.json
-	public static final String CONNECTOR_USER = "connector@mail.com";
 	public static final String ADMIN_USER = "admin@mail.com";
 	public static final String SUPER_ADMIN_USER = "superadmin@mail.com";
 	public static final String API_USER = "admin@mail.com";

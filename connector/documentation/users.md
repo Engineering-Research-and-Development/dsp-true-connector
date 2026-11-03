@@ -284,8 +284,8 @@ Required properties for Keycloak mode:
 
 | Property | Description |
 |---|---|
-| `application.keycloak.admin.server-url` | Base URL of the Keycloak server (e.g. `http://keycloak:8080`) |
-| `application.keycloak.admin.realm`      | Realm in which users should be created (e.g. `dsp-connector`) |
+| `application.keycloak.base-url`         | Base URL of the Keycloak server (e.g. `http://localhost:8180`); also the base of the trusted issuers |
+| `application.keycloak.admin-realm`      | Realm in which users should be created (default `connector-admin`; interim target) |
 | `application.keycloak.server-url`       | Keycloak server for token validation (existing property) |
 | `application.keycloak.realm`            | Token validation realm (existing property) |
 

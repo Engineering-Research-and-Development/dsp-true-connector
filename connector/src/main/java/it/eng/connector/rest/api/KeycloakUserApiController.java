@@ -2,7 +2,7 @@ package it.eng.connector.rest.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.connector.service.KeycloakUserService;
-import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
+import it.eng.tools.auth.condition.KeycloakUserManagementCondition;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +19,7 @@ import java.util.Collection;
 /**
  * REST controller for user management in Keycloak authentication mode.
  *
- * <p>This controller is active only when {@code application.auth.provider=KEYCLOAK}.
+ * <p>This controller is active only when {@code application.auth.provider=KEYCLOAK} and {@code application.keycloak.user-management} is not {@code false}.
  * It mirrors the API surface of {@link UserAPIController} but delegates to
  * {@link KeycloakUserService} to register users in the Keycloak realm.
  */
@@ -28,7 +28,7 @@ import java.util.Collection;
         produces = MediaType.APPLICATION_JSON_VALUE,
         path = ApiEndpoints.USERS_V1)
 @Slf4j
-@Conditional(KeycloakAuthenticationModeCondition.class)
+@Conditional(KeycloakUserManagementCondition.class)
 public class KeycloakUserApiController {
 
     private final KeycloakUserService keycloakUserService;

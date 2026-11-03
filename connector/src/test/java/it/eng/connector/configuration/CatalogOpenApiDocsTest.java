@@ -1,27 +1,22 @@
 package it.eng.connector.configuration;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import com.fasterxml.jackson.databind.JsonNode;
-import it.eng.catalog.rest.api.ArtifactAPIController;
-import it.eng.catalog.rest.api.CatalogAPIController;
-import it.eng.catalog.rest.api.DataServiceAPIController;
-import it.eng.catalog.rest.api.DatasetAPIController;
-import it.eng.catalog.rest.api.DistributionAPIController;
-import it.eng.catalog.rest.api.OfferAPIController;
-import it.eng.catalog.rest.api.ProxyAPIController;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
+import it.eng.catalog.rest.api.*;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CatalogOpenApiDocsTest {
 
@@ -32,7 +27,6 @@ class CatalogOpenApiDocsTest {
             DataServiceAPIController.class);
 
     private static final List<Class<?>> BRIEF_DOCUMENTED_CONTROLLERS = List.of(
-            OfferAPIController.class,
             ArtifactAPIController.class,
             ProxyAPIController.class);
 
@@ -88,7 +82,6 @@ class CatalogOpenApiDocsTest {
                 CatalogAPIController.class,
                 DistributionAPIController.class,
                 DataServiceAPIController.class,
-                OfferAPIController.class,
                 ProxyAPIController.class);
         List<String> unstructuredRequestBodies = new ArrayList<>();
         controllers.forEach(controller -> Arrays.stream(controller.getDeclaredMethods())
@@ -108,7 +101,6 @@ class CatalogOpenApiDocsTest {
                         "dataset.plain",
                         "distribution.plain",
                         "data-service.plain",
-                        "offer.plain",
                         "forwarded-catalog.plain",
                         "forwarded-formats.plain")),
                 "Generated example names should match the suffix expected by the OpenAPI customizer");

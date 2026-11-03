@@ -22,7 +22,10 @@ Map of all documentation in this repository. For agent instructions and non-nego
 
 | Document | Purpose |
 |---|---|
-| [security.md](security.md) | TLS configuration, OCSP validation, certificate requirements |
+| [security.md](security.md) | TLS configuration, OCSP validation, certificate requirements, Keycloak trusted issuers and `iss` troubleshooting, per-realm token rules and tenant binding, `X-Tenant-Id`, Keycloak user listing, protocol trust, connector-to-connector token and M2M secret delivery and rotation, `/internal` call zone |
+| [decisions/architecture/D-ARC-005-internal-call-zone-with-in-memory-key.md](decisions/architecture/D-ARC-005-internal-call-zone-with-in-memory-key.md) | Why loopback calls use an `/internal` zone and a token signed with an in-memory key |
+| [decisions/architecture/D-ARC-006-per-realm-role-allow-list-and-per-tenant-realm-credentials.md](decisions/architecture/D-ARC-006-per-realm-role-allow-list-and-per-tenant-realm-credentials.md) | Why the issuing realm decides which role counts (wrong-realm role is 401 plus audit) and why tenant realm client secrets live encrypted on the tenant |
+| [diagrams/auth_provider_architecture.md](diagrams/auth_provider_architecture.md) | Authentication chains, issuer registry and connector-to-connector diagrams |
 | [openapi.md](openapi.md) | Swagger UI, OpenAPI groups, authentication walkthrough, and YAML maintenance |
 | [certificate/PKI_CERTIFICATE_GUIDE.md](certificate/PKI_CERTIFICATE_GUIDE.md) | Certificate generation, JKS keystore/truststore setup |
 | [ocsp/OCSP_GUIDE.md](ocsp/OCSP_GUIDE.md) | OCSP responder setup and certificate revocation checking |

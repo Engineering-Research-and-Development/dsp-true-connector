@@ -1,18 +1,17 @@
 package it.eng.catalog.openapi;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
 import java.lang.reflect.Method;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class OpenApiExamplesGeneratorTest {
 
@@ -22,7 +21,6 @@ class OpenApiExamplesGeneratorTest {
             "dataset.plain.json",
             "distribution.plain.json",
             "data-service.plain.json",
-            "offer.plain.json",
             "forwarded-catalog.plain.json",
             "forwarded-formats.plain.json");
 

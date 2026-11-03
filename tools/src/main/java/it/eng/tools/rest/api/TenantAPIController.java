@@ -1,6 +1,7 @@
 package it.eng.tools.rest.api;
 
 import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.model.RealmCredentialsRequest;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.model.TenantCreateRequest;
 import it.eng.tools.model.TenantUpdateRequest;
@@ -179,6 +180,37 @@ public class TenantAPIController {
         log.info("Disabling tenant: {}", id);
         Tenant updated = tenantService.disableTenant(id);
         return ResponseEntity.ok(GenericApiResponse.success(updated, "Tenant disabled"));
+    }
+
+    /**
+     * Sets the client secret of the tenant realm's user-management client. The secret is checked against
+     * the realm before it is stored encrypted, and is never returned. Only available with Keycloak
+     * authentication: with {@code INTERNAL} authentication the request is answered with 400.
+     *
+     * @param id      the tenant identifier
+     * @param request the request body carrying the client secret
+     * @return 200 OK with the tenant ({@code credentialsConfigured} true), or 400 when the secret is not accepted
+     */
+    @PutMapping(path = "/{id}/realm-credentials", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<GenericApiResponse<Tenant>> setRealmCredentials(
+            @PathVariable String id,
+            @RequestBody RealmCredentialsRequest request) {
+        log.info("Setting realm credentials of tenant: {}", id);
+        Tenant updated = tenantService.setRealmCredentials(id, request.clientSecret());
+        return ResponseEntity.ok(GenericApiResponse.success(updated, "Realm credentials saved"));
+    }
+
+    /**
+     * Removes the stored realm client secret of the tenant.
+     *
+     * @param id the tenant identifier
+     * @return 200 OK with the tenant ({@code credentialsConfigured} false)
+     */
+    @DeleteMapping(path = "/{id}/realm-credentials", consumes = MediaType.ALL_VALUE)
+    public ResponseEntity<GenericApiResponse<Tenant>> deleteRealmCredentials(@PathVariable String id) {
+        log.info("Removing realm credentials of tenant: {}", id);
+        Tenant updated = tenantService.clearRealmCredentials(id);
+        return ResponseEntity.ok(GenericApiResponse.success(updated, "Realm credentials removed"));
     }
 
     /**

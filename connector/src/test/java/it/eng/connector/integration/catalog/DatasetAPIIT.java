@@ -113,13 +113,13 @@ public class DatasetAPIIT extends BaseIntegrationTest {
         Dataset datasetFile = Dataset.Builder.newInstance()
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
                 .artifact(artifactFile)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         Dataset datasetExternal = Dataset.Builder.newInstance()
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
                 .artifact(artifactExternal)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         datasetRepository.save(datasetFile);
@@ -159,7 +159,7 @@ public class DatasetAPIIT extends BaseIntegrationTest {
         Dataset datasetExternal = Dataset.Builder.newInstance()
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
                 .artifact(artifactExternal)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         datasetRepository.save(datasetExternal);
@@ -213,14 +213,14 @@ public class DatasetAPIIT extends BaseIntegrationTest {
 
         Catalog catalog = Catalog.Builder.newInstance()
                 .dataset(Set.of())
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         catalogRepository.save(catalog);
 
         Dataset dataset = Dataset.Builder.newInstance()
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
 
@@ -276,13 +276,13 @@ public class DatasetAPIIT extends BaseIntegrationTest {
 
         Dataset dataset = Dataset.Builder.newInstance()
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
         datasetRepository.save(dataset);
 
         Catalog catalog = Catalog.Builder.newInstance()
                 .dataset(Set.of(dataset))
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         catalogRepository.save(catalog);
@@ -363,7 +363,7 @@ public class DatasetAPIIT extends BaseIntegrationTest {
     public void uploadArtifactFail() throws Exception {
         Dataset dataset = Dataset.Builder.newInstance()
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
@@ -405,12 +405,12 @@ public class DatasetAPIIT extends BaseIntegrationTest {
         Dataset dataset = Dataset.Builder.newInstance()
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
                 .artifact(artifactExternal)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         Catalog catalog = Catalog.Builder.newInstance()
                 .dataset(Set.of(dataset))
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         catalogRepository.save(catalog);
@@ -504,7 +504,7 @@ public class DatasetAPIIT extends BaseIntegrationTest {
 
         Dataset dataset = Dataset.Builder.newInstance()
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         String fileContent = "Hello, World!";
@@ -546,12 +546,12 @@ public class DatasetAPIIT extends BaseIntegrationTest {
                 .id(dataset.getId())
                 .hasPolicy(dataset.getHasPolicy())
                 .artifact(artifactFile)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         Catalog catalog = Catalog.Builder.newInstance()
                 .dataset(Set.of(dataset))
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         catalogRepository.save(catalog);
@@ -622,12 +622,12 @@ public class DatasetAPIIT extends BaseIntegrationTest {
 
         Dataset dataset = Dataset.Builder.newInstance()
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         Catalog catalog = Catalog.Builder.newInstance()
                 .dataset(Set.of(dataset))
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         String fileContent = "Hello, World!";
@@ -669,7 +669,7 @@ public class DatasetAPIIT extends BaseIntegrationTest {
                 .id(dataset.getId())
                 .hasPolicy(dataset.getHasPolicy())
                 .artifact(artifactFile)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         artifactRepository.save(artifactFile);
@@ -730,12 +730,12 @@ public class DatasetAPIIT extends BaseIntegrationTest {
         Dataset dataset = Dataset.Builder.newInstance()
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
                 .artifact(artifactExternal)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         Catalog catalog = Catalog.Builder.newInstance()
                 .dataset(Set.of(dataset))
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         catalogRepository.save(catalog);

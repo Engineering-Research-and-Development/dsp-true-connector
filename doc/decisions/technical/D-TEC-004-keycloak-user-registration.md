@@ -74,3 +74,9 @@ avoids a second authentication path.
 - Decisions: —
 - Docs: `connector/documentation/users.md`, `doc/security.md`
 - Tickets: #248 (MT1 slice), #254
+
+## Superseded configuration
+
+`application.keycloak.admin.server-url` and `application.keycloak.admin.realm` were replaced by
+`application.keycloak.base-url` and `application.keycloak.admin-realm`. See
+[doc/security.md](../../security.md#configuration-properties) for the current properties.

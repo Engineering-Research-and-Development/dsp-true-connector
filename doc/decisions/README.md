@@ -8,6 +8,10 @@ This directory captures architecturally significant decisions: choices that shap
 |--------------------------------------------------------------------------|---|---|---|
 | [D-ARC-001](architecture/D-ARC-001-multi-module-maven-structure.md)      | Multi-module Maven structure by protocol concern | Accepted | Architecture |
 | [D-ARC-002](architecture/D-ARC-002-provider-consumer-spring-profiles.md) | Provider/consumer roles via Spring profiles | Accepted | Architecture |
+| [D-ARC-003](architecture/D-ARC-003-no-login-proxy-in-keycloak-mode.md) | No connector-side login in Keycloak mode | Accepted | Architecture |
+| [D-ARC-004](architecture/D-ARC-004-trusted-issuers-from-config-and-tenant-registry.md) | Trusted issuers come from configuration and the tenant registry | Accepted | Architecture |
+| [D-ARC-005](architecture/D-ARC-005-internal-call-zone-with-in-memory-key.md) | Loopback calls use an /internal zone and a token signed with an in-memory key | Accepted | Architecture |
+| [D-ARC-006](architecture/D-ARC-006-per-realm-role-allow-list-and-per-tenant-realm-credentials.md) | Per-realm role allow-list with tenant binding, and per-tenant encrypted realm credentials | Accepted | Architecture |
 | [D-TEC-001](technical/D-TEC-001-mongodb-persistence.md)                  | MongoDB as the persistence layer | Accepted | Technical |
 | [D-TEC-002](technical/D-TEC-002-testcontainers-integration-testing.md)   | Testcontainers for integration testing | Accepted | Technical |
 | [D-TEC-003](technical/D-TEC-003-async-s3-multipart-upload.md)            | Asynchronous parallel S3 multipart upload | Accepted | Technical |

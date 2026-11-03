@@ -4,15 +4,15 @@ package it.eng.tools.auth;
  * Issues an access token for connector-to-connector (protocol) M2M calls made in {@code INTERNAL}
  * authentication mode.
  *
- * <p>Implemented in the {@code connector} module (which owns the Mongo-backed {@code User}/{@code
- * AuthService} types) and consumed here via an optional {@code ObjectProvider}, since the {@code
- * tools} module must never depend on {@code connector}. This mirrors the existing idiom used by
- * {@link AuthProvider} for the Keycloak-oriented {@link AuthenticationCache}.
+ * <p>Implemented by {@link it.eng.tools.auth.jwt.InternalProtocolTokenIssuer}, which mints the token
+ * locally with the {@code INTERNAL} signing key; no user login or user store is involved. Consumed by
+ * {@code CredentialUtils} via an optional {@code ObjectProvider}, which is empty outside
+ * {@code INTERNAL} mode.
  */
 public interface ConnectorCredentialProvider {
 
 	/**
-	 * Authenticates as the connector-to-connector principal and returns a signed JWT access token.
+	 * Returns a signed JWT access token for the connector-to-connector principal.
 	 *
 	 * @return the issued access token, or {@code null} if a token could not be issued
 	 */

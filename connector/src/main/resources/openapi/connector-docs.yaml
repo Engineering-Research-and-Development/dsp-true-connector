@@ -11,13 +11,16 @@ tags:
       uppercase letter, digit, and special character.
   KeycloakUserApiController:
     name: Keycloak Users
-    description: Read users from Keycloak when KEYCLOAK authentication mode is active.
+    description: >-
+      Read the users of a tenant realm from Keycloak. Available when KEYCLOAK authentication mode is active and
+      application.keycloak.user-management is not false.
   AuthController:
     name: Authentication
     description: >-
-      The unified login, refresh, and logout API is permit-all in INTERNAL and KEYCLOAK modes.
-      INTERNAL validates credentials against MongoDB and issues connector JWTs; KEYCLOAK delegates
-      the same contract to Keycloak.
+      Permit-all login, refresh, and logout API available only in INTERNAL mode. It validates
+      credentials against MongoDB and issues connector JWTs. In KEYCLOAK mode these routes do not
+      exist: the UI signs in to Keycloak directly (authorization code + PKCE) and logs out through
+      Keycloak.
   DashboardMetricsController:
     name: Dashboard Metrics
     description: Retrieve operational metrics for the authenticated user's tenant context.
@@ -60,18 +63,42 @@ operations:
       Change the target user's password after verifying the current password. ROLE_ADMIN may use
       this only for their own account; ROLE_SUPER_ADMIN may change any user's password. The new
       password must be 8 to 16 characters and include a lowercase letter, uppercase letter, digit,
-      and special character.
+      and special character. Available only in INTERNAL and DISABLED modes; in KEYCLOAK mode users
+      change their password in Keycloak.
 
   getUsers:
     summary: List Keycloak users
-    description: Return Keycloak users, optionally filtered by email. User creation and updates are managed in Keycloak.
+    description: >-
+      Return the users of one tenant's Keycloak realm, optionally filtered by exact email. Only a
+      ROLE_SUPER_ADMIN token is accepted. The tenant is named with the required X-Tenant-Id request
+      header; the listing uses that realm's own view-users-only client and the client secret stored
+      on the tenant (PUT /api/v1/tenants/{id}/realm-credentials), never a Keycloak admin role.
+      Responses: 400 when X-Tenant-Id is missing, or names an unknown or disabled tenant; 403 for a
+      token that is not a super-admin token; 404 when application.keycloak.user-management is false;
+      409 when the tenant has no realm or no stored user-management secret, or the realm rejects that
+      secret (400 or 401 from its token endpoint); 502 when Keycloak fails or cannot be reached. User
+      creation and updates are managed in Keycloak.
+    responses:
+      "200":
+        description: The users of the tenant's realm.
+      "400":
+        description: X-Tenant-Id is missing, or names an unknown or disabled tenant.
+      "403":
+        description: The caller is not a super-admin.
+      "404":
+        description: Keycloak user management is switched off (application.keycloak.user-management=false).
+      "409":
+        description: >-
+          User management is not configured for this tenant (no realm, no stored secret, or the realm
+          rejects the stored secret).
+      "502":
+        description: Keycloak failed or could not be reached (5xx, 429 or another unexpected status, or a network error).
 
   login:
     summary: Log in
-    description: Authenticate with a seeded admin or connector account and return an access and refresh token pair.
+    description: Authenticate with the seeded admin account and return an access and refresh token pair.
     requestExamples:
       Seeded admin account: login-admin
-      Seeded connector account: login-connector
   refresh:
     summary: Refresh tokens
     description: Rotate a valid refresh token and return a new access and refresh token pair.

@@ -2,9 +2,11 @@ package it.eng.tools.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
+import it.eng.tools.s3.encrypt.Encrypted;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
@@ -12,12 +14,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedBy;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedBy;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.annotation.Version;
+import org.springframework.data.annotation.*;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
@@ -34,7 +31,7 @@ import java.util.stream.Collectors;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 @JsonDeserialize(builder = Tenant.Builder.class)
 @JsonPropertyOrder({"id", "name", "description", "participantId",
-        "automaticNegotiation", "automaticTransfer", "enabled", "bucketName"})
+        "realm", "automaticNegotiation", "automaticTransfer", "enabled", "bucketName", "credentialsConfigured"})
 @Document(collection = "tenants")
 public class Tenant {
 
@@ -54,6 +51,8 @@ public class Tenant {
     @NotNull
     private String participantId;
 
+    private String realm;
+
     private boolean automaticNegotiation;
 
     private boolean automaticTransfer;
@@ -66,6 +65,15 @@ public class Tenant {
      * by this name. When null, S3 operations fall back to the global configured bucket.
      */
     private String bucketName;
+
+    /**
+     * Ciphertext of the client secret of the user-management client in this tenant's realm. Write-only:
+     * never serialized and never part of {@link #toString()}. Set and read only through
+     * {@link it.eng.tools.service.TenantService}.
+     */
+    @JsonIgnore
+    @Encrypted
+    private String clientSecret;
 
     @JsonIgnore
     @CreatedDate
@@ -87,6 +95,28 @@ public class Tenant {
     @Version
     @Field("version")
     private Long version;
+
+    /**
+     * Tells whether a realm client secret is stored for this tenant. Computed on read, never persisted.
+     *
+     * @return {@code true} when a client secret is stored
+     */
+    @Transient
+    @JsonProperty("credentialsConfigured")
+    public boolean isCredentialsConfigured() {
+        return clientSecret != null && !clientSecret.isBlank();
+    }
+
+    /**
+     * Describes the tenant without the client secret.
+     *
+     * @return a short description
+     */
+    @Override
+    public String toString() {
+        return "Tenant{id=" + id + ", name=" + name + ", realm=" + realm + ", enabled=" + enabled
+                + ", credentialsConfigured=" + isCredentialsConfigured() + "}";
+    }
 
     /**
      * Computes the callback address for this tenant.
@@ -170,6 +200,17 @@ public class Tenant {
         }
 
         /**
+         * Sets the optional Keycloak realm for this tenant.
+         *
+         * @param realm the Keycloak realm
+         * @return this builder
+         */
+        public Builder realm(String realm) {
+            tenant.realm = realm;
+            return this;
+        }
+
+        /**
          * Sets whether automatic negotiation is enabled for this tenant.
          *
          * @param automaticNegotiation the automatic negotiation flag
@@ -211,6 +252,17 @@ public class Tenant {
          */
         public Builder bucketName(String bucketName) {
             tenant.bucketName = bucketName;
+            return this;
+        }
+
+        /**
+         * Sets the stored (encrypted) client secret of the tenant realm's user-management client.
+         *
+         * @param clientSecret the ciphertext, or {@code null} for none
+         * @return this builder
+         */
+        public Builder clientSecret(String clientSecret) {
+            tenant.clientSecret = clientSecret;
             return this;
         }
 

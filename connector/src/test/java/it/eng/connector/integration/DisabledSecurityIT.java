@@ -1,15 +1,17 @@
 package it.eng.connector.integration;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.util.List;
-import java.util.Map;
-
+import it.eng.catalog.model.Catalog;
+import it.eng.catalog.model.Dataset;
+import it.eng.catalog.repository.CatalogRepository;
+import it.eng.catalog.repository.DataServiceRepository;
+import it.eng.catalog.repository.DatasetRepository;
+import it.eng.catalog.repository.DistributionRepository;
+import it.eng.catalog.serializer.CatalogSerializer;
+import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.tools.controller.ApiEndpoints;
+import it.eng.tools.repository.ArtifactRepository;
+import it.eng.tools.s3.properties.S3Properties;
+import it.eng.tools.s3.service.S3ClientService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,18 +26,15 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.ResultActions;
 
-import it.eng.catalog.model.Catalog;
-import it.eng.catalog.model.Dataset;
-import it.eng.catalog.repository.CatalogRepository;
-import it.eng.catalog.repository.DataServiceRepository;
-import it.eng.catalog.repository.DatasetRepository;
-import it.eng.catalog.repository.DistributionRepository;
-import it.eng.catalog.serializer.CatalogSerializer;
-import it.eng.catalog.util.CatalogMockObjectUtil;
-import it.eng.tools.controller.ApiEndpoints;
-import it.eng.tools.repository.ArtifactRepository;
-import it.eng.tools.s3.properties.S3Properties;
-import it.eng.tools.s3.service.S3ClientService;
+import java.util.List;
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @TestPropertySource(properties = "application.auth.provider=DISABLED")
 @SpringBootTest(
@@ -137,6 +136,22 @@ class DisabledSecurityIT extends BaseIntegrationTest {
         );
         assertNotNull(catalogResponse);
         assertFalse(catalogResponse.getDataset().isEmpty());
+    }
+
+    @Test
+    @DisplayName("GET /internal/v1/datasets/{id}/formats without authentication returns 200 in disabled mode")
+    void internalZoneWithoutAuthenticationReturnsOk() throws Exception {
+        populateCatalog();
+        Dataset dataset = datasetRepository.findAll().stream().findFirst()
+                .orElseThrow(() -> new IllegalStateException("Catalog dataset was not persisted."));
+
+        mockMvc.perform(get(ApiEndpoints.INTERNAL_DATASETS_V1 + "/" + dataset.getId() + "/formats")
+                        .with(request -> {
+                            request.setRemoteAddr("10.1.2.3");
+                            return request;
+                        }))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
     }
 
     @Test

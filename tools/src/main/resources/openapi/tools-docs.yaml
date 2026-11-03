@@ -7,6 +7,9 @@ tags:
       tenant-scoped management APIs, a super-admin can pass X-Tenant-Id to scope a request to
       one tenant; without it, super-admin requests are not tenant-scoped. A regular tenant admin
       uses the tenant in their authenticated identity and cannot override it with this header.
+  PublicTenantInfoController:
+    name: Public Tenant Information
+    description: Unauthenticated public information for enabled tenants.
   AuditEventController:
     name: Audit Events
     description: Browse tenant-scoped audit events and event types.
@@ -14,7 +17,32 @@ tags:
     name: Application Properties
     description: Read and update runtime application properties.
 
+schemas:
+  TenantCreateRequest:
+    realm: >-
+      Optional Keycloak realm name for the tenant. A non-null value must match ^[A-Za-z0-9._-]+$, be at most 255 characters, not be . or .., not equal master or the configured platform or admin realm (compared case-insensitively), and not be used by any other tenant, enabled or disabled (compared case-sensitively). Omit it for a tenant that accepts no Keycloak tokens.
+  TenantUpdateRequest:
+    realm: >-
+      Optional Keycloak realm name for the tenant. A non-null value must match ^[A-Za-z0-9._-]+$, be at most 255 characters, not be . or .., not equal master or the configured platform or admin realm (compared case-insensitively), and not be used by any other tenant, enabled or disabled (compared case-sensitively). Omit it to keep the current value.
+
+  Tenant:
+    credentialsConfigured: >-
+      True when a client secret for the realm's user-management client is stored for the tenant.
+      The secret itself is write-only and is never returned.
+  RealmCredentialsRequest:
+    clientSecret: >-
+      Secret of the user-management client (application.keycloak.user-management-client-id, default
+      connector-user-reader) in the tenant's realm. It is checked against the realm, stored
+      encrypted and never returned or logged.
+
 operations:
+  getPublicTenantInfo:
+    summary: Get public tenant information
+    description: >-
+      GET /public/tenant returns public information for enabled tenants. Each response item
+      contains only the tenant name and realm fields. The realm may be null for legacy or
+      unconfigured tenant records.
+
   getAllTenants:
     summary: List tenants
     description: >-
@@ -30,13 +58,36 @@ operations:
       Create a tenant with a caller-supplied ID containing only letters, digits, or hyphens and
       a participant ID unique across tenants. Bucket provisioning can be automatic, use an
       existing bucket, or persist externally supplied credentials. The tenant must be enabled
-      before its tenant-prefixed DSP protocol endpoints accept requests.
+      before its tenant-prefixed DSP protocol endpoints accept requests. A supplied realm is
+      validated: it must match ^[A-Za-z0-9._-]+$, must not be . or .., master, platform or connector-admin,
+      and must not be used by another tenant.
+    responses:
+      "200":
+        description: The tenant was created.
+      "400":
+        description: >-
+          The request is invalid, including a realm that does not match the allowed pattern or is a
+          reserved name (master, platform, connector-admin).
+      "409":
+        description: The realm is already assigned to another tenant.
   updateTenant:
     summary: Update tenant settings
     description: >-
       Update mutable tenant settings and, when supplied, rotate bucket credentials or migrate
       to another bucket. The participant ID is read-only. Bucket migration does not remove the
-      previous bucket or its data; operators must clean it up explicitly when it is safe.
+      previous bucket or its data; operators must clean it up explicitly when it is safe. A
+      supplied realm is validated like on creation; supplying the tenant's own current realm is accepted.
+    responses:
+      "200":
+        description: The tenant was updated.
+      "400":
+        description: >-
+          The request is invalid, including a realm that does not match the allowed pattern or is a
+          reserved name (master, platform, connector-admin).
+      "404":
+        description: The tenant does not exist.
+      "409":
+        description: The realm is already assigned to another tenant.
   enableTenant:
     summary: Enable a tenant
     description: Enable the tenant so its tenant-prefixed DSP protocol requests can be processed.
@@ -50,6 +101,38 @@ operations:
     description: >-
       Delete the tenant record. The associated S3 bucket and its objects are deliberately retained
       to avoid data loss; clean up the bucket manually after confirming its data is no longer needed.
+
+  setRealmCredentials:
+    summary: Set the realm credentials of a tenant
+    description: >-
+      Store the client secret of the tenant realm's user-management client
+      (application.keycloak.user-management-client-id, default connector-user-reader). Requires
+      ROLE_SUPER_ADMIN and Keycloak authentication. The secret is first checked with a real
+      client-credentials token request against the realm's token endpoint (from the realm's
+      discovery document, built from the configured Keycloak base URL and the tenant's realm),
+      then stored encrypted and never returned. A new secret replaces the previous one. A
+      TENANT_UPDATED audit event (without the secret) is recorded.
+    responses:
+      "200":
+        description: The secret was accepted by the realm and stored; the tenant is returned with credentialsConfigured true.
+      "400":
+        description: >-
+          The tenant does not exist or has no realm, the secret is blank, the realm did not accept the
+          credentials (generic message, nothing is stored), or the connector does not use Keycloak authentication.
+      "403":
+        description: The caller is not a super-admin.
+  deleteRealmCredentials:
+    summary: Remove the realm credentials of a tenant
+    description: >-
+      Remove the stored client secret of the tenant realm's user-management client. Requires
+      ROLE_SUPER_ADMIN and Keycloak authentication. A TENANT_UPDATED audit event is recorded.
+    responses:
+      "200":
+        description: The secret was removed; the tenant is returned with credentialsConfigured false.
+      "400":
+        description: The tenant does not exist or has no realm, or the connector does not use Keycloak authentication.
+      "403":
+        description: The caller is not a super-admin.
 
   getAuditEventById:
     summary: Get an audit event

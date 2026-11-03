@@ -1,45 +1,28 @@
 package it.eng.connector.configuration;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.rest.api.CatalogAPIController;
-import it.eng.catalog.rest.protocol.CatalogController;
 import it.eng.catalog.rest.api.DataServiceAPIController;
 import it.eng.catalog.rest.api.DatasetAPIController;
 import it.eng.catalog.rest.api.DistributionAPIController;
+import it.eng.catalog.rest.protocol.CatalogController;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.rest.api.AuthController;
-import it.eng.connector.rest.api.DashboardMetricsController;
-import it.eng.connector.rest.api.DSpaceVersionController;
-import it.eng.connector.rest.api.KeycloakUserApiController;
-import it.eng.connector.rest.api.UserAPIController;
+import it.eng.connector.rest.api.*;
+import it.eng.datatransfer.rest.api.DataTransferAPIController;
 import it.eng.datatransfer.rest.protocol.ConsumerDataTransferCallbackController;
 import it.eng.datatransfer.rest.protocol.ProviderDataTransferController;
-import it.eng.datatransfer.rest.api.DataTransferAPIController;
-import it.eng.negotiation.rest.api.AgreementAPIController;
 import it.eng.negotiation.rest.api.ContractNegotiationAPIController;
 import it.eng.negotiation.rest.protocol.ContractNegotiationConsumerCallbackController;
 import it.eng.negotiation.rest.protocol.ContractNegotiationProviderController;
 import it.eng.tools.rest.api.ApplicationPropertiesAPIController;
 import it.eng.tools.rest.api.AuditEventController;
 import it.eng.tools.rest.api.TenantAPIController;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -48,6 +31,10 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -69,7 +56,6 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
             DistributionAPIController.class,
             DataServiceAPIController.class,
             ContractNegotiationAPIController.class,
-            AgreementAPIController.class,
             DataTransferAPIController.class,
             TenantAPIController.class,
             UserAPIController.class,
@@ -238,7 +224,7 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Generated login examples authenticate the seeded admin and connector users")
+    @DisplayName("Generated login example authenticates the seeded admin user")
     void generatedLoginExamplesAuthenticateSeededUsers() throws Exception {
         String document = mockMvc.perform(get("/v3/api-docs/management-api")
                         .with(user("swagger-test").roles("ADMIN")))
@@ -248,7 +234,7 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
                 .getContentAsString();
         JsonNode examples = jsonMapper.readTree(document).path("components").path("examples");
 
-        for (String exampleName : List.of("login-admin.plain", "login-connector.plain")) {
+        for (String exampleName : List.of("login-admin.plain")) {
             JsonNode loginRequest = examples.path(exampleName).path("value");
             assertTrue(loginRequest.isObject(), () -> "Missing generated login request example " + exampleName);
             mockMvc.perform(post("/api/v1/auth/login")

@@ -6,7 +6,6 @@ import it.eng.catalog.model.Dataset;
 import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
 import it.eng.datatransfer.repository.TransferProcessRepository;
@@ -29,7 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MvcResult;
 import org.wiremock.spring.InjectWireMock;
 
@@ -90,7 +89,7 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Download artifact file")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void downloadArtifactFile() throws Exception {
         String fileContent = "Hello, World!";
         String datasetId = createNewId();
@@ -181,7 +180,7 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Download artifact external")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void downloadArtifactExternal() throws Exception {
 
         String mockUser = "mockUser";
@@ -274,7 +273,7 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Download artifact - process not started")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void downloadArtifact_fail_not_started() throws Exception {
         Dataset dataset = Dataset.Builder.newInstance()
                 .hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
@@ -322,7 +321,7 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Download artifact - enforcement failed")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void downloadArtifact_fail_enforcement_failed() throws Exception {
         Dataset dataset = Dataset.Builder.newInstance()
                 .hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))

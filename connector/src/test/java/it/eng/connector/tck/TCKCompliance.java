@@ -1,11 +1,12 @@
 package it.eng.connector.tck;
 
 import it.eng.connector.integration.BaseIntegrationTest;
+import it.eng.tools.auth.ConnectorCredentialProvider;
 import org.eclipse.dataspacetck.core.system.ConsoleMonitor;
 import org.eclipse.dataspacetck.runtime.TckRuntime;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -18,6 +19,9 @@ import java.util.stream.Collectors;
 @Profile("tck")
 //@Disabled("Disabled until WE can run it in CI/CD")
 public class TCKCompliance extends BaseIntegrationTest {
+
+    @Autowired
+    private ConnectorCredentialProvider connectorCredentialProvider;
 
     @Test
     void assertDspCompatibility() throws IOException {
@@ -49,7 +53,11 @@ public class TCKCompliance extends BaseIntegrationTest {
         properties.put("dataspacetck.dsp.connector.agent.id", "CONNECTOR_UNDER_TEST");
         properties.put("dataspacetck.dsp.connector.http.url", "http://localhost:8080");
         properties.put("dataspacetck.dsp.connector.http.base.url", "http://localhost:8080");
-        properties.put("dataspacetck.dsp.connector.http.headers.authorization", "Basic Y29ubmVjdG9yQG1haWwuY29tOnBhc3N3b3Jk");
+        String protocolToken = connectorCredentialProvider.issueConnectorToken();
+        if (protocolToken == null) {
+            throw new IllegalStateException("Could not mint the protocol token for the TCK run");
+        }
+        properties.put("dataspacetck.dsp.connector.http.headers.authorization", "Bearer " + protocolToken);
         properties.put("dataspacetck.dsp.connector.negotiation.initiate.url", "http://localhost:8080/consumer/negotiations/tck");
         properties.put("dataspacetck.dsp.connector.transfer.initiate.url", "http://localhost:8080/consumer/transfers/tck");
 

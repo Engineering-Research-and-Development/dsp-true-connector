@@ -431,6 +431,22 @@
     "realmRoles" : [ "ADMIN", "default-roles-tenant-acme" ],
     "notBefore" : 0,
     "groups" : [ ]
+  }, {
+    "id" : "6e43e7ea-5279-460c-8034-a19f06791ebc",
+    "username" : "service-account-connector-user-reader",
+    "emailVerified" : false,
+    "enabled" : true,
+    "totp" : false,
+    "serviceAccountClientId" : "connector-user-reader",
+    "credentials" : [ ],
+    "disableableCredentialTypes" : [ ],
+    "requiredActions" : [ ],
+    "realmRoles" : [ "default-roles-tenant-acme" ],
+    "clientRoles" : {
+      "realm-management" : [ "view-users" ]
+    },
+    "notBefore" : 0,
+    "groups" : [ ]
   } ],
   "scopeMappings" : [ {
     "client" : "keycloak-api",
@@ -443,6 +459,10 @@
     "account" : [ {
       "client" : "account-console",
       "roles" : [ "manage-account", "view-groups" ]
+    } ],
+    "realm-management" : [ {
+      "client" : "connector-user-reader",
+      "roles" : [ "view-users" ]
     } ]
   },
   "clients" : [ {
@@ -603,6 +623,37 @@
     "fullScopeAllowed" : false,
     "nodeReRegistrationTimeout" : -1,
     "defaultClientScopes" : [ "web-origins", "acr", "org", "profile", "roles", "connector-audience", "basic", "email" ],
+    "optionalClientScopes" : [ "address", "phone", "offline_access", "organization", "microprofile-jwt" ]
+  }, {
+    "id" : "326014c9-06ad-4d26-a98d-0d90163e676b",
+    "clientId" : "connector-user-reader",
+    "name" : "connector-user-reader",
+    "surrogateAuthRequired" : false,
+    "enabled" : true,
+    "alwaysDisplayInConsole" : false,
+    "clientAuthenticatorType" : "client-secret",
+    "secret" : "connector-user-reader-secret-acme",
+    "redirectUris" : [ ],
+    "webOrigins" : [ ],
+    "notBefore" : 0,
+    "bearerOnly" : false,
+    "consentRequired" : false,
+    "standardFlowEnabled" : false,
+    "implicitFlowEnabled" : false,
+    "directAccessGrantsEnabled" : false,
+    "serviceAccountsEnabled" : true,
+    "publicClient" : false,
+    "frontchannelLogout" : false,
+    "protocol" : "openid-connect",
+    "attributes" : {
+      "realm_client" : "false",
+      "backchannel.logout.session.required" : "true",
+      "backchannel.logout.revoke.offline.tokens" : "false"
+    },
+    "authenticationFlowBindingOverrides" : { },
+    "fullScopeAllowed" : false,
+    "nodeReRegistrationTimeout" : -1,
+    "defaultClientScopes" : [ "web-origins", "acr", "roles", "profile", "basic", "email" ],
     "optionalClientScopes" : [ "address", "phone", "offline_access", "organization", "microprofile-jwt" ]
   }, {
     "id" : "8d0cbdf5-afb7-4f70-ae64-9bd1b5a2e8c3",

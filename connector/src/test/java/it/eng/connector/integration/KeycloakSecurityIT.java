@@ -16,6 +16,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -29,8 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -124,11 +125,67 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
     }
 
     @Test
+    @DisplayName("GET /api/v1/tenants with super-admin token returns 200 in Keycloak mode")
+    void getTenantsWithSuperAdminTokenReturnsOk() throws Exception {
+        mockMvc.perform(get(ApiEndpoints.TENANTS_V1)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(superAdminAccessToken()))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/tenants with tenant admin token returns 403 in Keycloak mode (SUPER_ADMIN required)")
+    void getTenantsWithAdminTokenReturnsForbidden() throws Exception {
+        mockMvc.perform(get(ApiEndpoints.TENANTS_V1)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(adminAccessToken()))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @ParameterizedTest(name = "GET {0} with connector token returns 403 in Keycloak mode")
+    @ValueSource(strings = {ApiEndpoints.CATALOG_CATALOGS_V1, ApiEndpoints.TENANTS_V1})
+    void apiRouteWithConnectorTokenReturnsForbidden(String route) throws Exception {
+        mockMvc.perform(get(route)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(connectorAccessToken()))
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("POST /{tenantId}/catalog/request with super-admin token returns 401 in Keycloak mode (platform issuer only)")
+    void catalogRequestWithSuperAdminTokenReturnsUnauthorized() throws Exception {
+        mockMvc.perform(post(CATALOG_REQUEST_PATH)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(superAdminAccessToken()))
+                        .content(catalogRequestBody())
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     @DisplayName("GET /api/v1/users with admin token returns 403 in Keycloak mode (SUPER_ADMIN required)")
     void getUsersWithAdminTokenReturnsForbidden() throws Exception {
         mockMvc.perform(get(ApiEndpoints.USERS_V1)
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(adminAccessToken()))
                         .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+    }
+
+    @ParameterizedTest(name = "POST /api/v1/auth/{0} without bearer token returns 401 in Keycloak mode")
+    @ValueSource(strings = {"login", "refresh", "logout"})
+    void authRouteWithoutBearerTokenReturnsUnauthorized(String route) throws Exception {
+        mockMvc.perform(post(ApiEndpoints.AUTH_V1 + "/" + route)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/users/{id}/password with admin token returns 403 in Keycloak mode (not offered)")
+    void changePasswordWithAdminTokenReturnsForbidden() throws Exception {
+        mockMvc.perform(put(ApiEndpoints.USERS_V1 + "/some-user-id/password")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(adminAccessToken()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
                 .andExpect(status().isForbidden());
     }
 
@@ -160,13 +217,13 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /{tenantId}/catalog/request with admin token returns 403 in Keycloak mode")
-    void catalogRequestWithAdminTokenReturnsForbidden() throws Exception {
+    @DisplayName("POST /{tenantId}/catalog/request with tenant admin token returns 401 in Keycloak mode (platform issuer only)")
+    void catalogRequestWithAdminTokenReturnsUnauthorized() throws Exception {
         mockMvc.perform(post(CATALOG_REQUEST_PATH)
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(adminAccessToken()))
                         .content(catalogRequestBody())
                         .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

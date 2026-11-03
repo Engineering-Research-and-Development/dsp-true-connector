@@ -40,6 +40,8 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class ContractNegotiationAPIServiceTest {
+
+    private static final String TOKEN_UNAVAILABLE = "Request not sent: no access token";
     @Mock
     private AuditEventPublisher publisher;
 
@@ -165,6 +167,25 @@ public class ContractNegotiationAPIServiceTest {
         verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_NEGOTIATION_REJECTED, "Contract negotiation request failed");
+    }
+
+    @Test
+    @DisplayName("Start contract negotiation - request not sent, no access token")
+    public void sendContractRequestMessage_tokenUnavailable() {
+        HashMap<Object, Object> map = new HashMap<>();
+        map.put("Forward-To", NegotiationMockObjectUtil.FORWARD_TO);
+        map.put(DSpaceConstants.OFFER, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class)))
+                .thenReturn(GenericApiResponse.error(TOKEN_UNAVAILABLE));
+        when(properties.consumerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
+
+        ContractNegotiationAPIException exception = assertThrows(ContractNegotiationAPIException.class,
+                () -> service.sendContractRequestMessage(mapper.convertValue(map, JsonNode.class)));
+
+        assertTrue(exception.getMessage().contains(TOKEN_UNAVAILABLE));
+        verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
+        verifyAuditEvent(AuditEventType.PROTOCOL_NEGOTIATION_REJECTED, "Contract negotiation request failed");
+        assertEquals(TOKEN_UNAVAILABLE, argCaptorAuditEventDetails.getValue().get("contractNegotiationErrorMessage"));
     }
 
     @Test
@@ -996,6 +1017,22 @@ public class ContractNegotiationAPIServiceTest {
                 () -> service.sendContractNegotiationTerminationMessage(contractNegotiationId));
 
         verify(contractNegotiationRepository, times(0)).save(argCaptorContractNegotiation.capture());
+    }
+
+    @Test
+    @DisplayName("Terminate contract negotiation - request not sent, no access token")
+    public void terminateNegotiation_tokenUnavailable() {
+        String contractNegotiationId = UUID.randomUUID().toString();
+        when(contractNegotiationRepository.findById(contractNegotiationId)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class)))
+                .thenReturn(GenericApiResponse.error(TOKEN_UNAVAILABLE));
+
+        ContractNegotiationAPIException exception = assertThrows(ContractNegotiationAPIException.class,
+                () -> service.sendContractNegotiationTerminationMessage(contractNegotiationId));
+
+        assertTrue(exception.getMessage().contains(TOKEN_UNAVAILABLE));
+        verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
+        verifyAuditEvent(AuditEventType.PROTOCOL_NEGOTIATION_REJECTED, "Contract negotiation termination failed");
     }
 
     @Test
