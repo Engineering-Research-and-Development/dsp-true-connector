@@ -388,8 +388,8 @@
   "users" : [ {
     "id" : "c37564ab-1efd-48fc-8517-82c9f54eb99c",
     "username" : "adminB",
-    "firstName" : "Admin",
-    "lastName" : "User",
+    "firstName" : "Cappuccino",
+    "lastName" : "Brioschi",
     "email" : "adminB@mail.com",
     "emailVerified" : true,
     "attributes" : {
