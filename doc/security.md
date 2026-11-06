@@ -597,10 +597,9 @@ Realm exports in `ci/docker/keycloak_resources/` are imported on first start of 
 | `connector-admin` | Super-admins; public client `keycloak-api` | `superadmin@mail.com` / `password` | none |
 | `tenant-EngineeringA` | Tenant `engineering-a` | `admin` (`admin@mail.com`) / `password` | `engineering-a` |
 | `tenant-EngineeringB` | Tenant `engineering-b` | `adminB` (`adminB@mail.com`, stored by Keycloak as `adminb`) / `password` | `engineering-b` |
-| `tenant-acme` | Live demo only, never used in tests | `coyote`, `roadrunner` | n/a |
+| `tenant-acme` | Tenant `acme` (demo only, seeded in `connector/src/main/resources/initial_data.json`, never used in tests) | `coyote`, `roadrunner` | `acme` |
 
-The `tenant_id` claim of a tenant realm user must equal the `_id` of the tenant whose `realm` field names that realm. It is never the realm name (`tenant-EngineeringA` is the realm, `engineering-a` is the tenant id). The seeded tenants carry the matching `realm` values; `InitialDataLoader` does not run the realm validation, and a test asserts the seeds are consistent with the realm files. The Keycloak integration tests (`BaseKeycloakIntegrationTest`) trust the tenant realms through the registry above.
-
+The `tenant_id` claim of a tenant realm user must equal the `_id` of the tenant whose `realm` field names that realm. It is never the realm name (`tenant-EngineeringA` is the realm, `engineering-a` is the tenant id). The seeded tenants carry the matching `realm` values; `InitialDataLoader` does not run the realm validation, and `InitialDataSeedConsistencyTest` asserts the seeds are consistent with the realm files (a seed file may hold several tenants, each bound to a seeded realm). Every tenant realm needs both halves: a Mongo tenant whose `realm` names it (otherwise the realm is not trusted and its tokens get 401) and users whose `tenant_id` is that tenant's `_id` (otherwise the tenant binding gives 401).
 Seed data is not a migration. On every start the connector upserts each `initial_data*.json` document by `_id`, and Keycloak (`--import-realm`) imports only realms that do not exist yet. On a deployment seeded before the rename, this means:
 
 - the seeded documents (same `_id`) are overwritten and now belong to `engineering-a` (or `engineering-b`), and the new tenant is added next to the old one, which stays enabled;
@@ -615,6 +614,7 @@ Re-seed such a deployment from empty databases, or move the old tenant's data to
 2. If exported, remove the `org.keycloak.keys.KeyProvider` component from the file so signing keys are not committed; Keycloak generates new keys on import.
 3. Keep the realm `frontendUrl` attribute at `http://localhost:8180`; the integration test base (`BaseKeycloakIntegrationTest`) strips it on import.
 4. Keep `tenant_id` of tenant realm users equal to the matching Mongo tenant `_id` (see above).
+5. For a new tenant realm, seed a tenant with that `realm` in the `initial_data*.json` file of the connector that uses it, and add the realm file to `TENANT_REALM_FILES` in `InitialDataSeedConsistencyTest`.
 
 ## Internal Authentication Mode (`INTERNAL`)
 

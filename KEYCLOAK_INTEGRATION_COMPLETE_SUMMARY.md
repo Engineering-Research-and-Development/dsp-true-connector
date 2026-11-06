@@ -121,7 +121,7 @@ Five realm exports in `ci/docker/keycloak_resources/`, one realm per file and on
 | `connector-admin` (`connector-admin-realm.json`) | Super-admins (tenant and user management) | `keycloak-api` (public) | `superadmin@mail.com` / `password` | `SUPER_ADMIN` |
 | `tenant-EngineeringA` (`tenant-EngineeringA-realm.json`) | Tenant admins of the `EngineeringA` tenant (`engineering-a`) | `keycloak-api` (public) | `admin` (`admin@mail.com`) / `password` | `ADMIN` |
 | `tenant-EngineeringB` (`tenant-EngineeringB-realm.json`) | Tenant admins of the `EngineeringB` tenant (`engineering-b`) | `keycloak-api` (public) | `adminB` (`adminB@mail.com`, Keycloak stores the username as `adminb`) / `password` | `ADMIN` |
-| `tenant-acme` (`tenant-acme-realm.json`) | Demo tenant (not used in tests) | `keycloak-api` (public) | `coyote` / `coyote`, `roadrunner` / `roadrunner` | `ADMIN` |
+| `tenant-acme` (`tenant-acme-realm.json`) | Tenant admins of the demo `acme` tenant (`tenant_id` `acme`; seeded only in `connector/src/main/resources/initial_data.json`, not used in tests) | `keycloak-api` (public) | `coyote` / `coyote`, `roadrunner` / `roadrunner` | `ADMIN` |
 
 All tokens carry `aud` `dsp-true-connector` and `realm_access.roles`. Tenant realm tokens also carry `org` and `tenant_id` (for example `EngineeringA` and `engineering-a`; `tenant_id` is the Mongo tenant id, never the realm name); platform and super-admin tokens carry no tenant.
 
