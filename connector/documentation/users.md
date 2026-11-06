@@ -286,6 +286,21 @@ Create each user in the realm that matches its role. Do not mix super-admins wit
 | **Tenant users** | The tenant's own realm, e.g. `tenant-EngineeringA` | The tenant's `realm` field. Each user needs the realm role `ADMIN` and a `tenant_id` attribute (mapped to the `tenant_id` claim) equal to the tenant `_id`, e.g. `engineering-a`, not the realm name. |
 | **Machine-to-machine** | `platform` | `application.keycloak.platform-realm`, client `dsp-connector-backend` with realm role `CONNECTOR`. Not a human user. |
 
+A tenant user's token is accepted only when both of these hold:
+
+1. **A Mongo tenant owns the realm.** An enabled tenant has the realm name in its `realm` field. Otherwise the connector does not trust the realm and every token from it gets `401`.
+2. **The `tenant_id` claim is that tenant's `_id`.** If it holds anything else, such as the realm name, the token gets `401`.
+
+The seed data follows both rules:
+
+| Realm | Mongo tenant (`_id`, seeded in) | `tenant_id` of the realm users |
+|-------|--------------------------------|--------------------------------|
+| `tenant-EngineeringA` | `engineering-a`, connector A seeds | `engineering-a` |
+| `tenant-EngineeringB` | `engineering-b`, connector B seeds | `engineering-b` |
+| `tenant-acme` (demo) | `acme`, only `connector/src/main/resources/initial_data.json` | `acme` |
+
+The `tenant-acme` users (`coyote`, `roadrunner`) used to carry `tenant_id` `tenant-acme` (the realm name), and no Mongo tenant owned that realm, so their tokens were rejected. Both are fixed.
+
 - A tenant realm can never be `master`, the platform realm or the admin realm, so a tenant user can never end up in the super-admin realm.
 - A super-admin created in a tenant realm does not work: a tenant realm may not grant `SUPER_ADMIN`, so the token gets `401` and a `SECURITY_REALM_ROLE_VIOLATION` audit event.
 

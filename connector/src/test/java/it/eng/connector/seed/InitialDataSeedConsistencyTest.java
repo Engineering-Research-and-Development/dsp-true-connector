@@ -16,9 +16,10 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Checks that every {@code initial_data*.json} seed copy in the repository describes exactly one tenant
- * bound to a seeded Keycloak tenant realm, that the tenant id equals the {@code tenant_id} attribute of
- * that realm's users, and that every {@code tenantId} in the file refers to that tenant.
+ * Checks that every {@code initial_data*.json} seed copy in the repository describes at least one tenant,
+ * that each tenant is bound to a seeded Keycloak tenant realm, that each tenant id equals the
+ * {@code tenant_id} attribute of that realm's users, and that every {@code tenantId} in the file refers
+ * to one of the file's tenants.
  */
 class InitialDataSeedConsistencyTest {
 
@@ -27,7 +28,8 @@ class InitialDataSeedConsistencyTest {
     private static final String REALM_RESOURCES = "ci/docker/keycloak_resources";
     private static final Set<String> TENANT_REALM_FILES = Set.of(
             "tenant-EngineeringA-realm.json",
-            "tenant-EngineeringB-realm.json");
+            "tenant-EngineeringB-realm.json",
+            "tenant-acme-realm.json");
     private static final Set<String> SKIPPED_DIRECTORIES = Set.of("target", ".git", "node_modules");
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -57,7 +59,7 @@ class InitialDataSeedConsistencyTest {
 
     @Test
     void tenantRealmUsersCarryTheirTenantId() {
-        assertThat(tenantIdByRealm()).containsOnlyKeys("tenant-EngineeringA", "tenant-EngineeringB");
+        assertThat(tenantIdByRealm()).containsOnlyKeys("tenant-EngineeringA", "tenant-EngineeringB", "tenant-acme");
     }
 
     @ParameterizedTest(name = "{0}")
@@ -68,21 +70,24 @@ class InitialDataSeedConsistencyTest {
 
         JsonNode tenants = root.path(TENANTS_COLLECTION);
         assertThat(tenants.isArray()).isTrue();
-        assertThat(tenants).hasSize(1);
+        assertThat(tenants).isNotEmpty();
 
-        JsonNode tenant = tenants.get(0);
-        String realm = tenant.path("realm").asText();
-        assertThat(tenantIdByRealm).containsKey(realm);
-        assertThat(realm).matches("^[A-Za-z0-9._-]+$")
-                .isNotEqualToIgnoringCase("platform")
-                .isNotEqualToIgnoringCase("connector-admin")
-                .isNotEqualToIgnoringCase("master");
-        String tenantId = tenant.path("_id").asText();
-        assertThat(tenantId).isEqualTo(tenantIdByRealm.get(realm));
+        Set<String> seededTenantIds = new HashSet<>();
+        for (JsonNode tenant : tenants) {
+            String realm = tenant.path("realm").asText();
+            assertThat(tenantIdByRealm).containsKey(realm);
+            assertThat(realm).matches("^[A-Za-z0-9._-]+$")
+                    .isNotEqualToIgnoringCase("platform")
+                    .isNotEqualToIgnoringCase("connector-admin")
+                    .isNotEqualToIgnoringCase("master");
+            String tenantId = tenant.path("_id").asText();
+            assertThat(tenantId).isEqualTo(tenantIdByRealm.get(realm));
+            assertThat(seededTenantIds.add(tenantId)).as("duplicate tenant %s", tenantId).isTrue();
+        }
 
         List<String> tenantIdValues = new ArrayList<>();
         collectTenantIds(root, tenantIdValues);
-        assertThat(tenantIdValues).allMatch(tenantId::equals);
+        assertThat(tenantIdValues).allMatch(seededTenantIds::contains);
     }
 
     /**

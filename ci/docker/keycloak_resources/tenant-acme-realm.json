@@ -394,7 +394,7 @@
     "emailVerified" : true,
     "attributes" : {
       "org_type" : [ "tech" ],
-      "tenant_id" : [ "tenant-acme" ]
+      "tenant_id" : [ "acme" ]
     },
     "enabled" : true,
     "totp" : false,
@@ -417,7 +417,7 @@
     "emailVerified" : true,
     "attributes" : {
       "org_type" : [ "tech" ],
-      "tenant_id" : [ "tenant-acme" ]
+      "tenant_id" : [ "acme" ]
     },
     "enabled" : true,
     "totp" : false,

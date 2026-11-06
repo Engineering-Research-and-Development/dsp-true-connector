@@ -119,6 +119,7 @@ Each connector deployment uses two categories of user:
 The default `initial_data.json` seeds:
 - `superadmin@mail.com` — `ROLE_SUPER_ADMIN`, no tenant
 - `admin@mail.com` — `ROLE_ADMIN`, scoped to the default `engineering-a` tenant
+- the tenants `engineering-a` (realm `tenant-EngineeringA`) and `acme` (realm `tenant-acme`, a Keycloak demo tenant with no `INTERNAL` users; its users `coyote` and `roadrunner` exist only in Keycloak)
 
 ---
 
@@ -160,7 +161,7 @@ Audit entries of delegations show the super-admin as `principal` and the delegat
 In `KEYCLOAK` mode the connector has no user API (`/api/v1/users/**` answers `404` for a super-admin). Create and manage users in Keycloak (Admin Console, Admin REST API or realm import):
 
 - **Super-admins** go in the `connector-admin` realm (`application.keycloak.admin-realm`), with the realm role `SUPER_ADMIN` and **no** `tenant_id` attribute. They select a tenant per request with `X-Tenant-Id`.
-- **Tenant users** go in the tenant's own realm (its `realm` field, e.g. `tenant-EngineeringA`), with the realm role `ADMIN` and a `tenant_id` attribute (mapped to the `tenant_id` claim) equal to the tenant `_id` (e.g. `engineering-a`), not the realm name.
+- **Tenant users** go in the tenant's own realm (its `realm` field, e.g. `tenant-EngineeringA`), with the realm role `ADMIN` and a `tenant_id` attribute (mapped to the `tenant_id` claim) equal to the tenant `_id` (e.g. `engineering-a`), not the realm name. The realm is trusted only while an enabled tenant names it in `realm`, so a new tenant realm needs its Mongo tenant too; without one, its tokens get `401`.
 - Never create a super-admin in a tenant realm: a tenant realm may not grant `SUPER_ADMIN`, so such a token gets `401` and a `SECURITY_REALM_ROLE_VIOLATION` audit event.
 
 See [security.md](security.md#user-management) for the full rules.
