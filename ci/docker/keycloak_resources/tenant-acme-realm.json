@@ -388,8 +388,8 @@
   "users" : [ {
     "id" : "fd089a19-d329-45fb-a6f1-a2e005cfcd2d",
     "username" : "coyote",
-    "firstName" : "tenant-acme",
-    "lastName" : "coyote",
+    "firstName" : "Wile E.",
+    "lastName" : "Coyote",
     "email" : "coyote@mail.com",
     "emailVerified" : true,
     "attributes" : {
@@ -411,8 +411,8 @@
   }, {
     "id" : "d4640985-13b8-429a-9d86-35381d9df19b",
     "username" : "roadrunner",
-    "firstName" : "tenant-acme",
-    "lastName" : "roadrunner",
+    "firstName" : "Acceleratti",
+    "lastName" : "Incredibilus",
     "email" : "roadrunner@mail.com",
     "emailVerified" : true,
     "attributes" : {
