@@ -106,17 +106,4 @@ public class ExceptionAPIAdviceTest {
         assertTrue(responseEntity.getBody() instanceof GenericApiResponse);
     }
 
-    @Test
-    @DisplayName("Handle UpstreamServiceException maps to 502 with its generic message")
-    void handleUpstreamServiceException_returnsBadGateway() throws Exception {
-        UpstreamServiceException exception = new UpstreamServiceException("Keycloak is unavailable");
-
-        ResponseEntity<Object> responseEntity = exceptionAPIAdvice.handleUpstreamServiceException(exception, webRequest);
-
-        assertEquals(HttpStatus.BAD_GATEWAY, responseEntity.getStatusCode());
-        GenericApiResponse<?> response = (GenericApiResponse<?>) responseEntity.getBody();
-        Field messageField = GenericApiResponse.class.getDeclaredField("message");
-        messageField.setAccessible(true);
-        assertEquals("Keycloak is unavailable", messageField.get(response));
-    }
 }

@@ -1,15 +1,20 @@
 # D-TEC-004 — Keycloak user registration via Admin REST API
 
 ## Metadata
-- Status: Accepted
+- Status: Superseded
 - Date: 2026-06-26
 - Owner: Engineering Research and Development
 - Reviewers: —
 - Confidence: High
 - Supersedes: —
-- Superseded by: —
+- Superseded by: [D-ARC-003](../architecture/D-ARC-003-no-login-proxy-in-keycloak-mode.md), [D-ARC-006](../architecture/D-ARC-006-per-realm-role-allow-list-and-per-tenant-realm-credentials.md)
 - Tags: keycloak, user-management, admin-api
 - Risk Level: Medium
+
+> **Superseded (2026-11-06).** In `KEYCLOAK` mode the connector no longer creates, lists or changes users:
+> `KeycloakUserService` and `KeycloakUserApiController` are removed, and `/api/v1/users/**` answers 404 there.
+> Users are managed in Keycloak (Admin Console, Admin REST API or realm import); see
+> [security.md – User management](../../security.md#user-management). The text below is kept for history.
 
 ## Context
 

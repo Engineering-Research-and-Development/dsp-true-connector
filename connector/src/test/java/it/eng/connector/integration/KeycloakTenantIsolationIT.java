@@ -1,6 +1,5 @@
 package it.eng.connector.integration;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.catalog.model.Catalog;
 import it.eng.catalog.model.DataService;
@@ -13,7 +12,6 @@ import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.AuditEventRepository;
-import it.eng.tools.service.TenantService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -35,7 +33,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -46,12 +43,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>Flows covered: tenant admins create and read their own data services through the API and never see the other
  * tenant's; a tenant admin sending {@code X-Tenant-Id} gets 403; a super-admin sees both tenants, or one tenant with
  * the header (one {@code TENANT_DELEGATION} audit event); unknown and disabled tenants get 400; a tampered tenant
- * realm ({@code SUPER_ADMIN} granted there) gets 401 and a {@code SECURITY_REALM_ROLE_VIOLATION} audit event; the
- * super-admin sets realm credentials and lists a tenant's users, a tenant without credentials gets 409.
+ * realm ({@code SUPER_ADMIN} granted there) gets 401 and a {@code SECURITY_REALM_ROLE_VIOLATION} audit event.
  *
- * <p>The switch-off ({@code application.keycloak.user-management=false} gives 404) needs its own Spring context and
- * is covered by {@code KeycloakUserManagementDisabledIT}. The negative token matrix lives in
- * {@code KeycloakMultiIssuerApiIT}.
+ * <p>The negative token matrix lives in {@code KeycloakMultiIssuerApiIT}.
  */
 class KeycloakTenantIsolationIT extends BaseKeycloakIntegrationTest {
 
@@ -62,7 +56,6 @@ class KeycloakTenantIsolationIT extends BaseKeycloakIntegrationTest {
     private static final String TENANT_B_REALM = "tenant-EngineeringB";
     private static final String TENANT_A_REALM = "tenant-EngineeringA";
     private static final String UI_CLIENT_ID = "keycloak-api";
-    private static final String SECRET_A = "connector-user-reader-secret-a";
     private static final long EVENT_TIMEOUT_SECONDS = 10;
     private static final long EVENT_SETTLE_MILLIS = 1000;
 
@@ -72,8 +65,6 @@ class KeycloakTenantIsolationIT extends BaseKeycloakIntegrationTest {
     private DataServiceRepository dataServiceRepository;
     @Autowired
     private AuditEventRepository auditEventRepository;
-    @Autowired
-    private TenantService tenantService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final List<Runnable> restoreActions = new ArrayList<>();
@@ -96,7 +87,6 @@ class KeycloakTenantIsolationIT extends BaseKeycloakIntegrationTest {
         restoreActions.clear();
         dataServiceRepository.deleteAll();
         catalogRepository.deleteAll();
-        tenantService.clearRealmCredentials(TENANT_ID);
         tenantRepository.deleteById(TENANT_B_ID);
         auditEventRepository.deleteAll(auditEvents(AuditEventType.TENANT_DELEGATION));
         auditEventRepository.deleteAll(auditEvents(AuditEventType.SECURITY_REALM_ROLE_VIOLATION));
@@ -198,45 +188,6 @@ class KeycloakTenantIsolationIT extends BaseKeycloakIntegrationTest {
                 .containsEntry("realm", TENANT_A_REALM)
                 .containsEntry("issuerType", "TENANT")
                 .containsEntry("subject", user.getId());
-    }
-
-    // --- user management ----------------------------------------------------------------------------------
-
-    @Test
-    @DisplayName("Super-admin sets realm credentials for engineering-a and lists its users; without them 409")
-    void superAdminManagesRealmCredentialsAndListsUsers() throws Exception {
-        String superAdminToken = superAdminAccessToken();
-        String credentialsUrl = ApiEndpoints.TENANTS_V1 + "/" + TENANT_ID + "/realm-credentials";
-
-        mockMvc.perform(get(ApiEndpoints.USERS_V1)
-                        .header(HttpHeaders.AUTHORIZATION, bearerToken(superAdminToken))
-                        .header(TENANT_HEADER, TENANT_ID))
-                .andExpect(status().isConflict());
-
-        mockMvc.perform(put(credentialsUrl)
-                        .header(HttpHeaders.AUTHORIZATION, bearerToken(superAdminToken))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"clientSecret\":\"" + SECRET_A + "\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.credentialsConfigured").value(true));
-
-        MvcResult users = mockMvc.perform(get(ApiEndpoints.USERS_V1)
-                        .header(HttpHeaders.AUTHORIZATION, bearerToken(superAdminToken))
-                        .header(TENANT_HEADER, TENANT_ID))
-                .andExpect(status().isOk())
-                .andReturn();
-        JsonNode data = objectMapper.readTree(users.getResponse().getContentAsString()).get("data");
-        List<String> usernames = new ArrayList<>();
-        data.forEach(user -> usernames.add(user.get("username").asText()));
-        assertThat(usernames).contains("admin").doesNotContain("adminb", "superadmin@mail.com");
-
-        mockMvc.perform(delete(credentialsUrl)
-                        .header(HttpHeaders.AUTHORIZATION, bearerToken(superAdminToken)))
-                .andExpect(status().isOk());
-        mockMvc.perform(get(ApiEndpoints.USERS_V1)
-                        .header(HttpHeaders.AUTHORIZATION, bearerToken(superAdminToken))
-                        .header(TENANT_HEADER, TENANT_ID))
-                .andExpect(status().isConflict());
     }
 
     // --- helpers ------------------------------------------------------------------------------------------

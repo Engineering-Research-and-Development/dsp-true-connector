@@ -93,33 +93,4 @@ class TenantTest {
         assertEquals("http://example.com/my-tenant", tenant.getCallbackAddress("http://example.com/"));
     }
 
-    @Test
-    @DisplayName("clientSecret is neither serialized nor part of toString, credentialsConfigured is serialized")
-    void clientSecretNeverExposed() throws Exception {
-        Tenant tenant = Tenant.Builder.newInstance()
-                .id("test-tenant")
-                .name("Test Tenant")
-                .participantId("urn:connector:test")
-                .realm("test-realm")
-                .clientSecret("cipher-text-value")
-                .build();
-
-        String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(tenant);
-
-        assertFalse(json.contains("cipher-text-value"));
-        assertFalse(json.contains("clientSecret"));
-        assertTrue(json.contains("\"credentialsConfigured\":true"));
-        assertFalse(tenant.toString().contains("cipher-text-value"));
-        assertTrue(tenant.isCredentialsConfigured());
-    }
-
-    @Test
-    @DisplayName("credentialsConfigured is false without or with a blank secret")
-    void credentialsConfiguredFalseWithoutSecret() {
-        Tenant none = Tenant.Builder.newInstance().id("t").name("T").participantId("p").build();
-        Tenant blank = Tenant.Builder.newInstance().id("t").name("T").participantId("p").clientSecret(" ").build();
-
-        assertFalse(none.isCredentialsConfigured());
-        assertFalse(blank.isCredentialsConfigured());
-    }
 }

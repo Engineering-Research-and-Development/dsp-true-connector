@@ -155,53 +155,15 @@ Audit entries of delegations show the super-admin as `principal` and the delegat
 
 ---
 
-## Keycloak Realm Credentials for User Listing
+## Users in Keycloak Mode
 
-In `KEYCLOAK` mode `GET /api/v1/users` lists the users of one tenant's Keycloak realm. The connector reads them with a small client of that realm, not with a connector-wide account. Set this up once per tenant, for tenants with a `realm`. The seeded tenant realms already contain the client (see below).
+In `KEYCLOAK` mode the connector has no user API (`/api/v1/users/**` answers `404` for a super-admin). Create and manage users in Keycloak (Admin Console, Admin REST API or realm import):
 
-### Step 1: Create the client in the tenant realm
+- **Super-admins** go in the `connector-admin` realm (`application.keycloak.admin-realm`), with the realm role `SUPER_ADMIN` and **no** `tenant_id` attribute. They select a tenant per request with `X-Tenant-Id`.
+- **Tenant users** go in the tenant's own realm (its `realm` field, e.g. `tenant-EngineeringA`), with the realm role `ADMIN` and a `tenant_id` attribute (mapped to the `tenant_id` claim) equal to the tenant `_id` (e.g. `engineering-a`), not the realm name.
+- Never create a super-admin in a tenant realm: a tenant realm may not grant `SUPER_ADMIN`, so such a token gets `401` and a `SECURITY_REALM_ROLE_VIOLATION` audit event.
 
-In the Keycloak admin console of the tenant realm:
-
-1. Create a client with ID `connector-user-reader` (the value of `application.keycloak.user-management-client-id`): **confidential** (client authentication on), **service accounts roles** on, all other flows off.
-2. Open the client's service account roles and assign the `view-users` role of the `realm-management` client. Assign nothing else.
-3. Because the shipped clients use `fullScopeAllowed=false`, also add a **client scope mapping** (Scope tab of the client, or its dedicated scope) for the `realm-management` role `view-users`. Without it the token carries no `view-users` role and Keycloak answers 403 on the users endpoint.
-4. Copy the client secret from the Credentials tab.
-
-The seed realms `tenant-EngineeringA` and `tenant-EngineeringB` already contain this client with `view-users` and the scope mapping; their secrets are dev values for local use only.
-
-### Step 2: Store the secret on the tenant
-
-```http
-PUT /api/v1/tenants/engineering-a/realm-credentials
-Authorization: Bearer <super-admin-token>
-Content-Type: application/json
-
-{ "clientSecret": "<client secret from Keycloak>" }
-```
-
-The connector first requests a token for the client from the realm; only when the realm accepts it is the secret stored (encrypted). The response is the tenant with `credentialsConfigured: true`; the secret is never returned. Errors: `400` when the secret is blank or the realm rejects it, when the tenant does not exist or has no `realm`, and in `INTERNAL` mode.
-
-To rotate the secret, regenerate it in Keycloak and call the same endpoint again: no restart is needed, and the connector drops its cached token for the tenant. To remove it, call `DELETE /api/v1/tenants/engineering-a/realm-credentials` (`credentialsConfigured` becomes `false`).
-
-### Step 3: List users
-
-```http
-GET /api/v1/users
-Authorization: Bearer <super-admin-token>
-X-Tenant-Id: engineering-a
-```
-
-| Status | Meaning |
-|--------|---------|
-| `200` | The users of the tenant's realm (`?email=` filters by exact e-mail) |
-| `400` | `X-Tenant-Id` is missing, or names an unknown or disabled tenant |
-| `403` | The token is not a super-admin token |
-| `404` | `application.keycloak.user-management` is `false` |
-| `409` | The tenant has no realm or no stored secret (step 2 missing), or the realm no longer accepts the stored secret (the token endpoint answers `400` or `401`) |
-| `502` | Keycloak failed or could not be reached (5xx, 429 or another unexpected status, or a network error) |
-
-`tenant` responses (`GET /api/v1/tenants`) show `credentialsConfigured` so you can see which tenants are set up. See [security.md](security.md#user-management) for the design.
+See [security.md](security.md#user-management) for the full rules.
 
 ---
 
