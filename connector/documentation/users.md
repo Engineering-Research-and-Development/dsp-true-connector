@@ -299,8 +299,6 @@ The seed data follows both rules:
 | `tenant-EngineeringB` | `engineering-b`, connector B seeds | `engineering-b` |
 | `tenant-acme` (demo) | `acme`, only `connector/src/main/resources/initial_data.json` | `acme` |
 
-The `tenant-acme` users (`coyote`, `roadrunner`) used to carry `tenant_id` `tenant-acme` (the realm name), and no Mongo tenant owned that realm, so their tokens were rejected. Both are fixed.
-
 - A tenant realm can never be `master`, the platform realm or the admin realm, so a tenant user can never end up in the super-admin realm.
 - A super-admin created in a tenant realm does not work: a tenant realm may not grant `SUPER_ADMIN`, so the token gets `401` and a `SECURITY_REALM_ROLE_VIOLATION` audit event.
 
