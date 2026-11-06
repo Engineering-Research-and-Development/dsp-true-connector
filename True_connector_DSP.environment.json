@@ -313,12 +313,6 @@
 			"value": "",
 			"type": "default",
 			"enabled": true
-		},
-		{
-			"key": "CONNECTOR_USER_READER_SECRET_A",
-			"value": "connector-user-reader-secret-a",
-			"type": "default",
-			"enabled": true
 		}
 	],
 	"_postman_variable_scope": "environment",

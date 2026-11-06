@@ -101,10 +101,8 @@ application.keycloak.admin-realm=connector-admin
 # Protocol routes accept platform tokens whose azp is this client
 application.keycloak.platform-client-id=dsp-connector-backend
 
-# K6: azp of tenant and connector-admin tokens, and the Keycloak user listing
+# K6: azp of tenant and connector-admin tokens
 application.keycloak.ui-client-id=keycloak-api
-application.keycloak.user-management=true
-application.keycloak.user-management-client-id=connector-user-reader
 
 # Outbound authentication (connector-to-connector client credentials flow, platform realm).
 # The token endpoint comes from the platform realm's discovery document.
@@ -123,7 +121,7 @@ Five realm exports in `ci/docker/keycloak_resources/`, one realm per file and on
 | `connector-admin` (`connector-admin-realm.json`) | Super-admins (tenant and user management) | `keycloak-api` (public) | `superadmin@mail.com` / `password` | `SUPER_ADMIN` |
 | `tenant-EngineeringA` (`tenant-EngineeringA-realm.json`) | Tenant admins of the `EngineeringA` tenant (`engineering-a`) | `keycloak-api` (public) | `admin` (`admin@mail.com`) / `password` | `ADMIN` |
 | `tenant-EngineeringB` (`tenant-EngineeringB-realm.json`) | Tenant admins of the `EngineeringB` tenant (`engineering-b`) | `keycloak-api` (public) | `adminB` (`adminB@mail.com`, Keycloak stores the username as `adminb`) / `password` | `ADMIN` |
-| `tenant-acme` (`tenant-acme-realm.json`) | Demo tenant (not used in tests) | `keycloak-api` (public) | `coyote` / `coyote`, `roadrunner` / `roadrunner` | `ADMIN` |
+| `tenant-acme` (`tenant-acme-realm.json`) | Tenant admins of the demo `acme` tenant (`tenant_id` `acme`; seeded only in `connector/src/main/resources/initial_data.json`, not used in tests) | `keycloak-api` (public) | `coyote` / `coyote`, `roadrunner` / `roadrunner` | `ADMIN` |
 
 All tokens carry `aud` `dsp-true-connector` and `realm_access.roles`. Tenant realm tokens also carry `org` and `tenant_id` (for example `EngineeringA` and `engineering-a`; `tenant_id` is the Mongo tenant id, never the realm name); platform and super-admin tokens carry no tenant.
 
@@ -154,9 +152,9 @@ Use the returned `access_token` as: `Authorization: Bearer <token>`
 
 ### User Management in KEYCLOAK Mode
 
-Users are created and changed in the Keycloak Admin Console (`http://localhost:8180`), not in MongoDB.
-`GET /api/v1/users` is a read-only listing of one tenant realm (super-admin, `X-Tenant-Id` required, per-tenant
-`connector-user-reader` client, 404 when `application.keycloak.user-management=false`; see [doc/security.md](doc/security.md#user-management)).
+Users are created, listed and changed in Keycloak (`http://localhost:8180`), not in MongoDB. The connector has no
+user API in this mode (`/api/v1/users/**` answers 404). Super-admins belong in `connector-admin` (no `tenant_id`),
+tenant users in their tenant's realm with `tenant_id` equal to the tenant `_id`; see [doc/security.md](doc/security.md#user-management).
 
 ---
 

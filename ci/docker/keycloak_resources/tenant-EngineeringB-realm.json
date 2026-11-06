@@ -388,8 +388,8 @@
   "users" : [ {
     "id" : "c37564ab-1efd-48fc-8517-82c9f54eb99c",
     "username" : "adminB",
-    "firstName" : "Admin",
-    "lastName" : "User",
+    "firstName" : "Cappuccino",
+    "lastName" : "Brioschi",
     "email" : "adminB@mail.com",
     "emailVerified" : true,
     "attributes" : {
@@ -409,22 +409,6 @@
     "realmRoles" : [ "ADMIN", "default-roles-tenant-engineeringb" ],
     "notBefore" : 0,
     "groups" : [ ]
-  }, {
-    "id" : "806e127a-5254-4b8c-ad3d-74046d53dfd2",
-    "username" : "service-account-connector-user-reader",
-    "emailVerified" : false,
-    "enabled" : true,
-    "totp" : false,
-    "serviceAccountClientId" : "connector-user-reader",
-    "credentials" : [ ],
-    "disableableCredentialTypes" : [ ],
-    "requiredActions" : [ ],
-    "realmRoles" : [ "default-roles-tenant-engineeringb" ],
-    "clientRoles" : {
-      "realm-management" : [ "view-users" ]
-    },
-    "notBefore" : 0,
-    "groups" : [ ]
   } ],
   "scopeMappings" : [ {
     "client" : "keycloak-api",
@@ -437,10 +421,6 @@
     "account" : [ {
       "client" : "account-console",
       "roles" : [ "manage-account", "view-groups" ]
-    } ],
-    "realm-management" : [ {
-      "client" : "connector-user-reader",
-      "roles" : [ "view-users" ]
     } ]
   },
   "clients" : [ {
@@ -601,37 +581,6 @@
     "fullScopeAllowed" : false,
     "nodeReRegistrationTimeout" : -1,
     "defaultClientScopes" : [ "web-origins", "acr", "org", "profile", "roles", "connector-audience", "basic", "email" ],
-    "optionalClientScopes" : [ "address", "phone", "offline_access", "organization", "microprofile-jwt" ]
-  }, {
-    "id" : "c2489ea3-b6f6-4845-8edf-3089bca18473",
-    "clientId" : "connector-user-reader",
-    "name" : "connector-user-reader",
-    "surrogateAuthRequired" : false,
-    "enabled" : true,
-    "alwaysDisplayInConsole" : false,
-    "clientAuthenticatorType" : "client-secret",
-    "secret" : "connector-user-reader-secret-b",
-    "redirectUris" : [ ],
-    "webOrigins" : [ ],
-    "notBefore" : 0,
-    "bearerOnly" : false,
-    "consentRequired" : false,
-    "standardFlowEnabled" : false,
-    "implicitFlowEnabled" : false,
-    "directAccessGrantsEnabled" : false,
-    "serviceAccountsEnabled" : true,
-    "publicClient" : false,
-    "frontchannelLogout" : false,
-    "protocol" : "openid-connect",
-    "attributes" : {
-      "realm_client" : "false",
-      "backchannel.logout.session.required" : "true",
-      "backchannel.logout.revoke.offline.tokens" : "false"
-    },
-    "authenticationFlowBindingOverrides" : { },
-    "fullScopeAllowed" : false,
-    "nodeReRegistrationTimeout" : -1,
-    "defaultClientScopes" : [ "web-origins", "acr", "roles", "profile", "basic", "email" ],
     "optionalClientScopes" : [ "address", "phone", "offline_access", "organization", "microprofile-jwt" ]
   }, {
     "id" : "b2450666-08e4-4263-a92e-c2f7de5bc933",

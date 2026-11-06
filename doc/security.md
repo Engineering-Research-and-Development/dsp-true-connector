@@ -178,10 +178,6 @@ application.keycloak.platform-client-id=dsp-connector-backend
 # The client (azp) a tenant or connector-admin token must come from (the UI's public client)
 application.keycloak.ui-client-id=keycloak-api
 
-# Keycloak user listing (GET /api/v1/users): switch and the per-tenant realm client it uses
-application.keycloak.user-management=true
-application.keycloak.user-management-client-id=connector-user-reader
-
 # --- Backend service-account client of the platform realm: used by KeycloakAuthenticationService
 # --- for connector-to-connector (M2M) protocol calls (ROLE_CONNECTOR), via client-credentials grant.
 # --- Confidential client - requires a client secret. The token endpoint is not configured: it is
@@ -199,8 +195,6 @@ application.keycloak.backend.token-caching=true
 | `application.keycloak.admin-realm` | `connector-admin` | Realm of the super-admins |
 | `application.keycloak.platform-client-id` | `dsp-connector-backend` | Client a `platform` token must come from (`azp` claim) to be accepted on protocol routes. Must not be blank. Set it to the `client-id` of the peer connectors' M2M client if they use a different one |
 | `application.keycloak.ui-client-id` | `keycloak-api` | Client a tenant or `connector-admin` token must come from (`azp` claim) on `/api/**`: the public client the UI signs in with. Must not be blank |
-| `application.keycloak.user-management` | `true` | Switches the Keycloak user API (`GET /api/v1/users`, `KeycloakUserApiController`, `KeycloakUserService`) on or off. With `false` the beans do not exist and the routes answer 404. See [User management](#user-management) |
-| `application.keycloak.user-management-client-id` | `connector-user-reader` | Confidential client that exists in every tenant realm and lists its users (view-users only). The secret is stored per tenant, not here. Must not be blank |
 | `application.keycloak.backend.client-id` | none | Client the connector uses to request its own outbound token from the `platform` realm |
 | `application.keycloak.backend.client-secret` | none | Secret of that client. Deliver it through the environment, see [M2M Client Secret](#m2m-client-secret-delivery-and-rotation) |
 | `application.keycloak.backend.token-caching` | `true` | Whether the outbound token is cached until shortly before it expires |
@@ -209,16 +203,15 @@ application.keycloak.backend.token-caching=true
 
 The connector fails to start in `KEYCLOAK` mode when `base-url` is missing or not an absolute
 `http`/`https` URL, when a realm name does not match `^[A-Za-z0-9._-]+$`, or when `audience` is
-blank, when `platform-client-id`, `ui-client-id` or `user-management-client-id` is blank, or a timeout is not positive.
+blank, when `platform-client-id` or `ui-client-id` is blank, or a timeout is not positive.
 
 Removed properties: the `token-url` setting of the backend client is no longer read (the connector takes
 the token endpoint from the discovery document of the `platform` realm; delete the line from
 existing deployments, it is ignored if present). The Spring resource-server `issuer-uri` and `jwk-set-uri` settings are no
 longer read (the connector derives issuers from `base-url` and the realm names), and the `admin.realm`
 and `admin.server-url` settings under `application.keycloak` are replaced by `base-url` and
-`admin-realm`. The Keycloak user listing no longer uses the `dsp-connector-backend` client or the
-`admin-realm`: it calls the Admin REST API of the tenant's own realm with that realm's
-`connector-user-reader` client (see [User management](#user-management)).
+`admin-realm`. `application.keycloak.user-management` and `application.keycloak.user-management-client-id`
+belonged to the removed Keycloak user API and are ignored; delete them (see [User management](#user-management)).
 
 Earlier versions also had `application.keycloak.login.*` properties for a connector-side login
 proxy. They were removed and are ignored if still present; delete them from existing deployments.
@@ -232,8 +225,8 @@ proxy. They were removed and are ignored if still present; delete them from exis
   may grant exactly one role, every other role is dropped (see [Trust scope per chain](#trust-scope-per-chain))
 - The tenant comes from the `tenant_id` claim; a super-admin can act for one tenant with `X-Tenant-Id`
   (see [Tenant context and `X-Tenant-Id`](#tenant-context-and-x-tenant-id))
-- `/api/v1/users` is read-only (`KeycloakUserApiController`, super-admin only, needs `X-Tenant-Id`);
-  user management is handled in Keycloak (see [User management](#user-management))
+- There is no user API: `/api/v1/users/**` answers **404** for a super-admin (403 for any other
+  token). Users are managed in Keycloak (see [User management](#user-management))
 - `/api/v1/auth/*` and `PUT /api/v1/users/*/password` do not exist: without a token they return
   **401**, with a valid token **404** (auth routes) or **403** for `ROLE_ADMIN` (password route).
   People change their password in Keycloak
@@ -296,8 +289,8 @@ The Postman collection (`Keycloak` folder) has one token request per realm and c
 Beans that belong to one auth mode are switched on with a `Condition` from
 `it.eng.tools.auth.condition`: `InternalAuthenticationModeCondition` (`AuthController`,
 `InternalAuthServiceImpl`), `InternalOrDisabledAuthenticationModeCondition` (`UserAPIController`,
-`UserService`) and `KeycloakAuthenticationModeCondition` (`KeycloakUserApiController`,
-`KeycloakUserService`). `ConnectorSecurityConfig` keeps one `adminFilterChain` branch per mode. When
+`UserService`) and `KeycloakAuthenticationModeCondition` (the Keycloak trust beans such as
+`KeycloakTrustProperties`). `ConnectorSecurityConfig` keeps one `adminFilterChain` branch per mode. When
 a controller is switched off for a mode, also remove its request matchers from that mode's branch;
 otherwise a `permitAll()` or role rule keeps answering for a route that no longer exists.
 
@@ -420,49 +413,28 @@ These rules are identical in `INTERNAL` mode: a seeded tenant user that sends `X
 
 #### User management
 
-`GET /api/v1/users[?email=...]` lists the users of one tenant's Keycloak realm (read-only; users are
-created and changed in Keycloak). Super-admin only, and it needs the `X-Tenant-Id` header, because the
-listing is always for one tenant realm.
+In `KEYCLOAK` mode the connector does not create, list or change users. `UserAPIController` and
+`UserService` exist only in `INTERNAL` and `DISABLED` mode, and there is no Keycloak counterpart:
+`/api/v1/users/**` answers 404 for a super-admin and 403 for any other token. Users are managed in
+Keycloak itself, through the Admin Console, the Admin REST API or a realm import, and the connector
+only validates the tokens they get.
 
-- **Switch.** `application.keycloak.user-management` (default `true`). With `false`, the user API
-  beans are not created, the routes answer 404 and the tenant realm-credentials endpoints still
-  exist. The Keycloak-chain matchers for `GET /users/me` and `PUT /users/*/update` were removed, because those
-  routes do not exist in this mode.
-- **Per-tenant client and secret.** Each tenant realm has a confidential client
-  `connector-user-reader` (`application.keycloak.user-management-client-id`) with a service account
-  that holds only the `view-users` role of `realm-management`. Its secret is stored encrypted on the
-  `Tenant` (`FieldEncryptionService`), set with `PUT /api/v1/tenants/{id}/realm-credentials` and
-  never returned: tenant responses only show `credentialsConfigured`. The secret is checked against
-  the realm with a real client-credentials request before it is saved (400 when the realm does not
-  accept it). `DELETE .../realm-credentials` removes it. Both calls publish a `TENANT_UPDATED` audit
-  event without the secret, and a `RealmCredentialsChangedEvent`.
-- **Never `dsp-connector-backend` or `connector-m2m`.** The listing does not use the machine-to-machine
-  client of the `platform` realm, nor any super-admin or `master` realm account. A leaked
-  `connector-user-reader` secret can read the users of one realm only.
-- **URLs.** The token endpoint comes from the discovery document of `<base-url>/realms/<realm>`; the
-  users URL is `<base-url>/admin/realms/<realm>/users`. Both are built from `base-url` and the realm
-  name only, never from a tenant record or a token. Redirects are not followed and responses are
-  size-limited; a Keycloak error body is never echoed to the caller.
-- **Own token cache.** `KeycloakUserService` keeps its own cache, keyed by tenant id, realm and a
-  SHA-256 fingerprint of the secret (never the secret itself), separate from `M2mTokenCache`. A token
-  obtained with an old secret or for an old realm is therefore never used after a change, even if a
-  request in flight stores it after the change. The entries of a tenant are evicted on
-  `RealmCredentialsChangedEvent` (secret set, changed or removed, or realm changed), and an entry is
-  evicted when Keycloak answers 401, in which case the request is retried once with a new token. The
-  discovery document is read only when a token has to be requested.
-- **Responses.**
+Which realm a user belongs in:
 
-| Status | When |
-|--------|------|
-| 200 | Users of the tenant's realm |
-| 400 | No `X-Tenant-Id` (or no tenant context), unknown or disabled tenant, or Keycloak refused the listing with a client error |
-| 403 | Not a super-admin token |
-| 404 | `application.keycloak.user-management=false` |
-| 409 | The tenant has no realm or no stored secret, or its realm rejects the stored credentials (`400` or `401` from the token endpoint) |
-| 502 | Keycloak failed or could not be reached: a 5xx, 429 or other unexpected status, or a network error |
+| Who | Realm | Rule |
+|-----|-------|------|
+| Super-admins | `connector-admin` (`application.keycloak.admin-realm`) | Realm role `SUPER_ADMIN`, **no** `tenant_id` claim. A super-admin picks a tenant per request with `X-Tenant-Id` |
+| Tenant users | The tenant's own realm (the `realm` field of the tenant, e.g. `tenant-EngineeringA`) | Realm role `ADMIN` and a `tenant_id` claim equal to the tenant `_id` (e.g. `engineering-a`, not the realm name). A privileged role the realm may not grant (such as `SUPER_ADMIN`) gives 401 and a `SECURITY_REALM_ROLE_VIOLATION` audit event |
+| Machine-to-machine | `platform` (`application.keycloak.platform-realm`) | Client `dsp-connector-backend` with realm role `CONNECTOR`. Not a human user |
 
-Onboarding a tenant realm is in [doc/multi-tenant-user-guide.md](multi-tenant-user-guide.md#keycloak-realm-credentials-for-user-listing).
-The seeded tenant realms already contain the client; its dev secrets are for local use only.
+A tenant realm can never be `master`, the platform realm or the admin realm (see
+[Seed Realms and Tenant Identity](#seed-realms-and-tenant-identity)), so a super-admin created in a
+tenant realm does not work. Create super-admins in `connector-admin` only.
+
+Earlier builds of this branch had a read-only Keycloak user listing (`GET /api/v1/users` with
+`X-Tenant-Id`) backed by a per-tenant `connector-user-reader` client whose secret was stored on the
+tenant (`PUT /api/v1/tenants/{id}/realm-credentials`). It was removed together with its properties,
+the tenant `clientSecret` field and the seed clients.
 
 #### Audit events
 
@@ -609,8 +581,7 @@ same scheme, host and port as the `iss` of the tokens.
 | `SECURITY_REALM_ROLE_VIOLATION` in the audit log | A token carried a role its realm may not grant; check the roles of the realm and the service account |
 | 400 on `/api/**` with `X-Tenant-Id` | The tenant does not exist or is disabled |
 | 403 on `/api/**` with `X-Tenant-Id` | The sender is not a super-admin without a tenant |
-| 409 on `GET /api/v1/users` | No realm credentials on the tenant (changing the tenant's realm removes them), or the realm rejects them; see the [user guide](multi-tenant-user-guide.md#keycloak-realm-credentials-for-user-listing) |
-| 502 on `GET /api/v1/users` | Keycloak failed or could not be reached; the WARN log of `KeycloakUserService` names the HTTP status or the exception type |
+| 404 on `GET /api/v1/users` in `KEYCLOAK` mode | Expected: the connector has no user API in this mode; manage users in Keycloak (see [User management](#user-management)) |
 | WARN `Bearer token could not be verified` | The signing keys or the decoder of a trusted issuer were unavailable (for example Keycloak unreachable); the request got 401 |
 | Outbound protocol call not sent, ERROR from `KeycloakAuthenticationService` | See [M2M client secret](#m2m-client-secret-delivery-and-rotation) |
 | 401 for a tenant token, log has `Token rejected by issuer validation` | The token has no `aud` `dsp-true-connector` (the client lacks the `connector-audience` scope), a wrong `azp` or `tenant_id`, or it carries a privileged realm role its realm may not grant (the audit event says which realm) |
@@ -626,10 +597,9 @@ Realm exports in `ci/docker/keycloak_resources/` are imported on first start of 
 | `connector-admin` | Super-admins; public client `keycloak-api` | `superadmin@mail.com` / `password` | none |
 | `tenant-EngineeringA` | Tenant `engineering-a` | `admin` (`admin@mail.com`) / `password` | `engineering-a` |
 | `tenant-EngineeringB` | Tenant `engineering-b` | `adminB` (`adminB@mail.com`, stored by Keycloak as `adminb`) / `password` | `engineering-b` |
-| `tenant-acme` | Live demo only, never used in tests | `coyote`, `roadrunner` | n/a |
+| `tenant-acme` | Tenant `acme` (demo only, seeded in `connector/src/main/resources/initial_data.json`, never used in tests) | `coyote`, `roadrunner` | `acme` |
 
-The `tenant_id` claim of a tenant realm user must equal the `_id` of the tenant whose `realm` field names that realm. It is never the realm name (`tenant-EngineeringA` is the realm, `engineering-a` is the tenant id). The seeded tenants carry the matching `realm` values; `InitialDataLoader` does not run the realm validation, and a test asserts the seeds are consistent with the realm files. The Keycloak integration tests (`BaseKeycloakIntegrationTest`) trust the tenant realms through the registry above.
-
+The `tenant_id` claim of a tenant realm user must equal the `_id` of the tenant whose `realm` field names that realm. It is never the realm name (`tenant-EngineeringA` is the realm, `engineering-a` is the tenant id). The seeded tenants carry the matching `realm` values; `InitialDataLoader` does not run the realm validation, and `InitialDataSeedConsistencyTest` asserts the seeds are consistent with the realm files (a seed file may hold several tenants, each bound to a seeded realm). Every tenant realm needs both halves: a Mongo tenant whose `realm` names it (otherwise the realm is not trusted and its tokens get 401) and users whose `tenant_id` is that tenant's `_id` (otherwise the tenant binding gives 401).
 Seed data is not a migration. On every start the connector upserts each `initial_data*.json` document by `_id`, and Keycloak (`--import-realm`) imports only realms that do not exist yet. On a deployment seeded before the rename, this means:
 
 - the seeded documents (same `_id`) are overwritten and now belong to `engineering-a` (or `engineering-b`), and the new tenant is added next to the old one, which stays enabled;
@@ -644,6 +614,7 @@ Re-seed such a deployment from empty databases, or move the old tenant's data to
 2. If exported, remove the `org.keycloak.keys.KeyProvider` component from the file so signing keys are not committed; Keycloak generates new keys on import.
 3. Keep the realm `frontendUrl` attribute at `http://localhost:8180`; the integration test base (`BaseKeycloakIntegrationTest`) strips it on import.
 4. Keep `tenant_id` of tenant realm users equal to the matching Mongo tenant `_id` (see above).
+5. For a new tenant realm, seed a tenant with that `realm` in the `initial_data*.json` file of the connector that uses it, and add the realm file to `TENANT_REALM_FILES` in `InitialDataSeedConsistencyTest`.
 
 ## Internal Authentication Mode (`INTERNAL`)
 

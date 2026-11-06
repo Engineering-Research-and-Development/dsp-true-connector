@@ -5,15 +5,10 @@ tags:
       Manage INTERNAL-mode users. Most user operations require ROLE_SUPER_ADMIN. ROLE_ADMIN may
       read /me and change their own password; the service verifies ownership. The updateNames
       operation currently remains protected by the ROLE_SUPER_ADMIN users rule. UserAPIController
-      is inactive in KEYCLOAK mode, where KeycloakUserApiController exposes read-only user listing
-      and user creation or updates are managed in Keycloak. User list results exclude ROLE_CONNECTOR
+      is inactive in KEYCLOAK mode, where the connector exposes no user API: users are managed in
+      Keycloak (admin console, Admin REST API or realm import). User list results exclude ROLE_CONNECTOR
       accounts. New passwords must be 8 to 16 characters and contain at least one lowercase letter,
       uppercase letter, digit, and special character.
-  KeycloakUserApiController:
-    name: Keycloak Users
-    description: >-
-      Read the users of a tenant realm from Keycloak. Available when KEYCLOAK authentication mode is active and
-      application.keycloak.user-management is not false.
   AuthController:
     name: Authentication
     description: >-
@@ -65,34 +60,6 @@ operations:
       password must be 8 to 16 characters and include a lowercase letter, uppercase letter, digit,
       and special character. Available only in INTERNAL and DISABLED modes; in KEYCLOAK mode users
       change their password in Keycloak.
-
-  getUsers:
-    summary: List Keycloak users
-    description: >-
-      Return the users of one tenant's Keycloak realm, optionally filtered by exact email. Only a
-      ROLE_SUPER_ADMIN token is accepted. The tenant is named with the required X-Tenant-Id request
-      header; the listing uses that realm's own view-users-only client and the client secret stored
-      on the tenant (PUT /api/v1/tenants/{id}/realm-credentials), never a Keycloak admin role.
-      Responses: 400 when X-Tenant-Id is missing, or names an unknown or disabled tenant; 403 for a
-      token that is not a super-admin token; 404 when application.keycloak.user-management is false;
-      409 when the tenant has no realm or no stored user-management secret, or the realm rejects that
-      secret (400 or 401 from its token endpoint); 502 when Keycloak fails or cannot be reached. User
-      creation and updates are managed in Keycloak.
-    responses:
-      "200":
-        description: The users of the tenant's realm.
-      "400":
-        description: X-Tenant-Id is missing, or names an unknown or disabled tenant.
-      "403":
-        description: The caller is not a super-admin.
-      "404":
-        description: Keycloak user management is switched off (application.keycloak.user-management=false).
-      "409":
-        description: >-
-          User management is not configured for this tenant (no realm, no stored secret, or the realm
-          rejects the stored secret).
-      "502":
-        description: Keycloak failed or could not be reached (5xx, 429 or another unexpected status, or a network error).
 
   login:
     summary: Log in

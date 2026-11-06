@@ -65,12 +65,6 @@ public class KeycloakTrustProperties {
     private String uiClientId = "keycloak-api";
 
     /**
-     * Client id of the least-privilege user-management client that exists in every tenant realm. Its
-     * per-realm secret is stored on the tenant, see {@code PUT /api/v1/tenants/{id}/realm-credentials}.
-     */
-    private String userManagementClientId = "connector-user-reader";
-
-    /**
      * Connect timeout for discovery document and JWK set requests.
      */
     private Duration discoveryConnectTimeout = Duration.ofSeconds(5);
@@ -108,9 +102,6 @@ public class KeycloakTrustProperties {
         }
         if (uiClientId == null || uiClientId.isBlank()) {
             throw new IllegalStateException("application.keycloak.ui-client-id must not be blank");
-        }
-        if (userManagementClientId == null || userManagementClientId.isBlank()) {
-            throw new IllegalStateException("application.keycloak.user-management-client-id must not be blank");
         }
         requirePositive(discoveryConnectTimeout, "application.keycloak.discovery-connect-timeout");
         requirePositive(discoveryReadTimeout, "application.keycloak.discovery-read-timeout");

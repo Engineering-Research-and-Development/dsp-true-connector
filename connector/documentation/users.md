@@ -32,7 +32,7 @@ Information about users and their roles are stored in database.
 
 ## User API endpoints (/api/v1/users)
 
-Connector has implemented simple user management, including following:
+In `INTERNAL` (and `DISABLED`) authentication mode the connector has implemented simple user management, stored in MongoDB, including following:
 
  - list user by email
  - list all uers
@@ -41,6 +41,8 @@ Connector has implemented simple user management, including following:
  - update password
  
 All endpoints require `Content-Type: application/json` and an `Authorization` header for a user with `ROLE_SUPER_ADMIN`. `ROLE_ADMIN` users cannot access these endpoints and will receive HTTP 403.
+
+These endpoints do **not** exist in `KEYCLOAK` mode, see [Users in Keycloak mode](#users-in-keycloak-mode).
  
 ### Create user 
 
@@ -272,23 +274,32 @@ Rules:
 - If `tenantId` is provided it **must reference an enabled tenant** (`enabled = true`). If the tenant does not exist or is disabled, the connector returns a 4xx error.
 - Users with `ROLE_SUPER_ADMIN` are **exempt** from tenant-existence validation; they may be created without a `tenantId`.
 
-### Keycloak mode user creation
+### Users in Keycloak mode
 
-When the connector is running in **Keycloak authentication mode** (`application.auth.provider=KEYCLOAK`), the `POST /api/v1/users` endpoint delegates to `KeycloakUserService`, which:
+When the connector runs in **Keycloak authentication mode** (`application.auth.provider=KEYCLOAK`), it does **not** create, list or change users. There is no user API in this mode: `/api/v1/users/**` answers `404` for a super-admin and `403` for any other token, and `PUT /api/v1/users/{id}/password` is not offered either. Users are created and managed in Keycloak itself (Admin Console, Admin REST API or realm import); the connector only validates the tokens Keycloak issues to them.
 
-1. Obtains a client-credentials token from Keycloak using the configured service account.
-2. Calls the Keycloak Admin REST API (`POST /admin/realms/{realm}/users`) to create the user in the Keycloak realm.
-3. Returns the user JSON on success.
+Create each user in the realm that matches its role. Do not mix super-admins with regular tenant users:
 
-Required properties for Keycloak mode:
+| Who | Realm | Property / rule |
+|-----|-------|-----------------|
+| **Super-admins** | `connector-admin` | `application.keycloak.admin-realm` (default `connector-admin`). The user needs the realm role `SUPER_ADMIN` and **no** `tenant_id` attribute. A super-admin selects a tenant per request with the `X-Tenant-Id` header. |
+| **Tenant users** | The tenant's own realm, e.g. `tenant-EngineeringA` | The tenant's `realm` field. Each user needs the realm role `ADMIN` and a `tenant_id` attribute (mapped to the `tenant_id` claim) equal to the tenant `_id`, e.g. `engineering-a`, not the realm name. |
+| **Machine-to-machine** | `platform` | `application.keycloak.platform-realm`, client `dsp-connector-backend` with realm role `CONNECTOR`. Not a human user. |
 
-| Property | Description |
-|---|---|
-| `application.keycloak.base-url`         | Base URL of the Keycloak server (e.g. `http://localhost:8180`); also the base of the trusted issuers |
-| `application.keycloak.admin-realm`      | Realm in which users should be created (default `connector-admin`; interim target) |
-| `application.keycloak.server-url`       | Keycloak server for token validation (existing property) |
-| `application.keycloak.realm`            | Token validation realm (existing property) |
+A tenant user's token is accepted only when both of these hold:
 
-The service account configured under `application.keycloak.client.*` must have the `manage-users` role assigned in the target realm.
+1. **A Mongo tenant owns the realm.** An enabled tenant has the realm name in its `realm` field. Otherwise the connector does not trust the realm and every token from it gets `401`.
+2. **The `tenant_id` claim is that tenant's `_id`.** If it holds anything else, such as the realm name, the token gets `401`.
 
-See [ADR D-TEC-001](../../doc/decisions/technical/D-TEC-001-keycloak-user-registration.md) for the design rationale.
+The seed data follows both rules:
+
+| Realm | Mongo tenant (`_id`, seeded in) | `tenant_id` of the realm users |
+|-------|--------------------------------|--------------------------------|
+| `tenant-EngineeringA` | `engineering-a`, connector A seeds | `engineering-a` |
+| `tenant-EngineeringB` | `engineering-b`, connector B seeds | `engineering-b` |
+| `tenant-acme` (demo) | `acme`, only `connector/src/main/resources/initial_data.json` | `acme` |
+
+- A tenant realm can never be `master`, the platform realm or the admin realm, so a tenant user can never end up in the super-admin realm.
+- A super-admin created in a tenant realm does not work: a tenant realm may not grant `SUPER_ADMIN`, so the token gets `401` and a `SECURITY_REALM_ROLE_VIOLATION` audit event.
+
+See [security.md – User management](../../doc/security.md#user-management) and [Seed Realms and Tenant Identity](../../doc/security.md#seed-realms-and-tenant-identity) for the full rules, and [D-ARC-006](../../doc/decisions/architecture/D-ARC-006-per-realm-role-allow-list-and-per-tenant-realm-credentials.md) for the per-realm role rules. The earlier design in which the connector created users through the Keycloak Admin REST API ([D-TEC-004](../../doc/decisions/technical/D-TEC-004-keycloak-user-registration.md)) is superseded.
