@@ -10,7 +10,14 @@
 - Superseded by: —
 - Tags: security, keycloak, multi-tenant, jwt, secrets
 - Risk Level: High
-- Note: Retroactively documented (decided and built in K6, #11)
+- Note: Retroactively documented. Part (b) was withdrawn on 2026-11-06, see below.
+
+> **Part (b) withdrawn (2026-11-06).** The Keycloak user listing it served (`GET /api/v1/users` in `KEYCLOAK`
+> mode, `KeycloakUserService`, `KeycloakUserApiController`) was removed, and with it the per-tenant realm credentials
+> (`PUT`/`DELETE /api/v1/tenants/{id}/realm-credentials`, `Tenant.clientSecret`, `credentialsConfigured`,
+> `RealmCredentialsValidator`, `RealmCredentialsChangedEvent`), the `application.keycloak.user-management*` properties
+> and the `connector-user-reader` seed clients. Users are managed in Keycloak only; the connector stores no Keycloak
+> client secret per tenant. Part (a) stays in force. The text below is kept for history.
 
 ## Context
 In `KEYCLOAK` mode the admin API accepts tokens from three kinds of issuer: tenant realms (tenant admins),
@@ -34,7 +41,7 @@ realm is rejected as a whole with 401 and a `SECURITY_REALM_ROLE_VIOLATION` audi
 per-issuer allow-list converter. The tenant context comes from the `tenant_id` claim in both modes, and
 `X-Tenant-Id` is limited to super-admins without a tenant.
 
-(b) The client secret of the per-realm user-listing client (`connector-user-reader`) is stored encrypted on the
+(b) *(Withdrawn, see the note above.)* The client secret of the per-realm user-listing client (`connector-user-reader`) is stored encrypted on the
 `Tenant` record, set through `PUT /api/v1/tenants/{id}/realm-credentials` after a real client-credentials request
 has proven it, and used by a dedicated token cache in `KeycloakUserService`.
 
@@ -98,5 +105,5 @@ See `IssuerTokenValidators`, `KeycloakRealmRoleConverter`, `RealmRoleViolationAu
 
 ## Related
 - Decisions: [D-ARC-004](D-ARC-004-trusted-issuers-from-config-and-tenant-registry.md), [D-ARC-005](D-ARC-005-internal-call-zone-with-in-memory-key.md), [D-ARC-003](D-ARC-003-no-login-proxy-in-keycloak-mode.md)
-- Docs: [doc/security.md](../../security.md#trust-scope-per-chain), [doc/multi-tenant-user-guide.md](../../multi-tenant-user-guide.md#keycloak-realm-credentials-for-user-listing)
-- Tickets: #11, #51, #52, #53, #54, #55, #56
+- Docs: [doc/security.md](../../security.md#trust-scope-per-chain), [doc/security.md – User management](../../security.md#user-management), [doc/multi-tenant-user-guide.md](../../multi-tenant-user-guide.md#users-in-keycloak-mode)
+- Tickets: #51, #52, #53, #54, #55, #56

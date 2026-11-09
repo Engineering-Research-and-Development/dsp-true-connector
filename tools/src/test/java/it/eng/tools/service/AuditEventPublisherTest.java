@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 import java.time.Instant;
@@ -57,7 +58,8 @@ class AuditEventPublisherTest {
         if (!claims.containsKey("email")) {
             when(authentication.getName()).thenReturn(name);
         }
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+        // A fresh context, so a context left on this thread by another test class cannot swallow the authentication.
+        SecurityContextHolder.setContext(new SecurityContextImpl(authentication));
     }
 
     private AuditEvent publishAndCapture() {

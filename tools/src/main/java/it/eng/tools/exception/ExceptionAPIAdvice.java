@@ -77,31 +77,6 @@ public class ExceptionAPIAdvice extends ResponseEntityExceptionHandler {
     }
 
     /**
-     * Maps {@link UserManagementNotConfiguredException} to 409 Conflict.
-     *
-     * @param ex      the exception
-     * @param request the web request
-     * @return 409 Conflict with {@code success: false}
-     */
-    @ExceptionHandler(value = {UserManagementNotConfiguredException.class})
-    protected ResponseEntity<Object> handleUserManagementNotConfigured(UserManagementNotConfiguredException ex,
-            WebRequest request) {
-        return handleExceptionInternal(ex, GenericApiResponse.error(ex.getLocalizedMessage()), new HttpHeaders(), HttpStatus.CONFLICT, request);
-    }
-
-    /**
-     * Maps {@link UpstreamServiceException} to 502 Bad Gateway.
-     *
-     * @param ex      the exception
-     * @param request the web request
-     * @return 502 Bad Gateway with {@code success: false}
-     */
-    @ExceptionHandler(value = {UpstreamServiceException.class})
-    protected ResponseEntity<Object> handleUpstreamServiceException(UpstreamServiceException ex, WebRequest request) {
-        return handleExceptionInternal(ex, GenericApiResponse.error(ex.getLocalizedMessage()), new HttpHeaders(), HttpStatus.BAD_GATEWAY, request);
-    }
-
-    /**
      * Maps {@link IllegalArgumentException} to 400 Bad Request so that validation failures
      * such as duplicate participantId or duplicate bucket name return a consistent error response.
      *

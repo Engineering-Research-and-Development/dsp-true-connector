@@ -26,7 +26,6 @@ class AdministrationOpenApiDocsTest {
 
     private static final List<Class<?>> BRIEF_DOCUMENTED_CONTROLLERS = List.of(
             AuthController.class,
-            KeycloakUserApiController.class,
             AuditEventController.class,
             ApplicationPropertiesAPIController.class,
             DashboardMetricsController.class,

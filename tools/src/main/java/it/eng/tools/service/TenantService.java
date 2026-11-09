@@ -1,12 +1,9 @@
 package it.eng.tools.service;
 
 import it.eng.tools.auth.keycloak.KeycloakTrustProperties;
-import it.eng.tools.auth.keycloak.RealmCredentialsValidator;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
-import it.eng.tools.event.realm.RealmCredentialsChangedEvent;
-import it.eng.tools.exception.BadRequestException;
 import it.eng.tools.exception.DuplicateTenantRealmException;
 import it.eng.tools.exception.InvalidTenantRealmException;
 import it.eng.tools.exception.TenantNotFoundException;
@@ -19,9 +16,7 @@ import it.eng.tools.s3.service.BucketConnectionVerificationService;
 import it.eng.tools.s3.service.BucketCredentialsService;
 import it.eng.tools.s3.service.S3BucketProvisionService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -49,7 +44,6 @@ public class TenantService {
     /** Prefix used when auto-deriving an S3 bucket name from the tenant identifier. */
     static final String BUCKET_NAME_PREFIX = "dsp-";
     private static final String CHANGE_TYPE_KEY = "changeType";
-    private static final String REALM_CREDENTIALS_REMOVED = "REALM_CREDENTIALS_REMOVED";
     private static final String CHANGE_TYPE_ORDINARY_UPDATE = "ORDINARY_UPDATE";
     private static final String CHANGE_TYPE_CREDENTIALS_ROTATED = "CREDENTIALS_ROTATED";
     private static final String CHANGE_TYPE_BUCKET_MIGRATED = "BUCKET_MIGRATED";
@@ -62,9 +56,6 @@ public class TenantService {
     private final BucketConnectionVerificationService bucketConnectionVerificationService;
     private final String baseCallbackAddress;
     private final Set<String> reservedRealms;
-    private final FieldEncryptionService fieldEncryptionService;
-    private final ApplicationEventPublisher eventPublisher;
-    private final ObjectProvider<RealmCredentialsValidator> realmCredentialsValidator;
 
     /**
      * Constructs the service with its repository, audit publisher, S3 provisioning
@@ -82,9 +73,6 @@ public class TenantService {
      *                                 injected from {@code application.keycloak.platform-realm}
      * @param adminRealm               the admin realm name, reserved and never assignable to a tenant;
      *                                 injected from {@code application.keycloak.admin-realm}
-     * @param fieldEncryptionService   encrypts and decrypts the stored realm client secret
-     * @param eventPublisher           publishes {@link RealmCredentialsChangedEvent}
-     * @param realmCredentialsValidator checks a realm client secret; only available in Keycloak mode
      */
     public TenantService(TenantRepository tenantRepository,
                          AuditEventPublisher auditEventPublisher,
@@ -94,10 +82,7 @@ public class TenantService {
                          BucketConnectionVerificationService bucketConnectionVerificationService,
                          @Value("${application.baseURL}") String baseCallbackAddress,
                          @Value("${application.keycloak.platform-realm:platform}") String platformRealm,
-                         @Value("${application.keycloak.admin-realm:connector-admin}") String adminRealm,
-                         FieldEncryptionService fieldEncryptionService,
-                         ApplicationEventPublisher eventPublisher,
-                         ObjectProvider<RealmCredentialsValidator> realmCredentialsValidator) {
+                         @Value("${application.keycloak.admin-realm:connector-admin}") String adminRealm) {
         this.tenantRepository = tenantRepository;
         this.auditEventPublisher = auditEventPublisher;
         this.s3BucketProvisionService = s3BucketProvisionService;
@@ -107,9 +92,6 @@ public class TenantService {
         this.baseCallbackAddress = baseCallbackAddress;
         this.reservedRealms = Set.of(MASTER_REALM,
                 platformRealm.toLowerCase(Locale.ROOT), adminRealm.toLowerCase(Locale.ROOT));
-        this.fieldEncryptionService = fieldEncryptionService;
-        this.eventPublisher = eventPublisher;
-        this.realmCredentialsValidator = realmCredentialsValidator;
     }
 
     /**
@@ -369,10 +351,6 @@ public class TenantService {
      * <p>The {@code enabled} state and {@code participantId} are immutable in this endpoint
      * and are always preserved from the existing tenant.
      *
-     * <p>When the update changes the realm, the stored realm client secret is removed (it belongs to the old
-     * realm's client) and a {@link RealmCredentialsChangedEvent} is published; if a secret was removed, a
-     * {@code TENANT_UPDATED} audit event with change type {@code REALM_CREDENTIALS_REMOVED} is published too.
-     *
      * <p>Mode behavior:
      * <ul>
      *     <li>{@link BucketProvisioningMode#AUTOMATIC}: existing bucket and credentials are preserved</li>
@@ -409,9 +387,6 @@ public class TenantService {
         applyUpdateBucketProvisioning(tenantId, existing, credentialsRequest, effectiveBucketName, provisioningMode);
 
         String effectiveRealm = updates.getRealm() != null ? updates.getRealm() : existing.getRealm();
-        boolean realmChanged = !Objects.equals(existing.getRealm(), effectiveRealm);
-        // The stored secret belongs to the client of the old realm: it never carries over to another realm.
-        boolean secretDropped = realmChanged && StringUtils.hasText(existing.getClientSecret());
         Tenant updated = Tenant.Builder.newInstance()
                 .id(existing.getId())
                 .version(existing.getVersion())
@@ -423,7 +398,6 @@ public class TenantService {
                 .automaticTransfer(updates.isAutomaticTransfer())
                 .enabled(existing.isEnabled())
                 .bucketName(effectiveBucketName)
-                .clientSecret(realmChanged ? null : existing.getClientSecret())
                 .build();
         Tenant saved = tenantRepository.save(updated);
         Map<String, Object> details = new LinkedHashMap<>();
@@ -436,11 +410,6 @@ public class TenantService {
                 .details(details)
                 .build());
         log.info("Updated tenant: {}", tenantId);
-        if (secretDropped) {
-            publishRealmCredentialsChange(saved, REALM_CREDENTIALS_REMOVED);
-        } else if (realmChanged) {
-            eventPublisher.publishEvent(new RealmCredentialsChangedEvent(saved.getId()));
-        }
         return saved;
     }
 
@@ -463,118 +432,7 @@ public class TenantService {
                 .automaticTransfer(source.isAutomaticTransfer())
                 .enabled(enabled)
                 .bucketName(source.getBucketName())
-                .clientSecret(source.getClientSecret())
                 .build();
-    }
-
-    /**
-     * Stores the client secret of the tenant realm's user-management client, encrypted. The secret is first
-     * checked with a real client-credentials token request against the realm; on failure nothing is stored.
-     * Publishes a {@link RealmCredentialsChangedEvent} and a {@code TENANT_UPDATED} audit event (without the secret).
-     *
-     * @param tenantId the tenant identifier
-     * @param clientSecret the plain client secret
-     * @return the updated tenant, with {@code credentialsConfigured} set
-     * @throws BadRequestException when Keycloak mode is not active, the tenant does not exist or has no realm,
-     *         the secret is blank, or the realm does not accept the secret
-     */
-    public Tenant setRealmCredentials(String tenantId, String clientSecret) {
-        RealmCredentialsValidator validator = realmCredentialsValidator.getIfAvailable();
-        if (validator == null) {
-            throw new BadRequestException("Realm credentials are only supported with Keycloak authentication.");
-        }
-        Tenant existing = findTenantWithRealm(tenantId);
-        if (!StringUtils.hasText(clientSecret)) {
-            throw new BadRequestException("clientSecret must not be blank.");
-        }
-        if (!validator.accepts(existing.getRealm(), clientSecret)) {
-            throw new BadRequestException("The realm did not accept the client credentials.");
-        }
-        Tenant saved = tenantRepository.save(withClientSecret(existing, fieldEncryptionService.encrypt(clientSecret)));
-        publishRealmCredentialsChange(saved, "REALM_CREDENTIALS_SET");
-        return saved;
-    }
-
-    /**
-     * Removes the stored realm client secret of the tenant and publishes a {@link RealmCredentialsChangedEvent}
-     * and a {@code TENANT_UPDATED} audit event.
-     *
-     * @param tenantId the tenant identifier
-     * @return the updated tenant, with {@code credentialsConfigured} cleared
-     * @throws BadRequestException when Keycloak mode is not active or the tenant does not exist or has no realm
-     */
-    public Tenant clearRealmCredentials(String tenantId) {
-        if (realmCredentialsValidator.getIfAvailable() == null) {
-            throw new BadRequestException("Realm credentials are only supported with Keycloak authentication.");
-        }
-        Tenant existing = findTenantWithRealm(tenantId);
-        Tenant saved = tenantRepository.save(withClientSecret(existing, null));
-        publishRealmCredentialsChange(saved, REALM_CREDENTIALS_REMOVED);
-        return saved;
-    }
-
-    /**
-     * Returns the decrypted client secret of the tenant realm's user-management client. This is the only
-     * place that decrypts it; callers must not log or return the value.
-     *
-     * @param tenantId the tenant identifier
-     * @return the secret, or empty when the tenant is unknown or has no secret
-     */
-    public Optional<String> userManagementSecret(String tenantId) {
-        return tenantRepository.findById(tenantId).flatMap(this::userManagementSecret);
-    }
-
-    /**
-     * Returns the decrypted client secret of the given, already loaded tenant's user-management client. This
-     * and {@link #userManagementSecret(String)} share the only place that decrypts it; callers must not log or
-     * return the value.
-     *
-     * @param tenant the loaded tenant
-     * @return the secret, or empty when the tenant has no secret
-     */
-    public Optional<String> userManagementSecret(Tenant tenant) {
-        return Optional.ofNullable(tenant.getClientSecret())
-                .filter(StringUtils::hasText)
-                .map(fieldEncryptionService::decrypt);
-    }
-
-    private Tenant findTenantWithRealm(String tenantId) {
-        Tenant tenant = tenantRepository.findById(tenantId)
-                .orElseThrow(() -> new BadRequestException("Tenant not found: " + tenantId));
-        if (!StringUtils.hasText(tenant.getRealm())) {
-            throw new BadRequestException("Tenant " + tenantId + " has no realm.");
-        }
-        return tenant;
-    }
-
-    private Tenant withClientSecret(Tenant source, String encryptedSecret) {
-        return Tenant.Builder.newInstance()
-                .id(source.getId())
-                .version(source.getVersion())
-                .name(source.getName())
-                .description(source.getDescription())
-                .participantId(source.getParticipantId())
-                .realm(source.getRealm())
-                .automaticNegotiation(source.isAutomaticNegotiation())
-                .automaticTransfer(source.isAutomaticTransfer())
-                .enabled(source.isEnabled())
-                .bucketName(source.getBucketName())
-                .clientSecret(encryptedSecret)
-                .build();
-    }
-
-    private void publishRealmCredentialsChange(Tenant saved, String changeType) {
-        Map<String, Object> details = new LinkedHashMap<>();
-        details.put("tenantId", saved.getId());
-        details.put("tenantName", saved.getName());
-        details.put(CHANGE_TYPE_KEY, changeType);
-        auditEventPublisher.publishEvent(AuditEvent.Builder.newInstance()
-                .eventType(AuditEventType.TENANT_UPDATED)
-                .description("Tenant realm credentials changed: " + saved.getId())
-                .details(details)
-                .build());
-        eventPublisher.publishEvent(new RealmCredentialsChangedEvent(saved.getId()));
-        log.info("Realm credentials changed for tenant: {}", saved.getId());
     }
 
     /**

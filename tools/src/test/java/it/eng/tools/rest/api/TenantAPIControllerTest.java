@@ -147,29 +147,6 @@ class TenantAPIControllerTest {
     }
 
     @Test
-    @DisplayName("Set realm credentials delegates the secret to the service")
-    void setRealmCredentials_success() {
-        when(tenantService.setRealmCredentials(TENANT_ID, "secret")).thenReturn(buildTenant());
-
-        ResponseEntity<GenericApiResponse<Tenant>> response =
-                controller.setRealmCredentials(TENANT_ID, new it.eng.tools.model.RealmCredentialsRequest("secret"));
-
-        assertNotNull(response.getBody());
-        assertEquals(TENANT_ID, response.getBody().getData().getId());
-    }
-
-    @Test
-    @DisplayName("Delete realm credentials delegates to the service")
-    void deleteRealmCredentials_success() {
-        when(tenantService.clearRealmCredentials(TENANT_ID)).thenReturn(buildTenant());
-
-        ResponseEntity<GenericApiResponse<Tenant>> response = controller.deleteRealmCredentials(TENANT_ID);
-
-        assertNotNull(response.getBody());
-        assertEquals(TENANT_ID, response.getBody().getData().getId());
-    }
-
-    @Test
     @DisplayName("Enable tenant returns updated tenant")
     void enableTenant_success() {
         Tenant tenant = buildTenant();

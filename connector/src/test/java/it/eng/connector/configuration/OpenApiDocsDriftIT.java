@@ -67,7 +67,6 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
     private static final Set<Class<?>> ADMIN_API_CONTROLLERS = Set.of(
             TenantAPIController.class,
             UserAPIController.class,
-            KeycloakUserApiController.class,
             AuthController.class,
             AuditEventController.class,
             ApplicationPropertiesAPIController.class,
@@ -88,7 +87,7 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
 
         assertFalse(documentation.operations().isEmpty());
         assertDoesNotThrow(() -> OpenApiDocsDriftValidator.validate(
-                documentation, handlerMapping.getHandlerMethods(), KeycloakUserApiController.class));
+                documentation, handlerMapping.getHandlerMethods()));
     }
 
     @Test

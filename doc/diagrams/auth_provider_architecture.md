@@ -407,22 +407,9 @@ Tenant context and delegation (`ApiTenantContextFilter`, `/api/**`, both modes):
  any other principal + X-Tenant-Id ► 403
 ```
 
-User listing (`GET /api/v1/users`, `KEYCLOAK` mode, `application.keycloak.user-management=true`):
-
-```
- super-admin token + X-Tenant-Id: <tenant>
-        │
-        ▼
- KeycloakUserService  (own token cache: tenant + realm + secret fingerprint)
-   secret = Tenant.clientSecret, decrypted (set with PUT /api/v1/tenants/{id}/realm-credentials)
-   token endpoint = discovery of <base-url>/realms/<tenant.realm>
-        │  client credentials, client "connector-user-reader" (view-users only)
-        ▼
- tenant realm  ──► GET <base-url>/admin/realms/<tenant.realm>/users
-
- never uses dsp-connector-backend / the platform realm / the connector-admin realm
- no realm or no secret ─► 409;  user-management=false ─► 404
-```
+Users (`KEYCLOAK` mode): the connector has no user API (`/api/v1/users/**` answers 404 for a
+super-admin). Super-admins live in `connector-admin`, tenant users in their tenant's realm with a
+`tenant_id` equal to the tenant `_id`; both are managed in Keycloak.
 
 See [D-ARC-006](../decisions/architecture/D-ARC-006-per-realm-role-allow-list-and-per-tenant-realm-credentials.md).
 
@@ -580,17 +567,13 @@ application.keycloak.platform-client-id=dsp-connector-backend
 # The azp of tenant and connector-admin tokens (the UI's public client)
 application.keycloak.ui-client-id=keycloak-api
 
-# Keycloak user listing through the tenant realm's own client (secret stored per tenant)
-application.keycloak.user-management=true
-application.keycloak.user-management-client-id=connector-user-reader
-
 # Outbound client (platform realm); the token endpoint comes from the realm's discovery document
 application.keycloak.backend.client-id=dsp-connector-backend
 application.keycloak.backend.client-secret=dsp-connector-backend-secret
 application.keycloak.backend.token-caching=true
 ```
 
-`GET /api/v1/users` is a read-only listing of one tenant realm (super-admin, `X-Tenant-Id` required, 404 when `application.keycloak.user-management=false`); users are created and changed in the Keycloak Admin Console.
+The connector exposes no user API in this mode (`/api/v1/users/**` answers 404); users are created and changed in Keycloak.
 
 ### BASIC Mode
 
