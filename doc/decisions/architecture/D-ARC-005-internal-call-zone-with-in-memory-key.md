@@ -46,7 +46,7 @@ because the chain's `/internal/**` matcher would otherwise catch that tenant's p
 only by loopback calls (`offers/validate`, `agreements/{id}/enforce`) move from `/api` to `/internal`.
 
 ## Alternatives Considered
-- **Leave the loopback calls broken in `KEYCLOAK` mode until the admin-realm work (K6)** → rejected
+- **Leave the loopback calls broken in `KEYCLOAK` mode until the admin-realm work** → rejected
   because provider-side negotiation and transfer would fail in `KEYCLOAK` mode for the whole slice, and
   the slice's end-to-end QA could only prove catalog requests.
 - **A Keycloak super-admin client in `connector-admin` for loopback calls** → rejected because it gives
@@ -106,4 +106,4 @@ one code path for the callers and one chain to test, covered by `InternalCallTok
 - Decisions: [D-ARC-004](D-ARC-004-trusted-issuers-from-config-and-tenant-registry.md), [D-ARC-001](D-ARC-001-multi-module-maven-structure.md)
 - Docs: [doc/security.md](../../security.md), [doc/multi-tenant-technical.md](../../multi-tenant-technical.md)
 - Docs: [Protocol token vs internal-call token](../../security.md#protocol-token-vs-internal-call-token). The `INTERNAL` mode protocol token for peer connectors is a separate token (shared configured secret, `ROLE_CONNECTOR`, cached); its issuer, `InternalProtocolTokenIssuer`, also lives in `tools`.
-- Tickets: #9, #34, #10
+- Tickets: #34
