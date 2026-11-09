@@ -10,7 +10,7 @@
 - Superseded by: —
 - Tags: security, keycloak, multi-tenant, jwt, secrets
 - Risk Level: High
-- Note: Retroactively documented (decided and built in K6, #11). Part (b) was withdrawn on 2026-11-06, see below.
+- Note: Retroactively documented. Part (b) was withdrawn on 2026-11-06, see below.
 
 > **Part (b) withdrawn (2026-11-06).** The Keycloak user listing it served (`GET /api/v1/users` in `KEYCLOAK`
 > mode, `KeycloakUserService`, `KeycloakUserApiController`) was removed, and with it the per-tenant realm credentials
@@ -106,4 +106,4 @@ See `IssuerTokenValidators`, `KeycloakRealmRoleConverter`, `RealmRoleViolationAu
 ## Related
 - Decisions: [D-ARC-004](D-ARC-004-trusted-issuers-from-config-and-tenant-registry.md), [D-ARC-005](D-ARC-005-internal-call-zone-with-in-memory-key.md), [D-ARC-003](D-ARC-003-no-login-proxy-in-keycloak-mode.md)
 - Docs: [doc/security.md](../../security.md#trust-scope-per-chain), [doc/security.md – User management](../../security.md#user-management), [doc/multi-tenant-user-guide.md](../../multi-tenant-user-guide.md#users-in-keycloak-mode)
-- Tickets: #11, #51, #52, #53, #54, #55, #56
+- Tickets: #51, #52, #53, #54, #55, #56

@@ -58,4 +58,4 @@ The connector only has to validate tokens, which it must do anyway.
 ## Related
 - Decisions: [D-TEC-004](../technical/D-TEC-004-keycloak-user-registration.md)
 - Docs: [doc/security.md](../../security.md#keycloak-authentication-mode-keycloak)
-- Tickets: #7, #20, #21, #22, #23
+- Tickets: #20, #21, #22, #23
