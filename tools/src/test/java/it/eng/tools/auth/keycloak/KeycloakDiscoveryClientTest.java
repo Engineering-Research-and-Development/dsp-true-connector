@@ -34,7 +34,7 @@ class KeycloakDiscoveryClientTest {
         properties.setDiscoveryConnectTimeout(Duration.ofMillis(200));
         properties.setDiscoveryReadTimeout(Duration.ofMillis(500));
         properties.init();
-        client = new KeycloakDiscoveryClient(properties);
+        client = KeycloakTestHttpClients.discoveryClient(properties);
     }
 
     @AfterEach

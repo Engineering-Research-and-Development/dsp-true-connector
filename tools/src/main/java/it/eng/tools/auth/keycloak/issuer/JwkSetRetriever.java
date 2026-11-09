@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 /**
- * Loads JWK sets over HTTP with the JDK client. Unlike the Nimbus default retriever it never follows
+ * Loads JWK sets over HTTP with the Keycloak JDK client. Unlike the Nimbus default retriever it never follows
  * redirects and only accepts {@code http} and {@code https} URLs, so the only URL fetched is the
  * {@code jwks_uri} of the issuer's verified discovery document. The whole request, body included, must
  * complete within the connect plus the read timeout, and the body must not exceed the size limit.
@@ -28,16 +28,14 @@ final class JwkSetRetriever implements ResourceRetriever {
     /**
      * Creates a retriever.
      *
-     * @param connectTimeout the connect timeout
+     * @param httpClient the Keycloak HTTP client, which must not follow redirects
+     * @param connectTimeout the connect timeout of {@code httpClient}
      * @param readTimeout the timeout for the response headers; the whole exchange is bounded by the connect
      *        plus the read timeout
      * @param sizeLimit the maximum response size, in bytes
      */
-    JwkSetRetriever(Duration connectTimeout, Duration readTimeout, int sizeLimit) {
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(connectTimeout)
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .build();
+    JwkSetRetriever(HttpClient httpClient, Duration connectTimeout, Duration readTimeout, int sizeLimit) {
+        this.httpClient = httpClient;
         this.readTimeout = readTimeout;
         this.exchangeTimeout = connectTimeout.plus(readTimeout);
         this.sizeLimit = sizeLimit;

@@ -1,5 +1,6 @@
 package it.eng.tools.auth.keycloak.issuer;
 
+import it.eng.tools.auth.keycloak.KeycloakTestHttpClients;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -461,7 +462,7 @@ class TrustedIssuerRegistryTest {
         serveRealm(PLATFORM, platformKey);
         properties.setDiscoveryConnectTimeout(Duration.ofMillis(100));
         properties.setDiscoveryReadTimeout(Duration.ofMillis(100));
-        KeycloakDiscoveryClient realClient = new KeycloakDiscoveryClient(properties);
+        KeycloakDiscoveryClient realClient = KeycloakTestHttpClients.discoveryClient(properties);
         KeycloakDiscoveryClient slowClient = mock(KeycloakDiscoveryClient.class);
         CountDownLatch release = new CountDownLatch(1);
         when(slowClient.fetch(anyString()))
@@ -471,7 +472,7 @@ class TrustedIssuerRegistryTest {
                 })
                 .thenAnswer(invocation -> realClient.fetch(invocation.getArgument(0)));
         TrustedIssuerRegistry slowRegistry = new TrustedIssuerRegistry(properties, slowClient, tenantRepository,
-                IssuerRegistrySettings.defaults(), nanos::get);
+                KeycloakTestHttpClients.forProperties(properties), IssuerRegistrySettings.defaults(), nanos::get);
         try {
             TrustedIssuer platform = slowRegistry.resolve(issuer(PLATFORM)).orElseThrow();
 
@@ -555,8 +556,8 @@ class TrustedIssuerRegistryTest {
     // --- helpers ----------------------------------------------------------------------------------------
 
     private TrustedIssuerRegistry newRegistry(IssuerRegistrySettings settings) {
-        return new TrustedIssuerRegistry(properties, new KeycloakDiscoveryClient(properties), tenantRepository,
-                settings, nanos::get);
+        return new TrustedIssuerRegistry(properties, KeycloakTestHttpClients.discoveryClient(properties), tenantRepository,
+                KeycloakTestHttpClients.forProperties(properties), settings, nanos::get);
     }
 
     private String issuer(String realm) {

@@ -22,6 +22,7 @@ claims. See [Step 3](#step-3--jwtdecoderdecode-what-actually-happens).
 | `TrustedIssuerRegistry` | `tools` | Picks the issuer, caches one `NimbusJwtDecoder` per issuer, composes the per-chain decoder |
 | `KeycloakDiscoveryClient` | `tools` | Fetches `<issuer>/.well-known/openid-configuration` |
 | `JwkSetRetriever` | `tools` | Nimbus `ResourceRetriever` that fetches the JWK set (no redirects, bounded time and size) |
+| `KeycloakHttpClientConfiguration` | `tools` | The JDK `HttpClient` shared by both: no redirects, host name verification, TLS trust from the connector SSL bundle with OCSP when `server.ssl.enabled=true`, JVM default truststore otherwise |
 | `IssuerTokenValidators` | `tools` | Per-issuer-type checks: `aud`, `azp`, `tenant_id`, realm role rules |
 | `KeycloakRealmRoleConverter` | `connector` | Maps `realm_access.roles` to exactly one Spring authority per issuer type |
 | `KeycloakIssuerClassifier` | `connector` | Tells `TENANT` / `ADMIN` / `PLATFORM` from a **verified** `iss` |
@@ -362,7 +363,7 @@ Typical symptoms:
 | `Bearer token rejected: BadJwtException` | untrusted issuer, wrong chain, bad signature or malformed token. Check `iss` against `<base-url>/realms/<realm>` (see [security.md](security.md) → *Hostname / `iss` alignment*) |
 | `Bearer token rejected: JwtValidationException [invalid_token]` | expired, or failed `aud`/`azp`/`tenant_id` |
 | `Bearer token rejected on …: privileged realm role` | realm misconfiguration. See the audit event |
-| `Bearer token could not be verified … signing keys or decoder unavailable` | Keycloak discovery or JWKS unreachable or slow. TLS trust is a common cause: these JDK `HttpClient`s use the JVM default truststore, not the connector SSL bundle |
+| `Bearer token could not be verified … signing keys or decoder unavailable` | Keycloak discovery or JWKS unreachable or slow. TLS trust is a common cause: with `server.ssl.enabled=true` the Keycloak CA must be in the `connector` SSL bundle truststore (and pass OCSP if enabled); with `server.ssl.enabled=false` it must be in the JVM default truststore |
 | `Loaded signing keys of issuer …` (INFO) | first successful use of an issuer, logged once per cache load |
 
 Breakpoints that show the whole path: `KeycloakAuthenticationFilter.doFilterInternal`,

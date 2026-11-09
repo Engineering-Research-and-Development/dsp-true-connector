@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Component;
 
@@ -35,17 +36,16 @@ public class KeycloakDiscoveryClient {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * Creates the client. It never follows redirects and uses the discovery timeouts of the trust configuration.
+     * Creates the client. It uses the discovery timeouts of the trust configuration.
      *
      * @param properties the Keycloak trust configuration
+     * @param httpClient the Keycloak HTTP client, see {@link KeycloakHttpClientConfiguration}
      */
-    public KeycloakDiscoveryClient(KeycloakTrustProperties properties) {
+    public KeycloakDiscoveryClient(KeycloakTrustProperties properties,
+            @Qualifier(KeycloakHttpClientConfiguration.KEYCLOAK_HTTP_CLIENT) HttpClient httpClient) {
         this.properties = properties;
         this.exchangeTimeout = properties.getDiscoveryConnectTimeout().plus(properties.getDiscoveryReadTimeout());
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(properties.getDiscoveryConnectTimeout())
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .build();
+        this.httpClient = httpClient;
     }
 
     /**

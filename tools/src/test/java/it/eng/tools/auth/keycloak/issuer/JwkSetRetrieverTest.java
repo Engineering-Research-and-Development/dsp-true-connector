@@ -1,5 +1,6 @@
 package it.eng.tools.auth.keycloak.issuer;
 
+import it.eng.tools.auth.keycloak.KeycloakTestHttpClients;
 import com.nimbusds.jose.util.Resource;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
@@ -28,7 +29,8 @@ class JwkSetRetrieverTest {
     void setUp() throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.start();
-        retriever = new JwkSetRetriever(Duration.ofMillis(200), Duration.ofMillis(500), 16);
+        retriever = new JwkSetRetriever(KeycloakTestHttpClients.withConnectTimeout(Duration.ofMillis(200)),
+                Duration.ofMillis(200), Duration.ofMillis(500), 16);
     }
 
     @AfterEach

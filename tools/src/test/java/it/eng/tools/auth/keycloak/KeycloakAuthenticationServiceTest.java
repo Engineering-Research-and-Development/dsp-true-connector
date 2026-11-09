@@ -48,7 +48,7 @@ class KeycloakAuthenticationServiceTest {
         properties.setClientSecret(CLIENT_SECRET);
         tokenCache = new M2mTokenCache();
         service = new KeycloakAuthenticationService(properties, trustProperties,
-                new KeycloakDiscoveryClient(trustProperties), tokenCache, new OkHttpClient());
+                KeycloakTestHttpClients.discoveryClient(trustProperties), tokenCache, new OkHttpClient());
 
         serviceLogger = (Logger) LoggerFactory.getLogger(KeycloakAuthenticationService.class);
         previousLevel = serviceLogger.getLevel();

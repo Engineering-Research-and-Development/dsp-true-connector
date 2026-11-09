@@ -198,7 +198,7 @@ application.keycloak.backend.token-caching=true
 | `application.keycloak.backend.client-id` | none | Client the connector uses to request its own outbound token from the `platform` realm |
 | `application.keycloak.backend.client-secret` | none | Secret of that client. Deliver it through the environment, see [M2M Client Secret](#m2m-client-secret-delivery-and-rotation) |
 | `application.keycloak.backend.token-caching` | `true` | Whether the outbound token is cached until shortly before it expires |
-| `application.keycloak.discovery-connect-timeout` | `5s` | Connect timeout for discovery and JWKS requests |
+| `application.keycloak.discovery-connect-timeout` | `5s` | Connect timeout for discovery and JWKS requests (for their TLS trust see [Trusted Issuers](#trusted-issuers)) |
 | `application.keycloak.discovery-read-timeout` | `10s` | Wait for the response headers of discovery and JWKS requests. The whole request, body included, must finish within connect + read timeout |
 
 The connector fails to start in `KEYCLOAK` mode when `base-url` is missing or not an absolute
@@ -319,6 +319,13 @@ Rules the registry follows:
   response at 64 KiB. Each request, body included, must finish within connect + read timeout, and a
   request waits at most twice that (plus 0.5 s) for the keys of an issuer; a slower load counts as
   failed. Keys are not loaded at startup, so the connector starts while Keycloak is down.
+- **TLS trust for discovery and JWKS.** With `server.ssl.enabled=true` these requests trust the
+  truststore of the `connector` SSL bundle (`spring.ssl.bundle.jks.connector.truststore.*`), with
+  [OCSP checks](#ocsp-certificate-validation) as configured, the same trust as the outbound token
+  request. An HTTPS Keycloak whose certificate comes from a private certificate authority works once
+  that CA is in the connector truststore. With `server.ssl.enabled=false` they use the JVM default
+  truststore. They never trust all certificates, unlike the other outbound clients in that mode, because
+  the keys they load verify every token. Host names are always verified.
 - **Signature, expiry, issuer.** The decoder accepts asymmetric algorithms only (RS, PS, ES) and
   checks the signature, `exp`, `nbf` and the exact `iss`.
 - **Caching and rotation.** Decoders are cached per issuer (at most 1000, evicted after 1 hour
