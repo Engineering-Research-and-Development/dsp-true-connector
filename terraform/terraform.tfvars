@@ -4,6 +4,18 @@ rustfs_image       = "rustfs/rustfs:1.0.0-rc.6"
 connector_image    = "ghcr.io/engineering-research-and-development/dsp-true-connector:test"
 connector_ui_image = "ghcr.io/engineering-research-and-development/dsp-true-connector-ui:test"
 
+# Connector authentication and optional Keycloak configuration
+auth_provider           = "INTERNAL"
+keycloak_mode           = "NONE"
+keycloak_image          = "quay.io/keycloak/keycloak:26.0.0"
+keycloak_postgres_image = "postgres:16"
+keycloak_base_url       = ""
+keycloak_host_port      = 8180
+keycloak_node_port      = 30180
+keycloak_db_name        = "keycloak"
+connector_a_ui_origin   = "http://localhost:4200"
+connector_b_ui_origin   = "http://localhost:4300"
+
 # Base URL Addresses - external access to the connectors
 connector_a_base_url = "http://connector-a:8080/"
 connector_b_base_url = "http://connector-b:8090/"

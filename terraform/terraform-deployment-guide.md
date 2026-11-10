@@ -14,10 +14,10 @@ This document analyses the existing Terraform setup and describes how to deploy 
 |---|---|
 | `providers.tf` | Declares `tehcyx/kind` + `hashicorp/kubernetes` providers. The Kubernetes provider **hard-wires** its `config_path` to the Kind cluster output. |
 | `main.tf` | Creates a **Kind** (local) cluster named `dsp-cluster` with port-forward mappings for all services. |
-| `deployments.tf` | Deploys `connector-a`, `connector-b` (via reusable module), `connector-a-ui`, `connector-b-ui`, `rustfs`, `mongodb`. |
-| `services.tf` | Kubernetes `NodePort` services for RustFS + MongoDB; connector/UI services are created inside their modules. |
-| `configmaps.tf` | Mounts all config files (`application.properties`, `initial_data.json`, JKS certs, nginx.conf, TLS secrets) as ConfigMaps/Secrets. |
-| `variables.tf` | Parameterises images, ports, callback addresses, keystore config. |
+| `deployments.tf` | Deploys `connector-a`, `connector-b` (via reusable module), both UIs, RustFS, and MongoDB. Adds Keycloak and PostgreSQL only for `KEYCLOAK` / `MANAGED`. |
+| `services.tf` | Kubernetes services for RustFS and MongoDB; connector/UI services are created inside their modules. Adds `keycloak` (NodePort) and `keycloak-db` (ClusterIP) only for `KEYCLOAK` / `MANAGED`. |
+| `configmaps.tf` | Renders connector properties and ConfigMaps, and creates credential Secrets. Managed Keycloak realm-import and admin/database Secrets are conditional on `KEYCLOAK` / `MANAGED`. |
+| `variables.tf` | Parameterises images, ports, callback addresses, keystore config, connector auth provider, and Keycloak provisioning mode/settings. |
 | `modules/connector/` | Reusable Deployment + NodePort Service for any connector instance. |
 | `modules/frontend/` | Reusable Deployment + NodePort Service for any UI instance. |
 
@@ -35,6 +35,96 @@ This document analyses the existing Terraform setup and describes how to deploy 
 | 8 | `modules/connector/main.tf` sets `image_pull_policy = "Never"` (with `IfNotPresent` commented out above it); `modules/frontend/main.tf` uses `IfNotPresent`. `Never` requires the image to be pre-loaded into Kind via `kind load docker-image` — a remote-registry image will never be pulled. | See local setup below for the `kind load` workflow. For remote deployment (registry-hosted images), switch back to `IfNotPresent` or `Always`. |
 
 ---
+
+## Connector Authentication and Keycloak Modes
+
+The root Terraform module separates the connector authentication provider from who operates Keycloak:
+
+| `auth_provider` | `keycloak_mode` | Result |
+|---|---|---|
+| `INTERNAL` (default) | `NONE` (default) | Internal connector authentication; no Keycloak resources or Keycloak credentials. |
+| `DISABLED` | `NONE` | Connector authentication is off and its endpoints are open. Local/demo use only; the UI remains in its supported `INTERNAL` mode. |
+| `KEYCLOAK` | `MANAGED` | Terraform deploys Keycloak and PostgreSQL and imports the provided realm seeds. |
+| `KEYCLOAK` | `EXTERNAL` | Terraform configures the connectors and UIs to use an existing Keycloak; it creates no Keycloak/PostgreSQL resources and does not configure or validate the remote server. |
+
+`auth_provider` is rendered directly as `application.auth.provider`; `keycloak_mode` only controls provisioning. Planning
+rejects all other pairs: `INTERNAL` and `DISABLED` require `NONE`, while `KEYCLOAK` requires `MANAGED` or `EXTERNAL`.
+Do not set credentials for modes that do not use them.
+
+### Shared Keycloak URL and UI login
+
+Both Keycloak modes require `keycloak_base_url`, an absolute HTTP(S) Keycloak base URL (not a realm issuer URL). It
+must be the same value for `KC_HOSTNAME` and imported realm `attributes.frontendUrl` in managed mode, both connectors'
+`application.keycloak.base-url`, and both UIs' `KEYCLOAK_URL`. The connector expects each issuer to be exactly
+`<keycloak_base_url>/realms/<realm>`. The URL must be reachable from the user's browser **and** the connector pods;
+`localhost` is not a suitable value unless it resolves to Keycloak from both locations. For managed Kind, the defaults
+are host port `8180` and NodePort `30180`; configure a shared host address or DNS name that routes to that mapping.
+
+The browser UI signs in directly to Keycloak using Authorization Code with PKCE S256, then sends the JWT to the
+connector, which validates it. The UIs receive only `AUTH_PROVIDER`, `KEYCLOAK_URL`, `KEYCLOAK_CLIENT_ID=keycloak-api`,
+and `KEYCLOAK_ADMIN_REALM=connector-admin`; a client secret must never be passed to the UI. The
+`connector_ui_image` must be built from the verified
+[UI `feature/keycloak_auth_code_login` branch](https://github.com/Engineering-Research-and-Development/dsp-true-connector-ui/tree/feature/keycloak_auth_code_login)
+at commit `ce736d0a788d592850eec1f6674c447ee2d1541c` or a later compatible revision. The configured origins
+`connector_a_ui_origin` and `connector_b_ui_origin` default to `http://localhost:4200` and `http://localhost:4300`.
+For each origin, the public `keycloak-api` client must allow exactly `<origin>/auth/callback` and `<origin>/login`,
+and list the origin as a web origin. The Terraform-managed realm import applies this allow-list to all four seeded
+`keycloak-api` clients.
+
+### `KEYCLOAK` / `MANAGED`
+
+Set `keycloak_base_url` and provide non-empty `keycloak_admin_username`, `keycloak_admin_password`,
+`keycloak_db_username`, and `keycloak_db_password` through a protected input source such as environment variables
+(`TF_VAR_...`) backed by a secret manager. Do not put real credentials in tracked `terraform.tfvars`. The defaults are
+Keycloak `quay.io/keycloak/keycloak:26.0.0`, PostgreSQL `postgres:16`, database name `keycloak`, host port `8180`,
+and NodePort `30180`.
+
+The managed `keycloak` Deployment uses `start-dev` with HTTP and the `keycloak` NodePort Service. `keycloak-db` is
+the PostgreSQL Deployment and ClusterIP Service on port `5432`; its data uses ephemeral `empty_dir` storage. This
+mode is for the local/demo stack, not a production-ready persistent or TLS deployment. If TLS terminates at a proxy,
+configure the same externally visible HTTPS URL and ensure both browser and pod traffic trust and can reach it.
+
+Terraform creates:
+
+- `keycloak-credentials` Secret for the bootstrap administrator and PostgreSQL credentials.
+- `keycloak-realm-import` Secret containing the five files from `ci/docker/keycloak_resources/`: `platform`,
+  `connector-admin`, `tenant-EngineeringA`, `tenant-EngineeringB`, and `tenant-acme`.
+- `keycloak` and `keycloak-db` Deployments and Services.
+
+Keycloak's `--import-realm` imports a realm only if it does not already exist. Changing a seed file does not reconcile
+an existing realm. The checked-in users and client credentials are demo seeds, not production identity data. The
+platform seed's M2M client secret is used only for this managed demo; configure production secrets separately.
+Switching `keycloak_mode` from `MANAGED` to `NONE` or `EXTERNAL` destroys the Terraform-managed Keycloak and PostgreSQL
+resources, including the current ephemeral Keycloak data.
+
+### `KEYCLOAK` / `EXTERNAL`
+
+Set `keycloak_base_url` and provide the real `keycloak_backend_client_secret` for the confidential
+`platform/dsp-connector-backend` client. Terraform places this secret in both connector credential Secrets; it does
+not require Keycloak administrator or PostgreSQL credentials. The remote realms, clients, users, roles, claims, and
+discovery configuration must already exist and are not changed or validated by Terraform.
+
+Provision the external server according to [`doc/security.md`](../doc/security.md#keycloak-authentication-mode-keycloak):
+
+| Realm | Required setup |
+|---|---|
+| `platform` | Confidential `dsp-connector-backend` client; tokens have `aud=dsp-true-connector`, `azp=dsp-connector-backend`, role `CONNECTOR`, and no `tenant_id`. |
+| `connector-admin` | Public `keycloak-api` client; super-admin tokens have `aud=dsp-true-connector`, `azp=keycloak-api`, role `SUPER_ADMIN`, and no `tenant_id`. |
+| Each tenant realm | Public `keycloak-api` client; tenant tokens have `aud=dsp-true-connector`, `azp=keycloak-api`, role `ADMIN`, and `tenant_id` equal to the owning tenant's `_id`. |
+
+The `keycloak-api` clients need Standard Flow and PKCE S256, and the exact callback, post-logout, and web-origin
+allow-list for both configured UI origins. Discovery's `issuer` must exactly match
+`<keycloak_base_url>/realms/<realm>` for every configured realm. Use HTTPS with a certificate trusted by both the
+browser and connector pods. Private-CA trust must be configured separately when needed; the URL, discovery endpoint,
+and JWKS endpoint must be reachable from both the browser and connector pods. Terraform plans cannot inspect or
+validate the external server.
+
+### Credential and state protection
+
+Kubernetes Secrets are base64-encoded and are not necessarily encrypted at rest. Terraform state and saved plan files
+can contain Keycloak credentials or the imported demo client secrets; restrict access and protect state and plan
+artifacts. Use a protected remote state backend and a managed secret store for shared/production environments.
+Never commit real credentials to `terraform.tfvars` or treat the realm seed credentials as production secrets.
 
 ## Part 1 — Local Deployment (Kind)
 
@@ -72,6 +162,7 @@ Kind maps host ports to NodePorts inside the cluster:
 | 4300 | 30430 | connector-b-ui |
 | 9000 | 30081 | RustFS API |
 | 9001 | 30082 | RustFS Console |
+| 8180 | 30180 | `keycloak` (only in `KEYCLOAK` / `MANAGED`; ports are configurable) |
 
 ### Using a local Docker image
 
@@ -146,6 +237,7 @@ Connector A:     http://localhost:8080
 Connector B:     http://localhost:8090
 Connector A UI:  https://localhost:4200
 Connector B UI:  https://localhost:4300
+Keycloak:        <keycloak_base_url> (managed mode only; host and connector pods must both reach it)
 RustFS API:      http://localhost:9000
 RustFS Console:  http://localhost:9001  (configured RustFS credentials)
 ```
