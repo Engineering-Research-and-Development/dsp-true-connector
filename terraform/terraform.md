@@ -150,6 +150,62 @@ a managed secret store. Never treat the checked-in realm users or client secrets
 
 ## Usage
 
+### Automated configuration checks
+
+The [Terraform checks workflow](../.github/workflows/terraform-checks.yml) runs on pull requests targeting
+`develop`, pushes to `develop`, and manual dispatch. It uses Terraform 1.14.8 to check formatting, validate
+the root configuration and its referenced modules, and run the mocked configuration tests. It runs without
+path filters so it can be used as a required pull request check.
+
+Run the same checks locally from the repository root:
+
+```sh
+terraform -chdir=terraform fmt -check -recursive
+terraform -chdir=terraform init -backend=false -input=false -no-color
+terraform -chdir=terraform validate -no-color
+terraform -chdir=terraform test -no-color
+```
+
+Initialization downloads providers and creates local initialization files, but does not deploy infrastructure.
+These checks do not require Docker, Kubernetes access, deployment credentials, or HCP Terraform. Test scenarios
+evaluate plans with mocked providers; they do not apply or destroy real infrastructure, or verify application
+readiness or connectivity. Disposable Kind deployment tests can be added separately.
+
+### Mocked configuration tests
+
+The native Terraform suite in [`tests/auth_modes.tftest.hcl`](tests/auth_modes.tftest.hcl) covers:
+
+| Scenario | Expected result |
+|---|---|
+| `INTERNAL` / `NONE` | No Keycloak or PostgreSQL deployments. |
+| `DISABLED` / `NONE` | No Keycloak or PostgreSQL deployments; the UI remains in its supported `INTERNAL` mode. |
+| `KEYCLOAK` / `MANAGED` | Keycloak, PostgreSQL, and realm-import resources are planned. |
+| `KEYCLOAK` / `EXTERNAL` | No managed Keycloak, PostgreSQL, or realm-import resources. |
+| `INTERNAL` / `MANAGED` | Both connectors' configuration preconditions reject the combination. |
+| UI origin containing a path | Input validation rejects the origin. |
+
+Use Terraform 1.14.8 to match CI. Provider mocking requires at least Terraform 1.7, but the configuration's other
+language features may require a newer version. After initialization, run all tests with
+`terraform -chdir=terraform test -no-color`, or select just this file:
+
+```sh
+terraform -chdir=terraform test -filter=tests/auth_modes.tftest.hcl -no-color
+```
+
+Each `run` block uses `command = plan` with mocked `kind`, `kubernetes`, and `local` providers. No cluster is
+created, Kubernetes is not contacted, and the `local_file` resources do not write generated application files.
+Templates, certificates, and realm JSON files are still read from the repository. The tests use separate test
+state, not the state of an existing deployment.
+
+Test variables override `.tfvars` and environment inputs for authentication mode, credentials, and UI origins;
+other unspecified inputs still follow normal variable precedence. Credentials supplied by the scenarios are
+dummy values and the example URLs need not resolve. No real deployment credentials should be supplied for these tests.
+
+Terraform reports each scenario as passed or failed and exits nonzero for unexpected errors or failed assertions.
+The negative cases use `expect_failures`: they pass only when the specified validation or precondition rejects
+the input. The workflow runs the same suite after configuration validation. Passing these tests verifies the
+asserted configuration logic, not image availability, networking, actual Keycloak behavior, or application startup.
+
 ### Starting Terraform
 
 - Initialize Terraform:

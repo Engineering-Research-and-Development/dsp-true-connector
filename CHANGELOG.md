@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [0.7.8-SNAPSHOT] - 26.10.2026. - Keycloak multi realm support
 
 ### Added
+- Standalone GitHub Actions workflow for Terraform formatting, configuration validation, and mocked configuration tests on pull requests to `develop`, pushes to `develop`, and manual dispatch, without deploying infrastructure.
+- Six plan-only Terraform authentication configuration tests covering internal, disabled, managed Keycloak, and external Keycloak modes, incompatible mode rejection, and invalid UI origins.
 - Unauthenticated `GET /public/tenant` endpoint exposing the name and realm of enabled tenants; tenant seed data now includes tenant realms.
 - Seed data for Keycloak, containing five realm files: `platform`, `connector-admin`, `tenant-EngineeringA` and `tenant-EngineeringB` (the seeds used by tests and local setups) and `tenant-acme` (demo only, never used in tests).
 Each realm has its own users, roles, and clients. The connector trusts only the tenant realm as the issuer of JWTs, so Keycloak integration tests that use platform or super-admin tokens fail until multi-issuer support is added.
