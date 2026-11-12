@@ -3,6 +3,7 @@ package it.eng.connector.filter;
 import it.eng.connector.model.Role;
 import it.eng.tools.auth.internal.InternalCallClaims;
 import it.eng.tools.auth.internal.InternalCallTokenIssuer;
+import it.eng.tools.controller.ApiEndpoints;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import org.junit.jupiter.api.AfterEach;
@@ -52,7 +53,7 @@ class InternalCallAuthenticationFilterTest {
     }
 
     private static MockHttpServletRequest request(String authorization) {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/internal/v1/datasets/1/formats");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", ApiEndpoints.INTERNAL_DATASETS_V1 + "/1/formats");
         if (authorization != null) {
             request.addHeader(HttpHeaders.AUTHORIZATION, authorization);
         }

@@ -13,6 +13,7 @@ import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.strategy.HttpPullTransferStrategy;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.IConstants;
@@ -531,7 +532,7 @@ class DataTransferAPIServiceTest {
                 "successful response");
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         when(okHttpRestClient.sendInternalRequest(
-                eq("/internal/v1/agreements/" + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getAgreementId() + "/enforce"),
+                eq(ApiEndpoints.INTERNAL_AGREEMENTS_V1 + "/" + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getAgreementId() + "/enforce"),
                 eq(HttpMethod.POST), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 

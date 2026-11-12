@@ -4,6 +4,7 @@ import it.eng.datatransfer.exceptions.AgreementNotFoundException;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import org.junit.jupiter.api.DisplayName;
@@ -67,7 +68,7 @@ class AgreementServiceTest {
     @DisplayName("Agreement enforcement is a loopback call to /internal/v1/agreements/{id}/enforce, not a protocol call")
     void isAgreementValid_enforcesOverInternalZone() {
         String agreementId = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getAgreementId();
-        String path = "/internal/v1/agreements/" + agreementId + "/enforce";
+        String path = ApiEndpoints.INTERNAL_AGREEMENTS_V1 + "/" + agreementId + "/enforce";
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         when(transferProcessRepository.findByConsumerPidAndProviderPid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));

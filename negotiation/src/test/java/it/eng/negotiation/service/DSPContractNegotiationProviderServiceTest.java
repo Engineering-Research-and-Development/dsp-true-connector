@@ -9,6 +9,7 @@ import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.AuditEventPublisher;
@@ -107,14 +108,14 @@ public class DSPContractNegotiationProviderServiceTest {
     @DisplayName("Offer validation is a loopback call to /internal/v1/offers/validate, not a protocol call")
     public void handleContractRequestMessage_validatesOfferOverInternalZone() {
         when(properties.isAutomaticNegotiation()).thenReturn(false);
-        when(okHttpRestClient.sendInternalPostRequest(eq("/internal/v1/offers/validate"), any(JsonNode.class)))
+        when(okHttpRestClient.sendInternalPostRequest(eq(ApiEndpoints.INTERNAL_OFFERS_V1 + "/validate"), any(JsonNode.class)))
                 .thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         when(offerRepository.save(any(Offer.class))).thenReturn(NegotiationMockObjectUtil.OFFER_WITH_ORIGINAL_ID);
 
         service.handleContractRequestMessage(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_INITIAL);
 
-        verify(okHttpRestClient).sendInternalPostRequest(eq("/internal/v1/offers/validate"), any(JsonNode.class));
+        verify(okHttpRestClient).sendInternalPostRequest(eq(ApiEndpoints.INTERNAL_OFFERS_V1 + "/validate"), any(JsonNode.class));
         verify(okHttpRestClient, never()).sendRequestProtocol(anyString(), any(), any(Supplier.class));
     }
 
