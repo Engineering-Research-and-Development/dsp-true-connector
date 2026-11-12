@@ -108,6 +108,19 @@ at commit `ce736d0a788d592850eec1f6674c447ee2d1541c` or a later compatible revis
 `http://localhost:4300`) must be allowed by the public `keycloak-api` client: exact `<origin>/auth/callback`
 redirects, `<origin>/login` post-logout destinations, and matching web origins.
 
+Terraform validates these URLs before creating resources so malformed values fail early instead of producing broken
+Keycloak redirects or connector configuration. A UI origin must contain only an HTTP(S) scheme, hostname or IP
+address, and optional port: paths, queries, fragments, and user information are rejected because Terraform appends
+the callback and logout paths itself. The Keycloak base URL may also have a path prefix, but must not contain a query,
+fragment, or user information. The checks constrain hostname labels and port numbers; `cidrhost` additionally verifies
+that IPv4 and IPv6 literals are real addresses rather than merely strings made of digits, dots, or hexadecimal
+characters. These are syntax checks only: they do not prove that the host is reachable from browsers or connector pods.
+
+Credential presence is validated conditionally in `variables.tf` (managed Keycloak credentials for `MANAGED`, and
+the backend client secret for `EXTERNAL`). Those variable validations are the single source of these requirements;
+resource preconditions should remain focused on checks that cannot be expressed there, such as the valid
+`auth_provider`/`keycloak_mode` combinations and the Keycloak base URL.
+
 ### Managed mode
 
 `KEYCLOAK` / `MANAGED` requires `keycloak_base_url` and non-empty

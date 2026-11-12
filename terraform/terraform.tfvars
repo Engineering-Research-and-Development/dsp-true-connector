@@ -1,15 +1,16 @@
 # Docker Images Configuration
 mongodb_image      = "mongo:7.0.12"
 rustfs_image       = "rustfs/rustfs:1.0.0-rc.6"
-connector_image    = "ghcr.io/engineering-research-and-development/dsp-true-connector:kc"
-connector_ui_image = "ghcr.io/engineering-research-and-development/dsp-true-connector-ui:kc"
+connector_image    = "ghcr.io/engineering-research-and-development/dsp-true-connector:test"
+connector_ui_image = "ghcr.io/engineering-research-and-development/dsp-true-connector-ui:test"
 
 # Connector authentication and optional Keycloak configuration
-auth_provider           = "KEYCLOAK"
-keycloak_mode           = "MANAGED"
+auth_provider           = "INTERNAL"
+keycloak_mode           = "NONE"
 keycloak_image          = "quay.io/keycloak/keycloak:26.0.0"
 keycloak_postgres_image = "postgres:16"
-keycloak_base_url       = "http://192.168.0.12:8180"
+# "http://192.168.0.12:8180"
+keycloak_base_url       = ""
 keycloak_host_port      = 8180
 keycloak_node_port      = 30180
 keycloak_db_name        = "keycloak"

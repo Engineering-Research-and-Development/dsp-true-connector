@@ -80,6 +80,8 @@ variable "keycloak_base_url" {
   default     = ""
 }
 
+# UI origins are validated here because Terraform appends callback/logout paths to them.
+# Keep these as origins (scheme, host, optional port), not full URLs with paths or query strings.
 variable "connector_a_ui_origin" {
   description = "Absolute HTTP(S) origin used by Connector A's browser UI"
   type        = string
