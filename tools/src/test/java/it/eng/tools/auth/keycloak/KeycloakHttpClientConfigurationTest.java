@@ -1,8 +1,13 @@
 package it.eng.tools.auth.keycloak;
 
+import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsServer;
+import it.eng.tools.configuration.SharedOkHttpClients;
 import it.eng.tools.ssl.ocsp.OcspTrustManagerFactory;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.asn1.x509.GeneralName;
@@ -19,16 +24,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetSocketAddress;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.net.UnknownServiceException;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
@@ -39,6 +43,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -68,11 +73,12 @@ class KeycloakHttpClientConfigurationTest {
         KeyStore serverKeyStore = startServer("127.0.0.1");
         when(ocspTrustManagerFactory.createTrustManagers()).thenReturn(trustManagersFor(serverKeyStore));
 
-        HttpClient client = configuration.keycloakHttpClient(properties(), ocspTrustManagerFactory, true);
+        OkHttpClient client = keycloakHttpClient(properties(), true);
 
-        HttpResponse<String> response = client.send(request(DISCOVERY_PATH), HttpResponse.BodyHandlers.ofString());
-        assertEquals(200, response.statusCode());
-        assertEquals("{}", response.body());
+        try (Response response = client.newCall(request(DISCOVERY_PATH)).execute()) {
+            assertEquals(200, response.code());
+            assertEquals("{}", response.body().string());
+        }
     }
 
     @Test
@@ -92,7 +98,7 @@ class KeycloakHttpClientConfigurationTest {
         });
 
         KeycloakDiscoveryClient discoveryClient = new KeycloakDiscoveryClient(properties,
-                configuration.keycloakHttpClient(properties, ocspTrustManagerFactory, true));
+                keycloakHttpClient(properties, true));
 
         DiscoveryDocument document = discoveryClient.fetch(issuer);
         assertEquals(issuer, document.issuer());
@@ -104,22 +110,30 @@ class KeycloakHttpClientConfigurationTest {
         KeyStore serverKeyStore = startServer("keycloak.example.org");
         when(ocspTrustManagerFactory.createTrustManagers()).thenReturn(trustManagersFor(serverKeyStore));
 
-        HttpClient client = configuration.keycloakHttpClient(properties(), ocspTrustManagerFactory, true);
+        OkHttpClient client = keycloakHttpClient(properties(), true);
 
-        assertThrows(SSLHandshakeException.class,
-                () -> client.send(request(DISCOVERY_PATH), HttpResponse.BodyHandlers.ofString()));
+        assertThrows(SSLPeerUnverifiedException.class, () -> client.newCall(request(DISCOVERY_PATH)).execute());
     }
 
     @Test
-    @DisplayName("With SSL disabled, uses the JVM default truststore and never trusts all certificates")
-    void sslDisabled_usesJvmDefaultTruststore() throws Exception {
+    @DisplayName("With SSL disabled, trusts a certificate that is in no truststore")
+    void sslDisabled_trustsUntrustedCertificate() throws Exception {
         startServer("127.0.0.1");
 
-        HttpClient client = configuration.keycloakHttpClient(properties(), ocspTrustManagerFactory, false);
+        OkHttpClient client = keycloakHttpClient(properties(), false);
 
-        assertThrows(SSLHandshakeException.class,
-                () -> client.send(request(DISCOVERY_PATH), HttpResponse.BodyHandlers.ofString()));
+        assertEquals(200, status(client, DISCOVERY_PATH));
         verifyNoInteractions(ocspTrustManagerFactory);
+    }
+
+    @Test
+    @DisplayName("With SSL disabled, does not verify the host name")
+    void sslDisabled_doesNotVerifyHostName() throws Exception {
+        startServer("keycloak.example.org");
+
+        OkHttpClient client = keycloakHttpClient(properties(), false);
+
+        assertEquals(200, status(client, DISCOVERY_PATH));
     }
 
     @Test
@@ -133,10 +147,50 @@ class KeycloakHttpClientConfigurationTest {
         });
         when(ocspTrustManagerFactory.createTrustManagers()).thenReturn(trustManagersFor(serverKeyStore));
 
-        HttpClient client = configuration.keycloakHttpClient(properties(), ocspTrustManagerFactory, true);
+        OkHttpClient client = keycloakHttpClient(properties(), true);
 
-        HttpResponse<String> response = client.send(request("/redirect"), HttpResponse.BodyHandlers.ofString());
-        assertEquals(302, response.statusCode());
+        assertEquals(302, status(client, "/redirect"));
+    }
+
+    @Test
+    @DisplayName("With SSL enabled, refuses a plain http Keycloak")
+    void sslEnabled_refusesCleartext() throws Exception {
+        KeyStore serverKeyStore = startServer("127.0.0.1");
+        when(ocspTrustManagerFactory.createTrustManagers()).thenReturn(trustManagersFor(serverKeyStore));
+        HttpServer plainServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        plainServer.createContext(DISCOVERY_PATH, exchange -> {
+            exchange.sendResponseHeaders(200, -1);
+            exchange.close();
+        });
+        plainServer.start();
+        try {
+            OkHttpClient client = keycloakHttpClient(properties(), true);
+            Request plainRequest = new Request.Builder()
+                    .url("http://127.0.0.1:" + plainServer.getAddress().getPort() + DISCOVERY_PATH)
+                    .get()
+                    .build();
+
+            assertThrows(UnknownServiceException.class, () -> client.newCall(plainRequest).execute());
+        } finally {
+            plainServer.stop(0);
+        }
+    }
+
+    @Test
+    @DisplayName("Never follows redirects and bounds the whole call by connect plus read timeout")
+    void variantSettings() throws Exception {
+        startServer("127.0.0.1");
+        KeycloakTrustProperties properties = properties();
+        properties.setDiscoveryConnectTimeout(Duration.ofSeconds(3));
+        properties.setDiscoveryReadTimeout(Duration.ofSeconds(7));
+
+        OkHttpClient client = keycloakHttpClient(properties, false);
+
+        assertFalse(client.followRedirects());
+        assertFalse(client.followSslRedirects());
+        assertEquals(3_000, client.connectTimeoutMillis());
+        assertEquals(7_000, client.readTimeoutMillis());
+        assertEquals(10_000, client.callTimeoutMillis());
     }
 
     // --- helpers ----------------------------------------------------------------------------------------
@@ -150,11 +204,23 @@ class KeycloakHttpClientConfigurationTest {
         return properties;
     }
 
-    private HttpRequest request(String path) {
-        return HttpRequest.newBuilder(URI.create("https://127.0.0.1:" + server.getAddress().getPort() + path))
-                .timeout(Duration.ofSeconds(2))
-                .GET()
+    private OkHttpClient keycloakHttpClient(KeycloakTrustProperties properties, boolean sslEnabled)
+            throws GeneralSecurityException {
+        OkHttpClient shared = SharedOkHttpClients.sharedClient(ocspTrustManagerFactory, sslEnabled);
+        return configuration.keycloakHttpClient(shared, properties);
+    }
+
+    private Request request(String path) {
+        return new Request.Builder()
+                .url("https://127.0.0.1:" + server.getAddress().getPort() + path)
+                .get()
                 .build();
+    }
+
+    private int status(OkHttpClient client, String path) throws IOException {
+        try (Response response = client.newCall(request(path)).execute()) {
+            return response.code();
+        }
     }
 
     /**

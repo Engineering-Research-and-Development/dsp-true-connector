@@ -4,22 +4,21 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.time.Duration;
 
 /**
  * Loads the OpenID discovery document of a trusted Keycloak issuer. The client is stateless and does
  * not cache: callers own caching.
  * <p>
  * The whole request, body included, must complete within {@code discovery-connect-timeout} plus
- * {@code discovery-read-timeout}, and the body must not exceed {@value #MAX_DOCUMENT_SIZE} bytes.
+ * {@code discovery-read-timeout} (the call timeout of the Keycloak HTTP client), and the body must not
+ * exceed {@value #MAX_DOCUMENT_SIZE} bytes.
  */
 @Slf4j
 @Component
@@ -31,20 +30,18 @@ public class KeycloakDiscoveryClient {
     static final int MAX_DOCUMENT_SIZE = 256 * 1024;
 
     private final KeycloakTrustProperties properties;
-    private final HttpClient httpClient;
-    private final Duration exchangeTimeout;
+    private final OkHttpClient httpClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * Creates the client. It uses the discovery timeouts of the trust configuration.
+     * Creates the client. The timeouts are those of {@code httpClient}.
      *
      * @param properties the Keycloak trust configuration
      * @param httpClient the Keycloak HTTP client, see {@link KeycloakHttpClientConfiguration}
      */
     public KeycloakDiscoveryClient(KeycloakTrustProperties properties,
-            @Qualifier(KeycloakHttpClientConfiguration.KEYCLOAK_HTTP_CLIENT) HttpClient httpClient) {
+            @Qualifier(KeycloakHttpClientConfiguration.KEYCLOAK_HTTP_CLIENT) OkHttpClient httpClient) {
         this.properties = properties;
-        this.exchangeTimeout = properties.getDiscoveryConnectTimeout().plus(properties.getDiscoveryReadTimeout());
         this.httpClient = httpClient;
     }
 
@@ -67,12 +64,12 @@ public class KeycloakDiscoveryClient {
         if (expectedIssuer == null || !expectedIssuer.startsWith(properties.getBaseUrl() + REALMS_SEGMENT)) {
             throw new IllegalArgumentException("Issuer is not an issuer of the configured Keycloak");
         }
-        HttpRequest request;
+        Request request;
         try {
-            request = HttpRequest.newBuilder(URI.create(expectedIssuer + DISCOVERY_PATH))
-                    .timeout(properties.getDiscoveryReadTimeout())
+            request = new Request.Builder()
+                    .url(expectedIssuer + DISCOVERY_PATH)
                     .header("Accept", "application/json")
-                    .GET()
+                    .get()
                     .build();
         } catch (IllegalArgumentException e) {
             throw new KeycloakDiscoveryException("Invalid discovery URL for issuer " + expectedIssuer);
@@ -80,18 +77,17 @@ public class KeycloakDiscoveryClient {
 
         JsonNode json;
         try {
-            BoundedHttpExchange.Result response = BoundedHttpExchange.send(httpClient, request, exchangeTimeout,
-                    MAX_DOCUMENT_SIZE);
+            BoundedOkHttpCall.Result response = BoundedOkHttpCall.execute(httpClient, request, MAX_DOCUMENT_SIZE);
             if (!response.isSuccessful()) {
                 log.warn("Discovery request for issuer {} returned HTTP {}", expectedIssuer, response.statusCode());
                 throw new KeycloakDiscoveryException(
                         "Discovery request for issuer " + expectedIssuer + " returned HTTP " + response.statusCode());
             }
             json = objectMapper.readTree(response.body());
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new KeycloakDiscoveryException("Discovery request for issuer " + expectedIssuer + " was interrupted", e);
         } catch (IOException e) {
+            if (Thread.currentThread().isInterrupted()) {
+                throw new KeycloakDiscoveryException("Discovery request for issuer " + expectedIssuer + " was interrupted", e);
+            }
             // The cause is not logged: a parse error message can echo response content.
             log.warn("Discovery request for issuer {} failed: {}", expectedIssuer, e.getClass().getSimpleName());
             throw new KeycloakDiscoveryException(

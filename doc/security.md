@@ -46,6 +46,39 @@ Make sure to update values with correct one, provided keystore files are self si
 
 More information on how to generate keystore and truststore files can be found [here](./certificate/PKI_CERTIFICATE_GUIDE.md).
 
+With `server.ssl.enabled=true` the truststore of the `connector` bundle is the only source of trust
+for outbound calls. The JVM default truststore (`cacerts`) is not used, so the truststore must contain
+every CA the connector should trust. That includes a public CA such as Let's Encrypt when a peer
+connector, Keycloak or the S3 storage uses a public certificate.
+
+> [!WARNING]
+> **HTTP mode (`server.ssl.enabled=false`) is INSECURE and UNTRUSTED.** It is meant only for local
+> development and first tests, until certificates are set up. Never use it in production or on a
+> shared network.
+>
+> - **Nothing is encrypted.** The connector serves plain HTTP. Requests, responses, bearer tokens,
+>   the M2M client secret and the transferred data can be read and changed by anyone on the network.
+> - **No remote service is verified.** Every outbound client accepts every certificate when it calls
+>   an `https` URL. This covers OkHttp (protocol calls and the Keycloak token request), Keycloak
+>   discovery and JWKS, `HttpsURLConnection` and the S3 clients. They also accept plain `http`. None of
+>   these is checked:
+>   - who issued the certificate: a self-signed certificate or one from an unknown CA is accepted;
+>   - whether the certificate has expired or is not valid yet;
+>   - whether the host name matches the certificate's SAN;
+>   - whether the certificate was revoked (OCSP);
+>   - whether the certificate chain is complete and correctly signed.
+> - **So the connector cannot tell whether it is talking to the real peer connector, Keycloak or S3
+>   storage.** Anyone who can intercept or redirect the traffic, for example through DNS, a proxy or a
+>   shared network, can pose as any of them. They can then:
+>   - read the M2M client secret, tokens and data;
+>   - return false catalogs, agreements or files;
+>   - serve their own Keycloak signing keys, and then forge tokens that the connector accepts for any
+>     tenant, super-admin or connector role.
+> - The connector logs a `WARN` at startup for each client that trusts all certificates.
+>
+> Use `server.ssl.enabled=true` with a keystore and a truststore for any environment that is shared,
+> reachable from other machines, or holds real data.
+
 ---
 
 ## Authentication Modes
@@ -199,7 +232,7 @@ application.keycloak.backend.token-caching=true
 | `application.keycloak.backend.client-secret` | none | Secret of that client. Deliver it through the environment, see [M2M Client Secret](#m2m-client-secret-delivery-and-rotation) |
 | `application.keycloak.backend.token-caching` | `true` | Whether the outbound token is cached until shortly before it expires |
 | `application.keycloak.discovery-connect-timeout` | `5s` | Connect timeout for discovery and JWKS requests (for their TLS trust see [Trusted Issuers](#trusted-issuers)) |
-| `application.keycloak.discovery-read-timeout` | `10s` | Wait for the response headers of discovery and JWKS requests. The whole request, body included, must finish within connect + read timeout |
+| `application.keycloak.discovery-read-timeout` | `10s` | Read timeout of discovery and JWKS requests. The whole request, body included, must finish within connect + read timeout (the call timeout of the Keycloak client) |
 
 The connector fails to start in `KEYCLOAK` mode when `base-url` is missing or not an absolute
 `http`/`https` URL, when a realm name does not match `^[A-Za-z0-9._-]+$`, or when `audience` is
@@ -319,13 +352,16 @@ Rules the registry follows:
   response at 64 KiB. Each request, body included, must finish within connect + read timeout, and a
   request waits at most twice that (plus 0.5 s) for the keys of an issuer; a slower load counts as
   failed. Keys are not loaded at startup, so the connector starts while Keycloak is down.
-- **TLS trust for discovery and JWKS.** With `server.ssl.enabled=true` these requests trust the
+- **TLS trust for discovery and JWKS.** These requests use an OkHttp client derived from the shared
+  outbound `okHttpClient`, so they have its TLS trust. With `server.ssl.enabled=true` they trust the
   truststore of the `connector` SSL bundle (`spring.ssl.bundle.jks.connector.truststore.*`), with
-  [OCSP checks](#ocsp-certificate-validation) as configured, the same trust as the outbound token
-  request. An HTTPS Keycloak whose certificate comes from a private certificate authority works once
-  that CA is in the connector truststore. With `server.ssl.enabled=false` they use the JVM default
-  truststore. They never trust all certificates, unlike the other outbound clients in that mode, because
-  the keys they load verify every token. Host names are always verified.
+  [OCSP checks](#ocsp-certificate-validation) as configured. An HTTPS Keycloak whose certificate comes
+  from a private certificate authority works once that CA is in the connector truststore, and host
+  names are verified. In this mode `base-url` must be `https`: plain `http` is refused. With `server.ssl.enabled=false`
+  they trust all certificates and do not verify host names, like the other outbound clients in that
+  mode, so an HTTPS Keycloak needs no certificate setup during development. That is not secure: anyone
+  between the connector and Keycloak can serve their own signing keys and forge tokens (see the
+  [HTTP mode warning](#tls-configuration)).
 - **Signature, expiry, issuer.** The decoder accepts asymmetric algorithms only (RS, PS, ES) and
   checks the signature, `exp`, `nbf` and the exact `iss`.
 - **Caching and rotation.** Decoders are cached per issuer (at most 1000, evicted after 1 hour
@@ -503,6 +539,9 @@ other connectors.
   caller gets an error response. The connector never sends the call without an `Authorization` header.
   The log line has the client id, the token endpoint, the HTTP status and the OAuth `error` and
   `error_description`. It never has the secret, the response body or a token.
+- **No redirects.** The token request, like every call of the shared `okHttpClient`, does not follow
+  redirects. A 3xx from the token endpoint is a failed request, so the client secret is never resent
+  to another host.
 
 #### M2M client secret delivery and rotation
 
@@ -860,18 +899,20 @@ application.ocsp.validation.default-cache-duration-minutes=60
 application.ocsp.validation.timeout-seconds=10
 ```
 
-Current implementation, if OCSP is **DISABLED** (default configuration) will create OkHttpRestClient with truststore that allows ALL certificates. 
+Whether outbound clients trust all certificates depends on `server.ssl.enabled`, not on OCSP: with
+`server.ssl.enabled=false` they accept ALL certificates (see the [HTTP mode warning](#tls-configuration)).
+With `server.ssl.enabled=true` they validate certificates against the connector truststore, and
+OCSP adds revocation checks on top. 
 
-If you want to have proper TLS communication, with hostname validation enabled, this can be achieved by setting 
+To add revocation checks to the TLS validation of `server.ssl.enabled=true`, set
 
 ```
 application.ocsp.validation.enabled=true
 ```
 
-This will create proper *OcspX509TrustManager* that will load provided truststore, and perform:
-
- - hostname validation (PKIX)
- - OCSP check
+The *OcspX509TrustManager* then validates the certificate chain against the provided truststore
+(PKIX) and performs the OCSP check. Host names are verified with `server.ssl.enabled=true` whether
+OCSP is enabled or not.
  
 If certificate does not have 
 

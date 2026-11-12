@@ -10,9 +10,9 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URL;
-import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
@@ -29,8 +29,8 @@ class JwkSetRetrieverTest {
     void setUp() throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.start();
-        retriever = new JwkSetRetriever(KeycloakTestHttpClients.withConnectTimeout(Duration.ofMillis(200)),
-                Duration.ofMillis(200), Duration.ofMillis(500), 16);
+        retriever = new JwkSetRetriever(
+                KeycloakTestHttpClients.withTimeouts(Duration.ofMillis(200), Duration.ofMillis(500)), 16);
     }
 
     @AfterEach
@@ -90,6 +90,6 @@ class JwkSetRetrieverTest {
             exchange.close();
         });
         assertTimeoutPreemptively(Duration.ofSeconds(3),
-                () -> assertThrows(HttpTimeoutException.class, () -> retriever.retrieveResource(url("/stalled"))));
+                () -> assertThrows(SocketTimeoutException.class, () -> retriever.retrieveResource(url("/stalled"))));
     }
 }

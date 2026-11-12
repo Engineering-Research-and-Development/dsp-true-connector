@@ -1,27 +1,28 @@
 package it.eng.tools.auth.keycloak;
 
 import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
-import it.eng.tools.ssl.ocsp.OcspTrustManagerFactory;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
+import okhttp3.OkHttpClient;
+import okhttp3.internal.tls.OkHostnameVerifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import java.net.http.HttpClient;
-import java.security.GeneralSecurityException;
-import java.security.SecureRandom;
 import java.time.Duration;
 
 /**
- * Provides the JDK HTTP client that loads Keycloak discovery documents and JWK sets.
+ * Provides the HTTP client that loads Keycloak discovery documents and JWK sets.
  * <p>
- * With {@code server.ssl.enabled=true} the client trusts the truststore of the {@code connector} SSL bundle,
- * with OCSP checks as configured by {@code application.ocsp.validation.*}. That is the same trust as the
- * OkHttp client that requests Keycloak tokens. With {@code server.ssl.enabled=false} it uses the JVM default
- * truststore. It never trusts all certificates: the JWK sets it loads are the keys that verify every token.
+ * The client is derived from the shared {@code okHttpClient} bean, so it has the same TLS trust, host name
+ * verification and connection specs, and shares its connection pool and dispatcher. With
+ * {@code server.ssl.enabled=true} it trusts the truststore of the {@code connector} SSL bundle, with OCSP checks
+ * as configured by {@code application.ocsp.validation.*}, verifies host names and refuses plain {@code http}.
+ * With {@code server.ssl.enabled=false} it trusts all certificates and does not verify host names. That mode is
+ * not secure: anyone between the connector and Keycloak can serve their own signing keys and then forge tokens
+ * the connector accepts.
+ * <p>
+ * On top of the shared settings, the client never follows redirects, uses the discovery connect and read
+ * timeouts, and has a deadline for the whole call, body included, of the connect plus the read timeout.
  */
 @Slf4j
 @Configuration
@@ -34,42 +35,27 @@ public class KeycloakHttpClientConfiguration {
     public static final String KEYCLOAK_HTTP_CLIENT = "keycloakHttpClient";
 
     /**
-     * Creates the Keycloak HTTP client.
+     * Creates the Keycloak HTTP client from the shared OkHttp client.
      *
-     * @param properties the Keycloak trust configuration, which supplies the connect timeout
-     * @param ocspTrustManagerFactory creates the OCSP trust managers over the connector SSL bundle
-     * @param sslEnabled the value of {@code server.ssl.enabled}
-     * @return the HTTP client
-     * @throws GeneralSecurityException when the TLS context cannot be created
+     * @param okHttpClient the shared OkHttp client, which supplies TLS trust and host name verification
+     * @param properties the Keycloak trust configuration, which supplies the timeouts
+     * @return the Keycloak HTTP client
      */
     @Bean(KEYCLOAK_HTTP_CLIENT)
-    HttpClient keycloakHttpClient(KeycloakTrustProperties properties, OcspTrustManagerFactory ocspTrustManagerFactory,
-            @Value("${server.ssl.enabled:false}") boolean sslEnabled) throws GeneralSecurityException {
-        SSLContext sslContext;
-        if (sslEnabled) {
-            log.info("Keycloak HTTP client trusts the connector SSL bundle truststore, with OCSP validation");
-            sslContext = SSLContext.getInstance("TLS");
-            TrustManager[] trustManagers = ocspTrustManagerFactory.createTrustManagers();
-            sslContext.init(null, trustManagers, new SecureRandom());
-        } else {
-            log.info("Keycloak HTTP client trusts the JVM default truststore (server.ssl.enabled=false)");
-            sslContext = SSLContext.getDefault();
+    OkHttpClient keycloakHttpClient(OkHttpClient okHttpClient, KeycloakTrustProperties properties) {
+        if (!(okHttpClient.hostnameVerifier() instanceof OkHostnameVerifier)) {
+            log.warn("Keycloak HTTP client trusts ALL certificates and does not verify host names "
+                    + "(server.ssl.enabled=false). Anyone between the connector and Keycloak can serve their own "
+                    + "signing keys and forge tokens. Use only for local development and first tests!");
         }
-        return newHttpClient(properties.getDiscoveryConnectTimeout(), sslContext);
-    }
-
-    /**
-     * Builds a Keycloak HTTP client: it never follows redirects and verifies host names.
-     *
-     * @param connectTimeout the connect timeout
-     * @param sslContext the TLS context
-     * @return the HTTP client
-     */
-    public static HttpClient newHttpClient(Duration connectTimeout, SSLContext sslContext) {
-        return HttpClient.newBuilder()
+        Duration connectTimeout = properties.getDiscoveryConnectTimeout();
+        Duration readTimeout = properties.getDiscoveryReadTimeout();
+        return okHttpClient.newBuilder()
+                .followRedirects(false)
+                .followSslRedirects(false)
                 .connectTimeout(connectTimeout)
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .sslContext(sslContext)
+                .readTimeout(readTimeout)
+                .callTimeout(connectTimeout.plus(readTimeout))
                 .build();
     }
 }

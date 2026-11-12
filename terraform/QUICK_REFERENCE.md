@@ -64,6 +64,10 @@ Only non-sensitive configuration values are in ConfigMaps:
 |----------|----------|---------|
 | `server.ssl.enabled` | `connector_a_config.ssl_enabled` | `false` |
 
+> **Warning:** `false` is HTTP mode, which is **insecure and untrusted**: traffic is not encrypted and
+> the connector accepts any certificate of the services it calls, so it cannot detect an impostor.
+> Use it for first tests only. See the [HTTP mode warning](../doc/security.md#tls-configuration).
+
 ---
 
 ## 4. S3 Configuration (Non-Sensitive in ConfigMap)

@@ -1,12 +1,12 @@
 package it.eng.tools.auth.keycloak;
 
-import javax.net.ssl.SSLContext;
-import java.net.http.HttpClient;
-import java.security.NoSuchAlgorithmException;
+import okhttp3.OkHttpClient;
+
 import java.time.Duration;
 
 /**
- * Builds Keycloak HTTP clients for tests that talk to a local plain-HTTP server.
+ * Builds Keycloak HTTP clients for tests that talk to a local plain-HTTP server. They are configured like the
+ * {@code keycloakHttpClient} bean: no redirects, and a call timeout of connect plus read timeout.
  */
 public final class KeycloakTestHttpClients {
 
@@ -14,31 +14,34 @@ public final class KeycloakTestHttpClients {
     }
 
     /**
-     * Builds a Keycloak HTTP client over the JVM default truststore.
+     * Builds a Keycloak HTTP client with the discovery timeouts of the trust configuration.
      *
-     * @param properties supplies the connect timeout
+     * @param properties supplies the connect and read timeouts
      * @return the HTTP client
      */
-    public static HttpClient forProperties(KeycloakTrustProperties properties) {
-        return withConnectTimeout(properties.getDiscoveryConnectTimeout());
+    public static OkHttpClient forProperties(KeycloakTrustProperties properties) {
+        return withTimeouts(properties.getDiscoveryConnectTimeout(), properties.getDiscoveryReadTimeout());
     }
 
     /**
-     * Builds a Keycloak HTTP client over the JVM default truststore.
+     * Builds a Keycloak HTTP client with the given timeouts.
      *
      * @param connectTimeout the connect timeout
+     * @param readTimeout the read timeout
      * @return the HTTP client
      */
-    public static HttpClient withConnectTimeout(Duration connectTimeout) {
-        try {
-            return KeycloakHttpClientConfiguration.newHttpClient(connectTimeout, SSLContext.getDefault());
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(e);
-        }
+    public static OkHttpClient withTimeouts(Duration connectTimeout, Duration readTimeout) {
+        return new OkHttpClient.Builder()
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .connectTimeout(connectTimeout)
+                .readTimeout(readTimeout)
+                .callTimeout(connectTimeout.plus(readTimeout))
+                .build();
     }
 
     /**
-     * Builds a discovery client over the JVM default truststore.
+     * Builds a discovery client with the discovery timeouts of the trust configuration.
      *
      * @param properties the Keycloak trust configuration
      * @return the discovery client

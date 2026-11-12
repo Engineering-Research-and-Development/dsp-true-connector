@@ -26,6 +26,7 @@ import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.TenantRepository;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.OkHttpClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Conditional;
@@ -37,7 +38,6 @@ import org.springframework.stereotype.Component;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.net.http.HttpClient;
 import java.text.ParseException;
 import java.time.Duration;
 import java.util.Locale;
@@ -115,7 +115,7 @@ public class TrustedIssuerRegistry {
     @Autowired
     public TrustedIssuerRegistry(KeycloakTrustProperties properties, KeycloakDiscoveryClient discoveryClient,
             TenantRepository tenantRepository,
-            @Qualifier(KeycloakHttpClientConfiguration.KEYCLOAK_HTTP_CLIENT) HttpClient httpClient) {
+            @Qualifier(KeycloakHttpClientConfiguration.KEYCLOAK_HTTP_CLIENT) OkHttpClient httpClient) {
         this(properties, discoveryClient, tenantRepository, httpClient, IssuerRegistrySettings.defaults(),
                 Ticker.systemTicker());
     }
@@ -131,7 +131,7 @@ public class TrustedIssuerRegistry {
      * @param ticker the time source of the decoder and failure caches
      */
     TrustedIssuerRegistry(KeycloakTrustProperties properties, KeycloakDiscoveryClient discoveryClient,
-            TenantRepository tenantRepository, HttpClient httpClient, IssuerRegistrySettings settings, Ticker ticker) {
+            TenantRepository tenantRepository, OkHttpClient httpClient, IssuerRegistrySettings settings, Ticker ticker) {
         this.properties = Objects.requireNonNull(properties, "properties");
         this.discoveryClient = Objects.requireNonNull(discoveryClient, "discoveryClient");
         this.tenantRepository = Objects.requireNonNull(tenantRepository, "tenantRepository");
@@ -149,8 +149,7 @@ public class TrustedIssuerRegistry {
                 properties.getPlatformRealm().toLowerCase(Locale.ROOT),
                 properties.getAdminRealm().toLowerCase(Locale.ROOT));
         this.jwkSetRetriever = new JwkSetRetriever(Objects.requireNonNull(httpClient, "httpClient"),
-                properties.getDiscoveryConnectTimeout(),
-                properties.getDiscoveryReadTimeout(), settings.jwksSizeLimit());
+                settings.jwksSizeLimit());
         this.executor = newExecutor();
         this.decoders = Caffeine.newBuilder()
                 .maximumSize(settings.decoderCacheMaximumSize())
