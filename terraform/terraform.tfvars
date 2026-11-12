@@ -9,7 +9,6 @@ auth_provider           = "INTERNAL"
 keycloak_mode           = "NONE"
 keycloak_image          = "quay.io/keycloak/keycloak:26.0.0"
 keycloak_postgres_image = "postgres:16"
-# "http://192.168.0.12:8180"
 keycloak_base_url       = ""
 keycloak_host_port      = 8180
 keycloak_node_port      = 30180

@@ -108,19 +108,6 @@ at commit `ce736d0a788d592850eec1f6674c447ee2d1541c` or a later compatible revis
 `http://localhost:4300`) must be allowed by the public `keycloak-api` client: exact `<origin>/auth/callback`
 redirects, `<origin>/login` post-logout destinations, and matching web origins.
 
-Terraform validates these URLs before creating resources so malformed values fail early instead of producing broken
-Keycloak redirects or connector configuration. A UI origin must contain only an HTTP(S) scheme, hostname or IP
-address, and optional port: paths, queries, fragments, and user information are rejected because Terraform appends
-the callback and logout paths itself. The Keycloak base URL may also have a path prefix, but must not contain a query,
-fragment, or user information. The checks constrain hostname labels and port numbers; `cidrhost` additionally verifies
-that IPv4 and IPv6 literals are real addresses rather than merely strings made of digits, dots, or hexadecimal
-characters. These are syntax checks only: they do not prove that the host is reachable from browsers or connector pods.
-
-Credential presence is validated conditionally in `variables.tf` (managed Keycloak credentials for `MANAGED`, and
-the backend client secret for `EXTERNAL`). Those variable validations are the single source of these requirements;
-resource preconditions should remain focused on checks that cannot be expressed there, such as the valid
-`auth_provider`/`keycloak_mode` combinations and the Keycloak base URL.
-
 ### Managed mode
 
 `KEYCLOAK` / `MANAGED` requires `keycloak_base_url` and non-empty
@@ -162,62 +149,6 @@ use an appropriately protected remote state backend for shared deployments, and 
 a managed secret store. Never treat the checked-in realm users or client secrets as production credentials.
 
 ## Usage
-
-### Automated configuration checks
-
-The [Terraform checks workflow](../.github/workflows/terraform-checks.yml) runs on pull requests targeting
-`develop`, pushes to `develop`, and manual dispatch. It uses Terraform 1.14.8 to check formatting, validate
-the root configuration and its referenced modules, and run the mocked configuration tests. It runs without
-path filters so it can be used as a required pull request check.
-
-Run the same checks locally from the repository root:
-
-```sh
-terraform -chdir=terraform fmt -check -recursive
-terraform -chdir=terraform init -backend=false -input=false -no-color
-terraform -chdir=terraform validate -no-color
-terraform -chdir=terraform test -no-color
-```
-
-Initialization downloads providers and creates local initialization files, but does not deploy infrastructure.
-These checks do not require Docker, Kubernetes access, deployment credentials, or HCP Terraform. Test scenarios
-evaluate plans with mocked providers; they do not apply or destroy real infrastructure, or verify application
-readiness or connectivity. Disposable Kind deployment tests can be added separately.
-
-### Mocked configuration tests
-
-The native Terraform suite in [`tests/auth_modes.tftest.hcl`](tests/auth_modes.tftest.hcl) covers:
-
-| Scenario | Expected result |
-|---|---|
-| `INTERNAL` / `NONE` | No Keycloak or PostgreSQL deployments. |
-| `DISABLED` / `NONE` | No Keycloak or PostgreSQL deployments; the UI remains in its supported `INTERNAL` mode. |
-| `KEYCLOAK` / `MANAGED` | Keycloak, PostgreSQL, and realm-import resources are planned. |
-| `KEYCLOAK` / `EXTERNAL` | No managed Keycloak, PostgreSQL, or realm-import resources. |
-| `INTERNAL` / `MANAGED` | Both connectors' configuration preconditions reject the combination. |
-| UI origin containing a path | Input validation rejects the origin. |
-
-Use Terraform 1.14.8 to match CI. Provider mocking requires at least Terraform 1.7, but the configuration's other
-language features may require a newer version. After initialization, run all tests with
-`terraform -chdir=terraform test -no-color`, or select just this file:
-
-```sh
-terraform -chdir=terraform test -filter=tests/auth_modes.tftest.hcl -no-color
-```
-
-Each `run` block uses `command = plan` with mocked `kind`, `kubernetes`, and `local` providers. No cluster is
-created, Kubernetes is not contacted, and the `local_file` resources do not write generated application files.
-Templates, certificates, and realm JSON files are still read from the repository. The tests use separate test
-state, not the state of an existing deployment.
-
-Test variables override `.tfvars` and environment inputs for authentication mode, credentials, and UI origins;
-other unspecified inputs still follow normal variable precedence. Credentials supplied by the scenarios are
-dummy values and the example URLs need not resolve. No real deployment credentials should be supplied for these tests.
-
-Terraform reports each scenario as passed or failed and exits nonzero for unexpected errors or failed assertions.
-The negative cases use `expect_failures`: they pass only when the specified validation or precondition rejects
-the input. The workflow runs the same suite after configuration validation. Passing these tests verifies the
-asserted configuration logic, not image availability, networking, actual Keycloak behavior, or application startup.
 
 ### Starting Terraform
 

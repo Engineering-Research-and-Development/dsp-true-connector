@@ -1,9 +1,8 @@
 locals {
   auth_provider = var.auth_provider
   # The UI does not accept DISABLED, so it remains in INTERNAL mode in that case.
-  ui_auth_provider  = var.auth_provider == "KEYCLOAK" ? "KEYCLOAK" : "INTERNAL"
-  keycloak_base_url = var.auth_provider == "KEYCLOAK" ? trimspace(var.keycloak_base_url) : "http://localhost:8180"
-  # Validate the base URL's structure and then use cidrhost to reject malformed IP literals.
+  ui_auth_provider       = var.auth_provider == "KEYCLOAK" ? "KEYCLOAK" : "INTERNAL"
+  keycloak_base_url      = var.auth_provider == "KEYCLOAK" ? trimspace(var.keycloak_base_url) : "http://localhost:8180"
   keycloak_base_url_ipv4 = try(regex("(?i)^https?://([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)(:|/|$)", local.keycloak_base_url)[0], "")
   keycloak_base_url_ipv6 = try(regex("(?i)^https?://\\[([0-9A-Fa-f:.]+)\\]", local.keycloak_base_url)[0], "")
   keycloak_base_url_host = try(regex("(?i)^https?://([^/:]+)", local.keycloak_base_url)[0], "")
