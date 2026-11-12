@@ -2,44 +2,35 @@ package it.eng.tools.auth.keycloak.issuer;
 
 import com.nimbusds.jose.util.Resource;
 import com.nimbusds.jose.util.ResourceRetriever;
-import it.eng.tools.auth.keycloak.BoundedHttpExchange;
+import it.eng.tools.auth.keycloak.BoundedOkHttpCall;
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
 
 import java.io.IOException;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 
 /**
- * Loads JWK sets over HTTP with the JDK client. Unlike the Nimbus default retriever it never follows
+ * Loads JWK sets over HTTP with the Keycloak HTTP client. Unlike the Nimbus default retriever it never follows
  * redirects and only accepts {@code http} and {@code https} URLs, so the only URL fetched is the
  * {@code jwks_uri} of the issuer's verified discovery document. The whole request, body included, must
- * complete within the connect plus the read timeout, and the body must not exceed the size limit.
+ * complete within the call timeout of the client, and the body must not exceed the size limit.
  */
 final class JwkSetRetriever implements ResourceRetriever {
 
-    private final HttpClient httpClient;
-    private final Duration readTimeout;
-    private final Duration exchangeTimeout;
+    private final OkHttpClient httpClient;
     private final int sizeLimit;
 
     /**
      * Creates a retriever.
      *
-     * @param connectTimeout the connect timeout
-     * @param readTimeout the timeout for the response headers; the whole exchange is bounded by the connect
-     *        plus the read timeout
+     * @param httpClient the Keycloak HTTP client, which must not follow redirects and whose call timeout
+     *        bounds the whole request
      * @param sizeLimit the maximum response size, in bytes
      */
-    JwkSetRetriever(Duration connectTimeout, Duration readTimeout, int sizeLimit) {
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(connectTimeout)
-                .followRedirects(HttpClient.Redirect.NEVER)
-                .build();
-        this.readTimeout = readTimeout;
-        this.exchangeTimeout = connectTimeout.plus(readTimeout);
+    JwkSetRetriever(OkHttpClient httpClient, int sizeLimit) {
+        this.httpClient = httpClient;
         this.sizeLimit = sizeLimit;
     }
 
@@ -57,27 +48,19 @@ final class JwkSetRetriever implements ResourceRetriever {
         if (!"http".equals(protocol) && !"https".equals(protocol)) {
             throw new IOException("Unsupported JWK set URL scheme");
         }
-        HttpRequest request;
-        try {
-            request = HttpRequest.newBuilder(url.toURI())
-                    .timeout(readTimeout)
-                    .header("Accept", "application/json")
-                    .GET()
-                    .build();
-        } catch (URISyntaxException | IllegalArgumentException e) {
-            throw new IOException("Invalid JWK set URL", e);
+        HttpUrl httpUrl = HttpUrl.get(url);
+        if (httpUrl == null) {
+            throw new IOException("Invalid JWK set URL");
         }
-        try {
-            BoundedHttpExchange.Result response = BoundedHttpExchange.send(httpClient, request, exchangeTimeout,
-                    sizeLimit);
-            if (!response.isSuccessful()) {
-                throw new IOException("JWK set request returned HTTP " + response.statusCode());
-            }
-            String contentType = response.headers().firstValue("Content-Type").orElse(null);
-            return new Resource(new String(response.body(), StandardCharsets.UTF_8), contentType);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IOException("JWK set request was interrupted", e);
+        Request request = new Request.Builder()
+                .url(httpUrl)
+                .header("Accept", "application/json")
+                .get()
+                .build();
+        BoundedOkHttpCall.Result response = BoundedOkHttpCall.execute(httpClient, request, sizeLimit);
+        if (!response.isSuccessful()) {
+            throw new IOException("JWK set request returned HTTP " + response.statusCode());
         }
+        return new Resource(new String(response.body(), StandardCharsets.UTF_8), response.contentType().orElse(null));
     }
 }

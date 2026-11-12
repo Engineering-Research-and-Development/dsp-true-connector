@@ -98,6 +98,12 @@ See `terraform/variables.tf` and `QUICK_REFERENCE.md` for all available configur
 
 ---
 
+> [!WARNING]
+> The example above uses `ssl_enabled = false`. That is HTTP mode, which is **insecure and untrusted**:
+> nothing is encrypted, and the connector accepts every certificate of the services it calls (expired,
+> self-signed, wrong host name), so it cannot tell a real peer, Keycloak or S3 storage from an impostor.
+> Use it only for first tests. See the [HTTP mode warning](security.md#tls-configuration).
+
 ## 2. Prepare Certificate Files
 
 Place your TLS certificates in the required directories:

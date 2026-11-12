@@ -6,6 +6,9 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import it.eng.tools.auth.M2mTokenCache;
 import it.eng.tools.auth.M2mTokenUnavailableException;
+import it.eng.tools.configuration.SharedOkHttpClients;
+import it.eng.tools.ssl.ocsp.OcspTrustManagerFactory;
+import com.sun.net.httpserver.HttpServer;
 import okhttp3.OkHttpClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,10 +17,15 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.security.GeneralSecurityException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 /**
  * Tests for {@link KeycloakAuthenticationService} against a local stand-in for the {@code platform} realm.
@@ -48,7 +56,7 @@ class KeycloakAuthenticationServiceTest {
         properties.setClientSecret(CLIENT_SECRET);
         tokenCache = new M2mTokenCache();
         service = new KeycloakAuthenticationService(properties, trustProperties,
-                new KeycloakDiscoveryClient(trustProperties), tokenCache, new OkHttpClient());
+                KeycloakTestHttpClients.discoveryClient(trustProperties), tokenCache, new OkHttpClient());
 
         serviceLogger = (Logger) LoggerFactory.getLogger(KeycloakAuthenticationService.class);
         previousLevel = serviceLogger.getLevel();
@@ -282,5 +290,46 @@ class KeycloakAuthenticationServiceTest {
         service.getConnectorToken();
 
         assertEquals(2, keycloak.count(keycloak.tokenPath()));
+    }
+
+    @Test
+    @DisplayName("A 307 from the token endpoint is not followed, so the client secret stays with the token endpoint")
+    void tokenRedirectIsNotFollowed() throws IOException, GeneralSecurityException {
+        List<String> received = Collections.synchronizedList(new ArrayList<>());
+        HttpServer otherHost = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        otherHost.createContext("/", exchange -> {
+            received.add(new String(exchange.getRequestBody().readAllBytes()));
+            exchange.sendResponseHeaders(200, -1);
+            exchange.close();
+        });
+        HttpServer redirecting = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        redirecting.createContext("/token", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            exchange.getResponseHeaders().add("Location",
+                    "http://127.0.0.1:" + otherHost.getAddress().getPort() + "/steal");
+            exchange.sendResponseHeaders(307, -1);
+            exchange.close();
+        });
+        otherHost.start();
+        redirecting.start();
+        try {
+            keycloak.tokenEndpointOverride("http://127.0.0.1:" + redirecting.getAddress().getPort() + "/token");
+            KeycloakTrustProperties trustProperties = new KeycloakTrustProperties();
+            trustProperties.setBaseUrl(keycloak.baseUrl());
+            trustProperties.init();
+            OkHttpClient sharedClient = SharedOkHttpClients.sharedClient(mock(OcspTrustManagerFactory.class), false);
+            KeycloakAuthenticationService redirectedService = new KeycloakAuthenticationService(properties,
+                    trustProperties, KeycloakTestHttpClients.discoveryClient(trustProperties), new M2mTokenCache(),
+                    sharedClient);
+
+            M2mTokenUnavailableException exception = assertThrows(M2mTokenUnavailableException.class,
+                    redirectedService::getConnectorToken);
+
+            assertTrue(exception.getMessage().endsWith("failed with HTTP 307"));
+            assertTrue(received.isEmpty());
+        } finally {
+            redirecting.stop(0);
+            otherHost.stop(0);
+        }
     }
 }

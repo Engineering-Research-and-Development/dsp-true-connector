@@ -34,7 +34,7 @@ class KeycloakDiscoveryClientTest {
         properties.setDiscoveryConnectTimeout(Duration.ofMillis(200));
         properties.setDiscoveryReadTimeout(Duration.ofMillis(500));
         properties.init();
-        client = new KeycloakDiscoveryClient(properties);
+        client = KeycloakTestHttpClients.discoveryClient(properties);
     }
 
     @AfterEach
@@ -139,7 +139,7 @@ class KeycloakDiscoveryClientTest {
         });
         KeycloakDiscoveryException e = assertTimeoutPreemptively(Duration.ofSeconds(3),
                 () -> assertThrows(KeycloakDiscoveryException.class, () -> client.fetch(issuer())));
-        assertTrue(e.getMessage().contains("HttpTimeoutException"));
+        assertTrue(e.getMessage().contains("SocketTimeoutException"));
     }
 
     @Test

@@ -39,6 +39,17 @@ public class OkHttpClientConfiguration {
 		this.isSSLEnabled = isSSLEnabled;
 	}
 
+	/**
+	 * Creates the shared outbound HTTP client. It never follows redirects: a 3xx response is returned to the
+	 * caller as is, so a request body (for example a client secret or a protocol message) is never resent to
+	 * the {@code Location} host.
+	 *
+	 * @return the shared OkHttp client
+	 * @throws KeyStoreException If there's an error accessing the key store
+	 * @throws NoSuchSslBundleException If the connector SSL bundle is missing
+	 * @throws KeyManagementException If there's an error managing keys
+	 * @throws NoSuchAlgorithmException If the algorithm is not available
+	 */
 	@Bean
 	@Primary
 	OkHttpClient okHttpClient() throws KeyStoreException, NoSuchSslBundleException, KeyManagementException, NoSuchAlgorithmException {
@@ -89,6 +100,8 @@ public class OkHttpClientConfiguration {
 		        .readTimeout(60, TimeUnit.SECONDS)
 		        .sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) trustManagers[0])
 		        .hostnameVerifier(OkHostnameVerifier.INSTANCE)
+		        .followRedirects(false)
+		        .followSslRedirects(false)
 		        .build();
 		//@formatter:on
 		
@@ -134,6 +147,8 @@ public class OkHttpClientConfiguration {
 		        .readTimeout(60, TimeUnit.SECONDS)
 		        .sslSocketFactory(sslContextTrustAllCerts.getSocketFactory(), (X509TrustManager) trustAllCerts[0])
 		        .hostnameVerifier((hostname, session) -> true)
+		        .followRedirects(false)
+		        .followSslRedirects(false)
 		        .build();
 		//@formatter:on
 		return client;

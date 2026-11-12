@@ -43,7 +43,7 @@ class KeycloakOutboundProtocolCallTest {
         OkHttpClient okHttpClient = new OkHttpClient();
         M2mTokenCache tokenCache = new M2mTokenCache();
         KeycloakAuthenticationService service = new KeycloakAuthenticationService(properties, trustProperties,
-                new KeycloakDiscoveryClient(trustProperties), tokenCache, okHttpClient);
+                KeycloakTestHttpClients.discoveryClient(trustProperties), tokenCache, okHttpClient);
 
         ObjectProvider<ConnectorCredentialProvider> noInternalProvider = mock(ObjectProvider.class);
         ObjectProvider<KeycloakAuthenticationService> keycloakProvider = mock(ObjectProvider.class);

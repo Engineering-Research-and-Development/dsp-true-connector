@@ -11,6 +11,7 @@ import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
@@ -137,7 +138,7 @@ public class DataTransferServiceTest {
         formats.add(DataTransferFormat.HTTP_PULL.name());
         GenericApiResponse<List<String>> resp = GenericApiResponse.success(formats, "Ok");
         when(okHttpRestClient.sendInternalRequest(
-                argThat(path -> path.startsWith("/internal/v1/datasets/") && path.endsWith("/formats")),
+                argThat(path -> path.startsWith(ApiEndpoints.INTERNAL_DATASETS_V1 + "/") && path.endsWith("/formats")),
                 eq(HttpMethod.GET), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(resp));
 

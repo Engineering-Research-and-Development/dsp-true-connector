@@ -1,5 +1,6 @@
 package it.eng.tools.auth.keycloak.issuer;
 
+import it.eng.tools.auth.keycloak.KeycloakTestHttpClients;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;
@@ -87,7 +88,8 @@ class TenantTokenMatrixTest {
         when(tenantRepository.findFirstByRealmAndEnabledTrue(TENANT_REALM)).thenReturn(Optional.of(
                 Tenant.Builder.newInstance().id(TENANT_ID).name(TENANT_ID).participantId("urn:" + TENANT_ID)
                         .realm(TENANT_REALM).enabled(true).build()));
-        registry = new TrustedIssuerRegistry(properties, new KeycloakDiscoveryClient(properties), tenantRepository);
+        registry = new TrustedIssuerRegistry(properties, KeycloakTestHttpClients.discoveryClient(properties), tenantRepository,
+                KeycloakTestHttpClients.forProperties(properties));
         IssuerTokenValidators validators = new IssuerTokenValidators(AUDIENCE, PLATFORM_CLIENT, UI_CLIENT);
         decoder = registry.issuerSelectingDecoder(Set.of(IssuerType.TENANT), validators::forIssuer);
     }

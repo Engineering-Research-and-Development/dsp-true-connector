@@ -1,6 +1,7 @@
 package it.eng.connector.filter;
 
 import it.eng.tools.auth.internal.InternalCallClaims;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.service.TenantContextHolder;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
@@ -58,7 +59,7 @@ class InternalTenantContextFilterTest {
     }
 
     private static MockHttpServletRequest requestWithTenantHeader(String headerTenant) {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/internal/v1/datasets/1/formats");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", ApiEndpoints.INTERNAL_DATASETS_V1 + "/1/formats");
         request.addHeader(TenantContextHolder.HEADER_X_TENANT_ID, headerTenant);
         return request;
     }

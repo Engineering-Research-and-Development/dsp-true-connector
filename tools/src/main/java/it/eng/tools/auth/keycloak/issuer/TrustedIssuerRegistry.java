@@ -20,12 +20,15 @@ import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import it.eng.tools.auth.condition.KeycloakAuthenticationModeCondition;
 import it.eng.tools.auth.keycloak.DiscoveryDocument;
 import it.eng.tools.auth.keycloak.KeycloakDiscoveryClient;
+import it.eng.tools.auth.keycloak.KeycloakHttpClientConfiguration;
 import it.eng.tools.auth.keycloak.KeycloakTrustProperties;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.repository.TenantRepository;
 import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.OkHttpClient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
@@ -107,11 +110,14 @@ public class TrustedIssuerRegistry {
      * @param properties the Keycloak trust configuration
      * @param discoveryClient loads discovery documents of registered issuers
      * @param tenantRepository looks up the tenant bound to a realm
+     * @param httpClient the Keycloak HTTP client that loads JWK sets, see {@link KeycloakHttpClientConfiguration}
      */
     @Autowired
     public TrustedIssuerRegistry(KeycloakTrustProperties properties, KeycloakDiscoveryClient discoveryClient,
-            TenantRepository tenantRepository) {
-        this(properties, discoveryClient, tenantRepository, IssuerRegistrySettings.defaults(), Ticker.systemTicker());
+            TenantRepository tenantRepository,
+            @Qualifier(KeycloakHttpClientConfiguration.KEYCLOAK_HTTP_CLIENT) OkHttpClient httpClient) {
+        this(properties, discoveryClient, tenantRepository, httpClient, IssuerRegistrySettings.defaults(),
+                Ticker.systemTicker());
     }
 
     /**
@@ -120,11 +126,12 @@ public class TrustedIssuerRegistry {
      * @param properties the Keycloak trust configuration
      * @param discoveryClient loads discovery documents of registered issuers
      * @param tenantRepository looks up the tenant bound to a realm
+     * @param httpClient the Keycloak HTTP client that loads JWK sets
      * @param settings the cache and refresh settings
      * @param ticker the time source of the decoder and failure caches
      */
     TrustedIssuerRegistry(KeycloakTrustProperties properties, KeycloakDiscoveryClient discoveryClient,
-            TenantRepository tenantRepository, IssuerRegistrySettings settings, Ticker ticker) {
+            TenantRepository tenantRepository, OkHttpClient httpClient, IssuerRegistrySettings settings, Ticker ticker) {
         this.properties = Objects.requireNonNull(properties, "properties");
         this.discoveryClient = Objects.requireNonNull(discoveryClient, "discoveryClient");
         this.tenantRepository = Objects.requireNonNull(tenantRepository, "tenantRepository");
@@ -141,8 +148,8 @@ public class TrustedIssuerRegistry {
         this.reservedRealms = Set.of(KEYCLOAK_MASTER_REALM,
                 properties.getPlatformRealm().toLowerCase(Locale.ROOT),
                 properties.getAdminRealm().toLowerCase(Locale.ROOT));
-        this.jwkSetRetriever = new JwkSetRetriever(properties.getDiscoveryConnectTimeout(),
-                properties.getDiscoveryReadTimeout(), settings.jwksSizeLimit());
+        this.jwkSetRetriever = new JwkSetRetriever(Objects.requireNonNull(httpClient, "httpClient"),
+                settings.jwksSizeLimit());
         this.executor = newExecutor();
         this.decoders = Caffeine.newBuilder()
                 .maximumSize(settings.decoderCacheMaximumSize())

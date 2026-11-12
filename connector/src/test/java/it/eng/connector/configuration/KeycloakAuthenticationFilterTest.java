@@ -7,6 +7,7 @@ import ch.qos.logback.core.read.ListAppender;
 import com.nimbusds.jose.KeySourceException;
 import it.eng.connector.model.Role;
 import it.eng.tools.auth.keycloak.issuer.IssuerTokenValidators;
+import it.eng.tools.controller.ApiEndpoints;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -95,7 +96,7 @@ class KeycloakAuthenticationFilterTest {
     @Test
     void skipsTheInternalZone() throws Exception {
         KeycloakAuthenticationFilter filter = new KeycloakAuthenticationFilter(jwtDecoder, jwt -> List.of(), auditor);
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/internal/v1/datasets/1/formats");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", ApiEndpoints.INTERNAL_DATASETS_V1 + "/1/formats");
         request.addHeader(HttpHeaders.AUTHORIZATION, "Bearer internal-call-token");
         MockFilterChain filterChain = new MockFilterChain();
 
