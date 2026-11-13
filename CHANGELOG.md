@@ -8,6 +8,8 @@ All notable changes to this project will be documented in this file.
 - Unauthenticated `GET /public/tenant` endpoint exposing the name and realm of enabled tenants; tenant seed data now includes tenant realms.
 - Seed data for Keycloak, containing five realm files: `platform`, `connector-admin`, `tenant-EngineeringA` and `tenant-EngineeringB` (the seeds used by tests and local setups) and `tenant-acme` (demo only, never used in tests).
 Each realm has its own users, roles, and clients. The connector trusts only the tenant realm as the issuer of JWTs, so Keycloak integration tests that use platform or super-admin tokens fail until multi-issuer support is added.
+- The seeded tenant realms (`tenant-EngineeringA`, `tenant-EngineeringB`, `tenant-acme`) add a `tenant_name` claim (`EngineeringA`, `EngineeringB`, `Acme`) to their tokens, the same value `INTERNAL` mode reads from the tenant record, so the UI shows the tenant name in `KEYCLOAK` mode too. `InitialDataSeedConsistencyTest` checks that each realm's `tenant_name` equals the tenant `name` in every seed file.
+- Keycloak provisioning scripts in `scripts/keycloak/` (Admin REST API, re-runnable): `bootstrap-keycloak.sh` recreates the five seed realms of `ci/docker/keycloak_resources` with their users in a running Keycloak; `create-tenant-realm.sh` and `create-user.sh` create further tenant realms and users of the same shape.
 - Added connector-admin realm for super-admin users, with a single user
 - Added platform realm for machine-to-machine clients, with a single client
 - Added `tenant-EngineeringB` seed realm (user `adminB` / `adminB@mail.com`, `tenant_id` `engineering-b`) for the second connector and multi-realm tests.

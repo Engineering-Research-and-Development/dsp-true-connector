@@ -1212,6 +1212,20 @@
         "access.token.claim" : "true",
         "userinfo.token.claim" : "true"
       }
+    }, {
+      "id" : "841abeb7-7280-4e9d-8cb4-dc3146a8a98f",
+      "name" : "tenant-name-mapper",
+      "protocol" : "openid-connect",
+      "protocolMapper" : "oidc-hardcoded-claim-mapper",
+      "consentRequired" : false,
+      "config" : {
+        "claim.name" : "tenant_name",
+        "claim.value" : "EngineeringB",
+        "jsonType.label" : "String",
+        "id.token.claim" : "true",
+        "access.token.claim" : "true",
+        "userinfo.token.claim" : "true"
+      }
     } ]
   }, {
     "id" : "3f3836c7-37e1-44c1-a433-9827a8077f46",

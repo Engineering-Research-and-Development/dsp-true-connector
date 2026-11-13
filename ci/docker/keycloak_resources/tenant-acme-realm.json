@@ -1234,6 +1234,20 @@
         "access.token.claim" : "true",
         "userinfo.token.claim" : "true"
       }
+    }, {
+      "id" : "cc9b0660-cf3b-49c7-bf50-9306387ed567",
+      "name" : "tenant-name-mapper",
+      "protocol" : "openid-connect",
+      "protocolMapper" : "oidc-hardcoded-claim-mapper",
+      "consentRequired" : false,
+      "config" : {
+        "claim.name" : "tenant_name",
+        "claim.value" : "Acme",
+        "jsonType.label" : "String",
+        "id.token.claim" : "true",
+        "access.token.claim" : "true",
+        "userinfo.token.claim" : "true"
+      }
     } ]
   }, {
     "id" : "933923f0-e0a3-4b31-a047-a708a0548ea9",

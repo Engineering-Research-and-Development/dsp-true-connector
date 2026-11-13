@@ -18,8 +18,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Checks that every {@code initial_data*.json} seed copy in the repository describes at least one tenant,
  * that each tenant is bound to a seeded Keycloak tenant realm, that each tenant id equals the
- * {@code tenant_id} attribute of that realm's users, and that every {@code tenantId} in the file refers
- * to one of the file's tenants.
+ * {@code tenant_id} attribute of that realm's users, that each tenant name equals the {@code tenant_name}
+ * claim hard-coded in that realm, and that every {@code tenantId} in the file refers to one of the file's
+ * tenants.
  */
 class InitialDataSeedConsistencyTest {
 
@@ -62,10 +63,16 @@ class InitialDataSeedConsistencyTest {
         assertThat(tenantIdByRealm()).containsOnlyKeys("tenant-EngineeringA", "tenant-EngineeringB", "tenant-acme");
     }
 
+    @Test
+    void tenantRealmsCarryTheirTenantName() {
+        assertThat(tenantNameByRealm()).containsOnlyKeys("tenant-EngineeringA", "tenant-EngineeringB", "tenant-acme");
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("seedFiles")
     void tenantIdMatchesRealmAndAllTenantIdFields(Path seedFile) throws IOException {
         Map<String, String> tenantIdByRealm = tenantIdByRealm();
+        Map<String, String> tenantNameByRealm = tenantNameByRealm();
         JsonNode root = MAPPER.readTree(Files.readString(seedFile));
 
         JsonNode tenants = root.path(TENANTS_COLLECTION);
@@ -82,6 +89,8 @@ class InitialDataSeedConsistencyTest {
                     .isNotEqualToIgnoringCase("master");
             String tenantId = tenant.path("_id").asText();
             assertThat(tenantId).isEqualTo(tenantIdByRealm.get(realm));
+            assertThat(tenant.path("name").asText()).as("name of tenant %s", tenantId)
+                    .isEqualTo(tenantNameByRealm.get(realm));
             assertThat(seededTenantIds.add(tenantId)).as("duplicate tenant %s", tenantId).isTrue();
         }
 
@@ -105,6 +114,35 @@ class InitialDataSeedConsistencyTest {
             tenantIdByRealm.put(realm.path("realm").asText(), userTenantIds.get(0));
         }
         return tenantIdByRealm;
+    }
+
+    /**
+     * Reads the seeded tenant realms and maps each realm name to the {@code tenant_name} claim value of its
+     * single hard-coded {@code tenant_name} protocol mapper.
+     */
+    private static Map<String, String> tenantNameByRealm() {
+        Map<String, String> tenantNameByRealm = new HashMap<>();
+        for (String fileName : TENANT_REALM_FILES) {
+            JsonNode realm = readJson(REPO_ROOT.resolve(REALM_RESOURCES).resolve(fileName));
+            List<String> tenantNames = new ArrayList<>();
+            collectTenantNameClaims(realm, tenantNames);
+            assertThat(tenantNames).as("tenant_name mappers in %s", fileName).hasSize(1);
+            tenantNameByRealm.put(realm.path("realm").asText(), tenantNames.get(0));
+        }
+        return tenantNameByRealm;
+    }
+
+    private static void collectTenantNameClaims(JsonNode node, List<String> values) {
+        if (node.isObject()) {
+            JsonNode config = node.path("config");
+            if ("oidc-hardcoded-claim-mapper".equals(node.path("protocolMapper").asText())
+                    && "tenant_name".equals(config.path("claim.name").asText())) {
+                values.add(config.path("claim.value").asText());
+            }
+            node.forEach(child -> collectTenantNameClaims(child, values));
+        } else if (node.isArray()) {
+            node.forEach(child -> collectTenantNameClaims(child, values));
+        }
     }
 
     private static void collectTenantIds(JsonNode node, List<String> values) {
