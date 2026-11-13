@@ -6,6 +6,7 @@ import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,25 @@ class AgreementServiceTest {
 
         boolean isValid = service.isAgreementValid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID);
         assertTrue(isValid);
+    }
+
+    @Test
+    @DisplayName("Agreement valid - transfer process lookup restricted to current tenant")
+    void isAgreementValid_scopedToTenant() {
+        when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+        when(transferProcessRepository.findByConsumerPidAndProviderPidAndTenantId(
+                DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID, "tenant-a"))
+                .thenReturn(Optional.empty());
+
+        TenantContextHolder.setTenantId("tenant-a");
+        try {
+            assertThrows(AgreementNotFoundException.class,
+                    () -> service.isAgreementValid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID));
+        } finally {
+            TenantContextHolder.clear();
+        }
+
+        verify(transferProcessRepository, never()).findByConsumerPidAndProviderPid(anyString(), anyString());
     }
 
     @Test

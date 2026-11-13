@@ -17,6 +17,7 @@ import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.util.CredentialUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -94,6 +95,38 @@ public class ContractNegotiationAPIServiceTest {
         Page<ContractNegotiation> response = service.findContractNegotiations(filters, pageable);
         assertNotNull(response);
         assertEquals(2, response.getTotalElements());
+    }
+
+    @Test
+    @DisplayName("Find contract negotiations - restricted to current tenant")
+    public void findContractNegotiations_scopedToTenant() {
+        when(contractNegotiationRepository.findWithDynamicFilters(anyMap(), eq(ContractNegotiation.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.singletonList(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED)));
+        Map<String, Object> filters = Map.of("role", IConstants.ROLE_CONSUMER);
+
+        TenantContextHolder.setTenantId("tenant-a");
+        try {
+            service.findContractNegotiations(filters, pageable);
+        } finally {
+            TenantContextHolder.clear();
+        }
+
+        verify(contractNegotiationRepository).findWithDynamicFilters(
+                eq(Map.of("role", IConstants.ROLE_CONSUMER, "tenantId", "tenant-a")),
+                eq(ContractNegotiation.class), eq(pageable));
+    }
+
+    @Test
+    @DisplayName("Find contract negotiations - no tenant filter when no tenant is set")
+    public void findContractNegotiations_noTenant() {
+        when(contractNegotiationRepository.findWithDynamicFilters(anyMap(), eq(ContractNegotiation.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.emptyList()));
+        Map<String, Object> filters = Map.of("role", IConstants.ROLE_CONSUMER);
+
+        service.findContractNegotiations(filters, pageable);
+
+        verify(contractNegotiationRepository).findWithDynamicFilters(
+                eq(Map.of("role", IConstants.ROLE_CONSUMER)), eq(ContractNegotiation.class), eq(pageable));
     }
 
     @Test

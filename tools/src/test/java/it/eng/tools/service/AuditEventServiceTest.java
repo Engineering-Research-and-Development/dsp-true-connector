@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -110,6 +111,23 @@ public class AuditEventServiceTest {
         assertNotNull(actualEvent);
         assertEquals(expectedEvent, actualEvent);
         verify(auditEventRepository).findById(auditEventId);
+    }
+
+    @Test
+    @DisplayName("getAuditEventById should be restricted to the current tenant")
+    public void getAuditEventById_scopedToTenant() {
+        String auditEventId = "12345";
+        when(auditEventRepository.findByIdAndTenantId(auditEventId, "tenant-a")).thenReturn(Optional.empty());
+
+        TenantContextHolder.setTenantId("tenant-a");
+        try {
+            assertThrows(ResourceNotFoundException.class, () -> auditEventService.getAuditEventById(auditEventId));
+        } finally {
+            TenantContextHolder.clear();
+        }
+
+        verify(auditEventRepository).findByIdAndTenantId(auditEventId, "tenant-a");
+        verify(auditEventRepository, never()).findById(auditEventId);
     }
 
     @Test

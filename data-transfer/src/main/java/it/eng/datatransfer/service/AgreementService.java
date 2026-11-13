@@ -6,6 +6,7 @@ import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
+import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,7 +29,10 @@ public class AgreementService {
 
 	public boolean isAgreementValid(String consumerPid, String providerPid) {
 		if(usageControlProperties.usageControlEnabled()) {
-			TransferProcess transferProcess = transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid)
+			String tenantId = TenantContextHolder.getTenantId();
+			TransferProcess transferProcess = (tenantId != null
+					? transferProcessRepository.findByConsumerPidAndProviderPidAndTenantId(consumerPid, providerPid, tenantId)
+					: transferProcessRepository.findByConsumerPidAndProviderPid(consumerPid, providerPid))
 					.orElseThrow(() -> new AgreementNotFoundException("Agreement for consumerPid '"+ consumerPid +
 							"' and providerPid '" + providerPid + "' not found", consumerPid, providerPid));
 			String agreementId = transferProcess.getAgreementId();

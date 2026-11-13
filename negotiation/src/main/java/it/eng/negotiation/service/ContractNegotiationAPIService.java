@@ -32,6 +32,7 @@ import org.springframework.stereotype.Service;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -94,13 +95,18 @@ public class ContractNegotiationAPIService {
     }
 
     /**
-     * Find contract negotiation by id.
+     * Find contract negotiations matching the given filters, scoped to the current tenant when one is set.
      *
      * @param filters  - dynamic filters to apply
      * @param pageable - pagination information
-     * @return ContractNegotiation
+     * @return page of ContractNegotiation
      */
     public Page<ContractNegotiation> findContractNegotiations(Map<String, Object> filters, Pageable pageable) {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            filters = new HashMap<>(filters);
+            filters.put("tenantId", tenantId);
+        }
         return contractNegotiationRepository.findWithDynamicFilters(filters, ContractNegotiation.class, pageable);
     }
 
