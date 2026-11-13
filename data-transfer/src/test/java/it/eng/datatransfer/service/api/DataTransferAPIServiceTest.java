@@ -13,13 +13,14 @@ import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.strategy.HttpPullTransferStrategy;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.service.S3ClientService;
-import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -246,6 +247,24 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, null);
+    }
+
+    @Test
+    @DisplayName("Request transfer process - request not sent, no access token")
+    public void requestTransfer_tokenUnavailable() {
+        String reason = "Request not sent: no access token";
+        when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class)))
+                .thenReturn(GenericApiResponse.error(reason));
+        when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
+
+        DataTransferAPIException exception = assertThrows(DataTransferAPIException.class, () ->
+                apiService.requestTransfer(dataTransferRequest));
+
+        assertTrue(exception.getMessage().contains(reason));
+        verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, "Transfer process request failed");
+        assertEquals(reason, argCaptorAuditEventDetails.getValue().get("errorMessage"));
     }
 
     @Test
@@ -512,7 +531,9 @@ class DataTransferAPIServiceTest {
         GenericApiResponse<String> internalResponse = GenericApiResponse.success(null,
                 "successful response");
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
-        when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+        when(okHttpRestClient.sendInternalRequest(
+                eq(ApiEndpoints.INTERNAL_AGREEMENTS_V1 + "/" + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getAgreementId() + "/enforce"),
+                eq(HttpMethod.POST), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
         // First save (isDownloadInProgress=true): return the saved object as-is (realistic DB save behaviour).

@@ -15,9 +15,9 @@
   "tenants": [
     {
       "_class": "it.eng.tools.model.Tenant",
-      "_id": "engineering",
-      "name": "Engineering",
-      "realm": "tenant_Engineering",
+      "_id": "engineering-a",
+      "name": "EngineeringA",
+      "realm": "tenant-EngineeringA",
       "description": "Default Engineering tenant",
       "participantId": "urn:connector:engineering",
       "callbackAddress": "http://localhost:8080",

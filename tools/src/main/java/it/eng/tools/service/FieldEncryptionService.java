@@ -40,7 +40,6 @@ public class FieldEncryptionService {
 
     public String encrypt(String value) {
         try {
-            log.debug("encrypting: {}", value);
             PaddedBufferedBlockCipher cipher = new PaddedBufferedBlockCipher(
                     new CBCBlockCipher(new AESEngine()),
                     new PKCS7Padding());

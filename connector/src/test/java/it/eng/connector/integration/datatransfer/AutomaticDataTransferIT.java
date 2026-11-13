@@ -14,7 +14,6 @@ import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.ApplicationConnector;
-import it.eng.connector.filter.ApiTenantContextFilter;
 import it.eng.datatransfer.model.DataTransferFormat;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.model.TransferState;
@@ -85,7 +84,7 @@ public class AutomaticDataTransferIT {
     private static final String PROVIDER_BASE_URL          = "http://localhost:" + PROVIDER_PORT;
     private static final String WIREMOCK_CONSUMER_BASE_URL = "http://localhost:" + WIREMOCK_CONSUMER_PORT;
     /** Default tenant — used as the DSP protocol base path segment. */
-    private static final String TENANT_ID = "engineering";
+    private static final String TENANT_ID = "engineering-a";
 
     private static final int POLL_TIMEOUT_SECONDS = 60;
     private static final int POLL_INTERVAL_MS     = 500;
@@ -172,7 +171,7 @@ public class AutomaticDataTransferIT {
                 "dsp-true-connector-consumer");
 
         // ── WireMock consumer — callbackAddress points to WireMock ────────────────
-        // Provider sends TransferStartMessage to http://localhost:WIREMOCK_PORT/engineering/consumer/transfers/{pid}/start.
+        // Provider sends TransferStartMessage to http://localhost:WIREMOCK_PORT/engineering-a/consumer/transfers/{pid}/start.
         // WireMock intercepts and returns HTTP 500 → triggers provider's retry loop.
         wiremockConsumerCtx = startInstance(mongoHost, mongoPort, WIREMOCK_CONSUMER_PORT,
                 "consumer-wiremock", "consumer_wiremock_db",
@@ -249,7 +248,7 @@ public class AutomaticDataTransferIT {
             TenantService tenantSvc = ctx.getBean(TenantService.class);
             Tenant tenantUpdate = Tenant.Builder.newInstance()
                     .id(TENANT_ID)
-                    .name("Engineering")
+                    .name("EngineeringA")
                     .participantId("urn:connector:engineering")
                     .automaticNegotiation(true)
                     .automaticTransfer(true)
@@ -485,9 +484,9 @@ public class AutomaticDataTransferIT {
                 {"transferProcessId": "%s", "format": "HttpData-PULL"}
                 """.formatted(consumerTpId);
 
-        HttpResponse<String> response = postAsTenant(
+        HttpResponse<String> response = post(
                 CONSUMER_BASE_URL + ApiEndpoints.TRANSFER_DATATRANSFER_V1,
-                requestBody, fetchAdminJwt(), TENANT_ID);
+                requestBody, fetchAdminJwt());
 
         assertEquals(200, response.statusCode(),
                 "Consumer requestTransfer API failed: " + response.body());
@@ -549,9 +548,9 @@ public class AutomaticDataTransferIT {
                 {"transferProcessId": "%s", "format": "HttpData-PUSH"}
                 """.formatted(consumerTpId);
 
-        HttpResponse<String> response = postAsTenant(
+        HttpResponse<String> response = post(
                 CONSUMER_BASE_URL + ApiEndpoints.TRANSFER_DATATRANSFER_V1,
-                requestBody, fetchAdminJwt(), TENANT_ID);
+                requestBody, fetchAdminJwt());
 
         assertEquals(200, response.statusCode(),
                 "Consumer requestTransfer API failed: " + response.body());
@@ -597,7 +596,7 @@ public class AutomaticDataTransferIT {
         // ── configure WireMock stubs ──────────────────────────────────────────────
         // 1. Intercept TransferStartMessage with 500 → triggers provider retry loop.
         wireMockServer.stubFor(
-                WireMock.post(urlPathMatching("/engineering/consumer/transfers/.+/start"))
+                WireMock.post(urlPathMatching("/engineering-a/consumer/transfers/.+/start"))
                         .willReturn(aResponse()
                                 .withStatus(500)
                                 .withHeader("Content-Type", "application/json")
@@ -606,7 +605,7 @@ public class AutomaticDataTransferIT {
         // 2. Proxy TransferTerminationMessage to the real WireMock-consumer (port 8386)
         //    so its TP is also transitioned to TERMINATED via the normal protocol handler.
         wireMockServer.stubFor(
-                WireMock.post(urlPathMatching("/engineering/consumer/transfers/.+/termination"))
+                WireMock.post(urlPathMatching("/engineering-a/consumer/transfers/.+/termination"))
                         .willReturn(aResponse()
                                 .proxiedFrom("http://localhost:" + WIREMOCK_CONSUMER_PORT)));
 
@@ -616,10 +615,10 @@ public class AutomaticDataTransferIT {
 
         // ── create INITIALIZED TPs ────────────────────────────────────────────────
         // WireMock-consumer's application.baseURL = http://localhost:WIREMOCK_PORT.
-        // Its consumerCallbackAddress() = http://localhost:9100/engineering/consumer.
-        // Provider will send TransferStartMessage to http://localhost:9100/engineering/consumer/transfers/{pid}/start
+        // Its consumerCallbackAddress() = http://localhost:9100/engineering-a/consumer.
+        // Provider will send TransferStartMessage to http://localhost:9100/engineering-a/consumer/transfers/{pid}/start
         // which WireMock intercepts → 500. After retry exhaustion provider terminates gracefully
-        // → sends termination to http://localhost:9100/engineering/consumer/transfers/{pid}/termination
+        // → sends termination to http://localhost:9100/engineering-a/consumer/transfers/{pid}/termination
         // which WireMock proxies to the real WireMock-consumer at port 8386.
         String wmConsumerTpId = createTransferProcessFixture(
                 providerTpRepo, wmConsumerTpRepo, agreementId,
@@ -630,9 +629,9 @@ public class AutomaticDataTransferIT {
                 {"transferProcessId": "%s", "format": "HttpData-PULL"}
                 """.formatted(wmConsumerTpId);
 
-        HttpResponse<String> response = postAsTenant(
+        HttpResponse<String> response = post(
                 WIREMOCK_CONSUMER_BASE_URL + ApiEndpoints.TRANSFER_DATATRANSFER_V1,
-                requestBody, fetchAdminJwt(), TENANT_ID);
+                requestBody, fetchAdminJwt());
 
         assertEquals(200, response.statusCode(),
                 "WireMock-consumer requestTransfer API failed: " + response.body());
@@ -739,29 +738,6 @@ public class AutomaticDataTransferIT {
                 .uri(URI.create(url))
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt)
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .build();
-        return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-    }
-
-    /**
-     * Sends an HTTP POST with Basic Auth and an {@code X-Tenant-ID} header so that
-     * {@link it.eng.connector.filter.ApiTenantContextFilter} can resolve the tenant context
-     * for the request, enabling per-tenant callback address computation.
-     *
-     * @param url         the target URL
-     * @param body        the JSON request body
-     * @param jwt         the JWT to set in the {@code Authorization} header
-     * @param tenantId    the tenant identifier to set in the {@code X-Tenant-ID} header
-     * @return the HTTP response
-     */
-    private HttpResponse<String> postAsTenant(String url, String body, String jwt,
-            String tenantId) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt)
-                .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, tenantId)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());

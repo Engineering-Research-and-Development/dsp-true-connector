@@ -42,6 +42,63 @@ Only non-sensitive configuration values are in ConfigMaps:
 
 ---
 
+## 0.1 Connector Authentication and Keycloak Modes
+
+`auth_provider` directly selects connector `application.auth.provider`; `keycloak_mode` controls Keycloak provisioning
+only. Terraform rejects combinations other than:
+
+| `auth_provider` | `keycloak_mode` | Result |
+|---|---|---|
+| `INTERNAL` (default) | `NONE` (default) | Internal authentication; no Keycloak resources or credentials. |
+| `DISABLED` | `NONE` | Open connector endpoints; local/demo use only. The UI stays in `INTERNAL` mode. |
+| `KEYCLOAK` | `MANAGED` | Terraform deploys Keycloak and PostgreSQL. |
+| `KEYCLOAK` | `EXTERNAL` | Uses a pre-provisioned Keycloak; Terraform creates no Keycloak resources. |
+
+### Keycloak inputs
+
+| Variable | Required when | Default / use |
+|---|---|---|
+| `keycloak_base_url` | Either Keycloak mode | No default URL. Absolute HTTP(S) base URL, not a realm issuer; browser and connector pods must both reach it. Issuer is `<keycloak_base_url>/realms/<realm>`. |
+| `keycloak_host_port` | `KEYCLOAK` / `MANAGED` | `8180`; Kind host mapping. |
+| `keycloak_node_port` | `KEYCLOAK` / `MANAGED` | `30180`; Keycloak NodePort. |
+| `keycloak_image` | `KEYCLOAK` / `MANAGED` | `quay.io/keycloak/keycloak:26.0.0`. |
+| `keycloak_postgres_image` | `KEYCLOAK` / `MANAGED` | `postgres:16`. |
+| `keycloak_db_name` | `KEYCLOAK` / `MANAGED` | `keycloak`. |
+| `keycloak_admin_username`, `keycloak_admin_password` | `KEYCLOAK` / `MANAGED` | Required bootstrap credentials; supply via protected `TF_VAR_...` inputs or a secret manager. |
+| `keycloak_db_username`, `keycloak_db_password` | `KEYCLOAK` / `MANAGED` | Required PostgreSQL credentials; supply via protected `TF_VAR_...` inputs or a secret manager. |
+| `keycloak_backend_client_secret` | `KEYCLOAK` / `EXTERNAL` | Required secret for the external `platform/dsp-connector-backend` client. |
+| `connector_a_ui_origin`, `connector_b_ui_origin` | Both Keycloak modes | `http://localhost:4200` and `http://localhost:4300`; exact browser origins. |
+
+`INTERNAL` and `DISABLED` need no Keycloak credentials. Never put real passwords or client secrets in tracked
+`terraform.tfvars`. The UI uses `AUTH_PROVIDER=KEYCLOAK` only when the connector uses Keycloak; otherwise its supported
+value is `INTERNAL`. Runtime variables are `AUTH_PROVIDER`, `KEYCLOAK_URL`, `KEYCLOAK_CLIENT_ID=keycloak-api`, and
+`KEYCLOAK_ADMIN_REALM=connector-admin`. The UI completes Authorization Code with PKCE S256; no client secret goes to
+the browser. Use an image from the verified
+[UI `feature/keycloak_auth_code_login` branch](https://github.com/Engineering-Research-and-Development/dsp-true-connector-ui/tree/feature/keycloak_auth_code_login)
+at commit `ce736d0a788d592850eec1f6674c447ee2d1541c` or a later compatible revision. The public `keycloak-api` client
+must allow each configured origin's exact `/auth/callback` redirect, `/login` post-logout URI, and web origin.
+
+### Managed resource names and data
+
+`KEYCLOAK` / `MANAGED` creates Deployments and Services named `keycloak` and `keycloak-db`, plus Secrets named
+`keycloak-credentials` (admin/PostgreSQL credentials) and `keycloak-realm-import` (five realm files). The `keycloak`
+Service uses NodePort `30180` and the Kind host port defaults to `8180`; `keycloak-db` is ClusterIP port `5432`.
+Realm import happens only for realms that do not already exist. PostgreSQL uses ephemeral `empty_dir` storage; switching
+from `MANAGED` to `NONE` or `EXTERNAL` removes the Keycloak/PostgreSQL resources and loses that ephemeral Keycloak
+state. The seeded users and client credentials are demo-only.
+
+External mode requires pre-provisioned `platform`, `connector-admin`, and tenant realms. Accepted tokens need
+`aud=dsp-true-connector`; the platform client uses `azp=dsp-connector-backend` with `CONNECTOR`, while the public
+`keycloak-api` client uses `azp=keycloak-api` with `SUPER_ADMIN` (connector-admin) or `ADMIN` and matching `tenant_id`
+(tenant realms). It also requires HTTPS and discovery/issuer URLs reachable from both the browser and connector pods.
+Terraform does not configure or validate the remote Keycloak server; see
+[`terraform-deployment-guide.md`](terraform-deployment-guide.md) and [`doc/security.md`](../doc/security.md).
+
+Kubernetes Secrets are base64-encoded and are not necessarily encrypted at rest. Terraform state and saved plan files
+can contain secret values; restrict access and protect both.
+
+---
+
 ## 1. Application Configuration
 | Property | Variable | Default |
 |----------|----------|---------|
@@ -63,6 +120,10 @@ Only non-sensitive configuration values are in ConfigMaps:
 | Property | Variable | Default |
 |----------|----------|---------|
 | `server.ssl.enabled` | `connector_a_config.ssl_enabled` | `false` |
+
+> **Warning:** `false` is HTTP mode, which is **insecure and untrusted**: traffic is not encrypted and
+> the connector accepts any certificate of the services it calls, so it cannot detect an impostor.
+> Use it for first tests only. See the [HTTP mode warning](../doc/security.md#tls-configuration).
 
 ---
 

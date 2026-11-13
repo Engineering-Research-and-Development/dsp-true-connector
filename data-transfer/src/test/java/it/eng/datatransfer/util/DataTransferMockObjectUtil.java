@@ -14,7 +14,7 @@ import java.util.UUID;
 
 public class DataTransferMockObjectUtil {
 
-    public static final String TENANT_ID = "engineering";
+    public static final String TENANT_ID = "engineering-a";
     public static final String CONSUMER_PID = "urn:uuid:CONSUMER_PID";
     public static final String PROVIDER_PID = "urn:uuid:PROVIDER_PID";
     public static final String RIGHT_EXPRESSION = "EU";

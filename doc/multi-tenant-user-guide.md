@@ -9,9 +9,9 @@ The TRUE Connector supports multi-tenancy, allowing a single connector instance 
 | Term | Description |
 |------|-------------|
 | **Tenant** | An isolated organisational unit with its own catalog, negotiations, and transfers |
-| **Tenant ID** | A short, URL-safe identifier (e.g., `engineering`, `acme-corp`) |
+| **Tenant ID** | A short, URL-safe identifier (e.g., `engineering-a`, `acme-corp`) |
 | **Super-admin** | A user with `ROLE_SUPER_ADMIN` who can access data across all tenants |
-| **X-Tenant-Id header** | Optional header used by super-admins to scope management API calls to a specific tenant |
+| **X-Tenant-Id header** | Optional header used by super-admins (without a tenant of their own) to scope management API calls to a specific tenant. Tenant users must not send it (403) |
 
 ---
 
@@ -19,7 +19,7 @@ The TRUE Connector supports multi-tenancy, allowing a single connector instance 
 
 ### Default Tenant
 
-On first startup a default tenant named **Engineering** with ID `engineering` is created automatically. The connector will refuse to start if no enabled tenant exists.
+On first startup a default tenant named **EngineeringA** with ID `engineering-a` is created automatically. The connector will refuse to start if no enabled tenant exists.
 
 ### Accessing Protocol Endpoints
 
@@ -33,14 +33,14 @@ All DSP protocol endpoints are prefixed with `/{tenantId}`:
 | Transfers (provider) | `/{tenantId}/transfers/request` |
 | Transfers (consumer callback) | `/{tenantId}/consumer/transfers/{consumerPid}/...` |
 
-**Example — requesting a catalog from the `engineering` tenant:**
+**Example — requesting a catalog from the `engineering-a` tenant:**
 ```
-POST http://connector-host:8090/engineering/catalog/request
+POST http://connector-host:8090/engineering-a/catalog/request
 ```
 
 ### Accessing Management API Endpoints
 
-Management API endpoints remain at `/api/v1/...`. When using a regular tenant user, calls are automatically scoped to their tenant. Super-admins can optionally pass `X-Tenant-Id` to target a specific tenant.
+Management API endpoints remain at `/api/v1/...`. When using a regular tenant user, calls are automatically scoped to their tenant. Super-admins can optionally pass `X-Tenant-Id` to target a specific tenant; tenant users must not send it (see [Super-Admin Access](#super-admin-access)).
 
 ---
 
@@ -58,9 +58,17 @@ Content-Type: application/json
   "name": "ACME Corporation",
   "participantId": "urn:connector:acme",
   "callbackAddress": "https://acme-connector.example.com",
+  "realm": "tenant-acme-corp",
   "enabled": true
 }
 ```
+
+`realm` is optional and only used in `KEYCLOAK` mode: it names the Keycloak realm whose tokens the
+tenant accepts. It must match `^[A-Za-z0-9._-]+$` (at most 255 characters) and must not be `.`, `..`,
+`master`, `platform` or `connector-admin`, otherwise the request fails with `400`. A realm already used by
+another tenant, enabled or disabled, fails with `409`. `PUT /api/v1/tenants/{tenantId}` applies the
+same rules. Changing the realm of a tenant removes its stored realm credentials (they belong to the old
+realm's client); set them again for the new realm.
 
 ### List Tenants
 
@@ -97,20 +105,21 @@ Authorization: Basic <admin-credentials>
 
 ## User Model
 
-Each connector deployment uses three categories of user:
+Each connector deployment uses two categories of user:
 
 | Role | Typical email | `tenantId` | Responsibilities |
 |------|--------------|-----------|-----------------|
 | **Super-admin** (`ROLE_SUPER_ADMIN`) | `superadmin@mail.com` | none | Create/manage tenants, cross-tenant visibility |
-| **Tenant admin** (`ROLE_ADMIN`) | `admin@mail.com` | e.g., `engineering` | Manage catalog, datasets, negotiations, transfers for one tenant |
-| **Connector user** (`ROLE_CONNECTOR`) | `connector@mail.com` | e.g., `engineering` | Authenticate DSP protocol calls for one tenant |
+| **Tenant admin** (`ROLE_ADMIN`) | `admin@mail.com` | e.g., `engineering-a` | Manage catalog, datasets, negotiations, transfers for one tenant |
 
-> Each tenant requires its own `ROLE_ADMIN` and `ROLE_CONNECTOR` user with their `tenantId` set. Users with different tenants must have unique email addresses.
+> Each tenant requires its own `ROLE_ADMIN` user with its `tenantId` set. Users with different tenants must have unique email addresses.
+>
+> There is no connector user. In `INTERNAL` mode the connector mints its own protocol token for connector-to-connector calls (see [security.md](security.md#connector-to-connector-credentials-m2m)); the connector user is no longer seeded.
 
 The default `initial_data.json` seeds:
 - `superadmin@mail.com` — `ROLE_SUPER_ADMIN`, no tenant
-- `admin@mail.com` — `ROLE_ADMIN`, scoped to the default `engineering` tenant
-- `connector@mail.com` — `ROLE_CONNECTOR`, scoped to the default `engineering` tenant
+- `admin@mail.com` — `ROLE_ADMIN`, scoped to the default `engineering-a` tenant
+- the tenants `engineering-a` (realm `tenant-EngineeringA`) and `acme` (realm `tenant-acme`, a Keycloak demo tenant with no `INTERNAL` users; its users `coyote` and `roadrunner` exist only in Keycloak)
 
 ---
 
@@ -131,6 +140,32 @@ X-Tenant-Id: acme-corp
 
 Without the `X-Tenant-Id` header, a super-admin receives data from all tenants.
 
+### `X-Tenant-Id` rules
+
+The same rules apply in `INTERNAL` and `KEYCLOAK` mode. The tenant of a request comes from the `tenant_id` claim of the access token.
+
+| Who sends `X-Tenant-Id` | Result |
+|-------------------------|--------|
+| Super-admin without a tenant, header names an existing, enabled tenant | Accepted; the request runs for that tenant and a `TENANT_DELEGATION` audit event is written |
+| Super-admin, header names an unknown or disabled tenant | `400 Bad Request` |
+| Tenant user (`ROLE_ADMIN`), in `INTERNAL` or `KEYCLOAK` mode | `403 Forbidden`. Tenant users never need the header: their tenant is in the token. Clients that always send it must stop doing so for tenant users |
+| Any other principal without `ROLE_SUPER_ADMIN`, or a super-admin that has a tenant of its own | `403 Forbidden` |
+| `platform` (connector) token | No tenant; the route answers 403 anyway |
+
+Audit entries of delegations show the super-admin as `principal` and the delegated tenant as `targetTenantId`.
+
+---
+
+## Users in Keycloak Mode
+
+In `KEYCLOAK` mode the connector has no user API (`/api/v1/users/**` answers `404` for a super-admin). Create and manage users in Keycloak (Admin Console, Admin REST API or realm import):
+
+- **Super-admins** go in the `connector-admin` realm (`application.keycloak.admin-realm`), with the realm role `SUPER_ADMIN` and **no** `tenant_id` attribute. They select a tenant per request with `X-Tenant-Id`.
+- **Tenant users** go in the tenant's own realm (its `realm` field, e.g. `tenant-EngineeringA`), with the realm role `ADMIN` and a `tenant_id` attribute (mapped to the `tenant_id` claim) equal to the tenant `_id` (e.g. `engineering-a`), not the realm name. The realm is trusted only while an enabled tenant names it in `realm`, so a new tenant realm needs its Mongo tenant too; without one, its tokens get `401`.
+- Never create a super-admin in a tenant realm: a tenant realm may not grant `SUPER_ADMIN`, so such a token gets `401` and a `SECURITY_REALM_ROLE_VIOLATION` audit event.
+
+See [security.md](security.md#user-management) for the full rules.
+
 ---
 
 ## Error Responses
@@ -140,6 +175,8 @@ Without the `X-Tenant-Id` header, a super-admin receives data from all tenants.
 | Unknown tenant ID in path | `404 Not Found` | The `{tenantId}` in the URL does not match any tenant |
 | Tenant is disabled | `403 Forbidden` | The tenant exists but has been disabled |
 | Missing or invalid auth | `401 Unauthorized` | No valid credentials provided |
+| `X-Tenant-Id` from a tenant user | `403 Forbidden` | Only super-admins may send the header |
+| `X-Tenant-Id` names an unknown or disabled tenant | `400 Bad Request` | Super-admin requests only |
 
 ---
 
@@ -174,13 +211,13 @@ For most deployments, path-variable routing is the recommended approach.
 ## Example: Two-Connector Setup (Consumer + Provider)
 
 Assuming:
-- Provider runs on port `8090` with tenant `engineering`
-- Consumer runs on port `8080` with tenant `engineering`
+- Provider runs on port `8090` with tenant `engineering-a`
+- Consumer runs on port `8080` with tenant `engineering-a`
 
 ### Consumer requests Provider catalog
 
 ```http
-POST http://localhost:8090/engineering/catalog/request
+POST http://localhost:8090/engineering-a/catalog/request
 Authorization: Basic <connector-credentials>
 Content-Type: application/json
 
@@ -194,7 +231,7 @@ Content-Type: application/json
 ### Consumer starts negotiation
 
 ```http
-POST http://localhost:8090/engineering/negotiations/request
+POST http://localhost:8090/engineering-a/negotiations/request
 Authorization: Basic <connector-credentials>
 Content-Type: application/json
 
@@ -206,14 +243,14 @@ Content-Type: application/json
 }
 ```
 
-The consumer's `callbackAddress` must include the consumer's tenant prefix so the provider can call back correctly — e.g., `http://localhost:8080/engineering`.
+The consumer's `callbackAddress` must include the consumer's tenant prefix so the provider can call back correctly — e.g., `http://localhost:8080/engineering-a`.
 
 ---
 
 ## Frequently Asked Questions
 
 **Q: Can I run the connector with a single tenant?**  
-A: Yes. The default `engineering` tenant is always present. If you don't need multiple tenants, simply use the default and ignore tenant management.
+A: Yes. The default `engineering-a` tenant is always present. If you don't need multiple tenants, simply use the default and ignore tenant management.
 
 **Q: Can a user belong to multiple tenants?**  
 A: Not in the current implementation. A user is associated with exactly one tenant. Super-admins are an exception — they have cross-tenant access.

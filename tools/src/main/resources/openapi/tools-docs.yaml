@@ -17,6 +17,14 @@ tags:
     name: Application Properties
     description: Read and update runtime application properties.
 
+schemas:
+  TenantCreateRequest:
+    realm: >-
+      Optional Keycloak realm name for the tenant. A non-null value must match ^[A-Za-z0-9._-]+$, be at most 255 characters, not be . or .., not equal master or the configured platform or admin realm (compared case-insensitively), and not be used by any other tenant, enabled or disabled (compared case-sensitively). Omit it for a tenant that accepts no Keycloak tokens.
+  TenantUpdateRequest:
+    realm: >-
+      Optional Keycloak realm name for the tenant. A non-null value must match ^[A-Za-z0-9._-]+$, be at most 255 characters, not be . or .., not equal master or the configured platform or admin realm (compared case-insensitively), and not be used by any other tenant, enabled or disabled (compared case-sensitively). Omit it to keep the current value.
+
 operations:
   getPublicTenantInfo:
     summary: Get public tenant information
@@ -40,13 +48,36 @@ operations:
       Create a tenant with a caller-supplied ID containing only letters, digits, or hyphens and
       a participant ID unique across tenants. Bucket provisioning can be automatic, use an
       existing bucket, or persist externally supplied credentials. The tenant must be enabled
-      before its tenant-prefixed DSP protocol endpoints accept requests.
+      before its tenant-prefixed DSP protocol endpoints accept requests. A supplied realm is
+      validated: it must match ^[A-Za-z0-9._-]+$, must not be . or .., master, platform or connector-admin,
+      and must not be used by another tenant.
+    responses:
+      "200":
+        description: The tenant was created.
+      "400":
+        description: >-
+          The request is invalid, including a realm that does not match the allowed pattern or is a
+          reserved name (master, platform, connector-admin).
+      "409":
+        description: The realm is already assigned to another tenant.
   updateTenant:
     summary: Update tenant settings
     description: >-
       Update mutable tenant settings and, when supplied, rotate bucket credentials or migrate
       to another bucket. The participant ID is read-only. Bucket migration does not remove the
-      previous bucket or its data; operators must clean it up explicitly when it is safe.
+      previous bucket or its data; operators must clean it up explicitly when it is safe. A
+      supplied realm is validated like on creation; supplying the tenant's own current realm is accepted.
+    responses:
+      "200":
+        description: The tenant was updated.
+      "400":
+        description: >-
+          The request is invalid, including a realm that does not match the allowed pattern or is a
+          reserved name (master, platform, connector-admin).
+      "404":
+        description: The tenant does not exist.
+      "409":
+        description: The realm is already assigned to another tenant.
   enableTenant:
     summary: Enable a tenant
     description: Enable the tenant so its tenant-prefixed DSP protocol requests can be processed.

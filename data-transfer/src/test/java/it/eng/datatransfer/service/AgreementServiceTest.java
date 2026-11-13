@@ -4,10 +4,9 @@ import it.eng.datatransfer.exceptions.AgreementNotFoundException;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.property.ConnectorProperties;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.usagecontrol.UsageControlProperties;
-import it.eng.tools.util.CredentialUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,9 +18,8 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AgreementServiceTest {
@@ -34,10 +32,6 @@ class AgreementServiceTest {
     private OkHttpRestClient okHttpRestClient;
     @Mock
     private GenericApiResponse<String> apiResponse;
-    @Mock
-    private CredentialUtils credentialUtils;
-    @Mock
-    private ConnectorProperties connectorProperties;
 
     @InjectMocks
     private AgreementService service;
@@ -48,8 +42,7 @@ class AgreementServiceTest {
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         when(transferProcessRepository.findByConsumerPidAndProviderPid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
-        when(connectorProperties.getConnectorURL()).thenReturn("http://test.localhost:8080");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), any(Supplier.class), isNull()))
+        when(okHttpRestClient.sendInternalPostRequest(any(String.class), isNull()))
                 .thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
 
@@ -63,13 +56,29 @@ class AgreementServiceTest {
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
         when(transferProcessRepository.findByConsumerPidAndProviderPid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID))
                 .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
-        when(connectorProperties.getConnectorURL()).thenReturn("http://test.localhost:8080");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), isNull(), any(Supplier.class), isNull()))
+        when(okHttpRestClient.sendInternalPostRequest(any(String.class), isNull()))
                 .thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(false);
 
         boolean isValid = service.isAgreementValid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID);
         assertFalse(isValid);
+    }
+
+    @Test
+    @DisplayName("Agreement enforcement is a loopback call to /internal/v1/agreements/{id}/enforce, not a protocol call")
+    void isAgreementValid_enforcesOverInternalZone() {
+        String agreementId = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getAgreementId();
+        String path = ApiEndpoints.INTERNAL_AGREEMENTS_V1 + "/" + agreementId + "/enforce";
+        when(usageControlProperties.usageControlEnabled()).thenReturn(true);
+        when(transferProcessRepository.findByConsumerPidAndProviderPid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID))
+                .thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED));
+        when(okHttpRestClient.sendInternalPostRequest(eq(path), isNull())).thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+
+        assertTrue(service.isAgreementValid(DataTransferMockObjectUtil.CONSUMER_PID, DataTransferMockObjectUtil.PROVIDER_PID));
+
+        verify(okHttpRestClient).sendInternalPostRequest(eq(path), isNull());
+        verify(okHttpRestClient, never()).sendRequestProtocol(anyString(), any(), any(Supplier.class));
     }
 
     @Test

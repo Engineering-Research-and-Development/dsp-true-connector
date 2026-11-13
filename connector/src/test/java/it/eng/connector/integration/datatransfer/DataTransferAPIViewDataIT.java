@@ -104,7 +104,7 @@ public class DataTransferAPIViewDataIT extends BaseIntegrationTest {
                 .consumerPid(consumerPid)
                 .providerPid(providerPid)
                 .state(ContractNegotiationState.FINALIZED)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
         contractNegotiationRepository.save(contractNegotiation);
 
@@ -115,7 +115,7 @@ public class DataTransferAPIViewDataIT extends BaseIntegrationTest {
                 .callbackAddress(wiremock.baseUrl())
                 .isDownloaded(true)
                 .state(TransferState.COMPLETED)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
         transferProcessRepository.save(transferProcessCompleted);
 
@@ -182,7 +182,7 @@ public class DataTransferAPIViewDataIT extends BaseIntegrationTest {
                 .callbackAddress(wiremock.baseUrl())
                 .isDownloaded(true)
                 .state(TransferState.COMPLETED)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
         transferProcessRepository.save(transferProcessCompleted);
 
@@ -239,12 +239,12 @@ public class DataTransferAPIViewDataIT extends BaseIntegrationTest {
                         .action(Action.USE)
                         .constraint(Collections.singletonList(constraint))
                         .build()))
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         agreementRepository.save(agreement);
 
-        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), currentCount, "engineering");
+        PolicyEnforcement policyEnforcement = new PolicyEnforcement(createNewId(), agreement.getId(), currentCount, "engineering-a");
         policyEnforcementRepository.save(policyEnforcement);
 
         return agreement;

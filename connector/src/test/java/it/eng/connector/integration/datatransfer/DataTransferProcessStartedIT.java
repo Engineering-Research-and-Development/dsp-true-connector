@@ -1,7 +1,6 @@
 package it.eng.connector.integration.datatransfer;
 
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
@@ -11,7 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.ResultActions;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,7 +36,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Start transfer process - from requested - provider - cannot transit")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void startTransferProcess_provider_cannot_transit() throws Exception {
 
         TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
@@ -71,7 +70,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Start transfer process - not_found")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void startTransferProcess_transfer_not_found() throws Exception {
 
         TransferStartMessage transferStartMessage = TransferStartMessage.Builder.newInstance()
@@ -93,7 +92,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Start transfer process - wrong message")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void startTransferProcess_transfer_wrong_message() throws Exception {
 
         TransferCompletionMessage transferCompletionMessage = TransferCompletionMessage.Builder.newInstance()
@@ -116,7 +115,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Start transfer process - from requested - consumer")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void startTransferProcess_consumer() throws Exception {
         TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -156,7 +155,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Start transfer process - not_found - consumer")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void startTransferProcess_consumer_transfer_not_found() throws Exception {
 
         TransferStartMessage transferStartMessage = TransferStartMessage.Builder.newInstance()
@@ -178,7 +177,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Start transfer process - consumer - wrong message")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void startTransferProcess__consumer_transfer_wrong_message() throws Exception {
 
         TransferCompletionMessage transferCompletionMessage = TransferCompletionMessage.Builder.newInstance()
@@ -201,7 +200,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
     // SUSPENDED->STARTED
     @Test
     @DisplayName("Start transfer process - from suspended - provider")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void startTransferProcess_suspended() throws Exception {
         TransferProcess transferProcessSuspended = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -229,7 +228,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Start transfer process - from suspended - provider - invalid state")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void startTransferProcess_suspended_invalid_state() throws Exception {
         TransferProcess transferProcessSuspended = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -260,7 +259,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Start transfer process - from suspended - consumer")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void startTransferProcess_suspended_consumer() throws Exception {
         TransferProcess transferProcessSuspended = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -288,7 +287,7 @@ public class DataTransferProcessStartedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Start transfer process - from suspended - consumer - invalid state")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void startTransferProcess_suspended_consumer_invalid_state() throws Exception {
         TransferProcess transferProcessSuspended = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())

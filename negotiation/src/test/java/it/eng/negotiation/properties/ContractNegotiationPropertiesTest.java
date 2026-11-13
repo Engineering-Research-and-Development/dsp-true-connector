@@ -14,15 +14,13 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ContractNegotiationPropertiesTest {
 
-    private static final String TENANT_ID = "engineering";
+    private static final String TENANT_ID = "engineering-a";
     private static final String TENANT_PARTICIPANT_ID = "tenant-participant-id";
     private static final String GLOBAL_CALLBACK = "http://global.example.com";
     private static final String GLOBAL_PARTICIPANT_ID = "participantId";
@@ -45,7 +43,7 @@ class ContractNegotiationPropertiesTest {
 
         enabledTenant = Tenant.Builder.newInstance()
                 .id(TENANT_ID)
-                .name("Engineering")
+                .name("EngineeringA")
                 .participantId(TENANT_PARTICIPANT_ID)
                 .automaticNegotiation(true)
                 .enabled(true)
@@ -81,7 +79,7 @@ class ContractNegotiationPropertiesTest {
     void participantId_withDisabledTenant_returnsGlobalDefault() {
         Tenant disabledTenant = Tenant.Builder.newInstance()
                 .id(TENANT_ID)
-                .name("Engineering")
+                .name("EngineeringA")
                 .participantId(TENANT_PARTICIPANT_ID)
                 .enabled(false)
                 .build();

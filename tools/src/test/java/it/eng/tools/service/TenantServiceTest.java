@@ -2,6 +2,8 @@ package it.eng.tools.service;
 
 import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
+import it.eng.tools.exception.DuplicateTenantRealmException;
+import it.eng.tools.exception.InvalidTenantRealmException;
 import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.BucketProvisioningMode;
 import it.eng.tools.model.Tenant;
@@ -15,6 +17,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -31,7 +36,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class TenantServiceTest {
 
-    private static final String TENANT_ID = "engineering";
+    private static final String TENANT_ID = "engineering-a";
     private static final String BASE_CALLBACK_URL = "http://localhost:8080";
 
     @Mock
@@ -61,13 +66,14 @@ class TenantServiceTest {
     void setUp() {
         tenantService = new TenantService(tenantRepository, auditEventPublisher,
                 s3BucketProvisionService, bucketCredentialsService,
-                bucketProvisioningModeResolver, bucketConnectionVerificationService, BASE_CALLBACK_URL);
+                bucketProvisioningModeResolver, bucketConnectionVerificationService, BASE_CALLBACK_URL,
+                "platform", "connector-admin");
     }
 
     private Tenant buildTenant(boolean enabled) {
         return Tenant.Builder.newInstance()
                 .id(TENANT_ID)
-                .name("Engineering")
+                .name("EngineeringA")
                 .participantId("urn:connector:engineering")
                 .enabled(enabled)
                 .build();
@@ -76,7 +82,7 @@ class TenantServiceTest {
     private Tenant buildTenantWithRealm(boolean enabled, String realm) {
         return Tenant.Builder.newInstance()
                 .id(TENANT_ID)
-                .name("Engineering")
+                .name("EngineeringA")
                 .participantId("urn:connector:engineering")
                 .realm(realm)
                 .enabled(enabled)
@@ -86,7 +92,7 @@ class TenantServiceTest {
     private Tenant buildTenantWithBucket(boolean enabled, String bucketName) {
         return Tenant.Builder.newInstance()
                 .id(TENANT_ID)
-                .name("Engineering")
+                .name("EngineeringA")
                 .participantId("urn:connector:engineering")
                 .enabled(enabled)
                 .bucketName(bucketName)
@@ -212,7 +218,7 @@ class TenantServiceTest {
 
         Tenant result = tenantService.saveTenant(input);
 
-        assertEquals("Engineering", result.getName());
+        assertEquals("EngineeringA", result.getName());
         assertEquals("urn:connector:engineering", result.getParticipantId());
         assertEquals("engineering-realm", result.getRealm());
         assertTrue(result.isEnabled());
@@ -242,7 +248,7 @@ class TenantServiceTest {
     void saveTenant_invalidIdFormat_throwsIllegalArgumentException() {
         Tenant input = Tenant.Builder.newInstance()
                 .id("invalid id!")
-                .name("Engineering")
+                .name("EngineeringA")
                 .participantId("urn:connector:engineering")
                 .enabled(true)
                 .build();
@@ -252,6 +258,24 @@ class TenantServiceTest {
 
         assertTrue(ex.getMessage().contains("invalid"),
                 "Exception message must mention the invalid id");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"internal", "INTERNAL", "Internal"})
+    @DisplayName("saveTenant rejects the reserved tenant id 'internal', case-insensitively, before saving anything")
+    void saveTenant_reservedInternalId_throwsIllegalArgumentException(String tenantId) {
+        Tenant input = Tenant.Builder.newInstance()
+                .id(tenantId)
+                .name("Internal")
+                .participantId("urn:connector:internal")
+                .enabled(true)
+                .build();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> tenantService.saveTenant(input));
+
+        assertTrue(ex.getMessage().contains("reserved"), "Exception message must say the id is reserved");
+        verify(tenantRepository, never()).save(any(Tenant.class));
     }
 
     @Test
@@ -376,7 +400,7 @@ class TenantServiceTest {
                 .thenReturn(BucketProvisioningMode.AUTOMATIC);
         Tenant updates = Tenant.Builder.newInstance()
                 .id(TENANT_ID)
-                .name("Updated Engineering")
+                .name("Updated EngineeringA")
                 .participantId(existing.getParticipantId())
                 .build();
 
@@ -395,7 +419,7 @@ class TenantServiceTest {
                 .thenReturn(BucketProvisioningMode.AUTOMATIC);
         Tenant updates = Tenant.Builder.newInstance()
                 .id(TENANT_ID)
-                .name("Updated Engineering")
+                .name("Updated EngineeringA")
                 .participantId(existing.getParticipantId())
                 .realm("updated-realm")
                 .build();
@@ -403,6 +427,150 @@ class TenantServiceTest {
         Tenant result = tenantService.updateTenant(TENANT_ID, updates);
 
         assertEquals("updated-realm", result.getRealm());
+    }
+
+    @ParameterizedTest
+    @EmptySource
+    @ValueSource(strings = {"tenant x", "a/b", "http://evil/realms/x", " ", "realm?x", "r\u00e9alm", ".", ".."})
+    @DisplayName("saveTenant rejects malformed, dot and dot-dot realms and never reaches persistence")
+    void saveTenant_malformedRealm_throwsInvalidTenantRealmException(String realm) {
+        Tenant input = buildTenantWithRealm(true, realm);
+        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(BucketProvisioningMode.AUTOMATIC);
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.empty());
+        when(tenantRepository.findByParticipantId(input.getParticipantId())).thenReturn(Optional.empty());
+
+        InvalidTenantRealmException ex = assertThrows(InvalidTenantRealmException.class,
+                () -> tenantService.saveTenant(input));
+
+        assertTrue(ex.getMessage().contains("^[A-Za-z0-9._-]+$"));
+        assertTrue(ex.getMessage().contains("'" + realm + "'"));
+        verify(tenantRepository, never()).save(any(Tenant.class));
+    }
+
+    @Test
+    @DisplayName("saveTenant rejects a realm longer than 255 characters")
+    void saveTenant_realmTooLong_throwsInvalidTenantRealmException() {
+        Tenant input = buildTenantWithRealm(true, "a".repeat(256));
+        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(BucketProvisioningMode.AUTOMATIC);
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.empty());
+        when(tenantRepository.findByParticipantId(input.getParticipantId())).thenReturn(Optional.empty());
+
+        assertThrows(InvalidTenantRealmException.class, () -> tenantService.saveTenant(input));
+        verify(tenantRepository, never()).save(any(Tenant.class));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"platform", "Platform", "PLATFORM", "connector-admin", "Connector-Admin",
+            "master", "Master", "MASTER"})
+    @DisplayName("saveTenant rejects reserved realm names case-insensitively")
+    void saveTenant_reservedRealm_throwsInvalidTenantRealmException(String realm) {
+        Tenant input = buildTenantWithRealm(true, realm);
+        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(BucketProvisioningMode.AUTOMATIC);
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.empty());
+        when(tenantRepository.findByParticipantId(input.getParticipantId())).thenReturn(Optional.empty());
+
+        InvalidTenantRealmException ex = assertThrows(InvalidTenantRealmException.class,
+                () -> tenantService.saveTenant(input));
+
+        assertTrue(ex.getMessage().contains("reserved"));
+        assertTrue(ex.getMessage().contains("'" + realm + "'"));
+        verify(tenantRepository, never()).save(any(Tenant.class));
+    }
+
+    @Test
+    @DisplayName("saveTenant rejects a realm already held by another tenant")
+    void saveTenant_duplicateRealm_throwsDuplicateTenantRealmException() {
+        Tenant input = buildTenantWithRealm(true, "tenant-EngineeringA");
+        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(BucketProvisioningMode.AUTOMATIC);
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.empty());
+        when(tenantRepository.findByParticipantId(input.getParticipantId())).thenReturn(Optional.empty());
+        when(tenantRepository.existsByRealmAndIdNot("tenant-EngineeringA", TENANT_ID)).thenReturn(true);
+
+        DuplicateTenantRealmException ex = assertThrows(DuplicateTenantRealmException.class,
+                () -> tenantService.saveTenant(input));
+
+        assertTrue(ex.getMessage().contains("'tenant-EngineeringA'"));
+        verify(tenantRepository, never()).save(any(Tenant.class));
+    }
+
+    @Test
+    @DisplayName("saveTenant accepts a valid realm and a null realm")
+    void saveTenant_validAndNullRealm_succeeds() {
+        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(BucketProvisioningMode.AUTOMATIC);
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.empty());
+        when(tenantRepository.findByParticipantId(anyString())).thenReturn(Optional.empty());
+        when(tenantRepository.existsByRealmAndIdNot("tenant-EngineeringA", TENANT_ID)).thenReturn(false);
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        assertEquals("tenant-EngineeringA",
+                tenantService.saveTenant(buildTenantWithRealm(true, "tenant-EngineeringA")).getRealm());
+        assertNull(tenantService.saveTenant(buildTenant(true)).getRealm());
+        verify(tenantRepository, never()).existsByRealmAndIdNot(isNull(), anyString());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"tenant x", "a/b", "http://evil/realms/x", "", ".", ".."})
+    @DisplayName("updateTenant rejects malformed, dot and dot-dot realms")
+    void updateTenant_malformedRealm_throwsInvalidTenantRealmException(String realm) {
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(buildTenantWithRealm(true, "existing-realm")));
+        Tenant updates = buildTenantWithRealm(true, realm);
+
+        assertThrows(InvalidTenantRealmException.class, () -> tenantService.updateTenant(TENANT_ID, updates));
+        verify(tenantRepository, never()).save(any(Tenant.class));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"platform", "Platform", "connector-admin", "CONNECTOR-ADMIN", "master", "Master"})
+    @DisplayName("updateTenant rejects reserved realm names case-insensitively")
+    void updateTenant_reservedRealm_throwsInvalidTenantRealmException(String realm) {
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(buildTenantWithRealm(true, "existing-realm")));
+        Tenant updates = buildTenantWithRealm(true, realm);
+
+        assertThrows(InvalidTenantRealmException.class, () -> tenantService.updateTenant(TENANT_ID, updates));
+        verify(tenantRepository, never()).save(any(Tenant.class));
+    }
+
+    @Test
+    @DisplayName("updateTenant rejects a realm held by another tenant")
+    void updateTenant_duplicateRealm_throwsDuplicateTenantRealmException() {
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(buildTenantWithRealm(true, "existing-realm")));
+        when(tenantRepository.existsByRealmAndIdNot("taken-realm", TENANT_ID)).thenReturn(true);
+        Tenant updates = buildTenantWithRealm(true, "taken-realm");
+
+        assertThrows(DuplicateTenantRealmException.class, () -> tenantService.updateTenant(TENANT_ID, updates));
+        verify(tenantRepository, never()).save(any(Tenant.class));
+    }
+
+    @Test
+    @DisplayName("updateTenant accepts the tenant's own current realm")
+    void updateTenant_ownRealm_succeeds() {
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(buildTenantWithRealm(true, "existing-realm")));
+        when(tenantRepository.existsByRealmAndIdNot("existing-realm", TENANT_ID)).thenReturn(false);
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(BucketProvisioningMode.AUTOMATIC);
+
+        Tenant result = tenantService.updateTenant(TENANT_ID, buildTenantWithRealm(true, "existing-realm"));
+
+        assertEquals("existing-realm", result.getRealm());
+    }
+
+    @Test
+    @DisplayName("updateTenant with a null realm skips realm validation")
+    void updateTenant_nullRealm_skipsValidation() {
+        when(tenantRepository.findById(TENANT_ID)).thenReturn(Optional.of(buildTenantWithRealm(true, "existing-realm")));
+        when(tenantRepository.save(any(Tenant.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(bucketProvisioningModeResolver.resolve(any(TenantBucketCredentialsRequest.class)))
+                .thenReturn(BucketProvisioningMode.AUTOMATIC);
+
+        tenantService.updateTenant(TENANT_ID, buildTenant(true));
+
+        verify(tenantRepository, never()).existsByRealmAndIdNot(anyString(), anyString());
     }
 
     @Test
@@ -606,7 +774,7 @@ class TenantServiceTest {
         String expectedBucket = TenantService.BUCKET_NAME_PREFIX + TENANT_ID;
         Tenant input = Tenant.Builder.newInstance()
                 .id(TENANT_ID)
-                .name("Engineering")
+                .name("EngineeringA")
                 .participantId("urn:connector:engineering")
                 .enabled(true)
                 .bucketName(suppliedBucket)

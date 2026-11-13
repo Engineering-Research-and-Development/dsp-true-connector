@@ -1,18 +1,14 @@
 package it.eng.datatransfer.service;
 
-import org.springframework.stereotype.Service;
-
 import it.eng.datatransfer.exceptions.AgreementNotFoundException;
 import it.eng.datatransfer.model.TransferProcess;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.controller.ApiEndpoints;
-import it.eng.tools.property.ConnectorProperties;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.usagecontrol.UsageControlProperties;
-import it.eng.tools.service.TenantContextHolder;
-import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
 @Service
 @Slf4j
@@ -21,17 +17,13 @@ public class AgreementService {
 	private final TransferProcessRepository transferProcessRepository;
 	private final UsageControlProperties usageControlProperties;
 	private final OkHttpRestClient okHttpRestClient;
-	private final CredentialUtils credentialUtils;
-	private final ConnectorProperties connectorProperties;
 	
 	public AgreementService(TransferProcessRepository transferProcessRepository, UsageControlProperties usageControlProperties,
-			OkHttpRestClient okHttpRestClient, CredentialUtils credentialUtils, ConnectorProperties connectorProperties) {
+			OkHttpRestClient okHttpRestClient) {
 		super();
 		this.transferProcessRepository = transferProcessRepository;
 		this.usageControlProperties = usageControlProperties;
 		this.okHttpRestClient = okHttpRestClient;
-		this.credentialUtils = credentialUtils;
-		this.connectorProperties = connectorProperties;
 	}
 
 	public boolean isAgreementValid(String consumerPid, String providerPid) {
@@ -41,11 +33,8 @@ public class AgreementService {
 							"' and providerPid '" + providerPid + "' not found", consumerPid, providerPid));
 			String agreementId = transferProcess.getAgreementId();
 			
-			GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(connectorProperties.getConnectorURL() 
-					+ ApiEndpoints.NEGOTIATION_AGREEMENTS_V1 + "/" + agreementId + "/enforce", 
-					null, 
-					credentialUtils::getAPICredentials,
-					TenantContextHolder.getTenantId());
+			GenericApiResponse<String> response = okHttpRestClient.sendInternalPostRequest(
+					ApiEndpoints.INTERNAL_AGREEMENTS_V1 + "/" + agreementId + "/enforce", null);
 			if (!response.isSuccess()) {
 				log.info("Agreement is not valid");
 				return false;

@@ -19,6 +19,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
@@ -571,7 +572,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("TransferProcess - get by consumerPid - success")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void getTransferProcessByConsumerPid() throws Exception {
         TransferProcess transferProcess = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -596,7 +597,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("TransferProcess - get by consumerPid - not found")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void getTransferProcessByConsumerPid_notFound() throws Exception {
         MvcResult result = mockMvc.perform(
                         get("/" + TENANT_ID + "/consumer/transfers/" + createNewId())
@@ -662,7 +663,7 @@ public class DataTransferAPIIT extends BaseIntegrationTest {
 		final ResultActions result =
 				mockMvc.perform(
 						get(ApiEndpoints.NEGOTIATION_V1)
-						.with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
+						.with(user(TestUtil.API_USER).password("password").roles("ADMIN"))
 						.contentType(MediaType.APPLICATION_JSON));
 		
 		result.andExpect(status().isOk())

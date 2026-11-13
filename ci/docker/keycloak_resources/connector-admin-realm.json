@@ -388,8 +388,8 @@
   "users" : [ {
     "id" : "e1fd16a8-bced-427e-a215-f77994901b5f",
     "username" : "superadmin@mail.com",
-    "firstName" : "Super",
-    "lastName" : "Admin",
+    "firstName" : "Capo",
+    "lastName" : "Capi",
     "email" : "superadmin@mail.com",
     "emailVerified" : true,
     "createdTimestamp" : 1793018351893,

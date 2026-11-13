@@ -29,17 +29,17 @@ class PublicTenantInfoControllerTest {
     @DisplayName("Returns public name and realm for enabled tenants")
     void getPublicTenantInfo_returnsNameAndRealm() {
         Tenant tenant = Tenant.Builder.newInstance()
-                .id("engineering")
-                .name("Engineering")
+                .id("engineering-a")
+                .name("EngineeringA")
                 .participantId("urn:connector:engineering")
-                .realm("tenant_Engineering")
+                .realm("tenant-EngineeringA")
                 .enabled(true)
                 .build();
         when(tenantService.findEnabledTenants()).thenReturn(List.of(tenant));
 
         List<PublicTenantInfo> response = controller.getPublicTenantInfo();
 
-        assertEquals(List.of(new PublicTenantInfo("Engineering", "tenant_Engineering")), response);
+        assertEquals(List.of(new PublicTenantInfo("EngineeringA", "tenant-EngineeringA")), response);
         verify(tenantService).findEnabledTenants();
     }
 

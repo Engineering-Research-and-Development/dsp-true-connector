@@ -868,7 +868,7 @@
     },
     {
       "key": "PROVIDER_PROTOCOL",
-      "value": "http://172.17.0.1:8090/connector_b_tenant_id"
+      "value": "http://172.17.0.1:8090/engineering-b"
     },
     {
       "key": "catalogId",

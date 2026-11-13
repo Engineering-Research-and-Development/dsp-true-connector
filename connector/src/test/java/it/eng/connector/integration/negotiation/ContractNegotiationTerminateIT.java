@@ -1,7 +1,6 @@
 package it.eng.connector.integration.negotiation;
 
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationErrorMessage;
 import it.eng.negotiation.model.ContractNegotiationState;
@@ -14,7 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Collections;
@@ -40,7 +39,7 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Provider endpoint terminate negotiation - success")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void providerTerminateNegotiation_success() throws Exception {
         ContractNegotiation cn = createContractNegotiation();
 
@@ -66,7 +65,7 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Provider endpoint terminate negotiation - wrong Pid")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void providerTerminateNegotiation_error() throws Exception {
         ContractNegotiation cn = createContractNegotiation();
 
@@ -97,7 +96,7 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Consumer callback endpoint terminate negotiation - success")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void consumerTerminateNegotiation_success() throws Exception {
         ContractNegotiation cn = createContractNegotiation();
 
@@ -122,7 +121,7 @@ public class ContractNegotiationTerminateIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Consumer callback endpoint terminate negotiation - invalid Pid")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void consumerTerminateNegotiation_error() throws Exception {
         ContractNegotiation cn = createContractNegotiation();
 

@@ -18,15 +18,29 @@ Tenant isolation is enforced at:
 ```java
 @Document(collection = "tenants")
 public class Tenant {
-    @Id private String id;          // URL-safe tenant ID (e.g., "engineering")
+    @Id private String id;          // URL-safe tenant ID (e.g., "engineering-a")
     private String name;
     private String connectorId;
     private String callbackAddress;
+    private String realm;          // optional Keycloak realm, see below
     private boolean enabled;
 }
 ```
 
 Stored in the `tenants` collection. The `id` field is the tenant identifier used in URLs and ThreadLocal.
+It may hold letters, digits and hyphens only, and `internal` (any case) is reserved: tenant-prefixed paths
+of that ID would fall into the `/internal/**` security chain (see [Internal Calls](#internal-calls)).
+
+`realm` names the Keycloak realm whose tokens this tenant accepts in `KEYCLOAK` mode; the connector
+trusts `<application.keycloak.base-url>/realms/<realm>` while the tenant is enabled (see
+[security.md](security.md#trusted-issuers)). `TenantService` validates it on create and update:
+
+- it must match `^[A-Za-z0-9._-]+$`, have at most 255 characters and not be `.` or `..`, otherwise `400`;
+- it must not be `master` or the configured platform or admin realm (case-insensitive), otherwise `400`;
+- it must not be used by any other tenant, enabled or disabled (case-sensitive), otherwise `409`;
+- `null` is allowed: the tenant then accepts no Keycloak tokens.
+
+`InitialDataLoader` does not run this validation.
 
 ### `TenantContextHolder` (`tools` module)
 
@@ -167,7 +181,7 @@ Protocol endpoints (`/{tenantId}/catalog/**`, `/{tenantId}/negotiations/**`, `/{
 
 Management endpoints (`/api/**`) require `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`.
 
-`ApiTenantContextFilter` (registered after `BasicAuthenticationFilter`) reads the authenticated `User.tenantId` and sets `TenantContextHolder`. For super-admins (users with `tenantId=null`), the `X-Tenant-Id` request header overrides the user's own tenant.
+`ApiTenantContextFilter` (registered after the authentication filter of the chain, in both `INTERNAL` and `KEYCLOAK` mode) sets `TenantContextHolder` from the authenticated principal: the stored `User.tenantId` or the `tenant_id` claim of the access token (the same claim name for `INTERNAL` login tokens and Keycloak tenant-realm tokens). The `X-Tenant-Id` request header lets a super-admin without a tenant act for one tenant: it must name an existing, enabled tenant (unknown or disabled gives 400) and every accepted delegation publishes a `TENANT_DELEGATION` audit event. Any other principal that sends the header, including a seeded `INTERNAL` tenant user, gets 403 (it used to be ignored). See [security.md](security.md#tenant-context-and-x-tenant-id).
 
 ### User Model
 
@@ -175,18 +189,20 @@ Three user roles participate in the multi-tenant security model:
 
 | Role | `tenantId` | Scope | Notes |
 |------|-----------|-------|-------|
-| `ROLE_SUPER_ADMIN` | `null` | All tenants | Manages tenant lifecycle. `X-Tenant-Id` header scopes a single request to one tenant. |
+| `ROLE_SUPER_ADMIN` | `null` | All tenants | Manages tenant lifecycle. `X-Tenant-Id` header scopes a single request to one tenant (the only role that may send it). |
 | `ROLE_ADMIN` | per-tenant | Own tenant only | Day-to-day management of catalog, dataset, negotiation, and transfer for one tenant. |
 | `ROLE_CONNECTOR` | per-tenant | Own tenant only | Authenticates DSP protocol calls. One per tenant. |
 
-### Internal Service Calls
+### Internal Calls
 
-When a module makes an internal management API call on behalf of the current request (e.g., negotiation module validates an offer against the catalog), the call uses a synthetic **internal service account**:
+When a module calls an internal endpoint on behalf of the current request (e.g., the negotiation module validates an offer against the catalog), the call goes to the loopback zone `/internal/**`. It does not use a user or service account:
 
-- **INTERNAL mode**: `InternalServiceTokenIssuer` authenticates `internal-service:<secret>` without a MongoDB lookup. The synthetic user has `ROLE_ADMIN` and `tenantId=null`, so `ApiTenantContextFilter` reads `X-Tenant-Id` from the forwarded header.
-- **KEYCLOAK mode**: the backend client credentials JWT is used. The service account must not have a `tenantId` claim so tenant context is read from `X-Tenant-Id`.
+- `OkHttpRestClient.sendInternalRequest` and `sendInternalPostRequest` take the tenant from `TenantContextHolder.getTenantId()` on the originating request thread and put it in the `tenant_id` claim of a new internal-call token (`InternalCallTokenIssuer`). Without a tenant context the claim is absent.
+- `InternalTenantContextFilter` on the `/internal/**` chain sets `TenantContextHolder` from that verified claim. It never reads `X-Tenant-Id`, so a caller cannot choose a tenant with a header.
+- The behaviour is the same in `INTERNAL` and `KEYCLOAK` mode.
+- `X-Tenant-Id` is read on `/api/**` only, and honoured only for a super-admin principal without a tenant (403 for any other sender). `ApiTenantContextFilter` sets no tenant for a `ROLE_CONNECTOR` principal (a `platform` token in `KEYCLOAK` mode) and ignores the header for it.
 
-The forwarded `X-Tenant-Id` value comes from `TenantContextHolder.getTenantId()` captured on the originating request thread.
+See [Internal Call Zone](security.md#internal-call-zone-internal) and [D-ARC-005](decisions/architecture/D-ARC-005-internal-call-zone-with-in-memory-key.md).
 
 ---
 
@@ -291,4 +307,4 @@ Service tests that do not set `TenantContextHolder` will exercise the non-tenant
 
 ### Integration Tests
 
-Integration tests extend `BaseIntegrationTest` and use `"engineering"` as the `TENANT_ID` constant. All protocol endpoint URLs include `"/" + TENANT_ID + "/"` prefix.
+Integration tests extend `BaseIntegrationTest` and use `"engineering-a"` as the `TENANT_ID` constant. All protocol endpoint URLs include `"/" + TENANT_ID + "/"` prefix.

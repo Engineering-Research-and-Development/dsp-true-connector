@@ -8,7 +8,6 @@ import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
@@ -25,14 +24,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.ResultActions;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -63,7 +58,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
     private Distribution distributionHttpPush;
 
     // from initial_data
-    private static final String TENANT_ID = "engineering";
+    private static final String TENANT_ID = "engineering-a";
 
     @BeforeEach
     public void populateCatalog() {
@@ -103,7 +98,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void initiateDataTransfer() throws Exception {
         // finalized contract negotiation
         Permission permission = Permission.Builder.newInstance()
@@ -180,7 +175,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void initiateDataTransfer_already_requested() throws Exception {
         TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -216,7 +211,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void initiateDataTransfer_wrongDatasetFormat() throws Exception {
         // finalized contract negotiation
         Permission permission = Permission.Builder.newInstance()
@@ -290,7 +285,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void initiateDataTransfer_no_agreement() throws Exception {
         TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -351,7 +346,7 @@ public class DataTransferProcessRequestedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("DataTransfer requested - HTTP_PUSH - secretKey is encrypted before being stored in MongoDB")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void initiateDataTransfer_httpPush_secretKeyEncryptedInMongoDB() throws Exception {
         String plainSecretKey = "plain-secret-key-for-test";
 

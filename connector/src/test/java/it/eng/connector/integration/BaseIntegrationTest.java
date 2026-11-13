@@ -61,7 +61,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class BaseIntegrationTest {
 
     /** Default tenant ID used across all integration tests. */
-    protected static final String TENANT_ID = "engineering";
+    protected static final String TENANT_ID = "engineering-a";
 
     // starts a mongodb and s3 simulated cloud storage container; the containers are shared among all tests; docker must be running
     protected static final MongoDBContainer mongoDBContainer =
@@ -137,7 +137,7 @@ public class BaseIntegrationTest {
         if (tenantRepository.findById(TENANT_ID).isEmpty()) {
             tenantRepository.save(Tenant.Builder.newInstance()
                     .id(TENANT_ID)
-                    .name("Engineering")
+                    .name("EngineeringA")
                     .participantId("connector-engineering")
                     .bucketName(s3Properties.getBucketName())
                     .enabled(true)
@@ -150,7 +150,7 @@ public class BaseIntegrationTest {
                 mockMvc.perform(
                         get(ApiEndpoints.NEGOTIATION_V1)
                                 .param("role", IConstants.ROLE_CONSUMER)
-                                .with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
+                                .with(user(TestUtil.API_USER).password("password").roles("ADMIN"))
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -165,7 +165,7 @@ public class BaseIntegrationTest {
         final ResultActions result =
                 mockMvc.perform(
                         get(ApiEndpoints.NEGOTIATION_V1 + "/" + contractNegotiationId)
-                                .with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
+                                .with(user(TestUtil.API_USER).password("password").roles("ADMIN"))
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -178,7 +178,7 @@ public class BaseIntegrationTest {
         final ResultActions result =
                 mockMvc.perform(
                         get(ApiEndpoints.NEGOTIATION_V1)
-                                .with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
+                                .with(user(TestUtil.API_USER).password("password").roles("ADMIN"))
                                 .param("consumerPid", consumerPid)
                                 .param("providerPid", providerPid)
                                 .contentType(MediaType.APPLICATION_JSON));

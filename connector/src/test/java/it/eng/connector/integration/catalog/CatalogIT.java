@@ -11,7 +11,6 @@ import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
@@ -20,7 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Collections;
@@ -90,7 +89,7 @@ public class CatalogIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Get catalog - success")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void getCatalogSuccessfulTest() throws Exception {
 
         uploadFile();
@@ -117,7 +116,7 @@ public class CatalogIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Get catalog - check if datasets which files are not in S3 are removed from catalog response")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void getCatalogWithoutDatasetsThatHaveNoFilesTest() throws Exception {
 
         uploadFile();
@@ -169,7 +168,7 @@ public class CatalogIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Get catalog - not valid catalog request message")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void notValidCatalogRequestMessageTest() throws Exception {
 
         String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
@@ -194,7 +193,7 @@ public class CatalogIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Get dataset - success")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void getDatasetSuccessfulTest() throws Exception {
         uploadFile();
         String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
@@ -217,7 +216,7 @@ public class CatalogIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Get dataset - no dataset found")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void noDatasetFoundTest() throws Exception {
 
         String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
@@ -242,7 +241,7 @@ public class CatalogIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Get dataset - no valid dataset found")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void noValidDatasetFoundTest() throws Exception {
 
         String body = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.DATASET_REQUEST_MESSAGE);
@@ -263,7 +262,7 @@ public class CatalogIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Get dataset - dataset with null policies")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void getDatasetWithNullPoliciesTest() throws Exception {
         // given
         Dataset datasetNullPolicies = Dataset.Builder.newInstance()
@@ -298,7 +297,7 @@ public class CatalogIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Get dataset - dataset without distributions")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void getDatasetWithoutDistributionsTest() throws Exception {
         // given
         Dataset datasetNoDistributions = Dataset.Builder.newInstance()
@@ -332,7 +331,7 @@ public class CatalogIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Get dataset - dataset with null distributions")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void getDatasetWithNullDistributionsTest() throws Exception {
         // given
         Dataset datasetNullDistributions = Dataset.Builder.newInstance()
@@ -367,7 +366,7 @@ public class CatalogIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Get dataset - dataset with null data services")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     @Disabled("Disabled because the current implementation does not allows distributions with null accessServices")
     public void getDatasetWithNullDataServicesTest() throws Exception {
         // given
@@ -406,7 +405,7 @@ public class CatalogIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Get dataset - dataset without file in S3")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void getDatasetWithoutFileInS3Test() throws Exception {
         // given
         Dataset datasetNoFile = Dataset.Builder.newInstance()
