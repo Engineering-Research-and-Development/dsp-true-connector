@@ -39,3 +39,48 @@ resource "kubernetes_service" "mongodb" {
     }
   }
 }
+
+resource "kubernetes_service" "keycloak_db" {
+  for_each = var.auth_provider == "KEYCLOAK" && var.keycloak_mode == "MANAGED" ? { enabled = true } : {}
+
+  metadata {
+    name = "keycloak-db"
+  }
+
+  spec {
+    type = "ClusterIP"
+
+    port {
+      name        = "postgres"
+      port        = 5432
+      target_port = 5432
+    }
+
+    selector = {
+      app = "keycloak-db"
+    }
+  }
+}
+
+resource "kubernetes_service" "keycloak" {
+  for_each = var.auth_provider == "KEYCLOAK" && var.keycloak_mode == "MANAGED" ? { enabled = true } : {}
+
+  metadata {
+    name = "keycloak"
+  }
+
+  spec {
+    type = "NodePort"
+
+    port {
+      name        = "http"
+      port        = 8080
+      target_port = 8080
+      node_port   = var.keycloak_node_port
+    }
+
+    selector = {
+      app = "keycloak"
+    }
+  }
+}

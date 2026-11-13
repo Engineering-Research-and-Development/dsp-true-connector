@@ -22,6 +22,176 @@ variable "connector_ui_image" {
   default     = "ghcr.io/engineering-research-and-development/dsp-true-connector-ui:latest"
 }
 
+variable "auth_provider" {
+  description = "Authentication provider used directly by the connectors"
+  type        = string
+  default     = "INTERNAL"
+
+  validation {
+    condition     = contains(["INTERNAL", "KEYCLOAK", "DISABLED"], var.auth_provider)
+    error_message = "auth_provider must be INTERNAL, KEYCLOAK, or DISABLED."
+  }
+}
+
+variable "keycloak_mode" {
+  description = "Keycloak provisioning mode; NONE, MANAGED, or EXTERNAL"
+  type        = string
+  default     = "NONE"
+
+  validation {
+    condition     = contains(["NONE", "MANAGED", "EXTERNAL"], var.keycloak_mode)
+    error_message = "keycloak_mode must be NONE, MANAGED, or EXTERNAL."
+  }
+}
+
+variable "keycloak_image" {
+  description = "Keycloak image used by a managed Keycloak deployment"
+  type        = string
+  default     = "quay.io/keycloak/keycloak:26.0.0"
+}
+
+variable "keycloak_postgres_image" {
+  description = "PostgreSQL image used by a managed Keycloak deployment"
+  type        = string
+  default     = "postgres:16"
+}
+
+variable "keycloak_host_port" {
+  description = "Host port mapped to the managed Keycloak NodePort"
+  type        = number
+  default     = 8180
+}
+
+variable "keycloak_node_port" {
+  description = "Kubernetes NodePort used by a managed Keycloak deployment"
+  type        = number
+  default     = 30180
+}
+
+variable "keycloak_db_name" {
+  description = "Database name used by managed Keycloak PostgreSQL"
+  type        = string
+  default     = "keycloak"
+}
+
+variable "keycloak_base_url" {
+  description = "Keycloak server base URL reachable from both the browser and connector pods when auth_provider is KEYCLOAK"
+  type        = string
+  default     = ""
+}
+
+variable "connector_a_ui_origin" {
+  description = "Absolute HTTP(S) origin used by Connector A's browser UI"
+  type        = string
+  default     = "http://localhost:4200"
+
+  validation {
+    condition = can(regex(
+      "(?i)^https?://(\\[[0-9A-Fa-f:.]+\\]|([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)*[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(:0*([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?$",
+      trimspace(var.connector_a_ui_origin)
+      )) && length(try(regex("(?i)^https?://([^/:]+)", trimspace(var.connector_a_ui_origin))[0], "")) <= 253 && (
+      try(regex("(?i)^https?://([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)(:|$)", trimspace(var.connector_a_ui_origin))[0], "") == "" ||
+      can(cidrhost(
+        "${try(regex("(?i)^https?://([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)(:|$)", trimspace(var.connector_a_ui_origin))[0], "")}/32",
+        0
+      ))
+      ) && (
+      try(regex("(?i)^https?://\\[([0-9A-Fa-f:.]+)\\]", trimspace(var.connector_a_ui_origin))[0], "") == "" ||
+      can(cidrhost(
+        "${try(regex("(?i)^https?://\\[([0-9A-Fa-f:.]+)\\]", trimspace(var.connector_a_ui_origin))[0], "")}/128",
+        0
+      ))
+    )
+    error_message = "connector_a_ui_origin must be an absolute HTTP(S) origin without a path, query, fragment, or user information."
+  }
+}
+
+variable "connector_b_ui_origin" {
+  description = "Absolute HTTP(S) origin used by Connector B's browser UI"
+  type        = string
+  default     = "http://localhost:4300"
+
+  validation {
+    condition = can(regex(
+      "(?i)^https?://(\\[[0-9A-Fa-f:.]+\\]|([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)*[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(:0*([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?$",
+      trimspace(var.connector_b_ui_origin)
+      )) && length(try(regex("(?i)^https?://([^/:]+)", trimspace(var.connector_b_ui_origin))[0], "")) <= 253 && (
+      try(regex("(?i)^https?://([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)(:|$)", trimspace(var.connector_b_ui_origin))[0], "") == "" ||
+      can(cidrhost(
+        "${try(regex("(?i)^https?://([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)(:|$)", trimspace(var.connector_b_ui_origin))[0], "")}/32",
+        0
+      ))
+      ) && (
+      try(regex("(?i)^https?://\\[([0-9A-Fa-f:.]+)\\]", trimspace(var.connector_b_ui_origin))[0], "") == "" ||
+      can(cidrhost(
+        "${try(regex("(?i)^https?://\\[([0-9A-Fa-f:.]+)\\]", trimspace(var.connector_b_ui_origin))[0], "")}/128",
+        0
+      ))
+    )
+    error_message = "connector_b_ui_origin must be an absolute HTTP(S) origin without a path, query, fragment, or user information."
+  }
+}
+
+variable "keycloak_admin_username" {
+  description = "Bootstrap administrator username for a managed Keycloak deployment"
+  type        = string
+  sensitive   = true
+  default     = ""
+
+  validation {
+    condition     = var.keycloak_mode != "MANAGED" || var.auth_provider != "KEYCLOAK" || length(trimspace(var.keycloak_admin_username)) > 0
+    error_message = "Set keycloak_admin_username when auth_provider is KEYCLOAK and keycloak_mode is MANAGED."
+  }
+}
+
+variable "keycloak_admin_password" {
+  description = "Bootstrap administrator password for a managed Keycloak deployment"
+  type        = string
+  sensitive   = true
+  default     = ""
+
+  validation {
+    condition     = var.keycloak_mode != "MANAGED" || var.auth_provider != "KEYCLOAK" || length(trimspace(var.keycloak_admin_password)) > 0
+    error_message = "Set keycloak_admin_password when auth_provider is KEYCLOAK and keycloak_mode is MANAGED."
+  }
+}
+
+variable "keycloak_db_username" {
+  description = "PostgreSQL username for a managed Keycloak deployment"
+  type        = string
+  sensitive   = true
+  default     = ""
+
+  validation {
+    condition     = var.keycloak_mode != "MANAGED" || var.auth_provider != "KEYCLOAK" || length(trimspace(var.keycloak_db_username)) > 0
+    error_message = "Set keycloak_db_username when auth_provider is KEYCLOAK and keycloak_mode is MANAGED."
+  }
+}
+
+variable "keycloak_db_password" {
+  description = "PostgreSQL password for a managed Keycloak deployment"
+  type        = string
+  sensitive   = true
+  default     = ""
+
+  validation {
+    condition     = var.keycloak_mode != "MANAGED" || var.auth_provider != "KEYCLOAK" || length(trimspace(var.keycloak_db_password)) > 0
+    error_message = "Set keycloak_db_password when auth_provider is KEYCLOAK and keycloak_mode is MANAGED."
+  }
+}
+
+variable "keycloak_backend_client_secret" {
+  description = "Platform dsp-connector-backend client secret for external Keycloak"
+  type        = string
+  sensitive   = true
+  default     = ""
+
+  validation {
+    condition     = var.keycloak_mode != "EXTERNAL" || var.auth_provider != "KEYCLOAK" || length(trimspace(var.keycloak_backend_client_secret)) > 0
+    error_message = "Set keycloak_backend_client_secret when auth_provider is KEYCLOAK and keycloak_mode is EXTERNAL."
+  }
+}
+
 variable "connector_a_base_url" {
   description = "Connector A callback address"
   type        = string
