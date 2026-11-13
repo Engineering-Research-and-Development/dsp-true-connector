@@ -2,7 +2,6 @@ package it.eng.connector.integration.negotiation;
 
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
@@ -13,7 +12,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Collections;
@@ -46,7 +45,7 @@ public class ContractNegotiationAcceptedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void handleAcceptedEventTest() throws Exception {
 
         Permission permission = Permission.Builder.newInstance()
@@ -143,7 +142,7 @@ public class ContractNegotiationAcceptedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void handleAcceptedEventTest_negotiation_not_found() throws Exception {
 
         ContractNegotiationEventMessage contractNegotiationEventMessage = ContractNegotiationEventMessage.Builder.newInstance()
@@ -166,7 +165,7 @@ public class ContractNegotiationAcceptedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void handleAcceptedEventTest_invalid_state() throws Exception {
         ContractNegotiation contractNegotiationRequested = ContractNegotiation.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -206,7 +205,7 @@ public class ContractNegotiationAcceptedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void handleAcceptedEventTest_provider_pid_mismatch() throws Exception {
         ContractNegotiation contractNegotiationOffered = ContractNegotiation.Builder.newInstance()
                 .consumerPid(createNewId())

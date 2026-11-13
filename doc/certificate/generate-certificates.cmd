@@ -38,6 +38,8 @@ set SAN_CONNECTOR_B=DNS:localhost,DNS:connector-b,IP:127.0.0.1
 set SAN_S3_STORAGE=DNS:localhost,DNS:s3storage,IP:127.0.0.1
 set SAN_UI_A=DNS:localhost,DNS:ui-a,IP:127.0.0.1
 set SAN_UI_B=DNS:localhost,DNS:ui-b,IP:127.0.0.1
+REM Keycloak: must contain the host of application.keycloak.base-url (and KC_HOSTNAME)
+set SAN_KEYCLOAK=DNS:localhost,DNS:keycloak,IP:127.0.0.1
 
 REM Legacy: All SANs combined (for backward compatibility or development)
 REM set SAN_LIST=DNS:localhost,DNS:connector-a,DNS:connector-b,DNS:s3storage,DNS:mongodb-a,DNS:mongodb-b,DNS:ui-a,DNS:ui-b,IP:127.0.0.1
@@ -62,7 +64,7 @@ echo.
 echo This script will generate:
 echo   1. Root CA (self-signed)
 echo   2. Intermediate CA (signed by Root CA)
-echo   3. Server certificates for connector-a and connector-b
+echo   3. Server certificates for connector-a, connector-b and keycloak
 echo   4. Truststore with Intermediate CA certificate
 echo.
 echo Configuration:
@@ -71,6 +73,7 @@ echo   - connector-b SANs: %SAN_CONNECTOR_B%
 echo   - S3 Storage SANs: %SAN_S3_STORAGE%
 echo   - ui-a SANs: %SAN_UI_A%
 echo   - ui-b SANs: %SAN_UI_B%
+echo   - Keycloak SANs: %SAN_KEYCLOAK%
 echo   - Key Algorithm: %KEY_ALG% %KEY_SIZE% bits
 echo   - Root CA Validity: %ROOT_VALIDITY% days
 echo   - Intermediate CA Validity: %INTERMEDIATE_VALIDITY% days
@@ -87,6 +90,7 @@ if exist %ROOT_KEYSTORE% del %ROOT_KEYSTORE%
 if exist %INTERMEDIATE_KEYSTORE% del %INTERMEDIATE_KEYSTORE%
 if exist connector-a.p12 del connector-a.p12
 if exist connector-b.p12 del connector-b.p12
+if exist keycloak.p12 del keycloak.p12
 if exist s3storage-temp.p12 del s3storage-temp.p12
 if exist ui-a-temp.p12 del ui-a-temp.p12
 if exist ui-b-temp.p12 del ui-b-temp.p12
@@ -272,6 +276,7 @@ echo.
 REM Function to generate server certificate
 call :GenerateServerCert connector-a "CN=connector-a, OU=Connectors, O=DSP True Connector, L=Belgrade, ST=Serbia, C=RS" "%SAN_CONNECTOR_A%"
 call :GenerateServerCert connector-b "CN=connector-b, OU=Connectors, O=DSP True Connector, L=Belgrade, ST=Serbia, C=RS" "%SAN_CONNECTOR_B%"
+call :GenerateServerCert keycloak "CN=keycloak, OU=Identity, O=DSP True Connector, L=Belgrade, ST=Serbia, C=RS" "%SAN_KEYCLOAK%"
 
 echo.
 echo All server certificates generated successfully!
@@ -830,6 +835,10 @@ echo Connector-B Keystore:
 keytool -list -v -keystore connector-b.p12 -storepass %SERVER_PASSWORD% -storetype PKCS12 | findstr "Alias\|Owner\|Issuer\|Valid\|DNS"
 echo.
 
+echo Keycloak Keystore:
+keytool -list -v -keystore keycloak.p12 -storepass %SERVER_PASSWORD% -storetype PKCS12 | findstr "Alias\|Owner\|Issuer\|Valid\|DNS"
+echo.
+
 echo S3 Storage Certificate Files:
 echo   - private.key: Private key in PEM format
 echo   - public.crt: Certificate in PEM format
@@ -872,6 +881,7 @@ REM Keep ui-a-cert.crt and ui-a-cert.key for UI-A
 REM Keep ui-b-cert.crt and ui-b-cert.key for UI-B
 if exist connector-a.crt del connector-a.crt
 if exist connector-b.crt del connector-b.crt
+if exist keycloak.crt del keycloak.crt
 del *.cer
 
 echo Done.
@@ -902,12 +912,13 @@ echo   13. ui-b-cert.crt - UI-B certificate in PEM format (for nginx, signed by 
 echo   14. ui-b-fullchain.crt - UI-B fullchain certificate in PEM format (server cert + intermediate CA)
 echo   15. ui-b-temp.p12 - UI-B certificate in PKCS12 format (optional, can be deleted)
 echo   16. %TRUSTSTORE% - Truststore with Intermediate CA (use for TLS validation)
+echo   17. keycloak.p12 - Server certificate for Keycloak (HTTPS)
 echo.
 echo Certificate Chain:
 echo   Root CA --signs--^> Intermediate CA --signs--^> Server Certificates (including S3 Storage)
 echo.
 echo For TLS handshake:
-echo   - Servers present: connector-a.p12, connector-b.p12, or S3 Storage PEM files
+echo   - Servers present: connector-a.p12, connector-b.p12, keycloak.p12, or S3 Storage PEM files
 echo   - Clients trust: %TRUSTSTORE% (contains Intermediate CA)
 echo.
 echo For S3 Storage Docker setup:
@@ -930,9 +941,19 @@ echo   Configure in nginx.conf:
 echo     ssl_certificate /etc/nginx/ssl/ui-a-cert.crt;
 echo     ssl_certificate_key /etc/nginx/ssl/ui-a-cert.key;
 echo.
+echo For Keycloak (HTTPS) Docker setup:
+echo   Mount keycloak.p12 and set:
+echo     - KC_HTTPS_KEY_STORE_FILE=/opt/keycloak/conf/keycloak.p12
+echo     - KC_HTTPS_KEY_STORE_PASSWORD=%SERVER_PASSWORD%
+echo     - KC_HTTPS_KEY_STORE_TYPE=PKCS12
+echo     - KC_HOSTNAME=https://^<host^>:^<port^> (equal to application.keycloak.base-url; host must be in %SAN_KEYCLOAK%)
+echo   The connector trusts it through %TRUSTSTORE% when server.ssl.enabled=true.
+echo.
 echo Update your application.properties:
 echo   spring.ssl.bundle.jks.connector.keystore.location=classpath:connector-a.p12 (or connector-b.p12)
 echo   spring.ssl.bundle.jks.connector.keystore.password=%SERVER_PASSWORD%
+echo   spring.ssl.bundle.jks.connector.key.alias=connector-a (or connector-b)
+echo   spring.ssl.bundle.jks.connector.key.password=%SERVER_PASSWORD%
 echo   spring.ssl.bundle.jks.connector.truststore.location=classpath:%TRUSTSTORE%
 echo   spring.ssl.bundle.jks.connector.truststore.password=%TRUSTSTORE_PASSWORD%
 echo.

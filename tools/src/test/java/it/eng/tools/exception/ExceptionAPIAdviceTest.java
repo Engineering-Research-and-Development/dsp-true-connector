@@ -14,7 +14,6 @@ import org.springframework.web.context.request.WebRequest;
 import java.lang.reflect.Field;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class ExceptionAPIAdviceTest {
@@ -84,4 +83,27 @@ public class ExceptionAPIAdviceTest {
         timestampField.setAccessible(true);
         assertNotNull(timestampField.get(response));
     }
+
+    @Test
+    @DisplayName("Handle InvalidTenantRealmException maps to 400 with the rule and value")
+    void handleInvalidTenantRealmException_returnsBadRequest() {
+        InvalidTenantRealmException exception = new InvalidTenantRealmException("Tenant realm 'a/b' is invalid");
+
+        ResponseEntity<Object> responseEntity = exceptionAPIAdvice.handleInvalidTenantRealmException(exception, webRequest);
+
+        assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
+        assertTrue(responseEntity.getBody() instanceof GenericApiResponse);
+    }
+
+    @Test
+    @DisplayName("Handle DuplicateTenantRealmException maps to 409")
+    void handleDuplicateTenantRealmException_returnsConflict() {
+        DuplicateTenantRealmException exception = new DuplicateTenantRealmException("Tenant realm 'x' is already assigned");
+
+        ResponseEntity<Object> responseEntity = exceptionAPIAdvice.handleDuplicateTenantRealmException(exception, webRequest);
+
+        assertEquals(HttpStatus.CONFLICT, responseEntity.getStatusCode());
+        assertTrue(responseEntity.getBody() instanceof GenericApiResponse);
+    }
+
 }

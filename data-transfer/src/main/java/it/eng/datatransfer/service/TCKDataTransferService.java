@@ -24,6 +24,7 @@ import okhttp3.MediaType;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
@@ -144,6 +145,10 @@ public class TCKDataTransferService extends AbstractDataTransferService {
         } else {
             log.info("Error response received!");
             log.error("Transfer process from response not valid");
+            if (StringUtils.isBlank(response.getData())) {
+                // No peer body, e.g. the request was not sent because no access token was available.
+                throw new DataTransferAPIException("Transfer request failed: " + response.getMessage());
+            }
             JsonNode jsonNode;
             try {
                 jsonNode = mapper.readTree(response.getData());

@@ -33,7 +33,7 @@ class UserServiceTest {
 
 	private static final String USER_ID = "1234";
 	private static final String USER = "user@test.com";
-	private static final String TENANT_ID = "engineering";
+	private static final String TENANT_ID = "engineering-a";
 
 	@Mock
 	private UserRepository userRepository;
@@ -111,7 +111,7 @@ class UserServiceTest {
 		when(passwordValidator.isValid(request.getPassword())).thenReturn(passwordValidationResult);
 		when(passwordValidationResult.isValid()).thenReturn(true);
 		when(tenantService.findEnabledTenantById(TENANT_ID)).thenReturn(
-				Tenant.Builder.newInstance().id(TENANT_ID).name("Engineering")
+				Tenant.Builder.newInstance().id(TENANT_ID).name("EngineeringA")
 						.participantId("urn:connector:engineering")
 						.enabled(true).build());
 

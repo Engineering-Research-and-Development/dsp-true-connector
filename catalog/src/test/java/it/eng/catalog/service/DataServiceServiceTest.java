@@ -26,7 +26,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class DataServiceServiceTest {
 
-    private static final String TENANT_ID = "engineering";
+    private static final String TENANT_ID = "engineering-a";
 
     @Mock
     private DataServiceRepository repository;

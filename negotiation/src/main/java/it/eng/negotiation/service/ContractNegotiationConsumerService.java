@@ -72,7 +72,10 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
      */
     @Override
     public ContractNegotiation handleContractOfferMessage(ContractOfferMessage contractOfferMessage) {
-        contractNegotiationRepository.findByProviderPid(contractOfferMessage.getProviderPid())
+        String tenantId = TenantContextHolder.getTenantId();
+        (tenantId != null
+                ? contractNegotiationRepository.findByProviderPidAndTenantId(contractOfferMessage.getProviderPid(), tenantId)
+                : contractNegotiationRepository.findByProviderPid(contractOfferMessage.getProviderPid()))
                 .ifPresent(existingContractNegotiation -> {
                     throw new ContractNegotiationExistsException("Contract negotiation with providerPid " + contractOfferMessage.getProviderPid() +
                             " already exists");
@@ -99,7 +102,6 @@ public abstract class ContractNegotiationConsumerService extends BaseProtocolSer
                 .build();
 
         offerRepository.save(offerToBeInserted);
-        String tenantId = TenantContextHolder.getTenantId();
         if (tenantId != null) {
             contractNegotiation.injectTenantId(tenantId);
         }

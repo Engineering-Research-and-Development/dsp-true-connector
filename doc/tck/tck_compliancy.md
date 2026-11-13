@@ -29,6 +29,20 @@ Tested against TCK version v1.0.0-RC5
  java -jar dsp/dsp-tck/build/libs/dsp-tck-runtime.jar -config config/tck/sample.tck.properties
 ```
 
+#### Authentication
+
+The protocol routes of the `INTERNAL` mode need `Authorization: Bearer <protocol token>`. The token is an
+HS256 JWT signed with `application.security.jwt.secret` with claims `sub` `connector`,
+`realm_access.roles` `["CONNECTOR"]`, `iat`, `exp` and `jti` (see
+[security.md](../security.md#connector-to-connector-credentials-m2m)). `TCKCompliance` takes it from the
+`ConnectorCredentialProvider` bean (`InternalProtocolTokenIssuer`) and sends `Bearer <minted token>`. For a
+manual run, replace the `<protocol-token>` placeholder in [sample.tck.properties](sample.tck.properties)
+with a minted token; it expires after `application.security.jwt.access-expiration-ms`.
+
+Earlier runs sent a `Basic` header for the formerly seeded connector user. The `INTERNAL` protocol chain
+does not accept Basic credentials, so that run failed 63 cases, all with 401. That header was the cause of
+the baseline. The user is no longer seeded.
+
 Console output of [tck run result](tck_compliancy_result.txt)
 
 ## Result
@@ -46,3 +60,15 @@ Console output of [tck run result](tck_compliancy_result.txt)
 
 [2025-11-05T13:37:16.806710567] 🎉😃🚀All tests passed
 ```
+
+### Run with the minted protocol token
+
+With the Bearer header, 65 cases run: 52 pass and 13 fail, with no 401 left. The table above is the result
+of an earlier release and is not current for the `INTERNAL` mode run. The 13 failures were hidden
+behind the 401s. They are all negotiation cases and all end in "Timeout waiting for state":
+`CN_C:01-02`, `CN_C:02-02`, `CN_C:02-03`, `CN:01-01`, `CN:01-02`, `CN:01-03`, `CN:02-01`, `CN:02-05`,
+`CN:02-06`, `CN:02-07`, `CN:03-02`, `CN:03-03`, `CN:03-04`.
+
+The cause is not authentication. The connector's outbound callbacks to the TCK mock consumer fail with
+"unexpected end of stream" or a timeout, so the negotiation never reaches the expected state. This is a
+known, open follow-up.

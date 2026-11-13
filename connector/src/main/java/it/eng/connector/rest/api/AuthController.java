@@ -6,7 +6,7 @@ import it.eng.connector.model.LoginResponse;
 import it.eng.connector.model.LogoutRequest;
 import it.eng.connector.model.RefreshRequest;
 import it.eng.connector.service.AuthService;
-import it.eng.tools.auth.condition.InternalOrKeycloakAuthenticationModeCondition;
+import it.eng.tools.auth.condition.InternalAuthenticationModeCondition;
 import it.eng.tools.controller.ApiEndpoints;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -31,9 +31,10 @@ import java.util.stream.Collectors;
  * Keycloak token response do not need provider-specific parsing.
  *
  * <p>Active only when {@code application.auth.provider=INTERNAL}, mirroring the sole
- * {@link AuthService} implementation ({@code InternalAuthServiceImpl}) currently registered under
- * that same condition; a future Keycloak-backed {@code AuthService} (AUTH3) is expected to widen
- * this condition when it is implemented.
+ * {@link AuthService} implementation ({@code InternalAuthServiceImpl}). In {@code KEYCLOAK} mode the
+ * UI signs in to Keycloak directly (authorization code + PKCE) and logs out through Keycloak, so the
+ * connector exposes no login, refresh or logout route and never handles user passwords or Keycloak
+ * refresh tokens.
  *
  * <p>Request DTOs are validated manually (via an injected {@link Validator}) rather than with
  * {@code @Valid}, so that validation failures raise {@link AuthValidationException} instead of
@@ -48,7 +49,7 @@ import java.util.stream.Collectors;
         produces = MediaType.APPLICATION_JSON_VALUE,
         path = ApiEndpoints.AUTH_V1)
 @Slf4j
-@Conditional(InternalOrKeycloakAuthenticationModeCondition.class)
+@Conditional(InternalAuthenticationModeCondition.class)
 public class AuthController {
 
     private final AuthService authService;

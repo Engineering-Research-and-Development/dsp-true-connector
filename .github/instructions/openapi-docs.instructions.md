@@ -47,8 +47,7 @@ including JSON-LD examples, `ROLE_CONNECTOR` requirements, and protocol error re
 **Brief documentation** provides a tag description and concise operation summaries for:
 `OfferAPIController`, `ArtifactAPIController`, `ProxyAPIController`, `RestArtifactController`,
 `FTPClientAPIController`, `AuditEventController`, `ApplicationPropertiesAPIController`,
-`DashboardMetricsController`, `DSpaceVersionController`, `AuthController`, and
-`KeycloakUserApiController`.
+`DashboardMetricsController`, `DSpaceVersionController`, and `AuthController`.
 
 ## Request and response examples
 

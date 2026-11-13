@@ -38,7 +38,7 @@ public class CatalogMockObjectUtil {
     public static final String FILE_ID = "some_file";
     public static final Instant NOW = Instant.now();
 
-    public static final String TENANT_ID = "engineering";
+    public static final String TENANT_ID = "engineering-a";
 
 
     public static final Multilanguage MULTILANGUAGE =

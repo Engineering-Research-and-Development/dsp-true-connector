@@ -18,21 +18,21 @@ class TenantContextHolderTest {
     @Test
     @DisplayName("Set and get tenant ID")
     void setAndGetTenantId() {
-        TenantContextHolder.setTenantId("engineering");
-        assertEquals("engineering", TenantContextHolder.getTenantId());
+        TenantContextHolder.setTenantId("engineering-a");
+        assertEquals("engineering-a", TenantContextHolder.getTenantId());
     }
 
     @Test
     @DisplayName("setTenantId also populates MDC")
     void setTenantId_populatesMdc() {
-        TenantContextHolder.setTenantId("engineering");
-        assertEquals("engineering", MDC.get(TenantContextHolder.MDC_TENANT_KEY));
+        TenantContextHolder.setTenantId("engineering-a");
+        assertEquals("engineering-a", MDC.get(TenantContextHolder.MDC_TENANT_KEY));
     }
 
     @Test
     @DisplayName("Clear tenant ID removes value from ThreadLocal and MDC")
     void clearTenantId() {
-        TenantContextHolder.setTenantId("engineering");
+        TenantContextHolder.setTenantId("engineering-a");
         TenantContextHolder.clear();
         assertNull(TenantContextHolder.getTenantId());
         assertNull(MDC.get(TenantContextHolder.MDC_TENANT_KEY));
@@ -41,7 +41,7 @@ class TenantContextHolderTest {
     @Test
     @DisplayName("setTenantId with null removes MDC entry")
     void setTenantId_null_removesMdcEntry() {
-        TenantContextHolder.setTenantId("engineering");
+        TenantContextHolder.setTenantId("engineering-a");
         TenantContextHolder.setTenantId(null);
         assertNull(MDC.get(TenantContextHolder.MDC_TENANT_KEY));
     }

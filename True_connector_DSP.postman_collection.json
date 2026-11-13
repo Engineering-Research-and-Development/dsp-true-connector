@@ -5,19 +5,19 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "21815221",
     "_collection_link": "https://true-connector.postman.co/workspace/My-Workspace~6be747d4-8cb4-4754-802a-4e3fb2f11910/collection/21815221-7c503262-f8f4-4b17-b1d7-51701031bc1f?action=share&source=collection_link&creator=21815221",
-    "description": "TRUE Connector DSP Postman Collection\n\nDefault tenant: engineering\nConsumer: http://localhost:8080\nProvider: http://localhost:8090\n\nUsers (BASIC auth mode):\n  superadmin@mail.com / password  - ROLE_SUPER_ADMIN (manages tenants)\n  admin@mail.com / password       - ROLE_ADMIN, tenantId=engineering\n  connector@mail.com / password   - ROLE_CONNECTOR, tenantId=engineering\n\nProtocol endpoints include tenantId path segment: /{tenantId}/catalog, /{tenantId}/negotiations, /{tenantId}/transfers\nUse TENANT_ID env variable for the active tenant."
+    "description": "TRUE Connector DSP Postman Collection\n\nDefault tenant: engineering-a\nConsumer: http://localhost:8080\nProvider: http://localhost:8090\n\nUsers (BASIC auth mode):\n  superadmin@mail.com / password  - ROLE_SUPER_ADMIN (manages tenants)\n  admin@mail.com / password       - ROLE_ADMIN, tenantId=engineering-a\n\nProtocol endpoints include tenantId path segment: /{tenantId}/catalog, /{tenantId}/negotiations, /{tenantId}/transfers\nUse TENANT_ID env variable for the active tenant.\n\nProtocol folder (INTERNAL mode): a pre-request script mints a short-lived HS256 token (sub=connector, ROLE_CONNECTOR) signed with the PROTOCOL_JWT_SECRET collection variable, which must match application.security.jwt.secret of the target connector. No connector user login is needed."
   },
   "item": [
     {
-      "description": "Keycloak token management requests matching the realm configuration.\r\n\r\nPassword Grant Requests (for users):\r\n- Admin User (admin@test.com)\r\n- Normal User (user@test.com)\r\n- Connector User (connector@test.com)\r\n\r\nClient Credentials Requests (for services):\r\n- Provider Backend Service\r\n- Consumer Backend Service\r\n\r\nAll requests automatically store tokens in both collection and environment variables.",
+      "description": "Keycloak token requests, one per realm of the seed setup (ci/docker/keycloak_resources). Each request uses its own realm token URL and stores the token in KEYCLOAK_ACCESS_TOKEN.\r\n\r\nRequests:\r\n- Password - Admin: realm tenant-EngineeringA (KEYCLOAK_TOKEN_URL_TENANT_A), public client keycloak-api, user admin. Token carries tenant_id=engineering-a.\r\n- Password - Admin B: realm tenant-EngineeringB (KEYCLOAK_TOKEN_URL_TENANT_B), public client keycloak-api, user adminB. Token carries tenant_id=engineering-b.\r\n- Password - SuperAdmin: realm connector-admin (KEYCLOAK_TOKEN_URL_CONNECTOR_ADMIN), public client keycloak-api, user superadmin@mail.com. Token has no tenant_id.\r\n- Client Credentials - Connector: realm platform (KEYCLOAK_TOKEN_URL_PLATFORM), confidential client dsp-connector-backend (the one client used by every connector). Token has no tenant_id.\r\n\r\nWhich token goes where:\r\n- The platform token is for protocol routes only (/{tenantId}/catalog, /negotiations, /transfers). On /api/** it gets 403.\r\n- Tenant admin and super-admin tokens are for /api/** only. On protocol routes they get 401.\r\n\r\nAll requests store the token in the KEYCLOAK_ACCESS_TOKEN environment variable.",
       "name": "Keycloak Authentication",
       "item": [
         {
           "request": {
             "url": {
-              "raw": "{{KEYCLOAK_TOKEN_URL}}",
+              "raw": "{{KEYCLOAK_TOKEN_URL_TENANT_A}}",
               "host": [
-                "{{KEYCLOAK_TOKEN_URL}}"
+                "{{KEYCLOAK_TOKEN_URL_TENANT_A}}"
               ],
               "path": []
             },
@@ -27,7 +27,7 @@
                 {
                   "key": "client_id",
                   "type": "text",
-                  "value": "{{KEYCLOAK_CLIENT_ID_UI}}"
+                  "value": "{{KEYCLOAK_CLIENT_ID_API}}"
                 },
                 {
                   "key": "username",
@@ -66,9 +66,73 @@
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
                   "pm.environment.set(\"KEYCLOAK_ACCESS_TOKEN\", jsonData.access_token);",
-                  "pm.test(\"JWT contains tenantId claim = 'engineering'\", function () {",
+                  "pm.test(\"JWT contains tenant_id claim = 'engineering-a'\", function () {",
                   "    const payload = JSON.parse(atob(jsonData.access_token.split('.')[1]));",
-                  "    pm.expect(payload.tenantId).to.eql(\"engineering\");",
+                  "    pm.expect(payload.tenant_id).to.eql(\"engineering-a\");",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "request": {
+            "url": {
+              "raw": "{{KEYCLOAK_TOKEN_URL_TENANT_B}}",
+              "host": [
+                "{{KEYCLOAK_TOKEN_URL_TENANT_B}}"
+              ],
+              "path": []
+            },
+            "method": "POST",
+            "body": {
+              "urlencoded": [
+                {
+                  "key": "client_id",
+                  "type": "text",
+                  "value": "{{KEYCLOAK_CLIENT_ID_API}}"
+                },
+                {
+                  "key": "username",
+                  "type": "text",
+                  "value": "{{KEYCLOAK_USERNAME_ADMIN_B}}"
+                },
+                {
+                  "key": "password",
+                  "type": "text",
+                  "value": "{{KEYCLOAK_PASSWORD_ADMIN_B}}"
+                },
+                {
+                  "key": "grant_type",
+                  "type": "text",
+                  "value": "password"
+                }
+              ],
+              "mode": "urlencoded"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "type": "text",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ]
+          },
+          "name": "Get Token (Password - Admin B)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const jsonData = pm.response.json();",
+                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
+                  "pm.environment.set(\"KEYCLOAK_ACCESS_TOKEN\", jsonData.access_token);",
+                  "pm.test(\"JWT contains tenant_id claim = 'engineering-b'\", function () {",
+                  "    const payload = JSON.parse(atob(jsonData.access_token.split('.')[1]));",
+                  "    pm.expect(payload.tenant_id).to.eql(\"engineering-b\");",
                   "});"
                 ]
               }
@@ -93,7 +157,7 @@
                 {
                   "key": "client_id",
                   "type": "text",
-                  "value": "{{KEYCLOAK_CLIENT_ID_UI}}"
+                  "value": "{{KEYCLOAK_CLIENT_ID_API}}"
                 },
                 {
                   "key": "username",
@@ -113,9 +177,9 @@
               ]
             },
             "url": {
-              "raw": "{{KEYCLOAK_TOKEN_URL}}",
+              "raw": "{{KEYCLOAK_TOKEN_URL_CONNECTOR_ADMIN}}",
               "host": [
-                "{{KEYCLOAK_TOKEN_URL}}"
+                "{{KEYCLOAK_TOKEN_URL_CONNECTOR_ADMIN}}"
               ],
               "path": []
             }
@@ -129,9 +193,11 @@
                   "const jsonData = pm.response.json();",
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
-                  "pm.test(\"JWT does not contain tenantId claim\", function () {",
+                  "pm.environment.set(\"KEYCLOAK_ACCESS_TOKEN\", jsonData.access_token);",
+                  "pm.environment.set(\"KEYCLOAK_SUPER_ADMIN_TOKEN\", jsonData.access_token);",
+                  "pm.test(\"JWT does not contain tenant_id claim\", function () {",
                   "    const payload = JSON.parse(atob(jsonData.access_token.split('.')[1]));",
-                  "    pm.expect(payload.tenantId).to.be.undefined;",
+                  "    pm.expect(payload.tenant_id).to.be.undefined;",
                   "});"
                 ]
               }
@@ -142,9 +208,9 @@
         {
           "request": {
             "url": {
-              "raw": "{{KEYCLOAK_TOKEN_URL}}",
+              "raw": "{{KEYCLOAK_TOKEN_URL_PLATFORM}}",
               "host": [
-                "{{KEYCLOAK_TOKEN_URL}}"
+                "{{KEYCLOAK_TOKEN_URL_PLATFORM}}"
               ],
               "path": []
             },
@@ -154,138 +220,12 @@
                 {
                   "key": "client_id",
                   "type": "text",
-                  "value": "{{KEYCLOAK_CLIENT_ID_UI}}"
-                },
-                {
-                  "key": "username",
-                  "type": "text",
-                  "value": "{{KEYCLOAK_USERNAME_USER}}"
-                },
-                {
-                  "key": "password",
-                  "type": "text",
-                  "value": "{{KEYCLOAK_PASSWORD_USER}}"
-                },
-                {
-                  "key": "grant_type",
-                  "type": "text",
-                  "value": "password"
-                }
-              ],
-              "mode": "urlencoded"
-            },
-            "header": [
-              {
-                "key": "Content-Type",
-                "type": "text",
-                "value": "application/x-www-form-urlencoded"
-              }
-            ]
-          },
-          "name": "Get Token (Password - User)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
-                  "pm.test(\"JWT contains tenantId claim = 'engineering'\", function () {",
-                  "    const payload = JSON.parse(atob(jsonData.access_token.split('.')[1]));",
-                  "    pm.expect(payload.tenantId).to.eql(\"engineering\");",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "response": []
-        },
-        {
-          "request": {
-            "url": {
-              "raw": "{{KEYCLOAK_TOKEN_URL}}",
-              "host": [
-                "{{KEYCLOAK_TOKEN_URL}}"
-              ],
-              "path": []
-            },
-            "method": "POST",
-            "body": {
-              "urlencoded": [
-                {
-                  "key": "client_id",
-                  "type": "text",
-                  "value": "{{KEYCLOAK_CLIENT_ID_UI}}"
-                },
-                {
-                  "key": "username",
-                  "type": "text",
-                  "value": "{{KEYCLOAK_USERNAME_CONNECTOR}}"
-                },
-                {
-                  "key": "password",
-                  "type": "text",
-                  "value": "{{KEYCLOAK_PASSWORD_CONNECTOR}}"
-                },
-                {
-                  "key": "grant_type",
-                  "type": "text",
-                  "value": "password"
-                }
-              ],
-              "mode": "urlencoded"
-            },
-            "header": [
-              {
-                "key": "Content-Type",
-                "type": "text",
-                "value": "application/x-www-form-urlencoded"
-              }
-            ]
-          },
-          "name": "Get Token (Password - Connector)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
-                  "pm.test(\"JWT contains tenantId claim = 'engineering'\", function () {",
-                  "    const payload = JSON.parse(atob(jsonData.access_token.split('.')[1]));",
-                  "    pm.expect(payload.tenantId).to.eql(\"engineering\");",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "response": []
-        },
-        {
-          "request": {
-            "url": {
-              "raw": "{{KEYCLOAK_TOKEN_URL}}",
-              "host": [
-                "{{KEYCLOAK_TOKEN_URL}}"
-              ],
-              "path": []
-            },
-            "method": "POST",
-            "body": {
-              "urlencoded": [
-                {
-                  "key": "client_id",
-                  "type": "text",
-                  "value": "{{KEYCLOAK_CLIENT_ID_PROVIDER_BACKEND}}"
+                  "value": "{{KEYCLOAK_CLIENT_ID_BACKEND}}"
                 },
                 {
                   "key": "client_secret",
                   "type": "text",
-                  "value": "{{KEYCLOAK_CLIENT_SECRET_PROVIDER}}"
+                  "value": "{{KEYCLOAK_CLIENT_SECRET_BACKEND}}"
                 },
                 {
                   "key": "grant_type",
@@ -303,7 +243,7 @@
               }
             ]
           },
-          "name": "Get Token (Client Credentials - Provider)",
+          "name": "Get Token (Client Credentials - Connector)",
           "event": [
             {
               "listen": "test",
@@ -313,67 +253,10 @@
                   "const jsonData = pm.response.json();",
                   "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
                   "pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
-                  "pm.test(\"JWT does not contain tenantId claim\", function () {",
+                  "pm.environment.set(\"KEYCLOAK_ACCESS_TOKEN\", jsonData.access_token);",
+                  "pm.test(\"JWT does not contain tenant_id claim\", function () {",
                   "    const payload = JSON.parse(atob(jsonData.access_token.split('.')[1]));",
-                  "    pm.expect(payload.tenantId).to.be.undefined;",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "response": []
-        },
-        {
-          "request": {
-            "url": {
-              "raw": "{{KEYCLOAK_TOKEN_URL}}",
-              "host": [
-                "{{KEYCLOAK_TOKEN_URL}}"
-              ],
-              "path": []
-            },
-            "method": "POST",
-            "body": {
-              "urlencoded": [
-                {
-                  "key": "client_id",
-                  "type": "text",
-                  "value": "{{KEYCLOAK_CLIENT_ID_CONSUMER_BACKEND}}"
-                },
-                {
-                  "key": "client_secret",
-                  "type": "text",
-                  "value": "{{KEYCLOAK_CLIENT_SECRET_CONSUMER}}"
-                },
-                {
-                  "key": "grant_type",
-                  "type": "text",
-                  "value": "client_credentials"
-                }
-              ],
-              "mode": "urlencoded"
-            },
-            "header": [
-              {
-                "key": "Content-Type",
-                "type": "text",
-                "value": "application/x-www-form-urlencoded"
-              }
-            ]
-          },
-          "name": "Get Token (Client Credentials - Consumer)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const jsonData = pm.response.json();",
-                  "pm.test(\"Status 200 OK\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Response has access_token\", () => pm.expect(jsonData.access_token).to.be.a('string'));",
-                  "pm.test(\"JWT does not contain tenantId claim\", function () {",
-                  "    const payload = JSON.parse(atob(jsonData.access_token.split('.')[1]));",
-                  "    pm.expect(payload.tenantId).to.be.undefined;",
+                  "    pm.expect(payload.tenant_id).to.be.undefined;",
                   "});"
                 ]
               }
@@ -385,7 +268,7 @@
     },
     {
       "name": "Internal Authentication",
-      "description": "Unified backend-mediated authentication contract, active in both INTERNAL and KEYCLOAK modes (see doc/security.md). Clients call the connector's own /api/v1/auth/* endpoints instead of talking to an identity provider directly; the connector proxies to Keycloak or issues a self-signed JWT depending on application.auth.provider. Response body is always a flat, snake_case, token-only shape: access_token, refresh_token, token_type, expires_in.",
+      "description": "Login contract for INTERNAL mode only (see doc/security.md). The connector validates credentials against MongoDB and issues a self-signed JWT. In KEYCLOAK mode these /api/v1/auth/* routes do not exist: get a token from Keycloak (see the Keycloak Authentication folder). Response body is a flat, snake_case, token-only shape: access_token, refresh_token, token_type, expires_in. The Login request signs in as the tenant admin; the connector-to-connector protocol token is no longer obtained by login (see the Protocol folder).",
       "item": [
         {
           "name": "Login",
@@ -399,7 +282,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"connector@mail.com\",\n  \"password\": \"password\"\n}",
+              "raw": "{\n  \"email\": \"admin@mail.com\",\n  \"password\": \"password\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -418,7 +301,7 @@
                 "login"
               ]
             },
-            "description": "Authenticates with email/password and returns a new access/refresh token pair. Same request shape for both INTERNAL and KEYCLOAK modes."
+            "description": "Authenticates with email/password and returns a new access/refresh token pair. INTERNAL mode only."
           },
           "event": [
             {
@@ -594,7 +477,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{CONSUMER}}/api/v1/tenants/engineering",
+                  "raw": "{{CONSUMER}}/api/v1/tenants/engineering-a",
                   "host": [
                     "{{CONSUMER}}"
                   ],
@@ -602,10 +485,10 @@
                     "api",
                     "v1",
                     "tenants",
-                    "engineering"
+                    "engineering-a"
                   ]
                 },
-                "description": "Get the default 'engineering' tenant."
+                "description": "Get the default 'engineering-a' tenant."
               },
               "response": []
             },
@@ -639,7 +522,7 @@
                     }
                   }
                 },
-                "description": "Create a new tenant. Requires ROLE_SUPER_ADMIN."
+                "description": "Create a new tenant. Requires ROLE_SUPER_ADMIN. The optional realm field (Keycloak mode) must match ^[A-Za-z0-9._-]+$ (max 255 characters) and must not be ., .., master, platform or connector-admin: otherwise 400. A realm already used by another tenant, enabled or disabled, returns 409."
               },
               "response": []
             },
@@ -674,7 +557,7 @@
                     }
                   }
                 },
-                "description": "Update an existing tenant."
+                "description": "Update an existing tenant. The optional realm field (Keycloak mode) must match ^[A-Za-z0-9._-]+$ (max 255 characters) and must not be ., .., master, platform or connector-admin: otherwise 400. A realm already used by another tenant, enabled or disabled, returns 409. The tenant may keep its own current realm."
               },
               "response": []
             },
@@ -1010,7 +893,7 @@
                     }
                   }
                 },
-                "description": "Change a user's password."
+                "description": "Change a user's password. INTERNAL and DISABLED modes only; in KEYCLOAK mode users change their password in Keycloak."
               },
               "response": []
             }
@@ -3311,7 +3194,7 @@
           }
         }
       ],
-      "description": "Management API (Basic Auth).\n\nDefault tenant: engineering\nAdmin user: admin@mail.com / password (ROLE_ADMIN, tenantId=engineering)\nSuper-admin: superadmin@mail.com / password (ROLE_SUPER_ADMIN, no tenant)\nConnector user: connector@mail.com / password (ROLE_CONNECTOR, tenantId=engineering)\n\nFor tenant management (Tenant folder), requests use superadmin@mail.com."
+      "description": "Management API (Basic Auth).\n\nDefault tenant: engineering-a\nAdmin user: admin@mail.com / password (ROLE_ADMIN, tenantId=engineering-a)\nSuper-admin: superadmin@mail.com / password (ROLE_SUPER_ADMIN, no tenant)\n\nFor tenant management (Tenant folder), requests use superadmin@mail.com."
     },
     {
       "name": "DataTransfer",
@@ -3430,16 +3313,11 @@
             }
           ],
           "auth": {
-            "type": "basic",
-            "basic": [
+            "type": "bearer",
+            "bearer": [
               {
-                "key": "password",
-                "value": "password",
-                "type": "string"
-              },
-              {
-                "key": "username",
-                "value": "connector@mail.com",
+                "key": "token",
+                "value": "{{PROTOCOL_INTERNAL_TOKEN}}",
                 "type": "string"
               }
             ]
@@ -3506,7 +3384,14 @@
             }
           ],
           "auth": {
-            "type": "noauth"
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{PROTOCOL_INTERNAL_TOKEN}}",
+                "type": "string"
+              }
+            ]
           },
           "event": [
             {
@@ -4021,16 +3906,11 @@
             }
           ],
           "auth": {
-            "type": "basic",
-            "basic": [
+            "type": "bearer",
+            "bearer": [
               {
-                "key": "password",
-                "value": "password",
-                "type": "string"
-              },
-              {
-                "key": "username",
-                "value": "connector@mail.com",
+                "key": "token",
+                "value": "{{PROTOCOL_INTERNAL_TOKEN}}",
                 "type": "string"
               }
             ]
@@ -4047,7 +3927,26 @@
             "type": "text/javascript",
             "packages": {},
             "exec": [
-              ""
+              "// INTERNAL mode only: mint the connector-to-connector protocol token locally (HS256), the same shape the",
+              "// connector issues itself. The signing secret must match application.security.jwt.secret of the target connector.",
+              "// Neither the secret nor the token is ever logged.",
+              "const b64url = (wa) => CryptoJS.enc.Base64.stringify(wa).replace(/=+$/, '').replace(/\\+/g, '-').replace(/\\//g, '_');",
+              "const enc = (obj) => b64url(CryptoJS.enc.Utf8.parse(JSON.stringify(obj)));",
+              "const iat = Math.floor(Date.now() / 1000);",
+              "const header = { alg: 'HS256', typ: 'JWT' };",
+              "const payload = {",
+              "    sub: 'connector',",
+              "    realm_access: { roles: ['CONNECTOR'] },",
+              "    iat: iat,",
+              "    exp: iat + 300,",
+              "    jti: 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {",
+              "        const r = Math.floor(Math.random() * 16);",
+              "        return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);",
+              "    })",
+              "};",
+              "const signingInput = enc(header) + '.' + enc(payload);",
+              "const signature = b64url(CryptoJS.HmacSHA256(signingInput, pm.collectionVariables.get('PROTOCOL_JWT_SECRET')));",
+              "pm.collectionVariables.set('PROTOCOL_INTERNAL_TOKEN', signingInput + '.' + signature);"
             ]
           }
         },
@@ -4149,6 +4048,7 @@
     {
       "name": "API_FE (Keycloak)",
       "item": [
+        
         {
           "name": "ApplicationProperty",
           "item": [
@@ -6984,7 +6884,7 @@
           }
         }
       ],
-      "description": "Management API (Keycloak Auth).\n\nUses Bearer token obtained from Keycloak Authentication folder.\nKeycloak admin user maps to ROLE_ADMIN for the default tenant."
+      "description": "Management API (Keycloak Auth).\n\nUses Bearer token obtained from Keycloak Authentication folder.\nKeycloak admin user maps to ROLE_ADMIN for the default tenant.\n\nX-Tenant-Id (super-admin only): the header is honoured only for a ROLE_SUPER_ADMIN token that has no tenant of its own. An unknown or disabled tenant gets 400. A tenant user (any auth mode) that sends it gets 403. No request in this folder sends X-Tenant-Id."
     },
     {
       "name": "DataTransfer (Keycloak)",
@@ -7118,16 +7018,11 @@
             }
           ],
           "auth": {
-            "type": "basic",
-            "basic": [
+            "type": "bearer",
+            "bearer": [
               {
-                "key": "password",
-                "value": "password",
-                "type": "string"
-              },
-              {
-                "key": "username",
-                "value": "connector@mail.com",
+                "key": "token",
+                "value": "{{KEYCLOAK_ACCESS_TOKEN}}",
                 "type": "string"
               }
             ]
@@ -7204,7 +7099,14 @@
             }
           ],
           "auth": {
-            "type": "noauth"
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{KEYCLOAK_ACCESS_TOKEN}}",
+                "type": "string"
+              }
+            ]
           },
           "event": [
             {
@@ -7829,16 +7731,11 @@
             }
           ],
           "auth": {
-            "type": "basic",
-            "basic": [
+            "type": "bearer",
+            "bearer": [
               {
-                "key": "password",
-                "value": "password",
-                "type": "string"
-              },
-              {
-                "key": "username",
-                "value": "connector@mail.com",
+                "key": "token",
+                "value": "{{KEYCLOAK_ACCESS_TOKEN}}",
                 "type": "string"
               }
             ]
@@ -8021,6 +7918,15 @@
     },
     {
       "key": "AUTH_REFRESH_TOKEN",
+      "value": ""
+    },
+    {
+      "key": "PROTOCOL_JWT_SECRET",
+      "value": "connector-jwt-dev-secret-change-in-prod-min-32-bytes",
+      "description": "DEV ONLY. HS256 signing secret used by the Protocol folder pre-request script to mint the INTERNAL-mode connector protocol token. Must match application.security.jwt.secret of the target connector. Never use a production secret in this collection."
+    },
+    {
+      "key": "PROTOCOL_INTERNAL_TOKEN",
       "value": ""
     }
   ]

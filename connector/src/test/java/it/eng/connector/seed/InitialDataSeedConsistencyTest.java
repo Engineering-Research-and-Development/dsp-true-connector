@@ -1,0 +1,186 @@
+package it.eng.connector.seed;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.stream.Stream;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Checks that every {@code initial_data*.json} seed copy in the repository describes at least one tenant,
+ * that each tenant is bound to a seeded Keycloak tenant realm, that each tenant id equals the
+ * {@code tenant_id} attribute of that realm's users, that each tenant name equals the {@code tenant_name}
+ * claim hard-coded in that realm, and that every {@code tenantId} in the file refers to one of the file's
+ * tenants.
+ */
+class InitialDataSeedConsistencyTest {
+
+    private static final int MINIMUM_SEED_COUNT = 12;
+    private static final String TENANTS_COLLECTION = "tenants";
+    private static final String REALM_RESOURCES = "ci/docker/keycloak_resources";
+    private static final Set<String> TENANT_REALM_FILES = Set.of(
+            "tenant-EngineeringA-realm.json",
+            "tenant-EngineeringB-realm.json",
+            "tenant-acme-realm.json");
+    private static final Set<String> SKIPPED_DIRECTORIES = Set.of("target", ".git", "node_modules");
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Path REPO_ROOT = resolveRepoRoot();
+
+    /**
+     * Finds every {@code initial_data*.json} file in the repository, outside build output.
+     *
+     * @return the seed file paths
+     * @throws IOException if the repository cannot be walked
+     */
+    static Stream<Path> seedFiles() throws IOException {
+        try (Stream<Path> paths = Files.walk(REPO_ROOT)) {
+            return paths
+                    .filter(path -> path.getFileName().toString().matches("initial_data.*\\.json"))
+                    .filter(path -> isOutsideSkippedDirectories(REPO_ROOT.relativize(path)))
+                    .sorted()
+                    .toList()
+                    .stream();
+        }
+    }
+
+    @Test
+    void allSeedCopiesAreFound() throws IOException {
+        assertThat(seedFiles().count()).isGreaterThanOrEqualTo(MINIMUM_SEED_COUNT);
+    }
+
+    @Test
+    void tenantRealmUsersCarryTheirTenantId() {
+        assertThat(tenantIdByRealm()).containsOnlyKeys("tenant-EngineeringA", "tenant-EngineeringB", "tenant-acme");
+    }
+
+    @Test
+    void tenantRealmsCarryTheirTenantName() {
+        assertThat(tenantNameByRealm()).containsOnlyKeys("tenant-EngineeringA", "tenant-EngineeringB", "tenant-acme");
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("seedFiles")
+    void tenantIdMatchesRealmAndAllTenantIdFields(Path seedFile) throws IOException {
+        Map<String, String> tenantIdByRealm = tenantIdByRealm();
+        Map<String, String> tenantNameByRealm = tenantNameByRealm();
+        JsonNode root = MAPPER.readTree(Files.readString(seedFile));
+
+        JsonNode tenants = root.path(TENANTS_COLLECTION);
+        assertThat(tenants.isArray()).isTrue();
+        assertThat(tenants).isNotEmpty();
+
+        Set<String> seededTenantIds = new HashSet<>();
+        for (JsonNode tenant : tenants) {
+            String realm = tenant.path("realm").asText();
+            assertThat(tenantIdByRealm).containsKey(realm);
+            assertThat(realm).matches("^[A-Za-z0-9._-]+$")
+                    .isNotEqualToIgnoringCase("platform")
+                    .isNotEqualToIgnoringCase("connector-admin")
+                    .isNotEqualToIgnoringCase("master");
+            String tenantId = tenant.path("_id").asText();
+            assertThat(tenantId).isEqualTo(tenantIdByRealm.get(realm));
+            assertThat(tenant.path("name").asText()).as("name of tenant %s", tenantId)
+                    .isEqualTo(tenantNameByRealm.get(realm));
+            assertThat(seededTenantIds.add(tenantId)).as("duplicate tenant %s", tenantId).isTrue();
+        }
+
+        List<String> tenantIdValues = new ArrayList<>();
+        collectTenantIds(root, tenantIdValues);
+        assertThat(tenantIdValues).allMatch(seededTenantIds::contains);
+    }
+
+    /**
+     * Reads the seeded tenant realms and maps each realm name to the single {@code tenant_id} its users carry.
+     */
+    private static Map<String, String> tenantIdByRealm() {
+        Map<String, String> tenantIdByRealm = new HashMap<>();
+        for (String fileName : TENANT_REALM_FILES) {
+            JsonNode realm = readJson(REPO_ROOT.resolve(REALM_RESOURCES).resolve(fileName));
+            List<String> userTenantIds = new ArrayList<>();
+            realm.path("users").forEach(user ->
+                    user.path("attributes").path("tenant_id").forEach(value -> userTenantIds.add(value.asText())));
+            assertThat(userTenantIds).as("tenant_id of users in %s", fileName).isNotEmpty();
+            assertThat(Set.copyOf(userTenantIds)).as("tenant_id of users in %s", fileName).hasSize(1);
+            tenantIdByRealm.put(realm.path("realm").asText(), userTenantIds.get(0));
+        }
+        return tenantIdByRealm;
+    }
+
+    /**
+     * Reads the seeded tenant realms and maps each realm name to the {@code tenant_name} claim value of its
+     * single hard-coded {@code tenant_name} protocol mapper.
+     */
+    private static Map<String, String> tenantNameByRealm() {
+        Map<String, String> tenantNameByRealm = new HashMap<>();
+        for (String fileName : TENANT_REALM_FILES) {
+            JsonNode realm = readJson(REPO_ROOT.resolve(REALM_RESOURCES).resolve(fileName));
+            List<String> tenantNames = new ArrayList<>();
+            collectTenantNameClaims(realm, tenantNames);
+            assertThat(tenantNames).as("tenant_name mappers in %s", fileName).hasSize(1);
+            tenantNameByRealm.put(realm.path("realm").asText(), tenantNames.get(0));
+        }
+        return tenantNameByRealm;
+    }
+
+    private static void collectTenantNameClaims(JsonNode node, List<String> values) {
+        if (node.isObject()) {
+            JsonNode config = node.path("config");
+            if ("oidc-hardcoded-claim-mapper".equals(node.path("protocolMapper").asText())
+                    && "tenant_name".equals(config.path("claim.name").asText())) {
+                values.add(config.path("claim.value").asText());
+            }
+            node.forEach(child -> collectTenantNameClaims(child, values));
+        } else if (node.isArray()) {
+            node.forEach(child -> collectTenantNameClaims(child, values));
+        }
+    }
+
+    private static void collectTenantIds(JsonNode node, List<String> values) {
+        if (node.isObject()) {
+            node.fields().forEachRemaining(entry -> {
+                if ("tenantId".equals(entry.getKey())) {
+                    values.add(entry.getValue().asText());
+                }
+                collectTenantIds(entry.getValue(), values);
+            });
+        } else if (node.isArray()) {
+            node.forEach(child -> collectTenantIds(child, values));
+        }
+    }
+
+    private static boolean isOutsideSkippedDirectories(Path relativePath) {
+        for (Path segment : relativePath) {
+            if (SKIPPED_DIRECTORIES.contains(segment.toString())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static JsonNode readJson(Path file) {
+        try {
+            return MAPPER.readTree(Files.readString(file));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    private static Path resolveRepoRoot() {
+        Path currentDirectory = Path.of("").toAbsolutePath().normalize();
+        return Stream.of(currentDirectory, currentDirectory.resolve("..").normalize())
+                .filter(candidate -> Files.isDirectory(candidate.resolve(REALM_RESOURCES)))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "Unable to find the repository root (" + REALM_RESOURCES + ") from " + currentDirectory));
+    }
+}

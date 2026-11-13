@@ -34,7 +34,7 @@ public class ArtifactTransferService {
         TypeReference<GenericApiResponse<Artifact>> typeRef = new TypeReference<GenericApiResponse<Artifact>>() {
         };
 
-        String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + transferProcess.getDatasetId() + "/artifact", HttpMethod.GET, null);
+        String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.INTERNAL_DATASETS_V1 + "/" + transferProcess.getDatasetId() + "/artifact", HttpMethod.GET, null);
         GenericApiResponse<Artifact> genericResponse = TransferSerializer.deserializePlain(response, typeRef);
 
         if (genericResponse.getData() == null) {

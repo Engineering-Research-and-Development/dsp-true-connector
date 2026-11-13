@@ -3,8 +3,8 @@
     {
       "_class": "it.eng.connector.model.User",
       "_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-      "firstName": "Super",
-      "lastName": "Admin",
+      "firstName": "Capo",
+      "lastName": "Capi",
       "email": "superadmin@mail.com",
       "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
       "enabled": true,
@@ -15,28 +15,15 @@
     {
       "_class": "it.eng.connector.model.User",
       "_id": "59d54e6d-a3f3-4a03-a093-d276e3068eef",
-      "firstName": "Admin",
-      "lastName": "Role",
+      "firstName": "Espresso",
+      "lastName": "Pizzoni",
       "email": "admin@mail.com",
       "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
-      "tenantId": "engineering",
+      "tenantId": "engineering-a",
       "enabled": true,
       "expired": false,
       "locked": false,
       "role": "ADMIN"
-    },
-    {
-      "_class": "it.eng.connector.model.User",
-      "_id": "cab7b27b-f810-457d-b900-368994f6a640",
-      "firstName": "Connector",
-      "lastName": "Role",
-      "email": "connector@mail.com",
-      "password": "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
-      "tenantId": "engineering",
-      "enabled": true,
-      "expired": false,
-      "locked": false,
-      "role": "CONNECTOR"
     }
   ],
   "application_properties": [
@@ -121,16 +108,16 @@
   "tenants": [
     {
       "_class": "it.eng.tools.model.Tenant",
-      "_id": "engineering",
-      "name": "Engineering",
+      "_id": "engineering-a",
+      "name": "EngineeringA",
+      "realm": "tenant-EngineeringA",
       "description": "Default Engineering tenant",
       "participantId": "urn:connector:engineering",
       "callbackAddress": "http://localhost:8080",
       "enabled": true,
       "automaticNegotiation": false,
       "automaticTransfer": false,
-      "version": 0,
-      "participantId": "urn:connector:engineering"
+      "version": 0
     }
   ]
 }

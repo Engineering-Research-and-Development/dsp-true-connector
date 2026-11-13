@@ -3,9 +3,10 @@ package it.eng.connector.service;
 /**
  * Unified login/refresh/logout contract for the {@code /api/v1/auth/*} admin-zone endpoints.
  *
- * <p>Implementations authenticate against whichever authentication mode is active
- * (for example {@code INTERNAL}, backed by MongoDB {@code User} credentials) and issue/rotate
- * opaque refresh-token identifiers alongside signed JWT access tokens.
+ * <p>Used only in {@code INTERNAL} mode: the implementation authenticates against MongoDB
+ * {@code User} credentials and issues/rotates opaque refresh-token identifiers alongside signed JWT
+ * access tokens. In {@code KEYCLOAK} mode there is no implementation; people sign in to Keycloak
+ * directly.
  */
 public interface AuthService {
 

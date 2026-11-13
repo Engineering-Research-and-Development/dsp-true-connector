@@ -33,6 +33,8 @@ public class TenantCreateRequest {
     @NotNull
     private String participantId;
 
+    private String realm;
+
     private boolean automaticNegotiation;
 
     private boolean automaticTransfer;
@@ -58,6 +60,7 @@ public class TenantCreateRequest {
                 .name(name)
                 .description(description)
                 .participantId(participantId)
+                .realm(realm)
                 .automaticNegotiation(automaticNegotiation)
                 .automaticTransfer(automaticTransfer)
                 .enabled(enabled)
@@ -141,6 +144,17 @@ public class TenantCreateRequest {
          */
         public Builder participantId(String participantId) {
             request.participantId = participantId;
+            return this;
+        }
+
+        /**
+         * Sets the optional Keycloak realm.
+         *
+         * @param realm the Keycloak realm
+         * @return this builder
+         */
+        public Builder realm(String realm) {
+            request.realm = realm;
             return this;
         }
 

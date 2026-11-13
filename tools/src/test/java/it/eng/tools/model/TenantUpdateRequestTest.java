@@ -3,9 +3,7 @@ package it.eng.tools.model;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class TenantUpdateRequestTest {
 
@@ -35,6 +33,24 @@ class TenantUpdateRequestTest {
         assertFalse(updates.isAutomaticTransfer());
         assertEquals("tenant-id", updates.getId());
         assertEquals("urn:connector:tenant", updates.getParticipantId());
+    }
+
+    @Test
+    @DisplayName("TenantUpdateRequest toTenantUpdates maps a supplied realm")
+    void toTenantUpdates_mapsSuppliedRealm() {
+        TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance()
+                .realm("updated-realm")
+                .build();
+        Tenant existing = Tenant.Builder.newInstance()
+                .id("tenant-id")
+                .name("Existing name")
+                .participantId("urn:connector:tenant")
+                .realm("existing-realm")
+                .build();
+
+        Tenant updates = request.toTenantUpdates(existing);
+
+        assertEquals("updated-realm", updates.getRealm());
     }
 
     @Test
@@ -74,6 +90,7 @@ class TenantUpdateRequestTest {
                 .id("tenant-id")
                 .name("Existing name")
                 .participantId("urn:connector:tenant")
+                .realm("existing-realm")
                 .automaticNegotiation(false)
                 .automaticTransfer(false)
                 .enabled(true)
@@ -88,5 +105,6 @@ class TenantUpdateRequestTest {
 
         assertEquals("Existing name", updates.getName());
         assertEquals("Only description changes", updates.getDescription());
+        assertEquals("existing-realm", updates.getRealm());
     }
 }

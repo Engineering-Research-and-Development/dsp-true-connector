@@ -46,7 +46,7 @@ Behavior:
 
 - These are management API endpoints and require admin authentication.
 - Tenant admins access data within their own tenant scope.
-- Super-admin requests can read cross-tenant data, or can scope a single request with the `X-Tenant-Id` header.
+- Super-admin requests can read cross-tenant data, or can scope a single request with the `X-Tenant-Id` header (an unknown or disabled tenant gives 400). Only super-admins may send the header; a tenant admin that sends it gets 403.
 - Connector protocol credentials are not valid for these endpoints.
 
 ## Tenant behavior
@@ -67,7 +67,7 @@ When a superadmin requests dashboard data without a tenant scope (blank or missi
 
 includes an additional `byTenant` field: a list of `{ tenantId, tenantName, metrics }` entries, one per registered tenant (including disabled tenants), zero-filled for tenants with no matching data. The nested `metrics` object has the same shape as its parent but with its own `byTenant` always `null` (no further recursion).
 
-When an admin requests data (tenant-scoped JWT with valid `X-Tenant-Id` header) or a superadmin scopes a request via `X-Tenant-Id`, the `byTenant` field is `null` on every affected object.
+When a tenant admin requests data (the tenant comes from the `tenant_id` claim of the token; a tenant admin that sends `X-Tenant-Id` gets 403) or a superadmin scopes a request via `X-Tenant-Id`, the `byTenant` field is `null` on every affected object.
 
 Example: superadmin requests `/api/v1/dashboard/negotiations` (no tenant scope):
 

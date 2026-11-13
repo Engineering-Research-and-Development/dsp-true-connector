@@ -17,6 +17,7 @@ import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.util.CredentialUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,8 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class ContractNegotiationAPIServiceTest {
+
+    private static final String TOKEN_UNAVAILABLE = "Request not sent: no access token";
     @Mock
     private AuditEventPublisher publisher;
 
@@ -92,6 +95,38 @@ public class ContractNegotiationAPIServiceTest {
         Page<ContractNegotiation> response = service.findContractNegotiations(filters, pageable);
         assertNotNull(response);
         assertEquals(2, response.getTotalElements());
+    }
+
+    @Test
+    @DisplayName("Find contract negotiations - restricted to current tenant")
+    public void findContractNegotiations_scopedToTenant() {
+        when(contractNegotiationRepository.findWithDynamicFilters(anyMap(), eq(ContractNegotiation.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.singletonList(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED)));
+        Map<String, Object> filters = Map.of("role", IConstants.ROLE_CONSUMER);
+
+        TenantContextHolder.setTenantId("tenant-a");
+        try {
+            service.findContractNegotiations(filters, pageable);
+        } finally {
+            TenantContextHolder.clear();
+        }
+
+        verify(contractNegotiationRepository).findWithDynamicFilters(
+                eq(Map.of("role", IConstants.ROLE_CONSUMER, "tenantId", "tenant-a")),
+                eq(ContractNegotiation.class), eq(pageable));
+    }
+
+    @Test
+    @DisplayName("Find contract negotiations - no tenant filter when no tenant is set")
+    public void findContractNegotiations_noTenant() {
+        when(contractNegotiationRepository.findWithDynamicFilters(anyMap(), eq(ContractNegotiation.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.emptyList()));
+        Map<String, Object> filters = Map.of("role", IConstants.ROLE_CONSUMER);
+
+        service.findContractNegotiations(filters, pageable);
+
+        verify(contractNegotiationRepository).findWithDynamicFilters(
+                eq(Map.of("role", IConstants.ROLE_CONSUMER)), eq(ContractNegotiation.class), eq(pageable));
     }
 
     @Test
@@ -165,6 +200,25 @@ public class ContractNegotiationAPIServiceTest {
         verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_NEGOTIATION_REJECTED, "Contract negotiation request failed");
+    }
+
+    @Test
+    @DisplayName("Start contract negotiation - request not sent, no access token")
+    public void sendContractRequestMessage_tokenUnavailable() {
+        HashMap<Object, Object> map = new HashMap<>();
+        map.put("Forward-To", NegotiationMockObjectUtil.FORWARD_TO);
+        map.put(DSpaceConstants.OFFER, NegotiationSerializer.serializeProtocolJsonNode(NegotiationMockObjectUtil.OFFER));
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class)))
+                .thenReturn(GenericApiResponse.error(TOKEN_UNAVAILABLE));
+        when(properties.consumerCallbackAddress()).thenReturn(NegotiationMockObjectUtil.CALLBACK_ADDRESS);
+
+        ContractNegotiationAPIException exception = assertThrows(ContractNegotiationAPIException.class,
+                () -> service.sendContractRequestMessage(mapper.convertValue(map, JsonNode.class)));
+
+        assertTrue(exception.getMessage().contains(TOKEN_UNAVAILABLE));
+        verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
+        verifyAuditEvent(AuditEventType.PROTOCOL_NEGOTIATION_REJECTED, "Contract negotiation request failed");
+        assertEquals(TOKEN_UNAVAILABLE, argCaptorAuditEventDetails.getValue().get("contractNegotiationErrorMessage"));
     }
 
     @Test
@@ -996,6 +1050,22 @@ public class ContractNegotiationAPIServiceTest {
                 () -> service.sendContractNegotiationTerminationMessage(contractNegotiationId));
 
         verify(contractNegotiationRepository, times(0)).save(argCaptorContractNegotiation.capture());
+    }
+
+    @Test
+    @DisplayName("Terminate contract negotiation - request not sent, no access token")
+    public void terminateNegotiation_tokenUnavailable() {
+        String contractNegotiationId = UUID.randomUUID().toString();
+        when(contractNegotiationRepository.findById(contractNegotiationId)).thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class)))
+                .thenReturn(GenericApiResponse.error(TOKEN_UNAVAILABLE));
+
+        ContractNegotiationAPIException exception = assertThrows(ContractNegotiationAPIException.class,
+                () -> service.sendContractNegotiationTerminationMessage(contractNegotiationId));
+
+        assertTrue(exception.getMessage().contains(TOKEN_UNAVAILABLE));
+        verify(contractNegotiationRepository, times(0)).save(any(ContractNegotiation.class));
+        verifyAuditEvent(AuditEventType.PROTOCOL_NEGOTIATION_REJECTED, "Contract negotiation termination failed");
     }
 
     @Test

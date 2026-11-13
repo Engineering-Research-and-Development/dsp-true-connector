@@ -32,7 +32,9 @@ import org.springframework.stereotype.Service;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @Slf4j
@@ -93,13 +95,18 @@ public class ContractNegotiationAPIService {
     }
 
     /**
-     * Find contract negotiation by id.
+     * Find contract negotiations matching the given filters, scoped to the current tenant when one is set.
      *
      * @param filters  - dynamic filters to apply
      * @param pageable - pagination information
-     * @return ContractNegotiation
+     * @return page of ContractNegotiation
      */
     public Page<ContractNegotiation> findContractNegotiations(Map<String, Object> filters, Pageable pageable) {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            filters = new HashMap<>(filters);
+            filters.put("tenantId", tenantId);
+        }
         return contractNegotiationRepository.findWithDynamicFilters(filters, ContractNegotiation.class, pageable);
     }
 
@@ -188,10 +195,11 @@ public class ContractNegotiationAPIService {
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                         "Contract negotiation request failed",
                         Map.of("contractRequestMessage", contractRequestMessage,
-                                "contractNegotiationErrorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage.toString() : "No message received",
+                                "contractNegotiationErrorMessage", failureReason(contractNegotiationErrorMessage, response),
                                 "consumerPid", contractRequestMessage.getConsumerPid(),
                                 "role", IConstants.ROLE_API));
-                throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Error making request");
+                throw new ContractNegotiationAPIException(contractNegotiationErrorMessage,
+                        failureMessage("Error making request", contractNegotiationErrorMessage, response));
             } catch (JsonProcessingException | ValidationException e) {
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
@@ -301,11 +309,12 @@ public class ContractNegotiationAPIService {
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                         "Contract negotiation request as counteroffer failed",
                         Map.of("contractRequestMessage", contractRequestMessage,
-                                "contractNegotiationErrorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage.toString() : "No message received",
+                                "contractNegotiationErrorMessage", failureReason(contractNegotiationErrorMessage, response),
                                 "consumerPid", contractRequestMessage.getConsumerPid(),
                                 "providerPid", contractRequestMessage.getProviderPid(),
                                 "role", IConstants.ROLE_API));
-                throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Error making request");
+                throw new ContractNegotiationAPIException(contractNegotiationErrorMessage,
+                        failureMessage("Error making request", contractNegotiationErrorMessage, response));
             } catch (JsonProcessingException | ValidationException e) {
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
@@ -403,9 +412,10 @@ public class ContractNegotiationAPIService {
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                         "Contract negotiation offer failed",
                         Map.of("ContractOfferMessage", contractOfferMessage,
-                                "contractNegotiationErrorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage.toString() : "No message received",
+                                "contractNegotiationErrorMessage", failureReason(contractNegotiationErrorMessage, response),
                                 "role", IConstants.ROLE_API));
-                throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Error making request");
+                throw new ContractNegotiationAPIException(contractNegotiationErrorMessage,
+                        failureMessage("Error making request", contractNegotiationErrorMessage, response));
             } catch (JsonProcessingException | ValidationException e) {
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
@@ -512,11 +522,12 @@ public class ContractNegotiationAPIService {
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                         "Contract negotiation offer as counteroffer failed",
                         Map.of("ContractOfferMessage", contractOfferMessage,
-                                "contractNegotiationErrorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage.toString() : "No message received",
+                                "contractNegotiationErrorMessage", failureReason(contractNegotiationErrorMessage, response),
                                 "consumerPid", contractOfferMessage.getConsumerPid(),
                                 "providerPid", contractOfferMessage.getProviderPid(),
                                 "role", IConstants.ROLE_API));
-                throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Error making request");
+                throw new ContractNegotiationAPIException(contractNegotiationErrorMessage,
+                        failureMessage("Error making request", contractNegotiationErrorMessage, response));
             } catch (JsonProcessingException | ValidationException e) {
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
@@ -759,11 +770,12 @@ public class ContractNegotiationAPIService {
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                         "Contract negotiation verification failed",
                         Map.of("contractNegotiation", contractNegotiation,
-                                "errorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage.toString() : "No message received",
+                                "errorMessage", failureReason(contractNegotiationErrorMessage, response),
                                 "consumerPid", contractNegotiation.getConsumerPid(),
                                 "providerPid", contractNegotiation.getProviderPid(),
                                 "role", IConstants.ROLE_API));
-                throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, "Provider did not process Verification message correct");
+                throw new ContractNegotiationAPIException(contractNegotiationErrorMessage,
+                        failureMessage("Provider did not process Verification message correct", contractNegotiationErrorMessage, response));
             } catch (JsonProcessingException | ValidationException e) {
                 auditEventPublisher.publishEvent(
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
@@ -836,7 +848,7 @@ public class ContractNegotiationAPIService {
                         AuditEventType.PROTOCOL_NEGOTIATION_REJECTED,
                         "Contract negotiation termination failed",
                         Map.of("contractNegotiation", contractNegotiation,
-                                "errorMessage", contractNegotiationErrorMessage != null ? contractNegotiationErrorMessage.toString() : "No message received",
+                                "errorMessage", failureReason(contractNegotiationErrorMessage, response),
                                 "consumerPid", contractNegotiation.getConsumerPid(),
                                 "providerPid", contractNegotiation.getProviderPid(),
                                 "role", IConstants.ROLE_API));
@@ -844,7 +856,8 @@ public class ContractNegotiationAPIService {
                 if (contractNegotiationErrorMessage != null) {
                     throw new ContractNegotiationAPIException(contractNegotiationErrorMessage, contractNegotiation.getRole() + " did not process Terminate message correct");
                 } else {
-                    throw new ContractNegotiationAPIException(contractNegotiation.getRole() + " did not process Terminate message correct");
+                    throw new ContractNegotiationAPIException(failureMessage(contractNegotiation.getRole()
+                            + " did not process Terminate message correct", null, response));
                 }
             } catch (JsonProcessingException | ValidationException e) {
                 auditEventPublisher.publishEvent(
@@ -897,5 +910,17 @@ public class ContractNegotiationAPIService {
                             "role", IConstants.ROLE_API));
             throw new ContractNegotiationAPIException("New offer must have same offer id and target as the existing one in the contract negotiation with id: " + contractNegotiation.getId());
         }
+    }
+
+    // Reason of a failed peer call for the audit event: the peer's DSP error when it sent one, otherwise
+    // the client-side message (for example, the request was not sent because no access token was available).
+    private static String failureReason(ContractNegotiationErrorMessage errorMessage, GenericApiResponse<String> response) {
+        return errorMessage != null ? errorMessage.toString() : Objects.toString(response.getMessage(), "No message received");
+    }
+
+    // API error message of a failed peer call: the client-side reason is appended when the peer sent no DSP error.
+    private static String failureMessage(String message, ContractNegotiationErrorMessage errorMessage,
+            GenericApiResponse<String> response) {
+        return errorMessage != null || response.getMessage() == null ? message : message + ": " + response.getMessage();
     }
 }

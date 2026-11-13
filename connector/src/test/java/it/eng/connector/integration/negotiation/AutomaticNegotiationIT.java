@@ -18,7 +18,6 @@ import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.ApplicationConnector;
-import it.eng.connector.filter.ApiTenantContextFilter;
 import it.eng.negotiation.model.ContractNegotiation;
 import it.eng.negotiation.model.ContractNegotiationState;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
@@ -81,7 +80,7 @@ public class AutomaticNegotiationIT {
     /** Port WireMock listens on — intercepting provider→consumer protocol messages. */
     private static final int WIREMOCK_PORT = 9099;
     /** Default tenant ID — used as the DSP protocol base path segment. */
-    private static final String TENANT_ID = "engineering";
+    private static final String TENANT_ID = "engineering-a";
 
     private static final String CONSUMER_BASE_URL          = "http://localhost:" + CONSUMER_PORT;
     private static final String PROVIDER_BASE_URL          = "http://localhost:" + PROVIDER_PORT;
@@ -232,7 +231,7 @@ public class AutomaticNegotiationIT {
             TenantService tenantSvc = ctx.getBean(TenantService.class);
             Tenant tenantUpdate = Tenant.Builder.newInstance()
                     .id(TENANT_ID)
-                    .name("Engineering")
+                    .name("EngineeringA")
                     .participantId("urn:connector:engineering")
                     .automaticNegotiation(true)
                     .enabled(true)
@@ -381,12 +380,12 @@ public class AutomaticNegotiationIT {
         requestBody.put("Forward-To", PROVIDER_PROTOCOL_URL);
         requestBody.put("offer", NegotiationSerializer.serializePlainJsonNode(offer));
 
-        // X-Tenant-Id header ensures the consumer CN is saved with the correct tenantId,
+        // The tenant admin's own tenant (from the token) is stored on the consumer CN,
         // so protocol callbacks (agreement, events) can look it up with tenant isolation.
-        HttpResponse<String> initiateResponse = postAsTenant(
+        HttpResponse<String> initiateResponse = post(
                 CONSUMER_BASE_URL + ApiEndpoints.NEGOTIATION_V1 + "/request",
                 NegotiationSerializer.serializePlain(requestBody),
-                fetchAdminJwt(), TENANT_ID);
+                fetchAdminJwt());
 
         assertEquals(200, initiateResponse.statusCode(),
                 "Consumer initiate request failed: " + initiateResponse.body());
@@ -492,10 +491,10 @@ public class AutomaticNegotiationIT {
         requestBody.put("Forward-To", PROVIDER_PROTOCOL_URL);
         requestBody.put("offer", NegotiationSerializer.serializePlainJsonNode(offer));
 
-        HttpResponse<String> initiateResponse = postAsTenant(
+        HttpResponse<String> initiateResponse = post(
                 WIREMOCK_CONSUMER_BASE_URL + ApiEndpoints.NEGOTIATION_V1 + "/request",
                 NegotiationSerializer.serializePlain(requestBody),
-                fetchAdminJwt(), TENANT_ID);
+                fetchAdminJwt());
 
         assertEquals(200, initiateResponse.statusCode(),
                 "WireMock-consumer initiate request failed: " + initiateResponse.body());
@@ -624,12 +623,12 @@ public class AutomaticNegotiationIT {
         requestBody.put("Forward-To", WIREMOCK_PROTOCOL_URL);
         requestBody.put("offer", NegotiationSerializer.serializePlainJsonNode(offer));
 
-        // X-Tenant-Id header ensures the consumer CN is saved with the correct tenantId,
+        // The tenant admin's own tenant (from the token) is stored on the consumer CN,
         // so protocol callbacks (agreement, events) can look it up with tenant isolation.
-        HttpResponse<String> initiateResponse = postAsTenant(
+        HttpResponse<String> initiateResponse = post(
                 CONSUMER_BASE_URL + ApiEndpoints.NEGOTIATION_V1 + "/request",
                 NegotiationSerializer.serializePlain(requestBody),
-                fetchAdminJwt(), TENANT_ID);
+                fetchAdminJwt());
 
         assertEquals(200, initiateResponse.statusCode(),
                 "Consumer initiate request failed: " + initiateResponse.body());
@@ -775,30 +774,6 @@ public class AutomaticNegotiationIT {
                 .uri(URI.create(url))
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt)
-                .POST(HttpRequest.BodyPublishers.ofString(body))
-                .build();
-        return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-    }
-
-    /**
-     * Sends an HTTP POST request with JSON body, Bearer token, and an {@code X-Tenant-Id}
-     * header.  The header allows a super-admin (null tenantId user) to act on behalf of
-     * a specific tenant so that created entities are stored with the correct tenantId.
-     *
-     * @param url         the target URL
-     * @param body        the JSON request body
-     * @param jwt         the JWT token for authorization
-     * @param tenantId    the tenant identifier to set in the {@code X-Tenant-Id} header
-     * @return the HTTP response
-     * @throws Exception on I/O or interrupt errors
-     */
-    private HttpResponse<String> postAsTenant(String url, String body, String jwt,
-            String tenantId) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + jwt)
-                .header(ApiTenantContextFilter.HEADER_X_TENANT_ID, tenantId)
                 .POST(HttpRequest.BodyPublishers.ofString(body))
                 .build();
         return httpClient.send(request, HttpResponse.BodyHandlers.ofString());

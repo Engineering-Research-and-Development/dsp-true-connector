@@ -61,7 +61,7 @@ class ArtifactTransferServiceTest {
     @DisplayName("Should successfully find artifact when valid response is received")
     void findArtifact_Success() {
         // Given
-        String endpoint = ApiEndpoints.CATALOG_DATASETS_V1 + "/" + DATASET_ID + "/artifact";
+        String endpoint = ApiEndpoints.INTERNAL_DATASETS_V1 + "/" + DATASET_ID + "/artifact";
         when(okHttpRestClient.sendInternalRequest(eq(endpoint), eq(HttpMethod.GET), any()))
                 .thenReturn(VALID_RESPONSE);
 
@@ -79,7 +79,7 @@ class ArtifactTransferServiceTest {
     @DisplayName("Should throw DownloadException when response data is null")
     void findArtifact_NullData() {
         // Given
-        String endpoint = ApiEndpoints.CATALOG_DATASETS_V1 + "/" + DATASET_ID + "/artifact";
+        String endpoint = ApiEndpoints.INTERNAL_DATASETS_V1 + "/" + DATASET_ID + "/artifact";
         when(okHttpRestClient.sendInternalRequest(eq(endpoint), eq(HttpMethod.GET), any()))
                 .thenReturn(ERROR_RESPONSE);
 
@@ -93,7 +93,7 @@ class ArtifactTransferServiceTest {
     @DisplayName("Should throw RuntimeException when invalid JSON is received")
     void findArtifact_InvalidJson() {
         // Given
-        String endpoint = ApiEndpoints.CATALOG_DATASETS_V1 + "/" + DATASET_ID + "/artifact";
+        String endpoint = ApiEndpoints.INTERNAL_DATASETS_V1 + "/" + DATASET_ID + "/artifact";
         when(okHttpRestClient.sendInternalRequest(eq(endpoint), eq(HttpMethod.GET), any()))
                 .thenReturn("invalid json");
 

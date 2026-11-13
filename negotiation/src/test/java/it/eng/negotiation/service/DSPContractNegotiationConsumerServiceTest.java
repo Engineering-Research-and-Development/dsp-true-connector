@@ -13,6 +13,7 @@ import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.datatransfer.InitializeTransferProcess;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantContextHolder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -88,6 +89,24 @@ public class DSPContractNegotiationConsumerServiceTest {
         assertNotNull(result);
         assertEquals(ContractNegotiationState.OFFERED, result.getState());
         verify(publisher).publishEvent(any(AutoNegotiationAcceptedEvent.class));
+    }
+
+    @Test
+    @DisplayName("Process contract offer - existing negotiation lookup restricted to current tenant")
+    public void handleContractOfferMessage_alreadyExistsInTenant() {
+        when(contractNegotiationRepository.findByProviderPidAndTenantId(NegotiationMockObjectUtil.PROVIDER_PID, "tenant-a"))
+                .thenReturn(Optional.of(NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_REQUESTED));
+
+        TenantContextHolder.setTenantId("tenant-a");
+        try {
+            assertThrows(ContractNegotiationExistsException.class,
+                    () -> service.handleContractOfferMessage(NegotiationMockObjectUtil.CONTRACT_OFFER_MESSAGE_INITIAL));
+        } finally {
+            TenantContextHolder.clear();
+        }
+
+        verify(contractNegotiationRepository, never()).findByProviderPid(any());
+        verify(contractNegotiationRepository, never()).save(any(ContractNegotiation.class));
     }
 
     @Test
