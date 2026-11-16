@@ -384,6 +384,7 @@ public class MultitenantInternalAPIIT extends BaseIntegrationTest {
                     .id(tenantId)
                     .name("Test Tenant " + tenantId)
                     .description("Multitenant IT test tenant")
+                    .bucketName(getTenantBucketName())
                     .participantId("urn:connector:" + tenantId)
                     .enabled(true)
                     .automaticNegotiation(false)
@@ -424,9 +425,9 @@ public class MultitenantInternalAPIIT extends BaseIntegrationTest {
     }
 
     private void removeAllS3Files() {
-        List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+        List<String> files = s3ClientService.listFiles(getTenantBucketName());
         if (files != null) {
-            files.forEach(f -> s3ClientService.deleteFile(s3Properties.getBucketName(), f));
+            files.forEach(f -> s3ClientService.deleteFile(getTenantBucketName(), f));
         }
     }
 

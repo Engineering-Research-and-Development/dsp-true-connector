@@ -29,6 +29,7 @@ import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.TenantService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
@@ -166,10 +167,10 @@ public class AutomaticNegotiationIT {
                 "provider", "provider_db", PROVIDER_BASE_URL,
                 getS3Url(), S3Utils.ACCESS_KEY, S3Utils.SECRET_KEY);
 
-        // ── Consumer instance — no S3 needed for negotiation flow ─────────────────
+        // All connector instances require storage provisioning, even for negotiation-only flows.
         consumerCtx = startInstance(mongoHost, mongoPort, CONSUMER_PORT,
                 "consumer", "consumer_db", CONSUMER_BASE_URL,
-                null, null, null);
+                getS3Url(), S3Utils.ACCESS_KEY, S3Utils.SECRET_KEY);
 
         // ── WireMock consumer — callbackAddress points to WireMock, not the real consumer ──
         // Provider will send ContractAgreementMessage to http://localhost:WIREMOCK_PORT/{tenantId}/consumer/...
@@ -177,7 +178,7 @@ public class AutomaticNegotiationIT {
         wiremockConsumerCtx = startInstance(mongoHost, mongoPort, WIREMOCK_CONSUMER_PORT,
                 "consumer-wiremock", "consumer_wiremock_db",
                 "http://localhost:" + WIREMOCK_PORT,
-                null, null, null);
+                getS3Url(), S3Utils.ACCESS_KEY, S3Utils.SECRET_KEY);
 
         // Populate provider catalog so offer validation succeeds
         populateProviderCatalog();
@@ -189,9 +190,9 @@ public class AutomaticNegotiationIT {
      * before any other source is consulted. This overrides the hardcoded MongoDB and S3
      * coordinates in {@code application.properties} on the test classpath.
      *
-     * @param s3Endpoint MinIO S3 URL — may be {@code null} for instances that don't need S3
-     * @param s3AccessKey MinIO access key — may be {@code null}
-     * @param s3SecretKey MinIO secret key — may be {@code null}
+     * @param s3Endpoint S3 URL used for mandatory tenant storage provisioning
+     * @param s3AccessKey S3 access key
+     * @param s3SecretKey S3 secret key
      */
     private static ConfigurableApplicationContext startInstance(String mongoHost, int mongoPort,
                                                                 int serverPort, String appName,
@@ -316,7 +317,7 @@ public class AutomaticNegotiationIT {
         // exactly as CatalogIT.uploadFile() does via createS3EndpointProperties().
         Map<String, String> destinationS3Properties = Map.of(
                 S3Utils.OBJECT_KEY,        dataset.getId(),
-                S3Utils.BUCKET_NAME,       s3Properties.getBucketName(),
+                S3Utils.BUCKET_NAME,       providerCtx.getBean(TenantBucketResolver.class).resolveBucketName(TENANT_ID),
                 S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
                 S3Utils.REGION,            s3Properties.getRegion(),
                 S3Utils.ACCESS_KEY,        s3Properties.getAccessKey(),
@@ -335,7 +336,7 @@ public class AutomaticNegotiationIT {
         }
 
         log.info("Provider catalog populated — dataset='{}', bucket='{}'",
-                dataset.getId(), s3Properties.getBucketName());
+                dataset.getId(), providerCtx.getBean(TenantBucketResolver.class).resolveBucketName(TENANT_ID));
     }
 
     private String fetchAdminJwt() throws IOException, InterruptedException {

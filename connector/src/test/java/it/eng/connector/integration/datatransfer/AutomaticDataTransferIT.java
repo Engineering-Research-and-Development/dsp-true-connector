@@ -25,6 +25,7 @@ import it.eng.tools.repository.ArtifactRepository;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.TenantService;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
@@ -358,7 +359,7 @@ public class AutomaticDataTransferIT {
         // (DataTransferAPIService.startTransfer generates a presigned URL using this key)
         Map<String, String> destinationS3Properties = Map.of(
                 S3Utils.OBJECT_KEY,        datasetId,
-                S3Utils.BUCKET_NAME,       s3Properties.getBucketName(),
+                S3Utils.BUCKET_NAME,       providerCtx.getBean(TenantBucketResolver.class).resolveBucketName(TENANT_ID),
                 S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
                 S3Utils.REGION,            s3Properties.getRegion(),
                 S3Utils.ACCESS_KEY,        s3Properties.getAccessKey(),
@@ -514,8 +515,8 @@ public class AutomaticDataTransferIT {
         // Verify artifact landed in Consumer's MinIO.
         // HttpPullTransferStrategy stores the artifact with key = transferProcess.getId() = consumerTpId.
         var consumerS3      = consumerCtx.getBean(S3ClientService.class);
-        var consumerS3Props = consumerCtx.getBean(S3Properties.class);
-        assertTrue(consumerS3.fileExists(consumerS3Props.getBucketName(), consumerTpId),
+        String consumerBucket = consumerCtx.getBean(TenantBucketResolver.class).resolveBucketName(TENANT_ID);
+        assertTrue(consumerS3.fileExists(consumerBucket, consumerTpId),
                 "Artifact must exist in Consumer MinIO after download");
 
         log.info("Automatic HTTP_PULL transfer completed successfully — agreementId='{}'", agreementId);
@@ -582,8 +583,8 @@ public class AutomaticDataTransferIT {
         // DataTransferAPIService.requestTransfer sets objectKey = consumerTpId (the
         // INITIALIZED TP's MongoDB id), so that is the key under which the file lands.
         var consumerS3      = consumerCtx.getBean(S3ClientService.class);
-        var consumerS3Props = consumerCtx.getBean(S3Properties.class);
-        assertTrue(consumerS3.fileExists(consumerS3Props.getBucketName(), consumerTpId),
+        String consumerBucket = consumerCtx.getBean(TenantBucketResolver.class).resolveBucketName(TENANT_ID);
+        assertTrue(consumerS3.fileExists(consumerBucket, consumerTpId),
                 "Artifact must exist in Consumer MinIO after HTTP_PUSH");
 
         log.info("Automatic HTTP_PUSH transfer completed successfully — agreementId='{}'", agreementId);

@@ -36,6 +36,7 @@ import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
+import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.TenantService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -301,8 +302,8 @@ abstract class ConnectorToConnectorFlowSupport {
         // 2. Negotiation, 3. HTTP pull transfer: the consumer downloads from a presigned URL of the provider's S3.
         String agreementId = negotiate(dataset, apiToken);
         TransferProcess consumerTp = transfer(agreementId, apiToken);
-        S3Properties consumerS3 = consumer.bean(S3Properties.class);
-        assertThat(consumer.bean(S3ClientService.class).fileExists(consumerS3.getBucketName(), consumerTp.getId()))
+        String consumerBucket = consumer.bean(TenantBucketResolver.class).resolveBucketName(TENANT_ID);
+        assertThat(consumer.bean(S3ClientService.class).fileExists(consumerBucket, consumerTp.getId()))
                 .as("artifact stored in the consumer bucket").isTrue();
 
         assertThat(provider.callsTo("/" + TENANT_ID + "/catalog/request")).isNotEmpty();
@@ -658,12 +659,12 @@ abstract class ConnectorToConnectorFlowSupport {
         S3Properties s3Properties = instance.bean(S3Properties.class);
         Map<String, String> destination = Map.of(
                 S3Utils.OBJECT_KEY, dataset.getId(),
-                S3Utils.BUCKET_NAME, s3Properties.getBucketName(),
+                S3Utils.BUCKET_NAME, instance.bean(TenantBucketResolver.class).resolveBucketName(TENANT_ID),
                 S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
                 S3Utils.REGION, s3Properties.getRegion(),
                 S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),
                 S3Utils.SECRET_KEY, s3Properties.getSecretKey());
-        // The bucket is created asynchronously on startup: retry until it exists.
+        // Storage is provisioned at startup; retry transient upload failures.
         Exception lastFailure = null;
         for (int attempt = 0; attempt < UPLOAD_ATTEMPTS; attempt++) {
             try {

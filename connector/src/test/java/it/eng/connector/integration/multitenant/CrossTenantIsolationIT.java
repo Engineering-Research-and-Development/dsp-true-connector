@@ -196,7 +196,7 @@ public class CrossTenantIsolationIT extends BaseIntegrationTest {
                     .id(tenantId)
                     .name(tenantId)
                     .participantId("urn:example:" + tenantId)
-                    .bucketName(s3Properties.getBucketName())
+                    .bucketName(getTenantBucketName())
                     .enabled(true)
                     .build());
         }

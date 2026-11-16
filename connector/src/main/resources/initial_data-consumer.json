@@ -323,6 +323,20 @@
       "automaticNegotiation": false,
       "automaticTransfer": false,
       "version": 0
+    },
+    {
+      "_class": "it.eng.tools.model.Tenant",
+      "_id": "acme",
+      "name": "Acme",
+      "realm": "tenant-acme",
+      "description": "Acme tenant",
+      "participantId": "urn:connector:acme",
+      "callbackAddress": "http://localhost:8080/acme",
+      "bucketName": "dsp-true-connector-acme",
+      "enabled": true,
+      "automaticNegotiation": false,
+      "automaticTransfer": false,
+      "version": 0
     }
   ]
 }

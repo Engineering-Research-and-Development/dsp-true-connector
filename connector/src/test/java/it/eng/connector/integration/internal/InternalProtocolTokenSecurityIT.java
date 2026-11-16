@@ -70,7 +70,7 @@ class InternalProtocolTokenSecurityIT extends BaseIntegrationTest {
     void storeCatalog() throws InterruptedException {
         // The tenant bucket is created asynchronously on startup and a catalog request lists it.
         long deadline = System.currentTimeMillis() + BUCKET_WAIT_SECONDS * 1000L;
-        while (!s3BucketProvisionService.bucketExists(s3Properties.getBucketName())
+        while (!s3BucketProvisionService.bucketExists(getTenantBucketName())
                 && System.currentTimeMillis() < deadline) {
             Thread.sleep(250);
         }

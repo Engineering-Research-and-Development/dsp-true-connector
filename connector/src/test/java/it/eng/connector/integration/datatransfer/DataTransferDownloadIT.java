@@ -77,11 +77,11 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
         agreementRepository.deleteAll();
         contractNegotiationRepository.deleteAll();
         policyEnforcementRepository.deleteAll();
-        if (s3BucketProvisionService.bucketExists(s3Properties.getBucketName())) {
-            List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+        if (s3BucketProvisionService.bucketExists(getTenantBucketName())) {
+            List<String> files = s3ClientService.listFiles(getTenantBucketName());
             if (files != null) {
                 for (String file : files) {
-                    s3ClientService.deleteFile(s3Properties.getBucketName(), file);
+                    s3ClientService.deleteFile(getTenantBucketName(), file);
                 }
             }
         }
@@ -142,6 +142,7 @@ public class DataTransferDownloadIT extends BaseIntegrationTest {
 
         // TransferProcess started
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
+                .tenantId(TENANT_ID)
                 .consumerPid(createNewId())
                 .providerPid(createNewId())
                 .agreementId(agreement.getId())

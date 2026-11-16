@@ -58,6 +58,15 @@ Additional update-path rules:
 
 ## Per-tenant bucket isolation
 
+At startup, after MongoDB seed loading, storage is synchronously provisioned for **every
+enabled tenant**. An explicit `bucketName` is preserved. If it is null or blank, startup
+derives `<s3.bucketName>-<tenantId>`, provisions that bucket and its credentials, and persists
+the derived name on the tenant so subsequent requests use the same bucket. A missing global
+prefix or any provisioning/persistence failure prevents startup. Disabled tenants are not
+provisioned. The optional `ENG-employee.json` mock upload runs separately after readiness
+and targets every enabled tenant's provisioned bucket. If the file is absent (as in production),
+all enabled tenants' buckets and credentials are still provisioned.
+
 Each tenant gets its own S3 bucket. The `TenantBucketResolver` service resolves the effective
 bucket name at request time:
 

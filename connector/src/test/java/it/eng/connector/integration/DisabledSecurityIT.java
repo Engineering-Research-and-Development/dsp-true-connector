@@ -213,10 +213,10 @@ class DisabledSecurityIT extends BaseIntegrationTest {
     }
 
     private void removeFiles() {
-        List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+        List<String> files = s3ClientService.listFiles(getTenantBucketName());
         if (files != null) {
             for (String file : files) {
-                s3ClientService.deleteFile(s3Properties.getBucketName(), file);
+                s3ClientService.deleteFile(getTenantBucketName(), file);
             }
         }
     }

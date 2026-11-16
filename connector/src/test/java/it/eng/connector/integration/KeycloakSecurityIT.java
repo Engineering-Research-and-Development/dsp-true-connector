@@ -289,7 +289,7 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
     private void waitUntilFileIsVisible(String objectKey) throws InterruptedException {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
         while (System.nanoTime() < deadline) {
-            List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+            List<String> files = s3ClientService.listFiles(getTenantBucketName());
             if (files != null && files.contains(objectKey)) {
                 return;
             }
@@ -299,10 +299,10 @@ class KeycloakSecurityIT extends BaseKeycloakIntegrationTest {
     }
 
     private void removeFiles() {
-        List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+        List<String> files = s3ClientService.listFiles(getTenantBucketName());
         if (files != null) {
             for (String file : files) {
-                s3ClientService.deleteFile(s3Properties.getBucketName(), file);
+                s3ClientService.deleteFile(getTenantBucketName(), file);
             }
         }
     }

@@ -124,7 +124,7 @@ public class CatalogIT extends BaseIntegrationTest {
 //      check if catalog and dataset are in the database and that the dataset is linked to the file in S3
         assertTrue(catalogRepository.findById(catalog.getId()).isPresent());
         assertTrue(datasetRepository.findById(dataset.getId()).isPresent());
-        assertTrue(s3ClientService.listFiles(s3Properties.getBucketName()).stream()
+        assertTrue(s3ClientService.listFiles(getTenantBucketName()).stream()
                 .anyMatch(file -> file.equals(dataset.getId())));
 
         removeFiles();
@@ -469,10 +469,10 @@ public class CatalogIT extends BaseIntegrationTest {
 
     private void removeFiles() {
         // Ensure the S3 bucket is empty before the test
-        List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+        List<String> files = s3ClientService.listFiles(getTenantBucketName());
         if (files != null) {
             for (String file : files) {
-                s3ClientService.deleteFile(s3Properties.getBucketName(), file);
+                s3ClientService.deleteFile(getTenantBucketName(), file);
             }
         }
     }

@@ -139,7 +139,7 @@ public class BaseIntegrationTest {
                     .id(TENANT_ID)
                     .name("EngineeringA")
                     .participantId("connector-engineering")
-                    .bucketName(s3Properties.getBucketName())
+                    .bucketName(s3Properties.getBucketName() + "-" + TENANT_ID)
                     .enabled(true)
                     .build());
         }
@@ -199,10 +199,19 @@ public class BaseIntegrationTest {
         assertNotNull(contractNegotiation.getAgreement());
     }
 
+    /**
+     * Returns the default tenant's bucket provisioned during application startup.
+     *
+     * @return the persisted tenant bucket name
+     */
+    protected String getTenantBucketName() {
+        return tenantRepository.findById(TENANT_ID).orElseThrow().getBucketName();
+    }
+
     protected Map<String, String> createS3EndpointProperties(String objectKey) {
         return Map.of(
                 S3Utils.OBJECT_KEY, objectKey,
-                S3Utils.BUCKET_NAME, s3Properties.getBucketName(),
+                S3Utils.BUCKET_NAME, getTenantBucketName(),
                 S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
                 S3Utils.REGION, s3Properties.getRegion(),
                 S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),

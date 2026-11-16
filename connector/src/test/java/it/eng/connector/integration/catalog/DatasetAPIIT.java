@@ -76,11 +76,11 @@ public class DatasetAPIIT extends BaseIntegrationTest {
         catalogRepository.deleteAll();
         artifactRepository.deleteAll();
         datasetRepository.deleteAll();
-        if (s3BucketProvisionService.bucketExists(s3Properties.getBucketName())) {
-            List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+        if (s3BucketProvisionService.bucketExists(getTenantBucketName())) {
+            List<String> files = s3ClientService.listFiles(getTenantBucketName());
             if (files != null) {
                 for (String file : files) {
-                    s3ClientService.deleteFile(s3Properties.getBucketName(), file);
+                    s3ClientService.deleteFile(getTenantBucketName(), file);
                 }
             }
         }
@@ -272,7 +272,7 @@ public class DatasetAPIIT extends BaseIntegrationTest {
     public void uploadArtifactFile() throws Exception {
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
-        int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+        int startingBucketFileCount = s3ClientService.listFiles(getTenantBucketName()).size();
 
         Dataset dataset = Dataset.Builder.newInstance()
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
@@ -339,7 +339,7 @@ public class DatasetAPIIT extends BaseIntegrationTest {
         assertEquals(initialArtifactSize + 1, artifactRepository.findAll().size());
 
         MockHttpServletResponse mockHttpServletResponse = new MockHttpServletResponse();
-        s3ClientService.downloadFile(s3Properties.getBucketName(), artifactFromDb.getValue(), mockHttpServletResponse);
+        s3ClientService.downloadFile(getTenantBucketName(), artifactFromDb.getValue(), mockHttpServletResponse);
 
         ResponseBytes<GetObjectResponse> fileFromStorage = ResponseBytes.fromByteArray(GetObjectResponse.builder()
                         .contentType(mockHttpServletResponse.getContentType())
@@ -444,7 +444,7 @@ public class DatasetAPIIT extends BaseIntegrationTest {
 
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
-        int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+        int startingBucketFileCount = s3ClientService.listFiles(getTenantBucketName()).size();
 
         MvcResult result = mockMvc.perform(
                         builder.file(filePart))
@@ -480,7 +480,7 @@ public class DatasetAPIIT extends BaseIntegrationTest {
         assertEquals(initialArtifactSize, artifactRepository.findAll().size());
 
         MockHttpServletResponse mockHttpServletResponse = new MockHttpServletResponse();
-        s3ClientService.downloadFile(s3Properties.getBucketName(), artifactFromDb.getValue(), mockHttpServletResponse);
+        s3ClientService.downloadFile(getTenantBucketName(), artifactFromDb.getValue(), mockHttpServletResponse);
 
         ResponseBytes<GetObjectResponse> fileFromStorage = ResponseBytes.fromByteArray(GetObjectResponse.builder()
                         .contentType(mockHttpServletResponse.getContentType())
@@ -567,7 +567,7 @@ public class DatasetAPIIT extends BaseIntegrationTest {
 
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
-        int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+        int startingBucketFileCount = s3ClientService.listFiles(getTenantBucketName()).size();
 
         MockMultipartHttpServletRequestBuilder builder =
                 MockMvcRequestBuilders.multipart(ApiEndpoints.CATALOG_DATASETS_V1 + "/" + datasetWithFile.getId());
@@ -680,7 +680,7 @@ public class DatasetAPIIT extends BaseIntegrationTest {
 
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
-        int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+        int startingBucketFileCount = s3ClientService.listFiles(getTenantBucketName()).size();
 
         TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
         };
@@ -780,7 +780,7 @@ public class DatasetAPIIT extends BaseIntegrationTest {
 
         int initialDatasetSize = datasetRepository.findAll().size();
         int initialArtifactSize = artifactRepository.findAll().size();
-        int startingBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+        int startingBucketFileCount = s3ClientService.listFiles(getTenantBucketName()).size();
 
         TypeReference<GenericApiResponse<String>> typeRef = new TypeReference<GenericApiResponse<String>>() {
         };
@@ -804,7 +804,7 @@ public class DatasetAPIIT extends BaseIntegrationTest {
         // check that the count hasn't changed
         assertEquals(initialDatasetSize, datasetRepository.findAll().size());
         assertEquals(initialArtifactSize, artifactRepository.findAll().size());
-        assertEquals(startingBucketFileCount, s3ClientService.listFiles(s3Properties.getBucketName()).size());
+        assertEquals(startingBucketFileCount, s3ClientService.listFiles(getTenantBucketName()).size());
 
     }
 
@@ -815,7 +815,7 @@ public class DatasetAPIIT extends BaseIntegrationTest {
         // this is to ensure that the test functions correctly since the count will never -10000
         int endBucketFileCount = -10000;
         for (int i = 0; i < maxRetries; i++) {
-            endBucketFileCount = s3ClientService.listFiles(s3Properties.getBucketName()).size();
+            endBucketFileCount = s3ClientService.listFiles(getTenantBucketName()).size();
             if (endBucketFileCount == expectedEndBucketFileCount) break;
             log.debug("Waiting for S3 bucket file count to stabilize. Current count: {}", endBucketFileCount);
             Thread.sleep(delayMs);
