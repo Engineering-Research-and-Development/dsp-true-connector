@@ -49,7 +49,7 @@ public class CatalogAPIController {
 
         log.info("Saving new catalog");
 
-        Catalog storedCatalog = catalogService.saveCatalog(c);
+        Catalog storedCatalog = catalogService.createCatalog(c);
 
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
                 .body(GenericApiResponse.success(CatalogSerializer.serializePlainJsonNode(storedCatalog), "Catalog saved"));

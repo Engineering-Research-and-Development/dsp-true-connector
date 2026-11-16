@@ -22,13 +22,17 @@ import java.util.Map;
 public class DataServiceService {
 
     private final DataServiceRepository repository;
+
+    private final CatalogTenantGuard tenantGuard;
     private final CatalogService catalogService;
     private final AuditEventPublisher auditEventPublisher;
     private final String baseURL;
 
     public DataServiceService(DataServiceRepository repository, CatalogService catalogService,
-                              AuditEventPublisher auditEventPublisher, @Value("${application.baseURL}") String baseURL) {
+                              AuditEventPublisher auditEventPublisher, @Value("${application.baseURL}") String baseURL,
+                              CatalogTenantGuard tenantGuard) {
         this.repository = repository;
+        this.tenantGuard = tenantGuard;
         this.catalogService = catalogService;
         this.auditEventPublisher = auditEventPublisher;
         this.baseURL = baseURL;
@@ -72,6 +76,7 @@ public class DataServiceService {
      * @throws InternalServerErrorAPIException if saving fails
      */
     public DataService saveDataService(DataService dataService) {
+        tenantGuard.checkNewDataService(dataService);
     	DataService savedDataService = null;
         try {
         	String tenantId = TenantContextHolder.getTenantId();

@@ -21,6 +21,7 @@ import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.util.CredentialUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
@@ -1089,5 +1090,89 @@ public class ContractNegotiationAPIServiceTest {
         assertEquals(eventType, eventTypeCaptor.getValue());
         assertEquals(description, descriptionCaptor.getValue());
         assertNotNull(argCaptorAuditEventDetails.getValue());
+    }
+
+    // ---------------------------------------------------------------- tenant isolation
+
+    private static final String OWN_TENANT = "tenant-a";
+    private static final String OTHER_TENANT_NEGOTIATION_ID = "urn:uuid:negotiation-of-tenant-b";
+
+    @Test
+    @DisplayName("Find contract negotiation by id - own tenant's negotiation is found")
+    public void findContractNegotiationById_ownTenant_found() {
+        ContractNegotiation own = NegotiationMockObjectUtil.CONTRACT_NEGOTIATION_ACCEPTED;
+        when(contractNegotiationRepository.findByIdAndTenantId(own.getId(), OWN_TENANT)).thenReturn(Optional.of(own));
+
+        TenantContextHolder.setTenantId(OWN_TENANT);
+        try {
+            assertEquals(own, service.findContractNegotiationById(own.getId()));
+        } finally {
+            TenantContextHolder.clear();
+        }
+        verify(contractNegotiationRepository, never()).findById(anyString());
+    }
+
+    @Test
+    @DisplayName("Find contract negotiation by id - another tenant's negotiation is not found")
+    public void findContractNegotiationById_otherTenant_notFound() {
+        when(contractNegotiationRepository.findByIdAndTenantId(OTHER_TENANT_NEGOTIATION_ID, OWN_TENANT)).thenReturn(Optional.empty());
+
+        TenantContextHolder.setTenantId(OWN_TENANT);
+        try {
+            assertThrows(ContractNegotiationAPIException.class,
+                    () -> service.findContractNegotiationById(OTHER_TENANT_NEGOTIATION_ID));
+        } finally {
+            TenantContextHolder.clear();
+        }
+        verify(contractNegotiationRepository, never()).findById(anyString());
+    }
+
+    @Test
+    @DisplayName("Every action on another tenant's negotiation fails before anything is saved or sent")
+    public void actions_onOtherTenantNegotiation_rejectedWithoutSideEffects() {
+        JsonNode offer = NegotiationSerializer.serializePlainJsonNode(NegotiationMockObjectUtil.OFFER);
+        when(contractNegotiationRepository.findByIdAndTenantId(OTHER_TENANT_NEGOTIATION_ID, OWN_TENANT)).thenReturn(Optional.empty());
+
+        List<Executable> actions = List.of(
+                () -> service.sendContractRequestMessageAsCounteroffer(OTHER_TENANT_NEGOTIATION_ID, offer),
+                () -> service.sendContractOfferMessageAsCounteroffer(OTHER_TENANT_NEGOTIATION_ID, offer),
+                () -> service.sendContractNegotiationEventMessageAccepted(OTHER_TENANT_NEGOTIATION_ID),
+                () -> service.sendContractAgreementMessage(OTHER_TENANT_NEGOTIATION_ID),
+                () -> service.sendContractAgreementVerificationMessage(OTHER_TENANT_NEGOTIATION_ID),
+                () -> service.sendContractNegotiationEventMessageFinalize(OTHER_TENANT_NEGOTIATION_ID),
+                () -> service.sendContractNegotiationTerminationMessage(OTHER_TENANT_NEGOTIATION_ID));
+
+        TenantContextHolder.setTenantId(OWN_TENANT);
+        try {
+            for (Executable action : actions) {
+                assertThrows(ContractNegotiationAPIException.class, action);
+            }
+        } finally {
+            TenantContextHolder.clear();
+        }
+
+        verify(contractNegotiationRepository, times(actions.size())).findByIdAndTenantId(OTHER_TENANT_NEGOTIATION_ID, OWN_TENANT);
+        verify(contractNegotiationRepository, never()).findById(anyString());
+        verify(contractNegotiationRepository, never()).save(any(ContractNegotiation.class));
+        verify(agreementRepository, never()).save(any(Agreement.class));
+        verify(offerRepository, never()).save(any(Offer.class));
+        verifyNoInteractions(okHttpRestClient);
+    }
+
+    @Test
+    @DisplayName("Find contract negotiations - a tenantId filter from the caller is replaced by the current tenant")
+    public void findContractNegotiations_callerTenantFilterOverridden() {
+        when(contractNegotiationRepository.findWithDynamicFilters(anyMap(), eq(ContractNegotiation.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(Collections.emptyList()));
+
+        TenantContextHolder.setTenantId(OWN_TENANT);
+        try {
+            service.findContractNegotiations(Map.of("tenantId", "tenant-b"), pageable);
+        } finally {
+            TenantContextHolder.clear();
+        }
+
+        verify(contractNegotiationRepository).findWithDynamicFilters(
+                eq(Map.of("tenantId", OWN_TENANT)), eq(ContractNegotiation.class), eq(pageable));
     }
 }

@@ -1,5 +1,6 @@
 package it.eng.catalog.service;
 
+import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
 import it.eng.catalog.model.DataService;
 import it.eng.catalog.repository.DataServiceRepository;
@@ -29,6 +30,9 @@ public class DataServiceServiceTest {
     private static final String TENANT_ID = "engineering-a";
 
     @Mock
+    private CatalogTenantGuard tenantGuard;
+
+    @Mock
     private DataServiceRepository repository;
 
     @Mock
@@ -50,7 +54,7 @@ public class DataServiceServiceTest {
     void setUp() {
         dataService = CatalogMockObjectUtil.createNewDataService();
         TenantContextHolder.setTenantId(TENANT_ID);
-        dataServiceService = new DataServiceService(repository, catalogService, auditEventPublisher, baseURL);
+        dataServiceService = new DataServiceService(repository, catalogService, auditEventPublisher, baseURL, tenantGuard);
     }
 
     @AfterEach
@@ -140,5 +144,17 @@ public class DataServiceServiceTest {
         assertTrue(argCaptorDataService.getValue().getTitle().contains("update"));
         assertTrue(argCaptorDataService.getValue().getDescription().stream().filter(d -> d.getValue().contains("update")).findFirst().isPresent());
         verify(auditEventPublisher).publishEvent(eq(AuditEventType.DATA_SERVICE_UPDATED), anyString(), any());
+    }
+
+    @Test
+    @DisplayName("Save data service - rejected by the tenant guard: nothing saved")
+    void saveDataService_rejectedByTenantGuard() {
+        doThrow(new CatalogErrorAPIException("DataService with id x cannot be used"))
+                .when(tenantGuard).checkNewDataService(dataService);
+
+        assertThrows(CatalogErrorAPIException.class, () -> dataServiceService.saveDataService(dataService));
+
+        verify(repository, never()).save(any(DataService.class));
+        verifyNoInteractions(catalogService);
     }
 }

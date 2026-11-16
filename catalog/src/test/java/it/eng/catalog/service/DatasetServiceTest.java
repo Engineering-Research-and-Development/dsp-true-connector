@@ -64,6 +64,8 @@ public class DatasetServiceTest {
     @Captor
     private ArgumentCaptor<Dataset> argCaptorDataset;
 
+    @Mock
+    private CatalogTenantGuard tenantGuard;
     @InjectMocks
     private DatasetService datasetService;
 
@@ -261,5 +263,34 @@ public class DatasetServiceTest {
         verify(repository).findByIdAndTenantId("1", TENANT_ID);
         verify(repository, never()).deleteById("1");
         verify(catalogService, never()).updateCatalogDatasetAfterDelete(any(Dataset.class));
+    }
+
+    @Test
+    @DisplayName("Save dataset - rejected by the tenant guard: no artifact upload, nothing saved")
+    public void saveDataset_rejectedByTenantGuard() {
+        doThrow(new CatalogErrorAPIException("Dataset with id x cannot be used"))
+                .when(tenantGuard).checkNewDataset(CatalogMockObjectUtil.DATASET);
+
+        assertThrows(CatalogErrorAPIException.class, () -> datasetService.saveDataset(
+                CatalogMockObjectUtil.DATASET, null, CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getValue(), null));
+
+        verifyNoInteractions(artifactService);
+        verify(repository, never()).save(any(Dataset.class));
+        verifyNoInteractions(catalogService);
+    }
+
+    @Test
+    @DisplayName("Update dataset - rejected by the tenant guard: nothing saved")
+    public void updateDataset_rejectedByTenantGuard() {
+        when(repository.findByIdAndTenantId(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), TENANT_ID))
+                .thenReturn(Optional.of(CatalogMockObjectUtil.DATASET_WITH_ARTIFACT));
+        doThrow(new CatalogErrorAPIException("Distribution with id x cannot be used"))
+                .when(tenantGuard).checkDatasetReferences(CatalogMockObjectUtil.DATASET_FOR_UPDATE);
+
+        assertThrows(CatalogErrorAPIException.class, () -> datasetService.updateDataset(
+                CatalogMockObjectUtil.DATASET_WITH_ARTIFACT.getId(), CatalogMockObjectUtil.DATASET_FOR_UPDATE, null, null, null));
+
+        verifyNoInteractions(artifactService);
+        verify(repository, never()).save(any(Dataset.class));
     }
 }
