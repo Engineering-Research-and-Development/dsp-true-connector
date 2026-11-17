@@ -73,10 +73,25 @@ only. Terraform rejects combinations other than:
 `terraform.tfvars`. The UI uses `AUTH_PROVIDER=KEYCLOAK` only when the connector uses Keycloak; otherwise its supported
 value is `INTERNAL`. Runtime variables are `AUTH_PROVIDER`, `KEYCLOAK_URL`, `KEYCLOAK_CLIENT_ID=keycloak-api`, and
 `KEYCLOAK_ADMIN_REALM=connector-admin`. The UI completes Authorization Code with PKCE S256; no client secret goes to
-the browser. Use an image from the verified
-[UI `feature/keycloak_auth_code_login` branch](https://github.com/Engineering-Research-and-Development/dsp-true-connector-ui/tree/feature/keycloak_auth_code_login)
-at commit `ce736d0a788d592850eec1f6674c447ee2d1541c` or a later compatible revision. The public `keycloak-api` client
+the browser. Use an image from the
+[UI repository](https://github.com/Engineering-Research-and-Development/dsp-true-connector-ui) with Keycloak login support. The public `keycloak-api` client
 must allow each configured origin's exact `/auth/callback` redirect, `/login` post-logout URI, and web origin.
+
+UI behaviour to be aware of:
+
+- The UI supports only `AUTH_PROVIDER=INTERNAL` (email/password, the default) and `AUTH_PROVIDER=KEYCLOAK`. Terraform
+  passes `KEYCLOAK` only when `auth_provider = "KEYCLOAK"`; for `INTERNAL` and `DISABLED` it passes `INTERNAL`.
+- With `KEYCLOAK`, the UI container stops at startup unless `TC_ROOT_API_URL`, `KEYCLOAK_URL`, `KEYCLOAK_CLIENT_ID`,
+  and `KEYCLOAK_ADMIN_REALM` are all set. `KEYCLOAK_URL` must be an absolute HTTP(S) URL with no embedded credentials.
+- The login page lists tenants from the connector's unauthenticated `GET /public/tenant` endpoint, one button per
+  enabled tenant (`name` is the label, `realm` the Keycloak realm). The UI builds this URL by removing `/api/v1` from
+  `TC_ROOT_API_URL`: `/connector-a/api/v1` becomes `/connector-a/public/tenant`. The Terraform UI `nginx.conf` files in
+  `app-resources/ui_*_resources/` proxy `/connector-a/public/` and `/connector-b/public/` to the connectors. Keep
+  those `location` blocks if you replace the nginx configuration, or the login page shows no tenants.
+- Super-admin sign-in always uses `KEYCLOAK_ADMIN_REALM` (`connector-admin`). Choosing it does not grant
+  `SUPER_ADMIN`; the UI reads the user, tenant (`tenant_id`, `tenant_name`) and roles (`realm_access.roles`) from the
+  access token, and the connector still enforces authorization. Logout ends the Keycloak session and returns to
+  `/login`.
 
 ### Managed resource names and data
 

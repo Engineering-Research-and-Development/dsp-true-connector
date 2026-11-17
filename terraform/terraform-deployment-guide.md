@@ -2,7 +2,7 @@
 
 This document analyses the existing Terraform setup and describes how to deploy the connector to:
 1. A **local** Kubernetes cluster (via Kind)
-2. The **remote** Endurance Playground cluster (`kubernetes.services.synelixis.com`)
+2. A **remote** Kubernetes cluster
 
 ---
 
@@ -27,7 +27,7 @@ This document analyses the existing Terraform setup and describes how to deploy 
 |---|---|---|
 | 1 | `providers.tf` uses `kind_cluster.dsp-cluster.kubeconfig_path` — this **only works locally with Kind**. | Must be changed / overridden for remote deploy. |
 | 2 | `main.tf` creates the Kind cluster — must be **skipped** for remote deploy. | |
-| 3 | All resources deploy to the **default namespace**. The remote cluster uses `endurance-playground` namespace. | Namespace must be set for remote deploy. |
+| 3 | All resources deploy to the **default namespace**. A remote cluster typically uses a dedicated namespace (examples below use `dsp-connector`). | Namespace must be set for remote deploy. |
 | 4 | `rustfs` and `mongodb` are deployed as in-cluster services. A remote deployment must provide a compatible RustFS service and credentials. | Skip the in-cluster `rustfs` deployment only when the remote service is available. |
 | 5 | RustFS credentials are configured through Terraform S3 variables. | Provide the remote service credentials through a secret-backed Terraform configuration. |
 | 6 | The default S3 endpoint is `http://s3storage:9000`. | Override it with the remote RustFS service endpoint. |
@@ -63,13 +63,28 @@ are host port `8180` and NodePort `30180`; configure a shared host address or DN
 The browser UI signs in directly to Keycloak using Authorization Code with PKCE S256, then sends the JWT to the
 connector, which validates it. The UIs receive only `AUTH_PROVIDER`, `KEYCLOAK_URL`, `KEYCLOAK_CLIENT_ID=keycloak-api`,
 and `KEYCLOAK_ADMIN_REALM=connector-admin`; a client secret must never be passed to the UI. The
-`connector_ui_image` must be built from the verified
-[UI `feature/keycloak_auth_code_login` branch](https://github.com/Engineering-Research-and-Development/dsp-true-connector-ui/tree/feature/keycloak_auth_code_login)
-at commit `ce736d0a788d592850eec1f6674c447ee2d1541c` or a later compatible revision. The configured origins
+`connector_ui_image` must be built from the
+[UI repository](https://github.com/Engineering-Research-and-Development/dsp-true-connector-ui) with Keycloak login support. The configured origins
 `connector_a_ui_origin` and `connector_b_ui_origin` default to `http://localhost:4200` and `http://localhost:4300`.
 For each origin, the public `keycloak-api` client must allow exactly `<origin>/auth/callback` and `<origin>/login`,
 and list the origin as a web origin. The Terraform-managed realm import applies this allow-list to all four seeded
 `keycloak-api` clients.
+
+UI behaviour to be aware of:
+
+- The UI supports only `AUTH_PROVIDER=INTERNAL` (email/password, the default) and `AUTH_PROVIDER=KEYCLOAK`. Terraform
+  passes `KEYCLOAK` only when `auth_provider = "KEYCLOAK"`; for `INTERNAL` and `DISABLED` it passes `INTERNAL`.
+- With `KEYCLOAK`, the UI container stops at startup unless `TC_ROOT_API_URL`, `KEYCLOAK_URL`, `KEYCLOAK_CLIENT_ID`,
+  and `KEYCLOAK_ADMIN_REALM` are all set. `KEYCLOAK_URL` must be an absolute HTTP(S) URL with no embedded credentials.
+- The login page lists tenants from the connector's unauthenticated `GET /public/tenant` endpoint, one button per
+  enabled tenant (`name` is the label, `realm` the Keycloak realm). The UI builds this URL by removing `/api/v1` from
+  `TC_ROOT_API_URL`: `/connector-a/api/v1` becomes `/connector-a/public/tenant`. The Terraform UI `nginx.conf` files in
+  `app-resources/ui_*_resources/` proxy `/connector-a/public/` and `/connector-b/public/` to the connectors. Keep
+  those `location` blocks if you replace the nginx configuration, or the login page shows no tenants.
+- Super-admin sign-in always uses `KEYCLOAK_ADMIN_REALM` (`connector-admin`). Choosing it does not grant
+  `SUPER_ADMIN`; the UI reads the user, tenant (`tenant_id`, `tenant_name`) and roles (`realm_access.roles`) from the
+  access token, and the connector still enforces authorization. Logout ends the Keycloak session and returns to
+  `/login`.
 
 ### `KEYCLOAK` / `MANAGED`
 
@@ -250,17 +265,19 @@ terraform destroy
 
 ---
 
-## Part 2 — Remote Deployment (Endurance Playground)
+## Part 2 — Remote Deployment
 
-### Cluster details (from `endurance-playground-config`)
+### Cluster details (from your remote kubeconfig, e.g. `remote-cluster-config`)
+
+The values below are examples; replace them with the details provided by your cluster operator.
 
 | Property | Value |
 |---|---|
-| API server | `https://kubernetes.services.synelixis.com:1337` |
-| Namespace | `endurance-playground` |
-| Auth | Bearer token (service account `endurance-playground-svcs-acct`) |
+| API server | `https://<api-server-host>:<port>` |
+| Namespace | `dsp-connector` |
+| Auth | Bearer token (service account provided by the cluster operator) |
 | Existing RustFS service | Obtain the endpoint and credentials from the remote cluster operator. |
-| MongoDB | Deployed in-cluster as `mongodb` in `endurance-playground` namespace |
+| MongoDB | Deployed in-cluster as `mongodb` in `dsp-connector` namespace |
 | Ingress controller | nginx (`ingress_class_name = "nginx"`) |
 
 ### Step 1 — Prepare a remote-specific Terraform workspace
@@ -272,7 +289,7 @@ The cleanest approach is to create a separate Terraform workspace or a separate 
 ```
 terraform/
   remote/
-    providers.tf       ← points to endurance-playground-config
+    providers.tf       ← points to remote-cluster-config
     main.tf            ← no Kind cluster; only kubernetes resources
     configmaps.tf      ← copy/symlink, with namespace added
     deployments.tf     ← copy/symlink, with namespace added
@@ -297,8 +314,8 @@ terraform {
 }
 
 provider "kubernetes" {
-  config_path    = "${path.root}/../../endurance-playground-config"
-  config_context = "kubernetes-synelixis-endurance-playground"
+  config_path    = "${path.root}/../../remote-cluster-config"
+  config_context = "remote-cluster"
 }
 ```
 
@@ -313,7 +330,7 @@ provider "kubernetes" {
 
 ### Step 4 — Add namespace to all resources
 
-Every `kubernetes_*` resource and module call must include `namespace = "endurance-playground"`.
+Every `kubernetes_*` resource and module call must include `namespace = "dsp-connector"`.
 
 In the connector module (`modules/connector/main.tf`) and frontend module, add a `namespace` variable and pass it through:
 
@@ -331,7 +348,7 @@ metadata {
 }
 ```
 
-Then in `remote/deployments.tf`, pass `namespace = "endurance-playground"` to every module call.
+Then in `remote/deployments.tf`, pass `namespace = "dsp-connector"` to every module call.
 
 ### Step 5 — Configure RustFS for the remote cluster
 
@@ -344,8 +361,8 @@ After retrieving credentials from the cluster:
 
 ```powershell
 # Retrieve credentials (PowerShell)
-$kubeconfig = "..\..\endurance-playground-config"
-$ns = "endurance-playground"
+$kubeconfig = "..\..\remote-cluster-config"
+$ns = "dsp-connector"
 
 $user = kubectl get secret rustfs-credentials -n $ns --kubeconfig $kubeconfig `
   -o jsonpath="{.data.accessKey}" | `
@@ -364,7 +381,7 @@ Then put the values into `remote/terraform.tfvars`:
 ```hcl
 s3_access_key    = "<retrieved-user>"
 s3_secret_key    = "<retrieved-password>"
-s3_endpoint      = "http://rustfs.endurance-playground.svc.cluster.local:9000"
+s3_endpoint      = "http://rustfs.dsp-connector.svc.cluster.local:9000"
 ```
 
 Add the corresponding variables to `variables.tf`:
@@ -382,7 +399,7 @@ variable "s3_secret_key" { type = string; sensitive = true }
 data "kubernetes_secret" "rustfs_credentials" {
   metadata {
     name      = "rustfs-credentials"
-    namespace = "endurance-playground"
+    namespace = "dsp-connector"
   }
 }
 
@@ -406,7 +423,7 @@ s3.accessKey=rustfsadmin
 s3.secretKey=rustfsadmin
 
 # TO (remote cluster):
-s3.endpoint=http://rustfs.endurance-playground.svc.cluster.local:9000
+s3.endpoint=http://rustfs.dsp-connector.svc.cluster.local:9000
 s3.accessKey=${S3_ACCESS_KEY}
 s3.secretKey=${S3_SECRET_KEY}
 ```
@@ -416,7 +433,7 @@ Secrets into both connector deployments.
 
 ### Step 7 — MongoDB on the remote cluster
 
-MongoDB is **deployed in-cluster** in the `endurance-playground` namespace as part of this Terraform configuration (`kubernetes_deployment.mongodb` + `kubernetes_service.mongodb`). No external database is required.
+MongoDB is **deployed in-cluster** in the `dsp-connector` namespace as part of this Terraform configuration (`kubernetes_deployment.mongodb` + `kubernetes_service.mongodb`). No external database is required.
 
 ### Step 8 — Ingress and service names for remote cluster
 
@@ -424,17 +441,17 @@ The remote cluster uses an nginx Ingress controller. All services are type `Clus
 
 | Hostname | Kubernetes Service | Port |
 |---|---|---|
-| `fe.endurance.lab.synelixis.com` | `tc-fe-service` | 80 |
-| `be.endurance.lab.synelixis.com` | `tc-be-service` | 80 |
-| `storage.endurance.lab.synelixis.com` | `tc-storage-service` | 80 |
+| `fe.example.com` | `tc-fe-service` | 80 |
+| `be.example.com` | `tc-be-service` | 80 |
+| `storage.example.com` | `tc-storage-service` | 80 |
 
 The connector and UI modules accept a `service_name` override so they create services with exactly those names. The RustFS service in `services.tf` is also named `tc-storage-service`.
 
 #### Temporary local access via kubectl port-forward (bypasses Ingress):
 
 ```powershell
-$kubeconfig = "endurance-playground-config"
-$ns = "endurance-playground"
+$kubeconfig = "remote-cluster-config"
+$ns = "dsp-connector"
 
 # Connector backend
 kubectl port-forward svc/tc-be-service 8080:80 -n $ns --kubeconfig $kubeconfig
@@ -463,8 +480,8 @@ terraform apply -var-file="terraform.tfvars"
 ### Step 10 — Verify
 
 ```powershell
-$kubeconfig = "..\..\endurance-playground-config"
-$ns = "endurance-playground"
+$kubeconfig = "..\..\remote-cluster-config"
+$ns = "dsp-connector"
 
 # Check pods
 kubectl get pods -n $ns --kubeconfig $kubeconfig
@@ -484,7 +501,7 @@ kubectl logs deployment/connector-a -n $ns --kubeconfig $kubeconfig
 
 In Kubernetes, a **Service** of type `ClusterIP` is only reachable _inside_ the cluster — it has no externally routable address. An **Ingress** is a cluster-level HTTP(S) router that sits in front of those services and maps public hostnames + paths to them.
 
-The remote endurance cluster has an **nginx Ingress controller** already running. When you deploy an `IngressClass = nginx` resource, the controller automatically programs itself to forward incoming HTTP requests to the correct backend service.
+The remote cluster is assumed to have an **nginx Ingress controller** already running. When you deploy an `IngressClass = nginx` resource, the controller automatically programs itself to forward incoming HTTP requests to the correct backend service.
 
 ```
 Internet / VPN
@@ -492,9 +509,9 @@ Internet / VPN
       ▼
 nginx Ingress controller  (one shared instance in the cluster)
       │
-      ├─ fe.endurance.lab.synelixis.com  ──►  tc-fe-service:80
-      ├─ be.endurance.lab.synelixis.com  ──►  tc-be-service:80
-      └─ storage.endurance.lab.synelixis.com ──► tc-storage-service:80
+      ├─ fe.example.com  ──►  tc-fe-service:80
+      ├─ be.example.com  ──►  tc-be-service:80
+      └─ storage.example.com ──► tc-storage-service:80
 ```
 
 Without the Ingress, the connector UI and API would be entirely unreachable from outside the cluster (or require manual `kubectl port-forward` every time).
@@ -505,9 +522,9 @@ Without the Ingress, the connector UI and API would be entirely unreachable from
 
 | Terraform resource | Hostname | Backend service | Backend port | What it exposes |
 |---|---|---|---|---|
-| `kubernetes_ingress_v1.tc_frontend` | `fe.endurance.lab.synelixis.com` | `tc-fe-service` | 80 | Connector UI (nginx serving the Angular app) |
-| `kubernetes_ingress_v1.tc_backend` | `be.endurance.lab.synelixis.com` | `tc-be-service` | 80 | Connector REST API (Spring Boot) |
-| `kubernetes_ingress_v1.tc_storage` | `storage.endurance.lab.synelixis.com` | `tc-storage-service` | 80 | RustFS S3 API |
+| `kubernetes_ingress_v1.tc_frontend` | `fe.example.com` | `tc-fe-service` | 80 | Connector UI (nginx serving the Angular app) |
+| `kubernetes_ingress_v1.tc_backend` | `be.example.com` | `tc-be-service` | 80 | Connector REST API (Spring Boot) |
+| `kubernetes_ingress_v1.tc_storage` | `storage.example.com` | `tc-storage-service` | 80 | RustFS S3 API |
 
 The `tc-storage-ingress` has additional annotations to support large file uploads:
 - `proxy-body-size: 0` — disables the default 1 MB body limit
@@ -555,26 +572,31 @@ Traffic enters via the Ingress controller on port 80. The hostname in the reques
 
 | Target | URL |
 |---|---|
-| Connector UI | `http://fe.endurance.lab.synelixis.com` |
-| Connector REST API | `http://be.endurance.lab.synelixis.com` |
-| RustFS S3 API | `http://storage.endurance.lab.synelixis.com` |
+| Connector UI | `http://fe.example.com` |
+| Connector REST API | `http://be.example.com` |
+| RustFS S3 API | `http://storage.example.com` |
 
 Example — opening the UI in a browser:
 
 ```
-Browser  →  http://fe.endurance.lab.synelixis.com
-         →  nginx Ingress (Host: fe.endurance.lab.synelixis.com)
+Browser  →  http://fe.example.com
+         →  nginx Ingress (Host: fe.example.com)
          →  tc-fe-service:80
          →  connector-a-ui pod:80 (nginx serving the Angular SPA)
-         →  Angular app loads; its API calls go to be.endurance.lab.synelixis.com
+         →  Angular app loads; its API calls go to be.example.com
 ```
 
 The Angular app must be told where the backend API is. This is the `tc_root_api_url` variable. For the remote cluster it should be an absolute URL:
 
 ```hcl
 # terraform.tfvars
-connector_a_tc_root_api_url = "http://be.endurance.lab.synelixis.com/api/v1"
+connector_a_tc_root_api_url = "http://be.example.com/api/v1"
 ```
+
+With Keycloak login, the UI derives tenant discovery from this value as `http://be.example.com/public/tenant`, so the
+backend Ingress must route `/public/` as well as `/api/v1/` (the host-wide rule above does). Because the UI and API are
+on different hosts, the connector's `application.cors.allowed.origins` must include the UI origin
+(`http://fe.example.com`).
 
 #### Internal (pod-to-pod, inside the cluster)
 
@@ -586,9 +608,9 @@ Pods inside the cluster never go through the Ingress. They talk directly to each
 
 | From pod | To service | DNS name used |
 |---|---|---|
-| connector-a | mongodb | `mongodb.endurance-playground.svc.cluster.local` |
-| connector-a | rustfs | `rustfs.endurance-playground.svc.cluster.local` |
-| connector-a-ui (nginx proxy) | connector-a | `tc-be-service.endurance-playground.svc.cluster.local` |
+| connector-a | mongodb | `mongodb.dsp-connector.svc.cluster.local` |
+| connector-a | rustfs | `rustfs.dsp-connector.svc.cluster.local` |
+| connector-a-ui (nginx proxy) | connector-a | `tc-be-service.dsp-connector.svc.cluster.local` |
 
 > The short form (e.g. just `mongodb`) also works when both pods are in the same namespace, which is how `application.properties` refers to it:
 > ```properties
@@ -600,8 +622,8 @@ Pods inside the cluster never go through the Ingress. They talk directly to each
 
 | Caller | Reaches connector UI via… |
 |---|---|
-| Browser / external client | `http://fe.endurance.lab.synelixis.com` (through Ingress) |
-| Another pod in same namespace | `http://tc-fe-service` or `http://tc-fe-service.endurance-playground.svc.cluster.local` |
+| Browser / external client | `http://fe.example.com` (through Ingress) |
+| Another pod in same namespace | `http://tc-fe-service` or `http://tc-fe-service.dsp-connector.svc.cluster.local` |
 | `kubectl port-forward` (developer) | `http://localhost:4200` → `svc/tc-fe-service:80` |
 
 ---
@@ -632,7 +654,7 @@ If neither is enabled the Ingress resources are not created. If both were enable
 
 | File | Change |
 |---|---|
-| `providers.tf` (remote copy) | Remove `kind` provider; point `kubernetes` to `endurance-playground-config` |
+| `providers.tf` (remote copy) | Remove `kind` provider; point `kubernetes` to `remote-cluster-config` |
 | `main.tf` (remote copy) | Remove `kind_cluster` resource; add `data` source for the RustFS credentials secret |
 | All metadata blocks | Add `namespace = var.namespace` |
 | `application.properties` (both) | Parameterise `s3.endpoint`, `s3.accessKey`, `s3.secretKey` via env var placeholders |
@@ -658,29 +680,29 @@ kubectl get pods                         # verify (Kind auto-configures kubeconf
 terraform destroy                        # tear down everything
 ```
 
-### Remote (Endurance Playground)
+### Remote cluster
 
 ```powershell
-cd terraform/remote-endurance
+cd terraform/remote
 terraform init
 terraform plan  -var-file="terraform.tfvars"
 terraform apply -var-file="terraform.tfvars"
 
 # Port-forward to access locally (bypasses Ingress)
 kubectl port-forward svc/tc-be-service 8080:80 `
-  -n endurance-playground `
-  --kubeconfig endurance-playground-config
+  -n dsp-connector `
+  --kubeconfig remote-cluster-config
 
 kubectl port-forward svc/tc-fe-service 4200:80 `
-  -n endurance-playground `
-  --kubeconfig endurance-playground-config
+  -n dsp-connector `
+  --kubeconfig remote-cluster-config
 ```
 
 ### Useful kubectl commands (remote)
 
 ```powershell
 # Set shorthand
-$kube = "--kubeconfig ..\..\endurance-playground-config -n endurance-playground"
+$kube = "--kubeconfig ..\..\remote-cluster-config -n dsp-connector"
 
 kubectl get pods    $kube
 kubectl get svc     $kube

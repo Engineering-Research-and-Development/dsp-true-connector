@@ -35,7 +35,11 @@ Configure deployment variables by creating or editing `terraform.tfvars`:
 mongodb_image      = "mongo:7.0.12"
 rustfs_image        = "rustfs/rustfs:1.0.0-rc.6"
 connector_image    = "ghcr.io/engineering-research-and-development/dsp-true-connector:test"
-connector_ui_image = "ghcr.io/engineering-research-and-development/dsp-true-connector-ui:0.6.1"
+connector_ui_image = "ghcr.io/engineering-research-and-development/dsp-true-connector-ui:<tag>"
+
+# Connector authentication (see section 1c)
+auth_provider = "INTERNAL"   # INTERNAL | DISABLED | KEYCLOAK
+keycloak_mode = "NONE"       # NONE for INTERNAL/DISABLED; MANAGED or EXTERNAL for KEYCLOAK
 
 # Callback Addresses
 connector_a_base_url = "http://connector-a:8080/"
@@ -96,6 +100,32 @@ connector_b_config = {
 
 See `terraform/variables.tf` and `QUICK_REFERENCE.md` for all available configuration options.
 
+### 1c. Choose the authentication mode
+
+| `auth_provider` | `keycloak_mode` | Connector | UI login |
+|---|---|---|---|
+| `INTERNAL` (default) | `NONE` | Built-in users, connector-issued JWT | Email/password |
+| `DISABLED` | `NONE` | Authentication off, endpoints open (local/demo only) | Email/password (`INTERNAL`) |
+| `KEYCLOAK` | `MANAGED` | Validates Keycloak tokens; Terraform deploys Keycloak and PostgreSQL and imports the realm seeds | Keycloak (Authorization Code + PKCE S256) |
+| `KEYCLOAK` | `EXTERNAL` | Validates tokens from an existing Keycloak; Terraform creates no Keycloak resources | Keycloak (Authorization Code + PKCE S256) |
+
+For `KEYCLOAK`, also set `keycloak_base_url` to one absolute URL that both browsers and connector pods can reach. It
+must match the token issuer (`<keycloak_base_url>/realms/<realm>`). `MANAGED` additionally needs the Keycloak admin
+and PostgreSQL credentials, and `EXTERNAL` needs `keycloak_backend_client_secret`. Pass these as `TF_VAR_...`
+environment variables, not in `terraform.tfvars`.
+
+Terraform passes `AUTH_PROVIDER`, `KEYCLOAK_URL`, `KEYCLOAK_CLIENT_ID=keycloak-api`, and
+`KEYCLOAK_ADMIN_REALM=connector-admin` to the UI pods. The UI image must come from the
+[UI repository](https://github.com/Engineering-Research-and-Development/dsp-true-connector-ui) with Keycloak login
+support. In Keycloak mode the UI pod fails at startup if any of those settings is missing. Its login page lists
+tenants from the connector's public `/public/tenant` endpoint, which the UI nginx configuration proxies (see
+section 2).
+
+Full details, including UI origins, redirect URIs, and external-mode requirements, are in
+[terraform.md](../terraform/terraform.md#authentication-and-optional-keycloak) and
+[QUICK_REFERENCE.md](../terraform/QUICK_REFERENCE.md). For realm and tenant setup, see
+[keycloak-tenant-mapping.md](keycloak-tenant-mapping.md) and [security.md](security.md).
+
 ---
 
 > [!WARNING]
@@ -120,13 +150,15 @@ terraform/
 │   │       └── truststore.jks
 │   ├── connector_a_resources/
 │   │   ├── application.properties (template)
+│   │   └── initial_data.json
+│   ├── connector_b_resources/
+│   │   ├── application.properties (template)
 │   │   ├── initial_data.json
-│   │   └── nginx.conf (for UI)
-│   └── connector_b_resources/
-│       ├── application.properties (template)
-│       ├── initial_data.json
-│       ├── ENG-employee.json
-│       └── nginx.conf (for UI)
+│   │   └── ENG-employee.json
+│   ├── ui_a_resources/
+│   │   └── nginx.conf (UI A; proxies /connector-a/api/v1/ and /connector-a/public/)
+│   └── ui_b_resources/
+│       └── nginx.conf (UI B; proxies /connector-b/api/v1/ and /connector-b/public/)
 ```
 
 The `application.properties` files are **templates** with placeholders like `${KEYSTORE_PASSWORD}` and `${S3_SECRET_KEY}` that Terraform will populate from your `terraform.tfvars` configuration.
@@ -142,7 +174,7 @@ terraform plan
 Review the output to verify all resources that will be created:
 - ✅ Kubernetes Secrets for credentials
 - ✅ ConfigMaps for application properties and configuration
-- ✅ Deployments for connectors, UIs, MongoDB, and RustFS
+- ✅ Deployments for connectors, UIs, MongoDB, and RustFS (plus Keycloak and PostgreSQL in `KEYCLOAK` / `MANAGED` mode)
 - ✅ Services for all components
 - ✅ Generated `application.properties` files with values substituted
 
@@ -162,6 +194,8 @@ Terraform will create:
 | | `dsp-connector-b-credentials` | S3 and keystore passwords (uppercase env vars) |
 | | `ui-a-ssl` | UI SSL certificates |
 | | `ui-b-ssl` | UI SSL certificates |
+| | `keycloak-credentials` | Keycloak admin and PostgreSQL credentials (`KEYCLOAK` / `MANAGED` only) |
+| | `keycloak-realm-import` | Realm seed files (`KEYCLOAK` / `MANAGED` only) |
 | **ConfigMaps** | `dsp-connector-a-config` | Rendered `application.properties` |
 | | `dsp-connector-b-config` | Rendered `application.properties` |
 | | `connector-a-env` | Non-sensitive environment variables |
@@ -171,16 +205,20 @@ Terraform will create:
 | | `dsp-connector-a-initial-data` | Initial catalog/negotiation data |
 | | `dsp-connector-b-initial-data` | Initial catalog/negotiation data |
 | | `employee-data` | Employee data for connector-b |
+| | `ui-a-nginx-conf`, `ui-b-nginx-conf` | UI nginx configuration |
 | **Deployments** | `connector-a` | Connector API service |
 | | `connector-b` | Connector API service |
 | | `connector-a-ui` | Connector A web UI |
 | | `connector-b-ui` | Connector B web UI |
 | | `mongodb` | MongoDB database |
-| | `rustfs` | S3-compatible object storage |
+| | `s3storage` | RustFS S3-compatible object storage |
+| | `keycloak`, `keycloak-db` | Keycloak and its PostgreSQL (`KEYCLOAK` / `MANAGED` only) |
 | **Services** | `connector-a`, `connector-b` | ClusterIP + NodePort (30080, 30090) |
 | | `connector-a-ui`, `connector-b-ui` | ClusterIP + NodePort (30420, 30430) |
 | | `mongodb` | ClusterIP |
-| | `rustfs` | ClusterIP + NodePort (30000, 30001) |
+| | `s3storage` | NodePort (30081 API, 30082 console) |
+| | `keycloak` | NodePort 30180 (`KEYCLOAK` / `MANAGED` only) |
+| | `keycloak-db` | ClusterIP (`KEYCLOAK` / `MANAGED` only) |
 
 ---
 
@@ -227,7 +265,10 @@ kubectl port-forward svc/connector-a-ui 4200:4200
 kubectl port-forward svc/connector-b-ui 4300:4300
 
 # RustFS console
-kubectl port-forward svc/rustfs 9000:9000 9001:9001
+kubectl port-forward svc/s3storage 9000:9000 9001:9001
+
+# Keycloak (KEYCLOAK / MANAGED only)
+kubectl port-forward svc/keycloak 8180:8080
 ```
 
 | Service | Local URL |
@@ -237,6 +278,11 @@ kubectl port-forward svc/rustfs 9000:9000 9001:9001
 | connector-a UI | `http://localhost:4200` |
 | connector-b UI | `http://localhost:4300` |
 | RustFS console | `http://localhost:9001` (or `http://localhost:9000`) |
+| Keycloak | `http://localhost:8180` |
+
+> With Keycloak login, the browser must reach Keycloak at exactly `keycloak_base_url`. A port-forward works only if
+> `keycloak_base_url` is `http://localhost:8180` and the connector pods can also reach that address, which they
+> usually cannot. Use a host address or DNS name instead (see section 1c).
 
 ### NodePort Access (if exposed externally)
 
@@ -248,7 +294,8 @@ Services are exposed via NodePort:
 | connector-b | 30090 |
 | connector-a-ui | 30420 |
 | connector-b-ui | 30430 |
-| rustfs | 30000 (API), 30001 (console) |
+| s3storage (RustFS) | 30081 (API), 30082 (console) |
+| keycloak | 30180 (`KEYCLOAK` / `MANAGED` only) |
 
 ---
 
@@ -418,6 +465,21 @@ kubectl exec -it <pod-name> -- ls -la /cert/
 # Should list: connector-a.jks, truststore.jks
 ```
 
+### UI pod exits at startup or login page shows no tenants
+
+```bash
+kubectl logs deployment/connector-a-ui
+# "AUTH_PROVIDER=KEYCLOAK requires ..." → a Keycloak setting is empty; check keycloak_base_url
+# "AUTH_PROVIDER must be INTERNAL or KEYCLOAK" → the UI image or env is not from a supported setup
+
+# Tenant discovery must work without login, through the UI proxy:
+kubectl port-forward svc/connector-a-ui 4200:4200
+curl http://localhost:4200/connector-a/public/tenant
+```
+
+If the endpoint returns 404, the UI `nginx.conf` is missing the `/connector-a/public/` location. An empty array means
+no tenant is enabled.
+
 ### MongoDB connection issues
 
 ```bash
@@ -436,9 +498,9 @@ kubectl exec -it <connector-pod> -- nc -zv mongodb 27017
 terraform/
 ├── main.tf                    # Kind cluster configuration
 ├── variables.tf               # Variable definitions
-├── terraform.tfvars           # Values (git-ignored, create manually)
+├── terraform.tfvars           # Example values (tracked; keep real secrets out)
 ├── configmaps.tf              # Secrets, ConfigMaps, properties files
-├── deployments.tf             # Connector, UI, MongoDB, RustFS deployments
+├── deployments.tf             # Connector, UI, MongoDB, RustFS (and managed Keycloak) deployments
 ├── services.tf                # Kubernetes Services
 ├── modules/
 │   ├── connector/             # Connector pod deployment module
@@ -455,13 +517,13 @@ terraform/
 │   │   └── connector-b/
 │   ├── connector_a_resources/ # Templates & data files
 │   │   ├── application.properties
+│   │   └── initial_data.json
+│   ├── connector_b_resources/
+│   │   ├── application.properties
 │   │   ├── initial_data.json
-│   │   └── nginx.conf
-│   └── connector_b_resources/
-│       ├── application.properties
-│       ├── initial_data.json
-│       ├── ENG-employee.json
-│       └── nginx.conf
+│   │   └── ENG-employee.json
+│   ├── ui_a_resources/nginx.conf
+│   └── ui_b_resources/nginx.conf
 └── .terraform/                # Generated properties files (git-ignored)
     ├── connector_a_application.properties
     └── connector_b_application.properties
@@ -497,4 +559,6 @@ terraform/
 For more details, see:
 - `terraform/variables.tf` — all available configuration options
 - `terraform/QUICK_REFERENCE.md` — quick property mapping
+- `terraform/terraform.md` — authentication and Keycloak modes
+- `terraform/terraform-deployment-guide.md` — local (Kind) and remote cluster deployment
 
