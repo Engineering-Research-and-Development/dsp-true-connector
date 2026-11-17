@@ -369,7 +369,6 @@
       "tenantId": "engineering-b"
     }
   ],
-  "transfer_start_messages": [],
   "policy_enforcements": [
     {
       "_id": "urn:uuid:abc45800-pole-4932-8baf-ab7fd36ql4d9",

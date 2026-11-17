@@ -251,12 +251,6 @@
       "version": 0
     }
   ],
-  "contract_negotiations": [],
-  "agreements": [],
-  "transfer_request_messages": [],
-  "transfer_process": [],
-  "transfer_start_messages": [],
-  "policy_enforcements": [],
   "tenants": [
     {
       "_class": "it.eng.tools.model.Tenant",

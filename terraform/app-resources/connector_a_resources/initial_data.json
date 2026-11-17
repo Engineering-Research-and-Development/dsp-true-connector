@@ -350,7 +350,6 @@
       ]
     }
   ],
-  "transfer_request_messages": [],
   "transfer_process": [
     {
       "_id": "urn:uuid:abc45798-1434-4932-8baf-ab7fd66ql4d5",
@@ -369,7 +368,6 @@
       "tenantId": "engineering-a"
     }
   ],
-  "transfer_start_messages": [],
   "policy_enforcements": [
     {
       "_id": "urn:uuid:abc45800-pole-4932-8baf-ab7fd36ql4d9",
