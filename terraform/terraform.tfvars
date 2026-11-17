@@ -21,7 +21,7 @@ connector_a_base_url = "http://connector-a:8080/"
 connector_b_base_url = "http://connector-b:8090/"
 
 connector_a_tc_root_api_url = "/connector-a/api/v1"
-# connector_a_tc_root_api_url = "http://be.endurance.lab.synelixis.com/api/v1"
+# connector_a_tc_root_api_url = "http://be.example.com/api/v1"
 connector_b_tc_root_api_url = "/connector-b/api/v1"
 
 # Keystore Configuration for Connector A
