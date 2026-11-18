@@ -14,7 +14,6 @@
 | `build-connector-image` | `mvn clean verify` + Docker build | `dsp-true-connector:ci-<run_id>-<sha>` and `:test` in GHCR |
 | `build-dcp-issuer-image` | Maven package of `dcp/` + Docker build | `dcp-issuer:ci-<run_id>-<sha>` and `:test` in GHCR |
 | `integration-tests` | 12 matrix jobs, one Newman collection each | Test results, logs on failure |
-| `cleanup-images` | Always runs last | Deletes this run's images and old orphans from GHCR |
 
 ## Matrix (12 jobs)
 
@@ -53,13 +52,13 @@ dcp:      negotiation-api-without-counteroffer-tests, datatransfer-api-http-pull
 | `matrix.requires-dcp == true` | DCP Issuer health check (`:8084`) |
 | `matrix.requires-vc == true` | Obtain Verifiable Credentials |
 | `failure()` | Dump docker logs |
-| `always()` | `docker compose down -v`; `cleanup-images` job |
+| `always()` | `docker compose down -v` |
 
 ## Image tags
 
 | Tag | Meaning |
 |-----|---------|
-| `ci-<run_id>-<sha>` | This run only; deleted by `cleanup-images` |
+| `ci-<run_id>-<sha>` | This run only; not deleted automatically |
 | `test` | Last feature-branch build; used by TCK, Terraform and local runs |
 
 Compose files use `${IMAGE_TAG:-test}`: unset locally means `:test`.
@@ -78,7 +77,7 @@ npx --yes newman run ./ci/docker/test-cases/dcp-obtain-vc/dcp-gha-tests.postman_
 npx --yes newman run ./ci/docker/test-cases/your-test/your-test.json
 docker compose -f ./ci/docker/docker-compose-dcp.yml --env-file ./ci/docker/.env down -v
 
-# Test a specific CI build locally (only while that run is in progress; its images are deleted at the end)
+# Test a specific CI build locally
 IMAGE_TAG=ci-<run_id>-<sha> docker compose -f ./ci/docker/docker-compose.yml --env-file ./ci/docker/.env up -d
 ```
 
@@ -86,7 +85,6 @@ IMAGE_TAG=ci-<run_id>-<sha> docker compose -f ./ci/docker/docker-compose.yml --e
 
 | Issue | Fix |
 |-------|-----|
-| Image not found after re-running a job | Use **Re-run all jobs**; cleanup deleted the run's images |
 | DCP test fails, standard passes | Check the issuer health and VC steps, then `dcp-issuer` logs |
-| Cleanup warnings | Give the repository Admin access on the GHCR packages |
+| Old `ci-…` images in GHCR | Delete them by hand in the package settings |
 | Health check timeout | Read the connector logs printed by the health-check step |

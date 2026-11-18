@@ -1,14 +1,14 @@
 # Integration Tests Workflow
 
 The integration tests run in GitHub Actions from `.github/workflows/integration-tests.yml`. Each
-run builds the connector and DCP issuer images, runs the Newman (Postman) collections against
-them in a parallel matrix, and deletes its own images when it finishes.
+run builds the connector and DCP issuer images and runs the Newman (Postman) collections
+against them in a parallel matrix.
 
 ## Documentation
 
 | Document | Purpose |
 |----------|---------|
-| [INTEGRATION_TESTS_GUIDE.md](INTEGRATION_TESTS_GUIDE.md) | Complete reference: jobs, matrix, image tags, cleanup, permissions |
+| [INTEGRATION_TESTS_GUIDE.md](INTEGRATION_TESTS_GUIDE.md) | Complete reference: jobs, matrix, image tags, old images, permissions |
 | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | Cheat sheet for common tasks |
 | [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) | Diagrams of the job graph, image flow and test modes |
 | [LOCAL_TESTING.md](LOCAL_TESTING.md) | Running the same tests on your machine |
@@ -26,7 +26,7 @@ them in a parallel matrix, and deletes its own images when it finishes.
 
 ```
 build-connector-image ──┐
-                        ├──► integration-tests (12 matrix jobs) ──► cleanup-images
+                        ├──► integration-tests (12 matrix jobs)
 build-dcp-issuer-image ─┘
 ```
 
@@ -36,8 +36,6 @@ build-dcp-issuer-image ─┘
 2. **Test.** Each matrix job starts a Docker Compose stack with `IMAGE_TAG` set to the run's tag,
    waits for the services to be healthy, optionally obtains Verifiable Credentials, and runs one
    Newman collection.
-3. **Clean up.** `cleanup-images` runs whether tests pass, fail or are cancelled, and deletes this
-   run's image versions from GHCR (see the guide for the exact rules).
 
 Because every run tests only the images it built, parallel runs on different branches cannot
 overwrite each other's images.
@@ -60,5 +58,7 @@ overwrite each other's images.
 1. Open the failed job, named `<test-suite> (<mode>)`, in the Actions tab.
 2. Check the health-check step output and the **Dump docker logs on failure** step.
 3. Reproduce locally with the same compose file and collection.
-4. To re-run, use **Re-run all jobs**. **Re-run failed jobs** cannot work, because
-   `cleanup-images` has already deleted that run's images.
+4. **Re-run failed jobs** works: the run's images stay in GHCR.
+
+Per-run images are not deleted automatically; see
+[INTEGRATION_TESTS_GUIDE.md](INTEGRATION_TESTS_GUIDE.md#old-images).

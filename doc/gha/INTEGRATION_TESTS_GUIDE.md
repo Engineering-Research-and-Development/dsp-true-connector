@@ -27,15 +27,10 @@ concurrency:
 ```yaml
 permissions:
   contents: read        # check out the repository
-  packages: write       # push and delete images in GHCR
+  packages: write       # push images to GHCR
   attestations: write
   id-token: write
 ```
-
-Deleting package versions with `GITHUB_TOKEN` also needs the repository to have **Admin** access
-on each package (`dsp-true-connector`, `dcp-issuer`): *Package settings → Manage Actions access*.
-Packages first published by this repository's workflows normally have it. Without it, the cleanup
-job logs a warning and leaves the images in place; the workflow still passes.
 
 ## Image tags
 
@@ -87,20 +82,12 @@ The two build jobs run in parallel.
 | Dump docker logs on failure | `failure()` | Logs of every compose service, grouped per service |
 | Stop Docker Compose services | `always()` | `docker compose down -v` |
 
-### 4. `cleanup-images`
+### Old images
 
-Runs after the other jobs with `if: always()`: on success, failure and cancellation. For each
-package it lists the versions and deletes:
-
-1. **This run's version**: the one tagged `ci-<run_id>-<sha>`, unless it still carries `test`.
-   The version holding `test` is kept so TCK and Terraform keep working.
-2. **Orphans**: versions whose tags are all `ci-…` tags and that were last updated more than
-   `ORPHAN_MIN_AGE_HOURS` (6) hours ago. These are earlier runs' images that were holding `test`
-   when their run ended and lost it later. The age limit protects runs still in progress.
-
-It never deletes untagged versions, `test`, `develop`, `latest` or release tags. Untagged versions
-can be parts of other images: `develop.yml` builds with Buildx, whose provenance attestations are
-stored as separate untagged manifests. Deleting them could break those images.
+Nothing deletes the per-run images automatically: every run adds one `ci-…` version to each
+package. Remove old versions by hand in the package settings on GitHub (filter by the `ci-` tag
+prefix). Do not delete untagged versions: `develop.yml` builds with Buildx, whose provenance
+attestations are stored as separate untagged manifests of other images.
 
 ## Matrix
 
@@ -171,11 +158,10 @@ Add one matrix entry per mode the test should run in:
 
 | Symptom | Check |
 |---------|-------|
-| `manifest unknown` / image not found when starting compose | Did both build jobs succeed? Was the run re-run with **Re-run failed jobs** after cleanup deleted the images? Use **Re-run all jobs**. |
+| `manifest unknown` / image not found when starting compose | Did both build jobs succeed and push the `ci-…` tag? Was that version deleted by hand from GHCR? |
 | Connector health check times out | `connector-a` / `connector-b` logs printed by the health-check step |
 | DCP test fails, standard passes | DCP Issuer health step, then the **Obtain Verifiable Credentials** step, then the `dcp-issuer` logs |
-| Cleanup job warns `Cannot list versions` or `Could not delete` | The repository lacks Admin access on the package (see Permissions) |
-| Images pile up in GHCR | Same as above; or runs whose image still held `test` are younger than 6 hours |
+| Images pile up in GHCR | Expected: there is no automatic cleanup (see *Old images*) |
 
 ## Deprecated workflows
 

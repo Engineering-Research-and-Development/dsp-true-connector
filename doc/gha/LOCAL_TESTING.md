@@ -4,8 +4,7 @@ This guide explains how to run the GitHub Actions integration tests on your loca
 
 > **Image tags.** The CI compose files reference `ghcr.io/engineering-research-and-development/<image>:${IMAGE_TAG:-test}`.
 > Locally `IMAGE_TAG` is normally unset, so build your images with the `:test` tag as shown below.
-> To run against the exact images of one CI run, set `IMAGE_TAG=ci-<run_id>-<sha>` before `docker compose up`;
-> this only works while that run is in progress, because its images are deleted when it ends.
+> To run against the exact images of one CI run, set `IMAGE_TAG=ci-<run_id>-<sha>` before `docker compose up`.
 > See [INTEGRATION_TESTS_GUIDE.md](INTEGRATION_TESTS_GUIDE.md#image-tags).
 
 ## 📋 Prerequisites

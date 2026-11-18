@@ -32,13 +32,7 @@ Diagrams for `.github/workflows/integration-tests.yml`. The text reference is
 │ ├─ negotiation-with-counteroffer                                             │
 │ ├─ datatransfer-http-pull                                                    │
 │ └─ datatransfer-http-push                                                    │
-└──────────────────────────────────────┬───────────────────────────────────────┘
-                                       ▼   if: always()
-                         ┌──────────────────────────────┐
-                         │ cleanup-images               │
-                         │ delete this run's versions   │
-                         │ + ci-only orphans older 6 h  │
-                         └──────────────────────────────┘
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## One matrix job
@@ -66,10 +60,8 @@ END
                                                          ◄──push── build
                  dsp-true-connector:ci-102-bbb  (+ :test, moved here)
  tests ──pull──► :ci-101-aaa                                       tests ──pull──► :ci-102-bbb
- cleanup ─────►  delete :ci-101-aaa   (no longer holds :test)
-                                                                   cleanup ─────►  keep :ci-102-bbb
-                                                                                   (still holds :test)
- a later run, ≥ 6 h on ─────────────► delete :ci-102-bbb once :test has moved on (orphan)
+
+ Both ci-… versions stay in GHCR; old ones are deleted by hand.
 ```
 
 Each run's tests only ever pull the tag that run built, so a parallel run on another branch cannot
