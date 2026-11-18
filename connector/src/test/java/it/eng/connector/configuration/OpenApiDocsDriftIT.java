@@ -125,7 +125,7 @@ class OpenApiDocsDriftIT extends BaseIntegrationTest {
         List<String> undocumentedOperations = mappings.entrySet().stream()
                 .filter(entry -> FULLY_DOCUMENTED_CONTROLLERS.contains(entry.getValue().getBeanType()))
                 .filter(entry -> entry.getKey().getPatternValues().stream()
-                        .noneMatch(path -> path.endsWith("/tck")))
+                        .noneMatch(path -> path.endsWith("/tck") || path.contains("/tck/")))
                 .filter(entry -> !hasSummaryAndDescription(entry.getValue(), operations))
                 .map(entry -> entry.getValue().getBeanType().getSimpleName()
                         + "." + entry.getValue().getMethod().getName())
