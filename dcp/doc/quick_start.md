@@ -2,7 +2,7 @@
 
 ## The Missing Endpoint - NOW IMPLEMENTED! ✅
 
-### **POST `/issuer/requests/{requestId}/approve`**
+### **POST `/api/issuer/requests/{requestId}/approve`**
 
 This endpoint triggers Step 3 of the DCP flow: delivering credentials to the holder.
 
@@ -19,7 +19,7 @@ Content-Type: application/json
 {
   "@context": ["https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"],
   "type": "CredentialRequestMessage",
-  "holderPid": "did:web:localhost%3A8081:holder",
+  "holderPid": "8a1f5c3e-2b7d-4e9a-9c1d-5f0e7b6a2d41",
   "credentials": [{"id": "membership-credential"}]
 }
 
@@ -34,18 +34,13 @@ Content-Type: application/json
 
 **Simple Approval (Recommended for UI):**
 ```
-POST http://localhost:8080/issuer/requests/req-{uuid}/approve
+POST http://localhost:8080/api/issuer/requests/req-{uuid}/approve
 Content-Type: application/json
 
 {}
 
 → Response: 200 OK
-{
-  "status": "delivered",
-  "message": "Credentials successfully delivered to holder",
-  "credentialsCount": 1,
-  "credentialTypes": ["MembershipCredential"]
-}
+Credentials issued and delivered successfully
 ```
 
 **What happens:**
@@ -59,7 +54,7 @@ Content-Type: application/json
 
 **Manual Approval (Advanced - with custom credentials):**
 ```
-POST http://localhost:8080/issuer/requests/req-{uuid}/approve
+POST http://localhost:8080/api/issuer/requests/req-{uuid}/approve
 Content-Type: application/json
 
 {
@@ -73,12 +68,7 @@ Content-Type: application/json
 }
 
 → Response: 200 OK
-{
-  "status": "delivered",
-  "message": "Credentials successfully delivered to holder",
-  "credentialsCount": 1,
-  "credentialTypes": ["MembershipCredential"]
-}
+Credentials issued and delivered successfully
 ```
 
 **Use this when:**
@@ -94,7 +84,7 @@ GET http://localhost:8080/issuer/requests/req-{uuid}
 → Response: 200 OK
 {
   "issuerPid": "req-{uuid}",
-  "holderPid": "did:web:localhost%3A8081:holder",
+  "holderPid": "8a1f5c3e-2b7d-4e9a-9c1d-5f0e7b6a2d41",
   "status": "ISSUED",  ← Changed from RECEIVED!
   "createdAt": "2024-12-08T12:00:00Z"
 }
@@ -105,18 +95,15 @@ GET http://localhost:8080/issuer/requests/req-{uuid}
 ## 📋 Alternative: Reject Request
 
 ```
-POST http://localhost:8080/issuer/requests/req-{uuid}/reject
+POST http://localhost:8080/api/issuer/requests/req-{uuid}/reject
 Content-Type: application/json
 
 {
-  "rejectionReason": "Organization not verified"
+  "reason": "Organization not verified"
 }
 
 → Response: 200 OK
-{
-  "status": "rejected",
-  "message": "Credential request rejected and holder notified"
-}
+Credential request rejected successfully
 ```
 
 ---
