@@ -211,10 +211,9 @@ body:
       label: "AI Model"
       description: "Which model should implement this task."
       options:
-        - "Sonnet 4.6 (standard implementation)"
-        - "Opus 4.8 (complex, multi-file, architectural)"
-        - "Fable 5 (most capable — cross-module or protocol-critical work)"
-        - "Haiku 4.5 (simple, mechanical changes)"
+        - "Sonnet 5.5 (standard implementation)"
+        - "Opus 5.5 (complex, multi-file, architectural)"
+        - "Haiku 5.5 (simple, mechanical changes)"
     validations:
       required: true
 
