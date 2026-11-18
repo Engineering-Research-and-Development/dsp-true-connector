@@ -18,6 +18,10 @@ env:
   REGISTRY: ghcr.io
   CONNECTOR_IMAGE_NAME: engineering-research-and-development/dsp-true-connector
   DCP_ISSUER_IMAGE_NAME: engineering-research-and-development/dcp-issuer
+  # Per-run image tag. Test jobs pull this tag, so parallel runs on different branches never
+  # test each other's images. The cleanup job deletes these images when the run ends.
+  # ":test" is still pushed for consumers outside this workflow (manual TCK run, Terraform).
+  IMAGE_TAG: ci-${{ github.run_id }}-${{ github.sha }}
 
 jobs:
   build-connector-image:
@@ -26,10 +30,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -59,7 +63,9 @@ jobs:
           file: ./connector/Dockerfile
           no-cache: true
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.CONNECTOR_IMAGE_NAME }}:test
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.CONNECTOR_IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ env.CONNECTOR_IMAGE_NAME }}:test
           labels: ${{ steps.meta.outputs.labels }}
 
   build-dcp-issuer-image:
@@ -68,10 +74,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -99,15 +105,10 @@ jobs:
           context: ./dcp/dcp-issuer
           file: ./dcp/dcp-issuer/Dockerfile
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.DCP_ISSUER_IMAGE_NAME }}:test
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.DCP_ISSUER_IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ env.DCP_ISSUER_IMAGE_NAME }}:test
           labels: ${{ steps.meta.outputs.labels }}
-
-      - name: Upload DCP Issuer Docker image artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: dcp-issuer-image
-          path: /tmp/dcp-issuer-image.tar
-          retention-days: 1
 
   integration-tests:
     name: ${{ matrix.test-suite }} (${{ matrix.mode }})
@@ -197,7 +198,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Start Docker Compose services
         run: docker compose -f ${{ matrix.docker-compose-file }} --env-file ./ci/docker/.env up -d
@@ -254,4 +255,43 @@ jobs:
       - name: Stop Docker Compose services
         if: always()
         run: docker compose -f ${{ matrix.docker-compose-file }} --env-file ./ci/docker/.env down -v
+
+  cleanup-images:
+    name: Delete this run's images
+    needs: [build-connector-image, build-dcp-issuer-image, integration-tests]
+    # Run on success, failure and cancellation so per-run images never accumulate.
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Delete per-run image versions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OWNER: ${{ github.repository_owner }}
+          # Orphans: images from earlier runs whose ":test" tag has since moved on.
+          # Only deleted when older than this, so images of runs still in progress are kept.
+          ORPHAN_MIN_AGE_HOURS: '6'
+        run: |
+          set -euo pipefail
+          cutoff=$(date -u -d "-${ORPHAN_MIN_AGE_HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)
+          for image in "$CONNECTOR_IMAGE_NAME" "$DCP_ISSUER_IMAGE_NAME"; do
+            package="${image##*/}"
+            versions=$(gh api --paginate "orgs/$OWNER/packages/container/$package/versions?per_page=100" \
+              --jq '.[] | {id, updated_at, tags: .metadata.container.tags}' 2>/dev/null) || {
+              echo "::warning::Cannot list versions of $package; skipping cleanup"
+              continue
+            }
+            # This run's version, unless it still carries ":test" (kept for TCK/Terraform consumers).
+            # Older versions whose only tags are per-run "ci-" tags and that are past the cutoff.
+            ids=$(jq -r --arg tag "$IMAGE_TAG" --arg cutoff "$cutoff" '
+              select(
+                ((.tags | index($tag)) and ((.tags | index("test")) | not))
+                or ((.tags | length) > 0 and all(.tags[]; startswith("ci-")) and .updated_at < $cutoff)
+              ) | .id' <<<"$versions")
+            for id in $ids; do
+              echo "Deleting $package version $id"
+              gh api -X DELETE "orgs/$OWNER/packages/container/$package/versions/$id" \
+                || echo "::warning::Could not delete $package version $id"
+            done
+          done
 
