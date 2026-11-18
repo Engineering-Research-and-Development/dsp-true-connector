@@ -8,7 +8,6 @@ import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
@@ -23,7 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Collections;
@@ -85,7 +84,7 @@ public class ContractNegotiationOfferedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void createNegotiationWithOffer_success() throws Exception {
         // needs to match offer in catalog
         Permission permission = Permission.Builder.newInstance()
@@ -150,7 +149,7 @@ public class ContractNegotiationOfferedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void createNegotiationWithOffer_negotiation_exists() throws Exception {
         // Save an existing negotiation to database first
         ContractNegotiation contractNegotiationOffered = ContractNegotiation.Builder.newInstance()
@@ -183,7 +182,7 @@ public class ContractNegotiationOfferedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void createNegotiationOfferCounteroffer_success() throws Exception {
         // Setup: Create an existing negotiation in REQUESTED state
         Permission permission = Permission.Builder.newInstance()
@@ -243,7 +242,7 @@ public class ContractNegotiationOfferedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void createNegotiationOfferCounteroffer_consumerPidMismatch() throws Exception {
         // Setup existing negotiation
         Permission permission = Permission.Builder.newInstance()
@@ -300,7 +299,7 @@ public class ContractNegotiationOfferedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void createNegotiationOfferCounteroffer_negotiationNotFound() throws Exception {
         // Try to send counteroffer for non-existent negotiation
         Permission permission = Permission.Builder.newInstance()
@@ -333,7 +332,7 @@ public class ContractNegotiationOfferedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void createNegotiationOfferCounteroffer_invalidState() throws Exception {
         // Setup: Create an existing negotiation in OFFERED state (invalid for counteroffer from provider)
         Permission permission = Permission.Builder.newInstance()

@@ -44,12 +44,14 @@ Services configured in current configuration are:
 
 | Service Name     | Type      | Exposed port | Description                               |
 |------------------|-----------|--------------|-------------------------------------------|
-| `connector-a`    | ClusterIP | 8080         | Internal service for Connector A          |
-| `connector-a-ui` | NodePort  | 4200         | External access to Connector A UI         |
-| `connector-b`    | ClusterIP | 8090         | Internal service for Connector B          |
-| `connector-b-ui` | NodePort  | 4300         | External access to Connector B UI         |
-| `rustfs`         | ClusterIP | 9000         | Internal service for RustFS object storage |
+| `connector-a`    | NodePort  | 8080 (NodePort `30080`) | Connector A API                  |
+| `connector-a-ui` | NodePort  | 4200 (NodePort `30420`) | External access to Connector A UI |
+| `connector-b`    | NodePort  | 8090 (NodePort `30090`) | Connector B API                  |
+| `connector-b-ui` | NodePort  | 4300 (NodePort `30430`) | External access to Connector B UI |
+| `s3storage`      | NodePort  | 9000 API, 9001 console (NodePorts `30081`, `30082`) | RustFS object storage |
 | `mongodb`        | ClusterIP | 27017        | Internal service for MongoDB database     |
+| `keycloak`       | NodePort  | 8080 (NodePort `30180`, host port `8180`) | Managed Keycloak; created only in `KEYCLOAK` / `MANAGED` mode |
+| `keycloak-db`    | ClusterIP | 5432         | Managed Keycloak PostgreSQL; created only in `KEYCLOAK` / `MANAGED` mode |
 
 ### Deployments
 
@@ -72,6 +74,94 @@ For example:
 - initial_data for connectors
 - connector property files
 - frontend configuration files (nginx.conf and ssl)
+
+## Authentication and Optional Keycloak
+
+`auth_provider` controls the connectors' `application.auth.provider`. `keycloak_mode` independently controls whether
+Terraform owns a Keycloak deployment; it does not select the connector's authentication provider. Only these
+combinations are valid:
+
+| `auth_provider` | `keycloak_mode` | Behavior |
+|---|---|---|
+| `INTERNAL` (default) | `NONE` (default) | Connector uses internal authentication; no Keycloak resources or Keycloak credentials are needed. |
+| `DISABLED` | `NONE` | Connector authentication is disabled and endpoints are open. Demo/local use only; the UI remains in its supported `INTERNAL` mode. |
+| `KEYCLOAK` | `MANAGED` | Terraform deploys Keycloak and PostgreSQL and imports the checked-in demo realms. |
+| `KEYCLOAK` | `EXTERNAL` | Applications use an existing Keycloak; Terraform creates no Keycloak or PostgreSQL resources and does not configure the remote server. |
+
+Terraform rejects other combinations: `INTERNAL` and `DISABLED` require `keycloak_mode=NONE`, while `KEYCLOAK` requires
+`MANAGED` or `EXTERNAL`.
+
+When using Keycloak, set `keycloak_base_url` to the absolute HTTP(S) base URL that is reachable from both the browser
+and connector pods. It must match Keycloak's issuer: each realm's issuer is
+`<keycloak_base_url>/realms/<realm>`. The same value configures Keycloak's managed `KC_HOSTNAME`, imported realm
+`frontendUrl`, connector `application.keycloak.base-url`, and UI `KEYCLOAK_URL`. Do not use a browser-only `localhost`
+address if connector pods cannot reach it. Managed mode maps the configurable host port (default `8180`) to the
+configurable NodePort (default `30180`); the `keycloak` Service listens on port `8080`.
+
+The UI performs the browser authorization-code flow with PKCE S256; the connector validates the resulting JWT. Both
+UIs receive only the public runtime settings `AUTH_PROVIDER`, `KEYCLOAK_URL`, `KEYCLOAK_CLIENT_ID=keycloak-api`, and
+`KEYCLOAK_ADMIN_REALM=connector-admin`. No client secret is passed to the UI. For Keycloak login, use an image built
+from the
+[UI repository](https://github.com/Engineering-Research-and-Development/dsp-true-connector-ui) with Keycloak login support. The configured UI origins
+(`connector_a_ui_origin` and `connector_b_ui_origin`, defaulting to `http://localhost:4200` and
+`http://localhost:4300`) must be allowed by the public `keycloak-api` client: exact `<origin>/auth/callback`
+redirects, `<origin>/login` post-logout destinations, and matching web origins.
+
+UI behaviour to be aware of:
+
+- The UI supports only `AUTH_PROVIDER=INTERNAL` (email/password, the default) and `AUTH_PROVIDER=KEYCLOAK`. Terraform
+  passes `KEYCLOAK` only when `auth_provider = "KEYCLOAK"`; for `INTERNAL` and `DISABLED` it passes `INTERNAL`.
+- With `KEYCLOAK`, the UI container stops at startup unless `TC_ROOT_API_URL`, `KEYCLOAK_URL`, `KEYCLOAK_CLIENT_ID`,
+  and `KEYCLOAK_ADMIN_REALM` are all set. `KEYCLOAK_URL` must be an absolute HTTP(S) URL with no embedded credentials.
+- The login page lists tenants from the connector's unauthenticated `GET /public/tenant` endpoint, one button per
+  enabled tenant (`name` is the label, `realm` the Keycloak realm). The UI builds this URL by removing `/api/v1` from
+  `TC_ROOT_API_URL`: `/connector-a/api/v1` becomes `/connector-a/public/tenant`. The Terraform UI `nginx.conf` files in
+  `app-resources/ui_*_resources/` proxy `/connector-a/public/` and `/connector-b/public/` to the connectors. Keep
+  those `location` blocks if you replace the nginx configuration, or the login page shows no tenants.
+- Super-admin sign-in always uses `KEYCLOAK_ADMIN_REALM` (`connector-admin`). Choosing it does not grant
+  `SUPER_ADMIN`; the UI reads the user, tenant (`tenant_id`, `tenant_name`) and roles (`realm_access.roles`) from the
+  access token, and the connector still enforces authorization. Logout ends the Keycloak session and returns to
+  `/login`.
+
+### Managed mode
+
+`KEYCLOAK` / `MANAGED` requires `keycloak_base_url` and non-empty
+`keycloak_admin_username`, `keycloak_admin_password`, `keycloak_db_username`, and `keycloak_db_password` inputs.
+Supply credentials through a protected environment or secret manager, such as Terraform's `TF_VAR_...` inputs; do not
+put real credentials in tracked `terraform.tfvars`. Terraform stores them in the `keycloak-credentials` Kubernetes
+Secret. It also creates the `keycloak-realm-import` Secret from the five seed exports (`platform`,
+`connector-admin`, `tenant-EngineeringA`, `tenant-EngineeringB`, and `tenant-acme`) and configures the `keycloak` and
+`keycloak-db` Deployment/Service pairs.
+
+Realm import is initial-seed-only: Keycloak imports a realm when it does not already exist; editing the source files
+does not reconcile an existing realm. The seeds include demo users and client credentials and are not production
+identity data. PostgreSQL uses ephemeral `empty_dir` storage, so recreating its pod loses Keycloak state. Switching
+from `MANAGED` to `NONE` or `EXTERNAL` removes the Terraform-managed Keycloak/PostgreSQL resources and their current
+ephemeral data.
+
+### External mode
+
+`KEYCLOAK` / `EXTERNAL` requires `keycloak_base_url` and the sensitive
+`keycloak_backend_client_secret` for the pre-provisioned `platform/dsp-connector-backend` confidential client.
+Terraform passes that secret to both connector credential Secrets, but does not create, import, change, or validate
+anything on the external Keycloak server. No Keycloak administrator or PostgreSQL credentials are needed.
+
+Provision the external provider according to [`doc/security.md`](../doc/security.md#keycloak-authentication-mode-keycloak):
+the `platform` realm's `dsp-connector-backend` client must provide the `CONNECTOR` role and audience
+`dsp-true-connector`; `connector-admin` must provide the public `keycloak-api` client and `SUPER_ADMIN` users; and each
+tenant realm named in connector tenant records must provide that public client, `ADMIN` users, and the matching
+`tenant_id`. The `keycloak-api` clients need Standard Flow and PKCE S256, the exact callback/logout URLs and web
+origins for both configured UI origins. Discovery's `issuer` must exactly equal
+`<keycloak_base_url>/realms/<realm>`. Use HTTPS with a certificate trusted by both browsers and connector pods; provide
+private-CA trust separately if required. The base URL, discovery, and JWKS endpoints must be reachable from both
+browsers and connector pods.
+
+### Protecting credentials and Terraform state
+
+Kubernetes Secrets are base64-encoded and are not necessarily encrypted at rest. Terraform state and saved plan files
+can contain secret values, including imported demo realm credentials. Restrict access to state and plan artifacts,
+use an appropriately protected remote state backend for shared deployments, and provide production credentials through
+a managed secret store. Never treat the checked-in realm users or client secrets as production credentials.
 
 ## Usage
 

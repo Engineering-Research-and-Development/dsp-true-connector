@@ -30,6 +30,22 @@ resource "kubernetes_deployment" "this" {
             name  = "TC_ROOT_API_URL"
             value = var.tc_root_api_url
           }
+          env {
+            name  = "AUTH_PROVIDER"
+            value = var.auth_provider
+          }
+          env {
+            name  = "KEYCLOAK_URL"
+            value = var.keycloak_url
+          }
+          env {
+            name  = "KEYCLOAK_CLIENT_ID"
+            value = var.keycloak_client_id
+          }
+          env {
+            name  = "KEYCLOAK_ADMIN_REALM"
+            value = var.keycloak_admin_realm
+          }
           volume_mount {
             name       = "nginx-conf"
             mount_path = "/etc/nginx/nginx.conf"
@@ -54,6 +70,14 @@ resource "kubernetes_deployment" "this" {
           }
         }
       }
+
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = length(trimspace(var.ui_origin)) > 0
+      error_message = "The frontend UI origin must not be empty."
     }
   }
 }

@@ -21,6 +21,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.system.CapturedOutput;
@@ -34,6 +36,7 @@ import java.util.Objects;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -43,7 +46,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class TenantAPIIT extends BaseIntegrationTest {
 
     private static final String NEW_TENANT_ID = "test-tenant-it";
-    private static final String ENGINEERING_TENANT_ID = "engineering";
+    private static final String ENGINEERING_TENANT_ID = "engineering-a";
     private static final String NON_EXISTING_TENANT_ID = "non-existing-tenant-xyz";
 
     /** Tracks the server-generated UUID from API-created tenants for @AfterEach cleanup. */
@@ -149,7 +152,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/tenants/engineering returns the default Engineering tenant")
+    @DisplayName("GET /api/v1/tenants/engineering-a returns the default EngineeringA tenant")
     public void getEngineeringTenant_exists() throws Exception {
         mockMvc.perform(get(ApiEndpoints.TENANTS_V1 + "/" + ENGINEERING_TENANT_ID)
                         .with(user("super").roles("SUPER_ADMIN"))
@@ -158,7 +161,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.data.id").value("engineering"));
+                .andExpect(jsonPath("$.data.id").value("engineering-a"));
     }
 
     @Test
@@ -255,6 +258,108 @@ public class TenantAPIIT extends BaseIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").exists());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"tenant x", "a/b", "http://evil/realms/x", "", ".", "..", "platform", "connector-admin", "master", "Master"})
+    @DisplayName("POST /api/v1/tenants with invalid or reserved realm returns 400")
+    void createTenant_invalidOrReservedRealm_returns400(String realm) throws Exception {
+        TenantCreateRequest request = TenantCreateRequest.Builder.newInstance()
+                .id(NEW_TENANT_ID)
+                .name("Tenant " + NEW_TENANT_ID)
+                .participantId("urn:connector:test-it")
+                .realm(realm)
+                .enabled(true)
+                .build();
+
+        mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value(containsString("Tenant realm '" + realm + "'")));
+        assertThat(tenantRepository.existsById(NEW_TENANT_ID)).isFalse();
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/tenants with a realm held by another tenant returns 409")
+    void createTenant_duplicateRealm_returns409() throws Exception {
+        tenantRepository.save(Tenant.Builder.newInstance()
+                .id(NEW_TENANT_ID)
+                .name("Test Tenant IT")
+                .participantId("urn:connector:test-it")
+                .realm("realm-it-dup")
+                .enabled(false)
+                .build());
+        createdTenantIds.add("realm-it-other");
+        TenantCreateRequest request = TenantCreateRequest.Builder.newInstance()
+                .id("realm-it-other")
+                .name("Other")
+                .participantId("urn:connector:realm-it-other")
+                .realm("realm-it-dup")
+                .enabled(true)
+                .build();
+
+        mockMvc.perform(post(ApiEndpoints.TENANTS_V1)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value(containsString("'realm-it-dup'")));
+        assertThat(tenantRepository.existsById("realm-it-other")).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"a/b", "platform", "Master"})
+    @DisplayName("PUT /api/v1/tenants/{id} with invalid or reserved realm returns 400")
+    void updateTenant_invalidOrReservedRealm_returns400(String realm) throws Exception {
+        tenantRepository.save(buildNewTenant());
+        TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance().realm(realm).build();
+
+        mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/" + NEW_TENANT_ID)
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(request))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/tenants/{id} with a realm held by another tenant returns 409, own realm returns 200")
+    void updateTenant_duplicateRealmReturns409_ownRealmReturns200() throws Exception {
+        tenantRepository.save(Tenant.Builder.newInstance()
+                .id(NEW_TENANT_ID)
+                .name("Test Tenant IT")
+                .participantId("urn:connector:test-it")
+                .realm("realm-it-first")
+                .enabled(true)
+                .build());
+        createdTenantIds.add("realm-it-second");
+        tenantRepository.save(Tenant.Builder.newInstance()
+                .id("realm-it-second")
+                .name("Second")
+                .participantId("urn:connector:realm-it-second")
+                .realm("realm-it-second")
+                .enabled(true)
+                .build());
+
+        mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/realm-it-second")
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(
+                                TenantUpdateRequest.Builder.newInstance().realm("realm-it-first").build()))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.success").value(false));
+
+        mockMvc.perform(put(ApiEndpoints.TENANTS_V1 + "/realm-it-second")
+                        .with(user("super").roles("SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(Objects.requireNonNull(ToolsSerializer.serializePlain(
+                                TenantUpdateRequest.Builder.newInstance().realm("realm-it-second").build()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.realm").value("realm-it-second"));
     }
 
     @Test
@@ -666,6 +771,7 @@ public class TenantAPIIT extends BaseIntegrationTest {
 
         List<AuditEvent> events = auditEventRepository.findAll().stream()
                 .filter(event -> event.getEventType() == AuditEventType.TENANT_UPDATED)
+                .filter(event -> event.getDetails() != null && tenantId.equals(event.getDetails().get("tenantId")))
                 .toList();
         assertThat(events).isNotEmpty();
         AuditEvent latest = events.get(events.size() - 1);

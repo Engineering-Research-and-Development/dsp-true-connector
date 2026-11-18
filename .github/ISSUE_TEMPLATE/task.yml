@@ -264,6 +264,7 @@ body:
         - [ ] New endpoint `...` returns ... for valid input
         - [ ] Protocol error message returned when ...
         - [ ] State transition ... → ... persisted in MongoDB
+        - [ ] OpenAPI docs YAML updated when a REST controller changes
 
         **Tests**
         - [ ] Unit tests cover builder validation (valid + ValidationException paths)

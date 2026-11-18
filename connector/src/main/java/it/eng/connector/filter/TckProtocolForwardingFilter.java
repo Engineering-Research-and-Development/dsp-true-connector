@@ -30,8 +30,8 @@ import java.util.List;
  * {@code getPathInfo()} so that Spring MVC's {@code DispatcherServlet} routes the request to
  * the correct controller while Spring Security sees the same request in the same dispatch cycle.
  *
- * <p>Example: {@code POST /catalog/request} with {@code application.tck.tenant.id=engineering}
- * is routed to {@code POST /engineering/catalog/request} via the wrapped request.
+ * <p>Example: {@code POST /catalog/request} with {@code application.tck.tenant.id=engineering-a}
+ * is routed to {@code POST /engineering-a/catalog/request} via the wrapped request.
  */
 @Slf4j
 @Component
@@ -57,7 +57,7 @@ public class TckProtocolForwardingFilter extends OncePerRequestFilter {
             "/consumer"
     );
 
-    @Value("${application.tck.tenant.id:engineering}")
+    @Value("${application.tck.tenant.id:engineering-a}")
     private String tckTenantId;
 
     /**

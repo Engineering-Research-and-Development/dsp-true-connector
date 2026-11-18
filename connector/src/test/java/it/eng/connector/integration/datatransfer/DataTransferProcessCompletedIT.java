@@ -1,7 +1,6 @@
 package it.eng.connector.integration.datatransfer;
 
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
@@ -14,7 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.ResultActions;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -42,7 +41,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
     // Provider
     @Test
     @DisplayName("Complete transfer process - from started")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void completeTransferProcess_provider() throws Exception {
 
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
@@ -82,7 +81,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Complete transfer process - not_found")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void completeTransferProcess_transfer_not_found() throws Exception {
         TransferStartMessage transferProcessStarted = TransferStartMessage.Builder.newInstance()
                 .providerPid(createNewId())
@@ -103,7 +102,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Complete transfer process - provider - invalid message type")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void completeTransferProcess_provider_transfer_invalid_msg() throws Exception {
         TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -122,7 +121,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Complete transfer process - invalid state")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void completeTransferProcess_invalid_state() throws Exception {
         TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -154,7 +153,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
     // Consumer
     @Test
     @DisplayName("Complete transfer process - from started - consumer")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void completeTransferProcess_consumer() throws Exception {
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -192,7 +191,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Complete transfer process - consumer - not_found")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void completeTransferProcess_consumer_transfer_not_found() throws Exception {
         TransferStartMessage transferProcessStarted = TransferStartMessage.Builder.newInstance()
                 .providerPid(createNewId())
@@ -213,7 +212,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Complete transfer process - consumer - invalid msg")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void completeTransferProcess_consumer_transfer_invalid_msg() throws Exception {
         TransferRequestMessage transferRequestMessage = TransferRequestMessage.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -232,7 +231,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Complete transfer process - consumer - invalid state")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void completeTransferProcess_consumer_invalid_state() throws Exception {
         TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())
@@ -263,7 +262,7 @@ public class DataTransferProcessCompletedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Complete transfer process - temporary user deleted after HTTP-PUSH completion")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void completeTransferProcess_provider_httpPush_deletesTemporaryUser() throws Exception {
         TransferProcess transferProcessStarted = TransferProcess.Builder.newInstance()
                 .consumerPid(createNewId())

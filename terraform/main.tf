@@ -41,6 +41,15 @@ resource "kind_cluster" "dsp-cluster" {
         host_port      = 9001
         protocol       = "TCP"
       }
+      dynamic "extra_port_mappings" {
+        for_each = var.auth_provider == "KEYCLOAK" && var.keycloak_mode == "MANAGED" ? [true] : []
+
+        content {
+          container_port = var.keycloak_node_port
+          host_port      = var.keycloak_host_port
+          protocol       = "TCP"
+        }
+      }
     }
   }
 }

@@ -50,4 +50,24 @@ public interface TenantRepository extends MongoRepository<Tenant, String>,
      * @return an optional containing the tenant with this participant ID, if any
      */
     Optional<Tenant> findByParticipantId(String participantId);
+
+    /**
+     * Checks whether a tenant other than the given one already holds the realm.
+     * Matches case-sensitively and includes disabled tenants. On create, pass an
+     * id that no tenant holds (such as the new tenant's own id) to check all tenants.
+     *
+     * @param realm the realm name to look for
+     * @param id the tenant id to exclude from the lookup
+     * @return {@code true} if another tenant is bound to the realm
+     */
+    boolean existsByRealmAndIdNot(String realm, String id);
+
+    /**
+     * Finds an enabled tenant bound to the given Keycloak realm.
+     * Used by the trusted-issuer registry to resolve tenant token issuers on every request.
+     *
+     * @param realm the Keycloak realm name, compared exactly
+     * @return an optional containing an enabled tenant with this realm, if any
+     */
+    Optional<Tenant> findFirstByRealmAndEnabledTrue(String realm);
 }

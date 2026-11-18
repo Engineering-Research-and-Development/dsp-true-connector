@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
@@ -15,7 +14,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -44,7 +43,7 @@ public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
     @DisplayName("Terminate transfer process - provider")
     @ParameterizedTest
     @MethodSource("getTransferStates")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void terminateTransferProcess_provider(TransferState state) throws Exception {
 
         TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
@@ -78,7 +77,7 @@ public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
     @DisplayName("Terminate transfer process - consumer")
     @ParameterizedTest
     @MethodSource("getTransferStates")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void terminateTransferProcess_consumer(TransferState state) throws Exception {
 
         TransferProcess transferProcessRequested = TransferProcess.Builder.newInstance()
@@ -111,7 +110,7 @@ public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Terminate transfer process - not_found")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void terminateTransferProcess_transfer_not_found() throws Exception {
 
         TransferTerminationMessage transferTerminationMessage = TransferTerminationMessage.Builder.newInstance()
@@ -134,7 +133,7 @@ public class DataTransferProcessTerminatedIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("Terminate transfer process - consumer - not_found")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void terminateTransferProcess_consumer_transfer_not_found() throws Exception {
 
         TransferTerminationMessage transferTerminationMessage = TransferTerminationMessage.Builder.newInstance()

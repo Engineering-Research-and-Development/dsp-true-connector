@@ -27,7 +27,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class CatalogControllerTest {
 
-    private static final String TENANT_ID = "engineering";
+    private static final String TENANT_ID = "engineering-a";
 
     @InjectMocks
     private CatalogController catalogController;
@@ -43,7 +43,7 @@ public class CatalogControllerTest {
 
     private final Tenant tenant = Tenant.Builder.newInstance()
             .id(TENANT_ID)
-            .name("Engineering")
+            .name("EngineeringA")
             .participantId("connector-1")
             .enabled(true)
             .build();

@@ -1596,11 +1596,11 @@
     },
     {
       "key": "CONSUMER_PROTOCOL_ENDPOINT",
-      "value": "http://172.17.0.1:8080/connector_a_tenant_id"
+      "value": "http://172.17.0.1:8080/engineering-a"
     },
     {
       "key": "PROVIDER_PROTOCOL_ENDPOINT",
-      "value": "http://172.17.0.1:8090/connector_b_tenant_id"
+      "value": "http://172.17.0.1:8090/engineering-b"
     },
     {
       "key": "datasetId",

@@ -12,10 +12,18 @@
 	<name>Contract Negotiation</name>
 	<description>Contract Negotiation business logic</description>
 
+	<properties>
+		<openapi.examples.generator>it.eng.negotiation.openapi.OpenApiExamplesGenerator</openapi.examples.generator>
+	</properties>
+
 	<dependencies>
 		<dependency>
 			<groupId>it.eng</groupId>
 			<artifactId>tools</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.swagger.core.v3</groupId>
+			<artifactId>swagger-annotations-jakarta</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>it.eng</groupId>
@@ -79,6 +87,10 @@
 	
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>

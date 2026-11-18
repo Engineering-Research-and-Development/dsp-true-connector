@@ -1,5 +1,7 @@
 package it.eng.datatransfer.service.api;
 
+import org.springframework.data.domain.PageImpl;
+import it.eng.tools.service.TenantContextHolder;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.datatransfer.exceptions.DataTransferAPIException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
@@ -13,18 +15,20 @@ import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.service.api.strategy.HttpPullTransferStrategy;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.event.policyenforcement.ArtifactConsumedEvent;
 import it.eng.tools.model.IConstants;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.service.S3ClientService;
-import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantBucketResolver;
 import it.eng.tools.usagecontrol.UsageControlProperties;
 import it.eng.tools.util.CredentialUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -246,6 +250,24 @@ class DataTransferAPIServiceTest {
         verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
 
         verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, null);
+    }
+
+    @Test
+    @DisplayName("Request transfer process - request not sent, no access token")
+    public void requestTransfer_tokenUnavailable() {
+        String reason = "Request not sent: no access token";
+        when(transferProcessRepository.findById(anyString())).thenReturn(Optional.of(DataTransferMockObjectUtil.TRANSFER_PROCESS_INITIALIZED));
+        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class)))
+                .thenReturn(GenericApiResponse.error(reason));
+        when(properties.consumerCallbackAddress()).thenReturn(DataTransferMockObjectUtil.CALLBACK_ADDRESS);
+
+        DataTransferAPIException exception = assertThrows(DataTransferAPIException.class, () ->
+                apiService.requestTransfer(dataTransferRequest));
+
+        assertTrue(exception.getMessage().contains(reason));
+        verify(transferProcessRepository, times(0)).save(any(TransferProcess.class));
+        verifyAuditEvent(AuditEventType.PROTOCOL_TRANSFER_REQUESTED, "Transfer process request failed");
+        assertEquals(reason, argCaptorAuditEventDetails.getValue().get("errorMessage"));
     }
 
     @Test
@@ -512,7 +534,9 @@ class DataTransferAPIServiceTest {
         GenericApiResponse<String> internalResponse = GenericApiResponse.success(null,
                 "successful response");
         when(usageControlProperties.usageControlEnabled()).thenReturn(true);
-        when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+        when(okHttpRestClient.sendInternalRequest(
+                eq(ApiEndpoints.INTERNAL_AGREEMENTS_V1 + "/" + DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED.getAgreementId() + "/enforce"),
+                eq(HttpMethod.POST), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(internalResponse));
 
         // First save (isDownloadInProgress=true): return the saved object as-is (realistic DB save behaviour).
@@ -835,5 +859,74 @@ class DataTransferAPIServiceTest {
                 Arguments.of("SUSPENDED", "suspendTransfer"),
                 Arguments.of("TERMINATED", "terminateTransfer")
         );
+    }
+
+    // ---------------------------------------------------------------- tenant isolation
+
+    private static final String OWN_TENANT = "tenant-a";
+    private static final String OTHER_TENANT_TRANSFER_ID = "urn:uuid:transfer-of-tenant-b";
+
+    @Test
+    @DisplayName("Find transfer processes - filtered by the current tenant; a caller tenantId filter is replaced")
+    public void findDataTransfers_scopedToTenant() {
+        when(transferProcessRepository.findWithDynamicFilters(anyMap(), eq(TransferProcess.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        TenantContextHolder.setTenantId(OWN_TENANT);
+        try {
+            apiService.findDataTransfers(Map.of("state", "STARTED", "tenantId", "tenant-b"), pageable);
+        } finally {
+            TenantContextHolder.clear();
+        }
+
+        verify(transferProcessRepository).findWithDynamicFilters(
+                eq(Map.of("state", "STARTED", "tenantId", OWN_TENANT)), eq(TransferProcess.class), eq(pageable));
+    }
+
+    @Test
+    @DisplayName("Find transfer process by id - own tenant's process is found")
+    public void findTransferProcessById_ownTenant_found() {
+        TransferProcess own = DataTransferMockObjectUtil.TRANSFER_PROCESS_STARTED;
+        when(transferProcessRepository.findByIdAndTenantId(own.getId(), OWN_TENANT)).thenReturn(Optional.of(own));
+
+        TenantContextHolder.setTenantId(OWN_TENANT);
+        try {
+            assertEquals(own, apiService.findTransferProcessById(own.getId()));
+        } finally {
+            TenantContextHolder.clear();
+        }
+        verify(transferProcessRepository, never()).findById(anyString());
+    }
+
+    @Test
+    @DisplayName("Every action on another tenant's transfer process fails before anything is saved, sent or stored")
+    public void actions_onOtherTenantTransfer_rejectedWithoutSideEffects() {
+        when(transferProcessRepository.findByIdAndTenantId(OTHER_TENANT_TRANSFER_ID, OWN_TENANT)).thenReturn(Optional.empty());
+        DataTransferRequest request = new DataTransferRequest(OTHER_TENANT_TRANSFER_ID, DataTransferFormat.HTTP_PULL.format(), null);
+
+        List<Executable> actions = List.of(
+                () -> apiService.findTransferProcessById(OTHER_TENANT_TRANSFER_ID),
+                () -> apiService.requestTransfer(request),
+                () -> apiService.startTransfer(OTHER_TENANT_TRANSFER_ID),
+                () -> apiService.completeTransfer(OTHER_TENANT_TRANSFER_ID),
+                () -> apiService.suspendTransfer(OTHER_TENANT_TRANSFER_ID),
+                () -> apiService.terminateTransfer(OTHER_TENANT_TRANSFER_ID),
+                () -> apiService.downloadData(OTHER_TENANT_TRANSFER_ID),
+                () -> apiService.viewData(OTHER_TENANT_TRANSFER_ID));
+
+        TenantContextHolder.setTenantId(OWN_TENANT);
+        try {
+            for (Executable action : actions) {
+                DataTransferAPIException ex = assertThrows(DataTransferAPIException.class, action);
+                assertTrue(ex.getMessage().contains("not found"));
+            }
+        } finally {
+            TenantContextHolder.clear();
+        }
+
+        verify(transferProcessRepository, times(actions.size())).findByIdAndTenantId(OTHER_TENANT_TRANSFER_ID, OWN_TENANT);
+        verify(transferProcessRepository, never()).findById(anyString());
+        verify(transferProcessRepository, never()).save(any(TransferProcess.class));
+        verifyNoInteractions(okHttpRestClient, s3ClientService, transferStrategyFactory);
     }
 }

@@ -29,7 +29,6 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping(path = ApiEndpoints.TENANTS_V1,
-        consumes = MediaType.APPLICATION_JSON_VALUE,
         produces = MediaType.APPLICATION_JSON_VALUE)
 @Slf4j
 public class TenantAPIController {
@@ -128,7 +127,7 @@ public class TenantAPIController {
      * @param request the tenant create request
      * @return 200 OK with the created tenant
      */
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<GenericApiResponse<Tenant>> createTenant(@RequestBody TenantCreateRequest request) {
         Tenant tenant = request.toTenant();
         log.info("Creating tenant: {}", tenant.getId());

@@ -70,6 +70,19 @@ class ProxyAPIServiceTest {
 	}
 
 	@Test
+	@DisplayName("Fetch proxy catalog - request not sent, no access token")
+	void getCatalog_tokenUnavailable() {
+		String reason = "Request not sent: no access token";
+		when(okHttpClient.sendRequestProtocol(anyString(), any(JsonNode.class), any(Supplier.class)))
+				.thenReturn(GenericApiResponse.error(reason));
+
+		CatalogErrorAPIException exception = assertThrows(CatalogErrorAPIException.class,
+				() -> service.getCatalog(FORWARD_TO));
+
+		assertTrue(exception.getMessage().contains(reason));
+	}
+
+	@Test
 	@DisplayName("Fetch proxy catalog")
 	void getCatalog() {
 		mockCatalogCall();

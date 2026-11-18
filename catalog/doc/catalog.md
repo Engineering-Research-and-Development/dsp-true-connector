@@ -31,13 +31,33 @@ is written or updated. The guard is implemented by:
    If the referenced entity belongs to a different tenant the method throws
    `CatalogErrorException`, which the `CatalogExceptionAdvice` maps to HTTP 404.
 
-3. **Cross-tenant isolation integration test** — `CrossTenantIsolationIT` verifies that
-   a tenant's catalog, datasets, and data services are not visible to a different tenant.
+3. **`CatalogTenantGuard`: request bodies of the catalog API** — a request body can carry an `@id`
+   and references to other documents, so each create and update checks them before anything
+   is saved, when a tenant is set:
+   - `CatalogService.createCatalog` and `updateCatalog`: the catalog id (on create) and every
+     referenced dataset, data service and distribution.
+   - `DatasetService.saveDataset` and `updateDataset`: the dataset id (on create) and its distributions.
+   - `DataServiceService.saveDataService`: the data service id.
+   - `DistributionService.saveDistribution` and `updateDistribution`: the distribution id (on create)
+     and its access service.
+
+   An id that belongs to another tenant, or to no tenant, is rejected with
+   `CatalogErrorAPIException` (HTTP 400, "`<Type>` with id `<id>` cannot be used"), so a tenant can
+   neither link another tenant's document (and read it back through the reference) nor overwrite it
+   by reusing its id (saving is an upsert). A referenced id that does not exist at all is still
+   accepted. Without a tenant (super-admin, seeding) nothing is checked.
+
+4. **Cross-tenant isolation integration tests** — `CrossTenantIsolationIT` and
+   `CatalogApiTenantIsolationIT` verify that a tenant's catalog, datasets, data services,
+   distributions and artifacts are not visible to, changeable by or linkable from a different
+   tenant; `NegotiationApiTenantIsolationIT`, `TransferApiTenantIsolationIT`,
+   `AuditAndDashboardTenantIsolationIT` and `ProtocolTenantIsolationIT` cover the other APIs.
 
 ### Pattern for future development
 
 Any service method that writes a `@DBRef`-backed cross-document link **must** call
-`assertSameTenant()` before persisting. See ADR
+`assertSameTenant()` or the matching `CatalogTenantGuard` check before persisting; any create
+that accepts an id from a request body must check it with `CatalogTenantGuard`. See ADR
 [D-TEC-006](../../doc/decisions/technical/D-TEC-006-dbref-tenant-filter-mitigation.md)
 for the full rationale and alternatives considered.
 

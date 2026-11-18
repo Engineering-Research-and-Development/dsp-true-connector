@@ -3,7 +3,6 @@ package it.eng.connector.integration.negotiation;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.repository.AgreementRepository;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
@@ -14,7 +13,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Collections;
@@ -45,7 +44,7 @@ public class ContractNegotiationVerifiedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void handleVerifyAgreementTest() throws Exception {
 
         Permission permission = Permission.Builder.newInstance()
@@ -106,7 +105,7 @@ public class ContractNegotiationVerifiedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void handleVerifyAgreement_invalid_state() throws Exception {
 
         ContractNegotiation contractNegotiationVerified = ContractNegotiation.Builder.newInstance()
@@ -133,7 +132,7 @@ public class ContractNegotiationVerifiedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void handleVerifyAgreement_not_found() throws Exception {
         ContractAgreementVerificationMessage verificationMessage = ContractAgreementVerificationMessage.Builder
                 .newInstance()

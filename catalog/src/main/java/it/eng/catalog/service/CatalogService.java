@@ -1,5 +1,6 @@
 package it.eng.catalog.service;
 
+import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
@@ -30,13 +31,16 @@ public class CatalogService {
     private static final String ERROR_MESSAGE_CATALOG_NOT_AVAILABLE = "Catalog not available at the moment";
 
     private final CatalogRepository repository;
+
+    private final CatalogTenantGuard tenantGuard;
     private final AuditEventPublisher publisher;
     private final S3ClientService s3ClientService;
     private final TenantBucketResolver tenantBucketResolver;
 
     public CatalogService(CatalogRepository repository, AuditEventPublisher publisher, S3ClientService s3ClientService,
-                          TenantBucketResolver tenantBucketResolver) {
+                          TenantBucketResolver tenantBucketResolver, CatalogTenantGuard tenantGuard) {
         this.repository = repository;
+        this.tenantGuard = tenantGuard;
         this.publisher = publisher;
         this.s3ClientService = s3ClientService;
         this.tenantBucketResolver = tenantBucketResolver;
@@ -122,9 +126,23 @@ public class CatalogService {
     }
 
     /**
-     * Saves the given catalog, stamping it with the current tenant ID if one is set.
+     * Creates a catalog from an API request body, assigned to the current tenant.
      *
-     * @param catalog The catalog to be saved.
+     * @param catalog the catalog from the request body
+     * @return Saved Catalog object
+     * @throws CatalogErrorAPIException if its id or a referenced document belongs to another tenant
+     */
+    public Catalog createCatalog(Catalog catalog) {
+        tenantGuard.checkNewCatalog(catalog);
+        return saveCatalog(catalog);
+    }
+
+    /**
+     * Saves a catalog, assigning it to the current tenant when it has none.
+     *
+     * <p>Used for the catalog's own documents; request bodies go through {@link #createCatalog(Catalog)}.
+     *
+     * @param catalog the catalog to save
      * @return Saved Catalog object
      */
     public Catalog saveCatalog(Catalog catalog) {
@@ -177,6 +195,7 @@ public class CatalogService {
 
     public Catalog updateCatalog(String id, Catalog cat) {
         Catalog existingCatalog = getCatalogByIdForApi(id);
+        tenantGuard.checkCatalogReferences(cat);
         try {
             Catalog updatedCatalog = existingCatalog.updateInstance(cat);
             Catalog saved = repository.save(updatedCatalog);
