@@ -46,7 +46,7 @@ Each item below was re-checked against the code after merging `develop` (Keycloa
 | Review: correctness | `CredentialMessage` optional fields required | Open | `credentials` and `holderPid` still `@NotNull`; `"No type"` placeholder still added on rejection. |
 | Multitenancy | All 9 items | Open | No `tenantId` / `TenantContextHolder` in any `dcp` module; fixed `/dcp` and `/issuer` routes; resolver still drops the DID path. |
 | Scope handling risk | Unqualified scopes | Open | `DcpVerifierClient.buildQueryMessage()` still copies `requiredTypes` into `scope`. |
-| Documentation conflicts | `API.md`, `quick_start.md` | **Done** (PR #PENDING) | Approve, reject and key rotation are documented under the local admin API path `/api/issuer/...`; `holderPid` is documented as the Holder-side request ID; credential request examples include `@context` and `type`. Old paths remain in `dcp/dcp-issuer/QUICKSTART.md` and `QUICK_REFERENCE.md`, which are outside #422. |
+| Documentation conflicts | `API.md`, `quick_start.md` | **Done** (PR #429) | Approve, reject and key rotation are documented under the local admin API path `/api/issuer/...`; `holderPid` is documented as the Holder-side request ID; credential request examples include `@context` and `type`. Old paths remain in `dcp/dcp-issuer/QUICKSTART.md` and `QUICK_REFERENCE.md`, which are outside #422. |
 | Spec clarification | 7 notes | n/a | Upstream specification questions; no code status. |
 
 ## Implementation gaps
