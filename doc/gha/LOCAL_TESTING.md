@@ -2,6 +2,12 @@
 
 This guide explains how to run the GitHub Actions integration tests on your local machine for development and debugging.
 
+> **Image tags.** The CI compose files reference `ghcr.io/engineering-research-and-development/<image>:${IMAGE_TAG:-test}`.
+> Locally `IMAGE_TAG` is normally unset, so build your images with the `:test` tag as shown below.
+> To run against the exact images of one CI run, set `IMAGE_TAG=ci-<run_id>-<sha>` before `docker compose up`;
+> this only works while that run is in progress, because its images are deleted when it ends.
+> See [INTEGRATION_TESTS_GUIDE.md](INTEGRATION_TESTS_GUIDE.md#image-tags).
+
 ## 📋 Prerequisites
 
 ### Required Tools
@@ -147,7 +153,7 @@ mvn clean package -DskipTests
 cd dcp-issuer
 
 # Build Docker image
-docker build -t dcp-issuer:test .
+docker build -t ghcr.io/engineering-research-and-development/dcp-issuer:test .
 ```
 
 **Note**: We build the entire `dcp` parent module to ensure all inter-module dependencies (like `dcp-common`) are available.
@@ -257,7 +263,7 @@ docker ps
 cd dcp
 mvn clean package -DskipTests
 cd dcp-issuer
-docker build -t dcp-issuer:test .
+docker build -t ghcr.io/engineering-research-and-development/dcp-issuer:test .
 ```
 
 ### 4. Start Services
@@ -270,7 +276,7 @@ docker compose -f docker-compose-dcp.yml --env-file .env up -d
 # - connector-a
 # - connector-b
 # - mongodb
-# - minio
+# - s3storage (RustFS)
 ```
 
 ### 5. Health Checks with Retries
@@ -528,7 +534,7 @@ newman run collection.json --bail --disable-unicode --reporter-cli-no-summary
 mvn clean package -X
 
 # Check Java version
-java -version  # Should be Java 17
+java -version  # Should be Java 21
 
 # Check for port conflicts during tests
 mvn clean test
@@ -562,7 +568,7 @@ mvn -T 4 clean package -DskipTests
 
 ```bash
 # Tag images to avoid rebuilds
-docker tag dcp-issuer:test dcp-issuer:latest
+docker tag ghcr.io/engineering-research-and-development/dcp-issuer:test ghcr.io/engineering-research-and-development/dcp-issuer:latest
 
 # Use -SkipBuild flag
 .\test-workflow-locally.ps1 -SkipBuild
@@ -622,9 +628,9 @@ docker exec -it mongodb mongosh
 > use connector_db
 > db.negotiations.find()
 
-# Check MinIO storage
+# Check RustFS storage
 # Open browser: http://localhost:9001
-# Login: minioadmin / minioadmin
+# Login: rustfsadmin / rustfsadmin
 ```
 
 ## 📞 Getting Help
@@ -642,7 +648,7 @@ The automated script provides detailed output:
 | Error | Meaning | Solution |
 |-------|---------|----------|
 | "Docker is not running" | Docker daemon not started | Start Docker Desktop |
-| "Image dcp-issuer:test not found" | Image not built | Remove `-SkipBuild` flag |
+| "Image ghcr.io/engineering-research-and-development/dcp-issuer:test not found" | Image not built | Remove `-SkipBuild` flag |
 | "Health check failed" | Service not ready | Check logs, increase wait time |
 | "VCs not obtained" | VC test failed | Check DCP Issuer logs |
 | "Port already in use" | Conflicting service | Stop conflicting service or change ports |
