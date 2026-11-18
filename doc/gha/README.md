@@ -25,15 +25,17 @@ against them in a parallel matrix.
 ## How a run works
 
 ```
-build-connector-image ──┐
-                        ├──► integration-tests (12 matrix jobs)
+maven-verify (all unit + integration tests) ─────────────────────────────┐
+build-connector-image ──┐                                                 ├─► run result
+                        ├──► integration-tests (12 matrix jobs) ──────────┘
 build-dcp-issuer-image ─┘
 ```
 
-1. **Build.** Both images are built and pushed to GHCR with two tags:
+1. **Verify.** `maven-verify` runs `mvn clean verify` with all tests, in parallel with the rest.
+2. **Build.** Both images are built without tests and pushed to GHCR with two tags:
    - `ci-<run_id>-<commit sha>`: unique to this run; the test jobs use it.
    - `test`: kept for consumers outside this workflow (manual TCK run, Terraform).
-2. **Test.** Each matrix job starts a Docker Compose stack with `IMAGE_TAG` set to the run's tag,
+3. **Test.** Each matrix job starts a Docker Compose stack with `IMAGE_TAG` set to the run's tag,
    waits for the services to be healthy, optionally obtains Verifiable Credentials, and runs one
    Newman collection.
 

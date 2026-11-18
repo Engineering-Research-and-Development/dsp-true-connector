@@ -53,21 +53,29 @@ recent feature-branch build" is acceptable.
 
 ## Jobs
 
-### 1. `build-connector-image`
+### 1. `maven-verify`
 - Checks out the repository, sets up JDK 21 (Temurin) with the Maven cache.
-- Runs `mvn -B clean verify` for the whole project, including unit and integration tests.
-- Builds `connector/Dockerfile` with `no-cache: true` and pushes both tags to
-  `ghcr.io/engineering-research-and-development/dsp-true-connector`.
+- Runs `mvn -B clean verify` for the whole project: all unit and integration tests (Testcontainers).
+- Has no dependants: it runs in parallel with the image builds and the Newman matrix, and the run
+  fails if it fails. It is the longest job (about 6 minutes, most of it connector integration tests).
 
-### 2. `build-dcp-issuer-image`
+### 2. `build-connector-image`
+- Checks out the repository, sets up JDK 21 with the Maven cache.
+- Runs `mvn -B clean package -DskipTests -pl connector -am`: the connector and the modules it
+  depends on, without tests (those run in `maven-verify`).
+- Builds `connector/Dockerfile` with `no-cache: true` and pushes both tags to
+  `ghcr.io/engineering-research-and-development/dsp-true-connector`. The Dockerfile copies the jars
+  with `COPY --chown` instead of a later `chown -R`, which would store the dependency jars twice.
+
+### 3. `build-dcp-issuer-image`
 - Checks out the repository, sets up JDK 21 with the Maven cache.
 - Runs `mvn -B clean package -DskipTests --file dcp/pom.xml`.
 - Builds `dcp/dcp-issuer/Dockerfile` and pushes both tags to
   `ghcr.io/engineering-research-and-development/dcp-issuer`.
 
-The two build jobs run in parallel.
+The three jobs above run in parallel.
 
-### 3. `integration-tests` (matrix)
+### 4. `integration-tests` (matrix)
 
 `fail-fast: false`, so every matrix job finishes even when one fails. Steps:
 

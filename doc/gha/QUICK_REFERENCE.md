@@ -11,7 +11,8 @@
 
 | Job | Does | Output |
 |-----|------|--------|
-| `build-connector-image` | `mvn clean verify` + Docker build | `dsp-true-connector:ci-<run_id>-<sha>` and `:test` in GHCR |
+| `maven-verify` | `mvn clean verify`, all unit + integration tests | Pass/fail; runs in parallel |
+| `build-connector-image` | `mvn package -DskipTests -pl connector -am` + Docker build | `dsp-true-connector:ci-<run_id>-<sha>` and `:test` in GHCR |
 | `build-dcp-issuer-image` | Maven package of `dcp/` + Docker build | `dcp-issuer:ci-<run_id>-<sha>` and `:test` in GHCR |
 | `integration-tests` | 12 matrix jobs, one Newman collection each | Test results, logs on failure |
 

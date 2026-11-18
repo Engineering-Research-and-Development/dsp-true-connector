@@ -8,18 +8,17 @@ Diagrams for `.github/workflows/integration-tests.yml`. The text reference is
 ```
                      push to feature/* | hotfix/* | fix/*
                                      │
-             ┌───────────────────────┴────────────────────────┐
-             ▼                                                ▼
-┌──────────────────────────────┐                ┌──────────────────────────────┐
-│ build-connector-image        │                │ build-dcp-issuer-image       │
-│ 1. checkout                  │                │ 1. checkout                  │
-│ 2. JDK 21 + Maven cache      │                │ 2. JDK 21 + Maven cache      │
-│ 3. mvn clean verify          │                │ 3. mvn package dcp/ (no test)│
-│ 4. docker build + push       │                │ 4. docker build + push       │
-│    :ci-<run>-<sha>, :test    │                │    :ci-<run>-<sha>, :test    │
-└──────────────┬───────────────┘                └───────────────┬──────────────┘
-               └──────────────────────┬─────────────────────────┘
-                                      ▼
+     ┌───────────────────────────────┼────────────────────────────────┐
+     ▼                               ▼                                ▼
+┌────────────────────────┐ ┌────────────────────────────┐ ┌────────────────────────────┐
+│ maven-verify           │ │ build-connector-image      │ │ build-dcp-issuer-image     │
+│ mvn clean verify       │ │ mvn package -DskipTests    │ │ mvn package dcp/           │
+│ all unit + integration │ │   -pl connector -am        │ │   -DskipTests              │
+│ tests (~6 min)         │ │ docker build + push        │ │ docker build + push        │
+│ fails the run if red   │ │ :ci-<run>-<sha>, :test     │ │ :ci-<run>-<sha>, :test     │
+└────────────────────────┘ └─────────────┬──────────────┘ └──────────────┬─────────────┘
+  (no dependants; runs                   └────────────────┬───────────────┘
+   alongside everything)                                  ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ integration-tests   (matrix: 12 jobs, fail-fast: false)                      │
 │                                                                              │
