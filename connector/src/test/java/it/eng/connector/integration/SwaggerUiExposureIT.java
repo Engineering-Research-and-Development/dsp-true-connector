@@ -17,6 +17,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -63,8 +64,8 @@ class SwaggerUiExposureIT extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Documented login examples authenticate management and protocol requests")
-    void documentedLoginExamplesAuthorizeManagementAndProtocolRequests() throws Exception {
+    @DisplayName("Documented admin login example authenticates management requests; protocol route accepts ROLE_CONNECTOR")
+    void documentedAdminLoginExampleAuthorizesManagementAndProtocolRequests() throws Exception {
         String document = mockMvc.perform(get("/v3/api-docs/management-api"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
@@ -75,16 +76,14 @@ class SwaggerUiExposureIT extends BaseIntegrationTest {
         JsonNode examples = managementApi.path("components").path("examples");
         assertTrue(managementApi.path("paths").has(ApiEndpoints.USERS_V1 + "/me"));
         assertTrue(examples.has("login-admin.plain"));
-        assertTrue(examples.has("login-connector.plain"));
 
         String adminToken = loginAndGetAccessToken(examples.path("login-admin.plain").path("value"));
-        String connectorToken = loginAndGetAccessToken(examples.path("login-connector.plain").path("value"));
         mockMvc.perform(get(ApiEndpoints.USERS_V1 + "/me")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
                 .andExpect(status().isOk());
 
         String protocolResponse = mockMvc.perform(post("/" + TENANT_ID + "/catalog/request")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + connectorToken)
+                        .with(user("swagger-test").roles("CONNECTOR"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(CatalogSerializer.serializeProtocol(
                                 CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE)))

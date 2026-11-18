@@ -10,6 +10,7 @@ import it.eng.tools.client.rest.OkHttpRestClient;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -43,6 +44,11 @@ public class ProxyAPIService {
                 credentialUtils::getConnectorCredentials);
         if (catalogResponse.isSuccess()) {
             return CatalogSerializer.deserializeProtocol(catalogResponse.getData(), Catalog.class);
+        } else if (StringUtils.isBlank(catalogResponse.getData())) {
+            // No peer body, e.g. the request was not sent because no access token was available.
+            log.error("No Catalog response received from {}: {}", forwardTo, catalogResponse.getMessage());
+            throw new CatalogErrorAPIException("Catalog response not received from  " + forwardTo
+                    + " : " + catalogResponse.getMessage());
         } else {
             CatalogError catalogError = CatalogSerializer.deserializeProtocol(catalogResponse.getData(), CatalogError.class);
             log.error("No valid Catalog response received from  {}, : {} ", forwardTo, catalogError.getReason());

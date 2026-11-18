@@ -17,10 +17,8 @@ import it.eng.tools.event.AuditEvent;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.DSpaceConstants;
 import it.eng.tools.model.IConstants;
-import it.eng.tools.property.ConnectorProperties;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.AuditEventPublisher;
-import it.eng.tools.util.CredentialUtils;
 import it.eng.tools.service.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -32,17 +30,10 @@ import java.util.Map;
 @Slf4j
 public abstract class ContractNegotiationProviderService extends BaseProtocolService implements ContractNegotiationProviderStrategy {
 
-    private final ConnectorProperties connectorProperties;
-
-    protected final CredentialUtils credentialUtils;
-
-    public ContractNegotiationProviderService(AuditEventPublisher publisher, ConnectorProperties connectorProperties,
+    public ContractNegotiationProviderService(AuditEventPublisher publisher,
                                               ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
-                                              ContractNegotiationProperties properties, OfferRepository offerRepository,
-                                              CredentialUtils credentialUtils) {
+                                              ContractNegotiationProperties properties, OfferRepository offerRepository) {
         super(publisher, contractNegotiationRepository, okHttpRestClient, properties, offerRepository);
-        this.credentialUtils = credentialUtils;
-        this.connectorProperties = connectorProperties;
     }
 
     /**
@@ -100,11 +91,9 @@ public abstract class ContractNegotiationProviderService extends BaseProtocolSer
 
         checkIfContractNegotiationExists(contractRequestMessage.getConsumerPid(), contractRequestMessage.getProviderPid());
 
-        GenericApiResponse<String> response = okHttpRestClient.sendRequestProtocol(connectorProperties.getConnectorURL()
-                        + ApiEndpoints.CATALOG_OFFERS_V1 + "/validate",
-                NegotiationSerializer.serializePlainJsonNode(contractRequestMessage.getOffer()),
-                credentialUtils::getAPICredentials,
-                TenantContextHolder.getTenantId());
+        GenericApiResponse<String> response = okHttpRestClient.sendInternalPostRequest(
+                ApiEndpoints.INTERNAL_OFFERS_V1 + "/validate",
+                NegotiationSerializer.serializePlainJsonNode(contractRequestMessage.getOffer()));
 
         if (!response.isSuccess()) {
             publisher.publishEvent(AuditEvent.Builder.newInstance()

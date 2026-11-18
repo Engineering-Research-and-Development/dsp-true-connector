@@ -9,11 +9,10 @@ import it.eng.negotiation.properties.ContractNegotiationProperties;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.model.IConstants;
-import it.eng.tools.property.ConnectorProperties;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.AuditEventPublisher;
-import it.eng.tools.util.CredentialUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,10 +45,6 @@ public class DSPContractNegotiationProviderServiceTest {
     private OkHttpRestClient okHttpRestClient;
     @Mock
     private GenericApiResponse<String> apiResponse;
-    @Mock
-    private CredentialUtils credentialUtils;
-    @Mock
-    private ConnectorProperties connectorProperties;
 
     @InjectMocks
     private DSPContractNegotiationProviderService service;
@@ -63,9 +58,8 @@ public class DSPContractNegotiationProviderServiceTest {
     @DisplayName("Start contract negotiation success - automatic negotiation ON")
     public void handleContractRequestMessage_automaticON() {
         when(properties.isAutomaticNegotiation()).thenReturn(true);
-        when(connectorProperties.getConnectorURL()).thenReturn("http://test.connector.url");
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class), isNull())).thenReturn(apiResponse);
+        when(okHttpRestClient.sendInternalPostRequest(any(String.class), any(JsonNode.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         when(offerRepository.save(any(Offer.class))).thenReturn(NegotiationMockObjectUtil.OFFER_WITH_ORIGINAL_ID);
 
@@ -90,8 +84,7 @@ public class DSPContractNegotiationProviderServiceTest {
     public void handleContractRequestMessage_automatic_OFF() {
         when(properties.isAutomaticNegotiation()).thenReturn(false);
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
-        when(connectorProperties.getConnectorURL()).thenReturn("http://test.connector.url");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class), isNull())).thenReturn(apiResponse);
+        when(okHttpRestClient.sendInternalPostRequest(any(String.class), any(JsonNode.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(true);
         when(offerRepository.save(any(Offer.class))).thenReturn(NegotiationMockObjectUtil.OFFER_WITH_ORIGINAL_ID);
 
@@ -109,6 +102,21 @@ public class DSPContractNegotiationProviderServiceTest {
         assertEquals(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_INITIAL.getOffer().getId(), argCaptorOffer.getValue().getOriginalId());
         assertNotNull(argCaptorContractNegotiation.getValue().getProviderPid());
         verify(publisher, never()).publishEvent(any(AutoNegotiationAgreedEvent.class));
+    }
+
+    @Test
+    @DisplayName("Offer validation is a loopback call to /internal/v1/offers/validate, not a protocol call")
+    public void handleContractRequestMessage_validatesOfferOverInternalZone() {
+        when(properties.isAutomaticNegotiation()).thenReturn(false);
+        when(okHttpRestClient.sendInternalPostRequest(eq(ApiEndpoints.INTERNAL_OFFERS_V1 + "/validate"), any(JsonNode.class)))
+                .thenReturn(apiResponse);
+        when(apiResponse.isSuccess()).thenReturn(true);
+        when(offerRepository.save(any(Offer.class))).thenReturn(NegotiationMockObjectUtil.OFFER_WITH_ORIGINAL_ID);
+
+        service.handleContractRequestMessage(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_INITIAL);
+
+        verify(okHttpRestClient).sendInternalPostRequest(eq(ApiEndpoints.INTERNAL_OFFERS_V1 + "/validate"), any(JsonNode.class));
+        verify(okHttpRestClient, never()).sendRequestProtocol(anyString(), any(), any(Supplier.class));
     }
 
     @Test
@@ -137,8 +145,7 @@ public class DSPContractNegotiationProviderServiceTest {
     @DisplayName("Start contract negotiation failed - offer not valid")
     public void handleContractRequestMessage_offerNotValid() {
         when(repository.findByProviderPidAndConsumerPid(eq(null), anyString())).thenReturn(Optional.ofNullable(null));
-        when(connectorProperties.getConnectorURL()).thenReturn("http://test.connector.url");
-        when(okHttpRestClient.sendRequestProtocol(any(String.class), any(JsonNode.class), any(Supplier.class), isNull())).thenReturn(apiResponse);
+        when(okHttpRestClient.sendInternalPostRequest(any(String.class), any(JsonNode.class))).thenReturn(apiResponse);
         when(apiResponse.isSuccess()).thenReturn(false);
 
         assertThrows(OfferNotValidException.class, () -> service.handleContractRequestMessage(NegotiationMockObjectUtil.CONTRACT_REQUEST_MESSAGE_INITIAL));

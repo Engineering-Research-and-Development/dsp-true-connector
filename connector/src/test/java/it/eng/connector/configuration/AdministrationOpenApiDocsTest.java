@@ -1,25 +1,22 @@
 package it.eng.connector.configuration;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import it.eng.connector.rest.api.AuthController;
-import it.eng.connector.rest.api.DashboardMetricsController;
-import it.eng.connector.rest.api.DSpaceVersionController;
-import it.eng.connector.rest.api.KeycloakUserApiController;
-import it.eng.connector.rest.api.UserAPIController;
+import it.eng.connector.rest.api.*;
 import it.eng.tools.rest.api.ApplicationPropertiesAPIController;
 import it.eng.tools.rest.api.AuditEventController;
 import it.eng.tools.rest.api.TenantAPIController;
-import java.lang.reflect.Method;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.web.bind.annotation.RequestMapping;
+
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AdministrationOpenApiDocsTest {
 
@@ -29,7 +26,6 @@ class AdministrationOpenApiDocsTest {
 
     private static final List<Class<?>> BRIEF_DOCUMENTED_CONTROLLERS = List.of(
             AuthController.class,
-            KeycloakUserApiController.class,
             AuditEventController.class,
             ApplicationPropertiesAPIController.class,
             DashboardMetricsController.class,
@@ -82,13 +78,12 @@ class AdministrationOpenApiDocsTest {
                         + String.join("; ", missingTags));
         assertTrue(documentation.examples().keySet().containsAll(List.of(
                         "application-properties.plain",
-                        "login-admin.plain",
-                        "login-connector.plain")),
+                        "login-admin.plain")),
                 "Generated administration examples should match the OpenAPI example references");
         Object loginExamples = documentation.operations().get("login").properties().get("requestExamples");
         assertTrue(loginExamples instanceof Map<?, ?> examples
-                        && examples.values().containsAll(List.of("login-admin", "login-connector")),
-                "Login should reference both seeded-account examples");
+                        && examples.values().containsAll(List.of("login-admin")),
+                "Login should reference the seeded admin account example");
     }
 
     @Test

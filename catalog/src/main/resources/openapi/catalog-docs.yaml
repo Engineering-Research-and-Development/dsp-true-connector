@@ -11,9 +11,6 @@ tags:
   DataServiceAPIController:
     name: Data Service
     description: Manage the DCAT data services referenced by catalog distributions.
-  OfferAPIController:
-    name: Offer
-    description: Validate a catalog policy offer.
   ArtifactAPIController:
     name: Artifact
     description: Retrieve artifact metadata associated with catalog datasets.
@@ -137,10 +134,6 @@ operations:
     requestExamples:
       Data service: data-service
 
-  validateOffer:
-    summary: Validate a policy offer
-    requestExamples:
-      Offer: offer
   getArtifacts:
     summary: Retrieve artifacts
   CatalogController.getCatalog:

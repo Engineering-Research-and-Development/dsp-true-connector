@@ -31,6 +31,12 @@ import java.util.*;
  * carries a {@value #REFRESH_TOKEN_TYPE} {@value #TOKEN_TYPE_CLAIM} claim, so a refresh token
  * cannot be replayed against a protected endpoint.
  *
+ * <p><b>Protocol token</b>: {@link #issueProtocolToken()} mints the access token this connector
+ * presents on outbound connector-to-connector (protocol) calls. It carries only {@code sub} =
+ * {@value #PROTOCOL_TOKEN_SUBJECT}, {@code realm_access.roles} = [{@value #CONNECTOR_ROLE}],
+ * {@code iat}, {@code exp} and {@code jti}: no {@value #EMAIL_CLAIM}, no {@value #TENANT_ID_CLAIM},
+ * no {@value #TOKEN_TYPE_CLAIM} and no refresh token. It is not tied to any user account.
+ *
  * <p>The signing secret is never logged, including at {@code DEBUG} level.
  */
 @Slf4j
@@ -64,6 +70,12 @@ public class JwtService {
 
     /** {@link #TOKEN_TYPE_CLAIM} value carried by refresh tokens only. */
     public static final String REFRESH_TOKEN_TYPE = "refresh";
+
+    /** {@code sub} claim of the connector-to-connector protocol token. */
+    public static final String PROTOCOL_TOKEN_SUBJECT = "connector";
+
+    /** The single role carried by the connector-to-connector protocol token. */
+    public static final String CONNECTOR_ROLE = "CONNECTOR";
 
     private static final int MIN_SECRET_BYTES = 32;
 
@@ -150,6 +162,28 @@ public class JwtService {
 
         long accessExpiresInSeconds = jwtProperties.getAccessExpirationMs() / 1000L;
         return new TokenPair(accessToken, refreshToken, accessExpiresInSeconds);
+    }
+
+    /**
+     * Issues the access token for outbound connector-to-connector (protocol) calls.
+     *
+     * <p>The token is signed with the configured secret and expires after the access TTL. It carries
+     * {@code sub} = {@value #PROTOCOL_TOKEN_SUBJECT}, {@code realm_access.roles} =
+     * [{@value #CONNECTOR_ROLE}], {@code iat}, {@code exp} and {@code jti} only: no user, no
+     * {@value #EMAIL_CLAIM}, no {@value #TENANT_ID_CLAIM} and no {@value #TOKEN_TYPE_CLAIM}. No refresh
+     * token is issued.
+     *
+     * @return the signed protocol access token
+     */
+    public String issueProtocolToken() {
+        Instant now = Instant.now();
+        return JWT.create()
+                .withSubject(PROTOCOL_TOKEN_SUBJECT)
+                .withClaim(REALM_ACCESS_CLAIM, Map.of(ROLES_CLAIM, List.of(CONNECTOR_ROLE)))
+                .withIssuedAt(Date.from(now))
+                .withExpiresAt(Date.from(now.plusMillis(jwtProperties.getAccessExpirationMs())))
+                .withJWTId(UUID.randomUUID().toString())
+                .sign(signingAlgorithm());
     }
 
     /**

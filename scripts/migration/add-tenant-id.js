@@ -60,8 +60,8 @@ const USERS_COLLECTION = "users";
 const SUPER_ADMIN_USER = {
   _class: "it.eng.connector.model.User",
   _id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-  firstName: "Super",
-  lastName: "Admin",
+  firstName: "Capo",
+  lastName: "Capi",
   email: "superadmin@mail.com",
   password: "$2a$10$wQgl7stAxkVI1oxaynYU2uj.1IxzQ/ETygs32RoveH.rkgAfXAk5q",
   enabled: true,

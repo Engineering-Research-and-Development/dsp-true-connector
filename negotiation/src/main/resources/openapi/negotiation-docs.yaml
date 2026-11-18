@@ -7,9 +7,6 @@ tags:
       transitions depend on the current state: REQUESTED may become OFFERED, AGREED, or TERMINATED; OFFERED may
       return to REQUESTED, become ACCEPTED, or terminate; ACCEPTED may become AGREED or terminate; AGREED may
       become VERIFIED or terminate; VERIFIED may become FINALIZED or terminate.
-  AgreementAPIController:
-    name: Agreement
-    description: Evaluate policy constraints for an existing contract agreement.
   ContractNegotiationProviderController:
     name: DSP negotiation (provider)
     description: >-
@@ -92,12 +89,6 @@ operations:
     description: >-
       Terminate an existing negotiation from either participant role. The connector sends a
       ContractNegotiationTerminationMessage to the counterparty callback, then records TERMINATED after success.
-  enforceAgreement:
-    summary: Enforce an agreement
-    description: >-
-      Load the agreement by ID (scoped to the current tenant when one is active) and evaluate its policy using the
-      agreement enforcement point. A valid decision returns success; a denied decision raises a policy enforcement
-      error. This endpoint does not alter negotiation state.
   ContractNegotiationProviderController.getNegotiationByProviderPid:
     controllerName: ContractNegotiationProviderController
     methodName: getNegotiationByProviderPid

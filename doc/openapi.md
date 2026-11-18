@@ -25,22 +25,26 @@ When enabled, open Swagger UI at `/swagger-ui/index.html`. The raw documents are
 | `dsp-protocol` | `/v3/api-docs/dsp-protocol` | Tenant-scoped catalog, negotiation, and transfer operations, using DSP JSON-LD |
 
 The groups contain YAML-documented operations. The shared OpenAPI `bearerAuth` scheme is used for
-protected operations; login endpoints are available without a bearer token.
+protected operations; in `INTERNAL` mode the login endpoints are available without a bearer token.
+The `/api/v1/auth/*` endpoints exist only in `INTERNAL` mode, and `PUT /api/v1/users/{id}/password`
+only in `INTERNAL` and `DISABLED` modes. In `KEYCLOAK` mode, get a token from Keycloak (see
+[security.md](security.md#getting-tokens)) and paste it into **Authorize** instead of steps 1–4 below.
 
 ## Try an authenticated request
 
-Use demo seed data only:
+Use demo seed data only. These steps use `INTERNAL` mode:
 
 1. Open the `management-api` group and expand `POST /api/v1/auth/login`.
 2. Select the generated login example for `admin@mail.com` and use **Try it out**. The seeded
    example credentials are for local/demo environments only.
 3. Copy the returned `access_token`, select **Authorize**, and enter the token in the HTTP bearer
    field. The admin token can call management endpoints such as `GET /api/v1/users/me`.
-4. Repeat login with the generated `connector@mail.com` example and authorize with its returned
-   token.
-5. In `dsp-protocol`, select a tenant-scoped operation such as `POST /{tenantId}/catalog/request`.
-   Set `tenantId` to an enabled tenant (for example, `engineering`) and use the generated
-   JSON-LD catalog request example. The connector token is required.
+4. In `dsp-protocol`, select a tenant-scoped operation such as `POST /{tenantId}/catalog/request`.
+   Set `tenantId` to an enabled tenant (for example, `engineering-a`) and use the generated
+   JSON-LD catalog request example. The protocol routes need a connector protocol token, not a login:
+   there is no connector user to log in as. Mint one as described in
+   [security.md](security.md#connector-to-connector-credentials-m2m) (the Postman collection does this
+   for you) and enter it in **Authorize**. An admin token gets 403 there.
 
 Examples are generated at build time from test fixtures and the runtime serializers. Management
 examples use plain JSON serialization; DSP examples use protocol serialization, including the
@@ -55,7 +59,7 @@ Management calls continue to require their configured admin roles, and protocol 
 
 The protocol tenant is selected by the `{tenantId}` path variable. Current behavior does not bind
 a `ROLE_CONNECTOR` token to one tenant: the integration test verifies that a connector token
-issued for `engineering` can address other enabled tenant routes, and each route returns data
+issued for `engineering-a` can address other enabled tenant routes, and each route returns data
 scoped to the tenant named in that route. Treat connector tokens as connector-wide credentials,
 not tenant-specific credentials. If a deployment requires tenant identity binding, enforce it
 through an explicit authorization rule or deployment boundary rather than relying on the token

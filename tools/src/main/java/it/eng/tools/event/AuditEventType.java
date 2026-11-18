@@ -18,6 +18,7 @@ public enum AuditEventType {
     APPLICATION_TOKEN_REFRESH_FAILED("Token refresh failed"),
     M2M_TOKEN_ISSUED("Machine-to-machine token issued"),
     M2M_TOKEN_ISSUE_FAILED("Machine-to-machine token issue failed"),
+    SECURITY_REALM_ROLE_VIOLATION("Token with a role its realm may not grant"),
     PROTOCOL_CATALOG_CATALOG_NOT_FOUND("Catalog not found"),
     PROTOCOL_CATALOG_DATASET_NOT_FOUND("Dataset not found"),
     PROTOCOL_NEGOTIATION_CONTRACT_NEGOTIATION("Contract negotiation"),
@@ -54,6 +55,7 @@ public enum AuditEventType {
     TENANT_DISABLED("Tenant disabled"),
     TENANT_UPDATED("Tenant updated"),
     TENANT_NOT_FOUND("Tenant not found"),
+    TENANT_DELEGATION("Super-admin acting for a tenant"),
 
     USER_CREATED("User created"),
     USER_UPDATED("User updated"),

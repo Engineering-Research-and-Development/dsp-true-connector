@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-@RestControllerAdvice(basePackages = "it.eng.catalog.rest.api")
+@RestControllerAdvice(basePackages = {"it.eng.catalog.rest.api", "it.eng.catalog.rest.internal"})
 public class CatalogAPIExceptionAdvice extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(value = {ResourceNotFoundAPIException.class})

@@ -15,9 +15,9 @@ public class TenantContextHolder {
     public static final String MDC_TENANT_KEY = "tenantId";
 
     /**
-     * HTTP request header used to pass tenant context in internal and super-admin API calls.
-     * {@code ApiTenantContextFilter} reads this header for principals that have no tenantId of
-     * their own (super-admin / service accounts) and activates the requested tenant context.
+     * HTTP request header that lets a super-admin act for one tenant on {@code /api/**}.
+     * {@code ApiTenantContextFilter} honours it only for a {@code ROLE_SUPER_ADMIN} principal without a
+     * tenant of its own, and only for an enabled tenant; any other principal that sends it is rejected.
      */
     public static final String HEADER_X_TENANT_ID = "X-Tenant-Id";
 

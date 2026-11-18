@@ -35,7 +35,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class ContractNegotiationProviderControllerTest {
 
-    private static final String TENANT_ID = "engineering";
+    private static final String TENANT_ID = "engineering-a";
 
     @Mock
     private Environment environment;
@@ -55,7 +55,7 @@ public class ContractNegotiationProviderControllerTest {
     public void before() {
         RequestContextHolder.setRequestAttributes(attrs);
         Tenant tenant = Tenant.Builder.newInstance()
-                .id(TENANT_ID).name("Engineering").participantId("c1")
+                .id(TENANT_ID).name("EngineeringA").participantId("c1")
                 .enabled(true).build();
         when(tenantService.findEnabledTenantById(TENANT_ID)).thenReturn(tenant);
     }

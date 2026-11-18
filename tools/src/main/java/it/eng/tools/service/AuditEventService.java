@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 public class AuditEventService {
@@ -44,8 +45,19 @@ public class AuditEventService {
                 .toList();
     }
 
+    /**
+     * Find an audit event by id, scoped to the current tenant when one is set.
+     *
+     * @param auditEventId the audit event id
+     * @return the audit event
+     * @throws ResourceNotFoundException if the event does not exist (for the current tenant)
+     */
     public AuditEvent getAuditEventById(String auditEventId) {
-        return auditEventRepository.findById(auditEventId)
+        String tenantId = TenantContextHolder.getTenantId();
+        Optional<AuditEvent> auditEvent = tenantId != null
+                ? auditEventRepository.findByIdAndTenantId(auditEventId, tenantId)
+                : auditEventRepository.findById(auditEventId);
+        return auditEvent
                 .orElseThrow(() -> new ResourceNotFoundException("Audit event with id " + auditEventId + " not found"));
     }
 }

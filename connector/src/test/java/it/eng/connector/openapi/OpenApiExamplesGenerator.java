@@ -17,7 +17,7 @@ public final class OpenApiExamplesGenerator {
     }
 
     /**
-     * Writes login examples for the seeded admin and connector accounts into the module output directory.
+     * Writes the login example for the seeded admin account into the module output directory.
      *
      * @param args command-line arguments, which are not used
      * @throws IOException if an example cannot be written
@@ -26,7 +26,6 @@ public final class OpenApiExamplesGenerator {
     public static void main(final String[] args) throws IOException, URISyntaxException {
         Files.createDirectories(examplesDirectory());
         writeExample("login-admin", new LoginRequest("admin@mail.com", "password"));
-        writeExample("login-connector", new LoginRequest("connector@mail.com", "password"));
     }
 
     private static Path examplesDirectory() throws URISyntaxException {

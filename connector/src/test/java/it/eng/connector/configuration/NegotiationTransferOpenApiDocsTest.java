@@ -1,12 +1,16 @@
 package it.eng.connector.configuration;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import it.eng.datatransfer.ftp.rest.api.FTPClientAPIController;
 import it.eng.datatransfer.rest.api.DataTransferAPIController;
-import it.eng.negotiation.rest.api.AgreementAPIController;
 import it.eng.negotiation.rest.api.ContractNegotiationAPIController;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.core.annotation.AnnotatedElementUtils;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.web.bind.annotation.RequestMapping;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -16,23 +20,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.core.annotation.AnnotatedElementUtils;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
-import org.springframework.web.bind.annotation.RequestMapping;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NegotiationTransferOpenApiDocsTest {
 
     private static final List<Class<?>> FULLY_DOCUMENTED_CONTROLLERS = List.of(
             ContractNegotiationAPIController.class,
-            AgreementAPIController.class,
             DataTransferAPIController.class);
     private static final List<Class<?>> DOCUMENTED_CONTROLLERS = List.of(
             ContractNegotiationAPIController.class,
-            AgreementAPIController.class,
             DataTransferAPIController.class);
 //            FTPClientAPIController.class);
 

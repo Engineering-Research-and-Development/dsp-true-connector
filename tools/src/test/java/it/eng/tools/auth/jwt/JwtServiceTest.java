@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -133,6 +134,52 @@ class JwtServiceTest {
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, shortSecretService::init);
         assertTrue(exception.getMessage().contains("application.security.jwt.secret"));
+    }
+
+    @Test
+    @DisplayName("Should mint a protocol token that holds only CONNECTOR and no user, tenant or token type")
+    void protocolTokenHoldsOnlyConnectorRole() {
+        String token = jwtService.issueProtocolToken();
+
+        DecodedJWT decoded = jwtService.verifyAndDecode(token);
+        assertEquals(JwtService.PROTOCOL_TOKEN_SUBJECT, decoded.getSubject());
+        assertEquals(Map.of(JwtService.ROLES_CLAIM, List.of(JwtService.CONNECTOR_ROLE)),
+                decoded.getClaim(JwtService.REALM_ACCESS_CLAIM).asMap());
+        assertTrue(decoded.getClaim(JwtService.EMAIL_CLAIM).isMissing());
+        assertTrue(decoded.getClaim(JwtService.TENANT_ID_CLAIM).isMissing());
+        assertTrue(decoded.getClaim(JwtService.TOKEN_TYPE_CLAIM).isMissing());
+        assertNotNull(decoded.getId());
+        assertEquals(Set.of("sub", JwtService.REALM_ACCESS_CLAIM, "iat", "exp", "jti"), decoded.getClaims().keySet());
+    }
+
+    @Test
+    @DisplayName("Should expire the protocol token after the access TTL")
+    void protocolTokenExpiresAfterAccessTtl() {
+        DecodedJWT decoded = jwtService.verifyAndDecode(jwtService.issueProtocolToken());
+
+        long lifetimeMs = decoded.getExpiresAt().getTime() - decoded.getIssuedAt().getTime();
+        assertEquals(900_000L, lifetimeMs);
+    }
+
+    @Test
+    @DisplayName("Should mint a protocol token with a fresh jti each time")
+    void protocolTokenHasUniqueJti() {
+        String first = jwtService.verifyAndDecode(jwtService.issueProtocolToken()).getId();
+        String second = jwtService.verifyAndDecode(jwtService.issueProtocolToken()).getId();
+
+        assertNotEquals(first, second);
+    }
+
+    @Test
+    @DisplayName("Should reject a protocol token minted with a different secret")
+    void protocolTokenFromOtherSecretIsRejected() {
+        JwtProperties otherProperties = new JwtProperties();
+        otherProperties.setSecret(OTHER_SECRET);
+        otherProperties.setAccessExpirationMs(900_000L);
+        otherProperties.setRefreshExpirationMs(604_800_000L);
+        String foreignToken = new JwtService(otherProperties).issueProtocolToken();
+
+        assertThrows(SignatureVerificationException.class, () -> jwtService.verifyAndDecode(foreignToken));
     }
 
     @Test

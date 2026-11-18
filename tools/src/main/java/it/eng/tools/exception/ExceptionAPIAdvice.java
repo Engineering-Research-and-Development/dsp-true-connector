@@ -53,6 +53,30 @@ public class ExceptionAPIAdvice extends ResponseEntityExceptionHandler {
     }
 
     /**
+     * Maps {@link InvalidTenantRealmException} to 400 Bad Request.
+     *
+     * @param ex      the exception
+     * @param request the web request
+     * @return 400 Bad Request with {@code success: false}
+     */
+    @ExceptionHandler(value = {InvalidTenantRealmException.class})
+    protected ResponseEntity<Object> handleInvalidTenantRealmException(InvalidTenantRealmException ex, WebRequest request) {
+        return handleExceptionInternal(ex, GenericApiResponse.error(ex.getLocalizedMessage()), new HttpHeaders(), HttpStatus.BAD_REQUEST, request);
+    }
+
+    /**
+     * Maps {@link DuplicateTenantRealmException} to 409 Conflict.
+     *
+     * @param ex      the exception
+     * @param request the web request
+     * @return 409 Conflict with {@code success: false}
+     */
+    @ExceptionHandler(value = {DuplicateTenantRealmException.class})
+    protected ResponseEntity<Object> handleDuplicateTenantRealmException(DuplicateTenantRealmException ex, WebRequest request) {
+        return handleExceptionInternal(ex, GenericApiResponse.error(ex.getLocalizedMessage()), new HttpHeaders(), HttpStatus.CONFLICT, request);
+    }
+
+    /**
      * Maps {@link IllegalArgumentException} to 400 Bad Request so that validation failures
      * such as duplicate participantId or duplicate bucket name return a consistent error response.
      *

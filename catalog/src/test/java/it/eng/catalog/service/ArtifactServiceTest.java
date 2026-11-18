@@ -1,6 +1,9 @@
 package it.eng.catalog.service;
 
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
+import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
+import it.eng.catalog.model.Dataset;
+import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.Artifact;
@@ -9,6 +12,7 @@ import it.eng.tools.s3.properties.S3Properties;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantBucketResolver;
+import it.eng.tools.service.TenantContextHolder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,6 +50,8 @@ public class ArtifactServiceTest {
     private ArtifactRepository artifactRepository;
     @Mock
     private AuditEventPublisher auditEventPublisher;
+    @Mock
+    private DatasetRepository datasetRepository;
     @InjectMocks
     private ArtifactService artifactService;
 
@@ -78,6 +84,46 @@ public class ArtifactServiceTest {
         assertEquals(2, result.size());
         assertEquals(CatalogMockObjectUtil.ARTIFACT_FILE.getId(), result.get(0).getId());
         verify(artifactRepository).findAll();
+    }
+
+    @Test
+    @DisplayName("Get all artifacts - only artifacts of the current tenant's datasets")
+    public void getAllArtifacts_scopedToTenant() {
+        Dataset withArtifact = mock(Dataset.class);
+        when(withArtifact.getArtifact()).thenReturn(CatalogMockObjectUtil.ARTIFACT_FILE);
+        Dataset withoutArtifact = mock(Dataset.class);
+        when(datasetRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(withArtifact, withoutArtifact));
+
+        TenantContextHolder.setTenantId("tenant-a");
+        List<Artifact> result;
+        try {
+            result = artifactService.getArtifacts(null);
+        } finally {
+            TenantContextHolder.clear();
+        }
+
+        assertEquals(List.of(CatalogMockObjectUtil.ARTIFACT_FILE), result);
+        verify(artifactRepository, never()).findAll();
+    }
+
+    @Test
+    @DisplayName("Get artifact by id - artifact of another tenant is not found")
+    public void getArtifactById_otherTenant_notFound() {
+        Dataset withArtifact = mock(Dataset.class);
+        when(withArtifact.getArtifact()).thenReturn(CatalogMockObjectUtil.ARTIFACT_FILE);
+        when(datasetRepository.findAllByTenantId("tenant-a")).thenReturn(List.of(withArtifact));
+
+        TenantContextHolder.setTenantId("tenant-a");
+        try {
+            assertEquals(List.of(CatalogMockObjectUtil.ARTIFACT_FILE),
+                    artifactService.getArtifacts(CatalogMockObjectUtil.ARTIFACT_FILE.getId()));
+            assertThrows(ResourceNotFoundAPIException.class,
+                    () -> artifactService.getArtifacts(CatalogMockObjectUtil.ARTIFACT_EXTERNAL.getId()));
+        } finally {
+            TenantContextHolder.clear();
+        }
+
+        verify(artifactRepository, never()).findById(anyString());
     }
 
     @Test

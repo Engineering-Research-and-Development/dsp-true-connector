@@ -31,7 +31,6 @@ public final class OpenApiExamplesGenerator {
         writeExample("dataset", CatalogMockObjectUtil.DATASET_WITH_ARTIFACT);
         writeExample("distribution", CatalogMockObjectUtil.DISTRIBUTION);
         writeExample("data-service", CatalogMockObjectUtil.DATA_SERVICE);
-        writeExample("offer", CatalogMockObjectUtil.OFFER);
         writeExample("forwarded-catalog", forwardedRequest());
         writeExample("forwarded-formats", forwardedRequest());
         writeProtocolExample("catalog-request", CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);

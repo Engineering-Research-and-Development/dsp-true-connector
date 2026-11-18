@@ -1,9 +1,9 @@
 package it.eng.tools.util;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
+import it.eng.tools.auth.ConnectorCredentialProvider;
+import it.eng.tools.auth.M2mTokenCache;
+import it.eng.tools.auth.M2mTokenUnavailableException;
+import it.eng.tools.auth.keycloak.KeycloakAuthenticationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,10 +13,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.ObjectProvider;
 
-import it.eng.tools.auth.AuthenticationCache;
-import it.eng.tools.auth.ConnectorCredentialProvider;
-import it.eng.tools.auth.M2mTokenCache;
-import it.eng.tools.auth.internal.InternalServiceTokenIssuer;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for {@link CredentialUtils}.
@@ -25,24 +23,22 @@ import it.eng.tools.auth.internal.InternalServiceTokenIssuer;
 class CredentialUtilsTest {
 
     @Mock
-    private AuthenticationCache authenticationCache;
-    @Mock
     private M2mTokenCache m2mTokenCache;
     @Mock
     private ObjectProvider<ConnectorCredentialProvider> connectorCredentialProviderObjectProvider;
     @Mock
-    private ObjectProvider<InternalServiceTokenIssuer> internalServiceTokenIssuerObjectProvider;
-    @Mock
     private ConnectorCredentialProvider connectorCredentialProvider;
     @Mock
-    private InternalServiceTokenIssuer internalServiceTokenIssuer;
+    private ObjectProvider<KeycloakAuthenticationService> keycloakServiceObjectProvider;
+    @Mock
+    private KeycloakAuthenticationService keycloakAuthenticationService;
 
     private CredentialUtils credentialUtils;
 
     @BeforeEach
     void setUp() {
-        credentialUtils = new CredentialUtils(authenticationCache, m2mTokenCache,
-                connectorCredentialProviderObjectProvider, internalServiceTokenIssuerObjectProvider);
+        credentialUtils = new CredentialUtils(m2mTokenCache, connectorCredentialProviderObjectProvider,
+                keycloakServiceObjectProvider);
     }
 
     @Test
@@ -55,13 +51,15 @@ class CredentialUtilsTest {
         String result = credentialUtils.getConnectorCredentials();
 
         assertEquals("Bearer m2m-token", result);
+        verifyNoInteractions(keycloakServiceObjectProvider);
     }
 
     @Test
-    @DisplayName("getConnectorCredentials: should fall back to Keycloak cache when provider is absent")
-    void getConnectorCredentials_providerAbsent_fallsBackToKeycloak() {
+    @DisplayName("getConnectorCredentials: should use the Keycloak platform token when the INTERNAL provider is absent")
+    void getConnectorCredentials_providerAbsent_usesKeycloak() {
         when(connectorCredentialProviderObjectProvider.getIfAvailable()).thenReturn(null);
-        when(authenticationCache.getToken("ROLE_CONNECTOR")).thenReturn("keycloak-token");
+        when(keycloakServiceObjectProvider.getIfAvailable()).thenReturn(keycloakAuthenticationService);
+        when(keycloakAuthenticationService.getConnectorToken()).thenReturn("keycloak-token");
 
         String result = credentialUtils.getConnectorCredentials();
 
@@ -69,12 +67,13 @@ class CredentialUtilsTest {
     }
 
     @Test
-    @DisplayName("getConnectorCredentials: should fall back to Keycloak when provider is present but yields no token")
+    @DisplayName("getConnectorCredentials: should fall back to Keycloak when the provider is present but yields no token")
     void getConnectorCredentials_providerPresentButNoToken_fallsBackToKeycloak() {
         when(connectorCredentialProviderObjectProvider.getIfAvailable()).thenReturn(connectorCredentialProvider);
         when(m2mTokenCache.getOrFetch(ArgumentMatchers.eq("connector-m2m"), ArgumentMatchers.any()))
                 .thenReturn(null);
-        when(authenticationCache.getToken("ROLE_CONNECTOR")).thenReturn("keycloak-token");
+        when(keycloakServiceObjectProvider.getIfAvailable()).thenReturn(keycloakAuthenticationService);
+        when(keycloakAuthenticationService.getConnectorToken()).thenReturn("keycloak-token");
 
         String result = credentialUtils.getConnectorCredentials();
 
@@ -82,47 +81,44 @@ class CredentialUtilsTest {
     }
 
     @Test
-    @DisplayName("getAPICredentials: should use the INTERNAL-mode issuer/cache path when present")
-    void getAPICredentials_issuerPresent_usesCache() {
-        when(internalServiceTokenIssuerObjectProvider.getIfAvailable()).thenReturn(internalServiceTokenIssuer);
-        when(m2mTokenCache.getOrFetch(ArgumentMatchers.eq("internal-api"), ArgumentMatchers.any()))
-                .thenReturn("internal-token");
+    @DisplayName("getConnectorCredentials: should propagate a failed Keycloak token request instead of returning null")
+    void getConnectorCredentials_keycloakFailure_throws() {
+        when(connectorCredentialProviderObjectProvider.getIfAvailable()).thenReturn(null);
+        when(keycloakServiceObjectProvider.getIfAvailable()).thenReturn(keycloakAuthenticationService);
+        when(keycloakAuthenticationService.getConnectorToken())
+                .thenThrow(new M2mTokenUnavailableException("Token request failed with HTTP 401 (invalid_client)"));
 
-        String result = credentialUtils.getAPICredentials();
-
-        assertEquals("Bearer internal-token", result);
+        assertThrows(M2mTokenUnavailableException.class, () -> credentialUtils.getConnectorCredentials());
     }
 
     @Test
-    @DisplayName("getAPICredentials: should fall back to Keycloak cache when issuer is absent")
-    void getAPICredentials_issuerAbsent_fallsBackToKeycloak() {
-        when(internalServiceTokenIssuerObjectProvider.getIfAvailable()).thenReturn(null);
-        when(authenticationCache.getToken("ROLE_ADMIN")).thenReturn("keycloak-admin-token");
+    @DisplayName("getConnectorCredentials: should return null when no credential source is configured")
+    void getConnectorCredentials_noSource_returnsNull() {
+        when(connectorCredentialProviderObjectProvider.getIfAvailable()).thenReturn(null);
+        when(keycloakServiceObjectProvider.getIfAvailable()).thenReturn(null);
 
-        String result = credentialUtils.getAPICredentials();
-
-        assertEquals("Bearer keycloak-admin-token", result);
+        assertNull(credentialUtils.getConnectorCredentials());
     }
 
     @Test
-    @DisplayName("getAPICredentials: should fall back to Keycloak when issuer is present but yields no token")
-    void getAPICredentials_issuerPresentButNoToken_fallsBackToKeycloak() {
-        when(internalServiceTokenIssuerObjectProvider.getIfAvailable()).thenReturn(internalServiceTokenIssuer);
-        when(m2mTokenCache.getOrFetch(ArgumentMatchers.eq("internal-api"), ArgumentMatchers.any()))
-                .thenReturn(null);
-        when(authenticationCache.getToken("ROLE_ADMIN")).thenReturn("keycloak-admin-token");
+    @DisplayName("invalidateCachedCredentials: should evict only the connector-m2m slot when Keycloak is not active")
+    void invalidateCachedCredentials_evictsConnectorSlot() {
+        when(keycloakServiceObjectProvider.getIfAvailable()).thenReturn(null);
 
-        String result = credentialUtils.getAPICredentials();
-
-        assertEquals("Bearer keycloak-admin-token", result);
-    }
-
-    @Test
-    @DisplayName("invalidateCachedCredentials: should evict both the connector-m2m and internal-api cache slots")
-    void invalidateCachedCredentials_evictsBothSlots() {
         credentialUtils.invalidateCachedCredentials();
 
         verify(m2mTokenCache).invalidate("connector-m2m");
-        verify(m2mTokenCache).invalidate("internal-api");
+        verifyNoMoreInteractions(m2mTokenCache);
+    }
+
+    @Test
+    @DisplayName("invalidateCachedCredentials: should also evict the KEYCLOAK entry in Keycloak mode")
+    void invalidateCachedCredentials_evictsKeycloakEntry() {
+        when(keycloakServiceObjectProvider.getIfAvailable()).thenReturn(keycloakAuthenticationService);
+
+        credentialUtils.invalidateCachedCredentials();
+
+        verify(m2mTokenCache).invalidate("connector-m2m");
+        verify(keycloakAuthenticationService).invalidateConnectorToken();
     }
 }

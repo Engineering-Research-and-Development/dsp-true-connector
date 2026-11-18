@@ -8,7 +8,7 @@ import static org.mockito.Mockito.mock;
 import com.fasterxml.jackson.databind.JsonNode;
 import it.eng.catalog.rest.api.CatalogAPIController;
 import it.eng.catalog.rest.protocol.CatalogController;
-import it.eng.connector.rest.api.KeycloakUserApiController;
+import it.eng.connector.rest.api.UserAPIController;
 import it.eng.tools.rest.api.TenantAPIController;
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.Method;
@@ -47,10 +47,10 @@ class OpenApiDocsDriftValidatorTest {
     @DisplayName("A documented handler on a conditional controller passes validation")
     void acceptsOperationOnConditionalController() throws NoSuchMethodException {
         OpenApiDocs documentation = documentation(
-                "getUsers", Optional.of(List.of("java.lang.String")));
+                "getCurrentUser", Optional.of(List.of("java.security.Principal")));
 
         assertDoesNotThrow(() -> OpenApiDocsDriftValidator.validate(
-                documentation, Map.of(), KeycloakUserApiController.class));
+                documentation, Map.of(), UserAPIController.class));
     }
 
     @Test

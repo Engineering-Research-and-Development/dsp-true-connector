@@ -60,9 +60,17 @@ public class OpenApiConfig {
                         .title("TRUE Connector API")
                         .version(buildProperties.getVersion())
                         .description("""
-                                Authenticate with `POST /api/v1/auth/login`, then use **Authorize** to provide the \
-                                returned JWT with the `bearerAuth` scheme. Use an `ADMIN` token for management \
-                                endpoints and a `CONNECTOR` token for tenant-scoped DSP protocol endpoints.
+                                In INTERNAL mode, authenticate with `POST /api/v1/auth/login`, then use \
+                                **Authorize** to provide the returned JWT with the `bearerAuth` scheme. In KEYCLOAK \
+                                mode, sign in to Keycloak (tenant or connector-admin realm) and provide that access \
+                                token instead; the `/api/v1/auth/*` routes do not exist in KEYCLOAK mode. Use an \
+                                `ADMIN` or `SUPER_ADMIN` token for management endpoints and a `CONNECTOR` token for \
+                                tenant-scoped DSP protocol endpoints. In KEYCLOAK mode the issuing realm decides the \
+                                role: a tenant realm grants only `ADMIN` (its token must carry `azp=keycloak-api` and \
+                                the bound tenant's `tenant_id`), `connector-admin` only `SUPER_ADMIN` (no `tenant_id`), \
+                                and `platform` only `CONNECTOR`; every token needs `aud=dsp-true-connector`. A \
+                                privileged role from the wrong realm, or any other failed check, gives 401; a valid \
+                                token without the route's role gives 403. Only a super-admin may send `X-Tenant-Id`.
                                 """))
                 .components(new Components()
                         .addSecuritySchemes("bearerAuth", new SecurityScheme()
@@ -168,7 +176,9 @@ public class OpenApiConfig {
             operation.addParametersItem(new Parameter()
                     .in("header")
                     .name(TenantContextHolder.HEADER_X_TENANT_ID)
-                    .description("Optional tenant identifier used by super-admin requests to scope management operations.")
+                    .description("Optional tenant identifier that lets a super-admin without a tenant scope a request to"
+                            + " one enabled tenant (audited). An unknown or disabled tenant gets 400; any other"
+                            + " principal that sends it gets 403.")
                     .required(false));
             return operation;
         };

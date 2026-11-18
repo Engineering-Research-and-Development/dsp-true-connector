@@ -73,11 +73,11 @@ public class CatalogAPIControllerTest {
     @DisplayName("Create catalog - success")
     public void createCatalogSuccessfulTest() {
         JsonNode catalog = CatalogSerializer.serializePlainJsonNode(CatalogMockObjectUtil.CATALOG);
-        when(catalogService.saveCatalog(any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG);
+        when(catalogService.createCatalog(any(Catalog.class))).thenReturn(CatalogMockObjectUtil.CATALOG);
 
         ResponseEntity<GenericApiResponse<JsonNode>> response = catalogAPIController.createCatalog(catalog);
 
-        verify(catalogService).saveCatalog(any());
+        verify(catalogService).createCatalog(any());
         assertNotNull(response);
         assertTrue(response.getStatusCode().is2xxSuccessful());
         assertNotNull(response.getBody());

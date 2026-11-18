@@ -4,25 +4,20 @@ import it.eng.datatransfer.exceptions.TransferProcessInternalException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidFormatException;
 import it.eng.datatransfer.exceptions.TransferProcessInvalidStateException;
 import it.eng.datatransfer.exceptions.TransferProcessNotFoundException;
-import it.eng.datatransfer.model.DataAddress;
-import it.eng.datatransfer.model.DataTransferFormat;
-import it.eng.datatransfer.model.EndpointProperty;
-import it.eng.datatransfer.model.TransferProcess;
-import it.eng.datatransfer.model.TransferRequestMessage;
-import it.eng.datatransfer.model.TransferState;
+import it.eng.datatransfer.model.*;
 import it.eng.datatransfer.properties.DataTransferProperties;
 import it.eng.datatransfer.repository.TransferProcessRepository;
 import it.eng.datatransfer.repository.TransferRequestMessageRepository;
 import it.eng.datatransfer.serializer.TransferSerializer;
 import it.eng.datatransfer.util.DataTransferMockObjectUtil;
 import it.eng.tools.client.rest.OkHttpRestClient;
+import it.eng.tools.controller.ApiEndpoints;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.s3.service.TemporaryBucketUserService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.FieldEncryptionService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,8 +38,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -143,7 +137,9 @@ public class DataTransferServiceTest {
         List<String> formats = new ArrayList<>();
         formats.add(DataTransferFormat.HTTP_PULL.name());
         GenericApiResponse<List<String>> resp = GenericApiResponse.success(formats, "Ok");
-        when(okHttpRestClient.sendInternalRequest(any(String.class), any(HttpMethod.class), isNull()))
+        when(okHttpRestClient.sendInternalRequest(
+                argThat(path -> path.startsWith(ApiEndpoints.INTERNAL_DATASETS_V1 + "/") && path.endsWith("/formats")),
+                eq(HttpMethod.GET), isNull()))
                 .thenReturn(TransferSerializer.serializePlain(resp));
 
         TransferProcess transferProcessRequested = service.initiateDataTransfer(DataTransferMockObjectUtil.TRANSFER_REQUEST_MESSAGE);

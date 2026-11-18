@@ -71,7 +71,7 @@ public class DistributionAPIIT extends BaseIntegrationTest {
                 .title(CatalogMockObjectUtil.TITLE)
                 .endpointDescription("Test endpoint description")
                 .endpointURL("http://test-endpoint.com")
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         // Create a new Distribution with reference to DataService
@@ -84,7 +84,7 @@ public class DistributionAPIIT extends BaseIntegrationTest {
                 .format("HTTP:PULL")
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
                 .accessService(dataService)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         // Initialize the Catalog with references to DataService and Distribution
@@ -94,7 +94,7 @@ public class DistributionAPIIT extends BaseIntegrationTest {
                 .description(Set.of(CatalogMockObjectUtil.MULTILANGUAGE))
                 .service(Collections.singleton(dataService))
                 .distribution(Collections.singleton(distribution))
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         // Save all objects to their respective repositories
@@ -199,7 +199,7 @@ public class DistributionAPIIT extends BaseIntegrationTest {
                 .format("HTTP:PULL")
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
                 .accessService(dataService)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         String distributionJson = CatalogSerializer.serializePlain(newDistribution);

@@ -3,6 +3,7 @@ package it.eng.connector.configuration;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import it.eng.tools.auth.jwt.JwtService;
+import it.eng.tools.controller.ApiEndpoints;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,8 +42,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class InternalJwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String INTERNAL_ZONE_PREFIX = ApiEndpoints.INTERNAL_ROOT + "/";
+
     private static final String ROLE_PREFIX = "ROLE_";
-    private static final String TENANT_ID_CONTEXT_CLAIM = "tenantId";
 
     private final JwtService jwtService;
     private final SecurityContextHolderStrategy securityContextHolderStrategy = SecurityContextHolder.getContextHolderStrategy();
@@ -105,8 +107,8 @@ public class InternalJwtAuthenticationFilter extends OncePerRequestFilter {
             claims.put("sub", decodedJWT.getSubject());
             claims.put(JwtService.EMAIL_CLAIM, decodedJWT.getClaim(JwtService.EMAIL_CLAIM).asString());
             claims.put(JwtService.ROLES_CLAIM, roles);
-            // Exposed under the claim name ApiTenantContextFilter reads.
-            claims.put(TENANT_ID_CONTEXT_CLAIM, decodedJWT.getClaim(JwtService.TENANT_ID_CLAIM).asString());
+            // Same claim name as in Keycloak tokens, so ApiTenantContextFilter reads one claim in both modes.
+            claims.put(JwtService.TENANT_ID_CLAIM, decodedJWT.getClaim(JwtService.TENANT_ID_CLAIM).asString());
             if (decodedJWT.getId() != null) {
                 claims.put("jti", decodedJWT.getId());
             }
@@ -116,8 +118,9 @@ public class InternalJwtAuthenticationFilter extends OncePerRequestFilter {
             // Construct Spring Security Jwt and use it to instantiate JwtAuthenticationToken
             Jwt springJwt = new Jwt(tokenValue, issuedAt, expiresAt, headers, claims);
             // sub is the user id; the principal name stays the email, which ownership checks compare against.
+            // The protocol token carries no email, so its principal name falls back to sub.
             Authentication authentication = new JwtAuthenticationToken(springJwt, authorities,
-                    (String) claims.get(JwtService.EMAIL_CLAIM));
+                    principalName(decodedJWT));
 
             SecurityContext context = securityContextHolderStrategy.createEmptyContext();
             context.setAuthentication(authentication);
@@ -132,6 +135,12 @@ public class InternalJwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    // The email claim when present, otherwise sub, so the authentication never has a null name.
+    private static String principalName(DecodedJWT decodedJWT) {
+        String email = decodedJWT.getClaim(JwtService.EMAIL_CLAIM).asString();
+        return StringUtils.hasText(email) ? email : decodedJWT.getSubject();
+    }
+
     // Role names are carried under realm_access.roles.
     private static List<String> realmRoles(DecodedJWT decodedJWT) {
         Map<String, Object> realmAccess = decodedJWT.getClaim(JwtService.REALM_ACCESS_CLAIM).asMap();
@@ -139,5 +148,20 @@ public class InternalJwtAuthenticationFilter extends OncePerRequestFilter {
             return null;
         }
         return roles.stream().map(String::valueOf).toList();
+    }
+
+    /**
+     * Skips the {@code /internal/**} zone, which only internal-call tokens authenticate.
+     *
+     * <p>Spring Boot also registers this filter bean as a plain servlet filter, so without this check it
+     * would run inside the internal chain, reject the internal-call token and log an error on every
+     * loopback call.
+     *
+     * @param request the current HTTP request
+     * @return {@code true} for requests to {@code /internal/**}
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return request.getRequestURI().startsWith(request.getContextPath() + INTERNAL_ZONE_PREFIX);
     }
 }

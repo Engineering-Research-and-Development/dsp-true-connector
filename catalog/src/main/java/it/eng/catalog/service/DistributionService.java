@@ -23,12 +23,15 @@ import lombok.extern.slf4j.Slf4j;
 public class DistributionService {
 
     private final DistributionRepository repository;
+
+    private final CatalogTenantGuard tenantGuard;
     private final CatalogService catalogService;
     private final AuditEventPublisher auditEventPublisher;
 
     public DistributionService(DistributionRepository repository, CatalogService catalogService,
-                               AuditEventPublisher auditEventPublisher) {
+                               AuditEventPublisher auditEventPublisher, CatalogTenantGuard tenantGuard) {
         this.repository = repository;
+        this.tenantGuard = tenantGuard;
         this.catalogService = catalogService;
         this.auditEventPublisher = auditEventPublisher;
     }
@@ -71,6 +74,7 @@ public class DistributionService {
      * @throws InternalServerErrorAPIException if saving fails
      */
     public Distribution saveDistribution(Distribution distribution) {
+        tenantGuard.checkNewDistribution(distribution);
         Distribution savedDistribution = null;
 		try {
 		    String tenantId = TenantContextHolder.getTenantId();
@@ -120,6 +124,7 @@ public class DistributionService {
      */
     public Distribution updateDistribution(String id, Distribution distribution) {
         Distribution existingDistribution = getDistributionById(id);
+        tenantGuard.checkDistributionReferences(distribution);
         Distribution storedDistribution;
 		try {
 			Distribution updatedDistribution = existingDistribution.updateInstance(distribution);

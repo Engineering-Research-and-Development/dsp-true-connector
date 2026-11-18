@@ -1,16 +1,13 @@
 package it.eng.catalog.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.util.Optional;
-
+import it.eng.catalog.exceptions.CatalogErrorAPIException;
+import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
+import it.eng.catalog.model.Distribution;
+import it.eng.catalog.repository.DistributionRepository;
+import it.eng.catalog.util.CatalogMockObjectUtil;
+import it.eng.tools.event.AuditEventType;
+import it.eng.tools.service.AuditEventPublisher;
+import it.eng.tools.service.TenantContextHolder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -20,18 +17,17 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
-import it.eng.catalog.model.Distribution;
-import it.eng.catalog.repository.DistributionRepository;
-import it.eng.catalog.util.CatalogMockObjectUtil;
-import it.eng.tools.event.AuditEventType;
-import it.eng.tools.service.AuditEventPublisher;
-import it.eng.tools.service.TenantContextHolder;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class DistributionServiceTest {
 
-    private static final String TENANT_ID = "engineering";
+    private static final String TENANT_ID = "engineering-a";
 
     @Mock
     private DistributionRepository repository;
@@ -42,6 +38,8 @@ public class DistributionServiceTest {
     @Mock
     private AuditEventPublisher auditEventPublisher;
 
+    @Mock
+    private CatalogTenantGuard tenantGuard;
     @InjectMocks
     private DistributionService distributionService;
 
@@ -137,5 +135,30 @@ public class DistributionServiceTest {
         verify(repository).findByIdAndTenantId(distribution.getId(), TENANT_ID);
         verify(repository).save(any(Distribution.class));
         verify(auditEventPublisher).publishEvent(eq(AuditEventType.DISTRIBUTION_UPDATED), anyString(), any());
+    }
+
+    @Test
+    @DisplayName("Save distribution - rejected by the tenant guard: nothing saved")
+    void saveDistribution_rejectedByTenantGuard() {
+        doThrow(new CatalogErrorAPIException("Distribution with id x cannot be used"))
+                .when(tenantGuard).checkNewDistribution(distribution);
+
+        assertThrows(CatalogErrorAPIException.class, () -> distributionService.saveDistribution(distribution));
+
+        verify(repository, never()).save(any(Distribution.class));
+        verifyNoInteractions(catalogService);
+    }
+
+    @Test
+    @DisplayName("Update distribution - rejected by the tenant guard: nothing saved")
+    void updateDistribution_rejectedByTenantGuard() {
+        when(repository.findByIdAndTenantId(distribution.getId(), TENANT_ID)).thenReturn(Optional.of(distribution));
+        doThrow(new CatalogErrorAPIException("DataService with id x cannot be used"))
+                .when(tenantGuard).checkDistributionReferences(CatalogMockObjectUtil.DISTRIBUTION_FOR_UPDATE);
+
+        assertThrows(CatalogErrorAPIException.class, () -> distributionService.updateDistribution(
+                distribution.getId(), CatalogMockObjectUtil.DISTRIBUTION_FOR_UPDATE));
+
+        verify(repository, never()).save(any(Distribution.class));
     }
 }

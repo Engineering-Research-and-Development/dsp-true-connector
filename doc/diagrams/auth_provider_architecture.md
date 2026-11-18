@@ -21,7 +21,10 @@
                                       │
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  ConnectorSecurityConfig — Three Ordered SecurityFilterChain Beans          │
+│  ConnectorSecurityConfig — Four Ordered SecurityFilterChain Beans           │
+│                                                                              │
+│  @Order(0)  Internal chain /internal/**  (loopback calls, ROLE_INTERNAL)    │
+│             In-memory-key token in every mode; permitAll() when DISABLED    │
 │                                                                              │
 │  @Order(1)  Admin chain    /api/**  /actuator/**  /env                      │
 │             Always uses auth.provider — never DCP                           │
@@ -52,10 +55,10 @@
 tools/src/main/java/it/eng/tools/auth/
 │
 ├── 📦 [Root Package]
-│   ├── AuthProvider.java                      (interface — outbound token fetch)
 │   ├── AuthenticationMode.java                (enum: KEYCLOAK, BASIC, DISABLED)
 │   ├── AuthenticationModeResolver.java        (resolves provider + dcp.enabled)
-│   └── AuthenticationCache.java               (thread-safe outbound token cache)
+│   ├── M2mTokenCache.java                     (outbound token cache, keyed per client and endpoint)
+│   └── M2mTokenUnavailableException.java      (outbound token could not be obtained)
 │
 ├── 📦 condition/
 │   ├── KeycloakAuthenticationModeCondition.java
@@ -63,9 +66,13 @@ tools/src/main/java/it/eng/tools/auth/
 │   ├── BasicOrDisabledAuthenticationModeCondition.java
 │   └── DcpEnabledCondition.java
 │
+├── 📦 internal/
+│   ├── InternalCallTokenIssuer.java           (token for loopback calls, in-memory key)
+│   └── InternalCallClaims.java                (claim names and constants)
+│
 └── 📦 keycloak/
-    ├── KeycloakAuthenticationService.java     (implements AuthProvider)
-    └── KeycloakAuthenticationProperties.java  (@ConfigurationProperties)
+    ├── KeycloakAuthenticationService.java     (client-credentials token from the platform discovery document)
+    └── KeycloakAuthenticationProperties.java  (@ConfigurationProperties, application.keycloak.backend.*)
 
 connector/src/main/java/it/eng/connector/configuration/
 │
@@ -109,9 +116,8 @@ connector/src/main/java/it/eng/connector/configuration/
 │     @Conditional(KeycloakAuthenticationModeCondition)         │
 │       → KeycloakAuthenticationFilter                          │
 │       → KeycloakRealmRoleConverter                            │
-│       → JwtDecoder                                            │
-│       → KeycloakAuthenticationService                         │
-│       → AuthenticationCache                                   │
+│       → TrustedIssuerRegistry + issuer-selecting JwtDecoder   │
+│       → KeycloakAuthenticationService (+ M2mTokenCache)       │
 │                                                                │
 │     @Conditional(BasicAuthenticationModeCondition)            │
 │       → DaoAuthenticationProvider                             │
@@ -139,7 +145,12 @@ connector/src/main/java/it/eng/connector/configuration/
 ```
                     ConnectorSecurityConfig
                     ┌───────────────────────────────────────────┐
-                    │  Three SecurityFilterChain beans          │
+                    │  Four SecurityFilterChain beans           │
+                    │                                           │
+                    │  @Order(0) internalFilterChain            │
+                    │    matcher: /internal/**                  │
+                    │    auth:    internal-call token           │
+                    │             loopback peer only, all modes │
                     │                                           │
                     │  @Order(1) adminFilterChain               │
                     │    matcher: /api/** /actuator/** /env      │
@@ -202,16 +213,39 @@ connector/src/main/java/it/eng/connector/configuration/
                ┌───────────────────────────────┐
                │ 3. KeycloakAuthFilter         │
                │    Extract Bearer token       │
-               │    JwtDecoder.decode()        │
-               │    Validate signature/expiry  │
+               │    Registry selects issuer    │
+               │    from unverified iss, then  │
+               │    decode + validate sig/exp  │
+               │    Protocol chain: platform   │
+               │    only (aud, azp, CONNECTOR) │
+               │    Admin chain: tenant,       │
+               │    connector-admin, platform  │
+               │    (per-issuer aud/azp/role/  │
+               │    tenant_id rules; a role of │
+               │    another realm: 401 + audit)│
                └───────────────────────────────┘
                                │
                                ▼
                ┌───────────────────────────────┐
                │ 4. KeycloakRealmRoleConverter │
                │    Extract realm_access.roles │
-               │    Map to ROLE_ADMIN /         │
-               │    ROLE_CONNECTOR authorities │
+               │    Allow-list per issuer type │
+               │    Tenant: ROLE_ADMIN         │
+               │    connector-admin:           │
+               │      ROLE_SUPER_ADMIN         │
+               │    Platform: ROLE_CONNECTOR   │
+               │    only (so 403 on /api/**)   │
+               │    other roles are dropped    │
+               └───────────────────────────────┘
+                               │
+                               ▼
+               ┌───────────────────────────────┐
+               │ 4b. ApiTenantContextFilter    │
+               │    (/api/**, both modes)      │
+               │    tenant = tenant_id claim   │
+               │    X-Tenant-Id: super-admin   │
+               │    only (400 unknown/disabled,│
+               │    403 any other principal)   │
                └───────────────────────────────┘
                                │
                                ▼
@@ -304,21 +338,84 @@ connector/src/main/java/it/eng/connector/configuration/
 │  ┌──────────────────────┐       ┌──────────────────────┐   │
 │  │  Keycloak            │       │  DSP Connector       │   │
 │  │  Port: 8180          │◄──────┤  Port: 8080          │   │
-│  │  Realm: dsp-connector│  JWT  │                      │   │
-│  │                      │ Tokens│  application.        │   │
-│  │  Users:              │       │  auth.provider=      │   │
-│  │  admin@test.com      │       │  KEYCLOAK            │   │
-│  │    → ROLE_ADMIN      │       │                      │   │
-│  │  connector@test.com  │       │  jwt.issuer-uri=     │   │
-│  │    → ROLE_CONNECTOR  │       │  http://keycloak:    │   │
-│  └──────────────────────┘       │  8180/realms/        │   │
-│                                 │  dsp-connector       │   │
-│                                 └──────────────────────┘   │
+│  │  Realms:             │  JWT  │                      │   │
+│  │   platform           │ Tokens│  application.        │   │
+│  │   connector-admin    │       │  auth.provider=      │   │
+│  │   tenant-<name>      │       │  KEYCLOAK            │   │
+│  │                      │       │                      │   │
+│  │  Tenant admin        │       │  keycloak.base-url=  │   │
+│  │    → ROLE_ADMIN      │       │  http://keycloak:8180│   │
+│  │  platform client     │       │  (issuer registry)   │   │
+│  │    → ROLE_CONNECTOR  │       └──────────────────────┘   │
+│  └──────────────────────┘                                   │
 │                                                              │
 │  Flow: User → Keycloak Login → JWT Token → Connector API   │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+Instead of one fixed issuer, the connector keeps a trusted-issuer registry:
+
+```
+Bearer token ──► read unverified iss (selects only, never fetched)
+                      │
+                      ▼
+        ┌───────────────────────────────────────────────┐
+        │ TrustedIssuerRegistry                         │
+        │  static : <base-url>/realms/platform          │
+        │           <base-url>/realms/connector-admin   │
+        │  dynamic: <base-url>/realms/<tenant.realm>    │
+        │           (enabled tenants, looked up on      │
+        │            every request, no cache)           │
+        └───────────────────────────────────────────────┘
+          unknown issuer ──► 401, no network request
+                      │ known
+                      ▼
+        per-issuer cached decoder (loaded on first use):
+          GET <issuer>/.well-known/openid-configuration
+          GET jwks_uri  (cached 5 min, refetch on unknown kid)
+          verify signature, exp, nbf, exact iss
+```
+
+Each chain accepts a different set of issuers (see [security.md](../security.md#trusted-issuers)):
+
+| Chain | Trusted issuers | Extra checks |
+|-------|-----------------|--------------|
+| Protocol (`/connector/**`, `/catalog/**`, `/negotiations/**`, `/transfers/**`) | `platform` only | `aud`, `azp` equals `application.keycloak.platform-client-id`, realm role `CONNECTOR`; anything else, including tenant and super-admin tokens, gets 401 |
+| Admin (`/api/**`, `/actuator/**`, `/env`) | tenant realms, `connector-admin` and `platform` | Per issuer type, see the next table. A `platform` token is converted to `ROLE_CONNECTOR` only, so it gets 403 |
+| Internal (`/internal/**`) | none from Keycloak | Internal-call token signed with an in-memory key, `ROLE_INTERNAL`, loopback peer |
+
+Rules the admin chain applies per issuer type (the same ones, with `platform` fixed to `CONNECTOR`, guard the protocol chain):
+
+```
+                       aud        azp                 allowed role   tenant_id
+ tenant realm        ─ audience ─ ui-client-id ────── ADMIN        ─ required, = tenant of the realm
+ connector-admin     ─ audience ─ ui-client-id ────── SUPER_ADMIN  ─ absent
+ platform            ─ audience ─ platform-client-id─ CONNECTOR    ─ absent
+
+ privileged role of ANOTHER realm in the token ─► 401 + SECURITY_REALM_ROLE_VIOLATION audit
+ (role names alone are never trusted; the issuing realm decides)
+```
+
+Tenant context and delegation (`ApiTenantContextFilter`, `/api/**`, both modes):
+
+```
+ token tenant_id ───────────────► tenant context (tenant users)
+ super-admin, no X-Tenant-Id ───► no tenant (cross-tenant view)
+ super-admin + X-Tenant-Id ─────► enabled tenant: delegated, TENANT_DELEGATION audit
+                                  unknown/disabled tenant: 400
+ any other principal + X-Tenant-Id ► 403
+```
+
+Users (`KEYCLOAK` mode): the connector has no user API (`/api/v1/users/**` answers 404 for a
+super-admin). Super-admins live in `connector-admin`, tenant users in their tenant's realm with a
+`tenant_id` equal to the tenant `_id`; both are managed in Keycloak.
+
+See [D-ARC-006](../decisions/architecture/D-ARC-006-per-realm-role-allow-list-and-per-tenant-realm-credentials.md).
+
+The UI signs in to Keycloak directly (authorization code + PKCE) and logs out through Keycloak. The
+connector only validates the resulting tokens: in `KEYCLOAK` mode it has no login, refresh, logout
+or password-change route (see [security.md](../security.md#getting-tokens)).
 
 ### Scenario 2: Basic Authentication (Standalone)
 
@@ -354,12 +451,13 @@ connector/src/main/java/it/eng/connector/configuration/
 │                                                                  │
 │  ┌──────────────────────────────────────────┐                   │
 │  │  Keycloak  (Port: 8180)                  │                   │
-│  │  Realm: dsp-connector                    │                   │
-│  │  Clients: consumer-backend,              │                   │
-│  │           provider-backend               │                   │
+│  │  Realm: platform                         │                   │
+│  │  Client: dsp-connector-backend           │                   │
+│  │  (tenant realms and connector-admin      │                   │
+│  │   serve the UI and are not used here)    │                   │
 │  └──────────┬──────────────────────┬────────┘                   │
-│             │ JWT (ROLE_ADMIN/     │ JWT (ROLE_CONNECTOR)       │
-│             │  ROLE_CONNECTOR)     │                            │
+│             │ client credentials   │ client credentials         │
+│             │ token (CONNECTOR)    │ token (CONNECTOR)          │
 │             ▼                      ▼                            │
 │  ┌─────────────────────┐  ┌─────────────────────┐              │
 │  │  Consumer Connector │  │  Provider Connector │              │
@@ -378,6 +476,65 @@ connector/src/main/java/it/eng/connector/configuration/
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
+Each connector requests its token from the token endpoint in the discovery document of the `platform`
+realm, caches it until 30 seconds before it expires, and sends it as the Bearer token. The receiving
+connector accepts it only when `aud`, `azp` and the `CONNECTOR` role match (see
+[security.md](../security.md#protocol-trust-in-keycloak-mode)). If the token request fails, the protocol
+call is not sent (see [security.md](../security.md#outbound-connector-to-connector-token)).
+
+### Scenario 4: Loopback calls on `/internal`
+
+```
+┌────────────────────────────── one connector JVM ────────────────────────────┐
+│                                                                              │
+│  negotiation / data-transfer service                                         │
+│    InternalCallTokenIssuer: new token per call                               │
+│      HMAC-SHA256, key from SecureRandom at startup, memory only              │
+│      sub=internal-call  roles=[ROLE_INTERNAL]  tenant_id  exp=+60 s          │
+│        │                                                                     │
+│        │  HTTP to localhost, Authorization: Bearer <internal-call token>     │
+│        ▼                                                                     │
+│  @Order(0) internal chain  /internal/**                                      │
+│    verify signature, iss, exp (5 s skew)      → 401 if not an internal token │
+│    require ROLE_INTERNAL                      → 403 if missing               │
+│    require loopback TCP peer (not X-Forwarded-For) → 403 otherwise           │
+│    tenant context from the token's tenant_id (X-Tenant-Id is never read)     │
+│        │                                                                     │
+│        ▼                                                                     │
+│  /internal/v1/offers/validate  /internal/v1/agreements/{id}/enforce          │
+│  /internal/v1/datasets/{id}/formats  /internal/v1/datasets/{id}/artifact     │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+The zone works the same in `INTERNAL` and `KEYCLOAK` mode and needs no configuration. See
+[D-ARC-005](../decisions/architecture/D-ARC-005-internal-call-zone-with-in-memory-key.md).
+
+### Scenario 5: Outbound protocol token in `INTERNAL` mode
+
+```
+┌─ connector A ──────────────────────────┐          ┌─ connector B ─────────────────────────┐
+│ CredentialUtils.getConnectorCredentials│          │ INTERNAL protocol chain               │
+│   M2mTokenCache slot "connector-m2m"   │          │   InternalJwtAuthenticationFilter     │
+│     miss → InternalProtocolTokenIssuer │          │     verify HS256 with its own         │
+│       JwtService.issueProtocolToken()  │          │     application.security.jwt.secret   │
+│       HS256, application.security.     │  HTTP    │     (must equal A's)                  │
+│       jwt.secret                       │ ───────▶ │   require ROLE_CONNECTOR              │
+│       sub=connector                    │ Bearer   │     → 401 invalid, 403 other role     │
+│       realm_access.roles=[CONNECTOR]   │          │   principal name = email, or sub      │
+│       iat exp jti (no email, no tenant)│ ◀─────── │                                       │
+│   no login, no user lookup             │ 401: A   │                                       │
+│                                        │ evicts   │                                       │
+│                                        │ the slot │                                       │
+│                                        │ and      │                                       │
+│                                        │ retries  │                                       │
+│                                        │ once     │                                       │
+└────────────────────────────────────────┘          └───────────────────────────────────────┘
+```
+
+The token is not tied to a user, so no seeded connector account is needed. It differs from the
+internal-call token of Scenario 4 in key, authority, audience and caching; see
+[security.md](../security.md#protocol-token-vs-internal-call-token).
 
 ---
 
@@ -399,16 +556,24 @@ application.auth.provider=KEYCLOAK
 ```properties
 application.auth.provider=KEYCLOAK
 
-spring.security.oauth2.resourceserver.jwt.issuer-uri=http://localhost:8180/realms/dsp-connector
-spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://localhost:8180/realms/dsp-connector/protocol/openid-connect/certs
+application.keycloak.base-url=http://localhost:8180
+application.keycloak.audience=dsp-true-connector
+application.keycloak.platform-realm=platform
+application.keycloak.admin-realm=connector-admin
 
-keycloak.auth-server-url=http://localhost:8180
-keycloak.realm=dsp-connector
-keycloak.resource=dsp-connector-consumer-backend
-keycloak.credentials.secret=dsp-connector-consumer-secret
+# Only accepted on protocol routes: the azp of the platform token
+application.keycloak.platform-client-id=dsp-connector-backend
+
+# The azp of tenant and connector-admin tokens (the UI's public client)
+application.keycloak.ui-client-id=keycloak-api
+
+# Outbound client (platform realm); the token endpoint comes from the realm's discovery document
+application.keycloak.backend.client-id=dsp-connector-backend
+application.keycloak.backend.client-secret=dsp-connector-backend-secret
+application.keycloak.backend.token-caching=true
 ```
 
-`/api/v1/users` returns **404** in this mode — user management is handled in the Keycloak Admin Console.
+The connector exposes no user API in this mode (`/api/v1/users/**` answers 404); users are created and changed in Keycloak.
 
 ### BASIC Mode
 
@@ -452,7 +617,7 @@ All endpoints open — `permitAll()`. **Do not use in production.**
 
 | Added | Description |
 |-------|-------------|
-| `ConnectorSecurityConfig` | Unified config with 3 ordered `SecurityFilterChain` beans |
+| `ConnectorSecurityConfig` | Unified config with 4 ordered `SecurityFilterChain` beans (internal, admin, protocol, default) |
 | `AuthenticationMode.BASIC` | New auth mode enum value |
 | `BasicAuthenticationModeCondition` | Condition: active when `provider=BASIC` |
 | `BasicOrDisabledAuthenticationModeCondition` | Condition: active when `provider=BASIC` or `DISABLED` |

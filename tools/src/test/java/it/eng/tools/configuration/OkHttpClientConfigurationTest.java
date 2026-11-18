@@ -1,5 +1,6 @@
 package it.eng.tools.configuration;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -51,6 +52,9 @@ class OkHttpClientConfigurationTest {
         // Verify hostname verifier accepts any hostname (insecure)
         assertTrue(client.hostnameVerifier().verify("any-hostname", null), "Insecure client should accept any hostname");
         assertTrue(client.hostnameVerifier().verify("test.example.com", null), "Insecure client should accept any hostname");
+
+        assertFalse(client.followRedirects(), "Redirects must not be followed");
+        assertFalse(client.followSslRedirects(), "Redirects between http and https must not be followed");
     }
     
     @Test
@@ -91,6 +95,8 @@ class OkHttpClientConfigurationTest {
 
         // Verify hostname verifier is set (for secure client, it should NOT be the trust-all lambda)
         assertNotNull(client.hostnameVerifier(), "Hostname verifier should be set");
+        assertFalse(client.followRedirects(), "Redirects must not be followed");
+        assertFalse(client.followSslRedirects(), "Redirects between http and https must not be followed");
         // The secure client should use OkHostnameVerifier which is more strict
         // We can't directly verify the class due to it being an internal OkHttp class,
         // but we verified that when SSL is enabled, the code sets it to OkHostnameVerifier.INSTANCE

@@ -470,7 +470,7 @@ public abstract class AbstractDataTransferService implements TransferProcessStra
     }
 
     protected void checkSupportedFormats(TransferProcess transferProcess, String format) {
-        String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.CATALOG_DATASETS_V1 + "/"
+        String response = okHttpRestClient.sendInternalRequest(ApiEndpoints.INTERNAL_DATASETS_V1 + "/"
                         + transferProcess.getDatasetId() + "/formats",
                 HttpMethod.GET,
                 null);
