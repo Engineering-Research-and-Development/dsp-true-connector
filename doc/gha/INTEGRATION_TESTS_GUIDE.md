@@ -2,7 +2,7 @@
 
 Reference for `.github/workflows/integration-tests.yml`. For an overview start with
 [README.md](README.md); the design decision behind the image tags is
-[D-TEC-011](../decisions/technical/D-TEC-011-per-run-ci-image-tags.md).
+[D-TEC-012](../decisions/technical/D-TEC-012-publish-test-tag-after-green-run.md).
 
 ## Triggers and concurrency
 
@@ -41,36 +41,37 @@ env:
 
 | Tag | Pushed by | Used by |
 |-----|-----------|---------|
-| `ci-<run_id>-<sha>` | both build jobs | the test jobs of the same run |
-| `test` | both build jobs (moves on every run) | manual TCK workflow (`ci/tck/docker-compose.yml`), Terraform (`terraform.tfvars`), local runs |
+| `ci-<run_id>-<sha>` | both build jobs (every run, green or not) | the test jobs of the same run |
+| `test` | `publish-test-tag`, only after a fully green run | manual TCK workflow (`ci/tck/docker-compose.yml`), Terraform (`terraform.tfvars`), local runs |
 
 The run ID is part of the tag so two branches at the same commit still get different tags. The CI
 compose files reference `${IMAGE_TAG:-test}`, so they pull the run's tag in CI and fall back to
 `test` locally.
 
-`test` is shared and is overwritten by whichever branch pushed last. Only use it where "the most
-recent feature-branch build" is acceptable.
+`test` is shared: it points at the images of whichever branch's run went green last. Only use it
+where "the most recent green feature-branch build" is acceptable. `build.yml` on `develop` also
+pushes `test`.
 
 ## Jobs
 
 ### 1. `maven-verify`
 - Checks out the repository, sets up JDK 21 (Temurin) with the Maven cache.
 - Runs `mvn -B clean verify` for the whole project: all unit and integration tests (Testcontainers).
-- Has no dependants: it runs in parallel with the image builds and the Newman matrix, and the run
-  fails if it fails. It is the longest job (about 6 minutes, most of it connector integration tests).
+- Runs in parallel with the image builds and the Newman matrix. The run fails if it fails, and
+  `publish-test-tag` waits for it. It is the longest job (about 6 minutes, most of it connector integration tests).
 
 ### 2. `build-connector-image`
 - Checks out the repository, sets up JDK 21 with the Maven cache.
 - Runs `mvn -B clean package -DskipTests -pl connector -am`: the connector and the modules it
   depends on, without tests (those run in `maven-verify`).
-- Builds `connector/Dockerfile` with `no-cache: true` and pushes both tags to
+- Builds `connector/Dockerfile` with `no-cache: true` and pushes the `ci-<run_id>-<sha>` tag to
   `ghcr.io/engineering-research-and-development/dsp-true-connector`. The Dockerfile copies the jars
   with `COPY --chown` instead of a later `chown -R`, which would store the dependency jars twice.
 
 ### 3. `build-dcp-issuer-image`
 - Checks out the repository, sets up JDK 21 with the Maven cache.
 - Runs `mvn -B clean package -DskipTests --file dcp/pom.xml`.
-- Builds `dcp/dcp-issuer/Dockerfile` and pushes both tags to
+- Builds `dcp/dcp-issuer/Dockerfile` and pushes the `ci-<run_id>-<sha>` tag to
   `ghcr.io/engineering-research-and-development/dcp-issuer`.
 
 The three jobs above run in parallel.
@@ -89,6 +90,13 @@ The three jobs above run in parallel.
 | Run `<test-suite>` | always | `npx --yes newman run <collection>` |
 | Dump docker logs on failure | `failure()` | Logs of every compose service, grouped per service |
 | Stop Docker Compose services | `always()` | `docker compose down -v` |
+
+### 5. `publish-test-tag`
+- Needs `maven-verify` and every `integration-tests` matrix job; it is skipped if any of them
+  failed or was cancelled.
+- Logs in to GHCR and runs `docker buildx imagetools create` to add the `test` tag to this run's
+  `ci-<run_id>-<sha>` connector and DCP issuer images. It copies no layers and rebuilds nothing,
+  so `test` always points at images that passed the tests.
 
 ### Old images
 

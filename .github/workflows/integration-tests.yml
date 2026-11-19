@@ -19,8 +19,8 @@ env:
   CONNECTOR_IMAGE_NAME: engineering-research-and-development/dsp-true-connector
   DCP_ISSUER_IMAGE_NAME: engineering-research-and-development/dcp-issuer
   # Per-run image tag. Test jobs pull this tag, so parallel runs on different branches never
-  # test each other's images. ":test" is still pushed for consumers outside this workflow
-  # (manual TCK run, Terraform).
+  # test each other's images. ":test" (manual TCK run, Terraform) is moved to this run's images
+  # by the publish-test-tag job, only after every test job is green.
   IMAGE_TAG: ci-${{ github.run_id }}-${{ github.sha }}
 
 jobs:
@@ -87,7 +87,6 @@ jobs:
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.CONNECTOR_IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-            ${{ env.REGISTRY }}/${{ env.CONNECTOR_IMAGE_NAME }}:test
           labels: ${{ steps.meta.outputs.labels }}
 
   build-dcp-issuer-image:
@@ -129,7 +128,6 @@ jobs:
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.DCP_ISSUER_IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-            ${{ env.REGISTRY }}/${{ env.DCP_ISSUER_IMAGE_NAME }}:test
           labels: ${{ steps.meta.outputs.labels }}
 
   integration-tests:
@@ -277,3 +275,31 @@ jobs:
       - name: Stop Docker Compose services
         if: always()
         run: docker compose -f ${{ matrix.docker-compose-file }} --env-file ./ci/docker/.env down -v
+
+  # Moves ":test" to this run's images only when the full test suite and every Newman job passed.
+  # It retags the already pushed per-run images in the registry, so nothing is rebuilt and the
+  # images behind ":test" are exactly the ones that were tested.
+  publish-test-tag:
+    name: Publish :test tag
+    needs: [maven-verify, integration-tests]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Log in to the Container registry
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag connector image as test
+        run: |
+          docker buildx imagetools create \
+            --tag "${REGISTRY}/${CONNECTOR_IMAGE_NAME}:test" \
+            "${REGISTRY}/${CONNECTOR_IMAGE_NAME}:${IMAGE_TAG}"
+
+      - name: Tag DCP Issuer image as test
+        run: |
+          docker buildx imagetools create \
+            --tag "${REGISTRY}/${DCP_ISSUER_IMAGE_NAME}:test" \
+            "${REGISTRY}/${DCP_ISSUER_IMAGE_NAME}:${IMAGE_TAG}"

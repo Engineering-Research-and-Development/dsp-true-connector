@@ -12,9 +12,10 @@
 | Job | Does | Output |
 |-----|------|--------|
 | `maven-verify` | `mvn clean verify`, all unit + integration tests | Pass/fail; runs in parallel |
-| `build-connector-image` | `mvn package -DskipTests -pl connector -am` + Docker build | `dsp-true-connector:ci-<run_id>-<sha>` and `:test` in GHCR |
-| `build-dcp-issuer-image` | Maven package of `dcp/` + Docker build | `dcp-issuer:ci-<run_id>-<sha>` and `:test` in GHCR |
+| `build-connector-image` | `mvn package -DskipTests -pl connector -am` + Docker build | `dsp-true-connector:ci-<run_id>-<sha>` in GHCR |
+| `build-dcp-issuer-image` | Maven package of `dcp/` + Docker build | `dcp-issuer:ci-<run_id>-<sha>` in GHCR |
 | `integration-tests` | 12 matrix jobs, one Newman collection each | Test results, logs on failure |
+| `publish-test-tag` | Runs only if `maven-verify` and all 12 matrix jobs pass | `:test` moved to this run's images |
 
 ## Matrix (12 jobs)
 
@@ -60,7 +61,7 @@ dcp:      negotiation-api-without-counteroffer-tests, datatransfer-api-http-pull
 | Tag | Meaning |
 |-----|---------|
 | `ci-<run_id>-<sha>` | This run only; not deleted automatically |
-| `test` | Last feature-branch build; used by TCK, Terraform and local runs |
+| `test` | Last fully green feature-branch build; used by TCK, Terraform and local runs |
 
 Compose files use `${IMAGE_TAG:-test}`: unset locally means `:test`.
 

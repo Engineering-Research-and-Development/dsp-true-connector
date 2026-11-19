@@ -1,15 +1,19 @@
 # D-TEC-011 — Per-run image tags for integration test runs
 
 ## Metadata
-- Status: Accepted
+- Status: Superseded
 - Date: 2026-11-18
 - Owner: TRUE Connector team
 - Reviewers: —
 - Confidence: High
 - Supersedes: —
-- Superseded by: —
+- Superseded by: [D-TEC-012](D-TEC-012-publish-test-tag-after-green-run.md)
 - Tags: ci, github-actions, docker, ghcr, integration-tests
 - Risk Level: Medium
+
+> **Superseded (2026-11-19).** The per-run tags below still apply, but the build jobs no longer
+> push `test`. A final `publish-test-tag` job moves `test` to the run's images only after every test
+> job is green; see [D-TEC-012](D-TEC-012-publish-test-tag-after-green-run.md).
 
 ## Context
 

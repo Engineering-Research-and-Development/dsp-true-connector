@@ -15,10 +15,11 @@ Diagrams for `.github/workflows/integration-tests.yml`. The text reference is
 │ mvn clean verify       │ │ mvn package -DskipTests    │ │ mvn package dcp/           │
 │ all unit + integration │ │   -pl connector -am        │ │   -DskipTests              │
 │ tests (~6 min)         │ │ docker build + push        │ │ docker build + push        │
-│ fails the run if red   │ │ :ci-<run>-<sha>, :test     │ │ :ci-<run>-<sha>, :test     │
+│ fails the run if red   │ │ :ci-<run>-<sha>            │ │ :ci-<run>-<sha>            │
 └────────────────────────┘ └─────────────┬──────────────┘ └──────────────┬─────────────┘
-  (no dependants; runs                   └────────────────┬───────────────┘
-   alongside everything)                                  ▼
+  (runs alongside the                    └────────────────┬───────────────┘
+   builds and the matrix;                                 ▼
+   publish-test-tag waits for it)
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │ integration-tests   (matrix: 12 jobs, fail-fast: false)                      │
 │                                                                              │
@@ -31,6 +32,11 @@ Diagrams for `.github/workflows/integration-tests.yml`. The text reference is
 │ ├─ negotiation-with-counteroffer                                             │
 │ ├─ datatransfer-http-pull                                                    │
 │ └─ datatransfer-http-push                                                    │
+└──────────────────────────────────────┬───────────────────────────────────────┘
+                                       │ only if all 12 jobs and maven-verify are green
+                                       ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ publish-test-tag   docker buildx imagetools create: :ci-<run>-<sha> → :test  │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -55,16 +61,18 @@ END
 ```
  branch A run 101                      GHCR                        branch B run 102
  ────────────────                      ────                        ────────────────
- build ──push──► dsp-true-connector:ci-101-aaa  (+ :test)
+ build ──push──► dsp-true-connector:ci-101-aaa
                                                          ◄──push── build
-                 dsp-true-connector:ci-102-bbb  (+ :test, moved here)
+                 dsp-true-connector:ci-102-bbb
  tests ──pull──► :ci-101-aaa                                       tests ──pull──► :ci-102-bbb
+ all green ────► :test moved to ci-101-aaa                         a test fails → :test unchanged
 
  Both ci-… versions stay in GHCR; old ones are deleted by hand.
 ```
 
 Each run's tests only ever pull the tag that run built, so a parallel run on another branch cannot
-change what is being tested. `:test` keeps pointing at the latest build for TCK and Terraform.
+change what is being tested. `:test` only moves after a fully green run, so TCK and Terraform get
+the latest build that passed every test.
 
 ## Compose stacks
 

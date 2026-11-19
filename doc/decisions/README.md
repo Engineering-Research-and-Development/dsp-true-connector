@@ -22,7 +22,8 @@ This directory captures architecturally significant decisions: choices that shap
 | [D-TEC-008](technical/D-TEC-008-rustfs-s3-storage-backend.md)           | RustFS as the self-hosted S3 storage backend | Accepted | Technical |
 | [D-TEC-009](technical/D-TEC-009-dashboard-metrics-api.md)                | Tenant-aware dashboard metrics API | Accepted | Technical |
 | [D-TEC-010](technical/D-TEC-010-springdoc-openapi-documentation.md)      | Property-gated springdoc OpenAPI documentation | Accepted | Technical |
-| [D-TEC-011](technical/D-TEC-011-per-run-ci-image-tags.md)               | Per-run image tags for integration test runs | Accepted | Technical |
+| [D-TEC-011](technical/D-TEC-011-per-run-ci-image-tags.md)               | Per-run image tags for integration test runs | Superseded | Technical |
+| [D-TEC-012](technical/D-TEC-012-publish-test-tag-after-green-run.md)    | Move the `test` image tag only after a green integration test run | Accepted | Technical |
 
 ## Structure
 

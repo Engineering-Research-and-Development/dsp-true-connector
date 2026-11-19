@@ -12,7 +12,7 @@ against them in a parallel matrix.
 | [QUICK_REFERENCE.md](QUICK_REFERENCE.md) | Cheat sheet for common tasks |
 | [ARCHITECTURE_DIAGRAM.md](ARCHITECTURE_DIAGRAM.md) | Diagrams of the job graph, image flow and test modes |
 | [LOCAL_TESTING.md](LOCAL_TESTING.md) | Running the same tests on your machine |
-| [D-TEC-011](../decisions/technical/D-TEC-011-per-run-ci-image-tags.md) | Why each run uses its own image tag |
+| [D-TEC-012](../decisions/technical/D-TEC-012-publish-test-tag-after-green-run.md) | Why each run uses its own image tag and `test` moves only after a green run |
 
 ## When it runs
 
@@ -26,18 +26,20 @@ against them in a parallel matrix.
 
 ```
 maven-verify (all unit + integration tests) ─────────────────────────────┐
-build-connector-image ──┐                                                 ├─► run result
-                        ├──► integration-tests (12 matrix jobs) ──────────┘
+build-connector-image ──┐                                                 ├─► publish-test-tag
+                        ├──► integration-tests (12 matrix jobs) ──────────┘   (only if all green)
 build-dcp-issuer-image ─┘
 ```
 
 1. **Verify.** `maven-verify` runs `mvn clean verify` with all tests, in parallel with the rest.
-2. **Build.** Both images are built without tests and pushed to GHCR with two tags:
-   - `ci-<run_id>-<commit sha>`: unique to this run; the test jobs use it.
-   - `test`: kept for consumers outside this workflow (manual TCK run, Terraform).
+2. **Build.** Both images are built without tests and pushed to GHCR as
+   `ci-<run_id>-<commit sha>`, a tag unique to this run that the test jobs use.
 3. **Test.** Each matrix job starts a Docker Compose stack with `IMAGE_TAG` set to the run's tag,
    waits for the services to be healthy, optionally obtains Verifiable Credentials, and runs one
    Newman collection.
+4. **Publish.** When `maven-verify` and every matrix job pass, `publish-test-tag` points the
+   `test` tag (manual TCK run, Terraform) at this run's images. A run with any failure leaves
+   `test` where it was.
 
 Because every run tests only the images it built, parallel runs on different branches cannot
 overwrite each other's images.
@@ -60,7 +62,8 @@ overwrite each other's images.
 1. Open the failed job, named `<test-suite> (<mode>)`, in the Actions tab.
 2. Check the health-check step output and the **Dump docker logs on failure** step.
 3. Reproduce locally with the same compose file and collection.
-4. **Re-run failed jobs** works: the run's images stay in GHCR.
+4. **Re-run failed jobs** works: the run's images stay in GHCR. If the re-run turns green,
+   `publish-test-tag` runs too and moves `test`.
 
 Per-run images are not deleted automatically; see
 [INTEGRATION_TESTS_GUIDE.md](INTEGRATION_TESTS_GUIDE.md#old-images).
