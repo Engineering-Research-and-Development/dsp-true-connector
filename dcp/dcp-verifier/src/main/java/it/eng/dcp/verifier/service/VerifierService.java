@@ -432,28 +432,8 @@ public class VerifierService {
 
             log.debug("✓ Credential JWT signature verified for issuer: {}", issuerDid);
 
-            // Verify subject matches holder DID
-            String subject = credentialClaims.getSubject();
-            if (subject != null && !DidUrlConverter.compareDids(subject, expectedHolderDid)) {
-                // For VC 1.1, subject might be in nested vc.credentialSubject.id
-                // Check nested vc claim
-                Object vcClaimObj = credentialClaims.getClaim("vc");
-                if (vcClaimObj instanceof Map) {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> vcClaim = (Map<String, Object>) vcClaimObj;
-                    Object credSubjectObj = vcClaim.get("credentialSubject");
-                    if (credSubjectObj instanceof Map) {
-                        @SuppressWarnings("unchecked")
-                        Map<String, Object> credSubject = (Map<String, Object>) credSubjectObj;
-                        String nestedSubject = (String) credSubject.get("id");
-                        if (nestedSubject != null && !DidUrlConverter.compareDids(nestedSubject, expectedHolderDid)) {
-                            throw new SecurityException(String.format(
-                                "Credential subject mismatch: expected=%s, actual=%s",
-                                expectedHolderDid, nestedSubject));
-                        }
-                    }
-                }
-            }
+            // Holder binding: the credential subject must be the participant presenting it (DCP §5.4.3)
+            verifyHolderBinding(credentialClaims, expectedHolderDid);
 
             // Check expiration
             if (credentialClaims.getExpirationTime() != null) {
@@ -490,6 +470,50 @@ public class VerifierService {
         } catch (Exception e) {
             log.error("Credential validation failed: {}", e.getMessage());
             throw new SecurityException("Credential validation failed: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Enforces holder binding: every {@code credentialSubject.id} of the credential must equal the DID of
+     * the holder that presented it.
+     *
+     * <p>Supports both JWT shapes: VC 1.1 nests {@code credentialSubject} under the {@code vc} claim, VC 2.0
+     * carries it as a top-level claim. {@code credentialSubject} may be a single object or an array. A
+     * {@code sub} claim, when present, must also equal the holder DID.
+     *
+     * @param credentialClaims the claims of the credential JWT
+     * @param expectedHolderDid the DID of the presenting holder
+     * @throws SecurityException if the subject ID is missing or differs from the holder DID
+     */
+    private void verifyHolderBinding(JWTClaimsSet credentialClaims, String expectedHolderDid) {
+        Object credentialSubject = null;
+        if (credentialClaims.getClaim("vc") instanceof Map<?, ?> vcClaim) {
+            credentialSubject = vcClaim.get("credentialSubject");
+        }
+        if (credentialSubject == null) {
+            credentialSubject = credentialClaims.getClaim("credentialSubject");
+        }
+
+        List<?> subjects = credentialSubject instanceof List<?> list ? list
+                : credentialSubject == null ? List.of() : List.of(credentialSubject);
+        if (subjects.isEmpty()) {
+            throw new SecurityException("Credential subject id missing: credential has no credentialSubject");
+        }
+        for (Object subjectEntry : subjects) {
+            Object id = subjectEntry instanceof Map<?, ?> subjectMap ? subjectMap.get("id") : null;
+            if (!(id instanceof String subjectId) || subjectId.isBlank()) {
+                throw new SecurityException("Credential subject id missing: holder binding cannot be verified");
+            }
+            if (!DidUrlConverter.compareDids(subjectId, expectedHolderDid)) {
+                throw new SecurityException(String.format(
+                        "Credential subject mismatch: expected=%s, actual=%s", expectedHolderDid, subjectId));
+            }
+        }
+
+        String sub = credentialClaims.getSubject();
+        if (sub != null && !DidUrlConverter.compareDids(sub, expectedHolderDid)) {
+            throw new SecurityException(String.format(
+                    "Credential subject mismatch: expected=%s, actual=%s", expectedHolderDid, sub));
         }
     }
 

@@ -58,6 +58,10 @@ Each realm has its own users, roles, and clients. The connector trusts only the 
 - Keycloak users no longer resolve to a `null` tenant, which made them see data of all tenants (cross-tenant visibility); the tenant now comes from `tenant_id`.
 - `FieldEncryptionService` no longer logs the plaintext at debug level.
 - Rejected Keycloak tokens are no longer logged at ERROR with the exception message; the log has the exception class and error codes only (DEBUG), and a realm role violation logs a WARN with the request path.
+- DCP Verifier now always enforces holder binding (DCP §5.4.3, #401). Previously the check ran only when a credential's `sub` was present and different, and it read only the VC 1.1 `vc.credentialSubject`. VC 2.0 credentials, and credentials without `sub` or `credentialSubject.id`, skipped it, so a participant could present another participant's credential inside its own presentation. Now:
+  - every `credentialSubject.id`, under `vc` (VC 1.1) or top-level (VC 2.0), single or array, must equal the presenting holder's DID;
+  - a missing subject ID is rejected;
+  - a `sub` claim, when present, must also match.
 - DCP issuer documentation (`dcp/dcp-issuer/API.md`, `dcp/doc/quick_start.md`): approve, reject and key rotation are documented under the local administration API path `/api/issuer/...` (`/api/issuer/key/rotate`), with a note that authentication is not enforced yet (#405). `holderPid` is described as the Holder-side request ID (DCP §6.4.1), and credential request examples include `@context` and `type`. The non-existent `POST /issuer/requests` alias is removed, and the rejection body key is `reason` (not `rejectionReason`). Documentation only.
 
 ### Removed
