@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -914,7 +915,7 @@ class VerifierServiceTest {
         @Test
         @DisplayName("Should accept a VC 2.0 credential whose top-level credentialSubject.id is the holder")
         void shouldAcceptVc20CredentialBoundToHolder() throws Exception {
-            String credentialJwt = createVc20CredentialJWT(HOLDER_DID, Map.of("id", HOLDER_DID));
+            String credentialJwt = createVc20CredentialJWT(Optional.of(HOLDER_DID), Optional.of(Map.of("id", HOLDER_DID)));
 
             VerifierService.PresentationFlowResult result = runPresentationFlowWith(credentialJwt);
 
@@ -961,9 +962,60 @@ class VerifierServiceTest {
         }
 
         @Test
+        @DisplayName("Should accept a VC 1.1 credential whose subject is carried only in sub")
+        void shouldAcceptVc11CredentialWithSubjectInSubOnly() throws Exception {
+            String credentialJwt = createJWT(
+                    new JWTClaimsSet.Builder()
+                            .issuer(ISSUER_DID)
+                            .subject(HOLDER_DID)
+                            .claim("vc", Map.of(
+                                    "type", List.of("VerifiableCredential", "MembershipCredential"),
+                                    "credentialSubject", Map.of("membershipType", "Premium")))
+                            .issueTime(new Date())
+                            .expirationTime(new Date(System.currentTimeMillis() + 86400000))
+                            .build(),
+                    issuerKey);
+
+            VerifierService.PresentationFlowResult result = runPresentationFlowWith(credentialJwt);
+
+            assertEquals(1, result.getValidatedPresentations().get(0).getCredentials().size());
+        }
+
+        @Test
+        @DisplayName("Should reject a credential whose subject id is a DID URL with a fragment")
+        void shouldRejectSubjectIdWithFragment() throws Exception {
+            String credentialJwt = createVc20CredentialJWT(Optional.empty(),
+                    Optional.of(Map.of("id", HOLDER_DID + "#device-1")));
+
+            SecurityException ex = assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialJwt));
+
+            assertTrue(ex.getMessage().contains("Credential subject mismatch"));
+        }
+
+        @Test
+        @DisplayName("Should reject a credential mixing shapes when the top-level subject is foreign")
+        void shouldRejectMixedShapesWithForeignTopLevelSubject() throws Exception {
+            String credentialJwt = createJWT(
+                    new JWTClaimsSet.Builder()
+                            .issuer(ISSUER_DID)
+                            .claim("vc", Map.of(
+                                    "type", List.of("VerifiableCredential", "MembershipCredential"),
+                                    "credentialSubject", Map.of("id", HOLDER_DID)))
+                            .claim("credentialSubject", Map.of("id", "did:web:other.example.com:participant"))
+                            .issueTime(new Date())
+                            .expirationTime(new Date(System.currentTimeMillis() + 86400000))
+                            .build(),
+                    issuerKey);
+
+            SecurityException ex = assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialJwt));
+
+            assertTrue(ex.getMessage().contains("Credential subject mismatch"));
+        }
+
+        @Test
         @DisplayName("Should reject a VC 2.0 credential without credentialSubject")
         void shouldRejectVc20CredentialWithoutCredentialSubject() throws Exception {
-            String credentialJwt = createVc20CredentialJWT(HOLDER_DID, null);
+            String credentialJwt = createVc20CredentialJWT(Optional.of(HOLDER_DID), Optional.empty());
 
             SecurityException ex = assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialJwt));
 
@@ -973,8 +1025,8 @@ class VerifierServiceTest {
         @Test
         @DisplayName("Should reject a credential whose sub differs from the holder even if credentialSubject.id matches")
         void shouldRejectCredentialWithForeignSub() throws Exception {
-            String credentialJwt = createVc20CredentialJWT("did:web:other.example.com:participant",
-                    Map.of("id", HOLDER_DID));
+            String credentialJwt = createVc20CredentialJWT(Optional.of("did:web:other.example.com:participant"),
+                    Optional.of(Map.of("id", HOLDER_DID)));
 
             SecurityException ex = assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialJwt));
 
@@ -984,8 +1036,8 @@ class VerifierServiceTest {
         @Test
         @DisplayName("Should reject a credential with several subjects when one is not the holder")
         void shouldRejectCredentialWithOneForeignSubjectInArray() throws Exception {
-            String credentialJwt = createVc20CredentialJWT(null,
-                    List.of(Map.of("id", HOLDER_DID), Map.of("id", "did:web:other.example.com:participant")));
+            String credentialJwt = createVc20CredentialJWT(Optional.empty(),
+                    Optional.of(List.of(Map.of("id", HOLDER_DID), Map.of("id", "did:web:other.example.com:participant"))));
 
             SecurityException ex = assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialJwt));
 
@@ -1337,12 +1389,13 @@ class VerifierServiceTest {
     /**
      * Creates a VC 2.0 JWT credential (top-level claims, no vc claim).
      *
-     * @param sub the sub claim, or null to omit it
-     * @param credentialSubject the credentialSubject claim (object or array), or null to omit it
+     * @param sub the sub claim, empty to omit it
+     * @param credentialSubject the credentialSubject claim (object or array), empty to omit it
      * @return the signed credential JWT
      * @throws JOSEException if signing fails
      */
-    private String createVc20CredentialJWT(String sub, Object credentialSubject) throws JOSEException {
+    private String createVc20CredentialJWT(Optional<String> sub, Optional<Object> credentialSubject)
+            throws JOSEException {
         JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder()
                 .issuer(ISSUER_DID)
                 .claim("@context", List.of("https://www.w3.org/ns/credentials/v2"))
@@ -1350,12 +1403,8 @@ class VerifierServiceTest {
                 .issueTime(new Date())
                 .expirationTime(new Date(System.currentTimeMillis() + 86400000))
                 .jwtID(UUID.randomUUID().toString());
-        if (sub != null) {
-            builder.subject(sub);
-        }
-        if (credentialSubject != null) {
-            builder.claim("credentialSubject", credentialSubject);
-        }
+        sub.ifPresent(builder::subject);
+        credentialSubject.ifPresent(subject -> builder.claim("credentialSubject", subject));
         return createJWT(builder.build(), issuerKey);
     }
 
