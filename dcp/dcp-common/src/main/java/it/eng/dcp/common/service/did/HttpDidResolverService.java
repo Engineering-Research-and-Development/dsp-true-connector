@@ -18,7 +18,6 @@ import java.text.ParseException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -29,7 +28,8 @@ import java.util.concurrent.ConcurrentMap;
  * the requested key ID. It supports:
  * <ul>
  *   <li>DID Web method (did:web) with proper URL encoding/decoding</li>
- *   <li>Verification relationship enforcement (authentication, assertionMethod, etc.)</li>
+ *   <li>Key selection per DCP §4.3.3 and verification relationship enforcement
+ *       (authentication, assertionMethod, capabilityInvocation)</li>
  *   <li>In-memory caching with configurable TTL</li>
  *   <li>Automatic retry logic with exponential backoff</li>
  *   <li>SSL/TLS support via OkHttpRestClient</li>
@@ -88,9 +88,18 @@ public class HttpDidResolverService implements DidResolverService {
     @Value("${server.ssl.enabled:false}")
     private boolean sslEnabled;
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Key selection follows DCP §4.3.3: with a {@code kid}, the verification method whose ID or JWK
+     * {@code kid} matches it; without a {@code kid}, the single verification method of the document, and
+     * no key when the document has several. When {@code verificationRelationship} is given, the selected
+     * method must also be referenced by that relationship. Every case without a suitable key returns
+     * {@code null}, so callers reject the token.
+     */
     @Override
     public JWK resolvePublicKey(String did, String kid, String verificationRelationship) throws DidResolutionException {
-        if (did == null || kid == null) {
+        if (did == null) {
             return null;
         }
 
@@ -100,45 +109,79 @@ public class HttpDidResolverService implements DidResolverService {
 
         try {
             DidDocument didDocument = fetchDidDocumentCached(did);
-
-            List<VerificationMethod> verificationMethods = didDocument.getVerificationMethods();
-            if (verificationMethods == null || verificationMethods.isEmpty()) {
+            if (didDocument == null) {
                 return null;
             }
 
-            // Iterate through verification methods
-            for (VerificationMethod vm : verificationMethods) {
-                String vmId = vm.getId();
-                Map<String, Object> jwkNode = vm.getPublicKeyJwk();
+            List<VerificationMethod> verificationMethods = didDocument.getVerificationMethods();
+            if (verificationMethods == null || verificationMethods.isEmpty()) {
+                log.debug("DID document {} has no verification methods", did);
+                return null;
+            }
 
-                if (jwkNode == null || vmId == null) {
-                    continue;
-                }
+            VerificationMethod selected = selectVerificationMethod(verificationMethods, kid, did);
+            if (selected == null) {
+                return null;
+            }
 
-                // Parse JWK
-                JWK jwk;
-                try {
-                    jwk = JWK.parse(jwkNode);
-                } catch (ParseException pe) {
-                    throw new DidResolutionException("Failed to parse JWK", pe);
-                }
+            if (verificationRelationship != null && !verificationRelationship.isBlank()
+                    && !isReferencedByRelationship(didDocument, selected.getId(), verificationRelationship)) {
+                log.debug("Key {} of {} is not referenced by verification relationship {}",
+                        selected.getId(), did, verificationRelationship);
+                return null;
+            }
 
-//                if (isKeyMatch(jwk, vmId, kid)) {
-//                    // Enforce verification relationship if specified
-////                  TODO: re-enable this when available
-//
-////                    if (verificationRelationship != null && !verificationRelationship.isBlank()) {
-////                        enforceVerificationRelationship(root, vmId, kid, verificationRelationship);
-////                    }
-//                    return jwk;
-//                }
-                    return jwk;
-                }
-
-            return null;
+            try {
+                return JWK.parse(selected.getPublicKeyJwk());
+            } catch (ParseException pe) {
+                throw new DidResolutionException("Failed to parse JWK", pe);
+            }
         } catch (IOException e) {
             throw new DidResolutionException("Failed to fetch or parse DID document", e);
         }
+    }
+
+    /**
+     * Selects the verification method for a token per DCP §4.3.3.
+     *
+     * @param verificationMethods the verification methods of the DID document, not empty
+     * @param kid the {@code kid} header of the token, or null
+     * @param did the DID being resolved, for logging
+     * @return the selected verification method with a JWK, or null if none qualifies
+     * @throws DidResolutionException if a candidate JWK cannot be parsed
+     */
+    private VerificationMethod selectVerificationMethod(List<VerificationMethod> verificationMethods, String kid,
+                                                        String did) throws DidResolutionException {
+        if (kid == null || kid.isBlank()) {
+            if (verificationMethods.size() != 1) {
+                log.debug("Token without kid, but DID document {} has {} verification methods",
+                        did, verificationMethods.size());
+                return null;
+            }
+            VerificationMethod only = verificationMethods.get(0);
+            return hasJwk(only) ? only : null;
+        }
+
+        for (VerificationMethod vm : verificationMethods) {
+            if (!hasJwk(vm)) {
+                continue;
+            }
+            JWK jwk;
+            try {
+                jwk = JWK.parse(vm.getPublicKeyJwk());
+            } catch (ParseException pe) {
+                throw new DidResolutionException("Failed to parse JWK", pe);
+            }
+            if (isKeyMatch(jwk, vm.getId(), kid)) {
+                return vm;
+            }
+        }
+        log.debug("No verification method in DID document {} matches kid {}", did, kid);
+        return null;
+    }
+
+    private static boolean hasJwk(VerificationMethod vm) {
+        return vm.getId() != null && vm.getPublicKeyJwk() != null && !vm.getPublicKeyJwk().isEmpty();
     }
 
     /**
@@ -178,58 +221,40 @@ public class HttpDidResolverService implements DidResolverService {
      * @return true if matches, false otherwise
      */
     private boolean isKeyMatch(JWK jwk, String vmId, String kid) {
-        String jwkKid = jwk.getKeyID();
-
         // Direct match with JWK kid
-        if (kid.equals(jwkKid)) {
+        if (kid.equals(jwk.getKeyID())) {
             return true;
         }
-
-        // Match with verification method ID
-        if (vmId.endsWith('#' + kid) || vmId.equals(kid)) {
-            return true;
-        }
-
-        return false;
+        // Match with the verification method ID (absolute DID URL or fragment)
+        return vmId.equals(kid) || vmId.endsWith('#' + kid) || (kid.startsWith("#") && vmId.endsWith(kid));
     }
 
     /**
-     * Enforces that the key is referenced in the specified verification relationship.
+     * Checks that a verification method is referenced by the given verification relationship.
+     *
+     * <p>References may be absolute DID URLs ({@code did:web:example.com#key-1}) or relative to the
+     * document ({@code #key-1}).
      *
      * @param didDocument The DID document containing verification relationships
-     * @param vmId The verification method ID
-     * @param kid The requested key ID
-     * @param verificationRelationship The verification relationship to check (authentication, assertionMethod, etc.)
-     * @throws DidResolutionException if the key is not referenced properly
+     * @param vmId The ID of the selected verification method
+     * @param verificationRelationship The verification relationship name (for example capabilityInvocation)
+     * @return true if the relationship references the verification method
      */
-    private void enforceVerificationRelationship(DidDocument didDocument, String vmId, String kid,
-                                                   String verificationRelationship) throws DidResolutionException {
-
-        // Get the appropriate verification relationship array based on the relationship name
+    private boolean isReferencedByRelationship(DidDocument didDocument, String vmId, String verificationRelationship) {
         List<String> relationshipRefs = getVerificationRelationshipRefs(didDocument, verificationRelationship);
-
         if (relationshipRefs == null || relationshipRefs.isEmpty()) {
-            throw new DidResolutionException(
-                "Verification relationship '" + verificationRelationship + "' not present in DID document");
+            return false;
         }
-
-        // Check if any reference in the relationship array matches our key
-        boolean found = false;
+        int hash = vmId.indexOf('#');
+        String fragment = hash >= 0 ? vmId.substring(hash) : null;
         for (String ref : relationshipRefs) {
-            // References can be:
-            // 1. Full verification method ID: "did:web:example.com#key-1"
-            // 2. Fragment only: "#key-1" or "key-1"
-            // 3. Full DID URL
-            if (ref.equals(vmId) || ref.equals("#" + kid) || ref.equals(kid) || ref.endsWith("#" + kid)) {
-                found = true;
-                break;
+            if (ref.equals(vmId) || (fragment != null && ref.equals(fragment))
+                    || (ref.startsWith("#") && didDocument.getId() != null
+                        && vmId.equals(didDocument.getId() + ref))) {
+                return true;
             }
         }
-
-        if (!found) {
-            throw new DidResolutionException(
-                "Key '" + kid + "' found but not referenced in verification relationship '" + verificationRelationship + "'");
-        }
+        return false;
     }
 
     /**
@@ -237,16 +262,13 @@ public class HttpDidResolverService implements DidResolverService {
      *
      * @param didDocument The DID document
      * @param relationshipName The verification relationship name
-     * @return The list of references, or null if not found
+     * @return The list of references, or null if the relationship is not supported
      */
     private List<String> getVerificationRelationshipRefs(DidDocument didDocument, String relationshipName) {
-        // Currently only capabilityInvocation is supported in DidDocument
-        // For other verification relationships, we would need to extend the DidDocument model
         return switch (relationshipName.toLowerCase(Locale.ROOT)) {
-//            case "capabilityinvocation" -> didDocument.getCapabilityInvocation();
-            case "authentication", "assertionmethod", "keyagreement", "capabilitydelegation" ->
-                // These are not currently stored in DidDocument, return null
-                null;
+            case "capabilityinvocation" -> didDocument.getCapabilityInvocation();
+            case "authentication" -> didDocument.getAuthentication();
+            case "assertionmethod" -> didDocument.getAssertionMethod();
             default -> null;
         };
     }

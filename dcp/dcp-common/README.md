@@ -27,6 +27,27 @@ The `dcp-common` library contains:
 
 - **DidUrlConverter**: Utility for converting URLs to DID:web identifiers and extracting base URLs
 
+### Self-Issued ID Token validation
+
+`SelfIssuedIdTokenService.validateToken()` applies the checks of DCP v1.0.1 §4.3.3 *Validating Self-Issued ID Tokens*. A token is accepted only if all of them pass:
+
+1. `iss` and `sub` are present and equal.
+2. `aud` equals this participant's DID.
+3. The `sub` DID document resolves, and its `id` equals `sub`.
+4. A key is selected from that document:
+   - with a `kid` header, the verification method whose ID (absolute DID URL or fragment) or JWK `kid` matches it;
+   - without a `kid`, the document's single verification method. A document with several verification methods is rejected.
+5. The selected key is referenced by the document's `capabilityInvocation` relationship.
+6. The signature verifies with that key. Only EC keys are supported; other key types are rejected.
+7. `nbf`, `exp` and `iat` are within limits (120 s clock skew; `iat` at most one hour old).
+8. `jti` is present and has not been seen before.
+
+A failed check throws `SecurityException` and publishes a `TOKEN_VALIDATION_FAILED` audit event. Logs carry `iss`, `kid` and the reason, never the token.
+
+`HttpDidResolverService.resolvePublicKey()` returns `null` whenever no key satisfies the selection and relationship rules, so callers reject the token.
+
+The DID documents this library serves (`DidDocumentService`) list their key under `authentication` and `capabilityInvocation`. A document that advertises an `IssuerService` endpoint also lists it under `assertionMethod`, the relationship for Verifiable Credential proofs. When reading other participants' documents, relationship entries may be references (absolute or `#fragment`) or embedded verification methods.
+
 ## Dependencies
 
 - **Jackson**: For JSON serialization/deserialization

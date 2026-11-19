@@ -90,6 +90,10 @@ class DidDocumentServiceTest {
         assertEquals("JsonWebKey2020", vm.getType());
         assertEquals("did:web:example.com:holder", vm.getController());
         assertEquals("EC", vm.getPublicKeyJwk().get("kty"));
+        // The key is listed under authentication and capabilityInvocation; not an issuer, so no assertionMethod
+        assertEquals(List.of(vm.getId()), doc.getAuthentication());
+        assertEquals(List.of(vm.getId()), doc.getCapabilityInvocation());
+        assertTrue(doc.getAssertionMethod().isEmpty());
         verify(keyService).loadKeyPairWithActiveAlias(config);
     }
 
@@ -134,6 +138,12 @@ class DidDocumentServiceTest {
 
         ServiceEntry issuerService = doc.getServices().get(1);
         assertEquals("http://localhost:8090/issuer", issuerService.serviceEndpoint());
+
+        // A document advertising an IssuerService also lists the key under assertionMethod
+        String vmId = doc.getVerificationMethods().get(0).getId();
+        assertEquals(List.of(vmId), doc.getAuthentication());
+        assertEquals(List.of(vmId), doc.getCapabilityInvocation());
+        assertEquals(List.of(vmId), doc.getAssertionMethod());
 
         verify(keyService).loadKeyPairWithActiveAlias(config);
     }

@@ -50,25 +50,43 @@ public class InMemoryDidResolverService implements DidResolverService {
         store.clear();
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>The in-memory store holds no verification relationships, so {@code verificationRelationship}
+     * is not checked. Without a {@code kid}, the single registered key is returned, and none when
+     * several are registered.
+     */
     @Override
     public JWK resolvePublicKey(String did, String kid, String verificationRelationship) throws DidResolutionException {
         Objects.requireNonNull(did, "DID must not be null");
-        Objects.requireNonNull(kid, "Key ID must not be null");
 
         JWKSet set = store.get(did);
         if (set == null) {
             return null;
         }
 
+        if (kid == null || kid.isBlank()) {
+            return set.getKeys().size() == 1 ? set.getKeys().get(0) : null;
+        }
         return set.getKeyByKeyId(kid);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>The in-memory store holds keys only, so the returned document carries just the DID as its
+     * {@code id} (enough for the {@code sub} == DID Document {@code id} check), without services or
+     * verification methods.
+     *
+     * @return a minimal DID document for a registered DID, or null if the DID is not registered
+     */
     @Override
     public DidDocument fetchDidDocumentCached(String did) {
-        // In-memory implementation doesn't support full DID document resolution
-        // This is primarily used for testing with JWKSet
-        throw new UnsupportedOperationException(
-                "InMemoryDidResolverService does not support DID document fetching. Use HttpDidResolverService for did:web resolution.");
+        if (did == null || !store.containsKey(did)) {
+            return null;
+        }
+        return DidDocument.Builder.newInstance().id(did).build();
     }
 }
 
