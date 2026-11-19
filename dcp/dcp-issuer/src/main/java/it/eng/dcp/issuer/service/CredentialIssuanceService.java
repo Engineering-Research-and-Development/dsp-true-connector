@@ -128,9 +128,9 @@ public class CredentialIssuanceService {
                     claimsWithMetadata,
                     constraints
                 );
-                CredentialMessage.CredentialContainer credential =
+                CredentialMessage.CredentialContainer generated =
                         generateCredentialForType(config.getCredentialType(), context);
-                credentials.add(credential);
+                credentials.add(withFormatOfProfile(generated, config.getProfile()));
                 log.debug("Generated credential '{}' of type '{}' for holder {}",
                         config.getId(), config.getCredentialType(), request.getHolderPid());
             } catch (Exception e) {
@@ -144,6 +144,30 @@ public class CredentialIssuanceService {
         }
 
         return credentials;
+    }
+
+    /**
+     * Sets the container format from the profile of the credential's own credentialsSupported entry (for
+     * example {@code vc11-sl2021/jwt} gives {@code jwt}), so credentials sharing a type keep their own format.
+     *
+     * @param container the generated credential container
+     * @param profile the configured profile, or null to keep the generator's format
+     * @return the container with the profile's format
+     */
+    private static CredentialMessage.CredentialContainer withFormatOfProfile(
+            CredentialMessage.CredentialContainer container, String profile) {
+        if (profile == null) {
+            return container;
+        }
+        int slash = profile.lastIndexOf('/');
+        if (slash <= 0 || slash == profile.length() - 1) {
+            return container;
+        }
+        return CredentialMessage.CredentialContainer.Builder.newInstance()
+                .credentialType(container.getCredentialType())
+                .payload(container.getPayload())
+                .format(profile.substring(slash + 1))
+                .build();
     }
 
     /**

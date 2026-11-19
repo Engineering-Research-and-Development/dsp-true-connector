@@ -525,17 +525,8 @@ class CredentialIssuanceServiceTest {
         vc11Profiles.put("MembershipCredential", "vc11-sl2021/jwt");
         setupCredentialConfigs(vc11Profiles);
 
-        // Create context with VC 1.1 profile metadata
-        Map<String, Object> customClaims = new HashMap<>();
-        Map<String, Map<String, Object>> metadata = new HashMap<>();
-        Map<String, Object> credMetadata = new HashMap<>();
-        credMetadata.put("profile", ProfileId.VC11_SL2021_JWT.getSpecAlias());
-        metadata.put("MembershipCredential", credMetadata);
-        customClaims.put("__credentialMetadata", metadata);
-
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
-                testRequest, customClaims, null
-        );
+        // The profile comes from the configured credentialsSupported entry, not from custom claims
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -557,16 +548,8 @@ class CredentialIssuanceServiceTest {
         vc11Profiles.put("MembershipCredential", ProfileId.VC11_SL2021_JWT.getSpecAlias());
         setupCredentialConfigs(vc11Profiles);
 
-        Map<String, Object> customClaims = new HashMap<>();
-        Map<String, Map<String, Object>> metadata = new HashMap<>();
-        Map<String, Object> credMetadata = new HashMap<>();
-        credMetadata.put("profile", ProfileId.VC11_SL2021_JWT.getSpecAlias());
-        metadata.put("MembershipCredential", credMetadata);
-        customClaims.put("__credentialMetadata", metadata);
-
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
-                testRequest, customClaims, null
-        );
+        // The profile comes from the configured credentialsSupported entry, not from custom claims
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -586,16 +569,8 @@ class CredentialIssuanceServiceTest {
         vc11Profiles.put("MembershipCredential", ProfileId.VC11_SL2021_JWT.getSpecAlias());
         setupCredentialConfigs(vc11Profiles);
 
-        Map<String, Object> customClaims = new HashMap<>();
-        Map<String, Map<String, Object>> metadata = new HashMap<>();
-        Map<String, Object> credMetadata = new HashMap<>();
-        credMetadata.put("profile", ProfileId.VC11_SL2021_JWT.getSpecAlias());
-        metadata.put("MembershipCredential", credMetadata);
-        customClaims.put("__credentialMetadata", metadata);
-
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
-                testRequest, customClaims, null
-        );
+        // The profile comes from the configured credentialsSupported entry, not from custom claims
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -616,16 +591,8 @@ class CredentialIssuanceServiceTest {
         vc11Profiles.put("MembershipCredential", ProfileId.VC11_SL2021_JWT.getSpecAlias());
         setupCredentialConfigs(vc11Profiles);
 
-        Map<String, Object> customClaims = new HashMap<>();
-        Map<String, Map<String, Object>> metadata = new HashMap<>();
-        Map<String, Object> credMetadata = new HashMap<>();
-        credMetadata.put("profile", ProfileId.VC11_SL2021_JWT.getSpecAlias());
-        metadata.put("MembershipCredential", credMetadata);
-        customClaims.put("__credentialMetadata", metadata);
-
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
-                testRequest, customClaims, null
-        );
+        // The profile comes from the configured credentialsSupported entry, not from custom claims
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -649,16 +616,8 @@ class CredentialIssuanceServiceTest {
         vc11Profiles.put("MembershipCredential", ProfileId.VC11_SL2021_JWT.getSpecAlias());
         setupCredentialConfigs(vc11Profiles);
 
-        Map<String, Object> customClaims = new HashMap<>();
-        Map<String, Map<String, Object>> metadata = new HashMap<>();
-        Map<String, Object> credMetadata = new HashMap<>();
-        credMetadata.put("profile", ProfileId.VC11_SL2021_JWT.getSpecAlias());
-        metadata.put("MembershipCredential", credMetadata);
-        customClaims.put("__credentialMetadata", metadata);
-
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
-                testRequest, customClaims, null
-        );
+        // The profile comes from the configured credentialsSupported entry, not from custom claims
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
