@@ -58,6 +58,7 @@ Each realm has its own users, roles, and clients. The connector trusts only the 
 - Keycloak users no longer resolve to a `null` tenant, which made them see data of all tenants (cross-tenant visibility); the tenant now comes from `tenant_id`.
 - `FieldEncryptionService` no longer logs the plaintext at debug level.
 - Rejected Keycloak tokens are no longer logged at ERROR with the exception message; the log has the exception class and error codes only (DEBUG), and a realm role violation logs a WARN with the request path.
+- DCP issuer documentation (`dcp/dcp-issuer/API.md`, `dcp/doc/quick_start.md`): approve, reject and key rotation are documented under the local administration API path `/api/issuer/...` (`/api/issuer/key/rotate`), with a note that authentication is not enforced yet (#405). `holderPid` is described as the Holder-side request ID (DCP §6.4.1), and credential request examples include `@context` and `type`. The non-existent `POST /issuer/requests` alias is removed, and the rejection body key is `reason` (not `rejectionReason`). Documentation only.
 
 ### Removed
 - Breaking: the seeded `connector@mail.com` user (role `CONNECTOR`) is removed from every `initial_data` file. Anyone logging in as it (`POST /api/v1/auth/login`, Basic credentials in clients or TCK configurations) must switch to the minted protocol token. `InitialDataLoader` only upserts by `_id` and never deletes, so an existing database keeps the user until removed by hand; the connector no longer uses it.

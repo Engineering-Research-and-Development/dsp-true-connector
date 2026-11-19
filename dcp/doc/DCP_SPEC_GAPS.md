@@ -46,7 +46,7 @@ Each item below was re-checked against the code after merging `develop` (Keycloa
 | Review: correctness | `CredentialMessage` optional fields required | Open | `credentials` and `holderPid` still `@NotNull`; `"No type"` placeholder still added on rejection. |
 | Multitenancy | All 9 items | Open | No `tenantId` / `TenantContextHolder` in any `dcp` module; fixed `/dcp` and `/issuer` routes; resolver still drops the DID path. |
 | Scope handling risk | Unqualified scopes | Open | `DcpVerifierClient.buildQueryMessage()` still copies `requiredTypes` into `scope`. |
-| Documentation conflicts | `API.md`, `quick_start.md` | Open | Both still show approve/reject under `/issuer/requests/...`; `API.md` still calls `holderPid` the Holder DID. |
+| Documentation conflicts | `API.md`, `quick_start.md` | **Done** (PR #429) | Approve, reject and key rotation are documented under the local admin API path `/api/issuer/...`; `holderPid` is documented as the Holder-side request ID; credential request examples include `@context` and `type`. Old paths remain in `dcp/dcp-issuer/QUICKSTART.md` and `QUICK_REFERENCE.md`, which are outside #422. |
 | Spec clarification | 7 notes | n/a | Upstream specification questions; no code status. |
 
 ## Implementation gaps
@@ -120,13 +120,14 @@ Implement tenant resolution and authorization consistently across protocol contr
 
 `DcpVerifierClient.buildQueryMessage()` copies its `requiredTypes` argument directly into `scope`. `PresentationService.parseScope()` also accepts unqualified strings such as `MembershipCredential` as a compatibility form. DCP defines scopes as `[alias]:[discriminator]` and requires the aliases `org.eclipse.dspace.dcp.vc.type` and `org.eclipse.dspace.dcp.vc.id`. Confirm that interoperable callers supply those forms; a caller-supplied unqualified type string is not one of the two defined standard aliases.
 
-## Existing documentation conflicts
+## Existing documentation conflicts (resolved in #422)
 
-- `dcp/dcp-issuer/API.md` describes `/issuer/requests/{id}/approve` and `/reject` as Issuer Service endpoints, and calls `holderPid` the Holder DID. The approval/rejection API is local administration functionality (the controller is mounted at `/api/issuer`); DCP defines `holderPid` as the Holder-side request ID.
-- `dcp/doc/quick_start.md` similarly shows approval/rejection under `/issuer/requests/{id}/...`. These are not DCP v1.0 protocol endpoints.
-- The API examples in `dcp/dcp-issuer/API.md` omit required `@context` and `type` properties from the credential request body.
+- `dcp/dcp-issuer/API.md` and `dcp/doc/quick_start.md` document approval, rejection and key rotation under the local administration API (`/api/issuer/...`), not as Issuer Service protocol endpoints.
+- `holderPid` is documented as the Holder-side request ID, as DCP defines it, not as the Holder DID.
+- Credential request examples include the required `@context` and `type` properties.
+- Not yet corrected (outside #422): `dcp/dcp-issuer/QUICKSTART.md` and `dcp/dcp-issuer/QUICK_REFERENCE.md` still use the `/issuer/requests/{id}/approve|reject` paths.
 
-These differences should be handled in implementation/API documentation, not added to the normative DCP skill.
+These corrections belong in the API and quick-start documentation, not in the normative DCP skill.
 
 ## DCP v1.0 text needing clarification
 

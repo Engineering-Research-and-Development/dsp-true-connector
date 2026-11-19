@@ -25,11 +25,10 @@ Authorization: Bearer <self-issued-id-token>
 | `/.well-known/did.json` | GET | No | Get issuer DID document |
 | `/issuer/metadata` | GET | Yes | Get issuer metadata |
 | `/issuer/credentials` | POST | Yes | Request credentials |
-| `/issuer/requests` | POST | Yes | Create credential request (alt) |
 | `/issuer/requests/{id}` | GET | Yes | Get request status |
-| `/issuer/requests/{id}/approve` | POST | Yes | Approve request |
-| `/issuer/requests/{id}/reject` | POST | Yes | Reject request |
-| `/issuer/admin/rotate-key` | POST | Yes | Manual key rotation |
+| `/api/issuer/requests/{id}/approve` | POST | No, see #405 | Approve request (local admin API) |
+| `/api/issuer/requests/{id}/reject` | POST | No, see #405 | Reject request (local admin API) |
+| `/api/issuer/key/rotate` | POST | No, see #405 | Manual key rotation (local admin API) |
 | `/actuator/health` | GET | No | Health check |
 
 ---
@@ -147,7 +146,9 @@ Content-Type: application/json
 
 ```json
 {
-  "holderPid": "did:web:holder.example.com",
+  "@context": ["https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"],
+  "type": "CredentialRequestMessage",
+  "holderPid": "8a1f5c3e-2b7d-4e9a-9c1d-5f0e7b6a2d41",
   "credentials": [
     {
       "id": "MembershipCredential"
@@ -160,7 +161,9 @@ Content-Type: application/json
 ```
 
 **Parameters**:
-- `holderPid` (string, required): DID of the credential holder
+- `@context` (array, required): Must contain `https://w3id.org/dspace-dcp/v1.0/dcp.jsonld`
+- `type` (string, required): `CredentialRequestMessage`
+- `holderPid` (string, required): Request identifier on the Holder side (DCP §6.4.1). It is not the Holder DID; the Issuer takes the holder's DID from the `sub` of the Self-Issued ID Token
 - `credentials` (array, required): List of credential types requested
   - `id` (string, required): Credential type identifier matching issuer metadata
 
@@ -176,22 +179,6 @@ Location: /issuer/requests/abc123-def456-ghi789
 - `400 Bad Request`: Invalid request body or unsupported credential type
 - `401 Unauthorized`: Missing or invalid Bearer token
 - `500 Internal Server Error`: Server error
-
----
-
-### Create Credential Request (Alternative)
-
-Alternative endpoint for creating credential requests.
-
-```http
-POST /issuer/requests
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Request Body**: Same as `/issuer/credentials`
-
-**Response**: Same as `/issuer/credentials`
 
 ---
 
@@ -212,7 +199,7 @@ Authorization: Bearer <token>
 ```json
 {
   "issuerPid": "abc123-def456-ghi789",
-  "holderPid": "did:web:holder.example.com",
+  "holderPid": "8a1f5c3e-2b7d-4e9a-9c1d-5f0e7b6a2d41",
   "status": "PENDING",
   "credentialIds": [
     "MembershipCredential",
@@ -237,13 +224,16 @@ Authorization: Bearer <token>
 
 ---
 
+## Admin Endpoints
+
+These endpoints form the local administration API of the Issuer, mounted at `/api/issuer`. They are not DCP protocol endpoints and are not defined by the DCP specification. Authentication is not enforced yet (the `dcp-issuer` module has no security filter chain; tracked in #405), so restrict network access to them until that is delivered.
+
 ### Approve Request
 
 Approves a pending credential request and triggers credential issuance.
 
 ```http
-POST /issuer/requests/{requestId}/approve
-Authorization: Bearer <token>
+POST /api/issuer/requests/{requestId}/approve
 Content-Type: application/json
 ```
 
@@ -268,12 +258,8 @@ Content-Type: application/json
 
 **Response**: `200 OK`
 
-```json
-{
-  "message": "Request approved and credentials issued",
-  "requestId": "abc123-def456-ghi789",
-  "status": "APPROVED"
-}
+```text
+Credentials issued and delivered successfully
 ```
 
 **Process**:
@@ -285,7 +271,6 @@ Content-Type: application/json
 **Status Codes**:
 - `200 OK`: Request approved successfully
 - `400 Bad Request`: Request already processed or invalid state
-- `401 Unauthorized`: Missing or invalid Bearer token
 - `404 Not Found`: Request not found
 - `500 Internal Server Error`: Server error or credential delivery failed
 
@@ -296,8 +281,7 @@ Content-Type: application/json
 Rejects a pending credential request.
 
 ```http
-POST /issuer/requests/{requestId}/reject
-Authorization: Bearer <token>
+POST /api/issuer/requests/{requestId}/reject
 Content-Type: application/json
 ```
 
@@ -313,40 +297,31 @@ Content-Type: application/json
 ```
 
 **Parameters**:
-- `reason` (string, optional): Reason for rejection
+- `reason` (string, required): Reason for rejection; the endpoint returns `400 Bad Request` when it is missing or blank
 
 **Response**: `200 OK`
 
-```json
-{
-  "message": "Request rejected",
-  "requestId": "abc123-def456-ghi789",
-  "status": "REJECTED",
-  "reason": "Invalid request - holder not verified"
-}
+```text
+Credential request rejected successfully
 ```
 
 **Status Codes**:
 - `200 OK`: Request rejected successfully
 - `400 Bad Request`: Request already processed
-- `401 Unauthorized`: Missing or invalid Bearer token
 - `404 Not Found`: Request not found
 - `500 Internal Server Error`: Server error
 
 ---
-
-## Admin Endpoints
 
 ### Manual Key Rotation
 
 Manually triggers cryptographic key rotation outside of the automated schedule.
 
 ```http
-POST /issuer/admin/rotate-key
-Authorization: Bearer <admin-token>
+POST /api/issuer/key/rotate
 ```
 
-**Authentication**: Required (admin-level Bearer token)
+**Authentication**: Not enforced yet (see #405)
 
 ⚠️ **Important**: Protect this endpoint with proper admin authentication in production!
 
@@ -443,7 +418,7 @@ Returns application information.
      │                               │                               │
      │                               │ 4. Approve Request            │
      │                               │◄──────────────────────────────┤
-     │                               │   POST /requests/123/approve  │
+     │                               │   POST /api/issuer/.../approve│
      │                               │                               │
      │                               │ 5. Generate & Sign VCs        │
      │                               │────────┐                      │
@@ -518,14 +493,16 @@ curl -X POST http://localhost:8084/issuer/credentials \
   -H "Authorization: Bearer eyJhbGc..." \
   -H "Content-Type: application/json" \
   -d '{
-    "holderPid": "did:web:holder.example.com",
+    "@context": ["https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"],
+    "type": "CredentialRequestMessage",
+    "holderPid": "8a1f5c3e-2b7d-4e9a-9c1d-5f0e7b6a2d41",
     "credentials": [{"id": "MembershipCredential"}]
   }'
 
 # Response: Location: /issuer/requests/abc123
 
 # 3. Admin approves request
-curl -X POST http://localhost:8084/issuer/requests/abc123/approve \
+curl -X POST http://localhost:8084/api/issuer/requests/abc123/approve \
   -H "Content-Type: application/json" \
   -d '{
     "customClaims": {
@@ -543,6 +520,4 @@ curl -H "Authorization: Bearer eyJhbGc..." \
 
 **See Also**:
 - [Quick Start Guide](QUICKSTART.md)
-- [Configuration Guide](CONFIGURATION.md)
-- [Integration Guide](INTEGRATION.md)
 
