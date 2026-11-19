@@ -9,6 +9,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Simple in-memory JTI replay cache backed by a ConcurrentHashMap. Not distributed.
+ *
+ * <p>An entry is kept until the expiry instant it was inserted with and purged lazily after it; a
+ * second insert of the same JTI before that instant is a replay.
  */
 @Component
 public class InMemoryJtiReplayCache implements JtiReplayCache {

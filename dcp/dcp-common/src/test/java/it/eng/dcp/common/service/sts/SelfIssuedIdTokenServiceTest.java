@@ -248,6 +248,58 @@ class SelfIssuedIdTokenServiceTest {
     }
 
     @Test
+    void validateToken_jtiKeptUntilExpPlusClockSkew() throws Exception {
+        when(config.getDid()).thenReturn(CONNECTOR_DID);
+        JWTClaimsSet claims = baseClaims().build();
+        when(didResolver.resolvePublicKey(SUBJECT_DID, KID, "capabilityInvocation")).thenReturn(ecJwk);
+
+        String jwt = createJwt(claims, ecJwk);
+        // exp as carried by the token (whole seconds)
+        Instant exp = SignedJWT.parse(jwt).getJWTClaimsSet().getExpirationTime().toInstant();
+
+        service.validateToken(jwt);
+
+        ArgumentCaptor<Instant> expiry = ArgumentCaptor.forClass(Instant.class);
+        verify(jtiCache).checkAndPut(eq(JTI), expiry.capture());
+        assertEquals(exp.plusSeconds(SelfIssuedIdTokenService.DEFAULT_CLOCK_SKEW_SECONDS), expiry.getValue());
+    }
+
+    @Test
+    void validateToken_configuredClockSkewUsedForJtiExpiry() throws Exception {
+        when(config.getDid()).thenReturn(CONNECTOR_DID);
+        service.setClockSkewSeconds(30);
+        JWTClaimsSet claims = baseClaims().build();
+        when(didResolver.resolvePublicKey(SUBJECT_DID, KID, "capabilityInvocation")).thenReturn(ecJwk);
+
+        String jwt = createJwt(claims, ecJwk);
+        Instant exp = SignedJWT.parse(jwt).getJWTClaimsSet().getExpirationTime().toInstant();
+
+        service.validateToken(jwt);
+
+        verify(jtiCache).checkAndPut(JTI, exp.plusSeconds(30));
+    }
+
+    @Test
+    void validateToken_replayAfterExpInsideClockSkew_rejected() throws Exception {
+        // Real cache: the jti must outlive exp for as long as the token is still accepted
+        SelfIssuedIdTokenService realCacheService = new SelfIssuedIdTokenService(
+                didResolver, new InMemoryJtiReplayCache(), keyService, config, auditPublisher);
+        when(config.getDid()).thenReturn(CONNECTOR_DID);
+        Instant now = Instant.now();
+        // Expired 60 s ago: still accepted thanks to the 120 s clock skew
+        JWTClaimsSet claims = baseClaims()
+                .issueTime(Date.from(now.minusSeconds(360)))
+                .expirationTime(Date.from(now.minusSeconds(60)))
+                .build();
+        String jwt = createJwt(claims, ecJwk);
+        when(didResolver.resolvePublicKey(SUBJECT_DID, KID, "capabilityInvocation")).thenReturn(ecJwk);
+
+        assertEquals(JTI, realCacheService.validateToken(jwt).getJWTID());
+        Exception ex = assertThrows(SecurityException.class, () -> realCacheService.validateToken(jwt));
+        assertTrue(ex.getMessage().contains("jti has already been used"));
+    }
+
+    @Test
     void createAndSignToken_success() throws Exception {
         // Arrange
         String audienceDid = "did:web:test:audience";
