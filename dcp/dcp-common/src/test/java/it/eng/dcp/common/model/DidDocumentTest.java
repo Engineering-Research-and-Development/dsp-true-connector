@@ -79,6 +79,18 @@ class DidDocumentTest {
     }
 
     @Test
+    void verificationRelationships_nullInJson_areEmpty() throws Exception {
+        String json = "{\"id\": \"did:web:example.com\", \"authentication\": null, "
+                + "\"capabilityInvocation\": null, \"assertionMethod\": null}";
+
+        DidDocument doc = new ObjectMapper().readValue(json, DidDocument.class);
+
+        assertTrue(doc.getAuthentication().isEmpty());
+        assertTrue(doc.getCapabilityInvocation().isEmpty());
+        assertTrue(doc.getAssertionMethod().isEmpty());
+    }
+
+    @Test
     void testDidDocumentBuilder_MissingId() {
         assertThrows(Exception.class, () -> {
             DidDocument.Builder.newInstance().build();

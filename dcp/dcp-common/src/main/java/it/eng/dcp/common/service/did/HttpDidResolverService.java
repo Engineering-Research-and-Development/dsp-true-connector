@@ -18,6 +18,7 @@ import java.text.ParseException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -55,7 +56,7 @@ public class HttpDidResolverService implements DidResolverService {
     /**
      * Cached DID document entry with expiry time.
      */
-    private record CachedDoc(DidDocument didDocument, Instant expiresAt) { }
+    private record CachedDoc(DidDocument didDocument, Instant fetchedAt, Instant expiresAt) { }
 
     private final ConcurrentMap<String, HttpDidResolverService.CachedDoc> cache = new ConcurrentHashMap<>();
 
@@ -65,6 +66,13 @@ public class HttpDidResolverService implements DidResolverService {
      */
     @Setter
     private long cacheTtlSeconds = 300;
+
+    /**
+     * Minimum age in seconds of a cached DID document before an unknown {@code kid} triggers a refetch.
+     * Default: 30 seconds.
+     */
+    @Setter
+    private long minRefreshIntervalSeconds = 30;
 
     /**
      * Maximum number of retry attempts for failed HTTP requests.
@@ -91,11 +99,17 @@ public class HttpDidResolverService implements DidResolverService {
     /**
      * {@inheritDoc}
      *
-     * <p>Key selection follows DCP §4.3.3: with a {@code kid}, the verification method whose ID or JWK
-     * {@code kid} matches it; without a {@code kid}, the single verification method of the document, and
-     * no key when the document has several. When {@code verificationRelationship} is given, the selected
-     * method must also be referenced by that relationship. Every case without a suitable key returns
-     * {@code null}, so callers reject the token.
+     * <p>Key selection follows DCP §4.3.3: with a {@code kid}, the verification method whose ID
+     * (absolute DID URL, {@code #fragment} or bare fragment) or JWK {@code kid} matches it; without a
+     * {@code kid}, the single verification method of the document, and no key when the document has
+     * several. When {@code verificationRelationship} is given, the selected method must also be referenced
+     * by that relationship. Every case without a suitable key returns {@code null}, so callers reject the
+     * token.
+     *
+     * <p>When a {@code kid} matches no key of a cached document, the document is fetched again once, so a
+     * participant that rotated its key is accepted without waiting for the cache to expire. A document is
+     * refetched at most once per {@link #minRefreshIntervalSeconds}, so unknown {@code kid}s cannot force
+     * constant fetches.
      */
     @Override
     public JWK resolvePublicKey(String did, String kid, String verificationRelationship) throws DidResolutionException {
@@ -108,80 +122,119 @@ public class HttpDidResolverService implements DidResolverService {
         }
 
         try {
-            DidDocument didDocument = fetchDidDocumentCached(did);
-            if (didDocument == null) {
-                return null;
+            Optional<JWK> key = selectKey(fetchDidDocumentCached(did), kid, verificationRelationship);
+            if (key.isEmpty() && kid != null && !kid.isBlank() && evictIfRefreshAllowed(did)) {
+                log.debug("kid {} not found in cached DID document of {}; fetching it again", kid, did);
+                key = selectKey(fetchDidDocumentCached(did), kid, verificationRelationship);
             }
-
-            List<VerificationMethod> verificationMethods = didDocument.getVerificationMethods();
-            if (verificationMethods == null || verificationMethods.isEmpty()) {
-                log.debug("DID document {} has no verification methods", did);
-                return null;
-            }
-
-            VerificationMethod selected = selectVerificationMethod(verificationMethods, kid, did);
-            if (selected == null) {
-                return null;
-            }
-
-            if (verificationRelationship != null && !verificationRelationship.isBlank()
-                    && !isReferencedByRelationship(didDocument, selected.getId(), verificationRelationship)) {
-                log.debug("Key {} of {} is not referenced by verification relationship {}",
-                        selected.getId(), did, verificationRelationship);
-                return null;
-            }
-
-            try {
-                return JWK.parse(selected.getPublicKeyJwk());
-            } catch (ParseException pe) {
-                throw new DidResolutionException("Failed to parse JWK", pe);
-            }
+            return key.orElse(null);
         } catch (IOException e) {
             throw new DidResolutionException("Failed to fetch or parse DID document", e);
         }
     }
 
     /**
-     * Selects the verification method for a token per DCP §4.3.3.
+     * Selects the key for a token from a DID document per DCP §4.3.3.
      *
-     * @param verificationMethods the verification methods of the DID document, not empty
+     * @param didDocument the resolved DID document, may be null
      * @param kid the {@code kid} header of the token, or null
-     * @param did the DID being resolved, for logging
-     * @return the selected verification method with a JWK, or null if none qualifies
-     * @throws DidResolutionException if a candidate JWK cannot be parsed
+     * @param verificationRelationship the relationship the key must be referenced by, or null for any
+     * @return the selected public key, or empty if none qualifies
+     * @throws DidResolutionException if the selected JWK cannot be parsed
      */
-    private VerificationMethod selectVerificationMethod(List<VerificationMethod> verificationMethods, String kid,
-                                                        String did) throws DidResolutionException {
+    private Optional<JWK> selectKey(DidDocument didDocument, String kid, String verificationRelationship)
+            throws DidResolutionException {
+        if (didDocument == null || didDocument.getVerificationMethods().isEmpty()) {
+            return Optional.empty();
+        }
+        String docId = didDocument.getId();
+        List<VerificationMethod> methods = didDocument.getVerificationMethods().stream()
+                .filter(HttpDidResolverService::hasJwk)
+                .toList();
+        boolean relationshipRequired = verificationRelationship != null && !verificationRelationship.isBlank();
+
+        List<VerificationMethod> candidates;
         if (kid == null || kid.isBlank()) {
-            if (verificationMethods.size() != 1) {
+            if (didDocument.getVerificationMethods().size() != 1) {
                 log.debug("Token without kid, but DID document {} has {} verification methods",
-                        did, verificationMethods.size());
-                return null;
+                        docId, didDocument.getVerificationMethods().size());
+                return Optional.empty();
             }
-            VerificationMethod only = verificationMethods.get(0);
-            return hasJwk(only) ? only : null;
+            candidates = methods;
+        } else {
+            String absoluteKid = absolutize(kid, docId);
+            candidates = methods.stream()
+                    .filter(vm -> absolutize(vm.getId(), docId).equals(absoluteKid))
+                    .toList();
+            if (candidates.isEmpty()) {
+                candidates = methods.stream()
+                        .filter(vm -> parseQuietly(vm).map(jwk -> kid.equals(jwk.getKeyID())).orElse(false))
+                        .toList();
+            }
         }
 
-        for (VerificationMethod vm : verificationMethods) {
-            if (!hasJwk(vm)) {
-                continue;
-            }
-            JWK jwk;
-            try {
-                jwk = JWK.parse(vm.getPublicKeyJwk());
-            } catch (ParseException pe) {
-                throw new DidResolutionException("Failed to parse JWK", pe);
-            }
-            if (isKeyMatch(jwk, vm.getId(), kid)) {
-                return vm;
-            }
+        Optional<VerificationMethod> selected = candidates.stream()
+                .filter(vm -> !relationshipRequired
+                        || isReferencedByRelationship(didDocument, vm.getId(), verificationRelationship))
+                .findFirst();
+        if (selected.isEmpty()) {
+            log.debug("No verification method of {} matches kid {} with relationship {}",
+                    docId, kid, verificationRelationship);
+            return Optional.empty();
         }
-        log.debug("No verification method in DID document {} matches kid {}", did, kid);
-        return null;
+        try {
+            return Optional.of(JWK.parse(selected.get().getPublicKeyJwk()));
+        } catch (ParseException pe) {
+            throw new DidResolutionException("Failed to parse JWK", pe);
+        }
     }
 
     private static boolean hasJwk(VerificationMethod vm) {
         return vm.getId() != null && vm.getPublicKeyJwk() != null && !vm.getPublicKeyJwk().isEmpty();
+    }
+
+    private static Optional<JWK> parseQuietly(VerificationMethod vm) {
+        try {
+            return Optional.of(JWK.parse(vm.getPublicKeyJwk()));
+        } catch (ParseException pe) {
+            log.debug("Skipping verification method {} with an unparsable JWK", vm.getId());
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Turns a verification method ID, {@code kid} or relationship reference into an absolute DID URL.
+     *
+     * <p>{@code #key-1} and the bare fragment {@code key-1} become {@code <docId>#key-1}; absolute DID URLs
+     * are returned unchanged.
+     *
+     * @param ref the ID or reference
+     * @param docId the ID of the DID document the reference belongs to
+     * @return the absolute DID URL
+     */
+    private static String absolutize(String ref, String docId) {
+        if (ref.startsWith("#")) {
+            return docId + ref;
+        }
+        if (!ref.startsWith("did:")) {
+            return docId + "#" + ref;
+        }
+        return ref;
+    }
+
+    /**
+     * Drops the cached document of a DID if it was fetched long enough ago to be refetched.
+     *
+     * @param did the DID whose document did not contain the requested key
+     * @return true if the cache entry was dropped and the document should be fetched again
+     */
+    private boolean evictIfRefreshAllowed(String did) {
+        String key = didDocumentUrl(did);
+        CachedDoc cd = cache.get(key);
+        if (cd == null || cd.fetchedAt().plusSeconds(minRefreshIntervalSeconds).isAfter(Instant.now())) {
+            return false;
+        }
+        return cache.remove(key, cd);
     }
 
     /**
@@ -191,9 +244,7 @@ public class HttpDidResolverService implements DidResolverService {
      * @throws IOException on IO errors
      */
     public DidDocument fetchDidDocumentCached(String did) throws IOException {
-        String url = DidUrlConverter.convertDidToUrl(did, sslEnabled);
-        String baseUrl = DidUrlConverter.extractBaseUrl(url);
-        String didDocumentUrl = baseUrl + "/.well-known/did.json";
+        String didDocumentUrl = didDocumentUrl(did);
 
         CachedDoc cd = cache.get(didDocumentUrl);
         Instant now = Instant.now();
@@ -207,26 +258,21 @@ public class HttpDidResolverService implements DidResolverService {
         // Cache the fetched document
         if (fetchedDoc != null) {
             Instant expiresAt = now.plusSeconds(cacheTtlSeconds);
-            cache.put(didDocumentUrl, new CachedDoc(fetchedDoc, expiresAt));
+            cache.put(didDocumentUrl, new CachedDoc(fetchedDoc, now, expiresAt));
         }
 
         return fetchedDoc;
     }
 
     /**
-     * Checks if a JWK matches the requested key ID.
-     * @param jwk The JWK to check
-     * @param vmId The verification method ID
-     * @param kid The requested key ID
-     * @return true if matches, false otherwise
+     * Builds the URL a DID document is fetched from, which is also its cache key.
+     *
+     * @param did the DID to resolve
+     * @return the DID document URL
      */
-    private boolean isKeyMatch(JWK jwk, String vmId, String kid) {
-        // Direct match with JWK kid
-        if (kid.equals(jwk.getKeyID())) {
-            return true;
-        }
-        // Match with the verification method ID (absolute DID URL or fragment)
-        return vmId.equals(kid) || vmId.endsWith('#' + kid) || (kid.startsWith("#") && vmId.endsWith(kid));
+    private String didDocumentUrl(String did) {
+        String url = DidUrlConverter.convertDidToUrl(did, sslEnabled);
+        return DidUrlConverter.extractBaseUrl(url) + "/.well-known/did.json";
     }
 
     /**
@@ -245,16 +291,9 @@ public class HttpDidResolverService implements DidResolverService {
         if (relationshipRefs == null || relationshipRefs.isEmpty()) {
             return false;
         }
-        int hash = vmId.indexOf('#');
-        String fragment = hash >= 0 ? vmId.substring(hash) : null;
-        for (String ref : relationshipRefs) {
-            if (ref.equals(vmId) || (fragment != null && ref.equals(fragment))
-                    || (ref.startsWith("#") && didDocument.getId() != null
-                        && vmId.equals(didDocument.getId() + ref))) {
-                return true;
-            }
-        }
-        return false;
+        String docId = didDocument.getId();
+        String absoluteVmId = absolutize(vmId, docId);
+        return relationshipRefs.stream().anyMatch(ref -> absolutize(ref, docId).equals(absoluteVmId));
     }
 
     /**

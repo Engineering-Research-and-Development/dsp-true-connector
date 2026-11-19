@@ -206,6 +206,9 @@ public class SelfIssuedIdTokenService {
                 didDocument = didResolver.fetchDidDocumentCached(subject);
             } catch (IOException e) {
                 throw new DidResolutionException("Failed to fetch DID document for sub", e);
+            } catch (IllegalArgumentException e) {
+                // e.g. a sub that is not a did:web DID
+                throw new DidResolutionException("Unsupported or invalid sub DID: " + e.getMessage(), e);
             }
             if (didDocument == null || didDocument.getId() == null
                     || !DidUrlConverter.compareDids(subject, didDocument.getId())) {

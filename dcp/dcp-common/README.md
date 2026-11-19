@@ -46,7 +46,11 @@ A failed check throws `SecurityException` and publishes a `TOKEN_VALIDATION_FAIL
 
 `HttpDidResolverService.resolvePublicKey()` returns `null` whenever no key satisfies the selection and relationship rules, so callers reject the token.
 
-The DID documents this library serves (`DidDocumentService`) list their key under `authentication` and `capabilityInvocation`. A document that advertises an `IssuerService` endpoint also lists it under `assertionMethod`, the relationship for Verifiable Credential proofs. When reading other participants' documents, relationship entries may be references (absolute or `#fragment`) or embedded verification methods.
+The DID documents this library serves (`DidDocumentService`) list their key under `authentication` and `capabilityInvocation`. A document that advertises an `IssuerService` endpoint also lists it under `assertionMethod`, the relationship for Verifiable Credential proofs. When reading other participants' documents:
+
+- Relationship entries may be references, either absolute or `#fragment`. Verification method IDs may also be relative to the document `id`; all IDs are compared as absolute DID URLs.
+- An embedded verification method in a relationship is recognized by its `id` only. Its key is used only if the same method is also listed under `verificationMethod`. Otherwise the token is rejected.
+- When a `kid` matches no key of a cached DID document, the document is fetched again once (at most every 30 s per document), so a participant that has just rotated its key is accepted.
 
 ## Dependencies
 

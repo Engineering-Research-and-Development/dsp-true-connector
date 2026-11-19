@@ -220,6 +220,19 @@ class SelfIssuedIdTokenServiceTest {
     }
 
     @Test
+    void validateToken_nonDidWebSub_rejectedAsSecurityException() throws Exception {
+        when(config.getDid()).thenReturn(CONNECTOR_DID);
+        String didKey = "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK";
+        String jwt = createJwt(baseClaims().issuer(didKey).subject(didKey).build(), ecJwk);
+        when(didResolver.fetchDidDocumentCached(didKey)).thenThrow(new IllegalArgumentException("Invalid DID:web format"));
+
+        Exception ex = assertThrows(SecurityException.class, () -> service.validateToken(jwt));
+        assertTrue(ex.getMessage().contains("Failed to resolve DID"));
+        verify(auditPublisher).publishEvent(eq(DcpAuditEventType.TOKEN_VALIDATION_FAILED), anyString(), eq("common"),
+                isNull(), isNull(), isNull(), isNull(), any(Map.class));
+    }
+
+    @Test
     void validateToken_unsupportedKeyType_rejected() throws Exception {
         when(config.getDid()).thenReturn(CONNECTOR_DID);
         String jwt = createJwt(baseClaims().build(), ecJwk);

@@ -102,39 +102,45 @@ public class DidDocument implements Serializable {
         /**
          * Adds references to the verification methods listed under {@code authentication}.
          *
-         * @param refs verification method IDs (absolute DID URLs or relative fragments)
+         * @param refs verification method IDs (absolute DID URLs or relative fragments); null is ignored
          * @return this builder
          */
         @JsonProperty(AUTHENTICATION)
         @JsonDeserialize(using = VerificationRelationshipDeserializer.class)
         public Builder authentication(List<String> refs) {
-            document.authentication.addAll(refs);
+            if (refs != null) {
+                document.authentication.addAll(refs);
+            }
             return this;
         }
 
         /**
          * Adds references to the verification methods listed under {@code capabilityInvocation}.
          *
-         * @param refs verification method IDs (absolute DID URLs or relative fragments)
+         * @param refs verification method IDs (absolute DID URLs or relative fragments); null is ignored
          * @return this builder
          */
         @JsonProperty(CAPABILITY_INVOCATION)
         @JsonDeserialize(using = VerificationRelationshipDeserializer.class)
         public Builder capabilityInvocation(List<String> refs) {
-            document.capabilityInvocation.addAll(refs);
+            if (refs != null) {
+                document.capabilityInvocation.addAll(refs);
+            }
             return this;
         }
 
         /**
          * Adds references to the verification methods listed under {@code assertionMethod}.
          *
-         * @param refs verification method IDs (absolute DID URLs or relative fragments)
+         * @param refs verification method IDs (absolute DID URLs or relative fragments); null is ignored
          * @return this builder
          */
         @JsonProperty(ASSERTION_METHOD)
         @JsonDeserialize(using = VerificationRelationshipDeserializer.class)
         public Builder assertionMethod(List<String> refs) {
-            document.assertionMethod.addAll(refs);
+            if (refs != null) {
+                document.assertionMethod.addAll(refs);
+            }
             return this;
         }
 

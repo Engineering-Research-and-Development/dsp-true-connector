@@ -14,9 +14,12 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -163,5 +166,92 @@ class HttpDidResolverServiceTest {
 
         serve(null);
         assertNull(svc.resolvePublicKey(DID, "key-1", DidDocument.CAPABILITY_INVOCATION));
+    }
+
+    @Test
+    @DisplayName("a malformed JWK in another verification method does not break selection")
+    void malformedOtherJwkIgnored() throws DidResolutionException, IOException {
+        VerificationMethod broken = VerificationMethod.Builder.newInstance()
+                .id(VM_1).type("JsonWebKey2020").controller(DID)
+                .publicKeyJwk(Map.of("kty", "EC", "crv", "P-256"))
+                .build();
+        serve(DidDocument.Builder.newInstance().id(DID)
+                .verificationMethod(List.of(broken, vm(VM_2, key2)))
+                .capabilityInvocation(List.of(VM_1, VM_2))
+                .build());
+
+        assertEquals(key2.toPublicJWK(), svc.resolvePublicKey(DID, "key-2", DidDocument.CAPABILITY_INVOCATION));
+        assertEquals(key2.toPublicJWK(), svc.resolvePublicKey(DID, "jwk-kid-2", DidDocument.CAPABILITY_INVOCATION));
+    }
+
+    @Test
+    @DisplayName("when several methods match the kid, the one referenced by the relationship wins")
+    void relationshipReferencedCandidatePreferred() throws Exception {
+        ECKey sameKidOther = new ECKeyGenerator(Curve.P_256).keyID("shared").generate();
+        ECKey sameKidInvocation = new ECKeyGenerator(Curve.P_256).keyID("shared").generate();
+        serve(DidDocument.Builder.newInstance().id(DID)
+                .verificationMethod(List.of(vm(VM_1, sameKidOther), vm(VM_2, sameKidInvocation)))
+                .authentication(List.of(VM_1))
+                .capabilityInvocation(List.of(VM_2))
+                .build());
+
+        assertEquals(sameKidInvocation.toPublicJWK(),
+                svc.resolvePublicKey(DID, "shared", DidDocument.CAPABILITY_INVOCATION));
+    }
+
+    @Test
+    @DisplayName("relative verification method ids match absolute kids and references")
+    void relativeVerificationMethodIdMatches() throws DidResolutionException, IOException {
+        serve(DidDocument.Builder.newInstance().id(DID)
+                .verificationMethod(List.of(vm("#key-1", key1)))
+                .capabilityInvocation(List.of(VM_1))
+                .build());
+
+        assertEquals(key1.toPublicJWK(), svc.resolvePublicKey(DID, VM_1, DidDocument.CAPABILITY_INVOCATION));
+    }
+
+    @Test
+    @DisplayName("a relative reference does not match a method of another DID with the same fragment")
+    void relativeReferenceDoesNotMatchForeignMethod() throws DidResolutionException, IOException {
+        serve(DidDocument.Builder.newInstance().id(DID)
+                .verificationMethod(List.of(vm("did:web:other.example.com#key-1", key1)))
+                .capabilityInvocation(List.of("#key-1"))
+                .build());
+
+        assertNull(svc.resolvePublicKey(DID, "did:web:other.example.com#key-1", DidDocument.CAPABILITY_INVOCATION));
+    }
+
+    @Test
+    @DisplayName("an unknown kid refetches a cached document once, so a rotated key is accepted")
+    void unknownKidRefetchesRotatedDocument() throws Exception {
+        SimpleOkHttpRestClient httpClient = mock(SimpleOkHttpRestClient.class);
+        HttpDidResolverService resolver = new HttpDidResolverService(httpClient);
+        resolver.setMinRefreshIntervalSeconds(0);
+        DidDocument beforeRotation = DidDocument.Builder.newInstance().id(DID)
+                .verificationMethod(List.of(vm(VM_1, key1))).capabilityInvocation(List.of(VM_1)).build();
+        DidDocument afterRotation = DidDocument.Builder.newInstance().id(DID)
+                .verificationMethod(List.of(vm(VM_2, key2))).capabilityInvocation(List.of(VM_2)).build();
+        when(httpClient.executeAndDeserialize(anyString(), eq("GET"), any(), any(), eq(DidDocument.class)))
+                .thenReturn(beforeRotation, afterRotation);
+
+        assertNotNull(resolver.resolvePublicKey(DID, "key-1", DidDocument.CAPABILITY_INVOCATION));
+        assertEquals(key2.toPublicJWK(), resolver.resolvePublicKey(DID, "key-2", DidDocument.CAPABILITY_INVOCATION));
+        verify(httpClient, times(2)).executeAndDeserialize(anyString(), eq("GET"), any(), any(), eq(DidDocument.class));
+    }
+
+    @Test
+    @DisplayName("an unknown kid does not refetch a document fetched within the refresh interval")
+    void unknownKidRefetchIsRateLimited() throws Exception {
+        SimpleOkHttpRestClient httpClient = mock(SimpleOkHttpRestClient.class);
+        HttpDidResolverService resolver = new HttpDidResolverService(httpClient);
+        DidDocument document = DidDocument.Builder.newInstance().id(DID)
+                .verificationMethod(List.of(vm(VM_1, key1))).capabilityInvocation(List.of(VM_1)).build();
+        when(httpClient.executeAndDeserialize(anyString(), eq("GET"), any(), any(), eq(DidDocument.class)))
+                .thenReturn(document);
+
+        assertNotNull(resolver.resolvePublicKey(DID, "key-1", DidDocument.CAPABILITY_INVOCATION));
+        assertNull(resolver.resolvePublicKey(DID, "forged-kid", DidDocument.CAPABILITY_INVOCATION));
+        assertNull(resolver.resolvePublicKey(DID, "forged-kid", DidDocument.CAPABILITY_INVOCATION));
+        verify(httpClient, times(1)).executeAndDeserialize(anyString(), eq("GET"), any(), any(), eq(DidDocument.class));
     }
 }
