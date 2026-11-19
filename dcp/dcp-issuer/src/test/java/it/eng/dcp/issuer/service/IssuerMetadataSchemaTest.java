@@ -14,11 +14,19 @@ import it.eng.dcp.issuer.config.CredentialMetadataConfigLoader;
 import it.eng.dcp.issuer.config.IssuerProperties;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -63,15 +71,35 @@ class IssuerMetadataSchemaTest {
         return issuerMetadataSchema().validate(json);
     }
 
-    @Test
-    @DisplayName("Metadata built from the shipped configuration is valid against the published schema")
-    void shippedConfigurationIsSchemaValid() throws Exception {
-        CredentialMetadataService service = serviceFor(new CredentialMetadataConfigLoader().credentialMetadataConfig());
+    /**
+     * Every shipped copy of the credential metadata configuration, relative to the dcp-issuer module.
+     *
+     * @return the file paths
+     */
+    static Stream<String> shippedConfigurations() {
+        return Stream.of(
+                "src/main/resources/credential-metadata-configuration.properties",
+                "src/test/resources/credential-metadata-configuration.properties",
+                "../dcp-e2e-tests/src/test/resources/credential-metadata-configuration.properties",
+                "../../ci/docker/issuer/config/credential-metadata-configuration.properties");
+    }
+
+    @ParameterizedTest
+    @MethodSource("shippedConfigurations")
+    @DisplayName("Metadata built from each shipped configuration passes startup validation and the published schema")
+    void shippedConfigurationIsSchemaValid(String path) throws Exception {
+        Properties properties = new Properties();
+        try (InputStream in = Files.newInputStream(Path.of(path))) {
+            properties.load(in);
+        }
+        CredentialMetadataService service = serviceFor(new CredentialMetadataConfigLoader().parse(properties));
         assertDoesNotThrow(service::validateSupportedCredentials);
 
-        Set<ValidationMessage> errors = validate(service.buildIssuerMetadata());
+        IssuerMetadata metadata = service.buildIssuerMetadata();
+        Set<ValidationMessage> errors = validate(metadata);
 
-        assertTrue(errors.isEmpty(), () -> "Schema violations: " + errors);
+        assertFalse(metadata.getCredentialsSupported().isEmpty(), path + " defines no credentials");
+        assertTrue(errors.isEmpty(), () -> path + ": schema violations " + errors);
     }
 
     @Test

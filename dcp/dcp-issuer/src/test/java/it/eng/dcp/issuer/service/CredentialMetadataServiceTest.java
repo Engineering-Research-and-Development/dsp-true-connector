@@ -152,7 +152,7 @@ class CredentialMetadataServiceTest {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> metadataService.validateSupportedCredentials());
 
-        assertTrue(exception.getMessage().contains("id-1 is missing credentialType"));
+        assertTrue(exception.getMessage().contains("dcp.credentials.supported[0] is missing credentialType"));
     }
 
     @Test
@@ -166,7 +166,30 @@ class CredentialMetadataServiceTest {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> metadataService.validateSupportedCredentials());
 
-        assertTrue(exception.getMessage().contains("id-2 is missing credentialSchema, offerReason"));
+        assertTrue(exception.getMessage().contains("dcp.credentials.supported[0] (MembershipCredential) is missing credentialSchema, offerReason"));
+    }
+
+    @Test
+    @DisplayName("Startup validation rejects an entry without id")
+    void validateSupportedCredentials_missingId_throws() {
+        CredentialMetadataConfig.CredentialConfig invalidConfig = completeConfig(" ");
+        when(credentialMetadataConfig.getSupported()).thenReturn(List.of(invalidConfig));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> metadataService.validateSupportedCredentials());
+
+        assertTrue(exception.getMessage().contains("dcp.credentials.supported[0] (MembershipCredential) is missing id"));
+    }
+
+    @Test
+    @DisplayName("Startup validation rejects two entries with the same id")
+    void validateSupportedCredentials_duplicateId_throws() {
+        when(credentialMetadataConfig.getSupported()).thenReturn(List.of(completeConfig("same"), completeConfig("same")));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> metadataService.validateSupportedCredentials());
+
+        assertTrue(exception.getMessage().contains("dcp.credentials.supported[1] (MembershipCredential) repeats id same"));
     }
 
     @Test

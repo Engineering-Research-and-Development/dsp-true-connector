@@ -22,7 +22,7 @@ Returns an `IssuerMetadata` object containing:
 
 ### Configuration-Based Metadata (Recommended)
 
-You can configure supported credentials using application properties. This provides flexibility to manage credentials without code changes.
+Supported credentials are configured in `credential-metadata-configuration.properties`, which `CredentialMetadataConfigLoader` reads from the issuer's classpath (`dcp/dcp-issuer/src/main/resources`). It is not read from `application.properties`, nor from a file mounted at `/config`.
 
 #### Basic Configuration
 
@@ -58,13 +58,13 @@ dcp.credentials.supported[0].profile=vc11-sl2021/jwt
 
 ### Configuration Fields
 
-The published IssuerMetadata schema requires five properties on every `credentialsSupported` entry: `credentialType`, `credentialSchema`, `offerReason`, `bindingMethods` and `profile`. The issuer checks every configured entry at startup and refuses to start if one misses `credentialType`, `credentialSchema` or `offerReason`. `bindingMethods` and `profile` have defaults.
+The published IssuerMetadata schema requires five properties on every `credentialsSupported` entry: `credentialType`, `credentialSchema`, `offerReason`, `bindingMethods` and `profile`. The issuer checks every configured entry at startup and refuses to start if one misses `id`, `credentialType`, `credentialSchema` or `offerReason`, or if two entries share an `id`. `bindingMethods` and `profile` have defaults.
 
 #### Required Fields
 - **credentialType**: The type of credential (e.g., "MembershipCredential", "CompanyCredential")
 - **credentialSchema**: URL to the JSON schema for this credential type
 - **offerReason**: Reason for offering (e.g., "issuance", "reissue", "renewal")
-- **id**: Stable, unique identifier that holders use to request the credential. Configure it explicitly: without one, a random UUID is generated each time the metadata is built, so the credential cannot be requested reliably.
+- **id**: Stable, unique identifier that holders use to request the credential. The issuer refuses to start if an entry has no `id`, or if two entries share one.
 
 #### Fields with defaults
 - **bindingMethods**: Array of supported DID methods (defaults to ["did:web"])
@@ -90,13 +90,12 @@ dcp.credentials.supported[0].issuancePolicy.input_descriptors[0].constraints.fie
 
 Profiles determine the format and cryptographic suite used for credentials:
 
-- **vc11-sl2021/jwt**: JWT format with SL2021 proof suite
-- **vc11-sl2021/jsonld**: JSON-LD format with SL2021 proof suite
+- **vc11-sl2021/jwt**: VC 1.1 JWT with StatusList2021
+- **vc20-bssl/jwt**: VC 2.0 JWT with BitstringStatusList
 
-The profile can be set:
-1. Per credential: `dcp.credentials.supported[0].profile=vc11-sl2021/jwt`
-2. Globally (used as default): `dcp.supportedProfiles[0]=VC11_SL2021_JWT`
-3. Fallback: If not configured, defaults to "vc11-sl2021/jwt"
+Set the profile per credential: `dcp.credentials.supported[0].profile=vc11-sl2021/jwt`. This is the recommended way, and every shipped configuration does it.
+
+If an entry has no profile, the metadata advertises the first value of the issuer property `dcp.supportedProfiles` (from `application.properties`; the same key in `credential-metadata-configuration.properties` is ignored). That value is emitted as written, so it must be a profile alias such as `vc20-bssl/jwt`, not an enum name such as `VC20_BSSL_JWT`. If that property is not set either, the metadata advertises `vc20-bssl/jwt`. Issuance of an entry without a profile always uses `vc20-bssl/jwt`, so configure the profile explicitly to keep the two consistent.
 
 ## Default Behavior
 
@@ -212,7 +211,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ### Minimal Migration Example
 
-Add this to your `application.properties`:
+Add this to `credential-metadata-configuration.properties`:
 
 ```properties
 # Required: Configure issuer DID
@@ -226,7 +225,7 @@ dcp.credentials.supported[0].offerReason=issuance
 dcp.credentials.supported[0].profile=vc11-sl2021/jwt
 ```
 
-If an entry misses `credentialType`, `credentialSchema` or `offerReason`, the issuer fails at startup with a message that names the entry and the missing properties.
+If an entry misses `id`, `credentialType`, `credentialSchema` or `offerReason`, or repeats another entry's `id`, the issuer fails at startup with a message that names the entry (for example `dcp.credentials.supported[2]`) and the problem.
 
 ## Best Practices
 

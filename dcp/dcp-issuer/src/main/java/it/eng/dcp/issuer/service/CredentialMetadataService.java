@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.UUID;
 
 /**
@@ -33,19 +35,29 @@ public class CredentialMetadataService {
     }
 
     /**
-     * Checks at startup that every configured credential yields a {@code credentialsSupported} entry with
-     * the five properties the IssuerMetadata schema requires: {@code credentialType}, {@code credentialSchema},
-     * {@code offerReason}, {@code bindingMethods} and {@code profile}. {@code bindingMethods} and
-     * {@code profile} have defaults; the others must be configured.
+     * Checks at startup that every configured credential yields a {@code credentialsSupported} entry that
+     * holders can request and that the IssuerMetadata schema accepts: a unique, stable {@code id}, and the
+     * five required properties {@code credentialType}, {@code credentialSchema}, {@code offerReason},
+     * {@code bindingMethods} and {@code profile}. {@code bindingMethods} and {@code profile} have defaults;
+     * the others must be configured.
      *
-     * @throws IllegalStateException if an entry misses a required property
+     * @throws IllegalStateException if an entry misses a required property or two entries share an id
      */
     @PostConstruct
     public void validateSupportedCredentials() {
         List<String> problems = new ArrayList<>();
-        for (CredentialMetadataConfig.CredentialConfig config : credentialMetadataConfig.getSupported()) {
-            String name = config.getId() != null ? config.getId() : String.valueOf(config.getCredentialType());
+        Set<String> ids = new HashSet<>();
+        List<CredentialMetadataConfig.CredentialConfig> supported = credentialMetadataConfig.getSupported();
+        for (int i = 0; i < supported.size(); i++) {
+            CredentialMetadataConfig.CredentialConfig config = supported.get(i);
+            String name = CONFIG_PREFIX + "[" + i + "]"
+                    + (isBlank(config.getCredentialType()) ? "" : " (" + config.getCredentialType() + ")");
             List<String> missing = new ArrayList<>();
+            if (isBlank(config.getId())) {
+                missing.add("id");
+            } else if (!ids.add(config.getId())) {
+                problems.add(name + " repeats id " + config.getId());
+            }
             if (isBlank(config.getCredentialType())) {
                 missing.add("credentialType");
             }
@@ -60,8 +72,7 @@ public class CredentialMetadataService {
             }
         }
         if (!problems.isEmpty()) {
-            throw new IllegalStateException("Invalid supported credential configuration (" + CONFIG_PREFIX + "): "
-                    + String.join("; ", problems));
+            throw new IllegalStateException("Invalid supported credential configuration: " + String.join("; ", problems));
         }
     }
 
@@ -95,7 +106,10 @@ public class CredentialMetadataService {
         }
 
         // credentialsSupported is required by the IssuerMetadata schema; an empty array is valid
-        if (credentialObjects.isEmpty()) {
+        if (credentialObjects.isEmpty() && !credentialMetadataConfig.getSupported().isEmpty()) {
+            log.error("All {} configured credentials failed to build; issuer metadata lists none",
+                    credentialMetadataConfig.getSupported().size());
+        } else if (credentialObjects.isEmpty()) {
             log.warn("Issuer metadata has no supported credentials");
         }
 

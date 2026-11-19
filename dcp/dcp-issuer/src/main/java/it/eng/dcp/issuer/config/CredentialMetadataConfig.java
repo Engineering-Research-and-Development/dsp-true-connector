@@ -39,7 +39,7 @@ public class CredentialMetadataConfig {
         private String credentialType;
 
         /**
-         * Optional reason for offering this credential (e.g., "reissue", "new").
+         * Reason for offering this credential (e.g., "issuance", "reissue"); required by the IssuerMetadata schema.
          */
         private String offerReason;
 
