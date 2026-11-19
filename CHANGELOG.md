@@ -58,6 +58,13 @@ Each realm has its own users, roles, and clients. The connector trusts only the 
 - Keycloak users no longer resolve to a `null` tenant, which made them see data of all tenants (cross-tenant visibility); the tenant now comes from `tenant_id`.
 - `FieldEncryptionService` no longer logs the plaintext at debug level.
 - Rejected Keycloak tokens are no longer logged at ERROR with the exception message; the log has the exception class and error codes only (DEBUG), and a realm role violation logs a WARN with the request path.
+- DCP issuer metadata now matches the published IssuerMetadata schema (#414).
+  - `credentialsSupported` is always emitted. An empty configuration yields `[]` instead of HTTP 500.
+  - Every entry carries the five required properties: `credentialType`, `credentialSchema`, `offerReason`, `bindingMethods` and `profile`. `offerReason` was configured but never emitted, because `IssuerMetadata.CredentialObject` had no field for it.
+  - The issuer refuses to start when a configured entry misses `credentialType`, `credentialSchema` or `offerReason`.
+  - Absent optional properties such as `issuancePolicy` are omitted instead of sent as `null`.
+  - The shipped `credential-metadata-configuration.properties` files fill the missing values: an `offerReason` for MembershipCredential, and an `id`, `offerReason`, `bindingMethods` and `profile` for OrganizationCredential.
+  - A test validates the metadata against the published schema, using the test-scoped dependency `com.networknt:json-schema-validator` 1.5.8, which is managed in the root `pom.xml`.
 - DCP issuer documentation (`dcp/dcp-issuer/API.md`, `dcp/doc/quick_start.md`): approve, reject and key rotation are documented under the local administration API path `/api/issuer/...` (`/api/issuer/key/rotate`), with a note that authentication is not enforced yet (#405). `holderPid` is described as the Holder-side request ID (DCP §6.4.1), and credential request examples include `@context` and `type`. The non-existent `POST /issuer/requests` alias is removed, and the rejection body key is `reason` (not `rejectionReason`). Documentation only.
 
 ### Removed

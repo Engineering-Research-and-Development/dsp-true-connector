@@ -4,6 +4,7 @@ import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig;
 import it.eng.dcp.issuer.config.IssuerProperties;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,8 @@ import java.util.UUID;
 @Slf4j
 public class CredentialMetadataService {
 
+    private static final String CONFIG_PREFIX = "dcp.credentials.supported";
+
     private final IssuerProperties issuerProperties;
     private final CredentialMetadataConfig credentialMetadataConfig;
 
@@ -27,6 +30,43 @@ public class CredentialMetadataService {
                                     CredentialMetadataConfig credentialMetadataConfig) {
         this.issuerProperties = issuerProperties;
         this.credentialMetadataConfig = credentialMetadataConfig;
+    }
+
+    /**
+     * Checks at startup that every configured credential yields a {@code credentialsSupported} entry with
+     * the five properties the IssuerMetadata schema requires: {@code credentialType}, {@code credentialSchema},
+     * {@code offerReason}, {@code bindingMethods} and {@code profile}. {@code bindingMethods} and
+     * {@code profile} have defaults; the others must be configured.
+     *
+     * @throws IllegalStateException if an entry misses a required property
+     */
+    @PostConstruct
+    public void validateSupportedCredentials() {
+        List<String> problems = new ArrayList<>();
+        for (CredentialMetadataConfig.CredentialConfig config : credentialMetadataConfig.getSupported()) {
+            String name = config.getId() != null ? config.getId() : String.valueOf(config.getCredentialType());
+            List<String> missing = new ArrayList<>();
+            if (isBlank(config.getCredentialType())) {
+                missing.add("credentialType");
+            }
+            if (isBlank(config.getCredentialSchema())) {
+                missing.add("credentialSchema");
+            }
+            if (isBlank(config.getOfferReason())) {
+                missing.add("offerReason");
+            }
+            if (!missing.isEmpty()) {
+                problems.add(name + " is missing " + String.join(", ", missing));
+            }
+        }
+        if (!problems.isEmpty()) {
+            throw new IllegalStateException("Invalid supported credential configuration (" + CONFIG_PREFIX + "): "
+                    + String.join("; ", problems));
+        }
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     /**
@@ -39,12 +79,6 @@ public class CredentialMetadataService {
         if (issuerDid == null || issuerDid.isBlank()) {
             issuerDid = "did:web:issuer-url";
             log.warn("No issuer DID configured, using default: {}", issuerDid);
-        }
-
-        if (credentialMetadataConfig.getSupported().isEmpty()) {
-            log.error("No credentials configured in issuer.credentials.supported - cannot build issuer metadata");
-            throw new IllegalStateException(
-                "No credentials configured. Please configure at least one credential in issuer.credentials.supported properties");
         }
 
         log.info("Building metadata for {} configured credentials", credentialMetadataConfig.getSupported().size());
@@ -60,10 +94,9 @@ public class CredentialMetadataService {
             }
         }
 
+        // credentialsSupported is required by the IssuerMetadata schema; an empty array is valid
         if (credentialObjects.isEmpty()) {
-            log.error("All configured credentials failed to build - no valid credential objects available");
-            throw new IllegalStateException(
-                "Failed to build any valid credentials from configuration. Check logs for details.");
+            log.warn("Issuer metadata has no supported credentials");
         }
 
         return IssuerMetadata.Builder.newInstance()
@@ -95,6 +128,10 @@ public class CredentialMetadataService {
 
         if (config.getCredentialSchema() != null && !config.getCredentialSchema().isBlank()) {
             builder.credentialSchema(config.getCredentialSchema());
+        }
+
+        if (config.getOfferReason() != null && !config.getOfferReason().isBlank()) {
+            builder.offerReason(config.getOfferReason());
         }
 
         if (config.getBindingMethods() != null && !config.getBindingMethods().isEmpty()) {

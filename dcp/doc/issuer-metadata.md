@@ -35,8 +35,10 @@ dcp.supportedProfiles[0]=VC11_SL2021_JWT
 dcp.supportedProfiles[1]=VC11_SL2021_JSONLD
 
 # Add a credential
+dcp.credentials.supported[0].id=550e8400-e29b-41d4-a716-446655440000
 dcp.credentials.supported[0].credentialType=MembershipCredential
 dcp.credentials.supported[0].credentialSchema=https://example.com/schemas/membership-credential.json
+dcp.credentials.supported[0].offerReason=issuance
 dcp.credentials.supported[0].profile=vc11-sl2021/jwt
 ```
 
@@ -56,16 +58,20 @@ dcp.credentials.supported[0].profile=vc11-sl2021/jwt
 
 ### Configuration Fields
 
+The published IssuerMetadata schema requires five properties on every `credentialsSupported` entry: `credentialType`, `credentialSchema`, `offerReason`, `bindingMethods` and `profile`. The issuer checks every configured entry at startup and refuses to start if one misses `credentialType`, `credentialSchema` or `offerReason`. `bindingMethods` and `profile` have defaults.
+
 #### Required Fields
 - **credentialType**: The type of credential (e.g., "MembershipCredential", "CompanyCredential")
+- **credentialSchema**: URL to the JSON schema for this credential type
+- **offerReason**: Reason for offering (e.g., "issuance", "reissue", "renewal")
+- **id**: Stable, unique identifier that holders use to request the credential. Configure it explicitly: without one, a random UUID is generated each time the metadata is built, so the credential cannot be requested reliably.
+
+#### Fields with defaults
+- **bindingMethods**: Array of supported DID methods (defaults to ["did:web"])
+- **profile**: Credential profile format (defaults to the first supported profile, see below). Configure it explicitly, so the advertised profile matches the issued one.
 
 #### Optional Fields
-- **id**: Unique identifier for this credential (auto-generated UUID if not provided)
 - **type**: Type of the credential object (defaults to "CredentialObject")
-- **offerReason**: Reason for offering (e.g., "new", "reissue", "renewal")
-- **credentialSchema**: URL to the JSON schema for this credential type
-- **bindingMethods**: Array of supported DID methods (defaults to ["did:web"])
-- **profile**: Credential profile format (defaults to first supported profile or "vc11-sl2021/jwt")
 - **issuancePolicy**: Policy requirements for issuing this credential (see below)
 
 ### Issuance Policy Configuration
@@ -94,13 +100,7 @@ The profile can be set:
 
 ## Default Behavior
 
-**Credentials must be configured** via `dcp.credentials.supported` properties. If no credentials are configured, the endpoint will return an HTTP 500 error with the message:
-
-```
-No credentials configured. Please configure at least one credential in dcp.credentials.supported properties
-```
-
-This ensures that issuers explicitly define which credentials they support.
+If no credentials are configured in `dcp.credentials.supported`, the endpoint returns the metadata with an empty `"credentialsSupported": []`. The schema requires the property and allows an empty array. No credential can be requested from such an issuer.
 
 ## Example Response
 
@@ -202,11 +202,11 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ## Migration from Hardcoded Values
 
-**Important:** If you were using the previous hardcoded implementation, you now **must configure credentials**.
+**Important:** If you were using the previous hardcoded implementation, configure the credentials you issue. Without any, the metadata lists none.
 
 ### Migration Steps:
 
-1. **ACTION REQUIRED**: Add at least one credential to `dcp.credentials.supported` in your properties file
+1. **ACTION REQUIRED**: Add your credentials to `dcp.credentials.supported` in your properties file, each with `id`, `credentialType`, `credentialSchema` and `offerReason`
 2. **Recommended**: Set `dcp.connector-did` to your actual issuer DID
 3. **Test**: Verify the `/issuer/metadata` endpoint returns your configured credentials
 
@@ -218,13 +218,15 @@ Add this to your `application.properties`:
 # Required: Configure issuer DID
 dcp.connector-did=did:web:your-domain.com
 
-# Required: Configure at least one credential
+# Configure each credential you issue
+dcp.credentials.supported[0].id=550e8400-e29b-41d4-a716-446655440000
 dcp.credentials.supported[0].credentialType=MembershipCredential
 dcp.credentials.supported[0].credentialSchema=https://your-domain.com/schemas/membership.json
+dcp.credentials.supported[0].offerReason=issuance
 dcp.credentials.supported[0].profile=vc11-sl2021/jwt
 ```
 
-If credentials are not configured, the endpoint will return HTTP 500 with an error message.
+If an entry misses `credentialType`, `credentialSchema` or `offerReason`, the issuer fails at startup with a message that names the entry and the missing properties.
 
 ## Best Practices
 
