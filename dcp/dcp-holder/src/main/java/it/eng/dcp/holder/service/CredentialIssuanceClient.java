@@ -74,9 +74,9 @@ public class CredentialIssuanceClient {
             throw new IllegalStateException("dcp.issuer.location is not set; configure the issuer DID, "
                     + "for example did:web:issuer.example.com");
         }
-        if (!issuerDid.startsWith("did:")) {
-            throw new IllegalStateException("dcp.issuer.location must be the issuer DID (for example "
-                    + "did:web:issuer.example.com), not a URL; got: " + issuerDid
+        if (!issuerDid.startsWith("did:web:")) {
+            throw new IllegalStateException("dcp.issuer.location must be the issuer's did:web DID (for example "
+                    + "did:web:issuer.example.com), not a URL or another DID method; got: " + issuerDid
                     + ". The Issuer Service URL is discovered from the issuer's DID document.");
         }
     }
@@ -153,8 +153,8 @@ public class CredentialIssuanceClient {
             log.debug("No token could be created for issuer audience {}: {}", audience, e.getMessage());
         }
 
-        // Build headers with authorization if token is available
-        Map<String, String> headers = Map.of(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+        // Send Authorization only when a token could be created (never "Bearer null")
+        Map<String, String> headers = token != null ? Map.of(HttpHeaders.AUTHORIZATION, "Bearer " + token) : Map.of();
 
         try {
             return rest.executeAndDeserialize(metadataUrl, "GET", headers, null, IssuerMetadata.class);

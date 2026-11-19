@@ -43,7 +43,7 @@ dcp.service-entries[0].type=CredentialService
 dcp.service-entries[0].endpoint-path=/dcp
 
 # --- Trusted issuers (required for credential validation) ---
-dcp.trusted-issuers.MembershipCredential=did:web:localhost%3A8084
+dcp.trusted-issuers.MembershipCredential=did:web:localhost%3A8084:issuer
 
 # --- Spring / MongoDB (required by dcp-holder) ---
 # Note: server.port belongs to the host application, not this library.
@@ -310,8 +310,8 @@ dcp.service-entries[0].endpoint-path=/dcp
 # ============================================================
 # Trusted Issuers
 # ============================================================
-dcp.trusted-issuers.MembershipCredential=did:web:localhost%3A8084
-dcp.trusted-issuers.VerifiableCredential=did:web:localhost%3A8084
+dcp.trusted-issuers.MembershipCredential=did:web:localhost%3A8084:issuer
+dcp.trusted-issuers.VerifiableCredential=did:web:localhost%3A8084:issuer
 
 # ============================================================
 # Issuer Location (holder will request credentials from here)

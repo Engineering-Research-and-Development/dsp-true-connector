@@ -132,7 +132,18 @@ class CredentialIssuanceClientTest {
 
         IllegalStateException ex = assertThrows(IllegalStateException.class, () -> client.discoverIssuerService());
 
-        assertTrue(ex.getMessage().contains("dcp.issuer.location must be the issuer DID"));
+        assertTrue(ex.getMessage().contains("dcp.issuer.location must be the issuer's did:web DID"));
+        verify(didResolverService, never()).fetchDidDocumentCached(anyString());
+    }
+
+    @DisplayName("discoverIssuerService refuses a DID of another method, since only did:web is resolved")
+    @Test
+    void discoverIssuerService_Throws_WhenIssuerLocationIsNotDidWeb() throws Exception {
+        ReflectionTestUtils.setField(client, "issuerDid", "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK");
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> client.discoverIssuerService());
+
+        assertTrue(ex.getMessage().contains("did:web DID"));
         verify(didResolverService, never()).fetchDidDocumentCached(anyString());
     }
 
@@ -209,23 +220,23 @@ class CredentialIssuanceClientTest {
                 exception.getMessage());
     }
 
-    @DisplayName("getIssuerMetadata sends 'Bearer null' header when token is null")
+    @DisplayName("getIssuerMetadata sends no Authorization header when no token could be created")
     @Test
-    void getIssuerMetadata_SendsBearerNullHeader_WhenTokenNull() throws Exception {
+    void getIssuerMetadata_SendsNoAuthorizationHeader_WhenTokenNull() throws Exception {
         var metadataUrl = "https://issuer.example.com/metadata";
         var metadata = createValidIssuerMetadata();
 
         when(tokenService.createAndSignToken(any(), isNull(), any())).thenReturn(null);
         when(restClient.executeAndDeserialize(
                 eq(metadataUrl), eq("GET"),
-                eq(Map.of("Authorization", "Bearer null")),
+                eq(Map.of()),
                 isNull(), eq(IssuerMetadata.class)
         )).thenReturn(metadata);
 
         assertNotNull(client.getIssuerMetadata(metadataUrl));
         verify(restClient).executeAndDeserialize(
                 eq(metadataUrl), eq("GET"),
-                eq(Map.of("Authorization", "Bearer null")),
+                eq(Map.of()),
                 isNull(), eq(IssuerMetadata.class));
     }
 

@@ -864,8 +864,7 @@ class DcpCredentialFlowTestE2E extends DcpTestEnvironment {
     void holderCredentialRequestApi_discoversIssuerServiceFromIssuerDid() {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-        // MembershipCredential id from the issuer's credential-metadata-configuration.properties
-        HttpEntity<List<String>> request = new HttpEntity<>(List.of("550e8400-e29b-41d4-a716-446655440000"), headers);
+        HttpEntity<List<String>> request = new HttpEntity<>(List.of(getAnyCredentialId()), headers);
 
         ResponseEntity<Map<String, Object>> response = getHolderClient().exchange(
                 "/api/v1/dcp/credentials/request",
@@ -878,5 +877,8 @@ class DcpCredentialFlowTestE2E extends DcpTestEnvironment {
         String statusUrl = String.valueOf(response.getBody().get("statusUrl"));
         assertTrue(statusUrl.contains("/issuer/requests/"), () -> "Unexpected status URL: " + statusUrl);
         log.info("Holder credential request created at the issuer, status URL: {}", statusUrl);
+
+        // Do not leave a pending request behind in the shared issuer database
+        rejectRequest(statusUrl.substring(statusUrl.lastIndexOf('/') + 1), "e2e cleanup");
     }
 }
