@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import it.eng.dcp.common.serializer.InstantDeserializer;
 import it.eng.dcp.common.serializer.InstantSerializer;
+import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -23,6 +24,7 @@ class CredentialOfferMessageTest {
     @DisplayName("Builder constructs CredentialOfferMessage and JSON roundtrip preserves fields")
     void builderConstructsOfferAndRoundtripPreservesFields() throws Exception {
         CredentialOfferMessage.CredentialObject offered = CredentialOfferMessage.CredentialObject.Builder.newInstance()
+                .id("proof-credential-1")
                 .credentialType("ProofCredential")
                 .issuancePolicy(Map.of("pol", true))
                 .build();
@@ -168,5 +170,33 @@ class CredentialOfferMessageTest {
         } catch (Exception e) {
             fail("Deserialization failed: " + e.getMessage(), e);
         }
+    }
+
+    @Test
+    @DisplayName("Offered credential without id is rejected")
+    void offeredCredentialWithoutIdRejected() {
+        ValidationException ex = assertThrows(ValidationException.class, () ->
+                CredentialOfferMessage.CredentialObject.Builder.newInstance()
+                        .credentialType("MembershipCredential")
+                        .build());
+
+        assertTrue(ex.getMessage().contains("id"));
+    }
+
+    @Test
+    @DisplayName("Offer JSON with a credential lacking id fails to deserialize")
+    void offerJsonWithoutCredentialIdRejected() {
+        String json = """
+                {
+                    "@context": ["https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"],
+                    "type": "CredentialOfferMessage",
+                    "issuer": "did:web:localhost%3A8084:issuer",
+                    "credentials": [ { "credentialType": "MembershipCredential" } ]
+                }
+                """;
+
+        Exception ex = assertThrows(Exception.class, () -> new ObjectMapper().readValue(json, CredentialOfferMessage.class));
+
+        assertTrue(ex.getMessage().contains("id"));
     }
 }

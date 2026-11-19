@@ -213,7 +213,6 @@ public class CredentialDeliveryService {
                     .requestId(issuerPid)
                     .status("REJECTED")
                     .rejectionReason(rejectionReason)
-                    .credentials(List.of(CredentialMessage.CredentialContainer.Builder.newInstance().credentialType("No type").format("JWT").build()))
                     .build();
 
             String token = tokenService.createAndSignToken(holderDid, null, config);
