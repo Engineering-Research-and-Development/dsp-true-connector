@@ -58,7 +58,6 @@ public class SelfIssuedIdTokenService {
      * Clock skew in seconds allowed on {@code nbf}, {@code exp} and {@code iat}; a used {@code jti} is
      * remembered until {@code exp} plus this skew. Property {@code dcp.clock-skew-seconds}, default 120.
      */
-    @Value("${dcp.clock-skew-seconds:" + DEFAULT_CLOCK_SKEW_SECONDS + "}")
     private long clockSkewSeconds = DEFAULT_CLOCK_SKEW_SECONDS;
 
     // Test hook to override the signing key with a specific EC JWK (used in unit tests)
@@ -78,24 +77,6 @@ public class SelfIssuedIdTokenService {
         this.keyService = keyService;
         this.config = config;
         this.auditPublisher = auditPublisher;
-    }
-
-    /**
-     * Test-only setter to override the signing key.
-     * 
-     * @param key The EC key to use for signing instead of the default from KeyService
-     */
-    void setOverrideSigningKey(ECKey key) {
-        this.overrideSigningKey = key;
-    }
-
-    /**
-     * Test-only setter for the clock skew.
-     *
-     * @param clockSkewSeconds the allowed clock skew in seconds
-     */
-    void setClockSkewSeconds(long clockSkewSeconds) {
-        this.clockSkewSeconds = clockSkewSeconds;
     }
 
     /**
@@ -487,5 +468,29 @@ public class SelfIssuedIdTokenService {
     public String createStsCompatibleToken(String audienceDid, DidDocumentConfig config) {
         log.warn("Creating STS-compatible token WITHOUT scopes - consider specifying scopes for security");
         return createStsCompatibleToken(audienceDid, config, new String[0]);
+    }
+
+    /**
+     * Sets the clock skew from {@code dcp.clock-skew-seconds}.
+     *
+     * @param clockSkewSeconds the allowed clock skew in seconds, at least 0
+     * @throws IllegalArgumentException if the value is negative
+     */
+    @Value("${dcp.clock-skew-seconds:" + DEFAULT_CLOCK_SKEW_SECONDS + "}")
+    void setClockSkewSeconds(long clockSkewSeconds) {
+        if (clockSkewSeconds < 0) {
+            throw new IllegalArgumentException(
+                    "dcp.clock-skew-seconds must not be negative, but was " + clockSkewSeconds);
+        }
+        this.clockSkewSeconds = clockSkewSeconds;
+    }
+
+    /**
+     * Test-only setter to override the signing key.
+     *
+     * @param key The EC key to use for signing instead of the default from KeyService
+     */
+    void setOverrideSigningKey(ECKey key) {
+        this.overrideSigningKey = key;
     }
 }

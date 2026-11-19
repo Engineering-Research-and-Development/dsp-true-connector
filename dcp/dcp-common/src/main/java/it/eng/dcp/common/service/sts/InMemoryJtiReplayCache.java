@@ -24,12 +24,13 @@ public class InMemoryJtiReplayCache implements JtiReplayCache {
         Objects.requireNonNull(expiry, "expiry");
         Instant now = Instant.now();
         // purge expired entries lazily
-        store.entrySet().removeIf(e -> e.getValue().isBefore(now) || e.getValue().equals(now));
+        // An entry is still valid at its expiry instant itself, as validation accepts a token at exp + skew
+        store.entrySet().removeIf(e -> e.getValue().isBefore(now));
 
         Instant prev = store.putIfAbsent(jti, expiry);
         if (prev != null) {
             // if previous expiry is in future, it's a replay
-            if (prev.isAfter(now)) {
+            if (!prev.isBefore(now)) {
                 throw new IllegalStateException("Replay detected for jti: " + jti);
             } else {
                 // previous entry expired, replace

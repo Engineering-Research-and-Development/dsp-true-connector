@@ -16,6 +16,7 @@ import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -248,6 +249,14 @@ class SelfIssuedIdTokenServiceTest {
     }
 
     @Test
+    @DisplayName("a negative clock skew is refused")
+    void setClockSkewSeconds_negative_rejected() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> service.setClockSkewSeconds(-30));
+        assertTrue(ex.getMessage().contains("dcp.clock-skew-seconds"));
+    }
+
+    @Test
+    @DisplayName("jti is kept in the replay cache until exp plus the clock skew")
     void validateToken_jtiKeptUntilExpPlusClockSkew() throws Exception {
         when(config.getDid()).thenReturn(CONNECTOR_DID);
         JWTClaimsSet claims = baseClaims().build();
@@ -265,6 +274,7 @@ class SelfIssuedIdTokenServiceTest {
     }
 
     @Test
+    @DisplayName("a configured clock skew is used for the jti expiry")
     void validateToken_configuredClockSkewUsedForJtiExpiry() throws Exception {
         when(config.getDid()).thenReturn(CONNECTOR_DID);
         service.setClockSkewSeconds(30);
@@ -280,6 +290,7 @@ class SelfIssuedIdTokenServiceTest {
     }
 
     @Test
+    @DisplayName("a replay after exp but inside the clock skew is rejected")
     void validateToken_replayAfterExpInsideClockSkew_rejected() throws Exception {
         // Real cache: the jti must outlive exp for as long as the token is still accepted
         SelfIssuedIdTokenService realCacheService = new SelfIssuedIdTokenService(
