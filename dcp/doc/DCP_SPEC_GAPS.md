@@ -26,8 +26,8 @@ Each item below was re-checked against the code after merging `develop` (Keycloa
 | Implementation gaps | Status lookup bound to original client | Open | `IssuerService.getRequestByIssuerPid()` has no owner check. |
 | Implementation gaps | VP/VC proof validation | Open | `PresentationValidationServiceImpl` (module `dcp-holder`) has no proof verification. |
 | Implementation gaps | `presentationDefinition` handling | Open | Definition-only queries still accepted; no `501`, no `presentationSubmission`. |
-| Implementation gaps | Optional `rejectionReason` | Open | `CredentialMessage` builder still requires it for `REJECTED`. |
-| Implementation gaps | Required offered credential `id` | Open | `CredentialOfferMessage.CredentialObject.id` has no `@NotNull`; `build()` does not reject a missing ID. |
+| Implementation gaps | Optional `rejectionReason` | **Done** (PR #433) | `CredentialMessage` accepts `REJECTED` without a reason; an absent reason is omitted from JSON. |
+| Implementation gaps | Required offered credential `id` | **Done** (PR #433) | `CredentialOfferMessage.CredentialObject.id` is `@NotNull`; `build()` rejects a missing ID. |
 | Implementation gaps | HTTPS-only endpoints | Open | `DidDocumentConfig` still defaults protocol to `http`. |
 | Review: security | Issuer admin API unauthenticated | Open | No Spring Security dependency or filter chain in `dcp-issuer`. |
 | Review: security | `/api/dev/token/**` public | Open | Still `permitAll` in KEYCLOAK and INTERNAL modes in `ConnectorSecurityConfig` (kept as-is by the develop merge). `TokenGeneratorAPIController` is active via `DcpHolderAutoConfiguration` (`dcp.holder.enabled`, `matchIfMissing = true`). |
@@ -43,7 +43,7 @@ Each item below was re-checked against the code after merging `develop` (Keycloa
 | Review: correctness | Credential ID → type guessing | Open | `CredentialIssuanceService` still uses `endsWith("Credential")`, else `MembershipCredential`. |
 | Review: correctness | Partial issuance reported as `ISSUED` | Open | Per-credential failures still caught and skipped. |
 | Review: correctness | `dcp.issuer.location` is a URL | Open | Still a URL in all shipped configs; `htttp://` typo remains in `connector/src/test/resources/application.properties`, `connector/src/test/resources/application-tck.properties`, `ci/tck/connector_tck_resources/application-tck.properties`. |
-| Review: correctness | `CredentialMessage` optional fields required | Open | `credentials` and `holderPid` still `@NotNull`; `"No type"` placeholder still added on rejection. |
+| Review: correctness | `CredentialMessage` optional fields required | **Done** (PR #433) | `credentials` and `holderPid` are optional; the `"No type"` placeholder is no longer added on rejection. |
 | Multitenancy | All 9 items | Open | No `tenantId` / `TenantContextHolder` in any `dcp` module; fixed `/dcp` and `/issuer` routes; resolver still drops the DID path. |
 | Scope handling risk | Unqualified scopes | Open | `DcpVerifierClient.buildQueryMessage()` still copies `requiredTypes` into `scope`. |
 | Documentation conflicts | `API.md`, `quick_start.md` | **Done** (PR #429) | Approve, reject and key rotation are documented under the local admin API path `/api/issuer/...`; `holderPid` is documented as the Holder-side request ID; credential request examples include `@context` and `type`. Old paths remain in `dcp/dcp-issuer/QUICKSTART.md` and `QUICK_REFERENCE.md`, which are outside #422. |
