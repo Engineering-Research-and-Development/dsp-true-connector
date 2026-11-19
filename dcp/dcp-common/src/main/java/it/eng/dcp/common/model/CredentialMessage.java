@@ -42,7 +42,9 @@ public class CredentialMessage extends BaseDcpMessage {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private String holderPid;
 
-    private String status; // e.g., ISSUED or REJECTED
+    /** ISSUED or REJECTED (DCP §6.5.1); required. */
+    @NotNull
+    private String status;
 
     /** Optional reason for a rejection (DCP §6.5.1); omitted from JSON when absent, never sent as null. */
     @JsonInclude(JsonInclude.Include.NON_NULL)

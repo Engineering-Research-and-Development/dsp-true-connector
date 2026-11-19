@@ -60,7 +60,8 @@ Each realm has its own users, roles, and clients. The connector trusts only the 
 - Rejected Keycloak tokens are no longer logged at ERROR with the exception message; the log has the exception class and error codes only (DEBUG), and a realm role violation logs a WARN with the request path.
 - DCP message models now follow the published schemas (DCP §6.5.1, §6.6.1, #411).
   - `CredentialMessage`: `credentials`, `holderPid` and `rejectionReason` are optional. A rejection without credentials or reason, such as spec Example 9, is accepted and recorded instead of getting HTTP 400. Absent optional fields are omitted from JSON, so `rejectionReason` is never sent as `null`.
-  - The Issuer's rejection messages no longer carry the placeholder credential container (`credentialType` `No type`, no payload).
+  - The Issuer's rejection messages no longer carry the placeholder credential container (`credentialType` `No type`, no payload). They also send the Holder-side `holderPid` instead of the holder DID.
+  - `status` is required. The Issuer does not send an `ISSUED` message without credentials.
   - `CredentialOfferMessage`: each offered credential must have an `id`.
 - DCP issuer documentation (`dcp/dcp-issuer/API.md`, `dcp/doc/quick_start.md`): approve, reject and key rotation are documented under the local administration API path `/api/issuer/...` (`/api/issuer/key/rotate`), with a note that authentication is not enforced yet (#405). `holderPid` is described as the Holder-side request ID (DCP §6.4.1), and credential request examples include `@context` and `type`. The non-existent `POST /issuer/requests` alias is removed, and the rejection body key is `reason` (not `rejectionReason`). Documentation only.
 

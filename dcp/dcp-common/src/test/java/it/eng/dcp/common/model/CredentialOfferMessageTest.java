@@ -180,7 +180,7 @@ class CredentialOfferMessageTest {
                         .credentialType("MembershipCredential")
                         .build());
 
-        assertTrue(ex.getMessage().contains("id"));
+        assertTrue(ex.getMessage().contains("id must not be null"));
     }
 
     @Test
@@ -197,6 +197,6 @@ class CredentialOfferMessageTest {
 
         Exception ex = assertThrows(Exception.class, () -> new ObjectMapper().readValue(json, CredentialOfferMessage.class));
 
-        assertTrue(ex.getMessage().contains("id"));
+        assertTrue(ex.getMessage().contains("id must not be null"));
     }
 }

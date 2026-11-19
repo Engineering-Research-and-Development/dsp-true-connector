@@ -107,6 +107,16 @@ class CredentialMessageTest {
     @Test
     @DisplayName("Missing issuerPid is still rejected")
     void missingIssuerPidRejected() {
-        assertThrows(Exception.class, () -> CredentialMessage.Builder.newInstance().status("REJECTED").build());
+        Exception ex = assertThrows(Exception.class,
+                () -> CredentialMessage.Builder.newInstance().status("REJECTED").build());
+        assertTrue(ex.getMessage().contains("issuerPid"));
+    }
+
+    @Test
+    @DisplayName("Missing status is rejected")
+    void missingStatusRejected() {
+        Exception ex = assertThrows(Exception.class,
+                () -> CredentialMessage.Builder.newInstance().issuerPid("issuerPid").build());
+        assertTrue(ex.getMessage().contains("status"));
     }
 }
