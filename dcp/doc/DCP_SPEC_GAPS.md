@@ -42,7 +42,7 @@ Each item below was re-checked against the code after merging `develop` (Keycloa
 | Review: correctness | Status list marks credentials revoked / unpublished | Open | `StatusListService.allocateStatusEntry()` sets the bit; `publishStatusList` is a TODO. |
 | Review: correctness | Credential ID → type guessing | Open | `CredentialIssuanceService` still uses `endsWith("Credential")`, else `MembershipCredential`. |
 | Review: correctness | Partial issuance reported as `ISSUED` | Open | Per-credential failures still caught and skipped. |
-| Review: correctness | `dcp.issuer.location` is a URL | Open | Still a URL in all shipped configs; `htttp://` typo remains in `connector/src/test/resources/application.properties`, `connector/src/test/resources/application-tck.properties`, `ci/tck/connector_tck_resources/application-tck.properties`. |
+| Review: correctness | `dcp.issuer.location` is a URL | **Done** (PR #436) | The issuer DID in every shipped config; `CredentialIssuanceClient` refuses a non-DID value; the e2e issuer advertises a typed `IssuerService`; an e2e test covers `POST /api/v1/dcp/credentials/request`. |
 | Review: correctness | `CredentialMessage` optional fields required | Open | `credentials` and `holderPid` still `@NotNull`; `"No type"` placeholder still added on rejection. |
 | Multitenancy | All 9 items | Open | No `tenantId` / `TenantContextHolder` in any `dcp` module; fixed `/dcp` and `/issuer` routes; resolver still drops the DID path. |
 | Scope handling risk | Unqualified scopes | Open | `DcpVerifierClient.buildQueryMessage()` still copies `requiredTypes` into `scope`. |

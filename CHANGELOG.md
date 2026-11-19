@@ -58,6 +58,11 @@ Each realm has its own users, roles, and clients. The connector trusts only the 
 - Keycloak users no longer resolve to a `null` tenant, which made them see data of all tenants (cross-tenant visibility); the tenant now comes from `tenant_id`.
 - `FieldEncryptionService` no longer logs the plaintext at debug level.
 - Rejected Keycloak tokens are no longer logged at ERROR with the exception message; the log has the exception class and error codes only (DEBUG), and a realm role violation logs a WARN with the request path.
+- The DCP Holder can request credentials with the shipped configurations (DCP §6.2, #416).
+  - `dcp.issuer.location` is now the issuer DID in every config (connector main, test and TCK, CI Docker and TCK, and DCP e2e), instead of a URL. Three configs had the typo `htttp://`. The holder resolves the DID and discovers the Issuer Service from its DID document.
+  - A value that is not a DID is refused with an error naming the property, instead of `Invalid DID:web format`.
+  - The e2e issuer profiles now repeat the `IssuerService` id and type next to `issuer-location`. Spring Boot does not merge list entries across property files, so the issuer had advertised a service entry with no type.
+  - A new e2e test covers `POST /api/v1/dcp/credentials/request`.
 - DCP issuer documentation (`dcp/dcp-issuer/API.md`, `dcp/doc/quick_start.md`): approve, reject and key rotation are documented under the local administration API path `/api/issuer/...` (`/api/issuer/key/rotate`), with a note that authentication is not enforced yet (#405). `holderPid` is described as the Holder-side request ID (DCP §6.4.1), and credential request examples include `@context` and `type`. The non-existent `POST /issuer/requests` alias is removed, and the rejection body key is `reason` (not `rejectionReason`). Documentation only.
 
 ### Removed

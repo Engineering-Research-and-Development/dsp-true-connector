@@ -105,8 +105,8 @@ dcp.keystore.path=eckey.p12
 dcp.keystore.password=password
 dcp.keystore.alias=dsptrueconnector
 
-# Issuer
-dcp.issuer.location=https://issuer.example.com
+# Issuer DID (not a URL); the Issuer Service URL is discovered from its DID document
+dcp.issuer.location=did:web:issuer.example.com
 
 # Trusted issuers
 dcp.trusted-issuers.MembershipCredential=did:web:issuer1.com,did:web:issuer2.com

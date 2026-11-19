@@ -29,6 +29,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -122,6 +123,28 @@ class CredentialIssuanceClientTest {
                 .thenThrow(new IOException("Network error"));
 
         assertThrows(RuntimeException.class, () -> client.discoverIssuerService());
+    }
+
+    @DisplayName("discoverIssuerService explains that dcp.issuer.location must be a DID when it is a URL")
+    @Test
+    void discoverIssuerService_Throws_WhenIssuerLocationIsUrl() throws Exception {
+        ReflectionTestUtils.setField(client, "issuerDid", "http://localhost:8084/issuer/credentials");
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> client.discoverIssuerService());
+
+        assertTrue(ex.getMessage().contains("dcp.issuer.location must be the issuer DID"));
+        verify(didResolverService, never()).fetchDidDocumentCached(anyString());
+    }
+
+    @DisplayName("discoverIssuerService explains that dcp.issuer.location is required when it is not set")
+    @Test
+    void discoverIssuerService_Throws_WhenIssuerLocationIsBlank() throws Exception {
+        ReflectionTestUtils.setField(client, "issuerDid", "");
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> client.discoverIssuerService());
+
+        assertTrue(ex.getMessage().contains("dcp.issuer.location is not set"));
+        verify(didResolverService, never()).fetchDidDocumentCached(anyString());
     }
 
     // ── getIssuerMetadata ─────────────────────────────────────────────────────
