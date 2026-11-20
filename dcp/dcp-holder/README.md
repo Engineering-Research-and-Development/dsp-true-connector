@@ -100,8 +100,8 @@ either kind returns 401.
 - Authorized scopes come only from the validated access token `scope`. Requested scopes it does not
   authorize are dropped, and the response is 2xx with fewer presentations. A token without scopes authorizes
   nothing.
-- Credential lookups are constrained to the holder DID (`findByHolderDidAndCredentialTypeIn`,
-  `findByHolderDidAndIdIn`); there is no unscoped lookup.
+- Credential lookups are constrained to the holder DID (`findByHolderDidInAndCredentialTypeIn`,
+  `findByHolderDidInAndIdIn`, matching the plain and percent-encoded `did:web` forms); there is no unscoped lookup.
 - The rate limit is keyed by the Verifier DID.
 
 ## Configuration Properties

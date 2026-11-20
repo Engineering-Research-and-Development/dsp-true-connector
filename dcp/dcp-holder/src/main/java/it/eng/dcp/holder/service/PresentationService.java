@@ -5,6 +5,7 @@ import it.eng.dcp.common.model.DCPConstants;
 import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.model.ProfileId;
+import it.eng.dcp.common.util.DidUrlConverter;
 import it.eng.dcp.holder.model.VerifiableCredential;
 import it.eng.dcp.holder.model.VerifiablePresentation;
 import it.eng.dcp.holder.repository.VerifiableCredentialRepository;
@@ -13,9 +14,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -24,6 +27,9 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class PresentationService {
+
+    /** Host and port of a decoded {@code did:web} DID, for building the percent-encoded form. */
+    private static final Pattern ENCODED_PORT = Pattern.compile("^(did:web:[^:]+):(\\d+)(?=:|$)");
 
     private final VerifiableCredentialRepository credentialRepository;
     private final VerifiablePresentationSigner vpSigner;
@@ -205,21 +211,41 @@ public class PresentationService {
             }
         }
 
+        Set<String> holderDids = holderDidForms(holderDid);
         List<VerifiableCredential> results = new ArrayList<>();
 
         // Query by types if present
         if (!credentialTypes.isEmpty()) {
             log.debug("Querying credentials by types: {}", credentialTypes);
-            results.addAll(credentialRepository.findByHolderDidAndCredentialTypeIn(holderDid, credentialTypes));
+            results.addAll(credentialRepository.findByHolderDidInAndCredentialTypeIn(holderDids, credentialTypes));
         }
 
         // Query by IDs if present
         if (!credentialIds.isEmpty()) {
             log.debug("Querying credentials by IDs: {}", credentialIds);
-            results.addAll(credentialRepository.findByHolderDidAndIdIn(holderDid, credentialIds));
+            results.addAll(credentialRepository.findByHolderDidInAndIdIn(holderDids, credentialIds));
         }
 
         return results;
+    }
+
+    /**
+     * Returns the written forms of a {@code did:web} DID that name the same holder: as given, with the port
+     * colon decoded ({@code host:8080}) and with it percent-encoded ({@code host%3A8080}). Issuers may write
+     * either form into the credential subject, and the stored {@code holderDid} is matched exactly.
+     *
+     * @param holderDid the holder DID
+     * @return the equivalent written forms, including {@code holderDid} itself
+     */
+    private static Set<String> holderDidForms(String holderDid) {
+        Set<String> forms = new LinkedHashSet<>();
+        forms.add(holderDid);
+        if (holderDid.startsWith("did:web:")) {
+            String decoded = DidUrlConverter.normalizeDid(holderDid);
+            forms.add(decoded);
+            forms.add(ENCODED_PORT.matcher(decoded).replaceFirst("$1%3A$2"));
+        }
+        return forms;
     }
 
     /**

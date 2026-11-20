@@ -124,7 +124,7 @@ public PresentationResponseMessage createPresentation(PresentationQueryMessage q
                                                       JWTClaimsSet accessTokenClaims) {
     // Effective scopes = requested ∩ authorized (access token "scope"); lookups constrained to the holder
     List<VerifiableCredential> fetched =
-            credentialRepository.findByHolderDidAndCredentialTypeIn(holderDid, credentialTypes);
+            credentialRepository.findByHolderDidInAndCredentialTypeIn(holderDidForms(holderDid), credentialTypes);
     
     // Group credentials by profileId for homogeneous presentations
     Map<String, List<VerifiableCredential>> groups = fetched.stream()

@@ -18,6 +18,7 @@ import org.mockito.Mockito;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
@@ -25,6 +26,7 @@ import static org.mockito.Mockito.when;
 class PresentationServiceHomogeneityTest {
 
     private static final String HOLDER_DID = "did:holder:1";
+    private static final Set<String> HOLDER_DIDS = Set.of(HOLDER_DID);
 
     private VerifiableCredentialRepository repo;
     private KeyService keyService;
@@ -73,7 +75,7 @@ class PresentationServiceHomogeneityTest {
                 .credentialIds(List.of("c2"))
                 .build();
 
-        when(repo.findByHolderDidAndCredentialTypeIn(HOLDER_DID, List.of("typeA", "typeB"))).thenReturn(List.of(a, b));
+        when(repo.findByHolderDidInAndCredentialTypeIn(HOLDER_DIDS, List.of("typeA", "typeB"))).thenReturn(List.of(a, b));
 
         var query = PresentationQueryMessage.Builder.newInstance()
                 .scope(List.of("typeA", "typeB"))
@@ -107,7 +109,7 @@ class PresentationServiceHomogeneityTest {
                 .credentialIds(List.of("c2"))
                 .build();
 
-        when(repo.findByHolderDidAndCredentialTypeIn(HOLDER_DID, List.of("typeA"))).thenReturn(List.of(a, b));
+        when(repo.findByHolderDidInAndCredentialTypeIn(HOLDER_DIDS, List.of("typeA"))).thenReturn(List.of(a, b));
 
         var query = PresentationQueryMessage.Builder.newInstance()
                 .scope(List.of("typeA"))

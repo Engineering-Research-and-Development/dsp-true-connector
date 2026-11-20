@@ -18,6 +18,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,6 +28,8 @@ import static org.mockito.Mockito.*;
 class PresentationServiceTest {
 
     private static final String HOLDER_DID = "did:web:localhost:8080";
+    /** Both written forms of the holder DID: lookups must find credentials stored under either. */
+    private static final Set<String> HOLDER_DIDS = Set.of("did:web:localhost:8080", "did:web:localhost%3A8080");
 
     @Mock
     private VerifiableCredentialRepository credentialRepository;
@@ -61,7 +64,7 @@ class PresentationServiceTest {
                 .profileId(ProfileId.VC11_SL2021_JWT)
                 .build();
 
-        when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc));
+        when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
         when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                 .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.signature");
 
@@ -110,7 +113,7 @@ class PresentationServiceTest {
                 .profileId(ProfileId.VC11_SL2021_JWT)
                 .build();
 
-        when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc));
+        when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
         when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                 .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.signature");
 
@@ -154,7 +157,7 @@ class PresentationServiceTest {
                 .profileId(ProfileId.VC11_SL2021_JWT) // JWT profile but override with definition
                 .build();
 
-        when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc));
+        when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
 
         ObjectMapper mapper = new ObjectMapper();
         ObjectNode jsonLdPresentation = mapper.createObjectNode();
@@ -205,7 +208,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -214,7 +217,7 @@ class PresentationServiceTest {
 
             // Then: Should only fetch MembershipCredential (the intersection)
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), scopeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), scopeCaptor.capture());
 
             List<String> fetchedScopes = scopeCaptor.getValue();
             assertThat(fetchedScopes).containsExactly("MembershipCredential");
@@ -243,7 +246,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc1));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc1));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -252,7 +255,7 @@ class PresentationServiceTest {
 
             // Then: Should fetch all authorized types
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), scopeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), scopeCaptor.capture());
 
             List<String> fetchedScopes = scopeCaptor.getValue();
             assertThat(fetchedScopes).containsExactlyInAnyOrder("MembershipCredential", "Iso27001Credential");
@@ -280,7 +283,7 @@ class PresentationServiceTest {
             PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
 
             // Then: Should not fetch any credentials (empty intersection)
-            verify(credentialRepository, never()).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList());
+            verify(credentialRepository, never()).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList());
 
             // Response should be empty
             assertNotNull(response);
@@ -327,7 +330,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -336,7 +339,7 @@ class PresentationServiceTest {
 
             // Then: Should correctly parse space-delimited scopes and match
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), scopeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), scopeCaptor.capture());
 
             List<String> fetchedScopes = scopeCaptor.getValue();
             assertThat(fetchedScopes).containsExactly("MembershipCredential");
@@ -365,7 +368,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -374,7 +377,7 @@ class PresentationServiceTest {
 
             // Then: Should strip :read and query by base type only
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), scopeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), scopeCaptor.capture());
 
             List<String> fetchedScopes = scopeCaptor.getValue();
             // Action suffix stripped: "org.eclipse.dspace.dcp.vc.type:SomeOtherCredential:read" → "SomeOtherCredential"
@@ -416,7 +419,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc1, vc2));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc1, vc2));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -428,7 +431,7 @@ class PresentationServiceTest {
             // scope2 "org.eclipse.dspace.dcp.vc.type:SomeOtherCredential:read" → "SomeOtherCredential"
             // scope3 "org.eclipse.dspace.dcp.vc.type:BankAccount:write" → "BankAccount" (not in authorized)
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), scopeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), scopeCaptor.capture());
 
             List<String> fetchedScopes = scopeCaptor.getValue();
             assertThat(fetchedScopes).containsExactlyInAnyOrder("MembershipCredential", "SomeOtherCredential");
@@ -460,7 +463,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -471,7 +474,7 @@ class PresentationServiceTest {
             // Both ":read" and ":write" normalize to "MembershipCredential"
             // Action policy enforcement happens downstream in the negotiation module
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), scopeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), scopeCaptor.capture());
 
             List<String> queriedTypes = scopeCaptor.getValue();
             assertThat(queriedTypes).containsExactly("MembershipCredential");
@@ -554,13 +557,13 @@ class PresentationServiceTest {
                     .scope(List.of("org.eclipse.dspace.dcp.vc.type:MembershipCredential",
                             "org.eclipse.dspace.dcp.vc.id:cred-1"))
                     .build();
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(anyString(), anyList())).thenReturn(List.of());
-            when(credentialRepository.findByHolderDidAndIdIn(anyString(), anyList())).thenReturn(List.of());
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(anyCollection(), anyList())).thenReturn(List.of());
+            when(credentialRepository.findByHolderDidInAndIdIn(anyCollection(), anyList())).thenReturn(List.of());
 
             presentationService.createPresentation(query, HOLDER_DID, claims);
 
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(HOLDER_DID, List.of("MembershipCredential"));
-            verify(credentialRepository).findByHolderDidAndIdIn(HOLDER_DID, List.of("cred-1"));
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(HOLDER_DIDS, List.of("MembershipCredential"));
+            verify(credentialRepository).findByHolderDidInAndIdIn(HOLDER_DIDS, List.of("cred-1"));
             verify(credentialRepository, never()).findAll();
         }
 
@@ -624,7 +627,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc1, vc2));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc1, vc2));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -633,7 +636,7 @@ class PresentationServiceTest {
 
             // Then: Should extract simple credential types (stripping DCP prefix and :read)
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), scopeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), scopeCaptor.capture());
 
             List<String> fetchedTypes = scopeCaptor.getValue();
             assertThat(fetchedTypes).containsExactlyInAnyOrder("MembershipCredential", "SensitiveDataCredential");
@@ -661,7 +664,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -670,7 +673,7 @@ class PresentationServiceTest {
 
             // Then: Should extract "MembershipCredential"
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), scopeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), scopeCaptor.capture());
 
             List<String> fetchedTypes = scopeCaptor.getValue();
             assertThat(fetchedTypes).containsExactly("MembershipCredential");
@@ -710,7 +713,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc1, vc2));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc1, vc2));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJno25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -719,7 +722,7 @@ class PresentationServiceTest {
 
             // Then: Should strip :read for query and handle both formats
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), scopeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), scopeCaptor.capture());
 
             List<String> fetchedTypes = scopeCaptor.getValue();
             assertThat(fetchedTypes).containsExactlyInAnyOrder("MembershipCredential", "SensitiveDataCredential");
@@ -768,7 +771,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc1, vc2, vc3));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc1, vc2, vc3));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -777,7 +780,7 @@ class PresentationServiceTest {
 
             // Then: Should extract credential types from custom aliases
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), scopeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), scopeCaptor.capture());
 
             List<String> fetchedTypes = scopeCaptor.getValue();
             assertThat(fetchedTypes).containsExactlyInAnyOrder(
@@ -805,7 +808,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -814,7 +817,7 @@ class PresentationServiceTest {
 
             // Then: Should extract "SpecialCredential" regardless of prefix depth
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), scopeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), scopeCaptor.capture());
 
             List<String> fetchedTypes = scopeCaptor.getValue();
             assertThat(fetchedTypes).containsExactly("SpecialCredential");
@@ -842,7 +845,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -851,7 +854,7 @@ class PresentationServiceTest {
 
             // Then: Should extract everything after first colon, stripping :read
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), scopeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), scopeCaptor.capture());
 
             List<String> fetchedTypes = scopeCaptor.getValue();
             assertThat(fetchedTypes).containsExactly("credential:type:v1");
@@ -900,7 +903,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc1, vc2, vc3));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc1, vc2, vc3));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -909,7 +912,7 @@ class PresentationServiceTest {
 
             // Then: Should handle all three formats correctly
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), scopeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), scopeCaptor.capture());
 
             List<String> fetchedTypes = scopeCaptor.getValue();
             assertThat(fetchedTypes).containsExactlyInAnyOrder(
@@ -940,7 +943,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -949,7 +952,7 @@ class PresentationServiceTest {
 
             // Then: Should match because both normalize to "MembershipCredential"
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), scopeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), scopeCaptor.capture());
 
             List<String> fetchedTypes = scopeCaptor.getValue();
             assertThat(fetchedTypes).containsExactly("MembershipCredential");
@@ -980,7 +983,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJno25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -989,7 +992,7 @@ class PresentationServiceTest {
 
             // Then: Should match because both normalize to "MembershipCredential"
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), scopeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), scopeCaptor.capture());
 
             List<String> fetchedTypes = scopeCaptor.getValue();
             assertThat(fetchedTypes).containsExactly("MembershipCredential");
@@ -1033,7 +1036,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc1, vc2));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc1, vc2));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -1045,7 +1048,7 @@ class PresentationServiceTest {
             // BankAccount should be excluded (not requested)
             // Action suffixes stripped for querying
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), scopeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), scopeCaptor.capture());
 
             List<String> fetchedTypes = scopeCaptor.getValue();
             assertThat(fetchedTypes).containsExactlyInAnyOrder("MembershipCredential", "EmployeeCredential");
@@ -1075,7 +1078,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndIdIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc));
+            when(credentialRepository.findByHolderDidInAndIdIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -1084,8 +1087,8 @@ class PresentationServiceTest {
 
             // Then: Should query by ID, not by type
             ArgumentCaptor<List<String>> idCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndIdIn(eq(HOLDER_DID), idCaptor.capture());
-            verify(credentialRepository, never()).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList());
+            verify(credentialRepository).findByHolderDidInAndIdIn(eq(HOLDER_DIDS), idCaptor.capture());
+            verify(credentialRepository, never()).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList());
 
             List<String> queriedIds = idCaptor.getValue();
             assertThat(queriedIds).containsExactly(credentialId);
@@ -1139,7 +1142,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndIdIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc1, vc2, vc3));
+            when(credentialRepository.findByHolderDidInAndIdIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc1, vc2, vc3));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -1148,7 +1151,7 @@ class PresentationServiceTest {
 
             // Then: Should query all three by ID
             ArgumentCaptor<List<String>> idCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndIdIn(eq(HOLDER_DID), idCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndIdIn(eq(HOLDER_DIDS), idCaptor.capture());
 
             List<String> queriedIds = idCaptor.getValue();
             assertThat(queriedIds).containsExactlyInAnyOrder(id1, id2, id3);
@@ -1201,8 +1204,8 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vcType1, vcType2));
-            when(credentialRepository.findByHolderDidAndIdIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vcId));
+            when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vcType1, vcType2));
+            when(credentialRepository.findByHolderDidInAndIdIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vcId));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -1211,10 +1214,10 @@ class PresentationServiceTest {
 
             // Then: Should query both by type and by ID
             ArgumentCaptor<List<String>> typeCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndCredentialTypeIn(eq(HOLDER_DID), typeCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), typeCaptor.capture());
 
             ArgumentCaptor<List<String>> idCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndIdIn(eq(HOLDER_DID), idCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndIdIn(eq(HOLDER_DIDS), idCaptor.capture());
 
             List<String> queriedTypes = typeCaptor.getValue();
             assertThat(queriedTypes).containsExactlyInAnyOrder("MembershipCredential", "EmployeeCredential");
@@ -1247,7 +1250,7 @@ class PresentationServiceTest {
                     .profileId(ProfileId.VC20_BSSL_JWT)
                     .build();
 
-            when(credentialRepository.findByHolderDidAndIdIn(eq(HOLDER_DID), anyList())).thenReturn(List.of(vc));
+            when(credentialRepository.findByHolderDidInAndIdIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
             when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
@@ -1256,7 +1259,7 @@ class PresentationServiceTest {
 
             // Then: Should query with :read stripped (base ID only)
             ArgumentCaptor<List<String>> idCaptor = ArgumentCaptor.forClass(List.class);
-            verify(credentialRepository).findByHolderDidAndIdIn(eq(HOLDER_DID), idCaptor.capture());
+            verify(credentialRepository).findByHolderDidInAndIdIn(eq(HOLDER_DIDS), idCaptor.capture());
 
             List<String> queriedIds = idCaptor.getValue();
             assertThat(queriedIds).containsExactly(credentialId);  // Action suffix stripped
