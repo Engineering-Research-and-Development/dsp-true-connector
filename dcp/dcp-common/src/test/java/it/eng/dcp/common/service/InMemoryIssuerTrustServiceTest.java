@@ -236,5 +236,54 @@ class InMemoryIssuerTrustServiceTest {
             assertTrue(service.isTrusted(VERIFIABLE_CREDENTIAL, DID_ENCODED));
         }
     }
-}
 
+    // -------------------------------------------------------------------------
+    // Trust for any credential type
+    // -------------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("isTrustedIssuer")
+    class TrustedForAnyType {
+
+        @Test
+        @DisplayName("isTrustedIssuer returns false when no trust is configured")
+        void isTrustedIssuer_returnsFalseWhenEmpty() {
+            assertFalse(service.isTrustedIssuer(DID_PLAIN));
+        }
+
+        @Test
+        @DisplayName("isTrustedIssuer returns true when the issuer is trusted for one credential type")
+        void isTrustedIssuer_returnsTrueForAnyType() {
+            service.addTrust(VERIFIABLE_CREDENTIAL, DID_PLAIN);
+
+            assertTrue(service.isTrustedIssuer(DID_PLAIN));
+        }
+
+        @Test
+        @DisplayName("isTrustedIssuer matches encoded and plain DIDs")
+        void isTrustedIssuer_normalizesDid() {
+            service.addTrust(MEMBERSHIP_CREDENTIAL, DID_PLAIN);
+
+            assertTrue(service.isTrustedIssuer(DID_ENCODED));
+        }
+
+        @Test
+        @DisplayName("isTrustedIssuer returns false for another issuer, null or blank")
+        void isTrustedIssuer_returnsFalseForUnknownNullOrBlank() {
+            service.addTrust(MEMBERSHIP_CREDENTIAL, DID_PLAIN);
+
+            assertFalse(service.isTrustedIssuer("did:web:attacker.example.com"));
+            assertFalse(service.isTrustedIssuer(null));
+            assertFalse(service.isTrustedIssuer(" "));
+        }
+
+        @Test
+        @DisplayName("isTrustedIssuer returns false after the last trust is removed")
+        void isTrustedIssuer_returnsFalseAfterRemove() {
+            service.addTrust(MEMBERSHIP_CREDENTIAL, DID_PLAIN);
+            service.removeTrust(MEMBERSHIP_CREDENTIAL, DID_PLAIN);
+
+            assertFalse(service.isTrustedIssuer(DID_PLAIN));
+        }
+    }
+}
