@@ -243,7 +243,7 @@ class VerifierServiceTest {
         }
 
         @Test
-        @DisplayName("Should take the holder DID from the validated sub when the access token has no iss or sub")
+        @DisplayName("Should take the holder DID from the validated sub when the access token has no iss")
         void shouldUseValidatedSubWhenAccessTokenHasNoIssuer() throws Exception {
             // Given: an access token without iss/sub, so the holder DID can only come from the validated sub
             String accessToken = createJWT(
@@ -366,22 +366,25 @@ class VerifierServiceTest {
         }
 
         @Test
-        @DisplayName("Should reject an access token whose sub names a different DID")
-        void shouldRejectAccessTokenWithForeignSubject() throws Exception {
-            // Given
-            String accessToken = createAccessToken(HOLDER_DID, VICTIM_DID, holderKey);
+        @DisplayName("Should accept an access token whose sub is not the holder (implementation-defined)")
+        void shouldAcceptAccessTokenWithOtherSubject() throws Exception {
+            // Given: an access token issued by the holder whose sub is the verifier, as other DCP
+            // implementations issue it
+            String accessToken = createAccessToken(HOLDER_DID, VERIFIER_DID, holderKey);
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
             when(tokenService.validateToken(selfIssuedToken)).thenReturn(parseClaims(selfIssuedToken));
+            setupSuccessfulHolderResolution();
+            setupSuccessfulPresentationQuery(List.of(createValidPresentationJWT(List.of(createValidCredentialJWT()))));
+            setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
+            setupSuccessfulKeyResolution(ISSUER_DID, issuerKey);
+            setupTrustedIssuer(ISSUER_DID);
 
-            // When/Then
-            SecurityException exception = assertThrows(
-                    SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
-            );
+            // When
+            VerifierService.PresentationFlowResult result =
+                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken);
 
-            assertTrue(exception.getMessage().contains("Step 3b failed"));
-            assertTrue(exception.getMessage().contains("'sub'"));
-            verifyNoInteractions(httpClient);
+            // Then: the holder DID is still the validated sub
+            assertEquals(HOLDER_DID, result.getHolderDid());
         }
 
         @Test

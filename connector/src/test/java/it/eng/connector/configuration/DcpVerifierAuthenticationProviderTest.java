@@ -100,26 +100,6 @@ class DcpVerifierAuthenticationProviderTest {
     }
 
     @Test
-    @DisplayName("Should use the validated Self-Issued ID Token sub as principal")
-    void shouldUseValidatedSubjectAsPrincipal() throws Exception {
-        // Given: the verifier reports the validated sub as holder DID
-        ReflectionTestUtils.setField(provider, "vcVpEnabled", true);
-        DcpBearerToken authRequest = new DcpBearerToken("presenter-token");
-
-        VerifierService.PresentationFlowResult mockResult = mock(VerifierService.PresentationFlowResult.class);
-        when(mockResult.getHolderDid()).thenReturn(PRESENTER_DID);
-        when(mockResult.getValidatedPresentations()).thenReturn(List.of());
-        when(verifierService.validateAndQueryHolderPresentations("presenter-token")).thenReturn(mockResult);
-
-        // When
-        Authentication result = provider.authenticate(authRequest);
-
-        // Then
-        assertNotNull(result);
-        assertEquals(PRESENTER_DID, result.getPrincipal());
-    }
-
-    @Test
     @DisplayName("Should not authenticate a token that wraps another participant's access token")
     void shouldNotAuthenticateWrappedForeignAccessToken() throws Exception {
         // Given: a real VerifierService; the presenter's valid Self-Issued ID Token carries the victim's

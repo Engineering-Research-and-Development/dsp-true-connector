@@ -190,25 +190,23 @@ public class VerifierService {
     }
 
     /**
-     * Checks that the access token does not name a party other than the presenting party.
+     * Checks that the access token was not issued by a party other than the presenting party.
      *
-     * <p>The access token is not verified by the Verifier, so its {@code iss} and {@code sub} are
-     * never used as the holder DID. They are only compared with the validated Self-Issued ID Token
-     * {@code sub}: a token that names a different DID is a token wrapped by another participant
-     * and is rejected. Absent claims are accepted, since the holder DID does not depend on them.
+     * <p>The access token is not verified by the Verifier, so its {@code iss} is never used as the
+     * holder DID. It is only compared with the validated Self-Issued ID Token {@code sub}: an access
+     * token issued by a different DID is a token wrapped by another participant and is rejected. An
+     * absent {@code iss} is accepted, since the holder DID does not depend on it. The access token
+     * {@code sub} is not compared: its content is implementation-defined (other DCP implementations
+     * set it to the Verifier DID), and the holder DID never depends on it.
      *
      * @param accessTokenClaims the claims of the access token carried in the "token" claim
      * @param holderDid the validated {@code sub} of the Self-Issued ID Token
-     * @throws SecurityException if the access token {@code iss} or {@code sub} names a different DID
+     * @throws SecurityException if the access token {@code iss} names a different DID
      */
-    private void requireAccessTokenBoundToHolder(JWTClaimsSet accessTokenClaims, String holderDid) {
+    private void requireAccessTokenIssuedByHolder(JWTClaimsSet accessTokenClaims, String holderDid) {
         String accessTokenIssuer = accessTokenClaims.getIssuer();
         if (accessTokenIssuer != null && !DidUrlConverter.compareDids(accessTokenIssuer, holderDid)) {
             throw new SecurityException("Access token 'iss' does not match the Self-Issued ID Token 'sub'");
-        }
-        String accessTokenSubject = accessTokenClaims.getSubject();
-        if (accessTokenSubject != null && !DidUrlConverter.compareDids(accessTokenSubject, holderDid)) {
-            throw new SecurityException("Access token 'sub' does not match the Self-Issued ID Token 'sub'");
         }
     }
 
@@ -689,7 +687,7 @@ public class VerifierService {
      *   <li>Validate self-issued ID token from holder (Step 3a)</li>
      *   <li>Extract access token from "token" claim (Step 3a)</li>
      *   <li>Take the holder DID from the validated Self-Issued ID Token {@code sub} (Step 3a)</li>
-     *   <li>Parse access token to extract scopes and reject it if it names another DID (Step 3b)</li>
+     *   <li>Parse access token to extract scopes and reject it if another DID issued it (Step 3b)</li>
      *   <li>Resolve holder's credential service endpoint (Step 3c)</li>
      *   <li>Build PresentationQueryMessage with scopes from access token (Step 4)</li>
      *   <li>Query holder's credential service with access token (Step 4)</li>
@@ -764,8 +762,8 @@ public class VerifierService {
             SignedJWT accessTokenJwt = SignedJWT.parse(accessToken);
             JWTClaimsSet accessTokenClaims = accessTokenJwt.getJWTClaimsSet();
 
-            // The holder DID is the validated sub; an access token naming another DID is rejected
-            requireAccessTokenBoundToHolder(accessTokenClaims, holderDid);
+            // The holder DID is the validated sub; an access token issued by another DID is rejected
+            requireAccessTokenIssuedByHolder(accessTokenClaims, holderDid);
             log.debug("Holder DID: {}", holderDid);
 
             // Extract scopes from access token
@@ -796,6 +794,12 @@ public class VerifierService {
             throw new SecurityException("Step 3b failed - " + e.getMessage());
         } catch (Exception e) {
             log.error("STEP 3b FAILED: Failed to parse access token - {}", e.getMessage());
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Access token rejected: cannot parse access token",
+                    VERIFIER_SOURCE,
+                    holderDid, null, null, null,
+                    Map.of("reason", String.valueOf(e.getMessage())));
             throw new SecurityException("Step 3b failed - Cannot parse access token: " + e.getMessage());
         }
 
