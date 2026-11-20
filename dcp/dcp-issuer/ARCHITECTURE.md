@@ -176,6 +176,26 @@
    └─────────────┘
 ```
 
+## Credential Status Lists
+
+Credentials of the `vc11-sl2021/jwt` and `vc20-bssl/jwt` profiles carry a `credentialStatus` entry for revocation (DCP v1.0.1 §6.10). `StatusListService` manages the lists in the `status_lists` collection:
+
+- **One list type per profile**: StatusList2021 (`StatusList2021Entry`, `StatusList2021Credential`) for `vc11-sl2021/jwt` and BitstringStatusList (`BitstringStatusListEntry`, `BitstringStatusListCredential`) for `vc20-bssl/jwt`. Lists are kept per issuer DID, status purpose and profile.
+- **Allocation is separate from status**: `StatusList.nextIndex` counts allocated entries and never goes down, so an index is never reused. A new entry's bit stays 0 (valid). When a list is full (131072 entries), a new list is started.
+- **Revocation** (`POST /api/issuer/status-lists/{listId}/entries/{index}/revoke`) sets the bit to 1 and re-signs the list. Revocation is not reversible.
+- **Publication**: the signed list (a compact JWT built by `StatusListCredentialGenerator`) is stored with the list and served without authentication at `<dcp.base-url>/issuer/status/{listId}`, the URL the credentials carry as `statusListCredential`. It is re-signed when served if the stored JWT was signed with a key that is no longer current, for example after key rotation.
+- **Identifiers**: list IDs are random UUIDs, so the public URLs are globally unambiguous. In multi-participant mode (#426) the URL becomes `/<participantId>/issuer/status/{listId}`.
+- **Concurrency**: `StatusList` has a `@Version` field; concurrent allocations or revocations of one list are retried on an optimistic locking conflict.
+
+```
+CredentialIssuanceService ──allocateStatusEntry(did, "revocation", profile)──▶ StatusListService
+                                                                                │  nextIndex++ (bit stays 0)
+Verifier ──GET /issuer/status/{listId}──▶ StatusListController ──publishStatusList()─┤
+Admin ──POST /api/issuer/status-lists/{listId}/entries/{index}/revoke──▶ revoke()  │  bit = 1, re-sign
+                                                                                ▼
+                                                                       status_lists (MongoDB)
+```
+
 ## Deployment Architecture
 
 ```
