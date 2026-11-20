@@ -32,7 +32,8 @@ public interface JtiReplayCache {
      * to prevent race conditions in concurrent scenarios.
      *
      * @param jti The JWT ID to check and insert
-     * @param expiry The instant when this JTI should expire and be removed from the cache
+     * @param expiry The instant until which this JTI must be remembered; callers pass the last instant at
+     *               which the token is still accepted (its {@code exp} plus any allowed clock skew)
      * @throws IllegalStateException if the JTI is already present and not expired (replay attack detected)
      */
     void checkAndPut(String jti, Instant expiry);

@@ -20,6 +20,9 @@ import java.util.stream.Collectors;
 @Service
 public class DidDocumentService {
 
+    /** DID service type advertised by a Credential Issuer (DCP §6.2). */
+    static final String ISSUER_SERVICE_TYPE = "IssuerService";
+
     private final KeyService keyService;
 
     /**
@@ -57,24 +60,43 @@ public class DidDocumentService {
         String kid = keyService.getKidFromPublicKey(config, keyPair);
         Map<String, Object> jwk = keyService.convertPublicKeyToJWK(config, keyPair);
 
+        String verificationMethodId = config.getDid() + "#" + kid;
+
         // Build verification methods
         List<VerificationMethod> verificationMethods = List.of(
                 VerificationMethod.Builder.newInstance()
-                        .id(config.getDid() + "#" + kid)
+                        .id(verificationMethodId)
                         .type("JsonWebKey2020")
                         .controller(config.getEffectiveController())
                         .publicKeyJwk(jwk)
                         .build()
         );
 
-        return DidDocument.Builder.newInstance()
+        // DCP §4.3.3 verifies Self-Issued ID Tokens with a capabilityInvocation key, and VP proofs
+        // with an authentication key. Only an Issuer signs Verifiable Credentials (assertionMethod).
+        List<String> verificationMethodRef = List.of(verificationMethodId);
+        DidDocument.Builder builder = DidDocument.Builder.newInstance()
                 .id(config.getDid())
                 .service(services)
                 .verificationMethod(verificationMethods)
-//                .capabilityInvocation(List.of(verificationMethodId))
-//                TODO: enable when available
-//                .verificationRelationships()
-                .build();
+                .authentication(verificationMethodRef)
+                .capabilityInvocation(verificationMethodRef);
+        if (advertisesIssuerService(config)) {
+            builder.assertionMethod(verificationMethodRef);
+        }
+        return builder.build();
+    }
+
+    /**
+     * Tells whether the DID document belongs to a Credential Issuer, which is the case when it
+     * advertises an {@code IssuerService} endpoint.
+     *
+     * @param config Configuration for the DID document
+     * @return true if one of the service entries has type {@code IssuerService}
+     */
+    private boolean advertisesIssuerService(DidDocumentConfig config) {
+        return config.getServiceEntries() != null && config.getServiceEntries().stream()
+                .anyMatch(entry -> ISSUER_SERVICE_TYPE.equals(entry.getType()));
     }
 
     /**

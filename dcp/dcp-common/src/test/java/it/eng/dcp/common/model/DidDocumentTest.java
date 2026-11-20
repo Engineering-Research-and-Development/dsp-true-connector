@@ -1,5 +1,7 @@
 package it.eng.dcp.common.model;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -27,6 +29,65 @@ class DidDocumentTest {
         assertEquals(1, doc.getServices().size());
         assertEquals(1, doc.getVerificationMethods().size());
         assertEquals("service-1", doc.getServices().get(0).id());
+    }
+
+    @Test
+    void verificationRelationships_serializedWhenPresentAndOmittedWhenEmpty() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        DidDocument doc = DidDocument.Builder.newInstance()
+                .id("did:web:example.com")
+                .authentication(List.of("did:web:example.com#key-1"))
+                .capabilityInvocation(List.of("did:web:example.com#key-1"))
+                .build();
+
+        JsonNode json = mapper.readTree(mapper.writeValueAsString(doc));
+
+        assertEquals("did:web:example.com#key-1", json.get("authentication").get(0).asText());
+        assertEquals("did:web:example.com#key-1", json.get("capabilityInvocation").get(0).asText());
+        assertFalse(json.has("assertionMethod"));
+    }
+
+    @Test
+    void verificationRelationships_deserializeReferencesAndEmbeddedMethods() throws Exception {
+        String json = """
+                {
+                  "id": "did:web:example.com",
+                  "verificationMethod": [{"id": "did:web:example.com#key-1", "type": "JsonWebKey2020"}],
+                  "authentication": ["#key-1"],
+                  "capabilityInvocation": [
+                    "did:web:example.com#key-1",
+                    {"id": "did:web:example.com#key-2", "type": "JsonWebKey2020"}
+                  ],
+                  "assertionMethod": ["did:web:example.com#key-1"]
+                }
+                """;
+
+        DidDocument doc = new ObjectMapper().readValue(json, DidDocument.class);
+
+        assertEquals(List.of("#key-1"), doc.getAuthentication());
+        assertEquals(List.of("did:web:example.com#key-1", "did:web:example.com#key-2"), doc.getCapabilityInvocation());
+        assertEquals(List.of("did:web:example.com#key-1"), doc.getAssertionMethod());
+    }
+
+    @Test
+    void verificationRelationships_absentInJson_areEmpty() throws Exception {
+        DidDocument doc = new ObjectMapper().readValue("{\"id\": \"did:web:example.com\"}", DidDocument.class);
+
+        assertTrue(doc.getAuthentication().isEmpty());
+        assertTrue(doc.getCapabilityInvocation().isEmpty());
+        assertTrue(doc.getAssertionMethod().isEmpty());
+    }
+
+    @Test
+    void verificationRelationships_nullInJson_areEmpty() throws Exception {
+        String json = "{\"id\": \"did:web:example.com\", \"authentication\": null, "
+                + "\"capabilityInvocation\": null, \"assertionMethod\": null}";
+
+        DidDocument doc = new ObjectMapper().readValue(json, DidDocument.class);
+
+        assertTrue(doc.getAuthentication().isEmpty());
+        assertTrue(doc.getCapabilityInvocation().isEmpty());
+        assertTrue(doc.getAssertionMethod().isEmpty());
     }
 
     @Test

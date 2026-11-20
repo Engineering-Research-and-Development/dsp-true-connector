@@ -21,6 +21,7 @@ import it.eng.dcp.holder.service.HolderService;
 import it.eng.dcp.holder.service.PresentationRateLimiter;
 import it.eng.dcp.holder.service.PresentationService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -372,6 +373,23 @@ class HolderServiceTest {
     }
 
     @Test
+    @DisplayName("A rejection without credentials, reason or holderPid (DCP §6.5.1) is recorded")
+    void processRejectedCredentials_minimalSpecMessage_recorded() throws Exception {
+        CredentialMessage msg = new ObjectMapper().readValue("""
+                { "@context": [ "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ], "type": "CredentialMessage",
+                  "issuerPid": "issuerPid", "status": "REJECTED" }
+                """, CredentialMessage.class);
+
+        holderService.processRejectedCredentials(msg);
+
+        ArgumentCaptor<CredentialStatusRecord> captor = ArgumentCaptor.forClass(CredentialStatusRecord.class);
+        verify(credentialStatusRepository).save(captor.capture());
+        assertEquals(CredentialStatus.REJECTED, captor.getValue().getStatus());
+        assertEquals("issuerPid", captor.getValue().getIssuerPid());
+        assertNull(captor.getValue().getRejectionReason());
+    }
+
+    @Test
     void processRejectedCredentials_success() {
         // Arrange
         String requestId = "req-123";
@@ -413,6 +431,7 @@ class HolderServiceTest {
     void processCredentialOffer_validOffer_success() {
         // Arrange
         CredentialOfferMessage.CredentialObject credential1 = CredentialOfferMessage.CredentialObject.Builder.newInstance()
+                .id("membership-credential-1")
                 .credentialType("MembershipCredential")
                 .build();
 
@@ -459,6 +478,7 @@ class HolderServiceTest {
     void processCredentialOffer_nullIssuer_throwsException() {
         // Arrange - Use mock since builder validation requires issuer
         CredentialOfferMessage.CredentialObject credential = CredentialOfferMessage.CredentialObject.Builder.newInstance()
+                .id("membership-credential-1")
                 .credentialType("MembershipCredential")
                 .build();
 
@@ -477,6 +497,7 @@ class HolderServiceTest {
     void processCredentialOffer_emptyIssuer_throwsException() {
         // Arrange - Use mock since builder validation requires issuer
         CredentialOfferMessage.CredentialObject credential = CredentialOfferMessage.CredentialObject.Builder.newInstance()
+                .id("membership-credential-1")
                 .credentialType("MembershipCredential")
                 .build();
 
@@ -586,6 +607,7 @@ class HolderServiceTest {
         // Arrange - Mix of sparse and full credentials
         CredentialOfferMessage.CredentialObject fullCredential =
             CredentialOfferMessage.CredentialObject.Builder.newInstance()
+                .id("organization-credential-1")
                 .credentialType("OrganizationCredential")
                 .build();
 
