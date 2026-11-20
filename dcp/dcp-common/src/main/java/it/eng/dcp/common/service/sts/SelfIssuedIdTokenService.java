@@ -17,6 +17,7 @@ import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.common.util.DidUrlConverter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -46,12 +47,21 @@ import java.util.UUID;
 @Slf4j
 public class SelfIssuedIdTokenService {
 
+    /** Default clock skew in seconds, used when {@code dcp.clock-skew-seconds} is not set. */
+    static final long DEFAULT_CLOCK_SKEW_SECONDS = 120;
+
 //    private final String connectorDid;
     private final DidResolverService didResolver;
     private final JtiReplayCache jtiCache;
     private final KeyService keyService;
     private final DidDocumentConfig config;
     private final DcpAuditEventPublisher auditPublisher;
+
+    /**
+     * Clock skew in seconds allowed on {@code nbf}, {@code exp} and {@code iat}; a used {@code jti} is
+     * remembered until {@code exp} plus this skew. Property {@code dcp.clock-skew-seconds}, default 120.
+     */
+    private long clockSkewSeconds = DEFAULT_CLOCK_SKEW_SECONDS;
 
     // Test hook to override the signing key with a specific EC JWK (used in unit tests)
     private ECKey overrideSigningKey;
@@ -70,15 +80,6 @@ public class SelfIssuedIdTokenService {
         this.keyService = keyService;
         this.config = config;
         this.auditPublisher = auditPublisher;
-    }
-
-    /**
-     * Test-only setter to override the signing key.
-     * 
-     * @param key The EC key to use for signing instead of the default from KeyService
-     */
-    void setOverrideSigningKey(ECKey key) {
-        this.overrideSigningKey = key;
     }
 
     /**
@@ -226,16 +227,16 @@ public class SelfIssuedIdTokenService {
                 throw new SecurityException("Invalid signature");
             }
 
-            // 6. Check nbf if present (allow 2 min clock skew)
+            // 6. Check nbf if present (allow clock skew)
             Instant now = Instant.now();
             Date nbf = claims.getNotBeforeTime();
-            if (nbf != null && now.isBefore(nbf.toInstant().minusSeconds(120))) {
+            if (nbf != null && now.isBefore(nbf.toInstant().minusSeconds(clockSkewSeconds))) {
                 throw new SecurityException("Token not valid yet (nbf)");
             }
 
-            // 7. Check exp (allow 2 min clock skew)
+            // 7. Check exp (allow clock skew)
             Date exp = claims.getExpirationTime();
-            if (exp == null || now.isAfter(exp.toInstant().plusSeconds(120))) {
+            if (exp == null || now.isAfter(exp.toInstant().plusSeconds(clockSkewSeconds))) {
                 throw new SecurityException("Token expired");
             }
 
@@ -247,8 +248,8 @@ public class SelfIssuedIdTokenService {
             if (now.isAfter(iat.toInstant().plusSeconds(3600))) {
                 throw new SecurityException("Token issued too far in the past");
             }
-            // Reject if iat is in the future (allow 2 min clock skew)
-            if (now.isBefore(iat.toInstant().minusSeconds(120))) {
+            // Reject if iat is in the future (allow clock skew)
+            if (now.isBefore(iat.toInstant().minusSeconds(clockSkewSeconds))) {
                 throw new SecurityException("Token issued in the future (iat)");
             }
 
@@ -258,7 +259,9 @@ public class SelfIssuedIdTokenService {
                 throw new SecurityException("Missing jti");
             }
             try {
-                jtiCache.checkAndPut(jti, exp.toInstant());
+                // Keep the jti for as long as the token is accepted (exp + skew), so it cannot be
+                // replayed inside the clock-skew window after exp
+                jtiCache.checkAndPut(jti, exp.toInstant().plusSeconds(clockSkewSeconds));
             } catch (IllegalStateException e) {
                 throw new SecurityException("jti has already been used", e);
             }
@@ -505,5 +508,29 @@ public class SelfIssuedIdTokenService {
     public String createStsCompatibleToken(String audienceDid, DidDocumentConfig config) {
         log.warn("Creating STS-compatible token WITHOUT scopes - consider specifying scopes for security");
         return createStsCompatibleToken(audienceDid, config, new String[0]);
+    }
+
+    /**
+     * Sets the clock skew from {@code dcp.clock-skew-seconds}.
+     *
+     * @param clockSkewSeconds the allowed clock skew in seconds, at least 0
+     * @throws IllegalArgumentException if the value is negative
+     */
+    @Value("${dcp.clock-skew-seconds:" + DEFAULT_CLOCK_SKEW_SECONDS + "}")
+    void setClockSkewSeconds(long clockSkewSeconds) {
+        if (clockSkewSeconds < 0) {
+            throw new IllegalArgumentException(
+                    "dcp.clock-skew-seconds must not be negative, but was " + clockSkewSeconds);
+        }
+        this.clockSkewSeconds = clockSkewSeconds;
+    }
+
+    /**
+     * Test-only setter to override the signing key.
+     *
+     * @param key The EC key to use for signing instead of the default from KeyService
+     */
+    void setOverrideSigningKey(ECKey key) {
+        this.overrideSigningKey = key;
     }
 }

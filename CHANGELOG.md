@@ -64,6 +64,7 @@ Each realm has its own users, roles, and clients. The connector trusts only the 
   - Key selection follows the `kid` rules: a matching verification method; without `kid`, the single verification method, and rejection when there are several.
   - Our DID documents now list the key under `authentication` and `capabilityInvocation`, and under `assertionMethod` when they advertise an `IssuerService`.
   - Token validation no longer logs the token claims.
+- DCP replay protection no longer has a gap after token expiry (#399). A Self-Issued ID Token is accepted until `exp` plus the clock skew, but its `jti` was remembered only until `exp`, so a captured token could be replayed once more in that window. The `jti` is now kept until `exp` plus the skew. `nbf`, `exp`, `iat` and the replay cache use one setting, the existing `dcp.clock-skew-seconds` property (default 120), which token validation did not read before.
 - DCP issuer documentation (`dcp/dcp-issuer/API.md`, `dcp/doc/quick_start.md`): approve, reject and key rotation are documented under the local administration API path `/api/issuer/...` (`/api/issuer/key/rotate`), with a note that authentication is not enforced yet (#405). `holderPid` is described as the Holder-side request ID (DCP §6.4.1), and credential request examples include `@context` and `type`. The non-existent `POST /issuer/requests` alias is removed, and the rejection body key is `reason` (not `rejectionReason`). Documentation only.
 
 ### Removed

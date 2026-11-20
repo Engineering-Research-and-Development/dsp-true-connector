@@ -36,7 +36,7 @@ Each item below was re-checked against the code after merging `develop` (Keycloa
 | Review: security | `POST /dcp/offers` unauthenticated / SSRF | Open | Authentication still commented out in `DcpController`. |
 | Review: security | Holder binding check skippable | Open | `VerifierService` still only rejects when `sub` is present and mismatches. |
 | Review: security | Revocation not checked | Open | `VerifierService` does not evaluate `credentialStatus`. |
-| Review: security | `jti` replay window | Open | Tokens accepted until `exp` + 120 s; cache purges at `exp`. |
+| Review: security | `jti` replay window | **Done** (PR #431) | `SelfIssuedIdTokenService` keeps the `jti` until `exp` + clock skew (`dcp.clock-skew-seconds`, default 120), the same skew used for `nbf`, `exp` and `iat`. |
 | Review: security | VP not bound to verifier/lifetime | Open | `BasicVerifiablePresentationSigner` sets no `aud`, `exp`, or nonce. |
 | Review: correctness | DCP auth rejects all protocol requests | Open | `DcpAuthenticationFilter` is still a TODO pass-through; `DcpVerifierAuthenticationFilter` is only in non-`@Configuration` `WebSecurityConfig`. |
 | Review: correctness | Status list marks credentials revoked / unpublished | Open | `StatusListService.allocateStatusEntry()` sets the bit; `publishStatusList` is a TODO. |
