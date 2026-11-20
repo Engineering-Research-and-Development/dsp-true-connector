@@ -89,6 +89,10 @@ All these beans are automatically available for `@Autowired` injection:
 
 See [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md#available-dcp-beans) for the complete list.
 
+## Presentation Queries
+
+`POST /dcp/presentations/query` supports `scope` queries only. A query carrying `presentationDefinition` (Presentation Exchange) is answered with `501 Not Implemented` after the token check and structural validation, as DCP v1.0.1 §5.4.1.1 allows. A query with both `scope` and `presentationDefinition`, or with neither, returns `400`.
+
 ## Configuration Properties
 
 All properties use the `dcp.*` prefix:
