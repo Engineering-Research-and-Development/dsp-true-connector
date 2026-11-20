@@ -19,8 +19,8 @@
 `defaultFilterChain` (Order 3), which permits every request the other three do not match. The connector now
 embeds the DCP Holder and Verifier, and DCP adds endpoint groups that no chain was designed for:
 
-- DCP protocol routes (`/dcp/**` today, `/issuer/**` in the Issuer) and the DID documents fall through to
-  the permit-all default chain. DCP authentication happens only where a controller validates the token
+- The Holder's DCP protocol routes (`/dcp/**`) and the DID documents fall through to the permit-all
+  default chain. DCP authentication happens only where a controller validates the token
   itself, and `POST /dcp/offers` does not.
 - `/api/dev/token/**`, which signs Self-Issued ID Tokens with the connector's DID key, is `permitAll` in the
   `KEYCLOAK` and `INTERNAL` admin chains.
@@ -68,7 +68,7 @@ A path no zone matches is denied.
 | Internal | `/internal/**` | In-memory HMAC internal-call token, loopback only (unchanged, D-ARC-005) | `ROLE_INTERNAL` |
 | Admin / UI | `/api/**`, `/actuator/**` (except health), `/env` | Keycloak user token (`aud` `dsp-true-connector`, realm rules of D-ARC-004 and D-ARC-006) or the `INTERNAL`-mode UI JWT from `/api/v1/auth/login` | Roles: `ADMIN`, `SUPER_ADMIN`, and the DCP admin authorities mapped to them |
 | DSP protocol | `/*/connector/**`, `/*/catalog/**`, `/*/negotiations/**`, `/*/transfers/**`, `/*/consumer/**` and the unprefixed forms the TCK forwarding filter rewrites | DCP authentication off: the platform connector token (`platform` realm token in `KEYCLOAK` mode, the shared-secret protocol token in `INTERNAL` mode). DCP authentication on: a DCP Self-Issued ID Token only. | `ROLE_CONNECTOR` |
-| DCP protocol (new) | `/<dcpBase>/**`, `/<issuerBase>/**` and their `/*/`-prefixed forms, except the public paths below | DCP Self-Issued ID Token: signature verified against the `sub` DID document, `aud` equal to the routed participant's DID, `jti` replay check; plus the access token in its `token` claim where the specification requires one | An authenticated DCP caller bound to the routed participant. Endpoint-level rules follow the specification. |
+| DCP protocol (new) | `/<dcpBase>/**`, `/<issuerBase>/**` and their `/*/`-prefixed forms, except the paths of the public zone | DCP Self-Issued ID Token: signature verified against the `sub` DID document, `aud` equal to the routed participant's DID, `jti` replay check; plus the access token in its `token` claim where the specification requires one | An authenticated DCP caller bound to the routed participant. Endpoint-level rules follow the specification. |
 | Public (new, explicit) | The allow-list of the inventory below: `/actuator/health/**`, DID documents, status lists, OpenAPI when enabled, `/error`, `/.well-known/dspace-version`, `/public/tenant`, `/artifacts/*` | None | `permitAll` |
 | Default | Anything else | n/a | Deny (changed from `permitAll`) |
 
