@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.HashSet;
-import java.util.UUID;
 
 /**
  * Service for managing credential metadata and generating IssuerMetadata.
@@ -130,7 +129,7 @@ public class CredentialMetadataService {
 
         String id = config.getId();
         if (id == null || id.isBlank()) {
-            id = UUID.randomUUID().toString();
+            id = CredentialObjectIds.newId();
             log.debug("Generated ID for credential type '{}': {}", config.getCredentialType(), id);
         }
         builder.id(id);

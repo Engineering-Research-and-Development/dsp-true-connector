@@ -17,6 +17,7 @@ import org.mockito.MockitoAnnotations;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
@@ -243,7 +244,8 @@ class CredentialMetadataServiceTest {
         assertNotNull(metadata);
         IssuerMetadata.CredentialObject credentialObject = metadata.getCredentialsSupported().get(0);
         assertNotNull(credentialObject.getId());
-        assertFalse(credentialObject.getId().isBlank());
+        assertTrue(credentialObject.getId().startsWith("urn:uuid:"));
+        assertDoesNotThrow(() -> UUID.fromString(credentialObject.getId().substring("urn:uuid:".length())));
     }
 
     @Test

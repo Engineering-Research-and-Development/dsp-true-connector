@@ -35,7 +35,7 @@ dcp.supportedProfiles[0]=VC11_SL2021_JWT
 dcp.supportedProfiles[1]=VC11_SL2021_JSONLD
 
 # Add a credential
-dcp.credentials.supported[0].id=550e8400-e29b-41d4-a716-446655440000
+dcp.credentials.supported[0].id=urn:uuid:550e8400-e29b-41d4-a716-446655440000
 dcp.credentials.supported[0].credentialType=MembershipCredential
 dcp.credentials.supported[0].credentialSchema=https://example.com/schemas/membership-credential.json
 dcp.credentials.supported[0].offerReason=issuance
@@ -46,7 +46,7 @@ dcp.credentials.supported[0].profile=vc11-sl2021/jwt
 
 ```properties
 # Credential with all fields
-dcp.credentials.supported[0].id=550e8400-e29b-41d4-a716-446655440000
+dcp.credentials.supported[0].id=urn:uuid:550e8400-e29b-41d4-a716-446655440000
 dcp.credentials.supported[0].type=CredentialObject
 dcp.credentials.supported[0].credentialType=MembershipCredential
 dcp.credentials.supported[0].offerReason=reissue
@@ -112,7 +112,7 @@ If no credentials are configured in `dcp.credentials.supported`, the endpoint re
   "issuer": "did:web:localhost:8090",
   "credentialsSupported": [
     {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "id": "urn:uuid:550e8400-e29b-41d4-a716-446655440000",
       "type": "CredentialObject",
       "credentialType": "MembershipCredential",
       "credentialSchema": "https://example.com/schemas/membership-credential.json",
@@ -123,7 +123,7 @@ If no credentials are configured in `dcp.credentials.supported`, the endpoint re
       "profile": "vc11-sl2021/jwt"
     },
     {
-      "id": "d5c77b0e-7f4e-4fd5-8c5f-28b5fc3f96d1",
+      "id": "urn:uuid:d5c77b0e-7f4e-4fd5-8c5f-28b5fc3f96d1",
       "type": "CredentialObject",
       "credentialType": "CompanyCredential",
       "offerReason": "reissue",
@@ -218,7 +218,7 @@ Add this to `credential-metadata-configuration.properties`:
 dcp.connector-did=did:web:your-domain.com
 
 # Configure each credential you issue
-dcp.credentials.supported[0].id=550e8400-e29b-41d4-a716-446655440000
+dcp.credentials.supported[0].id=urn:uuid:550e8400-e29b-41d4-a716-446655440000
 dcp.credentials.supported[0].credentialType=MembershipCredential
 dcp.credentials.supported[0].credentialSchema=https://your-domain.com/schemas/membership.json
 dcp.credentials.supported[0].offerReason=issuance
