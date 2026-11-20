@@ -21,6 +21,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationEntryPoint;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
+import org.springframework.security.web.util.matcher.AndRequestMatcher;
+import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 
 import java.util.ArrayList;
@@ -29,6 +32,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Spring Security configuration of the standalone Issuer application.
@@ -40,7 +44,8 @@ import java.util.Set;
  *       Without credentials, or with wrong ones, the answer is 401; an authenticated user without the
  *       authority gets 403. With no user configured every administration request gets 401 (fail closed).</li>
  *   <li>The public chain permits the DCP protocol endpoints ({@code /issuer/**}, including the status list
- *       path), the DID documents ({@code /.well-known/**} and any {@code GET .../did.json}), {@code /actuator/health}
+ *       path), the DID documents ({@code /.well-known/**} and any {@code GET .../did.json}, also below
+ *       {@code /api/issuer}), {@code /actuator/health}
  *       and the {@code /error} dispatch. These endpoints keep their own DCP token validation in the controllers.
  *       Every other path is denied.</li>
  * </ul>
@@ -59,6 +64,17 @@ public class IssuerSecurityConfig {
     private static final String BASIC_REALM = "dcp-issuer-admin";
 
     private static final String NOOP_PREFIX = "{noop}";
+
+    private static final String BCRYPT_PREFIX = "{bcrypt}";
+
+    /** Encoded form accepted by {@code BCryptPasswordEncoder}. */
+    private static final Pattern BCRYPT_HASH = Pattern.compile("\\A\\$2[aby]?\\$\\d\\d\\$[./0-9A-Za-z]{53}\\z");
+
+    /** {@code DelegatingPasswordEncoder} ids that are plain text or weak legacy hashes. */
+    private static final List<String> WEAK_PASSWORD_IDS =
+            List.of(NOOP_PREFIX, "{MD4}", "{MD5}", "{SHA-1}", "{SHA-256}", "{sha256}", "{ldap}");
+
+    private static final String ACTUATOR_PREFIX = "/actuator/";
 
     private static final String PASSWORD_PROBE = "issuer-admin-password-format-probe";
 
@@ -119,7 +135,10 @@ public class IssuerSecurityConfig {
         entryPoint.setRealmName(BASIC_REALM);
         entryPoint.afterPropertiesSet();
 
-        http.securityMatcher(ADMIN_API_PATTERN)
+        // A DID document published below /api/issuer (a did:web path starting with api:issuer) stays public.
+        http.securityMatcher(new AndRequestMatcher(
+                        PathPatternRequestMatcher.withDefaults().matcher(ADMIN_API_PATTERN),
+                        new NegatedRequestMatcher(didDocumentRequestMatcher())))
                 .authenticationManager(authenticationManager)
                 .authorizeHttpRequests(authorize -> authorize.anyRequest().hasAuthority(ADMIN_AUTHORITY))
                 .httpBasic(basic -> basic.realmName(BASIC_REALM).authenticationEntryPoint(entryPoint))
@@ -158,12 +177,19 @@ public class IssuerSecurityConfig {
     }
 
     /**
-     * Matches {@code GET} requests for a DID document at any depth ({@code /<path>/did.json}).
+     * Matches {@code GET} and {@code HEAD} requests for a DID document at any depth ({@code /<path>/did.json}),
+     * except below {@code /actuator/}, whose endpoints take path variables.
      *
      * @return the DID document request matcher
      */
     static RequestMatcher didDocumentRequestMatcher() {
-        return request -> HttpMethod.GET.matches(request.getMethod()) && pathWithinApplication(request).endsWith("/did.json");
+        return request -> {
+            if (!HttpMethod.GET.matches(request.getMethod()) && !HttpMethod.HEAD.matches(request.getMethod())) {
+                return false;
+            }
+            String path = pathWithinApplication(request);
+            return path.endsWith("/did.json") && !path.startsWith(ACTUATOR_PREFIX);
+        };
     }
 
     /**
@@ -172,8 +198,9 @@ public class IssuerSecurityConfig {
      * @param users the configured users, possibly empty
      * @param passwordEncoder the delegating password encoder used to check each password format
      * @return the in-memory user store
-     * @throws IllegalStateException when a user has no username or password, a password is not in
-     *                               {@code DelegatingPasswordEncoder} format, or a username is repeated
+     * @throws IllegalStateException when a user has no username or password, a username or password has
+     *                               surrounding whitespace, a password is not in {@code DelegatingPasswordEncoder}
+     *                               format (or is a malformed bcrypt hash), or a username is repeated
      */
     static InMemoryUserDetailsManager buildAdminUserDetailsManager(List<IssuerProperties.AdminUser> users,
                                                                    PasswordEncoder passwordEncoder) {
@@ -185,6 +212,9 @@ public class IssuerSecurityConfig {
             if (user == null || user.getUsername() == null || user.getUsername().isBlank()) {
                 throw new IllegalStateException(property + ".username must not be blank");
             }
+            if (!user.getUsername().equals(user.getUsername().strip())) {
+                throw new IllegalStateException(property + ".username must not start or end with whitespace");
+            }
             if (!usernames.add(user.getUsername().toLowerCase(Locale.ROOT))) {
                 throw new IllegalStateException(property + ".username is a duplicate: " + user.getUsername());
             }
@@ -192,11 +222,13 @@ public class IssuerSecurityConfig {
             if (password == null || password.isBlank()) {
                 throw new IllegalStateException(property + ".password must not be blank");
             }
-            requireDelegatingFormat(property, password, passwordEncoder);
-            if (password.startsWith(NOOP_PREFIX)) {
-                log.warn("{} ({}) has a {} plain-text password; store a hash such as {bcrypt} instead",
-                        property, user.getUsername(), NOOP_PREFIX);
+            if (!password.equals(password.strip())) {
+                throw new IllegalStateException(property + ".password must not start or end with whitespace");
             }
+            requireDelegatingFormat(property, password, passwordEncoder);
+            WEAK_PASSWORD_IDS.stream().filter(password::startsWith).findFirst().ifPresent(id ->
+                    log.warn("{} ({}) uses the weak password encoding {}; store a hash such as {bcrypt} instead",
+                            property, user.getUsername(), id));
             String[] authorities = Objects.requireNonNullElse(user.getAuthorities(), List.<String>of()).stream()
                     .filter(Objects::nonNull)
                     .map(String::trim)
@@ -211,6 +243,11 @@ public class IssuerSecurityConfig {
     }
 
     private static void requireDelegatingFormat(String property, String password, PasswordEncoder passwordEncoder) {
+        if (password.startsWith(BCRYPT_PREFIX)
+                && !BCRYPT_HASH.matcher(password.substring(BCRYPT_PREFIX.length())).matches()) {
+            throw new IllegalStateException(property + ".password is not a valid bcrypt hash "
+                    + "(in Docker Compose write every $ as $$)");
+        }
         try {
             passwordEncoder.matches(PASSWORD_PROBE, password);
         } catch (IllegalArgumentException e) {

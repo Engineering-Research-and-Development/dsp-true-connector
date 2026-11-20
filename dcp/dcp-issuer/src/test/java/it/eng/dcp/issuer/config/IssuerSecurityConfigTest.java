@@ -92,6 +92,50 @@ class IssuerSecurityConfigTest {
         assertFalse(e.getMessage().contains(password));
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {" issuer-admin", "issuer-admin "})
+    @DisplayName("A username with surrounding whitespace fails startup")
+    void buildAdminUserDetailsManager_usernameWithWhitespace_throws(String username) {
+        List<IssuerProperties.AdminUser> users = List.of(user(username, ADMIN_HASH, List.of()));
+
+        IllegalStateException e = assertThrows(IllegalStateException.class,
+                () -> IssuerSecurityConfig.buildAdminUserDetailsManager(users, passwordEncoder));
+        assertEquals("dcp.admin.users[0].username must not start or end with whitespace", e.getMessage());
+    }
+
+    @Test
+    @DisplayName("A password with surrounding whitespace fails startup")
+    void buildAdminUserDetailsManager_passwordWithWhitespace_throws() {
+        List<IssuerProperties.AdminUser> users = List.of(user("issuer-admin", ADMIN_HASH + " ", List.of()));
+
+        IllegalStateException e = assertThrows(IllegalStateException.class,
+                () -> IssuerSecurityConfig.buildAdminUserDetailsManager(users, passwordEncoder));
+        assertEquals("dcp.admin.users[0].password must not start or end with whitespace", e.getMessage());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{bcrypt}0.6fAO9oPNoB", "{bcrypt}a$10$aZXjLqJPPXsBq7zSJRnID.6fAO9oPNoB.fNQf8.XMH8k43qBEOnB6"})
+    @DisplayName("A malformed bcrypt hash (for example with Compose-eaten $ signs) fails startup")
+    void buildAdminUserDetailsManager_malformedBcrypt_throws(String password) {
+        List<IssuerProperties.AdminUser> users = List.of(user("issuer-admin", password, List.of()));
+
+        IllegalStateException e = assertThrows(IllegalStateException.class,
+                () -> IssuerSecurityConfig.buildAdminUserDetailsManager(users, passwordEncoder));
+        assertTrue(e.getMessage().startsWith("dcp.admin.users[0].password is not a valid bcrypt hash"));
+        assertFalse(e.getMessage().contains(password));
+    }
+
+    @Test
+    @DisplayName("A weak legacy encoding is accepted at startup")
+    void buildAdminUserDetailsManager_weakEncoding_loaded() {
+        List<IssuerProperties.AdminUser> users = List.of(
+                user("issuer-admin", "{MD5}5f4dcc3b5aa765d61d8327deb882cf99", List.of("DCP_ISSUER_ADMIN")));
+
+        InMemoryUserDetailsManager manager = IssuerSecurityConfig.buildAdminUserDetailsManager(users, passwordEncoder);
+
+        assertTrue(manager.userExists("issuer-admin"));
+    }
+
     @Test
     @DisplayName("A repeated username (ignoring case) fails startup")
     void buildAdminUserDetailsManager_duplicateUsername_throws() {
@@ -114,12 +158,14 @@ class IssuerSecurityConfigTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/did.json", "/issuer/did.json", "/a/b/c/did.json"})
-    @DisplayName("GET requests for a did.json at any depth match")
+    @ValueSource(strings = {"/did.json", "/issuer/did.json", "/a/b/c/did.json", "/api/issuer/did.json",
+            "/api/issuer/.well-known/did.json"})
+    @DisplayName("GET and HEAD requests for a did.json at any depth match")
     void didDocumentRequestMatcher_getDidJson_matches(String path) {
         RequestMatcher matcher = IssuerSecurityConfig.didDocumentRequestMatcher();
 
         assertTrue(matcher.matches(new MockHttpServletRequest("GET", path)));
+        assertTrue(matcher.matches(new MockHttpServletRequest("HEAD", path)));
     }
 
     @Test
@@ -130,6 +176,7 @@ class IssuerSecurityConfigTest {
         assertFalse(matcher.matches(new MockHttpServletRequest("POST", "/issuer/did.json")));
         assertFalse(matcher.matches(new MockHttpServletRequest("GET", "/issuer/did.json.bak")));
         assertFalse(matcher.matches(new MockHttpServletRequest("GET", "/issuer/notdid.json")));
+        assertFalse(matcher.matches(new MockHttpServletRequest("GET", "/actuator/env/did.json")));
     }
 
     @Test

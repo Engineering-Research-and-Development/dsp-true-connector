@@ -153,6 +153,21 @@ public class IssuerSecurityIT extends BaseIssuerIntegrationTest {
     }
 
     @Test
+    @DisplayName("A DID document path below /api/issuer is not challenged by the administration chain")
+    void didDocumentBelowAdminPath_anonymous_notChallenged() throws Exception {
+        mockMvc.perform(get("/api/issuer/did.json"))
+                .andExpect(status().isNotFound())
+                .andExpect(header().doesNotExist(HttpHeaders.WWW_AUTHENTICATE));
+    }
+
+    @Test
+    @DisplayName("Actuator endpoints ending in /did.json are still denied")
+    void actuatorDidJsonPath_anonymous_isDenied() throws Exception {
+        mockMvc.perform(get("/actuator/env/did.json"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @DisplayName("Paths outside the known zones are denied")
     void unknownPath_anonymous_isDenied() throws Exception {
         mockMvc.perform(get("/some/other/path"))

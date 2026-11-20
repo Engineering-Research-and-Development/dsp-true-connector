@@ -112,10 +112,12 @@ Generate the hash with any bcrypt tool, for example `htpasswd -bnBC 10 "" '<pass
 
 - **No user is configured by default.** Without one, every administration request gets `401` (fail closed)
   and the Issuer logs a WARN at startup. The DCP protocol endpoints keep working.
-- **Startup fails** when a user has a blank username or password, a username is repeated (case-insensitive),
-  or a password is not in `DelegatingPasswordEncoder` format with a known id. The error names the property,
-  never the password.
-- `{noop}<plain password>` is accepted for local tests only and logs a WARN; never use it in production.
+- **Startup fails** when a user has a blank username or password, a username or password with leading or
+  trailing whitespace, a repeated username (case-insensitive), a password that is not in
+  `DelegatingPasswordEncoder` format with a known id, or a malformed `{bcrypt}` hash (for example when Docker
+  Compose removed the `$` signs). The error names the property, never the password.
+- `{noop}<plain password>` and the weak legacy encodings (`{MD4}`, `{MD5}`, `{SHA-1}`, `{SHA-256}`, `{sha256}`,
+  `{ldap}`) are accepted but log a WARN; use them for local tests only, never in production.
 - The Issuer never logs passwords or their hashes. Send the credentials over TLS only (`server.ssl.enabled=true`).
 
 ### Step 3: Configure MongoDB
