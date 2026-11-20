@@ -1223,6 +1223,36 @@ class VerifierServiceTest {
         }
 
         @Test
+        @DisplayName("Should accept a presentation whose holder key is listed only under authentication")
+        void shouldAcceptPresentationKeyListedOnlyUnderAuthentication() throws Exception {
+            // Given
+            String accessToken = createValidAccessToken();
+            String selfIssuedToken = createValidSelfIssuedToken(accessToken);
+            when(tokenService.validateToken(selfIssuedToken)).thenReturn(parseClaims(selfIssuedToken));
+            setupSuccessfulHolderResolution();
+
+            String credentialJwt = createValidCredentialJWT();
+            String presentationJwt = createValidPresentationJWT(List.of(credentialJwt));
+            setupSuccessfulPresentationQuery(List.of(presentationJwt));
+            // Holder key: no assertionMethod / capabilityInvocation, only authentication. Lenient, because the
+            // verifier first tries (and misses) the other relationships with the same mock.
+            lenient().when(didResolverService.resolvePublicKey(eq(HOLDER_DID), anyString(), eq("authentication")))
+                    .thenReturn(holderKey.toPublicJWK());
+            lenient().when(didResolverService.resolvePublicKey(eq(ISSUER_DID), anyString(), eq("assertionMethod")))
+                    .thenReturn(issuerKey.toPublicJWK());
+            setupTrustedIssuer(ISSUER_DID);
+
+            // When
+            VerifierService.PresentationFlowResult result =
+                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken);
+
+            // Then
+            assertEquals(1, result.getValidatedPresentations().size());
+            // Credential (issuer) keys are never looked up under authentication
+            verify(didResolverService, never()).resolvePublicKey(eq(ISSUER_DID), anyString(), eq("authentication"));
+        }
+
+        @Test
         @DisplayName("Should successfully validate with multiple credentials")
         void shouldSuccessfullyValidateMultipleCredentials() throws Exception {
             // Given

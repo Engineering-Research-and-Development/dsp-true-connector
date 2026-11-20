@@ -15,13 +15,13 @@ Section numbers (§) in this document follow the rendered ReSpec numbering used 
 
 ## Status (reviewed 2026-11-18, branch `feature/dcp-keycloak`)
 
-Each item below was re-checked against the code after merging `develop` (Keycloak auth) into the DCP branch. Only one item is resolved; everything else remains open.
+Each item below was re-checked against the code after merging `develop` (Keycloak auth) into the DCP branch. Rows resolved since then name their PR.
 
 | Section | Item | Status | Evidence |
 |---|---|---|---|
 | Security finding | Private scalar `d` in published JWK | **Done** (code). Key rotation for possibly exposed keys is still an operational task. | `KeyService.convertPublicKeyToJWK()` emits only `kty`, `use`, `crv`, `kid`, `x`, `y`. |
-| Implementation gaps | Self-Issued ID Token signature verification | Open | `SelfIssuedIdTokenService.validateToken()`: `jwt.verify(...)` still commented out. |
-| Implementation gaps | DID key selection / verification relationships | Open | `HttpDidResolverService.resolvePublicKey()`: `kid` match and relationship checks commented out; `capabilityInvocation` commented out in `DidDocument` and `DidDocumentService`. |
+| Implementation gaps | Self-Issued ID Token signature verification | **Done** (PR #430) | `SelfIssuedIdTokenService.validateToken()` verifies the signature (EC keys) and checks `sub` == resolved DID Document `id`. |
+| Implementation gaps | DID key selection / verification relationships | **Done** for Self-Issued ID Tokens (PR #430). VP proofs still use `assertionMethod` with a `capabilityInvocation` fallback instead of `authentication` (#402). | `HttpDidResolverService.resolvePublicKey()` applies the §4.3.3 `kid` rules and requires the requested relationship. `DidDocument` models `authentication`, `capabilityInvocation` and `assertionMethod`; `DidDocumentService` emits the first two, plus `assertionMethod` for documents advertising an `IssuerService`. |
 | Implementation gaps | Access token reuse for credential writes | Open | `CredentialDeliveryService` still calls `createAndSignToken(holderDid, null, config)` on both delivery and rejection paths. |
 | Implementation gaps | Status lookup bound to original client | Open | `IssuerService.getRequestByIssuerPid()` has no owner check. |
 | Implementation gaps | VP/VC proof validation | Open | `PresentationValidationServiceImpl` (module `dcp-holder`) has no proof verification. |
@@ -36,7 +36,7 @@ Each item below was re-checked against the code after merging `develop` (Keycloa
 | Review: security | `POST /dcp/offers` unauthenticated / SSRF | Open | Authentication still commented out in `DcpController`. |
 | Review: security | Holder binding check skippable | **Done** (PR #432) | `VerifierService.verifyHolderBinding()` requires every `credentialSubject.id` (VC 1.1 and VC 2.0) and a present `sub` to equal the holder DID; a missing subject id is rejected. |
 | Review: security | Revocation not checked | Open | `VerifierService` does not evaluate `credentialStatus`. |
-| Review: security | `jti` replay window | Open | Tokens accepted until `exp` + 120 s; cache purges at `exp`. |
+| Review: security | `jti` replay window | **Done** (PR #431) | `SelfIssuedIdTokenService` keeps the `jti` until `exp` + clock skew (`dcp.clock-skew-seconds`, default 120), the same skew used for `nbf`, `exp` and `iat`. |
 | Review: security | VP not bound to verifier/lifetime | Open | `BasicVerifiablePresentationSigner` sets no `aud`, `exp`, or nonce. |
 | Review: correctness | DCP auth rejects all protocol requests | Open | `DcpAuthenticationFilter` is still a TODO pass-through; `DcpVerifierAuthenticationFilter` is only in non-`@Configuration` `WebSecurityConfig`. |
 | Review: correctness | Status list marks credentials revoked / unpublished | Open | `StatusListService.allocateStatusEntry()` sets the bit; `publishStatusList` is a TODO. |

@@ -65,6 +65,7 @@ public class VerifierService {
 
     private static final String CREDENTIAL_SERVICE_TYPE = "CredentialService";
     private static final String PRESENTATIONS_QUERY_PATH = "/presentations/query";
+    private static final String PRESENTATION_CONTEXT = "Presentation";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
     private static final String VERIFIER_SOURCE = "verifier";
@@ -329,7 +330,7 @@ public class VerifierService {
 
                 // Verify presentation JWT signature using holder's public key
                 String kid = presentationSignedJwt.getHeader().getKeyID();
-                validateJwtSignature(presentationSignedJwt, holderDid, kid, "Presentation");
+                validateJwtSignature(presentationSignedJwt, holderDid, kid, PRESENTATION_CONTEXT);
 
                 log.debug("Presentation JWT signature verified");
 
@@ -563,6 +564,11 @@ public class VerifierService {
             if (jwk == null) {
                 // Fallback to capabilityInvocation if assertionMethod not found
                 jwk = didResolverService.resolvePublicKey(issuerDid, kid, "capabilityInvocation");
+            }
+            if (jwk == null && PRESENTATION_CONTEXT.equals(contextName)) {
+                // VP proofs use the holder's authentication key (DID Core); the resolver now enforces
+                // relationships, so a key listed only under authentication must still be found
+                jwk = didResolverService.resolvePublicKey(issuerDid, kid, "authentication");
             }
 
             if (jwk == null) {

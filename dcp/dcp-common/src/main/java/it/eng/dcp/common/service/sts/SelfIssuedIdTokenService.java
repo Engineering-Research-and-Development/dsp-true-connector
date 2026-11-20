@@ -2,6 +2,7 @@ package it.eng.dcp.common.service.sts;
 
 import com.nimbusds.jose.*;
 import com.nimbusds.jose.crypto.ECDSASigner;
+import com.nimbusds.jose.crypto.ECDSAVerifier;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jwt.JWTClaimsSet;
@@ -9,14 +10,17 @@ import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.exception.DidResolutionException;
+import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.common.util.DidUrlConverter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.text.ParseException;
 import java.time.Instant;
 import java.util.Arrays;
@@ -43,12 +47,21 @@ import java.util.UUID;
 @Slf4j
 public class SelfIssuedIdTokenService {
 
+    /** Default clock skew in seconds, used when {@code dcp.clock-skew-seconds} is not set. */
+    static final long DEFAULT_CLOCK_SKEW_SECONDS = 120;
+
 //    private final String connectorDid;
     private final DidResolverService didResolver;
     private final JtiReplayCache jtiCache;
     private final KeyService keyService;
     private final DidDocumentConfig config;
     private final DcpAuditEventPublisher auditPublisher;
+
+    /**
+     * Clock skew in seconds allowed on {@code nbf}, {@code exp} and {@code iat}; a used {@code jti} is
+     * remembered until {@code exp} plus this skew. Property {@code dcp.clock-skew-seconds}, default 120.
+     */
+    private long clockSkewSeconds = DEFAULT_CLOCK_SKEW_SECONDS;
 
     // Test hook to override the signing key with a specific EC JWK (used in unit tests)
     private ECKey overrideSigningKey;
@@ -67,15 +80,6 @@ public class SelfIssuedIdTokenService {
         this.keyService = keyService;
         this.config = config;
         this.auditPublisher = auditPublisher;
-    }
-
-    /**
-     * Test-only setter to override the signing key.
-     * 
-     * @param key The EC key to use for signing instead of the default from KeyService
-     */
-    void setOverrideSigningKey(ECKey key) {
-        this.overrideSigningKey = key;
     }
 
     /**
@@ -159,16 +163,16 @@ public class SelfIssuedIdTokenService {
     /**
      * Validates a self-issued ID token.
      * 
-     * <p>Performs the following validations:
+     * <p>Performs the validations of DCP §4.3.3:
      * <ul>
      *   <li>Parses the JWT and extracts issuer/kid</li>
-     *   <li>Resolves the issuer's public key via DID resolution</li>
-     *   <li>Verifies the signature using the resolved public key</li>
+     *   <li>Checks iss == sub and aud == this participant's DID</li>
+     *   <li>Resolves the {@code sub} DID document and checks sub == DID Document id</li>
+     *   <li>Selects the key per the kid rules (kid match; no kid: the single verification method)
+     *       and requires the {@code capabilityInvocation} relationship</li>
+     *   <li>Verifies the signature with the selected key (EC keys; other key types are rejected)</li>
      *   <li>Checks token expiry, not-before, and issue time</li>
-     *   <li>Checks iss == sub, aud == verifierDid, sub == DID Document id</li>
-     *   <li>Checks capabilityInvocation relationship</li>
-     *   <li>Handles kid header logic</li>
-     *   <li>Prevents replay attacks using JTI cache</li>
+     *   <li>Prevents replay attacks using JTI tracking</li>
      * </ul>
      * 
      * @param token The JWT token string to validate
@@ -184,7 +188,7 @@ public class SelfIssuedIdTokenService {
             String aud = claims.getAudience() != null && !claims.getAudience().isEmpty() ? claims.getAudience().get(0) : null;
             String kid = jwt.getHeader().getKeyID();
 
-            log.info("SignedJwt with claims {}", claims.toJSONObject());
+            log.debug("Validating Self-Issued ID Token: iss={}, kid={}", issuer, kid);
 
             // 1. iss and sub must be the same (using robust DID comparison)
             if (issuer == null || subject == null || !DidUrlConverter.compareDids(issuer, subject)) {
@@ -197,33 +201,46 @@ public class SelfIssuedIdTokenService {
                 throw new SecurityException("aud claim must match verifier DID");
             }
 
-            // 3. Resolve the public key for sub DID and kid with capabilityInvocation
-            JWK jwk = didResolver.resolvePublicKey(subject, kid, "capabilityInvocation");
+            // 3. sub must equal the id of the resolved DID document (§4.3.3 step 4)
+            DidDocument didDocument;
+            try {
+                didDocument = didResolver.fetchDidDocumentCached(subject);
+            } catch (IOException e) {
+                throw new DidResolutionException("Failed to fetch DID document for sub", e);
+            } catch (IllegalArgumentException e) {
+                // e.g. a sub that is not a did:web DID
+                throw new DidResolutionException("Unsupported or invalid sub DID: " + e.getMessage(), e);
+            }
+            if (didDocument == null || didDocument.getId() == null
+                    || !DidUrlConverter.compareDids(subject, didDocument.getId())) {
+                throw new SecurityException("sub must equal the resolved DID Document id");
+            }
+
+            // 4. Resolve the public key for sub DID and kid with capabilityInvocation
+            JWK jwk = didResolver.resolvePublicKey(subject, kid, DidDocument.CAPABILITY_INVOCATION);
             if (jwk == null) {
                 throw new SecurityException("No JWK found for sub DID with capabilityInvocation");
             }
 
-            // 4. Verify signature
-//            ECKey ecPub = (ECKey) jwk;
-//            JWSVerifier verifier = new ECDSAVerifier(ecPub.toECPublicKey());
-//            if (!jwt.verify(verifier)) {
-//                throw new SecurityException("Invalid signature");
-//            }
+            // 5. Verify signature
+            if (!jwt.verify(createVerifier(jwk))) {
+                throw new SecurityException("Invalid signature");
+            }
 
-            // 5. Check nbf if present (allow 2 min clock skew)
+            // 6. Check nbf if present (allow clock skew)
             Instant now = Instant.now();
             Date nbf = claims.getNotBeforeTime();
-            if (nbf != null && now.isBefore(nbf.toInstant().minusSeconds(120))) {
+            if (nbf != null && now.isBefore(nbf.toInstant().minusSeconds(clockSkewSeconds))) {
                 throw new SecurityException("Token not valid yet (nbf)");
             }
 
-            // 6. Check exp (allow 2 min clock skew)
+            // 7. Check exp (allow clock skew)
             Date exp = claims.getExpirationTime();
-            if (exp == null || now.isAfter(exp.toInstant().plusSeconds(120))) {
+            if (exp == null || now.isAfter(exp.toInstant().plusSeconds(clockSkewSeconds))) {
                 throw new SecurityException("Token expired");
             }
 
-            // 7. Optionally, check iat (reject if too old, e.g., >1h)
+            // 8. Optionally, check iat (reject if too old, e.g., >1h)
             Date iat = claims.getIssueTime();
             if (iat == null) {
                 throw new SecurityException("Missing iat");
@@ -231,18 +248,20 @@ public class SelfIssuedIdTokenService {
             if (now.isAfter(iat.toInstant().plusSeconds(3600))) {
                 throw new SecurityException("Token issued too far in the past");
             }
-            // Reject if iat is in the future (allow 2 min clock skew)
-            if (now.isBefore(iat.toInstant().minusSeconds(120))) {
+            // Reject if iat is in the future (allow clock skew)
+            if (now.isBefore(iat.toInstant().minusSeconds(clockSkewSeconds))) {
                 throw new SecurityException("Token issued in the future (iat)");
             }
 
-            // 8. jti must be present and not used before
+            // 9. jti must be present and not used before
             String jti = claims.getJWTID();
             if (jti == null) {
                 throw new SecurityException("Missing jti");
             }
             try {
-                jtiCache.checkAndPut(jti, exp.toInstant());
+                // Keep the jti for as long as the token is accepted (exp + skew), so it cannot be
+                // replayed inside the clock-skew window after exp
+                jtiCache.checkAndPut(jti, exp.toInstant().plusSeconds(clockSkewSeconds));
             } catch (IllegalStateException e) {
                 throw new SecurityException("jti has already been used", e);
             }
@@ -273,6 +292,15 @@ public class SelfIssuedIdTokenService {
                     null, null, null, null,
                     Map.of("reason", e.getMessage()));
             throw new SecurityException("Failed to resolve DID: " + e.getMessage(), e);
+        } catch (JOSEException e) {
+            log.warn("Token validation failed - signature verification error: {}", e.getMessage());
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Token validation failed - signature verification error: " + e.getMessage(),
+                    "common",
+                    null, null, null, null,
+                    Map.of("reason", e.getMessage()));
+            throw new SecurityException("Invalid signature", e);
         } catch (ParseException e) {
             log.error("Token validation failed - parse/crypto error: {}", e.getMessage());
             auditPublisher.publishEvent(
@@ -283,6 +311,21 @@ public class SelfIssuedIdTokenService {
                     Map.of("reason", e.getMessage()));
             throw new SecurityException("Invalid token format", e);
         }
+    }
+
+    /**
+     * Creates a signature verifier for the resolved key.
+     *
+     * @param jwk the public key selected from the DID document
+     * @return a verifier for the key
+     * @throws SecurityException if the key type is not supported
+     * @throws JOSEException if the key cannot be converted
+     */
+    private JWSVerifier createVerifier(JWK jwk) throws JOSEException {
+        if (jwk instanceof ECKey ecKey) {
+            return new ECDSAVerifier(ecKey.toECPublicKey());
+        }
+        throw new SecurityException("Unsupported key type: " + jwk.getKeyType());
     }
 
     /**
@@ -465,5 +508,29 @@ public class SelfIssuedIdTokenService {
     public String createStsCompatibleToken(String audienceDid, DidDocumentConfig config) {
         log.warn("Creating STS-compatible token WITHOUT scopes - consider specifying scopes for security");
         return createStsCompatibleToken(audienceDid, config, new String[0]);
+    }
+
+    /**
+     * Sets the clock skew from {@code dcp.clock-skew-seconds}.
+     *
+     * @param clockSkewSeconds the allowed clock skew in seconds, at least 0
+     * @throws IllegalArgumentException if the value is negative
+     */
+    @Value("${dcp.clock-skew-seconds:" + DEFAULT_CLOCK_SKEW_SECONDS + "}")
+    void setClockSkewSeconds(long clockSkewSeconds) {
+        if (clockSkewSeconds < 0) {
+            throw new IllegalArgumentException(
+                    "dcp.clock-skew-seconds must not be negative, but was " + clockSkewSeconds);
+        }
+        this.clockSkewSeconds = clockSkewSeconds;
+    }
+
+    /**
+     * Test-only setter to override the signing key.
+     *
+     * @param key The EC key to use for signing instead of the default from KeyService
+     */
+    void setOverrideSigningKey(ECKey key) {
+        this.overrideSigningKey = key;
     }
 }

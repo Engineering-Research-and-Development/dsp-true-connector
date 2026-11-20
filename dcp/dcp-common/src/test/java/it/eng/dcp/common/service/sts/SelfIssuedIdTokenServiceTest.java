@@ -7,21 +7,26 @@ import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.crypto.ECDSAVerifier;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
+import com.nimbusds.jose.jwk.OctetSequenceKey;
+import com.nimbusds.jose.jwk.gen.OctetSequenceKeyGenerator;
+import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.config.DidDocumentConfig;
+import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.io.IOException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.ECPrivateKey;
@@ -67,6 +72,10 @@ class SelfIssuedIdTokenServiceTest {
                 .privateKey((ECPrivateKey) kp.getPrivate())
                 .keyID(KID)
                 .build();
+
+        // By default the resolved DID document id equals the requested DID (sub == DID Document id)
+        lenient().when(didResolver.fetchDidDocumentCached(anyString()))
+                .thenAnswer(inv -> DidDocument.Builder.newInstance().id(inv.getArgument(0)).build());
     }
 
     private String createJwt(JWTClaimsSet claims, ECKey key) throws Exception {
@@ -146,7 +155,6 @@ class SelfIssuedIdTokenServiceTest {
     }
 
     @Test
-    @Disabled("Disabled since signature check is commented out because of TCK issues")
     void validateToken_invalidSignature() throws Exception {
         when(config.getDid()).thenReturn(CONNECTOR_DID);
 
@@ -163,6 +171,88 @@ class SelfIssuedIdTokenServiceTest {
         when(didResolver.resolvePublicKey(SUBJECT_DID, KID, "capabilityInvocation")).thenReturn(ecJwk);
         Exception ex = assertThrows(SecurityException.class, () -> service.validateToken(jwt));
         assertTrue(ex.getMessage().contains("Invalid signature"));
+    }
+
+    @Test
+    void validateToken_tamperedPayload_rejected() throws Exception {
+        when(config.getDid()).thenReturn(CONNECTOR_DID);
+        String jwt = createJwt(baseClaims().build(), ecJwk);
+        // Replace the payload with different claims while keeping the original signature
+        String[] parts = jwt.split("\\.");
+        String tamperedPayload = Base64URL.encode(baseClaims().claim("token", "injected").build().toString()).toString();
+        String tampered = parts[0] + "." + tamperedPayload + "." + parts[2];
+        when(didResolver.resolvePublicKey(SUBJECT_DID, KID, "capabilityInvocation")).thenReturn(ecJwk);
+
+        Exception ex = assertThrows(SecurityException.class, () -> service.validateToken(tampered));
+        assertTrue(ex.getMessage().contains("Invalid signature"));
+        verify(jtiCache, never()).checkAndPut(anyString(), any());
+    }
+
+    @Test
+    void validateToken_subDiffersFromDidDocumentId_rejected() throws Exception {
+        when(config.getDid()).thenReturn(CONNECTOR_DID);
+        String jwt = createJwt(baseClaims().build(), ecJwk);
+        when(didResolver.fetchDidDocumentCached(SUBJECT_DID))
+                .thenReturn(DidDocument.Builder.newInstance().id("did:web:test:someone-else").build());
+
+        Exception ex = assertThrows(SecurityException.class, () -> service.validateToken(jwt));
+        assertTrue(ex.getMessage().contains("DID Document id"));
+        verify(didResolver, never()).resolvePublicKey(anyString(), any(), anyString());
+    }
+
+    @Test
+    void validateToken_didDocumentNotFound_rejected() throws Exception {
+        when(config.getDid()).thenReturn(CONNECTOR_DID);
+        String jwt = createJwt(baseClaims().build(), ecJwk);
+        when(didResolver.fetchDidDocumentCached(SUBJECT_DID)).thenReturn(null);
+
+        Exception ex = assertThrows(SecurityException.class, () -> service.validateToken(jwt));
+        assertTrue(ex.getMessage().contains("DID Document id"));
+    }
+
+    @Test
+    void validateToken_didDocumentFetchFails_rejected() throws Exception {
+        when(config.getDid()).thenReturn(CONNECTOR_DID);
+        String jwt = createJwt(baseClaims().build(), ecJwk);
+        when(didResolver.fetchDidDocumentCached(SUBJECT_DID)).thenThrow(new IOException("unreachable"));
+
+        Exception ex = assertThrows(SecurityException.class, () -> service.validateToken(jwt));
+        assertTrue(ex.getMessage().contains("Failed to resolve DID"));
+    }
+
+    @Test
+    void validateToken_nonDidWebSub_rejectedAsSecurityException() throws Exception {
+        when(config.getDid()).thenReturn(CONNECTOR_DID);
+        String didKey = "did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK";
+        String jwt = createJwt(baseClaims().issuer(didKey).subject(didKey).build(), ecJwk);
+        when(didResolver.fetchDidDocumentCached(didKey)).thenThrow(new IllegalArgumentException("Invalid DID:web format"));
+
+        Exception ex = assertThrows(SecurityException.class, () -> service.validateToken(jwt));
+        assertTrue(ex.getMessage().contains("Failed to resolve DID"));
+        verify(auditPublisher).publishEvent(eq(DcpAuditEventType.TOKEN_VALIDATION_FAILED), anyString(), eq("common"),
+                isNull(), isNull(), isNull(), isNull(), any(Map.class));
+    }
+
+    @Test
+    void validateToken_unsupportedKeyType_rejected() throws Exception {
+        when(config.getDid()).thenReturn(CONNECTOR_DID);
+        String jwt = createJwt(baseClaims().build(), ecJwk);
+        OctetSequenceKey symmetricKey = new OctetSequenceKeyGenerator(256).keyID(KID).generate();
+        when(didResolver.resolvePublicKey(SUBJECT_DID, KID, "capabilityInvocation")).thenReturn(symmetricKey);
+
+        Exception ex = assertThrows(SecurityException.class, () -> service.validateToken(jwt));
+        assertTrue(ex.getMessage().contains("Unsupported key type"));
+    }
+
+    @Test
+    void validateToken_noKidHeader_resolvesWithNullKid() throws Exception {
+        when(config.getDid()).thenReturn(CONNECTOR_DID);
+        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256).build();
+        SignedJWT signed = new SignedJWT(header, baseClaims().build());
+        signed.sign(new ECDSASigner(ecJwk.toECPrivateKey()));
+        when(didResolver.resolvePublicKey(SUBJECT_DID, null, "capabilityInvocation")).thenReturn(ecJwk);
+
+        assertEquals(JTI, service.validateToken(signed.serialize()).getJWTID());
     }
 
     @Test
@@ -244,6 +334,68 @@ class SelfIssuedIdTokenServiceTest {
         when(didResolver.resolvePublicKey(SUBJECT_DID, KID, "capabilityInvocation")).thenReturn(ecJwk);
         doThrow(new IllegalStateException("replay")).when(jtiCache).checkAndPut(anyString(), any());
         Exception ex = assertThrows(SecurityException.class, () -> service.validateToken(jwt));
+        assertTrue(ex.getMessage().contains("jti has already been used"));
+    }
+
+    @Test
+    @DisplayName("a negative clock skew is refused")
+    void setClockSkewSeconds_negative_rejected() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> service.setClockSkewSeconds(-30));
+        assertTrue(ex.getMessage().contains("dcp.clock-skew-seconds"));
+    }
+
+    @Test
+    @DisplayName("jti is kept in the replay cache until exp plus the clock skew")
+    void validateToken_jtiKeptUntilExpPlusClockSkew() throws Exception {
+        when(config.getDid()).thenReturn(CONNECTOR_DID);
+        JWTClaimsSet claims = baseClaims().build();
+        when(didResolver.resolvePublicKey(SUBJECT_DID, KID, "capabilityInvocation")).thenReturn(ecJwk);
+
+        String jwt = createJwt(claims, ecJwk);
+        // exp as carried by the token (whole seconds)
+        Instant exp = SignedJWT.parse(jwt).getJWTClaimsSet().getExpirationTime().toInstant();
+
+        service.validateToken(jwt);
+
+        ArgumentCaptor<Instant> expiry = ArgumentCaptor.forClass(Instant.class);
+        verify(jtiCache).checkAndPut(eq(JTI), expiry.capture());
+        assertEquals(exp.plusSeconds(SelfIssuedIdTokenService.DEFAULT_CLOCK_SKEW_SECONDS), expiry.getValue());
+    }
+
+    @Test
+    @DisplayName("a configured clock skew is used for the jti expiry")
+    void validateToken_configuredClockSkewUsedForJtiExpiry() throws Exception {
+        when(config.getDid()).thenReturn(CONNECTOR_DID);
+        service.setClockSkewSeconds(30);
+        JWTClaimsSet claims = baseClaims().build();
+        when(didResolver.resolvePublicKey(SUBJECT_DID, KID, "capabilityInvocation")).thenReturn(ecJwk);
+
+        String jwt = createJwt(claims, ecJwk);
+        Instant exp = SignedJWT.parse(jwt).getJWTClaimsSet().getExpirationTime().toInstant();
+
+        service.validateToken(jwt);
+
+        verify(jtiCache).checkAndPut(JTI, exp.plusSeconds(30));
+    }
+
+    @Test
+    @DisplayName("a replay after exp but inside the clock skew is rejected")
+    void validateToken_replayAfterExpInsideClockSkew_rejected() throws Exception {
+        // Real cache: the jti must outlive exp for as long as the token is still accepted
+        SelfIssuedIdTokenService realCacheService = new SelfIssuedIdTokenService(
+                didResolver, new InMemoryJtiReplayCache(), keyService, config, auditPublisher);
+        when(config.getDid()).thenReturn(CONNECTOR_DID);
+        Instant now = Instant.now();
+        // Expired 60 s ago: still accepted thanks to the 120 s clock skew
+        JWTClaimsSet claims = baseClaims()
+                .issueTime(Date.from(now.minusSeconds(360)))
+                .expirationTime(Date.from(now.minusSeconds(60)))
+                .build();
+        String jwt = createJwt(claims, ecJwk);
+        when(didResolver.resolvePublicKey(SUBJECT_DID, KID, "capabilityInvocation")).thenReturn(ecJwk);
+
+        assertEquals(JTI, realCacheService.validateToken(jwt).getJWTID());
+        Exception ex = assertThrows(SecurityException.class, () -> realCacheService.validateToken(jwt));
         assertTrue(ex.getMessage().contains("jti has already been used"));
     }
 
