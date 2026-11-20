@@ -10,6 +10,7 @@ import it.eng.dcp.common.service.IssuerTrustService;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.common.util.DidUrlConverter;
+import it.eng.dcp.holder.exception.CredentialOfferForbiddenException;
 import it.eng.dcp.holder.model.CredentialStatusRecord;
 import it.eng.dcp.holder.model.VerifiableCredential;
 import it.eng.dcp.holder.repository.CredentialStatusRepository;
@@ -181,6 +182,64 @@ public class HolderService {
     }
 
     /**
+     * Authorizes a credential offer (DCP v1.0.1 §6.6).
+     *
+     * <p>The bearer token must be a valid Self-Issued ID Token addressed to this participant (validated by
+     * {@link SelfIssuedIdTokenService#validateToken(String)}). Its {@code sub} must equal the offer's
+     * {@code issuer}, and that issuer must be trusted for at least one credential type
+     * ({@code dcp.trusted-issuers.*}).
+     *
+     * @param bearerToken the bearer token from the Authorization header (without "Bearer " prefix)
+     * @param offerIssuer the {@code issuer} of the received offer
+     * @return the authenticated and trusted issuer DID (the token {@code sub})
+     * @throws SecurityException if the token is missing or invalid
+     * @throws IllegalArgumentException if the offer has no issuer
+     * @throws CredentialOfferForbiddenException if {@code sub} is not the offer issuer or the issuer is not trusted
+     */
+    public String authorizeCredentialOffer(String bearerToken, String offerIssuer) {
+        if (bearerToken == null || bearerToken.isBlank()) {
+            publishOfferRejected("bearer token is missing", null);
+            throw new SecurityException("Bearer token is required");
+        }
+
+        log.debug("Validating issuer token for credential offer");
+        JWTClaimsSet claims = tokenService.validateToken(bearerToken);
+        String subject = claims.getSubject();
+
+        if (offerIssuer == null || offerIssuer.isBlank()) {
+            throw new IllegalArgumentException("issuer must be provided");
+        }
+        if (!DidUrlConverter.compareDids(subject, offerIssuer)) {
+            log.warn("Credential offer rejected: token subject {} is not the offer issuer {}", subject, offerIssuer);
+            publishOfferRejected("token subject does not match the offer issuer", subject);
+            throw new CredentialOfferForbiddenException("Token subject does not match the offer issuer");
+        }
+        if (!issuerTrustService.isTrustedIssuer(subject)) {
+            log.warn("Credential offer rejected: issuer {} is not trusted", subject);
+            publishOfferRejected("offer issuer is not trusted", subject);
+            throw new CredentialOfferForbiddenException("Offer issuer is not trusted");
+        }
+
+        log.info("Authenticated credential offer issuer: {}", subject);
+        return subject;
+    }
+
+    /**
+     * Publishes the audit event of a rejected credential offer.
+     *
+     * @param reason the rejection reason, without token content
+     * @param issuerDid the authenticated token subject, or {@code null} when not known
+     */
+    private void publishOfferRejected(String reason, String issuerDid) {
+        auditPublisher.publishEvent(
+                DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                "Credential offer authorization failed: " + reason,
+                HOLDER_SOURCE,
+                null, issuerDid, null, null,
+                Map.of("reason", reason));
+    }
+
+    /**
      * Process and store issued credentials from an issuer.
      *
      * @param msg The credential message containing issued credentials
@@ -293,8 +352,13 @@ public class HolderService {
     /**
      * Process a credential offer message.
      *
+     * <p>Call {@link #authorizeCredentialOffer(String, String)} first. Sparse credential entries are resolved
+     * from the metadata of the offer's issuer, which must be trusted.
+     *
      * @param offer The credential offer message
      * @return true if offer is accepted
+     * @throws IllegalArgumentException if the offer is invalid or its sparse credentials cannot be resolved
+     * @throws CredentialOfferForbiddenException if the offer has sparse credentials and its issuer is not trusted
      */
     public boolean processCredentialOffer(CredentialOfferMessage offer) {
         // Validate required fields per DCP spec 6.6.1
@@ -325,6 +389,8 @@ public class HolderService {
             try {
                 resolveInlineCredentials(offer);
                 sparseResolved = true;
+            } catch (CredentialOfferForbiddenException e) {
+                throw e;
             } catch (Exception e) {
                 log.error("Failed to resolve sparse credentials from issuer metadata: {}", e.getMessage());
                 throw new IllegalArgumentException("Failed to resolve sparse credentials: " + e.getMessage(), e);
@@ -366,26 +432,28 @@ public class HolderService {
      * Validate that sparse credentials can be resolved from issuer metadata.
      * Per DCP spec 6.6.1: "When processing, the Credential Service MUST resolve this string value to the respective object."
      *
-     * This method validates that sparse credential IDs exist in the issuer's credentialsSupported list.
+     * <p>This method validates that sparse credential IDs exist in the issuer's credentialsSupported list.
      * The actual resolution and use of full credential details happens when the holder requests credentials.
      *
+     * <p>The metadata is fetched only from the {@code IssuerService} endpoint advertised in the DID document of a
+     * trusted issuer (DCP v1.0.1 §6.2); no URL is derived from the offer itself.
+     *
      * @param offer The credential offer containing sparse credentials
+     * @throws CredentialOfferForbiddenException if the offer issuer is not trusted
      * @throws RuntimeException if metadata cannot be fetched or credentials cannot be resolved
      */
     private void resolveInlineCredentials(CredentialOfferMessage offer) {
-        // Construct metadata URL: issuer base + /metadata
-        String issuerBase = DidUrlConverter.convertDidToUrl(offer.getIssuer(), false);
+        String offerIssuer = offer.getIssuer();
+        if (!issuerTrustService.isTrustedIssuer(offerIssuer)) {
+            throw new CredentialOfferForbiddenException("Offer issuer is not trusted");
+        }
 
-        String metadataUrl = issuerBase.endsWith("/")
-            ? issuerBase + "metadata"
-            : issuerBase + "/metadata";
-
-        log.debug("Fetching issuer metadata from: {}", metadataUrl);
+        log.debug("Fetching issuer metadata of {} from its advertised IssuerService endpoint", offerIssuer);
         IssuerMetadata metadata;
         try {
-            metadata = issuanceClient.getIssuerMetadata(metadataUrl);
+            metadata = issuanceClient.getIssuerMetadataOf(offerIssuer);
         } catch (Exception e) {
-            log.error("Failed to fetch issuer metadata from {}: {}", metadataUrl, e.getMessage());
+            log.error("Failed to fetch issuer metadata of {}: {}", offerIssuer, e.getMessage());
             throw new RuntimeException("Cannot resolve sparse credentials - metadata fetch failed", e);
         }
 

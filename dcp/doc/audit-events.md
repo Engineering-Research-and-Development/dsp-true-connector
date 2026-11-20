@@ -82,13 +82,14 @@ All audit events are published from the **service layer**; neither `DCPAPIContro
 |---|---|---|---|
 | `CREDENTIAL_REQUESTED` | `"Credential requested"` | `CredentialIssuanceClient.requestCredential()` — issuer accepted the request (2xx) | `credentialIds`, `statusUrl`, `requestId` |
 | `CREDENTIAL_REQUEST_FAILED` | `"Credential request failed"` | `CredentialIssuanceClient.requestCredential()` — non-2xx response or network/IO exception | `credentialIds`, `requestId`, `httpStatus`, `reason` |
-| `ISSUER_METADATA_FETCHED` | `"Issuer metadata fetched"` | `CredentialIssuanceClient.getPersonalIssuerMetadata()` — metadata successfully retrieved | `issuerDid`, `metadataUrl` |
+| `ISSUER_METADATA_FETCHED` | `"Issuer metadata fetched"` | `CredentialIssuanceClient.getIssuerMetadataOf()` (also via `getPersonalIssuerMetadata()` and sparse credential offers) — metadata successfully retrieved from the `IssuerService` endpoint of the issuer's DID document | `issuerDid`, `metadataUrl` |
 | `CREDENTIAL_OFFER_RECEIVED` | `"Credential offer received"` | `HolderService.processCredentialOffer()` — offer accepted | `issuerDid`, `offeredCredentialCount`, `sparseCredentialsResolved` |
 | `CREDENTIAL_SAVED` | `"Credential saved"` | `HolderService.processIssuedCredentials()` — credential persisted | `credentialType` |
 | `CREDENTIALS_PROCESSED` | `"Credentials processed"` | `HolderService.processIssuedCredentials()` — batch complete (fired once regardless of partial failures) | `savedCount`, `skippedCount`, `totalCount`, `issuerDid` |
 | `CREDENTIAL_UNTRUSTED_ISSUER` | `"Credential from untrusted issuer skipped"` | `HolderService.processIssuedCredentials()` — issuer not in trusted list | `credentialType`, `issuerDid` |
 | `CREDENTIAL_REJECTED_BY_ISSUER` | `"Credential rejected by issuer"` | `HolderService.processRejectedCredentials()` | `issuerPid`, `rejectionReason` |
 | `CREDENTIAL_MESSAGE_RECEIVED` | `"Credential message received"` | `HolderService.authorizeIssuer()` — issuer identity verified, credential delivery message authenticated | `issuerDid` |
+| `TOKEN_VALIDATION_FAILED` | `"Token validation failed"` | `HolderService.authorizeCredentialOffer()` — credential offer without bearer token, token `sub` not equal to the offer `issuer`, or issuer not trusted | `reason` |
 
 ### Presentation Exchange — Holder-side ✅ Implemented
 
