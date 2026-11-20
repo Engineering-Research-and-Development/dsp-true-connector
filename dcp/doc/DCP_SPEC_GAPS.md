@@ -31,6 +31,7 @@ Each item below was re-checked against the code after merging `develop` (Keycloa
 | Implementation gaps | HTTPS-only endpoints | Open | `DidDocumentConfig` still defaults protocol to `http`. |
 | Review: security | Issuer admin API unauthenticated | Open | No Spring Security dependency or filter chain in `dcp-issuer`. |
 | Review: security | `/api/dev/token/**` public | Open | Still `permitAll` in KEYCLOAK and INTERNAL modes in `ConnectorSecurityConfig` (kept as-is by the develop merge). `TokenGeneratorAPIController` is active via `DcpHolderAutoConfiguration` (`dcp.holder.enabled`, `matchIfMissing = true`). |
+| Review: security | Endpoint zone security design (ADR) | **Done** (PR #451) | [D-ARC-008](../../doc/decisions/architecture/D-ARC-008-endpoint-zone-security.md) records the zones of spec #439, the token acceptance rules, the #404, #405 and #410 decisions, the library security contract, the disabled-mode properties and the inventory of the permit-all default chain. The token generator, Issuer admin API and DCP-route rows stay open until #404, #405, #410, #445 and #446 land. |
 | Review: security | Verifier binding of presenter to SI token `sub` | Open | `VerifierService` still takes holder DID from the unverified inner token `iss`. |
 | Review: security | Scopes read from bearer token | Open | `PresentationService` still uses the presented token's `scope`. |
 | Review: security | `POST /dcp/offers` unauthenticated / SSRF | Open | Authentication still commented out in `DcpController`. |
