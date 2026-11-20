@@ -40,7 +40,7 @@ Each item below was re-checked against the code after merging `develop` (Keycloa
 | Review: security | VP not bound to verifier/lifetime | Open | `BasicVerifiablePresentationSigner` sets no `aud`, `exp`, or nonce. |
 | Review: correctness | DCP auth rejects all protocol requests | Open | `DcpAuthenticationFilter` is still a TODO pass-through; `DcpVerifierAuthenticationFilter` is only in non-`@Configuration` `WebSecurityConfig`. |
 | Review: correctness | Status list marks credentials revoked / unpublished | Open | `StatusListService.allocateStatusEntry()` sets the bit; `publishStatusList` is a TODO. |
-| Review: correctness | Credential ID → type guessing | Open | `CredentialIssuanceService` still uses `endsWith("Credential")`, else `MembershipCredential`. |
+| Review: correctness | Credential ID → type guessing | **Done** (PR #434) | `CredentialIssuanceService` resolves each ID through `CredentialMetadataConfig.findById()` and issues the configured `credentialType` and `profile`; unknown IDs are rejected. |
 | Review: correctness | Partial issuance reported as `ISSUED` | Open | Per-credential failures still caught and skipped. |
 | Review: correctness | `dcp.issuer.location` is a URL | Open | Still a URL in all shipped configs; `htttp://` typo remains in `connector/src/test/resources/application.properties`, `connector/src/test/resources/application-tck.properties`, `ci/tck/connector_tck_resources/application-tck.properties`. |
 | Review: correctness | `CredentialMessage` optional fields required | **Done** (PR #433) | `credentials` and `holderPid` are optional; the `"No type"` placeholder is no longer added on rejection. |

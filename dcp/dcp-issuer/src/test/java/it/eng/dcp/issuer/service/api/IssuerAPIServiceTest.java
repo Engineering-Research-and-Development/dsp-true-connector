@@ -3,12 +3,10 @@ package it.eng.dcp.issuer.service.api;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
-import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.issuer.service.CredentialDeliveryService;
 import it.eng.dcp.issuer.service.CredentialIssuanceService;
-import it.eng.dcp.issuer.service.CredentialMetadataService;
 import it.eng.dcp.issuer.service.IssuerService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,7 +33,6 @@ public class IssuerAPIServiceTest {
     @Mock private CredentialRequestRepository requestRepository;
     @Mock private CredentialDeliveryService deliveryService;
     @Mock private CredentialIssuanceService issuanceService;
-    @Mock private CredentialMetadataService credentialMetadataService;
     @Mock private DcpAuditEventPublisher auditPublisher;
 
     @Test
@@ -43,8 +40,6 @@ public class IssuerAPIServiceTest {
         String requestId = "id1";
         CredentialRequest req = mock(CredentialRequest.class);
         when(requestRepository.findByIssuerPid(requestId)).thenReturn(Optional.of(req));
-        IssuerMetadata metadata = mock(IssuerMetadata.class);
-        when(credentialMetadataService.buildIssuerMetadata()).thenReturn(metadata);
         when(req.getCredentialIds()).thenReturn(List.of("cred1"));
         CredentialMessage.CredentialContainer container = mock(CredentialMessage.CredentialContainer.class);
         when(container.getCredentialType()).thenReturn("MembershipCredential");
@@ -85,8 +80,6 @@ public class IssuerAPIServiceTest {
         String requestId = "id1";
         CredentialRequest req = mock(CredentialRequest.class);
         when(requestRepository.findByIssuerPid(requestId)).thenReturn(Optional.of(req));
-        IssuerMetadata metadata = mock(IssuerMetadata.class);
-        when(credentialMetadataService.buildIssuerMetadata()).thenReturn(metadata);
         when(req.getCredentialIds()).thenReturn(List.of("cred1"));
         when(issuanceService.generateCredentials(eq(req), any(), any())).thenReturn(List.of(mock(CredentialMessage.CredentialContainer.class)));
         when(deliveryService.deliverCredentials(eq(requestId), any())).thenReturn(false);
