@@ -34,7 +34,7 @@ Each item below was re-checked against the code after merging `develop` (Keycloa
 | Review: security | Verifier binding of presenter to SI token `sub` | Open | `VerifierService` still takes holder DID from the unverified inner token `iss`. |
 | Review: security | Scopes read from bearer token | Open | `PresentationService` still uses the presented token's `scope`. |
 | Review: security | `POST /dcp/offers` unauthenticated / SSRF | Open | Authentication still commented out in `DcpController`. |
-| Review: security | Holder binding check skippable | Open | `VerifierService` still only rejects when `sub` is present and mismatches. |
+| Review: security | Holder binding check skippable | **Done** (PR #432) | `VerifierService.verifyHolderBinding()` requires every `credentialSubject.id` (VC 1.1 and VC 2.0) and a present `sub` to equal the holder DID; a missing subject id is rejected. |
 | Review: security | Revocation not checked | Open | `VerifierService` does not evaluate `credentialStatus`. |
 | Review: security | `jti` replay window | **Done** (PR #431) | `SelfIssuedIdTokenService` keeps the `jti` until `exp` + clock skew (`dcp.clock-skew-seconds`, default 120), the same skew used for `nbf`, `exp` and `iat`. |
 | Review: security | VP not bound to verifier/lifetime | Open | `BasicVerifiablePresentationSigner` sets no `aud`, `exp`, or nonce. |
