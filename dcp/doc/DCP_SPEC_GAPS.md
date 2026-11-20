@@ -30,7 +30,7 @@ Each item below was re-checked against the code after merging `develop` (Keycloa
 | Implementation gaps | Required offered credential `id` | **Done** (PR #433) | `CredentialOfferMessage.CredentialObject.id` is `@NotNull`; `build()` rejects a missing ID. |
 | Implementation gaps | HTTPS-only endpoints | Open | `DidDocumentConfig` still defaults protocol to `http`. |
 | Review: security | Issuer admin API unauthenticated | Open | No Spring Security dependency or filter chain in `dcp-issuer`. |
-| Review: security | `/api/dev/token/**` public | **Done** (PR #TBD) | `TokenGeneratorAPIController` is registered only with `dcp.dev.token-generator.enabled=true` (default `false`); the `permitAll` is removed from `ConnectorSecurityConfig`, so when enabled it needs an admin in the `/api/**` zone. CI and the DCP e2e holder app set the property; Newman collections log in as admin. |
+| Review: security | `/api/dev/token/**` public | **Done** (PR #457) | `TokenGeneratorAPIController` is registered only with `dcp.dev.token-generator.enabled=true` (default `false`); the `permitAll` is removed from `ConnectorSecurityConfig`, so when enabled it needs an admin in the `/api/**` zone. CI and the DCP e2e holder app set the property; Newman collections log in as admin. |
 | Review: security | Verifier binding of presenter to SI token `sub` | Open | `VerifierService` still takes holder DID from the unverified inner token `iss`. |
 | Review: security | Scopes read from bearer token | Open | `PresentationService` still uses the presented token's `scope`. |
 | Review: security | `POST /dcp/offers` unauthenticated / SSRF | Open | Authentication still commented out in `DcpController`. |
