@@ -162,6 +162,8 @@ The `SelfIssuedIdTokenService` provides comprehensive token validation:
 - ✅ Replay attack prevention via JTI cache
 - ✅ DID document verification relationship validation
 
+The presenting party is the validated `sub` of the Self-Issued ID Token. `VerifierService` uses it as the holder DID for the DID document lookup, the presentation query and presentation validation, and rejects the token when the access token in its `token` claim was issued by a different DID (its `iss`). The access token `sub` is not compared, since other DCP implementations set it to the Verifier DID.
+
 ## Usage Examples
 
 ### Basic Token Validation
