@@ -55,6 +55,7 @@ class HttpDidResolverServiceCacheTest {
         DidDocument didDocument = DidDocument.Builder.newInstance()
                 .id(DID)
                 .verificationMethod(List.of(vm))
+                .capabilityInvocation(List.of(vmId))
                 .build();
 
         // Mock fetchDidDocumentCached to return the DID document
