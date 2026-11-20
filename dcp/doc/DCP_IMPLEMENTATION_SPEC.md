@@ -25,8 +25,8 @@ Status: **Draft – no code changed.** This document is to be verified, then tur
 | N3 | `POST /dcp/offers` is unauthenticated (authorization commented out) and takes a raw `Map`. | `DcpController.receiveOffer`. |
 | N4 | `POST /dcp/credentials` doesn't check token `aud` = this holder, nor correlation of `holderPid`/`issuerPid` with a pending request. | `DcpController.receiveCredentials`. |
 | N5 | `PresentationValidationServiceImpl` has no production callers and cannot handle JWT VPs. The real path is `VerifierService`, which lacks: revocation/status check, VP `exp`/`nbf`, `authentication` relationship for VP proof, scope/definition satisfaction, strict holder binding, skipping non-JWT items silently. | grep of callers; `VerifierService.validatePresentationResponse`. |
-| N6 | Rejection message uses `holderPid = holderDid` and a placeholder credential (`"No type"`, `"JWT"`) to satisfy model constraints. | `CredentialDeliveryService.rejectCredentialRequest`. |
-| N7 | `CredentialMessage` requires `holderPid` and non-empty `credentials`; DCP makes them optional (and `credentials` empty for rejection). | `CredentialMessage` builder. |
+| N6 | *(Resolved in PR #433.)* Rejection message uses `holderPid = holderDid` and a placeholder credential (`"No type"`, `"JWT"`) to satisfy model constraints. | `CredentialDeliveryService.rejectCredentialRequest`. |
+| N7 | *(Resolved in PR #433.)* `CredentialMessage` requires `holderPid` and non-empty `credentials`; DCP makes them optional (and `credentials` empty for rejection). | `CredentialMessage` builder. |
 | N8 | Issuer metadata credential ids are random UUIDs if not configured → unstable across restarts; per-credential build errors swallowed; issuer DID defaults to `did:web:issuer-url`. | `CredentialMetadataService.buildIssuerMetadata`. |
 | N9 | `GET /issuer/metadata` requires a Bearer token though commented as public discovery. | `IssuerController.getMetadata`. |
 | N10 | No scheme validation on discovered `CredentialService` endpoints except in `DcpVerifierClient`. | `CredentialDeliveryService.resolveCredentialServiceEndpoint`, `VerifierService.resolveHolderCredentialService`. |

@@ -8,9 +8,13 @@ import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
+import okio.Buffer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -125,6 +129,48 @@ class CredentialDeliveryServiceTest {
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
         assertEquals(DcpAuditEventType.CREDENTIAL_DENIED, typeCaptor.getValue());
+    }
+
+    @Test
+    @DisplayName("Rejection message carries no placeholder credential and the Holder-side holderPid")
+    void rejectCredentialRequest_messageHasNoPlaceholderCredential() throws Exception {
+        when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(testRequest));
+        when(tokenService.createAndSignToken(anyString(), any(), any())).thenReturn("mock-token");
+        when(didResolverService.fetchDidDocumentCached("did:web:example.com:holder"))
+                .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
+        when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(200, "OK"));
+
+        assertTrue(deliveryService.rejectCredentialRequest("issuer-pid-123", "Invalid credentials"));
+
+        ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
+        verify(httpClient).executeCall(sent.capture());
+        Buffer body = new Buffer();
+        sent.getValue().body().writeTo(body);
+        JsonNode message = new ObjectMapper().readTree(body.readUtf8());
+        assertEquals("REJECTED", message.get("status").asText());
+        assertEquals("Invalid credentials", message.get("rejectionReason").asText());
+        assertFalse(message.has("credentials"), "a rejection must not carry a placeholder credential");
+        assertEquals(testRequest.getHolderPid(), message.get("holderPid").asText());
+    }
+
+    @Test
+    @DisplayName("Delivery with no credentials sends nothing")
+    void deliverCredentials_noCredentials_returnsFalseWithoutSending() throws Exception {
+        assertFalse(deliveryService.deliverCredentials("issuer-pid-123", List.of()));
+        verify(httpClient, never()).executeCall(any());
+    }
+
+    @Test
+    @DisplayName("Rejection without reason is sent and audited")
+    void rejectCredentialRequest_nullReason_succeeds() throws Exception {
+        when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(testRequest));
+        when(tokenService.createAndSignToken(anyString(), any(), any())).thenReturn("mock-token");
+        when(didResolverService.fetchDidDocumentCached("did:web:example.com:holder"))
+                .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
+        when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(200, "OK"));
+
+        assertTrue(deliveryService.rejectCredentialRequest("issuer-pid-123", null));
+        verify(auditPublisher).publishEvent(eq(DcpAuditEventType.CREDENTIAL_DENIED), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test

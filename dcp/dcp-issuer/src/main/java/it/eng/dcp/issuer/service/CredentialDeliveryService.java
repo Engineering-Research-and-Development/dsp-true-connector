@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Map;
 
 /**
@@ -67,6 +68,11 @@ public class CredentialDeliveryService {
     public boolean deliverCredentials(String issuerPid, List<CredentialMessage.CredentialContainer> credentials) {
         if (issuerPid == null || issuerPid.isBlank()) {
             log.error("issuerPid is required");
+            return false;
+        }
+        if (credentials == null || credentials.isEmpty()) {
+            // An ISSUED message must carry the issued credentials; a request that yields none is a rejection
+            log.error("No credentials to deliver for request {}", issuerPid);
             return false;
         }
 
@@ -209,11 +215,10 @@ public class CredentialDeliveryService {
 
             CredentialMessage message = CredentialMessage.Builder.newInstance()
                     .issuerPid(issuerPid)
-                    .holderPid(holderDid)
+                    .holderPid(request.getHolderPid())
                     .requestId(issuerPid)
                     .status("REJECTED")
                     .rejectionReason(rejectionReason)
-                    .credentials(List.of(CredentialMessage.CredentialContainer.Builder.newInstance().credentialType("No type").format("JWT").build()))
                     .build();
 
             String token = tokenService.createAndSignToken(holderDid, null, config);
@@ -250,7 +255,8 @@ public class CredentialDeliveryService {
                             ISSUER_SOURCE,
                             holderDid, null, null,
                             issuerPid,
-                            Map.of("issuerPid", issuerPid, "holderDid", holderDid, "rejectionReason", rejectionReason));
+                            Map.of("issuerPid", issuerPid, "holderDid", holderDid,
+                                    "rejectionReason", Objects.requireNonNullElse(rejectionReason, "")));
                     return true;
                 } else {
                     log.error("Failed to send rejection notification to holder {}", holderDid);

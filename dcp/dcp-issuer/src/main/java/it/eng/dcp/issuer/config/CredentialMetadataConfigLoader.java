@@ -26,15 +26,20 @@ public class CredentialMetadataConfigLoader {
     public CredentialMetadataConfig credentialMetadataConfig() {
         log.info("Loading credential metadata configuration from classpath: {}", CONFIG_FILE);
 
-        Properties properties = loadPropertiesFromClasspath();
+        CredentialMetadataConfig config = parse(loadPropertiesFromClasspath());
+        log.info("Loaded {} credential configurations from {}", config.getSupported().size(), CONFIG_FILE);
+        return config;
+    }
+
+    /**
+     * Parses the supported credentials from {@code dcp.credentials.supported[n].*} properties.
+     *
+     * @param properties the credential metadata properties
+     * @return the parsed configuration
+     */
+    public CredentialMetadataConfig parse(Properties properties) {
         CredentialMetadataConfig config = new CredentialMetadataConfig();
-
-        // Parse credentials
-        List<CredentialMetadataConfig.CredentialConfig> credentials = parseCredentials(properties);
-        config.setSupported(credentials);
-
-        log.info("Loaded {} credential configurations from {}", credentials.size(), CONFIG_FILE);
-
+        config.setSupported(parseCredentials(properties));
         return config;
     }
 
