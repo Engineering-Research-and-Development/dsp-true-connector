@@ -97,8 +97,8 @@ All audit events are published from the **service layer**; the controller contai
 
 | Enum constant | JSON label | When fired | Notable `details` keys |
 |---|---|---|---|
-| `PRESENTATION_QUERY_RECEIVED` | `"Presentation query received"` | `HolderService.authorizePresentationQuery()` — bearer token validated successfully | `holderDid` |
-| `PRESENTATION_CREATED` | `"Presentation created"` | `HolderService.createPresentation()` — VP built and returned | `scopes` |
+| `PRESENTATION_QUERY_RECEIVED` | `"Presentation query received"` | `HolderService.authorizePresentationQuery()` — the Verifier's Self-Issued ID Token and the access token it carries are both valid | `holderDid`, `verifierDid` |
+| `PRESENTATION_CREATED` | `"Presentation created"` | `HolderService.createPresentation()` — VP built and returned | `scopes`, `verifierDid` |
 | `TOKEN_VALIDATION_FAILED` | `"Token validation failed"` | `HolderService.authorizePresentationQuery()` — null/blank bearer token | `reason` |
 
 ---

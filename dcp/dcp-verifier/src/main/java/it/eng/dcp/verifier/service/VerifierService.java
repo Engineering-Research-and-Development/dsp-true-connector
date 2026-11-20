@@ -44,7 +44,8 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
  * <p>This service handles the verifier's role in the DCP protocol (Steps 3-4):
  * <ul>
  *   <li>Step 3: Validate self-issued ID token from holder, extract access token</li>
- *   <li>Step 4: Query holder's credential service using the access token</li>
+ *   <li>Step 4: Query holder's credential service with the Verifier's own Self-Issued ID Token carrying
+ *       the access token</li>
  * </ul>
  *
  * <p>Key responsibilities:
@@ -221,11 +222,14 @@ public class VerifierService {
     /**
      * STEP 4: Query holder's credential service for verifiable presentations.
      *
-     * <p>Sends a POST request to {holder-credential-service}/presentations/query
-     * with the access token in Authorization header.
+     * <p>Sends a POST request to {holder-credential-service}/presentations/query. Per DCP v1.0.1 §5.1
+     * step 6 and §5.3.1, the Verifier authenticates with a Self-Issued ID Token of its own
+     * ({@code iss} = {@code sub} = Verifier DID, {@code aud} = holder DID) that carries the access token
+     * it received from the holder, unchanged, in its {@code token} claim.
      *
      * @param credentialServiceUrl The holder's credential service base URL
-     * @param accessToken The access token (from "token" claim of self-issued ID token)
+     * @param holderDid The holder's DID, the audience of the Verifier's Self-Issued ID Token
+     * @param accessToken The access token (from "token" claim of the holder's self-issued ID token)
      * @param presentationQueryMessage The query message with scopes
      * @return The presentation response from holder
      * @throws IOException if HTTP request fails
@@ -233,22 +237,25 @@ public class VerifierService {
      */
     private PresentationResponseMessage queryHolderPresentations(
             String credentialServiceUrl,
+            String holderDid,
             String accessToken,
             PresentationQueryMessage presentationQueryMessage) throws IOException, SecurityException {
 
         String queryUrl = credentialServiceUrl + PRESENTATIONS_QUERY_PATH;
         log.debug("STEP 4: Querying holder credential service: {}", queryUrl);
 
-        // Prepare headers with access token
+        // The Verifier's own Self-Issued ID Token, bound to the holder, carrying the access token
+        String verifierIdToken = tokenService.createAndSignToken(holderDid, accessToken, didConfig);
+
         Map<String, String> headers = new HashMap<>();
-        headers.put("Authorization", "Bearer " + accessToken);
+        headers.put("Authorization", "Bearer " + verifierIdToken);
         headers.put("Content-Type", "application/json");
 
         // Serialize query message to JSON
         String jsonBody = objectMapper.writeValueAsString(presentationQueryMessage);
         RequestBody requestBody = RequestBody.create(jsonBody, JSON);
 
-        log.debug("Sending presentation query with access token to holder");
+        log.debug("Sending presentation query with the Verifier's Self-Issued ID Token to holder");
 
         // Execute request
         PresentationResponseMessage response = httpClient.executeAndDeserialize(
@@ -656,7 +663,8 @@ public class VerifierService {
      *   <li>Extract holder DID (Step 3b)</li>
      *   <li>Resolve holder's credential service endpoint (Step 3c)</li>
      *   <li>Build PresentationQueryMessage with scopes from access token (Step 4)</li>
-     *   <li>Query holder's credential service with access token (Step 4)</li>
+     *   <li>Query holder's credential service with the Verifier's own Self-Issued ID Token, which carries
+     *       the access token in its {@code token} claim (Step 4)</li>
      *   <li>Validate presentation JWTs and embedded credentials (Step 5)</li>
      * </ol>
      *
@@ -794,6 +802,7 @@ public class VerifierService {
             // Query holder with access token
             PresentationResponseMessage presentationResponse = queryHolderPresentations(
                 credentialServiceUrl,
+                holderDid,
                 accessToken,
                 queryMessage
             );

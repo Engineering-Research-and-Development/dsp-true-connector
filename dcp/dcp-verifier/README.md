@@ -235,6 +235,14 @@ public class DcpTokenFilter extends OncePerRequestFilter {
 }
 ```
 
+## Querying the Holder's Credential Service
+
+`VerifierService` never forwards the holder's access token as its bearer token. Per DCP v1.0.1 §5.1 step 6 and
+§5.3.1 it signs a Self-Issued ID Token of its own (`iss` = `sub` = Verifier DID, `aud` = holder DID, via
+`SelfIssuedIdTokenService.createAndSignToken()`) that carries the received access token, unchanged, in its
+`token` claim, and sends it to `{CredentialService}/presentations/query`. The holder accepts the access token
+only when its `aud` is this Verifier's DID (ADR D-TEC-014).
+
 ## Relationship with dcp-holder
 
 Both `dcp-holder` and `dcp-verifier` can coexist in the same application:
