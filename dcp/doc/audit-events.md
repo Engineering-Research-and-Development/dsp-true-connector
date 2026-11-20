@@ -190,7 +190,7 @@ The following table lists every constant in `DcpAuditEventType` in declaration o
 | 3 | `CREDENTIAL_DENIED` | `"Credential denied"` | ✅ `CredentialDeliveryService` |
 | 4 | `CREDENTIAL_DELIVERED` | `"Credential delivered"` | ✅ `CredentialDeliveryService` |
 | 5 | `CREDENTIAL_DELIVERY_FAILED` | `"Credential delivery failed"` | ✅ `CredentialDeliveryService` |
-| 6 | `CREDENTIAL_REVOKED` | `"Credential revoked"` | ⏳ |
+| 6 | `CREDENTIAL_REVOKED` | `"Credential revoked"` | ✅ `IssuerAPIService` |
 | 7 | `CREDENTIAL_REQUESTED` | `"Credential requested"` | ✅ `CredentialIssuanceClient` |
 | 8 | `CREDENTIAL_REQUEST_FAILED` | `"Credential request failed"` | ✅ `CredentialIssuanceClient` |
 | 9 | `ISSUER_METADATA_FETCHED` | `"Issuer metadata fetched"` | ✅ `CredentialIssuanceClient` |
