@@ -86,6 +86,38 @@ issuer.credentials.supported[0].profile=VC11_SL2021_JWT
 issuer.credentials.supported[0].format=jwt_vc
 ```
 
+### Administration API users
+
+The administration API (`/api/issuer/**`: approve, reject, key rotation) uses HTTP Basic. Users come from
+configuration; the password is stored as a hash in Spring Security `DelegatingPasswordEncoder` format
+(`{bcrypt}<hash>`, `{argon2}...`, `{pbkdf2}...`, `{scrypt}...`). Every user that may call the API needs the
+authority `DCP_ISSUER_ADMIN`; an authenticated user without it gets `403`.
+
+```properties
+dcp.admin.users[0].username=issuer-admin
+dcp.admin.users[0].password={bcrypt}$2a$10$<bcrypt hash of the password>
+dcp.admin.users[0].authorities[0]=DCP_ISSUER_ADMIN
+```
+
+The same user through environment variables (in Docker Compose, write every `$` of the hash as `$$`):
+
+```bash
+DCP_ADMIN_USERS_0_USERNAME=issuer-admin
+DCP_ADMIN_USERS_0_PASSWORD='{bcrypt}$2a$10$<bcrypt hash of the password>'
+DCP_ADMIN_USERS_0_AUTHORITIES_0=DCP_ISSUER_ADMIN
+```
+
+Generate the hash with any bcrypt tool, for example `htpasswd -bnBC 10 "" '<password>' | tr -d ':\n'`
+(Spring accepts both the `$2y$` prefix it prints and `$2a$`).
+
+- **No user is configured by default.** Without one, every administration request gets `401` (fail closed)
+  and the Issuer logs a WARN at startup. The DCP protocol endpoints keep working.
+- **Startup fails** when a user has a blank username or password, a username is repeated (case-insensitive),
+  or a password is not in `DelegatingPasswordEncoder` format with a known id. The error names the property,
+  never the password.
+- `{noop}<plain password>` is accepted for local tests only and logs a WARN; never use it in production.
+- The Issuer never logs passwords or their hashes. Send the credentials over TLS only (`server.ssl.enabled=true`).
+
 ### Step 3: Configure MongoDB
 
 For production, secure your MongoDB instance:
@@ -221,20 +253,27 @@ docker-compose down
    - Use TLS/SSL connections
    - Restrict network access
 
-3. **Rotate Keys**: Configure automatic key rotation:
+3. **Configure administration users**: add at least one `dcp.admin.users[n]` user with the authority
+   `DCP_ISSUER_ADMIN` and a bcrypt (or stronger) hash, from a secret store rather than a committed file
+   (see [Administration API users](#administration-api-users)). Without one, approve, reject and key
+   rotation are unavailable.
+
+4. **Rotate Keys**: Configure automatic key rotation:
    ```properties
    issuer.keystore.rotation-days=90
    ```
 
-4. **Environment Variables**: Store secrets in environment variables, not properties files:
+5. **Environment Variables**: Store secrets in environment variables, not properties files:
    ```bash
    export ISSUER_KEYSTORE_PASSWORD=secure-password
    export SPRING_DATA_MONGODB_PASSWORD=mongo-password
+   export DCP_ADMIN_USERS_0_PASSWORD='{bcrypt}$2a$10$<bcrypt hash>'
    ```
 
 ### Monitoring
 
-1. **Enable Actuator Endpoints**:
+1. **Enable Actuator Endpoints** (only `/actuator/health` is public; the security filter chain denies every
+   other actuator path, so exposing more endpoints does not make them reachable):
    ```properties
    management.endpoints.web.exposure.include=health,info,metrics
    management.endpoint.health.show-details=always

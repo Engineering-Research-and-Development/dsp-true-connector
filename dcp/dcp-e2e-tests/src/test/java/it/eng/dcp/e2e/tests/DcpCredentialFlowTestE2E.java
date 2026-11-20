@@ -354,7 +354,7 @@ class DcpCredentialFlowTestE2E extends DcpTestEnvironment {
 
         HttpEntity<Map<String, Object>> approvalEntity = new HttpEntity<>(approvalRequest);
 
-        ResponseEntity<String> approvalResponse = getIssuerClient().exchange(
+        ResponseEntity<String> approvalResponse = getIssuerAdminClient().exchange(
             "/api/issuer/requests/" + requestId + "/approve",
             HttpMethod.POST,
             approvalEntity,
@@ -453,7 +453,7 @@ class DcpCredentialFlowTestE2E extends DcpTestEnvironment {
 
         HttpEntity<Map<String, String>> rejectionEntity = new HttpEntity<>(rejectionRequest);
 
-        ResponseEntity<String> rejectionResponse = getIssuerClient().exchange(
+        ResponseEntity<String> rejectionResponse = getIssuerAdminClient().exchange(
             "/api/issuer/requests/" + requestId + "/reject",
             HttpMethod.POST,
             rejectionEntity,
@@ -603,6 +603,33 @@ class DcpCredentialFlowTestE2E extends DcpTestEnvironment {
         log.info("\n═══════════════════════════════════════════════");
         log.info("✓✓✓ CREDENTIAL REQUEST STATUS POLLING TEST PASSED");
         log.info("═══════════════════════════════════════════════\n");
+    }
+
+    /**
+     * Test that the Issuer administration API refuses callers without administrator credentials.
+     * Approve and reject without credentials, and with a wrong password, must get 401.
+     */
+    @Test
+    void issuerAdminApi_withoutAdminCredentials_returns401() {
+        Map<String, String> rejection = Map.of("reason", "not an administrator");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<Map<String, String>> anonymous = new HttpEntity<>(rejection, headers);
+
+        HttpClientErrorException noCredentials = assertThrows(HttpClientErrorException.class,
+            () -> getIssuerClient().exchange("/api/issuer/requests/unknown-request/reject",
+                HttpMethod.POST, anonymous, String.class));
+        assertEquals(HttpStatus.UNAUTHORIZED, noCredentials.getStatusCode());
+
+        HttpHeaders wrongPasswordHeaders = new HttpHeaders();
+        wrongPasswordHeaders.setContentType(MediaType.APPLICATION_JSON);
+        wrongPasswordHeaders.setBasicAuth(ISSUER_ADMIN_USERNAME, "wrong-password");
+        HttpEntity<Map<String, String>> wrongPassword = new HttpEntity<>(rejection, wrongPasswordHeaders);
+
+        HttpClientErrorException badCredentials = assertThrows(HttpClientErrorException.class,
+            () -> getIssuerClient().exchange("/api/issuer/requests/unknown-request/approve",
+                HttpMethod.POST, wrongPassword, String.class));
+        assertEquals(HttpStatus.UNAUTHORIZED, badCredentials.getStatusCode());
     }
 
     /**
@@ -787,7 +814,7 @@ class DcpCredentialFlowTestE2E extends DcpTestEnvironment {
 
         HttpEntity<Map<String, Object>> approvalEntity = new HttpEntity<>(approvalRequest);
 
-        ResponseEntity<String> response = getIssuerClient().exchange(
+        ResponseEntity<String> response = getIssuerAdminClient().exchange(
             "/api/issuer/requests/" + requestId + "/approve",
             HttpMethod.POST,
             approvalEntity,
@@ -804,7 +831,7 @@ class DcpCredentialFlowTestE2E extends DcpTestEnvironment {
         Map<String, String> rejectionRequest = Map.of("reason", reason);
         HttpEntity<Map<String, String>> rejectionEntity = new HttpEntity<>(rejectionRequest);
 
-        ResponseEntity<String> response = getIssuerClient().exchange(
+        ResponseEntity<String> response = getIssuerAdminClient().exchange(
             "/api/issuer/requests/" + requestId + "/reject",
             HttpMethod.POST,
             rejectionEntity,

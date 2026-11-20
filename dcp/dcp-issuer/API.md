@@ -12,11 +12,27 @@ For production, replace with your actual deployment URL.
 
 ## Authentication
 
-Most endpoints require Bearer token authentication using Self-Issued ID Token as per DCP specification.
+The DCP protocol endpoints (`/issuer/metadata`, `/issuer/credentials`, `/issuer/requests/{id}`) require Bearer token authentication using a Self-Issued ID Token as per the DCP specification. The controllers validate the token; the security filter chain lets these requests through.
 
 ```http
 Authorization: Bearer <self-issued-id-token>
 ```
+
+The administration API (`/api/issuer/**`) requires HTTP Basic authentication of a user configured in `dcp.admin.users[n]` with the authority `DCP_ISSUER_ADMIN`:
+
+```http
+Authorization: Basic <base64(username:password)>
+```
+
+| Caller | Response |
+|---|---|
+| No credentials, wrong credentials, or a Bearer token | `401 Unauthorized` with `WWW-Authenticate: Basic realm="dcp-issuer-admin"` |
+| Authenticated user without `DCP_ISSUER_ADMIN` | `403 Forbidden` |
+| Administrator | The endpoint's own response |
+
+No administration user is configured by default, so every administration request gets `401` until one is added (fail closed). See [DEPLOYMENT.md](DEPLOYMENT.md#administration-api-users) for the configuration.
+
+DID documents (`/.well-known/did.json`, `/issuer/did.json`, `/issuer/.well-known/did.json`) and `/actuator/health` are public. Any other path is denied (`403`).
 
 ## Endpoints Overview
 
@@ -26,9 +42,9 @@ Authorization: Bearer <self-issued-id-token>
 | `/issuer/metadata` | GET | Yes | Get issuer metadata |
 | `/issuer/credentials` | POST | Yes | Request credentials |
 | `/issuer/requests/{id}` | GET | Yes | Get request status |
-| `/api/issuer/requests/{id}/approve` | POST | No, see #405 | Approve request (local admin API) |
-| `/api/issuer/requests/{id}/reject` | POST | No, see #405 | Reject request (local admin API) |
-| `/api/issuer/key/rotate` | POST | No, see #405 | Manual key rotation (local admin API) |
+| `/api/issuer/requests/{id}/approve` | POST | HTTP Basic, `DCP_ISSUER_ADMIN` | Approve request (local admin API) |
+| `/api/issuer/requests/{id}/reject` | POST | HTTP Basic, `DCP_ISSUER_ADMIN` | Reject request (local admin API) |
+| `/api/issuer/key/rotate` | POST | HTTP Basic, `DCP_ISSUER_ADMIN` | Manual key rotation (local admin API) |
 | `/actuator/health` | GET | No | Health check |
 
 ---
@@ -226,7 +242,7 @@ Authorization: Bearer <token>
 
 ## Admin Endpoints
 
-These endpoints form the local administration API of the Issuer, mounted at `/api/issuer`. They are not DCP protocol endpoints and are not defined by the DCP specification. Authentication is not enforced yet (the `dcp-issuer` module has no security filter chain; tracked in #405), so restrict network access to them until that is delivered.
+These endpoints form the local administration API of the Issuer, mounted at `/api/issuer`. They are not DCP protocol endpoints and are not defined by the DCP specification. Every path under `/api/issuer/` requires HTTP Basic authentication of an administration user with the authority `DCP_ISSUER_ADMIN` (see [Authentication](#authentication)): `401 Unauthorized` without valid credentials, `403 Forbidden` without the authority. Send the credentials over TLS only.
 
 ### Approve Request
 
@@ -234,6 +250,7 @@ Approves a pending credential request and triggers credential issuance.
 
 ```http
 POST /api/issuer/requests/{requestId}/approve
+Authorization: Basic <base64(username:password)>
 Content-Type: application/json
 ```
 
@@ -271,6 +288,8 @@ Credentials issued and delivered successfully
 **Status Codes**:
 - `200 OK`: Request approved successfully
 - `400 Bad Request`: Request already processed or invalid state
+- `401 Unauthorized`: Missing or invalid administrator credentials
+- `403 Forbidden`: Authenticated user without `DCP_ISSUER_ADMIN`
 - `404 Not Found`: Request not found
 - `500 Internal Server Error`: Server error or credential delivery failed
 
@@ -282,6 +301,7 @@ Rejects a pending credential request.
 
 ```http
 POST /api/issuer/requests/{requestId}/reject
+Authorization: Basic <base64(username:password)>
 Content-Type: application/json
 ```
 
@@ -308,6 +328,8 @@ Credential request rejected successfully
 **Status Codes**:
 - `200 OK`: Request rejected successfully
 - `400 Bad Request`: Request already processed
+- `401 Unauthorized`: Missing or invalid administrator credentials
+- `403 Forbidden`: Authenticated user without `DCP_ISSUER_ADMIN`
 - `404 Not Found`: Request not found
 - `500 Internal Server Error`: Server error
 
@@ -319,11 +341,10 @@ Manually triggers cryptographic key rotation outside of the automated schedule.
 
 ```http
 POST /api/issuer/key/rotate
+Authorization: Basic <base64(username:password)>
 ```
 
-**Authentication**: Not enforced yet (see #405)
-
-⚠️ **Important**: Protect this endpoint with proper admin authentication in production!
+**Authentication**: HTTP Basic, authority `DCP_ISSUER_ADMIN` (`401` without valid credentials, `403` without the authority)
 
 **Response**: `200 OK`
 
@@ -344,7 +365,8 @@ POST /api/issuer/key/rotate
 
 **Status Codes**:
 - `200 OK`: Key rotation successful
-- `401 Unauthorized`: Missing or invalid admin token
+- `401 Unauthorized`: Missing or invalid administrator credentials
+- `403 Forbidden`: Authenticated user without `DCP_ISSUER_ADMIN`
 - `500 Internal Server Error`: Key rotation failed
 
 ---
@@ -503,6 +525,7 @@ curl -X POST http://localhost:8084/issuer/credentials \
 
 # 3. Admin approves request
 curl -X POST http://localhost:8084/api/issuer/requests/abc123/approve \
+  -u issuer-admin:<admin password> \
   -H "Content-Type: application/json" \
   -d '{
     "customClaims": {
