@@ -402,6 +402,7 @@ public class VerifierService {
      * <ul>
      *   <li>Issuer DID presence (iss claim)</li>
      *   <li>JWT signature with an {@code assertionMethod} key whose verification method DID equals the issuer</li>
+     *   <li>The {@code issuer} property, when present, names the same DID as {@code iss}</li>
      *   <li>Subject matches holder DID</li>
      *   <li>Expiration date (exp claim)</li>
      *   <li>Issuance date (iat claim)</li>
@@ -433,6 +434,9 @@ public class VerifierService {
             verifyProof(credentialSignedJwt, issuerDid, DidDocument.ASSERTION_METHOD, CREDENTIAL_CONTEXT);
 
             log.debug("✓ Credential JWT signature verified for issuer: {}", issuerDid);
+
+            // The VC issuer property, when present, must name the same DID as iss (DCP §5.4.3)
+            requireIssuerPropertyMatches(credentialClaims, issuerDid);
 
             // Holder binding: the credential subject must be the participant presenting it (DCP §5.4.3)
             verifyHolderBinding(credentialClaims, expectedHolderDid);
@@ -510,6 +514,35 @@ public class VerifierService {
         if (sub != null && !isSameDid(sub, expectedHolderDid)) {
             throw new SecurityException(String.format(
                     "Credential subject mismatch: expected=%s, actual=%s", expectedHolderDid, sub));
+        }
+    }
+
+    /**
+     * Checks that the {@code issuer} property of a credential names the same DID as its {@code iss} claim.
+     *
+     * <p>The property is read where each JWT shape carries it: under the {@code vc} claim (VC 1.1) and at
+     * the top level (VC 2.0). It may be a DID string or an object with an {@code id}. An absent property is
+     * accepted, since the VC-JWT encoding lets {@code iss} stand in for it. Because the proof key must belong
+     * to {@code iss}, this check makes the verification method DID equal the VC issuer.
+     *
+     * @param credentialClaims the claims of the credential JWT
+     * @param issDid the {@code iss} claim of the credential JWT
+     * @throws SecurityException if an {@code issuer} property names another DID or has no {@code id}
+     */
+    private static void requireIssuerPropertyMatches(JWTClaimsSet credentialClaims, String issDid) {
+        List<Object> issuerProperties = new ArrayList<>();
+        if (credentialClaims.getClaim("vc") instanceof Map<?, ?> vcClaim && vcClaim.get("issuer") != null) {
+            issuerProperties.add(vcClaim.get("issuer"));
+        }
+        if (credentialClaims.getClaim("issuer") != null) {
+            issuerProperties.add(credentialClaims.getClaim("issuer"));
+        }
+        for (Object issuerProperty : issuerProperties) {
+            Object id = issuerProperty instanceof Map<?, ?> issuerMap ? issuerMap.get("id") : issuerProperty;
+            if (!(id instanceof String issuerId) || !isSameDid(issuerId, issDid)) {
+                throw new SecurityException(String.format(
+                        "Credential issuer mismatch: iss=%s, issuer=%s", issDid, id));
+            }
         }
     }
 

@@ -155,7 +155,7 @@ DCP_VERIFIER_ENABLED=false
 
 1. The VP JWT `iss` (or `sub`) is the holder DID.
 2. The VP proof is verified with the key its `kid` selects in the holder's DID document. That key must have the `authentication` verification relationship, and its verification method must belong to the holder DID.
-3. For each VC, the proof is verified with the key its `kid` selects in the issuer's DID document. That key must have the `assertionMethod` relationship, and the DID of its verification method must equal the VC `issuer`. No other relationship is accepted as a fallback.
+3. For each VC, the proof is verified with the key its `kid` selects in the issuer's DID document. That key must have the `assertionMethod` relationship, and the DID of its verification method must equal the VC `iss`. The VC `issuer` property (`vc.issuer` in VC 1.1, top-level `issuer` in VC 2.0, a DID or an object with `id`), when present, must name the same DID. No other relationship is accepted as a fallback.
 4. Holder binding: every `credentialSubject.id` and a present `sub` equal the holder DID.
 5. The VC validity dates are checked, and the issuer must be trusted for the credential type (`dcp.trusted-issuers.<type>`).
 

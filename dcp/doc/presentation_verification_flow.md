@@ -223,7 +223,7 @@ For each JWT VC in `vp.verifiableCredential`:
 
 1. The issuer DID is the VC `iss`.
 2. `resolveVerificationMethod(issuerDid, kid, "assertionMethod")` selects the issuer key. It must be referenced by `assertionMethod`; `capabilityInvocation` and `authentication` are not accepted.
-3. The DID part of the selected verification method's ID must equal the VC `issuer` (§5.4.3: "the DID in the VerificationMethod of the Verifiable Credential has the same value as the issuer").
+3. The DID part of the selected verification method's ID must equal the VC `iss`, and the `issuer` property (`vc.issuer` in VC 1.1, top-level `issuer` in VC 2.0), when present, must name the same DID (§5.4.3: "the DID in the VerificationMethod of the Verifiable Credential has the same value as the issuer"). This check runs after the signature check.
 4. The JWT signature must verify with that key.
 5. Holder binding: every `credentialSubject.id` and a present `sub` equal the holder DID.
 6. `exp` and `iat` are checked, and `IssuerTrustService` must trust the issuer for the credential type.

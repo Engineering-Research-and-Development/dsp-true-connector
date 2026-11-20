@@ -1285,6 +1285,49 @@ class VerifierServiceTest {
         }
 
         @Test
+        @DisplayName("Should reject a VC 2.0 credential whose issuer property names a DID other than iss")
+        void shouldRejectVc20IssuerPropertyOfOtherDid() throws Exception {
+            JWTClaimsSet claims = new JWTClaimsSet.Builder(parseClaims(createVc20CredentialJWT(
+                    Optional.of(HOLDER_DID), Optional.of(Map.of("id", HOLDER_DID)))))
+                    .claim("issuer", Map.of("id", "did:web:attacker.example.com"))
+                    .build();
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> runPresentationFlowWith(createJWT(claims, issuerKey)));
+
+            assertTrue(exception.getMessage().contains("Credential issuer mismatch"));
+        }
+
+        @Test
+        @DisplayName("Should reject a VC 1.1 credential whose vc.issuer names a DID other than iss")
+        void shouldRejectVc11IssuerPropertyOfOtherDid() throws Exception {
+            JWTClaimsSet claims = new JWTClaimsSet.Builder(parseClaims(createValidCredentialJWT()))
+                    .claim("vc", Map.of(
+                            "type", List.of("VerifiableCredential", "MembershipCredential"),
+                            "issuer", "did:web:attacker.example.com",
+                            "credentialSubject", Map.of("id", HOLDER_DID)))
+                    .build();
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> runPresentationFlowWith(createJWT(claims, issuerKey)));
+
+            assertTrue(exception.getMessage().contains("Credential issuer mismatch"));
+        }
+
+        @Test
+        @DisplayName("Should accept a VC whose issuer property is an object naming the iss DID")
+        void shouldAcceptIssuerPropertyMatchingIss() throws Exception {
+            JWTClaimsSet claims = new JWTClaimsSet.Builder(parseClaims(createVc20CredentialJWT(
+                    Optional.of(HOLDER_DID), Optional.of(Map.of("id", HOLDER_DID)))))
+                    .claim("issuer", Map.of("id", ISSUER_DID, "name", "Issuer"))
+                    .build();
+
+            VerifierService.PresentationFlowResult result = runPresentationFlowWith(createJWT(claims, issuerKey));
+
+            assertEquals(ISSUER_DID, result.getValidatedPresentations().get(0).getCredentials().get(0).getIssuerDid());
+        }
+
+        @Test
         @DisplayName("Should reject a proof whose key is not an EC key")
         void shouldRejectNonEcKey() throws Exception {
             String selfIssuedToken = setUpPresentationResponse(createValidPresentationJWT(

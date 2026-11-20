@@ -255,6 +255,24 @@ class HttpDidResolverServiceTest {
     }
 
     @Test
+    @DisplayName("a method of the document's own DID is preferred over a foreign one with the same JWK kid")
+    void ownMethodPreferredOverForeignMethodWithSameJwkKid() throws Exception {
+        ECKey ownKey = new ECKeyGenerator(Curve.P_256).keyID("jwk-kid-1").generate();
+        String foreignVm = "did:web:other.example.com#key-1";
+        serve(DidDocument.Builder.newInstance().id(DID)
+                .verificationMethod(List.of(vm(foreignVm, key1), vm(VM_2, ownKey)))
+                .authentication(List.of(foreignVm, VM_2))
+                .build());
+
+        Optional<ResolvedVerificationMethod> method =
+                svc.resolveVerificationMethod(DID, "jwk-kid-1", DidDocument.AUTHENTICATION);
+
+        assertTrue(method.isPresent());
+        assertEquals(VM_2, method.get().id());
+        assertEquals(ownKey.toPublicJWK(), method.get().publicKey());
+    }
+
+    @Test
     @DisplayName("resolveVerificationMethod is empty when the key lacks the requested relationship")
     void resolveVerificationMethodEmptyWithoutRelationship() throws DidResolutionException, IOException {
         serve(DidDocument.Builder.newInstance().id(DID)

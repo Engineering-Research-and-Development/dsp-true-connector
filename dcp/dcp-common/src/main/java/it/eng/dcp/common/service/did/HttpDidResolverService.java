@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -195,10 +196,11 @@ public class HttpDidResolverService implements DidResolverService {
             }
         }
 
+        // Prefer a method of the document's own DID, so a foreign method sharing a JWK kid cannot shadow it
         Optional<VerificationMethod> selected = candidates.stream()
                 .filter(vm -> !relationshipRequired
                         || isReferencedByRelationship(didDocument, vm.getId(), verificationRelationship))
-                .findFirst();
+                .min(Comparator.comparing((VerificationMethod vm) -> !isOwnMethod(vm, docId)));
         if (selected.isEmpty()) {
             log.debug("No verification method of {} matches kid {} with relationship {}",
                     docId, kid, verificationRelationship);
@@ -210,6 +212,10 @@ public class HttpDidResolverService implements DidResolverService {
         } catch (ParseException pe) {
             throw new DidResolutionException("Failed to parse JWK", pe);
         }
+    }
+
+    private static boolean isOwnMethod(VerificationMethod vm, String docId) {
+        return absolutize(vm.getId(), docId).startsWith(docId + "#");
     }
 
     private static boolean hasJwk(VerificationMethod vm) {
