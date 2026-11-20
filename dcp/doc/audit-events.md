@@ -109,8 +109,8 @@ Emitted by **`VerifierService`** (`dcp-verifier`, source = `"verifier"`).
 
 | Enum constant | JSON label | When fired | Notable `details` keys |
 |---|---|---|---|
-| `SELF_ISSUED_TOKEN_VALIDATED` | `"Self-issued ID token validated"` | Step 3a succeeds — self-issued ID token is valid and access token is extracted | `holderDid` |
-| `TOKEN_VALIDATION_FAILED` | `"Token validation failed"` | Step 3a fails — bearer token is null/blank, `token` claim is missing/unparseable, or `validateToken` throws | `reason` |
+| `SELF_ISSUED_TOKEN_VALIDATED` | `"Self-issued ID token validated"` | Step 3a succeeds — self-issued ID token is valid and access token is extracted | `holderDid` (the validated `sub`) |
+| `TOKEN_VALIDATION_FAILED` | `"Token validation failed"` | Step 3a fails — bearer token is null/blank, `sub` is missing, `token` claim is missing/unparseable, or `validateToken` throws; Step 3b fails — the access token's `iss` or `sub` names a DID other than the validated `sub` | `reason` |
 | `PRESENTATION_QUERY_SENT` | `"Presentation query sent"` | Step 4 — presentation query dispatched to holder's Credential Service | `credentialServiceUrl`, `scopes` |
 | `PRESENTATION_VERIFIED` | `"Presentation verified"` | Step 5 succeeds — all presentation JWTs and embedded credentials validated | `presentationCount` |
 | `PRESENTATION_INVALID` | `"Presentation validation failed"` | Step 5 fails — signature mismatch, expired credential, untrusted issuer, holder DID mismatch, etc. | `reason` |
@@ -128,7 +128,7 @@ PRESENTATION_VERIFIED        (Step 5  — presentations and credentials valid)
 **Verifier flow — event sequence (failure paths):**
 
 ```
-TOKEN_VALIDATION_FAILED      (Step 3a — any token validation failure)
+TOKEN_VALIDATION_FAILED      (Step 3a — any token validation failure; Step 3b — access token names another DID)
 PRESENTATION_INVALID         (Step 5  — any presentation / credential validation failure)
 ```
 

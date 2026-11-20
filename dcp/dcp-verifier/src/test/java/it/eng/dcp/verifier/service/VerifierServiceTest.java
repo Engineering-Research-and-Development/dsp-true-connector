@@ -243,36 +243,32 @@ class VerifierServiceTest {
         }
 
         @Test
-        @DisplayName("Should fail when access token missing 'iss' claim")
-        void shouldFailWhenAccessTokenMissingIssuer() throws Exception {
-            // Given
+        @DisplayName("Should take the holder DID from the validated sub when the access token has no iss or sub")
+        void shouldUseValidatedSubWhenAccessTokenHasNoIssuer() throws Exception {
+            // Given: an access token without iss/sub, so the holder DID can only come from the validated sub
             String accessToken = createJWT(
                     new JWTClaimsSet.Builder()
-                            // Missing issuer
-                            .subject(HOLDER_DID)
+                            .audience(VERIFIER_DID)
                             .claim("scope", List.of("MembershipCredential"))
                             .build(),
                     holderKey
             );
+            String selfIssuedToken = createValidSelfIssuedToken(accessToken);
+            when(tokenService.validateToken(selfIssuedToken)).thenReturn(parseClaims(selfIssuedToken));
 
-            String selfIssuedToken = "valid.self.issued";
-            JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                    .issuer(HOLDER_DID)
-                    .subject(HOLDER_DID)
-                    .audience(VERIFIER_DID)
-                    .claim("token", accessToken)
-                    .build();
+            setupSuccessfulHolderResolution();
+            setupSuccessfulPresentationQuery(List.of(createValidPresentationJWT(List.of(createValidCredentialJWT()))));
+            setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
+            setupSuccessfulKeyResolution(ISSUER_DID, issuerKey);
+            setupTrustedIssuer(ISSUER_DID);
 
-            when(tokenService.validateToken(selfIssuedToken)).thenReturn(claims);
+            // When
+            VerifierService.PresentationFlowResult result =
+                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken);
 
-            // When/Then
-            SecurityException exception = assertThrows(
-                    SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
-            );
-
-            assertTrue(exception.getMessage().contains("Step 3b failed"));
-            assertTrue(exception.getMessage().toLowerCase().contains("iss"));
+            // Then
+            assertEquals(HOLDER_DID, result.getHolderDid());
+            verify(didResolverService).fetchDidDocumentCached(HOLDER_DID);
         }
 
         @Test
@@ -313,6 +309,132 @@ class VerifierServiceTest {
             String message = exception.getMessage().toLowerCase();
             assertTrue(message.contains("empty") || message.contains("presentation"),
                     "Expected error about empty presentations but got: " + exception.getMessage());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════════
+    // Presenting party binding: holder DID = validated Self-Issued ID Token sub
+    // ═════════════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("Presenting party binding")
+    class PresentingPartyBindingTests {
+
+        /** A participant whose access token is wrapped by the presenting party (HOLDER_DID). */
+        private static final String VICTIM_DID = "did:web:localhost:8080:victim";
+
+        @Test
+        @DisplayName("Should reject a token wrapping another participant's access token")
+        void shouldRejectWrappedForeignAccessToken() throws Exception {
+            // Given: the holder signs a valid Self-Issued ID Token carrying the victim's access token
+            ECKey victimKey = new ECKeyGenerator(Curve.P_256).keyID("victim-key-1").generate();
+            String victimAccessToken = createAccessToken(VICTIM_DID, VICTIM_DID, victimKey);
+            String selfIssuedToken = createValidSelfIssuedToken(victimAccessToken);
+            when(tokenService.validateToken(selfIssuedToken)).thenReturn(parseClaims(selfIssuedToken));
+
+            // When/Then
+            SecurityException exception = assertThrows(
+                    SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+            );
+
+            assertTrue(exception.getMessage().contains("Step 3b failed"));
+            assertTrue(exception.getMessage().contains("does not match"));
+            // Neither the victim's nor the holder's credential service is ever queried
+            verify(didResolverService, never()).fetchDidDocumentCached(anyString());
+            verifyNoInteractions(httpClient);
+            assertAuditEventPublished(DcpAuditEventType.TOKEN_VALIDATION_FAILED);
+        }
+
+        @Test
+        @DisplayName("Should reject an access token whose iss names a different DID")
+        void shouldRejectAccessTokenWithForeignIssuer() throws Exception {
+            // Given
+            String accessToken = createAccessToken(VICTIM_DID, HOLDER_DID, holderKey);
+            String selfIssuedToken = createValidSelfIssuedToken(accessToken);
+            when(tokenService.validateToken(selfIssuedToken)).thenReturn(parseClaims(selfIssuedToken));
+
+            // When/Then
+            SecurityException exception = assertThrows(
+                    SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+            );
+
+            assertTrue(exception.getMessage().contains("Step 3b failed"));
+            assertTrue(exception.getMessage().contains("'iss'"));
+            verifyNoInteractions(httpClient);
+        }
+
+        @Test
+        @DisplayName("Should reject an access token whose sub names a different DID")
+        void shouldRejectAccessTokenWithForeignSubject() throws Exception {
+            // Given
+            String accessToken = createAccessToken(HOLDER_DID, VICTIM_DID, holderKey);
+            String selfIssuedToken = createValidSelfIssuedToken(accessToken);
+            when(tokenService.validateToken(selfIssuedToken)).thenReturn(parseClaims(selfIssuedToken));
+
+            // When/Then
+            SecurityException exception = assertThrows(
+                    SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+            );
+
+            assertTrue(exception.getMessage().contains("Step 3b failed"));
+            assertTrue(exception.getMessage().contains("'sub'"));
+            verifyNoInteractions(httpClient);
+        }
+
+        @Test
+        @DisplayName("Should reject a validated Self-Issued ID Token without sub")
+        void shouldRejectSelfIssuedTokenWithoutSubject() throws Exception {
+            // Given: the token service returns claims without sub
+            String selfIssuedToken = "valid.self.issued";
+            JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                    .issuer(HOLDER_DID)
+                    .audience(VERIFIER_DID)
+                    .claim("token", createValidAccessToken())
+                    .build();
+            when(tokenService.validateToken(selfIssuedToken)).thenReturn(claims);
+
+            // When/Then
+            SecurityException exception = assertThrows(
+                    SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+            );
+
+            assertTrue(exception.getMessage().contains("Step 3a failed"));
+            assertTrue(exception.getMessage().contains("'sub'"));
+            verifyNoInteractions(httpClient);
+            assertAuditEventPublished(DcpAuditEventType.TOKEN_VALIDATION_FAILED);
+        }
+
+        @Test
+        @DisplayName("Should authenticate the presenting party when its access token names itself")
+        void shouldAuthenticatePresentingParty() throws Exception {
+            // Given: the holder presents its own access token
+            String selfIssuedToken = createValidSelfIssuedToken(createValidAccessToken());
+            when(tokenService.validateToken(selfIssuedToken)).thenReturn(parseClaims(selfIssuedToken));
+            setupSuccessfulHolderResolution();
+            setupSuccessfulPresentationQuery(List.of(createValidPresentationJWT(List.of(createValidCredentialJWT()))));
+            setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
+            setupSuccessfulKeyResolution(ISSUER_DID, issuerKey);
+            setupTrustedIssuer(ISSUER_DID);
+
+            // When
+            VerifierService.PresentationFlowResult result =
+                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken);
+
+            // Then: the holder DID and the queried credential service belong to the validated sub
+            assertEquals(HOLDER_DID, result.getHolderDid());
+            assertEquals("https://holder.example.com/presentations", result.getCredentialServiceUrl());
+            verify(didResolverService, never()).fetchDidDocumentCached(VICTIM_DID);
+        }
+
+        private void assertAuditEventPublished(DcpAuditEventType expectedType) {
+            ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+            verify(auditPublisher, atLeastOnce())
+                    .publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+            assertTrue(typeCaptor.getAllValues().contains(expectedType));
         }
     }
 
@@ -1398,6 +1520,20 @@ class VerifierServiceTest {
                         .expirationTime(new Date(System.currentTimeMillis() + 300000))
                         .build(),
                 holderKey
+        );
+    }
+
+    private String createAccessToken(String issuer, String subject, ECKey signingKey) throws JOSEException {
+        return createJWT(
+                new JWTClaimsSet.Builder()
+                        .issuer(issuer)
+                        .subject(subject)
+                        .audience(VERIFIER_DID)
+                        .claim("scope", List.of("MembershipCredential"))
+                        .issueTime(new Date())
+                        .expirationTime(new Date(System.currentTimeMillis() + 300000))
+                        .build(),
+                signingKey
         );
     }
 
