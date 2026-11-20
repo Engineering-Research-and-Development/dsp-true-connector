@@ -97,9 +97,9 @@ All audit events are published from the **service layer**; the controller contai
 
 | Enum constant | JSON label | When fired | Notable `details` keys |
 |---|---|---|---|
-| `PRESENTATION_QUERY_RECEIVED` | `"Presentation query received"` | `HolderService.authorizePresentationQuery()` — bearer token validated successfully | `holderDid` |
-| `PRESENTATION_CREATED` | `"Presentation created"` | `HolderService.createPresentation()` — VP built and returned | `scopes` |
-| `TOKEN_VALIDATION_FAILED` | `"Token validation failed"` | `HolderService.authorizePresentationQuery()` — null/blank bearer token | `reason` |
+| `PRESENTATION_QUERY_RECEIVED` | `"Presentation query received"` | `HolderService.authorizePresentationQuery()` — the Verifier's Self-Issued ID Token and the access token it carries are both valid | `holderDid`, `verifierDid` |
+| `PRESENTATION_CREATED` | `"Presentation created"` | `HolderService.createPresentation()` — VP built and returned | `scopes`, `verifierDid` |
+| `TOKEN_VALIDATION_FAILED` | `"Token validation failed"` | `HolderService.authorizePresentationQuery()` — null/blank bearer token, or the Verifier's Self-Issued ID Token has no access token (or a non-string one) in its `token` claim | `reason` |
 
 ---
 
@@ -147,6 +147,7 @@ Emitted by **`SelfIssuedIdTokenService`** (`dcp-common`, source = `"common"`).
 | `TOKEN_VALIDATION_FAILED` | `"Token validation failed"` | `createAccessTokenWithScopes()` fails with `JOSEException` | `verifier`, `error` |
 | `SELF_ISSUED_TOKEN_VALIDATED` | `"Self-issued ID token validated"` | `validateToken()` succeeds — all claims valid, JTI not replayed | `subject`, `audience` |
 | `TOKEN_VALIDATION_FAILED` | `"Token validation failed"` | `validateToken()` fails — any claim check, DID resolution failure, or parse error | `reason` |
+| `TOKEN_VALIDATION_FAILED` | `"Token validation failed"` | `validateAccessToken()` fails — access token missing, not a JWT, wrong `typ`, not issued by this holder, `aud` not the querying Verifier, bad signature or key, or expired | `reason` |
 
 > **Note:** `IDENTITY_VERIFIED` and `IDENTITY_VERIFICATION_FAILED` are defined in the enum but not yet emitted by any service.
 

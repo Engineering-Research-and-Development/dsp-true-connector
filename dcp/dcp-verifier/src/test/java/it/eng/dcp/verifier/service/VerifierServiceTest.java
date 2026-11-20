@@ -419,6 +419,39 @@ class VerifierServiceTest {
     class Step4Tests {
 
         @Test
+        @DisplayName("Should query the holder with the Verifier's own Self-Issued ID Token carrying the access token")
+        void shouldSendVerifierSelfIssuedIdTokenWithAccessToken() throws Exception {
+            // Given
+            String accessToken = createValidAccessToken();
+            String selfIssuedToken = createValidSelfIssuedToken(accessToken);
+
+            when(tokenService.validateToken(selfIssuedToken))
+                    .thenReturn(parseClaims(selfIssuedToken));
+            when(tokenService.createAndSignToken(HOLDER_DID, accessToken, verifierConfig))
+                    .thenReturn("verifier-id-token");
+
+            setupSuccessfulHolderResolution();
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<Map<String, String>> headers = ArgumentCaptor.forClass(Map.class);
+            when(httpClient.executeAndDeserialize(
+                    anyString(),
+                    eq("POST"),
+                    headers.capture(),
+                    any(RequestBody.class),
+                    eq(PresentationResponseMessage.class)
+            )).thenReturn(null);
+
+            // When
+            assertThrows(SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken));
+
+            // Then: aud = holder DID, token = the access token received from the holder, never the raw access token
+            verify(tokenService).createAndSignToken(HOLDER_DID, accessToken, verifierConfig);
+            assertEquals("Bearer verifier-id-token", headers.getValue().get("Authorization"));
+        }
+
+        @Test
         @DisplayName("Should fail when holder credential service returns null")
         void shouldFailWhenCredentialServiceReturnsNull() throws Exception {
             // Given

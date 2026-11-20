@@ -12,6 +12,38 @@ Holder   → (2) Creates JWT VP (signed by holder) → Verifier
 Verifier → (3) Verifies holder signature + issuer signatures → Decision
 ```
 
+## Authenticating the Query (DCP v1.0.1 §5.1, §5.3.1)
+
+The client (holder) authenticates to the Verifier with a Self-Issued ID Token (`iss` = `sub` = holder DID,
+`aud` = Verifier DID). Its `token` claim carries an **access token** for the holder's Credential Service,
+built by `SelfIssuedIdTokenService.createAccessTokenWithScopes()` in the format of
+[ADR D-TEC-014](../../doc/decisions/technical/D-TEC-014-credential-service-access-token-format.md):
+
+| Part | Value |
+|---|---|
+| JWS header `typ` | `at+jwt` (never accepted as a Self-Issued ID Token) |
+| `iss`, `sub` | holder DID |
+| `aud` | Verifier DID: only this Verifier can use it |
+| `scope` | the scopes the Verifier may query (`dcp.vp.scope`); no scope authorizes nothing |
+| `iat`, `nbf`, `exp`, `jti` | 5 minutes validity |
+
+The Verifier does not send that access token as its bearer token. `VerifierService` builds a Self-Issued ID
+Token **of its own** (`iss` = `sub` = Verifier DID, `aud` = holder DID) with the received access token,
+unchanged, in its `token` claim, and sends it to `POST {CredentialService}/presentations/query`.
+
+The Credential Service (`HolderService.authorizePresentationQuery()`) then checks, in order:
+
+1. the bearer token is a valid Self-Issued ID Token with `aud` = its own DID (`SelfIssuedIdTokenService.validateToken()`);
+2. its `token` claim holds an access token, otherwise **401** (#407 decision Q2);
+3. the access token is valid (`SelfIssuedIdTokenService.validateAccessToken()`): `typ` `at+jwt`, issued by this
+   holder (`iss` = `sub` = own DID), signed with a `capabilityInvocation` key of the holder DID document,
+   current, and `aud` = the Verifier's `sub`, so a token captured by one Verifier cannot be used by another.
+
+Any failure is **401**. `PresentationService` then takes the authorized scopes **only** from the validated
+access token: effective scopes = requested ∩ authorized. A requested scope that is not authorized is dropped
+and the response is still 2xx, with fewer presentations. Every credential lookup is constrained to the holder
+DID (the access token `sub`); there is no unscoped `findAll()`. Rate limiting is keyed by the Verifier DID.
+
 ---
 
 ## Step 1: Verifier Sends PresentationQueryMessage
@@ -19,12 +51,16 @@ Verifier → (3) Verifies holder signature + issuer signatures → Decision
 ### Location
 - **Class**: `DcpVerifierClient`
 - **File**: `dcp/src/main/java/it/eng/dcp/service/DcpVerifierClient.java`
-- **Method**: `fetchPresentations(String holderBase, List<String> requiredTypes, String accessToken)`
+- **Method**: `fetchPresentations(String holderBase, List<String> requiredTypes, String selfIssuedIdToken)`
+
+The connector's active Verifier path is `VerifierService.validateAndQueryHolderPresentations()` (module
+`dcp-verifier`); `DcpVerifierClient` is a standalone client with the same contract.
 
 ### What Happens
 1. Verifier creates a `PresentationQueryMessage` with required credential types
 2. Sends POST request to holder's endpoint: `/dcp/presentations/query`
-3. Includes Bearer token for authentication (optional)
+3. Authenticates with the Verifier's own Self-Issued ID Token carrying the holder-issued access token
+   (required; see *Authenticating the Query* above)
 
 ### Code Reference
 ```java
@@ -53,12 +89,12 @@ public ResponseEntity<?> queryPresentations(
     @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
     @RequestBody PresentationQueryMessage query) {
     
-    // Validate verifier's bearer token
-    var claims = holderService.authorizePresentationQuery(token);
-    String holderDid = claims.getSubject();
-    
-    // Create presentation
-    PresentationResponseMessage resp = holderService.createPresentation(query, holderDid);
+    // Validate the Verifier's Self-Issued ID Token, then the access token in its "token" claim
+    PresentationQueryAuthorization queryAuthorization = holderService.authorizePresentationQuery(token);
+
+    // Rate limit per Verifier DID, then create the presentation
+    holderService.checkRateLimit(queryAuthorization.verifierDid());
+    PresentationResponseMessage resp = holderService.createPresentation(query, queryAuthorization);
     return ResponseEntity.ok(resp);
 }
 ```
@@ -69,24 +105,26 @@ public ResponseEntity<?> queryPresentations(
 
 #### a) HolderService delegates to PresentationService
 - **File**: `dcp/src/main/java/it/eng/dcp/service/HolderService.java`
-- **Method**: `createPresentation(PresentationQueryMessage query, String holderDid)`
+- **Method**: `createPresentation(PresentationQueryMessage query, PresentationQueryAuthorization authorization)`
 
 ```java
-public PresentationResponseMessage createPresentation(PresentationQueryMessage query, String holderDid) {
-    log.info("Creating presentation response for holder: {}", holderDid);
-    PresentationResponseMessage response = presentationService.createPresentation(query);
-    return response;
+public PresentationResponseMessage createPresentation(PresentationQueryMessage query,
+                                                      PresentationQueryAuthorization authorization) {
+    return presentationService.createPresentation(
+            query, authorization.holderDid(), authorization.accessTokenClaims());
 }
 ```
 
 #### b) PresentationService fetches credentials and groups by profileId
 - **File**: `dcp/src/main/java/it/eng/dcp/service/PresentationService.java`
-- **Method**: `createPresentation(PresentationQueryMessage query)`
+- **Method**: `createPresentation(PresentationQueryMessage query, String holderDid, JWTClaimsSet accessTokenClaims)`
 
 ```java
-public PresentationResponseMessage createPresentation(PresentationQueryMessage query) {
-    // Fetch credentials based on scope (required types)
-    List<VerifiableCredential> fetched = credentialRepository.findByCredentialTypeIn(requiredTypes);
+public PresentationResponseMessage createPresentation(PresentationQueryMessage query, String holderDid,
+                                                      JWTClaimsSet accessTokenClaims) {
+    // Effective scopes = requested ∩ authorized (access token "scope"); lookups constrained to the holder
+    List<VerifiableCredential> fetched =
+            credentialRepository.findByHolderDidInAndCredentialTypeIn(holderDidForms(holderDid), credentialTypes);
     
     // Group credentials by profileId for homogeneous presentations
     Map<String, List<VerifiableCredential>> groups = fetched.stream()
