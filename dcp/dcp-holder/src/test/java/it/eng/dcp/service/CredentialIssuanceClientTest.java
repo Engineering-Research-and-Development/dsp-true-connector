@@ -107,6 +107,26 @@ class CredentialIssuanceClientTest {
         assertEquals("https://issuer.example.com", client.discoverIssuerService());
     }
 
+    @DisplayName("discoverIssuerService rejects an http IssuerService endpoint by default")
+    @Test
+    void discoverIssuerService_Throws_WhenEndpointIsHttp() throws Exception {
+        when(didResolverService.fetchDidDocumentCached(eq("did:web:issuer.example.com")))
+                .thenReturn(didDocumentWith("IssuerService", "http://issuer.example.com"));
+
+        assertThrows(it.eng.dcp.common.exception.InsecureEndpointException.class,
+                () -> client.discoverIssuerService());
+    }
+
+    @DisplayName("discoverIssuerService accepts an http IssuerService endpoint when insecure http is allowed")
+    @Test
+    void discoverIssuerService_ReturnsHttpEndpoint_WhenInsecureAllowed() throws Exception {
+        ReflectionTestUtils.setField(client, "allowInsecureHttp", true);
+        when(didResolverService.fetchDidDocumentCached(eq("did:web:issuer.example.com")))
+                .thenReturn(didDocumentWith("IssuerService", "http://issuer.example.com"));
+
+        assertEquals("http://issuer.example.com", client.discoverIssuerService());
+    }
+
     @DisplayName("discoverIssuerService throws IssuerServiceNotFoundException when DID document is missing IssuerService")
     @Test
     void discoverIssuerService_Throws_WhenDIDMissingService() throws Exception {

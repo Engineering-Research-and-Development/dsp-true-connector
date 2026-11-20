@@ -9,6 +9,7 @@ import it.eng.dcp.common.model.*;
 import it.eng.dcp.common.service.IssuerTrustService;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
+import it.eng.dcp.common.util.DcpTransportSecurity;
 import it.eng.dcp.common.util.DidUrlConverter;
 import it.eng.dcp.holder.model.CredentialStatusRecord;
 import it.eng.dcp.holder.model.VerifiableCredential;
@@ -17,6 +18,7 @@ import it.eng.dcp.holder.repository.VerifiableCredentialRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -44,6 +46,12 @@ public class HolderService {
     private final CredentialIssuanceClient issuanceClient;
     private final IssuerTrustService issuerTrustService;
     private final DcpAuditEventPublisher auditPublisher;
+
+    @Value("${dcp.allow-insecure-http:false}")
+    private boolean allowInsecureHttp;
+
+    @Value("${server.ssl.enabled:false}")
+    private boolean sslEnabled;
 
     @Autowired
     public HolderService(@Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
@@ -374,7 +382,8 @@ public class HolderService {
      */
     private void resolveInlineCredentials(CredentialOfferMessage offer) {
         // Construct metadata URL: issuer base + /metadata
-        String issuerBase = DidUrlConverter.convertDidToUrl(offer.getIssuer(), false);
+        String issuerBase = DidUrlConverter.convertDidToUrl(offer.getIssuer(),
+                "https".equals(DcpTransportSecurity.scheme(allowInsecureHttp, sslEnabled)));
 
         String metadataUrl = issuerBase.endsWith("/")
             ? issuerBase + "metadata"
