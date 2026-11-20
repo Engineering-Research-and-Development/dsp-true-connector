@@ -323,6 +323,7 @@ dcp.issuer.location=did:web:localhost%3A8084:issuer
 # ============================================================
 dcp.vp.enabled=false
 dcp.vp.scope=org.eclipse.dspace.dcp.vc.type:MembershipCredential
+
 # ============================================================
 # Revocation Cache
 # ============================================================
