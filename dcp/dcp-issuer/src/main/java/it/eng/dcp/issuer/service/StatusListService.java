@@ -50,10 +50,15 @@ public class StatusListService {
      * @param statusListRepository the status list repository
      * @param issuerProperties the Issuer configuration, which provides the base URL of the status list URLs
      * @param credentialGenerator signs status list credentials
+     * @throws IllegalStateException if {@code dcp.base-url} is not set, because status list URLs would not resolve
      */
     public StatusListService(StatusListRepository statusListRepository,
                              IssuerProperties issuerProperties,
                              StatusListCredentialGenerator credentialGenerator) {
+        String baseUrl = issuerProperties.getBaseUrl();
+        if (baseUrl == null || baseUrl.isBlank()) {
+            throw new IllegalStateException("dcp.base-url must be set to publish status lists");
+        }
         this.statusListRepository = statusListRepository;
         this.issuerProperties = issuerProperties;
         this.credentialGenerator = credentialGenerator;
@@ -67,7 +72,7 @@ public class StatusListService {
      * @param statusPurpose the status purpose, for example {@code revocation}
      * @param profile the credential profile, which selects the status list format
      * @return the status list credential URL and the allocated index
-     * @throws IllegalStateException if no Issuer base URL is configured or the list stays contended
+     * @throws IllegalStateException if the list stays contended
      */
     public StatusListEntry allocateStatusEntry(String issuerDid, String statusPurpose, ProfileId profile) {
         Objects.requireNonNull(issuerDid, "issuerDid");
@@ -157,9 +162,6 @@ public class StatusListService {
 
     private String statusListUrl(String listId) {
         String baseUrl = issuerProperties.getBaseUrl();
-        if (baseUrl == null || baseUrl.isBlank()) {
-            throw new IllegalStateException("dcp.base-url must be set to publish status lists");
-        }
         String trimmed = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         return trimmed + STATUS_PATH + listId;
     }

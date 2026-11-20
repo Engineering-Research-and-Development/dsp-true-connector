@@ -132,15 +132,16 @@ class StatusListServiceTest {
     }
 
     @Test
-    @DisplayName("Allocation fails without a configured base URL, because the list URL would not resolve")
-    void allocateStatusEntry_noBaseUrl_throws() {
-        issuerProperties.setBaseUrl(" ");
-        when(statusListRepository.findFirstByIssuerDidAndStatusPurposeAndProfileOrderByCreatedAtDesc(any(), any(), any()))
-                .thenReturn(Optional.empty());
+    @DisplayName("The service refuses to start without a base URL, because the list URLs would not resolve")
+    void constructor_noBaseUrl_throws() {
+        IssuerProperties noBaseUrl = new IssuerProperties();
+        noBaseUrl.setBaseUrl(" ");
 
         assertThrows(IllegalStateException.class,
-                () -> statusListService.allocateStatusEntry(ISSUER_DID, PURPOSE, ProfileId.VC20_BSSL_JWT));
-        verify(statusListRepository, never()).save(any());
+                () -> new StatusListService(statusListRepository, noBaseUrl, credentialGenerator));
+        noBaseUrl.setBaseUrl(null);
+        assertThrows(IllegalStateException.class,
+                () -> new StatusListService(statusListRepository, noBaseUrl, credentialGenerator));
     }
 
     @Test
