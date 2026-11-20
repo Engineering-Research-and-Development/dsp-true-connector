@@ -254,4 +254,34 @@ class HttpDidResolverServiceTest {
         assertNull(resolver.resolvePublicKey(DID, "forged-kid", DidDocument.CAPABILITY_INVOCATION));
         verify(httpClient, times(1)).executeAndDeserialize(anyString(), eq("GET"), any(), any(), eq(DidDocument.class));
     }
+
+    @Test
+    @DisplayName("DID documents are fetched over https by default")
+    void didDocumentUrl_defaultsToHttps() throws Exception {
+        SimpleOkHttpRestClient client = mock(SimpleOkHttpRestClient.class);
+        HttpDidResolverService resolver = new HttpDidResolverService(client);
+        resolver.setMaxRetries(0);
+        when(client.executeAndDeserialize(anyString(), eq("GET"), any(), any(), eq(DidDocument.class)))
+                .thenReturn(DidDocument.Builder.newInstance().id(DID).build());
+
+        resolver.fetchDidDocumentCached("did:web:localhost%3A8080:connector");
+
+        verify(client).executeAndDeserialize(eq("https://localhost:8080/.well-known/did.json"),
+                eq("GET"), any(), any(), eq(DidDocument.class));
+    }
+
+    @Test
+    @DisplayName("DID documents are fetched over http only when insecure http is allowed and TLS is off")
+    void didDocumentUrl_httpWhenAllowed() throws Exception {
+        SimpleOkHttpRestClient client = mock(SimpleOkHttpRestClient.class);
+        HttpDidResolverService resolver = new HttpDidResolverService(client);
+        org.springframework.test.util.ReflectionTestUtils.setField(resolver, "allowInsecureHttp", true);
+        when(client.executeAndDeserialize(anyString(), eq("GET"), any(), any(), eq(DidDocument.class)))
+                .thenReturn(DidDocument.Builder.newInstance().id(DID).build());
+
+        resolver.fetchDidDocumentCached("did:web:localhost%3A8080:connector");
+
+        verify(client).executeAndDeserialize(eq("http://localhost:8080/.well-known/did.json"),
+                eq("GET"), any(), any(), eq(DidDocument.class));
+    }
 }

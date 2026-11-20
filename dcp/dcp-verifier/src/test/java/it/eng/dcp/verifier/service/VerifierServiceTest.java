@@ -410,6 +410,30 @@ class VerifierServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("Step 3c: transport security of the holder credential service")
+    class Step3cTransportSecurityTests {
+
+        @Test
+        @DisplayName("Should reject an http CredentialService endpoint by default")
+        void shouldRejectHttpCredentialService() throws Exception {
+            String accessToken = createValidAccessToken();
+            String selfIssuedToken = createValidSelfIssuedToken(accessToken);
+            when(tokenService.validateToken(selfIssuedToken)).thenReturn(parseClaims(selfIssuedToken));
+            when(didResolverService.fetchDidDocumentCached(HOLDER_DID)).thenReturn(DidDocument.Builder.newInstance()
+                    .id(HOLDER_DID)
+                    .service(List.of(new ServiceEntry(HOLDER_DID + "#cs", "CredentialService",
+                            "http://holder.example.com/dcp")))
+                    .build());
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken));
+
+            assertTrue(exception.getMessage().contains("Step 3c failed"));
+            assertTrue(exception.getMessage().contains("Insecure"));
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════════════════
     // STEP 4: Presentation Query Tests
     // ═════════════════════════════════════════════════════════════════════════════
