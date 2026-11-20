@@ -279,7 +279,7 @@ public class HolderService {
         auditPublisher.publishEvent(
                 DcpAuditEventType.CREDENTIAL_REJECTED_BY_ISSUER,
                 "Credential rejected by issuer: issuerPid=" + msg.getIssuerPid()
-                        + ", reason=" + msg.getRejectionReason(),
+                        + (msg.getRejectionReason() != null ? ", reason=" + msg.getRejectionReason() : ", no reason given"),
                 HOLDER_SOURCE,
                 null, msg.getIssuerPid(),
                 null,

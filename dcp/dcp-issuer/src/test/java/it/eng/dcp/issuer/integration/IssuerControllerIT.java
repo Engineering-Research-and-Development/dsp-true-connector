@@ -12,6 +12,7 @@ import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.CredentialRequestMessage;
 import it.eng.dcp.common.model.CredentialRequestMessage.CredentialReference;
+import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig;
 import it.eng.dcp.issuer.service.CredentialDeliveryService;
@@ -27,6 +28,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Stream;
@@ -87,6 +89,18 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         reset(credentialDeliveryService);
         when(credentialDeliveryService.deliverCredentials(anyString(), anyList())).thenReturn(true);
         when(credentialDeliveryService.rejectCredentialRequest(anyString(), anyString())).thenReturn(true);
+    }
+
+    /**
+     * Serves a DID document whose id is the requested DID, because token validation checks that
+     * {@code sub} equals the resolved DID Document id.
+     *
+     * @throws IOException never; declared by the mocked resolver method
+     */
+    @BeforeEach
+    void serveDidDocuments() throws IOException {
+        when(didResolverService.fetchDidDocumentCached(anyString()))
+                .thenAnswer(inv -> DidDocument.Builder.newInstance().id(inv.getArgument(0)).build());
     }
 
     /**

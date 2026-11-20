@@ -61,7 +61,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class BaseIntegrationTest {
 
     /** Default tenant ID used across all integration tests. */
-    protected static final String TENANT_ID = "engineering";
+    protected static final String TENANT_ID = "engineering-a";
 
     // starts a mongodb and s3 simulated cloud storage container; the containers are shared among all tests; docker must be running
     protected static final MongoDBContainer mongoDBContainer =
@@ -137,9 +137,9 @@ public class BaseIntegrationTest {
         if (tenantRepository.findById(TENANT_ID).isEmpty()) {
             tenantRepository.save(Tenant.Builder.newInstance()
                     .id(TENANT_ID)
-                    .name("Engineering")
+                    .name("EngineeringA")
                     .participantId("connector-engineering")
-                    .bucketName(s3Properties.getBucketName())
+                    .bucketName(s3Properties.getBucketName() + "-" + TENANT_ID)
                     .enabled(true)
                     .build());
         }
@@ -150,7 +150,7 @@ public class BaseIntegrationTest {
                 mockMvc.perform(
                         get(ApiEndpoints.NEGOTIATION_V1)
                                 .param("role", IConstants.ROLE_CONSUMER)
-                                .with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
+                                .with(user(TestUtil.API_USER).password("password").roles("ADMIN"))
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -165,7 +165,7 @@ public class BaseIntegrationTest {
         final ResultActions result =
                 mockMvc.perform(
                         get(ApiEndpoints.NEGOTIATION_V1 + "/" + contractNegotiationId)
-                                .with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
+                                .with(user(TestUtil.API_USER).password("password").roles("ADMIN"))
                                 .contentType(MediaType.APPLICATION_JSON));
 
         result.andExpect(status().isOk())
@@ -178,7 +178,7 @@ public class BaseIntegrationTest {
         final ResultActions result =
                 mockMvc.perform(
                         get(ApiEndpoints.NEGOTIATION_V1)
-                                .with(user(TestUtil.CONNECTOR_USER).password("password").roles("ADMIN"))
+                                .with(user(TestUtil.API_USER).password("password").roles("ADMIN"))
                                 .param("consumerPid", consumerPid)
                                 .param("providerPid", providerPid)
                                 .contentType(MediaType.APPLICATION_JSON));
@@ -199,10 +199,19 @@ public class BaseIntegrationTest {
         assertNotNull(contractNegotiation.getAgreement());
     }
 
+    /**
+     * Returns the default tenant's bucket provisioned during application startup.
+     *
+     * @return the persisted tenant bucket name
+     */
+    protected String getTenantBucketName() {
+        return tenantRepository.findById(TENANT_ID).orElseThrow().getBucketName();
+    }
+
     protected Map<String, String> createS3EndpointProperties(String objectKey) {
         return Map.of(
                 S3Utils.OBJECT_KEY, objectKey,
-                S3Utils.BUCKET_NAME, s3Properties.getBucketName(),
+                S3Utils.BUCKET_NAME, getTenantBucketName(),
                 S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
                 S3Utils.REGION, s3Properties.getRegion(),
                 S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),

@@ -248,8 +248,8 @@ dcp.service-entries[0].id=TRUEConnector-Credential-Service
 dcp.service-entries[0].type=CredentialService
 dcp.service-entries[0].endpoint-path=/dcp
 
-# Issuer
-dcp.issuer.location=https://issuer.example.com
+# Issuer DID (not a URL); the Issuer Service URL is discovered from its DID document
+dcp.issuer.location=did:web:issuer.example.com
 
 # Trusted Issuers
 dcp.trusted-issuers.MembershipCredential=did:web:issuer1.com,did:web:issuer2.com

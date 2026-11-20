@@ -1,5 +1,7 @@
 package it.eng.tools.rest.api;
 
+import it.eng.tools.exception.DuplicateTenantRealmException;
+import it.eng.tools.exception.InvalidTenantRealmException;
 import it.eng.tools.exception.TenantNotFoundException;
 import it.eng.tools.model.Tenant;
 import it.eng.tools.model.TenantBucketCredentialsRequest;
@@ -36,7 +38,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class TenantAPIControllerTest {
 
-    private static final String TENANT_ID = "engineering";
+    private static final String TENANT_ID = "engineering-a";
 
     @Mock
     private TenantService tenantService;
@@ -59,7 +61,7 @@ class TenantAPIControllerTest {
     private Tenant buildTenant() {
         return Tenant.Builder.newInstance()
                 .id(TENANT_ID)
-                .name("Engineering")
+                .name("EngineeringA")
                 .participantId("urn:connector:engineering")
                 .enabled(true)
                 .build();
@@ -161,7 +163,7 @@ class TenantAPIControllerTest {
     void disableTenant_success() {
         Tenant disabled = Tenant.Builder.newInstance()
                 .id(TENANT_ID)
-                .name("Engineering")
+                .name("EngineeringA")
                 .participantId("urn:connector:engineering")
                 .enabled(false)
                 .build();
@@ -234,5 +236,36 @@ class TenantAPIControllerTest {
         when(tenantService.disableTenant(TENANT_ID)).thenThrow(new TenantNotFoundException("Not found"));
 
         assertThrows(TenantNotFoundException.class, () -> controller.disableTenant(TENANT_ID));
+    }
+
+    @Test
+    @DisplayName("Create tenant propagates realm validation failures to the exception advice")
+    void createTenant_realmRejected_propagatesException() {
+        TenantCreateRequest request = TenantCreateRequest.Builder.newInstance()
+                .id(TENANT_ID)
+                .name("EngineeringA")
+                .participantId("urn:connector:engineering")
+                .realm("master")
+                .build();
+        when(tenantService.saveTenant(any(Tenant.class), any(TenantBucketCredentialsRequest.class)))
+                .thenThrow(new InvalidTenantRealmException("reserved"))
+                .thenThrow(new DuplicateTenantRealmException("duplicate"));
+
+        assertThrows(InvalidTenantRealmException.class, () -> controller.createTenant(request));
+        assertThrows(DuplicateTenantRealmException.class, () -> controller.createTenant(request));
+    }
+
+    @Test
+    @DisplayName("Update tenant propagates realm validation failures to the exception advice")
+    void updateTenant_realmRejected_propagatesException() {
+        TenantUpdateRequest request = TenantUpdateRequest.Builder.newInstance().realm("master").build();
+        Tenant existing = buildTenant();
+        when(tenantService.findById(TENANT_ID)).thenReturn(existing);
+        when(tenantService.updateTenant(eq(TENANT_ID), any(Tenant.class), any(TenantBucketCredentialsRequest.class)))
+                .thenThrow(new InvalidTenantRealmException("reserved"))
+                .thenThrow(new DuplicateTenantRealmException("duplicate"));
+
+        assertThrows(InvalidTenantRealmException.class, () -> controller.updateTenant(TENANT_ID, request));
+        assertThrows(DuplicateTenantRealmException.class, () -> controller.updateTenant(TENANT_ID, request));
     }
 }

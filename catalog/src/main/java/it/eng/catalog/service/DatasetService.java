@@ -35,13 +35,16 @@ public class DatasetService {
     private final DatasetRepository repository;
     private final CatalogService catalogService;
     private final ArtifactService artifactService;
+    private final CatalogTenantGuard tenantGuard;
     private final S3ClientService s3ClientService;
     private final TenantBucketResolver tenantBucketResolver;
     private final AuditEventPublisher publisher;
 
     public DatasetService(DatasetRepository repository, CatalogService catalogService, ArtifactService artifactService,
-                          S3ClientService s3ClientService, TenantBucketResolver tenantBucketResolver, AuditEventPublisher publisher) {
+                          S3ClientService s3ClientService, TenantBucketResolver tenantBucketResolver, AuditEventPublisher publisher,
+                          CatalogTenantGuard tenantGuard) {
         this.repository = repository;
+        this.tenantGuard = tenantGuard;
         this.catalogService = catalogService;
         this.artifactService = artifactService;
         this.s3ClientService = s3ClientService;
@@ -136,6 +139,7 @@ public class DatasetService {
      * @throws InternalServerErrorAPIException if saving fails
      */
     public Dataset saveDataset(Dataset dataset, MultipartFile file, String externalURL, String authorization) {
+        tenantGuard.checkNewDataset(dataset);
         Dataset savedDataSet = null;
         try {
 //			TODO revert changes in case of failure
@@ -170,6 +174,7 @@ public class DatasetService {
      */
     public Dataset updateDataset(String id, Dataset newDataset, MultipartFile file, String externalURL, String authorization) {
         Dataset existingDataset = getDatasetByIdForApi(id);
+        tenantGuard.checkDatasetReferences(newDataset);
         Dataset updatedDataset = null;
         Dataset storedDataset = null;
         try {

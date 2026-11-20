@@ -231,12 +231,18 @@ If the issue still fails after 3 cycles:
 
 Applies to implementation tasks (`task.yml`) after the per-task verification loop passes. Slice-level architecture updates, API documentation, API-change records, and slice-level ADRs are **out of scope here** — they belong in the slice's dedicated documentation task (`docs-task.yml`). Do not preemptively update `doc/architecture.md` or module docs from an implementation task.
 
+The OpenAPI YAML entry and any generated example update for a changed REST controller are part of
+the implementation task: they are code-adjacent and checked by the OpenAPI drift/documentation
+tests. Narrative documentation such as `doc/openapi.md` and architecture guides remains in the
+slice-level documentation task.
+
 After the per-task verification loop passes:
 
 1. verify Javadoc is present on all new/changed public and protected methods (Checkstyle enforces this)
-2. verify the `CHANGELOG.md` entry when the task's own scope explicitly requires one (per DoD: "Changelog is updated (if applicable)")
-3. update a module doc only when the implementation introduces a new durable pattern *and* the task's own `Implementation Prompt` explicitly scopes that update to this task
-4. leave `doc/architecture.md` updates, ADRs, API-change records, and Postman collection updates for the slice's dedicated documentation task
+2. when a REST controller changes, verify its matching `openapi/<module>-docs.yaml` entry is updated and generated examples are refreshed when request or response payloads change
+3. verify the `CHANGELOG.md` entry when the task's own scope explicitly requires one (per DoD: "Changelog is updated (if applicable)")
+4. update a module doc only when the implementation introduces a new durable pattern *and* the task's own `Implementation Prompt` explicitly scopes that update to this task
+5. leave narrative documentation (`doc/openapi.md`, architecture), ADRs, API-change records, and Postman collection updates for the slice's dedicated documentation task
 
 ## Pull request handoff
 

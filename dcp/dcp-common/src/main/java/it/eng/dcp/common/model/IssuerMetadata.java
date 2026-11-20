@@ -2,13 +2,13 @@ package it.eng.dcp.common.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import jakarta.validation.ValidationException;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -36,8 +36,9 @@ public class IssuerMetadata extends BaseDcpMessage {
     @NotNull
     private String issuer;
 
+    /** Required by the IssuerMetadata schema and always serialized; an empty array is valid. */
     @NotNull
-    @Size(min = 1)
+    @JsonInclude(JsonInclude.Include.ALWAYS)
     private List<CredentialObject> credentialsSupported = new ArrayList<>();
 
     @JsonPOJOBuilder(withPrefix = "")
@@ -112,10 +113,16 @@ public class IssuerMetadata extends BaseDcpMessage {
         @NotNull
         private String credentialType;
 
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        private String offerReason;
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
         private String credentialSchema;
 
+        @JsonInclude(JsonInclude.Include.NON_NULL)
         private String profile;
 
+        @JsonInclude(JsonInclude.Include.NON_NULL)
         private Map<String, Object> issuancePolicy;
 
         private final List<String> bindingMethods = new ArrayList<>();
@@ -150,6 +157,17 @@ public class IssuerMetadata extends BaseDcpMessage {
 
             public Builder credentialSchema(String credentialSchema) {
                 obj.credentialSchema = credentialSchema;
+                return this;
+            }
+
+            /**
+             * Sets the reason for offering this credential (for example {@code reissue}).
+             *
+             * @param offerReason the offer reason
+             * @return this builder
+             */
+            public Builder offerReason(String offerReason) {
+                obj.offerReason = offerReason;
                 return this;
             }
 

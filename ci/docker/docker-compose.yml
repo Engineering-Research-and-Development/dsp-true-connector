@@ -25,7 +25,7 @@ services:
 
   ### intstance a
   connector-a:
-    image: ghcr.io/engineering-research-and-development/dsp-true-connector:test
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector:${IMAGE_TAG:-test}
     deploy:
       resources:
         limits:
@@ -73,7 +73,7 @@ services:
 
   ### instance b
   connector-b:
-    image: ghcr.io/engineering-research-and-development/dsp-true-connector:test
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector:${IMAGE_TAG:-test}
     deploy:
       resources:
         limits:

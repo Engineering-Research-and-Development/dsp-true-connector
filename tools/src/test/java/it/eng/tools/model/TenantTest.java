@@ -4,11 +4,7 @@ import jakarta.validation.ValidationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class TenantTest {
 
@@ -21,6 +17,7 @@ class TenantTest {
                 .id("test-tenant")
                 .name("Test Tenant")
                 .description("A description")
+                .realm("test-realm")
                 .participantId("urn:connector:test")
                 .enabled(true)
                 .automaticNegotiation(true)
@@ -31,11 +28,24 @@ class TenantTest {
         assertEquals("test-tenant", tenant.getId());
         assertEquals("Test Tenant", tenant.getName());
         assertEquals("A description", tenant.getDescription());
+        assertEquals("test-realm", tenant.getRealm());
         assertEquals("urn:connector:test", tenant.getParticipantId());
         assertEquals(BASE_URL + "/test-tenant", tenant.getCallbackAddress(BASE_URL));
         assertTrue(tenant.isEnabled());
         assertTrue(tenant.isAutomaticNegotiation());
         assertFalse(tenant.isAutomaticTransfer());
+    }
+
+    @Test
+    @DisplayName("Build tenant successfully without an optional realm")
+    void buildTenantWithoutRealm() {
+        Tenant tenant = Tenant.Builder.newInstance()
+                .id("test-tenant")
+                .name("Test Tenant")
+                .participantId("urn:connector:test")
+                .build();
+
+        assertNull(tenant.getRealm());
     }
 
     @Test
@@ -82,4 +92,5 @@ class TenantTest {
 
         assertEquals("http://example.com/my-tenant", tenant.getCallbackAddress("http://example.com/"));
     }
+
 }

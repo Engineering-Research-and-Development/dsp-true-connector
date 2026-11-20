@@ -2,6 +2,8 @@ package it.eng.catalog.service;
 
 import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.exceptions.ResourceNotFoundAPIException;
+import it.eng.catalog.model.Dataset;
+import it.eng.catalog.repository.DatasetRepository;
 import it.eng.tools.event.AuditEventType;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
@@ -11,6 +13,7 @@ import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.AuditEventPublisher;
 import it.eng.tools.service.TenantBucketResolver;
+import it.eng.tools.service.TenantContextHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.ContentDisposition;
@@ -19,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 @Service
@@ -30,19 +34,46 @@ public class ArtifactService {
     private final S3Properties s3Properties;
     private final TenantBucketResolver tenantBucketResolver;
     private final AuditEventPublisher auditEventPublisher;
+    private final DatasetRepository datasetRepository;
 
-    public ArtifactService(ArtifactRepository artifactRepository, S3ClientService s3ClientService,
+    public ArtifactService(ArtifactRepository artifactRepository, DatasetRepository datasetRepository, S3ClientService s3ClientService,
                            S3Properties s3Properties, TenantBucketResolver tenantBucketResolver,
                            AuditEventPublisher auditEventPublisher) {
         super();
         this.artifactRepository = artifactRepository;
+        this.datasetRepository = datasetRepository;
         this.s3ClientService = s3ClientService;
         this.s3Properties = s3Properties;
         this.tenantBucketResolver = tenantBucketResolver;
         this.auditEventPublisher = auditEventPublisher;
     }
 
+    /**
+     * Returns the artifact with the given id, or all artifacts when no id is given.
+     *
+     * <p>When a tenant is set, only artifacts of that tenant's datasets are visible: {@link Artifact} has no
+     * tenant of its own, and every artifact belongs to exactly one dataset.
+     *
+     * @param artifactId optional artifact id; may be {@code null} or blank
+     * @return the matching artifact(s)
+     * @throws ResourceNotFoundAPIException if an id is given but no (visible) artifact has it
+     */
     public List<Artifact> getArtifacts(String artifactId) {
+        String tenantId = TenantContextHolder.getTenantId();
+        if (tenantId != null) {
+            List<Artifact> tenantArtifacts = datasetRepository.findAllByTenantId(tenantId).stream()
+                    .map(Dataset::getArtifact)
+                    .filter(Objects::nonNull)
+                    .toList();
+            if (StringUtils.isNotBlank(artifactId)) {
+                return tenantArtifacts.stream()
+                        .filter(artifact -> artifactId.equals(artifact.getId()))
+                        .findFirst()
+                        .map(List::of)
+                        .orElseThrow(() -> new ResourceNotFoundAPIException("Artifact with id " + artifactId + " not found"));
+            }
+            return tenantArtifacts;
+        }
         if (StringUtils.isNotBlank(artifactId)) {
             Optional<Artifact> artifact = artifactRepository.findById(artifactId);
             if (artifact.isPresent()) {

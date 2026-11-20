@@ -26,7 +26,7 @@ services:
 
   ### DCP Issuer Service
   dcp-issuer:
-    image: ghcr.io/engineering-research-and-development/dcp-issuer:test
+    image: ghcr.io/engineering-research-and-development/dcp-issuer:${IMAGE_TAG:-test}
     container_name: dcp-issuer
     networks:
       - network-a
@@ -76,7 +76,7 @@ services:
 
   ### connector instance a
   connector-a:
-    image: ghcr.io/engineering-research-and-development/dsp-true-connector:test
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector:${IMAGE_TAG:-test}
     deploy:
       resources:
         limits:
@@ -125,7 +125,7 @@ services:
 
   ### connector instance b
   connector-b:
-    image: ghcr.io/engineering-research-and-development/dsp-true-connector:test
+    image: ghcr.io/engineering-research-and-development/dsp-true-connector:${IMAGE_TAG:-test}
     deploy:
       resources:
         limits:

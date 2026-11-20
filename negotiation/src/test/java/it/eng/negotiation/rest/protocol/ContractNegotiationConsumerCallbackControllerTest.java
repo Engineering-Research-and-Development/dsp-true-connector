@@ -28,7 +28,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class ContractNegotiationConsumerCallbackControllerTest {
 
-    private static final String TENANT_ID = "engineering";
+    private static final String TENANT_ID = "engineering-a";
 
     @InjectMocks
     private ContractNegotiationConsumerCallbackController controller;
@@ -45,7 +45,7 @@ public class ContractNegotiationConsumerCallbackControllerTest {
     @BeforeEach
     public void setUp() {
         Tenant tenant = Tenant.Builder.newInstance()
-                .id(TENANT_ID).name("Engineering").participantId("c1")
+                .id(TENANT_ID).name("EngineeringA").participantId("c1")
                 .enabled(true).build();
         when(tenantService.findEnabledTenantById(TENANT_ID)).thenReturn(tenant);
     }

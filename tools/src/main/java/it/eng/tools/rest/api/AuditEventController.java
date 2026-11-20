@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE,
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE,
         path = ApiEndpoints.AUDIT_V1)
 @Slf4j
 public class AuditEventController {

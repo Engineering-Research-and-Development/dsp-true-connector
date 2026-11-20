@@ -6,9 +6,7 @@ import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
 import it.eng.negotiation.serializer.NegotiationSerializer;
 import it.eng.tools.client.rest.OkHttpRestClient;
-import it.eng.tools.property.ConnectorProperties;
 import it.eng.tools.service.AuditEventPublisher;
-import it.eng.tools.util.CredentialUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Profile;
@@ -24,11 +22,10 @@ public class TCKContractNegotiationProviderService extends ContractNegotiationPr
     private final ApplicationEventPublisher applicationEventPublisher;
 
     public TCKContractNegotiationProviderService(ContractNegotiationAPIService apiService, ApplicationEventPublisher applicationEventPublisher,
-                                                 AuditEventPublisher publisher, ConnectorProperties connectorProperties,
+                                                 AuditEventPublisher publisher,
                                                  ContractNegotiationRepository contractNegotiationRepository, OkHttpRestClient okHttpRestClient,
-                                                 ContractNegotiationProperties properties, OfferRepository offerRepository,
-                                                 CredentialUtils credentialUtils) {
-        super(publisher, connectorProperties, contractNegotiationRepository, okHttpRestClient, properties, offerRepository, credentialUtils);
+                                                 ContractNegotiationProperties properties, OfferRepository offerRepository) {
+        super(publisher, contractNegotiationRepository, okHttpRestClient, properties, offerRepository);
         this.apiService = apiService;
         this.applicationEventPublisher = applicationEventPublisher;
     }

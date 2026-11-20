@@ -54,6 +54,7 @@ A task is done only when all of these hold:
 - Protocol model classes: builder + validation pattern ([negotiation/doc/model.md](negotiation/doc/model.md))
 - Module boundaries: shared logic goes in `tools`; no cross-module reach-ins ([doc/architecture.md](doc/architecture.md))
 - Protocol-facing changes must not regress DSP TCK compliance ([doc/tck/tck_compliancy.md](doc/tck/tck_compliancy.md))
+- Keep controller descriptions and generated examples in the matching module `openapi/*-docs.yaml`; use `serializePlain` for management JSON and `serializeProtocol` for DSP JSON-LD ([OpenAPI instructions](.github/instructions/openapi-docs.instructions.md))
 - Architecturally significant decisions need an ADR ([doc/decisions/](doc/decisions/README.md))
 
 ## CI

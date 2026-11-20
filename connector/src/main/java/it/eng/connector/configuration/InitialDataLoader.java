@@ -15,7 +15,6 @@ import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.AuditEventPublisher;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.FileUtils;
 import org.bson.Document;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -26,15 +25,22 @@ import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
+import org.springframework.util.StringUtils;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 /**
- * InitialDataLoader is responsible for loading initial data into MongoDB and uploading mock data to S3.
- * It uses CommandLineRunner to load data when the application starts and ApplicationReadyEvent to upload data to S3.
+ * Loads initial MongoDB data and provisions storage for every enabled tenant before startup completes.
+ * Optional mock data is uploaded separately when the application is ready.
  */
 @Slf4j
 @Configuration
@@ -61,10 +67,9 @@ public class InitialDataLoader {
     }
 
     /**
-     * Loads initial data into MongoDB when the application starts.
-     * This method is triggered by the CommandLineRunner.
+     * Loads initial data into MongoDB and ensures enabled tenants have provisioned storage.
      *
-     * @return a CommandLineRunner that loads initial data
+     * @return a CommandLineRunner that loads initial data and provisions tenant storage
      */
     @Bean
     CommandLineRunner loadInitialData() {
@@ -127,15 +132,13 @@ public class InitialDataLoader {
                 throw new RuntimeException("Failed to load initial data", e);
             }
 
-            if (tenantRepository.findByEnabled(true).isEmpty()) {
-                throw new IllegalStateException("No enabled tenants found — connector cannot start");
-            }
+            ensureTenantBuckets();
         };
     }
 
     /**
-     * Loads mock data into S3 when the application is ready.
-     * This method is triggered by the ApplicationReadyEvent.
+     * Uploads optional mock data to every enabled tenant's provisioned bucket after startup.
+     * Mandatory bucket provisioning is completed by {@link #loadInitialData()} before this event.
      */
     @EventListener(ApplicationReadyEvent.class)
     public void loadMockData() {
@@ -143,47 +146,21 @@ public class InitialDataLoader {
                 .description("Application started")
                 .eventType(AuditEventType.APPLICATION_START)
                 .build());
-        log.info("Uploading mock data to S3...");
-
-        try {
-            // Resolve bucket name: use the first enabled tenant's bucket, or fall back to global S3 config
-            String bucketName = tenantRepository.findAll().stream()
-                    .filter(t -> t.isEnabled() && t.getBucketName() != null && !t.getBucketName().isBlank())
-                    .findFirst()
-                    .map(Tenant::getBucketName)
-                    .orElse(s3Properties.getBucketName());
-            // Provision the bucket and per-tenant IAM user/credentials, but use admin credentials
-            // to upload the mock file — the per-bucket user's secret is stored encrypted and is
-            // only needed for presigned-URL generation at request time.
-            s3BucketProvisionService.ensureBucketCredentials(bucketName);
-
-            ClassPathResource file = new ClassPathResource("ENG-employee.json");
-            if (file.exists()) {
-                // from initial_data.json Artifacts.value which is the same as dataset.id
-                String fileKey = "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5";
-                String contentDisposition = ContentDisposition.attachment()
-                        .filename(file.getFile().getName())
-                        .build()
-                        .toString();
-
-                Map<String, String> destinationS3Properties = Map.of(
-                        S3Utils.OBJECT_KEY, fileKey,
-                        S3Utils.BUCKET_NAME, bucketName,
-                        S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
-                        S3Utils.REGION, s3Properties.getRegion(),
-                        S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),
-                        S3Utils.SECRET_KEY, s3Properties.getSecretKey()
-                );
-
-                s3ClientService.uploadFile(
-                                FileUtils.openInputStream(file.getFile()),
-                                destinationS3Properties,
-                                MediaType.APPLICATION_JSON_VALUE,
-                                contentDisposition)
-                        .get();
+        ClassPathResource file = new ClassPathResource("ENG-employee.json");
+        if (!file.exists()) {
+            log.debug("Optional mock data file is absent; tenant storage is already provisioned");
+            return;
+        }
+        for (Tenant tenant : tenantRepository.findByEnabled(true)) {
+            try {
+                uploadMockData(file, tenant.getBucketName());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.error("Interrupted while loading mock data to S3 for tenant '{}'", tenant.getId(), e);
+                return;
+            } catch (Exception e) {
+                log.error("Error while loading mock data to S3 for tenant '{}'", tenant.getId(), e);
             }
-        } catch (Exception e) {
-            log.error("Error while loading mock data to S3", e);
         }
     }
 
@@ -214,6 +191,61 @@ public class InitialDataLoader {
         createIndex("audit_events",           new Document("tenantId", 1).append("timestamp", 1));
         createIndex("application_properties", new Document("tenantId", 1).append("_id", 1));
         log.info("Compound MongoDB indexes created (or already exist).");
+    }
+
+    private void ensureTenantBuckets() {
+        List<Tenant> tenants = tenantRepository.findByEnabled(true);
+        if (tenants.isEmpty()) {
+            throw new IllegalStateException("No enabled tenants found - connector cannot start");
+        }
+        for (Tenant tenant : tenants) {
+            try {
+                String bucketName = tenant.getBucketName();
+                boolean needsBucketName = !StringUtils.hasText(bucketName);
+                if (needsBucketName) {
+                    String bucketPrefix = s3Properties.getBucketName();
+                    if (!StringUtils.hasText(bucketPrefix)) {
+                        throw new IllegalStateException("No s3.bucketName configured for tenant bucket derivation");
+                    }
+                    bucketName = bucketPrefix + "-" + tenant.getId();
+                }
+                s3BucketProvisionService.ensureBucketCredentials(bucketName);
+                if (needsBucketName) {
+                    // Update only the storage field, preserving tenant metadata and auditing fields.
+                    mongoTemplate.updateFirst(Query.query(Criteria.where("_id").is(tenant.getId())),
+                            new Update().set("bucketName", bucketName), Tenant.class);
+                }
+                log.info("S3 storage ensured for tenant '{}' in bucket '{}'", tenant.getId(), bucketName);
+            } catch (RuntimeException e) {
+                throw new IllegalStateException("Failed to provision S3 storage for tenant '" + tenant.getId() + "'", e);
+            }
+        }
+    }
+
+    private void uploadMockData(ClassPathResource file, String bucketName)
+            throws IOException, ExecutionException, InterruptedException {
+        if (!StringUtils.hasText(bucketName)) {
+            throw new IllegalStateException("No provisioned tenant bucket for mock data");
+        }
+        // This key matches the mock dataset ID in the initial data.
+        String fileKey = "urn:uuid:fdc45798-a222-4955-8baf-ab7fd66ac4d5";
+        String contentDisposition = ContentDisposition.attachment()
+                .filename(file.getFilename())
+                .build()
+                .toString();
+        Map<String, String> destinationS3Properties = Map.of(
+                S3Utils.OBJECT_KEY, fileKey,
+                S3Utils.BUCKET_NAME, bucketName,
+                S3Utils.ENDPOINT_OVERRIDE, s3Properties.getEndpoint(),
+                S3Utils.REGION, s3Properties.getRegion(),
+                S3Utils.ACCESS_KEY, s3Properties.getAccessKey(),
+                S3Utils.SECRET_KEY, s3Properties.getSecretKey()
+        );
+        log.info("Uploading mock data to S3 bucket '{}'", bucketName);
+        try (InputStream inputStream = file.getInputStream()) {
+            s3ClientService.uploadFile(inputStream, destinationS3Properties,
+                    MediaType.APPLICATION_JSON_VALUE, contentDisposition).get();
+        }
     }
 
     /**

@@ -71,7 +71,7 @@ public class DistributionAPIIT extends BaseIntegrationTest {
                 .title(CatalogMockObjectUtil.TITLE)
                 .endpointDescription("Test endpoint description")
                 .endpointURL("http://test-endpoint.com")
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         // Create a new Distribution with reference to DataService
@@ -84,7 +84,7 @@ public class DistributionAPIIT extends BaseIntegrationTest {
                 .format("HTTP:PULL")
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
                 .accessService(dataService)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         // Initialize the Catalog with references to DataService and Distribution
@@ -94,7 +94,7 @@ public class DistributionAPIIT extends BaseIntegrationTest {
                 .description(Set.of(CatalogMockObjectUtil.MULTILANGUAGE))
                 .service(Collections.singleton(dataService))
                 .distribution(Collections.singleton(distribution))
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         // Save all objects to their respective repositories
@@ -121,8 +121,7 @@ public class DistributionAPIIT extends BaseIntegrationTest {
     public void getDistributionById_success() throws Exception {
         // Test getting a distribution by ID
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/" + distribution.getId())
-                        .contentType(MediaType.APPLICATION_JSON));
+                get(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/" + distribution.getId()));
 
         result.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -148,8 +147,7 @@ public class DistributionAPIIT extends BaseIntegrationTest {
     public void getDistributionById_notFound() throws Exception {
         // Test getting a non-existent distribution
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/non-existent-id")
-                        .contentType(MediaType.APPLICATION_JSON));
+                get(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/non-existent-id"));
 
         result.andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -166,8 +164,7 @@ public class DistributionAPIIT extends BaseIntegrationTest {
     public void getAllDistributions_success() throws Exception {
         // Test getting all distributions
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1)
-                        .contentType(MediaType.APPLICATION_JSON));
+                get(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1));
 
         result.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -202,7 +199,7 @@ public class DistributionAPIIT extends BaseIntegrationTest {
                 .format("HTTP:PULL")
                 .hasPolicy(Set.of(CatalogMockObjectUtil.OFFER))
                 .accessService(dataService)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         String distributionJson = CatalogSerializer.serializePlain(newDistribution);
@@ -310,8 +307,7 @@ public class DistributionAPIIT extends BaseIntegrationTest {
     public void deleteDistribution_success() throws Exception {
         // Test deleting an existing distribution
         final ResultActions result = mockMvc.perform(
-                delete(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/" + distribution.getId())
-                        .contentType(MediaType.APPLICATION_JSON));
+                delete(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/" + distribution.getId()));
 
         result.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -335,8 +331,7 @@ public class DistributionAPIIT extends BaseIntegrationTest {
     public void deleteDistribution_notFound() throws Exception {
         // Test deleting a non-existent distribution
         final ResultActions result = mockMvc.perform(
-                delete(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/non-existent-id")
-                        .contentType(MediaType.APPLICATION_JSON));
+                delete(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1 + "/non-existent-id"));
 
         result.andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -351,8 +346,7 @@ public class DistributionAPIIT extends BaseIntegrationTest {
     public void unauthorized_access() throws Exception {
         // Test unauthorized access
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1)
-                        .contentType(MediaType.APPLICATION_JSON));
+                get(ApiEndpoints.CATALOG_DISTRIBUTIONS_V1));
 
         result.andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));

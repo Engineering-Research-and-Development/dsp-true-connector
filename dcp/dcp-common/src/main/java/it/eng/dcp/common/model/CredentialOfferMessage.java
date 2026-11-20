@@ -103,6 +103,8 @@ public class CredentialOfferMessage implements Serializable {
         @Serial
         private static final long serialVersionUID = 1L;
 
+        /** Unique, stable identifier of the offered credential (DCP §6.6.1); required. */
+        @NotNull
         @JsonProperty(value = "id", required = true)
         private String id;
 

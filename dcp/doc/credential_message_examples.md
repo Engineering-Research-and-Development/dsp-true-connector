@@ -11,7 +11,6 @@ Use this JSON in Postman for `POST /dcp/credentials`:
   "issuerPid" : "issuer-pid-12345",
   "holderPid" : "did:example:holder123",
   "status" : "ISSUED",
-  "rejectionReason" : null,
   "requestId" : "request-67890",
   "credentials" : [ {
     "credentialType" : "MembershipCredential",
@@ -61,7 +60,6 @@ Use this JSON in Postman for `POST /dcp/credentials`:
   "issuerPid" : "issuer-pid-12345",
   "holderPid" : "did:example:holder123",
   "status" : "ISSUED",
-  "rejectionReason" : null,
   "requestId" : "request-67890",
   "credentials" : [ {
     "credentialType" : "OrganizationCredential",
@@ -104,7 +102,6 @@ Use this JSON in Postman for `POST /dcp/credentials`:
   "issuerPid" : "issuer-pid-12345",
   "holderPid" : "did:example:holder123",
   "status" : "ISSUED",
-  "rejectionReason" : null,
   "requestId" : "request-67890",
   "credentials" : [ 
     {
@@ -146,8 +143,18 @@ Use this JSON in Postman for `POST /dcp/credentials`:
   "holderPid" : "did:example:holder123",
   "status" : "REJECTED",
   "rejectionReason" : "Holder organization not verified",
-  "requestId" : "request-67890",
-  "credentials" : [ ]
+  "requestId" : "request-67890"
+}
+```
+
+A rejection carries no `credentials`. `holderPid` and `rejectionReason` are optional (DCP §6.5.1): a rejection without a reason omits `rejectionReason` rather than sending `null`. The minimal rejected message is:
+
+```json
+{
+  "@context" : [ "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ],
+  "type" : "CredentialMessage",
+  "issuerPid" : "issuer-pid-12345",
+  "status" : "REJECTED"
 }
 ```
 

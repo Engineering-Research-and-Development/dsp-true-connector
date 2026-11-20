@@ -1,16 +1,14 @@
 FROM eclipse-temurin:21-jre-alpine
 
-RUN mkdir -p /home/nobody/ftp && mkdir -p /home/nobody/data/log/tc
-
 WORKDIR /home/nobody
 
-# The application's jar file
-COPY /target/dependency-jars /home/nobody/app/dependency-jars
+# Writable runtime directories for the non-root user
+RUN mkdir -p /home/nobody/ftp /home/nobody/data/log/tc && chown -R nobody:nogroup /home/nobody
 
-# Add the application's jar to the container
-ADD /target/dsp-true-connector.jar /home/nobody/app/dsp-true-connector.jar
-
-RUN chown -R nobody:nogroup /home/nobody
+# The application's dependencies and jar, owned by the runtime user. --chown avoids a separate
+# "chown -R" layer, which would store the dependency jars a second time.
+COPY --chown=nobody:nogroup target/dependency-jars /home/nobody/app/dependency-jars
+COPY --chown=nobody:nogroup target/dsp-true-connector.jar /home/nobody/app/dsp-true-connector.jar
 
 USER 65534
 

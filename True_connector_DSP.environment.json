@@ -141,80 +141,68 @@
 			"enabled": true
 		},
 		{
-			"key": "KEYCLOAK_REALM",
-			"value": "dsp-connector",
+			"key": "KEYCLOAK_TOKEN_URL_PLATFORM",
+			"value": "{{KEYCLOAK_BASE_URL}}/realms/platform/protocol/openid-connect/token",
 			"type": "default",
 			"enabled": true
 		},
 		{
-			"key": "KEYCLOAK_TOKEN_URL",
-			"value": "{{KEYCLOAK_BASE_URL}}/realms/{{KEYCLOAK_REALM}}/protocol/openid-connect/token",
+			"key": "KEYCLOAK_TOKEN_URL_CONNECTOR_ADMIN",
+			"value": "{{KEYCLOAK_BASE_URL}}/realms/connector-admin/protocol/openid-connect/token",
 			"type": "default",
 			"enabled": true
 		},
 		{
-			"key": "KEYCLOAK_CLIENT_ID_UI",
-			"value": "dsp-connector-ui",
+			"key": "KEYCLOAK_TOKEN_URL_TENANT_A",
+			"value": "{{KEYCLOAK_BASE_URL}}/realms/tenant-EngineeringA/protocol/openid-connect/token",
 			"type": "default",
 			"enabled": true
 		},
 		{
-			"key": "KEYCLOAK_CLIENT_ID_PROVIDER_BACKEND",
-			"value": "dsp-connector-provider-backend",
+			"key": "KEYCLOAK_TOKEN_URL_TENANT_B",
+			"value": "{{KEYCLOAK_BASE_URL}}/realms/tenant-EngineeringB/protocol/openid-connect/token",
 			"type": "default",
 			"enabled": true
 		},
 		{
-			"key": "KEYCLOAK_CLIENT_SECRET_PROVIDER",
-			"value": "dsp-connector-provider-secret",
+			"key": "KEYCLOAK_CLIENT_ID_API",
+			"value": "keycloak-api",
 			"type": "default",
 			"enabled": true
 		},
 		{
-			"key": "KEYCLOAK_CLIENT_ID_CONSUMER_BACKEND",
-			"value": "dsp-connector-consumer-backend",
+			"key": "KEYCLOAK_CLIENT_ID_BACKEND",
+			"value": "dsp-connector-backend",
 			"type": "default",
 			"enabled": true
 		},
 		{
-			"key": "KEYCLOAK_CLIENT_SECRET_CONSUMER",
-			"value": "dsp-connector-consumer-secret",
+			"key": "KEYCLOAK_CLIENT_SECRET_BACKEND",
+			"value": "dsp-connector-backend-secret",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "KEYCLOAK_USERNAME_ADMIN",
-			"value": "admin@test.com",
+			"value": "admin",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "KEYCLOAK_PASSWORD_ADMIN",
-			"value": "admin123",
+			"value": "password",
 			"type": "default",
 			"enabled": true
 		},
 		{
-			"key": "KEYCLOAK_USERNAME_USER",
-			"value": "user@test.com",
+			"key": "KEYCLOAK_USERNAME_ADMIN_B",
+			"value": "adminB",
 			"type": "default",
 			"enabled": true
 		},
 		{
-			"key": "KEYCLOAK_PASSWORD_USER",
-			"value": "user123",
-			"type": "default",
-			"enabled": true
-		},
-		{
-			"key": "KEYCLOAK_USERNAME_CONNECTOR",
-			"value": "connector@test.com",
-			"type": "default",
-			"enabled": true
-		},
-		{
-			"key": "KEYCLOAK_PASSWORD_CONNECTOR",
-			"value": "connector123",
+			"key": "KEYCLOAK_PASSWORD_ADMIN_B",
+			"value": "password",
 			"type": "default",
 			"enabled": true
 		},
@@ -232,7 +220,7 @@
 		},
 		{
 			"key": "TENANT_ID",
-			"value": "engineering",
+			"value": "engineering-a",
 			"type": "default",
 			"enabled": true
 		},
@@ -310,13 +298,19 @@
 		},
 		{
 			"key": "KEYCLOAK_USERNAME_SUPERADMIN",
-			"value": "superadmin@test.com",
+			"value": "superadmin@mail.com",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "KEYCLOAK_PASSWORD_SUPERADMIN",
 			"value": "password",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "KEYCLOAK_SUPER_ADMIN_TOKEN",
+			"value": "",
 			"type": "default",
 			"enabled": true
 		}

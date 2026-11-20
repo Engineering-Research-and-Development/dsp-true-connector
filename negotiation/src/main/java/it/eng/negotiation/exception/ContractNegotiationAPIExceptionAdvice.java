@@ -1,5 +1,8 @@
 package it.eng.negotiation.exception;
 
+import it.eng.negotiation.rest.api.ContractNegotiationAPIController;
+import it.eng.negotiation.rest.internal.InternalAgreementController;
+import it.eng.tools.response.GenericApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -7,11 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
-import it.eng.negotiation.rest.api.AgreementAPIController;
-import it.eng.negotiation.rest.api.ContractNegotiationAPIController;
-import it.eng.tools.response.GenericApiResponse;
-
-@RestControllerAdvice(basePackageClasses = {ContractNegotiationAPIController.class, AgreementAPIController.class})
+@RestControllerAdvice(basePackageClasses = {ContractNegotiationAPIController.class, InternalAgreementController.class})
 public class ContractNegotiationAPIExceptionAdvice extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(value = {ContractNegotiationAPIException.class})

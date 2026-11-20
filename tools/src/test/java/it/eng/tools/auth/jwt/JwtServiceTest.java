@@ -1,17 +1,17 @@
 package it.eng.tools.auth.jwt;
 
-import java.util.List;
-import java.util.Map;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.SignatureVerificationException;
 import com.auth0.jwt.exceptions.TokenExpiredException;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -45,7 +45,8 @@ class JwtServiceTest {
         DecodedJWT accessClaims = jwtService.verifyAndDecode(tokenPair.accessToken());
         assertEquals("user-1", accessClaims.getSubject());
         assertEquals("user@example.com", accessClaims.getClaim(JwtService.EMAIL_CLAIM).asString());
-        assertEquals(List.of("ROLE_ADMIN"), accessClaims.getClaim(JwtService.ROLES_CLAIM).asList(String.class));
+        assertEquals(Map.of(JwtService.ROLES_CLAIM, List.of("ROLE_ADMIN")),
+                accessClaims.getClaim(JwtService.REALM_ACCESS_CLAIM).asMap());
         assertEquals("tenant-a", accessClaims.getClaim(JwtService.TENANT_ID_CLAIM).asString());
         assertTrue(accessClaims.getClaim(JwtService.TOKEN_TYPE_CLAIM).isMissing());
         assertNotNull(accessClaims.getIssuedAt());
@@ -71,6 +72,16 @@ class JwtServiceTest {
     }
 
     @Test
+    @DisplayName("Should omit the tenant claim when the subject has no tenant")
+    void tenantClaimOmittedWithoutTenant() {
+        TokenPair tokenPair = jwtService.issueTokenPair("user-1", "user@example.com",
+                List.of("SUPER_ADMIN"), null, Map.of());
+
+        DecodedJWT decoded = jwtService.verifyAndDecode(tokenPair.accessToken());
+        assertTrue(decoded.getClaim(JwtService.TENANT_ID_CLAIM).isMissing());
+    }
+
+    @Test
     @DisplayName("Should fail on missing required fields")
     void missingRequiredFields() {
         assertThrows(NullPointerException.class, () -> jwtService.issueTokenPair(null, "user@example.com",
@@ -85,8 +96,8 @@ class JwtServiceTest {
     @DisplayName("Should reject extraClaims that collide with a reserved claim name")
     void extraClaimsCollidingWithReservedNamesAreRejected() {
         assertThrows(IllegalArgumentException.class, () -> jwtService.issueTokenPair("user-1",
-                "user@example.com", List.of("ROLE_ADMIN"), "tenant-a", Map.of(JwtService.ROLES_CLAIM,
-                        List.of("ROLE_SUPER_ADMIN"))));
+                "user@example.com", List.of("ROLE_ADMIN"), "tenant-a", Map.of(JwtService.REALM_ACCESS_CLAIM,
+                        Map.of(JwtService.ROLES_CLAIM, List.of("ROLE_SUPER_ADMIN")))));
         assertThrows(IllegalArgumentException.class, () -> jwtService.issueTokenPair("user-1",
                 "user@example.com", List.of("ROLE_ADMIN"), "tenant-a", Map.of("exp", 9_999_999_999L)));
         assertThrows(IllegalArgumentException.class, () -> jwtService.issueTokenPair("user-1",
@@ -123,6 +134,52 @@ class JwtServiceTest {
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, shortSecretService::init);
         assertTrue(exception.getMessage().contains("application.security.jwt.secret"));
+    }
+
+    @Test
+    @DisplayName("Should mint a protocol token that holds only CONNECTOR and no user, tenant or token type")
+    void protocolTokenHoldsOnlyConnectorRole() {
+        String token = jwtService.issueProtocolToken();
+
+        DecodedJWT decoded = jwtService.verifyAndDecode(token);
+        assertEquals(JwtService.PROTOCOL_TOKEN_SUBJECT, decoded.getSubject());
+        assertEquals(Map.of(JwtService.ROLES_CLAIM, List.of(JwtService.CONNECTOR_ROLE)),
+                decoded.getClaim(JwtService.REALM_ACCESS_CLAIM).asMap());
+        assertTrue(decoded.getClaim(JwtService.EMAIL_CLAIM).isMissing());
+        assertTrue(decoded.getClaim(JwtService.TENANT_ID_CLAIM).isMissing());
+        assertTrue(decoded.getClaim(JwtService.TOKEN_TYPE_CLAIM).isMissing());
+        assertNotNull(decoded.getId());
+        assertEquals(Set.of("sub", JwtService.REALM_ACCESS_CLAIM, "iat", "exp", "jti"), decoded.getClaims().keySet());
+    }
+
+    @Test
+    @DisplayName("Should expire the protocol token after the access TTL")
+    void protocolTokenExpiresAfterAccessTtl() {
+        DecodedJWT decoded = jwtService.verifyAndDecode(jwtService.issueProtocolToken());
+
+        long lifetimeMs = decoded.getExpiresAt().getTime() - decoded.getIssuedAt().getTime();
+        assertEquals(900_000L, lifetimeMs);
+    }
+
+    @Test
+    @DisplayName("Should mint a protocol token with a fresh jti each time")
+    void protocolTokenHasUniqueJti() {
+        String first = jwtService.verifyAndDecode(jwtService.issueProtocolToken()).getId();
+        String second = jwtService.verifyAndDecode(jwtService.issueProtocolToken()).getId();
+
+        assertNotEquals(first, second);
+    }
+
+    @Test
+    @DisplayName("Should reject a protocol token minted with a different secret")
+    void protocolTokenFromOtherSecretIsRejected() {
+        JwtProperties otherProperties = new JwtProperties();
+        otherProperties.setSecret(OTHER_SECRET);
+        otherProperties.setAccessExpirationMs(900_000L);
+        otherProperties.setRefreshExpirationMs(604_800_000L);
+        String foreignToken = new JwtService(otherProperties).issueProtocolToken();
+
+        assertThrows(SignatureVerificationException.class, () -> jwtService.verifyAndDecode(foreignToken));
     }
 
     @Test

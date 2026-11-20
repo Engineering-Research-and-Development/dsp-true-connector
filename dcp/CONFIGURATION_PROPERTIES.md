@@ -43,7 +43,7 @@ dcp.service-entries[0].type=CredentialService
 dcp.service-entries[0].endpoint-path=/dcp
 
 # --- Trusted issuers (required for credential validation) ---
-dcp.trusted-issuers.MembershipCredential=did:web:localhost%3A8084
+dcp.trusted-issuers.MembershipCredential=did:web:localhost%3A8084:issuer
 
 # --- Spring / MongoDB (required by dcp-holder) ---
 # Note: server.port belongs to the host application, not this library.
@@ -173,7 +173,7 @@ Tells the holder where to discover the external credential issuer service when r
 
 | Property | Required | Default | Description |
 |---|---|---|---|
-| `dcp.issuer.location` | No | empty | DID or URL of the credential issuer. When set, the holder uses this to discover the issuer's service endpoint via DID resolution and then requests credentials. Example: `did:web:localhost%3A8084` or `http://issuer-host:8084/issuer`. |
+| `dcp.issuer.location` | No | empty | DID of the credential issuer, not a URL. The holder resolves this DID, reads the `IssuerService` endpoint from its DID document (DCP §6.2), and requests credentials there. The same DID is the audience of the tokens sent to the issuer. A URL is refused with an error naming this property. Example: `did:web:localhost%3A8084:issuer`. |
 
 > **Note:** This property is used by `CredentialIssuanceClient`. If you do not need automatic credential issuance leave it empty.
 
@@ -310,13 +310,13 @@ dcp.service-entries[0].endpoint-path=/dcp
 # ============================================================
 # Trusted Issuers
 # ============================================================
-dcp.trusted-issuers.MembershipCredential=did:web:localhost%3A8084
-dcp.trusted-issuers.VerifiableCredential=did:web:localhost%3A8084
+dcp.trusted-issuers.MembershipCredential=did:web:localhost%3A8084:issuer
+dcp.trusted-issuers.VerifiableCredential=did:web:localhost%3A8084:issuer
 
 # ============================================================
 # Issuer Location (holder will request credentials from here)
 # ============================================================
-dcp.issuer.location=did:web:localhost%3A8084
+dcp.issuer.location=did:web:localhost%3A8084:issuer
 
 # ============================================================
 # Verifiable Presentation

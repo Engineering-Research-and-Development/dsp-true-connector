@@ -8,7 +8,6 @@ import it.eng.catalog.repository.DatasetRepository;
 import it.eng.catalog.repository.DistributionRepository;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.*;
 import it.eng.negotiation.repository.ContractNegotiationRepository;
 import it.eng.negotiation.repository.OfferRepository;
@@ -23,7 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.Collections;
@@ -86,7 +85,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void createNegotiation_success() throws Exception {
         //needs to match offer in catalog
         Permission permission = Permission.Builder.newInstance()
@@ -149,7 +148,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void createNegotiation_negotiation_exists() throws Exception {
 
         ContractNegotiation contractNegotiationRequested = ContractNegotiation.Builder.newInstance()
@@ -179,7 +178,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void createNegotiation_invalid_offer() throws Exception {
 
         // offer with new UUID as ID, that does not exist in catalog
@@ -216,7 +215,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void createNegotiation_invalid_offer_constraint() throws Exception {
         // offer with dateTime constraint - will not match with one in initial_data
         Offer offer = Offer.Builder.newInstance()
@@ -253,7 +252,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void createNegotiationCounteroffer_success() throws Exception {
         // Setup: Create an existing negotiation in OFFERED state
         Permission permission = Permission.Builder.newInstance()
@@ -313,7 +312,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void createNegotiationCounteroffer_providerPidMismatch() throws Exception {
         // Setup existing negotiation
         Permission permission = Permission.Builder.newInstance()
@@ -370,7 +369,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void createNegotiationCounteroffer_negotiationNotFound() throws Exception {
         // Try to send counteroffer for non-existent negotiation
         Permission permission = Permission.Builder.newInstance()
@@ -403,7 +402,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void createNegotiationCounteroffer_invalidState() throws Exception {
         // Setup: Create an existing negotiation in REQUESTED state (invalid for counteroffer)
         Permission permission = Permission.Builder.newInstance()
@@ -459,7 +458,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void createNegotiationCounteroffer_invalidOffer() throws Exception {
         // Setup existing negotiation
         Permission permission = Permission.Builder.newInstance()
@@ -516,7 +515,7 @@ public class ContractNegotiationRequestedIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void createNegotiationCounteroffer_targetMismatch() throws Exception {
         // Setup existing negotiation
         Permission permission = Permission.Builder.newInstance()
