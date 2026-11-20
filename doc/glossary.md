@@ -72,7 +72,7 @@ A W3C-standard, self-sovereign identifier resolvable to a DID document containin
 The DCP-side identity a request or unit of work is served under: one participant's DID, signing keys, advertised service endpoints, trusted issuers, issuer metadata configuration and enabled state. DCP code works only with participant contexts, never with tenants; in the connector each tenant maps to one participant context — see [D-ARC-007](decisions/architecture/D-ARC-007-dcp-participant-context.md).
 
 ## Participant Context ID
-The plain-string identifier of a participant context, with no meaning to DCP. Every DCP record carries it as `participantContextId` and every DCP repository query is scoped by it. The single-participant default is `default`; the connector uses the tenant ID — see [D-ARC-007](decisions/architecture/D-ARC-007-dcp-participant-context.md).
+The plain-string identifier of a participant context, with no meaning to DCP. Under D-ARC-007 every DCP record carries it as `participantContextId` and every DCP repository query is scoped by it. The single-participant default is `default`; the connector uses the tenant ID — see [D-ARC-007](decisions/architecture/D-ARC-007-dcp-participant-context.md).
 
 ## Identity Hub
 The component/service managing a participant's DIDs and Verifiable Credentials, integrated for participant onboarding and credential workflows — see [identity_hub.md](identity_hub.md).

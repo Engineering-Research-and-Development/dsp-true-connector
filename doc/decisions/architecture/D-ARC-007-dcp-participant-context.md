@@ -135,8 +135,8 @@ parameter. A request-scoped holder may exist only as a convenience at the contro
 Asynchronous work (audit persistence, credential delivery, issuance) receives the context explicitly
 and never relies on thread-local inheritance.
 
-**No tenant on the wire.** No DCP wire message carries a tenant or participant context ID, and DCP
-scopes are never used as tenant selectors. The participant comes from the route and is bound to the
+**No tenant on the wire.** No DCP wire message carries a tenant ID, and DCP scopes are never used as
+tenant selectors. The participant comes from the route and is bound to the
 authenticated token.
 
 **Connector adapter boundary.** DCP modules do not depend on `connector` or `tools`; the dependency
@@ -230,8 +230,9 @@ before it becomes the default.
   against both the library defaults and the connector adapter.
 - Asynchronous work loses or mixes up the participant. Mitigation: the context is passed explicitly,
   never inherited from a thread-local, and audit attribution after asynchronous persistence is tested.
-- An existing tenant ID collides with a newly reserved ID. Mitigation: tenant validation rejects
-  reserved IDs; existing tenants must be checked before the connector switches to `path` (#448).
+- An existing tenant ID collides with a newly reserved ID. Mitigation: tenant creation rejects the full
+  reserved set, not only `internal` (#444); an existing tenant with a reserved ID must be renamed
+  before the connector switches to `path`.
 - An unscoped request resolves to an arbitrary participant. Mitigation: no root DID document in
   multi-participant mode, unknown or disabled participants get 404, and the resolver contract tests
   cover unscoped requests and reserved IDs.
