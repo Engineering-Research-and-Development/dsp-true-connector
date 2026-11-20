@@ -63,13 +63,34 @@ public class CredentialIssuanceClient {
     }
 
     /**
+     * Checks that {@code dcp.issuer.location} holds the issuer's DID. The Issuer Service URL is discovered
+     * from that DID's document (DCP §6.2), and the DID is the audience of the tokens sent to the issuer, so
+     * a URL cannot be used here.
+     *
+     * @throws IllegalStateException if the value is missing or not a DID
+     */
+    private void requireIssuerDid() {
+        if (issuerDid == null || issuerDid.isBlank()) {
+            throw new IllegalStateException("dcp.issuer.location is not set; configure the issuer DID, "
+                    + "for example did:web:issuer.example.com");
+        }
+        if (!issuerDid.startsWith("did:web:")) {
+            throw new IllegalStateException("dcp.issuer.location must be the issuer's did:web DID (for example "
+                    + "did:web:issuer.example.com), not a URL or another DID method; got: " + issuerDid
+                    + ". The Issuer Service URL is discovered from the issuer's DID document.");
+        }
+    }
+
+    /**
      * Discovers the Issuer Service endpoint from the issuer's DID document.
      *
      * @return service endpoint URL (e.g., {@code https://issuer.example.com})
      * @throws IssuerServiceNotFoundException if IssuerService entry not found in DID document
+     * @throws IllegalStateException if {@code dcp.issuer.location} is not a DID
      * @throws RuntimeException if failed to fetch DID document
      */
     public String discoverIssuerService() {
+        requireIssuerDid();
         DidDocument didDocument;
         try {
             didDocument = didResolverService.fetchDidDocumentCached(issuerDid);
@@ -132,8 +153,8 @@ public class CredentialIssuanceClient {
             log.debug("No token could be created for issuer audience {}: {}", audience, e.getMessage());
         }
 
-        // Build headers with authorization if token is available
-        Map<String, String> headers = Map.of(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+        // Send Authorization only when a token could be created (never "Bearer null")
+        Map<String, String> headers = token != null ? Map.of(HttpHeaders.AUTHORIZATION, "Bearer " + token) : Map.of();
 
         try {
             return rest.executeAndDeserialize(metadataUrl, "GET", headers, null, IssuerMetadata.class);

@@ -85,6 +85,12 @@ Each realm has its own users, roles, and clients. The connector trusts only the 
   - Absent optional properties such as `issuancePolicy` are omitted instead of sent as `null`.
   - The `credential-metadata-configuration.properties` files fill the missing values: an `offerReason` for MembershipCredential, and an `id`, `offerReason`, `bindingMethods` and `profile` for OrganizationCredential. The issuer reads only the classpath copy; the copy under `ci/docker/issuer/config` is kept in step but is not loaded.
   - A test validates the metadata against the published schema, using the test-scoped dependency `com.networknt:json-schema-validator` 1.5.8, which is managed in the root `pom.xml`.
+- The DCP Holder can request credentials with the shipped configurations (DCP §6.2, #416).
+  - `dcp.issuer.location` is now the issuer DID in every config (connector main, test and TCK, CI Docker and TCK, and DCP e2e), instead of a URL. Three configs had the typo `htttp://`. The holder resolves the DID and discovers the Issuer Service from its DID document.
+  - A value that is not a `did:web` DID is refused with an error naming the property, instead of `Invalid DID:web format`.
+  - The connector's consumer and provider configs now trust that issuer DID (`dcp.trusted-issuers.*`). Before, they listed `did:web:localhost%3A8084`, so credentials from the local issuer were rejected.
+  - The e2e issuer profiles now repeat the `IssuerService` id and type next to `issuer-location`. Spring Boot does not merge list entries across property files, so the issuer had advertised a service entry with no type.
+  - A new e2e test covers `POST /api/v1/dcp/credentials/request`.
 - DCP issuer documentation (`dcp/dcp-issuer/API.md`, `dcp/doc/quick_start.md`): approve, reject and key rotation are documented under the local administration API path `/api/issuer/...` (`/api/issuer/key/rotate`), with a note that authentication is not enforced yet (#405). `holderPid` is described as the Holder-side request ID (DCP §6.4.1), and credential request examples include `@context` and `type`. The non-existent `POST /issuer/requests` alias is removed, and the rejection body key is `reason` (not `rejectionReason`). Documentation only.
 
 ### Removed
