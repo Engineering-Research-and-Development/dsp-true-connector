@@ -45,6 +45,11 @@ services:
       - ISSUER_KEYSTORE_PATH=/cert/eckey-issuer.p12
       - ISSUER_KEYSTORE_PASSWORD=password
       - ISSUER_KEYSTORE_ALIAS=issuer
+      # Issuer administration API (/api/issuer/**): CI-only user, password issuer-admin-ci-password
+      # ($$ escapes $ in the bcrypt hash for Docker Compose)
+      - DCP_ADMIN_USERS_0_USERNAME=issuer-admin
+      - DCP_ADMIN_USERS_0_PASSWORD={bcrypt}$$2a$$10$$167ztiZGzsFl.2yWHXl3r.pyRKiLIFgpx057eQYxdcnj38NugrxxO
+      - DCP_ADMIN_USERS_0_AUTHORITIES_0=DCP_ISSUER_ADMIN
       # Spring Boot will automatically look for application.properties in /config/ due to classpath
       - SPRING_CONFIG_LOCATION=optional:classpath:/,optional:file:/config/
     volumes:

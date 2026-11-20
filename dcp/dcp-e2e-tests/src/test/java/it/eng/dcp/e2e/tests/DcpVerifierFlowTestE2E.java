@@ -670,7 +670,7 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
 
         HttpEntity<Map<String, Object>> approvalEntity = new HttpEntity<>(approvalRequest);
 
-        ResponseEntity<String> response = getIssuerClient().exchange(
+        ResponseEntity<String> response = getIssuerAdminClient().exchange(
             "/api/issuer/requests/" + requestId + "/approve",
             HttpMethod.POST,
             approvalEntity,

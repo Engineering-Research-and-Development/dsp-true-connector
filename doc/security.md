@@ -882,6 +882,34 @@ This flag is independent of `application.auth.provider` — it can be combined w
 
 ---
 
+## DCP Issuer Administration API (standalone Issuer)
+
+The standalone DCP Issuer application (`dcp/dcp-issuer`) is not part of the connector and has its own
+Spring Security configuration (`IssuerSecurityConfig`), independent of `application.auth.provider`.
+See [D-TEC-013](decisions/technical/D-TEC-013-issuer-admin-api-http-basic.md).
+
+| Order | Paths | Authentication | Access |
+|---|---|---|---|
+| 1 | `/api/issuer/**` (approve, reject, key rotation, and any later admin endpoint) | HTTP Basic, users from `dcp.admin.users[n]` (`username`, `password` as a `DelegatingPasswordEncoder` hash, `authorities`) | Authority `DCP_ISSUER_ADMIN`: 401 without valid credentials, 403 without the authority |
+| 2 | `/issuer/**` (DCP protocol endpoints, status list), `/.well-known/**`, `GET`/`HEAD` `/**/did.json` (also below `/api/issuer`, not below `/actuator`), `/actuator/health`, `/error` | None at the filter chain; the DCP controllers keep validating the Self-Issued ID Token | Public at the chain level |
+| 2 | Any other path | — | Denied (403) |
+
+- **Fail closed.** No administration user is configured by default. Without one, every
+  `/api/issuer/**` request gets 401 and the Issuer logs a WARN at startup.
+- **Startup validation.** A blank username or password, surrounding whitespace, a repeated username, a
+  password that is not in `DelegatingPasswordEncoder` format with a known id, or a malformed `{bcrypt}` hash
+  stops the Issuer from starting. The error names the property, not the value. `{noop}` and weak legacy
+  encodings (`{MD5}`, `{SHA-1}`, ...) start with a WARN.
+- **No secrets in logs.** Passwords and their hashes are never logged. The shipped
+  `application.properties` contains no user; CI credentials live only in `ci/docker/docker-compose-dcp.yml`,
+  the Newman collections and the DCP e2e test properties.
+- **Stateless.** No session cookie is created; CSRF protection is off because no browser session exists.
+- Send the credentials over TLS only (`server.ssl.enabled=true`).
+
+Configuration and examples: [`dcp/dcp-issuer/DEPLOYMENT.md`](../dcp/dcp-issuer/DEPLOYMENT.md#administration-api-users).
+
+---
+
 ## OCSP Certificate Validation
 
 For more information how to verify OCSP certificate and generate new ones, revoke and invalidate, please check following [link.](ocsp/OCSP_GUIDE.md)

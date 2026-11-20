@@ -24,6 +24,7 @@ This directory captures architecturally significant decisions: choices that shap
 | [D-TEC-010](technical/D-TEC-010-springdoc-openapi-documentation.md)      | Property-gated springdoc OpenAPI documentation | Accepted | Technical |
 | [D-TEC-011](technical/D-TEC-011-per-run-ci-image-tags.md)               | Per-run image tags for integration test runs | Superseded | Technical |
 | [D-TEC-012](technical/D-TEC-012-publish-test-tag-after-green-run.md)    | Move the `test` image tag only after a green integration test run | Accepted | Technical |
+| [D-TEC-013](technical/D-TEC-013-issuer-admin-api-http-basic.md)       | HTTP Basic with configured users for the Issuer administration API | Accepted | Technical |
 
 ## Structure
 

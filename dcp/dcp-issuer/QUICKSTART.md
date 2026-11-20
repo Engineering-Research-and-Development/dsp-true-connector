@@ -209,7 +209,8 @@ curl -H "Authorization: Bearer <your-token>" \
 ### 3. Approve the Request (Admin)
 
 ```bash
-curl -X POST http://localhost:8084/issuer/requests/abc123/approve \
+curl -X POST http://localhost:8084/api/issuer/requests/abc123/approve \
+  -u issuer-admin:<admin password> \
   -H "Content-Type: application/json" \
   -d '{
     "customClaims": {
