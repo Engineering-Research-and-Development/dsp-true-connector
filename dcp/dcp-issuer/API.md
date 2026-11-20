@@ -184,7 +184,7 @@ Location: /issuer/requests/abc123-def456-ghi789
 
 ### Get Request Status
 
-Retrieves the status of a credential request.
+Retrieves the status of a credential request. Only the client that created the request (the token subject equals the DID stored with the request) can read it; any other authenticated client receives `404 Not Found`, the same response as for an unknown request.
 
 ```http
 GET /issuer/requests/{requestId}
@@ -219,7 +219,7 @@ Authorization: Bearer <token>
 **Status Codes**:
 - `200 OK`: Request found and returned
 - `401 Unauthorized`: Missing or invalid Bearer token
-- `404 Not Found`: Request not found
+- `404 Not Found`: Request not found, or not created by the calling client
 - `500 Internal Server Error`: Server error
 
 ---
