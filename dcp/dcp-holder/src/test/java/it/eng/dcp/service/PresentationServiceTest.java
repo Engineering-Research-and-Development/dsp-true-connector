@@ -41,6 +41,50 @@ class PresentationServiceTest {
     }
 
     @Test
+    void testCreatePresentation_qualifiedTypeAndIdScopes_queryByTypeAndId() {
+        JWTClaimsSet claims = new JWTClaimsSet.Builder().subject("did:web:localhost:8080").build();
+        PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance()
+                .scope(List.of("org.eclipse.dspace.dcp.vc.type:MembershipCredential",
+                        "org.eclipse.dspace.dcp.vc.id:urn:uuid:test-123"))
+                .build();
+        when(credentialRepository.findByCredentialTypeIn(anyList())).thenReturn(List.of());
+        when(credentialRepository.findByIdIn(anyList())).thenReturn(List.of());
+
+        presentationService.createPresentation(query, claims);
+
+        verify(credentialRepository).findByCredentialTypeIn(List.of("MembershipCredential"));
+        verify(credentialRepository).findByIdIn(List.of("urn:uuid:test-123"));
+    }
+
+    @Test
+    void testCreatePresentation_unqualifiedScope_stillAcceptedAsType() {
+        JWTClaimsSet claims = new JWTClaimsSet.Builder().subject("did:web:localhost:8080").build();
+        PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance()
+                .scope(List.of("MembershipCredential"))
+                .build();
+        when(credentialRepository.findByCredentialTypeIn(anyList())).thenReturn(List.of());
+
+        presentationService.createPresentation(query, claims);
+
+        verify(credentialRepository).findByCredentialTypeIn(List.of("MembershipCredential"));
+        verify(credentialRepository, never()).findByIdIn(anyList());
+    }
+
+    @Test
+    void testCreatePresentation_qualifiedRequestMatchesUnqualifiedAuthorization() {
+        JWTClaimsSet claims = new JWTClaimsSet.Builder().subject("did:web:localhost:8080")
+                .claim("scope", List.of("MembershipCredential")).build();
+        PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance()
+                .scope(List.of("org.eclipse.dspace.dcp.vc.type:MembershipCredential"))
+                .build();
+        when(credentialRepository.findByCredentialTypeIn(anyList())).thenReturn(List.of());
+
+        presentationService.createPresentation(query, claims);
+
+        verify(credentialRepository).findByCredentialTypeIn(List.of("MembershipCredential"));
+    }
+
+    @Test
     void testCreatePresentation_JwtFormat() {
         // Arrange
         JWTClaimsSet claims = new JWTClaimsSet.Builder()

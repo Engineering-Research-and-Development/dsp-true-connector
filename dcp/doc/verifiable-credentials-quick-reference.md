@@ -28,8 +28,7 @@ dcp.trusted-issuers=did:web:issuer.example,did:web:dataspace-authority
 
 # Enable VP Authentication (optional)
 dcp.vp.enabled=true
-dcp.vp.scope=MembershipCredential,OrganizationCredential
-
+dcp.vp.scope=org.eclipse.dspace.dcp.vc.type:MembershipCredential,org.eclipse.dspace.dcp.vc.type:OrganizationCredential
 # MongoDB Connection
 spring.data.mongodb.uri=mongodb://localhost:27017/connector_db
 
@@ -148,8 +147,7 @@ dcp.trusted-issuers=did:web:issuer.example,did:web:dataspace-authority
 
 # VP Authentication for Protocol Endpoints (OPTIONAL)
 dcp.vp.enabled=true
-dcp.vp.scope=MembershipCredential,OrganizationCredential
-
+dcp.vp.scope=org.eclipse.dspace.dcp.vc.type:MembershipCredential,org.eclipse.dspace.dcp.vc.type:OrganizationCredential
 # MongoDB Configuration (REQUIRED)
 spring.data.mongodb.uri=mongodb://localhost:27017/connector_db
 spring.data.mongodb.database=connector_db
@@ -178,7 +176,7 @@ logging.level.it.eng.dcp=DEBUG
 dcp.enabled=true
 dcp.trusted-issuers=did:web:dataspace-authority,did:web:issuer-prod
 dcp.vp.enabled=true
-dcp.vp.scope=MembershipCredential
+dcp.vp.scope=org.eclipse.dspace.dcp.vc.type:MembershipCredential
 spring.data.mongodb.uri=mongodb://mongo-prod:27017/connector_db
 logging.level.it.eng.dcp=INFO
 ```
@@ -381,7 +379,7 @@ logging.level.it.eng.dcp.holder.service.PresentationValidationService=TRACE
 ```properties
 # Enable VP authentication
 dcp.vp.enabled=true
-dcp.vp.scope=MembershipCredential
+dcp.vp.scope=org.eclipse.dspace.dcp.vc.type:MembershipCredential
 ```
 
 **Check filter order in logs:**
@@ -659,7 +657,7 @@ dcp.trusted-issuers=did:web:issuer.example,did:web:dataspace-authority
 ### Enable VP Authentication
 ```properties
 dcp.vp.enabled=true
-dcp.vp.scope=MembershipCredential,OrganizationCredential
+dcp.vp.scope=org.eclipse.dspace.dcp.vc.type:MembershipCredential,org.eclipse.dspace.dcp.vc.type:OrganizationCredential
 ```
 
 ### Debug Logging

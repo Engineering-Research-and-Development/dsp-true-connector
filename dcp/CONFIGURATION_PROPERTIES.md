@@ -186,11 +186,11 @@ Controls whether the connector generates a Verifiable Presentation JWT for authe
 | Property | Required | Default | Description |
 |---|---|---|---|
 | `dcp.vp.enabled` | No | `false` | Set to `true` to enable VP JWT generation for outbound connector authentication. When `false` the connector skips VP-based authentication. |
-| `dcp.vp.scope` | No | empty string (all credentials) | Comma-separated list of credential types to include in the VP. If empty, all stored credentials are considered. Example: `MembershipCredential` or `MembershipCredential,DataspaceCredential`. |
+| `dcp.vp.scope` | No | empty string (all credentials) | Comma-separated list of scopes in the DCP form `[alias]:[discriminator]` (DCP section 5.4.1.2): `org.eclipse.dspace.dcp.vc.type:<CredentialType>` or `org.eclipse.dspace.dcp.vc.id:<credentialId>`. If empty, all stored credentials are considered. Example: `org.eclipse.dspace.dcp.vc.type:MembershipCredential`. Unqualified values such as `MembershipCredential` are deprecated: the holder still accepts them as type scopes and logs a warning. |
 
 ```properties
 dcp.vp.enabled=true
-dcp.vp.scope=MembershipCredential
+dcp.vp.scope=org.eclipse.dspace.dcp.vc.type:MembershipCredential
 ```
 
 ---
@@ -322,8 +322,7 @@ dcp.issuer.location=did:web:localhost%3A8084:issuer
 # Verifiable Presentation
 # ============================================================
 dcp.vp.enabled=false
-dcp.vp.scope=MembershipCredential
-
+dcp.vp.scope=org.eclipse.dspace.dcp.vc.type:MembershipCredential
 # ============================================================
 # Revocation Cache
 # ============================================================
