@@ -122,6 +122,10 @@ application.auth.provider=KEYCLOAK
 | 2 | `/connector/**`, `/catalog/**`, `/negotiations/**`, `/transfers/**` | DCP when `dcp.enabled=true`, otherwise the configured provider. In `KEYCLOAK` mode: `platform` issuer only (see [Protocol Trust](#protocol-trust-in-keycloak-mode)) | `ROLE_CONNECTOR` |
 | 3 | everything else | `permitAll()` | none |
 
+The dev-only DCP token generator (`/api/dev/token/**`) is not part of any public zone. It is registered only
+when `dcp.dev.token-generator.enabled=true` (default `false`, so the path answers 404); when it is on, it lives
+in the `/api/**` zone and needs `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`.
+
 ### Swagger/OpenAPI Documentation
 
 Swagger UI and the OpenAPI JSON endpoints use `springdoc.swagger-ui.enabled` and
