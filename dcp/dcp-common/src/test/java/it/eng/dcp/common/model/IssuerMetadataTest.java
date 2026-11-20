@@ -1,5 +1,6 @@
 package it.eng.dcp.common.model;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -65,6 +66,44 @@ class IssuerMetadataTest {
         );
 
         assertTrue(ex.getMessage().contains("duplicate credential id"));
+    }
+
+    @Test
+    @DisplayName("Empty credentialsSupported is valid and serialized as an empty array")
+    void emptyCredentialsSupportedSerializedAsEmptyArray() throws Exception {
+        IssuerMetadata metadata = IssuerMetadata.Builder.newInstance()
+                .issuer("did:web:issuer.example.com")
+                .credentialsSupported(List.of())
+                .build();
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode json = mapper.readTree(mapper.writeValueAsString(metadata));
+
+        assertTrue(json.get("credentialsSupported").isArray());
+        assertEquals(0, json.get("credentialsSupported").size());
+    }
+
+    @Test
+    @DisplayName("offerReason is serialized, and absent optional properties are omitted instead of null")
+    void offerReasonSerializedAndAbsentOptionalsOmitted() throws Exception {
+        IssuerMetadata.CredentialObject entry = IssuerMetadata.CredentialObject.Builder.newInstance()
+                .id("id-1")
+                .credentialType("MembershipCredential")
+                .offerReason("issuance")
+                .build();
+        IssuerMetadata metadata = IssuerMetadata.Builder.newInstance()
+                .issuer("did:web:issuer.example.com")
+                .credentialsSupported(List.of(entry))
+                .build();
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode json = mapper.readTree(mapper.writeValueAsString(metadata)).get("credentialsSupported").get(0);
+        IssuerMetadata roundTrip = mapper.readValue(mapper.writeValueAsString(metadata), IssuerMetadata.class);
+
+        assertEquals("issuance", json.get("offerReason").asText());
+        assertFalse(json.has("issuancePolicy"));
+        assertFalse(json.has("credentialSchema"));
+        assertEquals("issuance", roundTrip.getCredentialsSupported().get(0).getOfferReason());
     }
 }
 
