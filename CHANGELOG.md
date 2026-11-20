@@ -58,6 +58,19 @@ Each realm has its own users, roles, and clients. The connector trusts only the 
 - Keycloak users no longer resolve to a `null` tenant, which made them see data of all tenants (cross-tenant visibility); the tenant now comes from `tenant_id`.
 - `FieldEncryptionService` no longer logs the plaintext at debug level.
 - Rejected Keycloak tokens are no longer logged at ERROR with the exception message; the log has the exception class and error codes only (DEBUG), and a realm role violation logs a WARN with the request path.
+- DCP Self-Issued ID Tokens are now verified (DCP §4.3.3, #398). Previously the signature check was disabled and the DID resolver returned the first key of the DID document, so any self-signed token for any DID was accepted.
+  - The signature must verify with a key from the `sub` DID document that the `capabilityInvocation` relationship references.
+  - `sub` must equal the resolved DID Document `id`.
+  - Key selection follows the `kid` rules: a matching verification method; without `kid`, the single verification method, and rejection when there are several.
+  - Our DID documents now list the key under `authentication` and `capabilityInvocation`, and under `assertionMethod` when they advertise an `IssuerService`.
+  - Token validation no longer logs the token claims.
+- DCP replay protection no longer has a gap after token expiry (#399). A Self-Issued ID Token is accepted until `exp` plus the clock skew, but its `jti` was remembered only until `exp`, so a captured token could be replayed once more in that window. The `jti` is now kept until `exp` plus the skew. `nbf`, `exp`, `iat` and the replay cache use one setting, the existing `dcp.clock-skew-seconds` property (default 120), which token validation did not read before.
+- DCP Verifier now always enforces holder binding (DCP §5.4.3, #401). Previously the check ran only when a credential's `sub` was present and different, and it read only the VC 1.1 `vc.credentialSubject`. VC 2.0 credentials, and credentials without `sub` or `credentialSubject.id`, skipped it, so a participant could present another participant's credential inside its own presentation. Now:
+  - every `credentialSubject.id`, under `vc` (VC 1.1) or top-level (VC 2.0), single or array, must equal the presenting holder's DID;
+  - a missing subject ID is rejected;
+  - a `sub` claim, when present, must also match;
+  - for a VC 1.1 JWT with a single subject and no `credentialSubject.id`, `sub` is used as the subject ID (VC-JWT 1.1 encoding);
+  - a subject ID that is a DID URL with a fragment does not match the holder.
 - DCP message models now follow the published schemas (DCP §6.5.1, §6.6.1, #411).
   - `CredentialMessage`: `credentials`, `holderPid` and `rejectionReason` are optional. A rejection without credentials or reason, such as spec Example 9, is accepted and recorded instead of getting HTTP 400. Absent optional fields are omitted from JSON, so `rejectionReason` is never sent as `null`.
   - The Issuer's rejection messages no longer carry the placeholder credential container (`credentialType` `No type`, no payload). They also send the Holder-side `holderPid` instead of the holder DID.
