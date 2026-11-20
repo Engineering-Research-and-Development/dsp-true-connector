@@ -6,6 +6,7 @@ import lombok.Setter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Configuration for supported credentials metadata.
@@ -19,6 +20,20 @@ public class CredentialMetadataConfig {
      * List of supported credential configurations.
      */
     private List<CredentialConfig> supported = new ArrayList<>();
+
+    /**
+     * Finds the supported credential with the given ID (the {@code credentialsSupported} entry a request
+     * refers to, DCP §6.4.1).
+     *
+     * @param id the credential ID from a credential request
+     * @return the configured credential, or empty if the ID is not supported
+     */
+    public Optional<CredentialConfig> findById(String id) {
+        if (id == null || supported == null) {
+            return Optional.empty();
+        }
+        return supported.stream().filter(config -> id.equals(config.getId())).findFirst();
+    }
 
     @Getter
     @Setter
