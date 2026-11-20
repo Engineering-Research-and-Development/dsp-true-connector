@@ -78,7 +78,6 @@ All these beans are automatically available for `@Autowired` injection:
 - `HolderService` - Holder operations
 - `PresentationService` - Create presentations
 - `DcpCredentialService` - Credential management
-- `PresentationValidationService` - Validate presentations
 - `CredentialIssuanceClient` - Request credentials
 - And many more...
 
