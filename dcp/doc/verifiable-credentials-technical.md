@@ -1329,7 +1329,7 @@ dcp.trusted-issuers=did:web:issuer.example,did:web:dataspace-authority
 
 # VP authentication for protocol endpoints
 dcp.vp.enabled=true
-dcp.vp.scope=MembershipCredential,OrganizationCredential
+dcp.vp.scope=org.eclipse.dspace.dcp.vc.type:MembershipCredential,org.eclipse.dspace.dcp.vc.type:OrganizationCredential
 ```
 
 **Critical Configuration Note:**

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.PresentationResponseMessage;
+import it.eng.dcp.common.util.DcpScope;
 import it.eng.dcp.holder.exception.InsecureEndpointException;
 import it.eng.dcp.holder.exception.RemoteHolderAuthException;
 import it.eng.dcp.holder.exception.RemoteHolderClientException;
@@ -108,6 +109,8 @@ public class DcpVerifierClient {
 
     /**
      * Builds a PresentationQueryMessage with the required credential types.
+     * Each type is sent as a qualified scope ({@code org.eclipse.dspace.dcp.vc.type:<type>}, DCP section 5.4.1.2);
+     * a value that already carries an alias is sent unchanged.
      *
      * @param requiredTypes list of credential types to request
      * @return the constructed PresentationQueryMessage
@@ -115,7 +118,7 @@ public class DcpVerifierClient {
     private PresentationQueryMessage buildQueryMessage(List<String> requiredTypes) {
         PresentationQueryMessage.Builder builder = PresentationQueryMessage.Builder.newInstance();
         if (requiredTypes != null && !requiredTypes.isEmpty()) {
-            builder.scope(requiredTypes);
+            builder.scope(DcpScope.qualifyTypes(requiredTypes));
         }
         return builder.build();
     }
