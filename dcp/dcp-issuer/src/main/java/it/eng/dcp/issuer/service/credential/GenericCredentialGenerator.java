@@ -55,7 +55,7 @@ public class GenericCredentialGenerator implements CredentialGenerator {
 
         String signedJwt = jwtGeneratorFactory
                 .createGenerator(profile)
-                .generateJwt(context.getRequest().getHolderPid(), credentialType, claims);
+                .generateJwt(context.getRequest().getHolderDid(), credentialType, claims);
 
         return CredentialMessage.CredentialContainer.Builder.newInstance()
                 .credentialType(credentialType)

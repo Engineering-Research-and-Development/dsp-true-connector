@@ -72,6 +72,7 @@ Each realm has its own users, roles, and clients. The connector trusts only the 
   - a `sub` claim, when present, must also match;
   - for a VC 1.1 JWT with a single subject and no `credentialSubject.id`, `sub` is used as the subject ID (VC-JWT 1.1 encoding);
   - a subject ID that is a DID URL with a fragment does not match the holder.
+- DCP Issuer: credentials of types without a dedicated generator, issued without a status list, now carry the holder DID in `sub` and `credentialSubject.id`. `GenericCredentialGenerator` used the holder-side request ID (`holderPid`) instead, so the Verifier's holder binding (#401) rejected them as "Credential subject mismatch". This affected every profile except `vc11-sl2021/jwt` and `vc20-bssl/jwt` (tracker #437).
 - DCP message models now follow the published schemas (DCP §6.5.1, §6.6.1, #411).
   - `CredentialMessage`: `credentials`, `holderPid` and `rejectionReason` are optional. A rejection without credentials or reason, such as spec Example 9, is accepted and recorded instead of getting HTTP 400. Absent optional fields are omitted from JSON, so `rejectionReason` is never sent as `null`.
   - The Issuer's rejection messages no longer carry the placeholder credential container (`credentialType` `No type`, no payload). They also send the Holder-side `holderPid` instead of the holder DID.

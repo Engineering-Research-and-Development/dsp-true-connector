@@ -49,6 +49,7 @@ class GenericCredentialGeneratorTest {
 
     private static final String ISSUER_DID = "did:web:issuer.example.com";
     private static final String HOLDER_DID = "did:web:holder.example.com";
+    private static final String HOLDER_PID = "holder-request-123";
     private static final String CUSTOM_CREDENTIAL_TYPE = "CustomCredential";
 
     @BeforeEach
@@ -159,7 +160,8 @@ class GenericCredentialGeneratorTest {
     private CredentialGenerationContext createTestContext() {
         CredentialRequest request = CredentialRequest.Builder.newInstance()
                 .issuerPid("test-issuer-pid")
-                .holderPid(HOLDER_DID)
+                .holderPid(HOLDER_PID)
+                .holderDid(HOLDER_DID)
                 .credentialIds(List.of(CUSTOM_CREDENTIAL_TYPE))
                 .status(CredentialStatus.PENDING)
                 .createdAt(Instant.now())
