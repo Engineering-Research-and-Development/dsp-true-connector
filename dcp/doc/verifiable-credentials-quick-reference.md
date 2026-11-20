@@ -29,6 +29,7 @@ dcp.trusted-issuers=did:web:issuer.example,did:web:dataspace-authority
 # Enable VP Authentication (optional)
 dcp.vp.enabled=true
 dcp.vp.scope=org.eclipse.dspace.dcp.vc.type:MembershipCredential,org.eclipse.dspace.dcp.vc.type:OrganizationCredential
+
 # MongoDB Connection
 spring.data.mongodb.uri=mongodb://localhost:27017/connector_db
 
@@ -148,6 +149,7 @@ dcp.trusted-issuers=did:web:issuer.example,did:web:dataspace-authority
 # VP Authentication for Protocol Endpoints (OPTIONAL)
 dcp.vp.enabled=true
 dcp.vp.scope=org.eclipse.dspace.dcp.vc.type:MembershipCredential,org.eclipse.dspace.dcp.vc.type:OrganizationCredential
+
 # MongoDB Configuration (REQUIRED)
 spring.data.mongodb.uri=mongodb://localhost:27017/connector_db
 spring.data.mongodb.database=connector_db
