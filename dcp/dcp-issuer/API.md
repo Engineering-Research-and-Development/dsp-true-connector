@@ -272,7 +272,7 @@ Credentials issued and delivered successfully
 - `200 OK`: Request approved successfully
 - `400 Bad Request`: Request already processed or invalid state
 - `404 Not Found`: Request not found
-- `500 Internal Server Error`: Server error or credential delivery failed
+- `500 Internal Server Error`: Server error or credential delivery failed. If any requested credential cannot be issued, no credential is delivered and the holder receives a `REJECTED` message with a reason naming the failed credential IDs (DCP 1.0.1 §6.5.1)
 
 ---
 
