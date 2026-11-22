@@ -18,11 +18,15 @@ import org.mockito.Mockito;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 class PresentationServiceHomogeneityTest {
+
+    private static final String HOLDER_DID = "did:holder:1";
+    private static final Set<String> HOLDER_DIDS = Set.of(HOLDER_DID);
 
     private VerifiableCredentialRepository repo;
     private KeyService keyService;
@@ -51,11 +55,12 @@ class PresentationServiceHomogeneityTest {
     @Test
     void mixedProfilesProduceMultiplePresentations() {
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                .subject("did:holder:1")
+                .subject(HOLDER_DID)
+                .claim("scope", List.of("typeA", "typeB"))
                 .build();
 
         VerifiableCredential a = VerifiableCredential.Builder.newInstance()
-                .holderDid("did:holder:1")
+                .holderDid(HOLDER_DID)
                 .credentialType("typeA")
                 .profileId(ProfileId.VC11_SL2021_JWT)
                 .issuanceDate(Instant.now())
@@ -63,20 +68,20 @@ class PresentationServiceHomogeneityTest {
                 .build();
 
         VerifiableCredential b = VerifiableCredential.Builder.newInstance()
-                .holderDid("did:holder:1")
+                .holderDid(HOLDER_DID)
                 .credentialType("typeB")
                 .profileId(ProfileId.VC20_BSSL_JWT)
                 .issuanceDate(Instant.now())
                 .credentialIds(List.of("c2"))
                 .build();
 
-        when(repo.findByCredentialTypeIn(List.of("typeA", "typeB"))).thenReturn(List.of(a, b));
+        when(repo.findByHolderDidInAndCredentialTypeIn(HOLDER_DIDS, List.of("typeA", "typeB"))).thenReturn(List.of(a, b));
 
         var query = PresentationQueryMessage.Builder.newInstance()
                 .scope(List.of("typeA", "typeB"))
                 .build();
 
-        var resp = svc.createPresentation(query, claims);
+        var resp = svc.createPresentation(query, HOLDER_DID, claims);
         assertNotNull(resp);
         assertTrue(resp.getPresentation().size() >= 2, "Should produce separate presentations for different profiles");
     }
@@ -84,7 +89,8 @@ class PresentationServiceHomogeneityTest {
     @Test
     void singleProfileGroupsAll() {
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                .subject("did:holder:1")
+                .subject(HOLDER_DID)
+                .claim("scope", List.of("typeA"))
                 .build();
 
         VerifiableCredential a = VerifiableCredential.Builder.newInstance()
@@ -103,13 +109,13 @@ class PresentationServiceHomogeneityTest {
                 .credentialIds(List.of("c2"))
                 .build();
 
-        when(repo.findByCredentialTypeIn(List.of("typeA"))).thenReturn(List.of(a, b));
+        when(repo.findByHolderDidInAndCredentialTypeIn(HOLDER_DIDS, List.of("typeA"))).thenReturn(List.of(a, b));
 
         var query = PresentationQueryMessage.Builder.newInstance()
                 .scope(List.of("typeA"))
                 .build();
 
-        var resp = svc.createPresentation(query, claims);
+        var resp = svc.createPresentation(query, HOLDER_DID, claims);
         assertNotNull(resp);
         assertEquals(1, resp.getPresentation().size(), "Single profile should yield one presentation grouping both creds");
     }

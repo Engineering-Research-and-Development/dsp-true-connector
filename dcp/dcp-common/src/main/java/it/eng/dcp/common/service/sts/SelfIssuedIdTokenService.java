@@ -25,6 +25,7 @@ import java.text.ParseException;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -46,6 +47,13 @@ import java.util.UUID;
 @Service
 @Slf4j
 public class SelfIssuedIdTokenService {
+
+    /** JWS {@code typ} of access tokens for the Credential Service (RFC 9068 JWT access token). */
+    public static final String ACCESS_TOKEN_TYPE = "at+jwt";
+
+    private static final JOSEObjectType ACCESS_TOKEN_JOSE_TYPE = new JOSEObjectType(ACCESS_TOKEN_TYPE);
+
+    private static final String SCOPE_CLAIM = "scope";
 
     /** Default clock skew in seconds, used when {@code dcp.clock-skew-seconds} is not set. */
     static final long DEFAULT_CLOCK_SKEW_SECONDS = 120;
@@ -166,6 +174,7 @@ public class SelfIssuedIdTokenService {
      * <p>Performs the validations of DCP §4.3.3:
      * <ul>
      *   <li>Parses the JWT and extracts issuer/kid</li>
+     *   <li>Rejects a token typed as an access token ({@code typ} {@value #ACCESS_TOKEN_TYPE})</li>
      *   <li>Checks iss == sub and aud == this participant's DID</li>
      *   <li>Resolves the {@code sub} DID document and checks sub == DID Document id</li>
      *   <li>Selects the key per the kid rules (kid match; no kid: the single verification method)
@@ -189,6 +198,12 @@ public class SelfIssuedIdTokenService {
             String kid = jwt.getHeader().getKeyID();
 
             log.debug("Validating Self-Issued ID Token: iss={}, kid={}", issuer, kid);
+
+            // 0. An access token (ADR D-TEC-014) is never accepted as a Self-Issued ID Token
+            JOSEObjectType type = jwt.getHeader().getType();
+            if (type != null && ACCESS_TOKEN_TYPE.equalsIgnoreCase(type.getType())) {
+                throw new SecurityException("An access token cannot be used as a Self-Issued ID Token");
+            }
 
             // 1. iss and sub must be the same (using robust DID comparison)
             if (issuer == null || subject == null || !DidUrlConverter.compareDids(issuer, subject)) {
@@ -333,10 +348,11 @@ public class SelfIssuedIdTokenService {
      * This format is used by STS-compatible endpoints where the access_token field contains a JWT
      * with a nested token claim containing scope-based authorization.
      *
-     * <p>Per DCP Protocol v1.0 Section 4.3.1 and 5.1:
+     * <p>Per DCP v1.0.1 §4.3.1, §5.1 and §5.3.1:
      * <ul>
-     *   <li>Outer JWT: Self-Issued ID Token (iss==sub, contains "token" claim)</li>
-     *   <li>Inner JWT: Access Token (contains "scope" claim for authorization)</li>
+     *   <li>Outer JWT: Self-Issued ID Token (iss==sub, aud = Verifier DID, contains "token" claim)</li>
+     *   <li>Inner JWT: Access Token for this participant's Credential Service, bound to the same Verifier
+     *       ({@code aud} = Verifier DID), see {@link #createAccessTokenWithScopes(String, DidDocumentConfig, String...)}</li>
      * </ul>
      *
      * @param audienceDid The DID of the intended audience (verifier)
@@ -361,9 +377,8 @@ public class SelfIssuedIdTokenService {
         }
 
         try {
-            // First, create the inner Access Token with scopes
-            // Generate self issued access token with scope claim - holder for holder
-            String innerToken = createAccessTokenWithScopes(config.getDid(), config, scopes);
+            // The inner access token is bound to the Verifier that will present it back to our Credential Service
+            String innerToken = createAccessTokenWithScopes(audienceDid, config, scopes);
 
             // Now create a wrapper Self-Issued ID Token that contains the inner token in the "token" claim
             Instant now = Instant.now();
@@ -413,65 +428,71 @@ public class SelfIssuedIdTokenService {
     }
 
     /**
-     * Creates an Access Token with scope-based authorization for presentation queries.
-     * This token is embedded in the Self-Issued ID Token's "token" claim.
+     * Creates an access token for this participant's Credential Service (DCP v1.0.1 §5.3.1).
      *
-     * <p>Per DCP Protocol v1.0 Section 5.1, the access token MUST include:
+     * <p>The access token is carried in the {@code token} claim of a Self-Issued ID Token. The Verifier
+     * places it, unchanged, in the {@code token} claim of its own Self-Issued ID Token when it queries the
+     * Credential Service, which then validates it with
+     * {@link #validateAccessToken(String, String)}. The format is decided in ADR D-TEC-014:
      * <ul>
-     *   <li>iss: Holder's DID (who issued the token)</li>
-     *   <li>sub: Holder's DID (subject of the token)</li>
-     *   <li>aud: Verifier's DID (who can use the token)</li>
-     *   <li>scope: Credential types the verifier can access (CRITICAL for security)</li>
-     *   <li>Standard claims: iat, exp, nbf, jti</li>
+     *   <li>JWS header {@code typ} = {@value #ACCESS_TOKEN_TYPE} (RFC 9068), so it cannot be confused with a
+     *       Self-Issued ID Token</li>
+     *   <li>{@code iss} = {@code sub} = this participant's (the holder's) DID</li>
+     *   <li>{@code aud} = the Verifier DID the token is bound to</li>
+     *   <li>{@code scope}: the scopes the Verifier may query; an access token without scopes authorizes
+     *       no credentials</li>
+     *   <li>{@code iat}, {@code nbf}, {@code exp} (5 minutes) and {@code jti}</li>
      * </ul>
      *
-     * @param verifierDid The DID of the verifier who will use this token
-     * @param config DidDocumentConfig containing holder's DID and keystore
-     * @param scopes The credential types authorized for access
-     * @return Signed JWT access token with scope claim
-     * @throws JOSEException if signing fails
+     * @param verifierDid the DID of the Verifier the token is bound to
+     * @param config DidDocumentConfig containing the holder's DID and keystore
+     * @param scopes the scopes the Verifier is authorized to query
+     * @return the signed JWT access token
+     * @throws IllegalArgumentException if verifierDid is null or blank
+     * @throws IllegalStateException if the holder DID is not configured
+     * @throws RuntimeException if signing fails
      */
-    private String createAccessTokenWithScopes(String verifierDid, DidDocumentConfig config, String... scopes)
-            throws JOSEException {
+    public String createAccessTokenWithScopes(String verifierDid, DidDocumentConfig config, String... scopes) {
+        if (verifierDid == null || verifierDid.isBlank()) {
+            throw new IllegalArgumentException("verifierDid required");
+        }
+        if (config.getDid() == null || config.getDid().isBlank()) {
+            throw new IllegalStateException("connectorDid is not configured. Please set dcp.connector.did property");
+        }
+
         Instant now = Instant.now();
         Instant exp = now.plusSeconds(300); // 5 minutes validity
         String jti = "urn:uuid:" + UUID.randomUUID();
 
         JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
             .issuer(config.getDid())
-            .subject(config.getDid()) // Per spec: holder is both issuer and subject of access token
+            .subject(config.getDid()) // the holder is both issuer and subject of its access token
             .audience(verifierDid)
             .issueTime(Date.from(now))
             .expirationTime(Date.from(exp))
             .notBeforeTime(Date.from(now)) // Valid immediately
             .jwtID(jti);
 
-        // Add scopes if provided (CRITICAL for security)
-        if (scopes != null && scopes.length > 0) {
-            claimsBuilder.claim("scope", Arrays.asList(scopes));
-            log.debug("Access token scopes: {}", Arrays.toString(scopes));
+        List<String> scopeList = scopes == null ? List.of()
+                : Arrays.stream(scopes).filter(scope -> scope != null && !scope.isBlank()).toList();
+        if (!scopeList.isEmpty()) {
+            claimsBuilder.claim(SCOPE_CLAIM, scopeList);
+            log.debug("Access token scopes: {}", scopeList);
         } else {
-            // No scopes means access to all presentations (use with caution)
-            log.warn("Generating access token with NO scope restrictions for verifier: {}. " +
-                     "This grants access to ALL credentials!", verifierDid);
+            log.warn("Generating access token with no scopes for verifier: {}. "
+                    + "It authorizes no credentials at the Credential Service.", verifierDid);
         }
 
         JWTClaimsSet claims = claimsBuilder.build();
 
-        // Sign the access token
-        ECKey signingJwk;
-        if (overrideSigningKey != null) {
-            signingJwk = overrideSigningKey;
-        } else {
-            signingJwk = keyService.getSigningJwk(config);
-        }
-
-        JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256)
-                .keyID(signingJwk.getKeyID())
-                .type(JOSEObjectType.JWT)
-                .build();
-
         try {
+            ECKey signingJwk = overrideSigningKey != null ? overrideSigningKey : keyService.getSigningJwk(config);
+
+            JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256)
+                    .keyID(signingJwk.getKeyID())
+                    .type(ACCESS_TOKEN_JOSE_TYPE)
+                    .build();
+
             SignedJWT jwt = new SignedJWT(header, claims);
             JWSSigner signer = new ECDSASigner(signingJwk.toECPrivateKey());
             jwt.sign(signer);
@@ -481,7 +502,7 @@ public class SelfIssuedIdTokenService {
                     "Access token issued for verifier: " + verifierDid,
                     "common",
                     null, null,
-                    scopes != null ? Arrays.asList(scopes) : null,
+                    scopeList,
                     null,
                     Map.of("verifier", verifierDid));
             return serialized;
@@ -492,8 +513,114 @@ public class SelfIssuedIdTokenService {
                     "common",
                     null, null, null, null,
                     Map.of("verifier", verifierDid, "error", e.getMessage()));
-            throw e;
+            throw new RuntimeException("Failed to sign access token", e);
         }
+    }
+
+    /**
+     * Validates an access token that this participant issued for its own Credential Service.
+     *
+     * <p>Checks, per ADR D-TEC-014 and DCP v1.0.1 §5.3.1:
+     * <ul>
+     *   <li>the JWS header {@code typ} is {@value #ACCESS_TOKEN_TYPE}</li>
+     *   <li>{@code iss} and {@code sub} both equal this participant's DID: the token was issued by this
+     *       Credential Service's holder</li>
+     *   <li>{@code aud} contains {@code expectedVerifierDid}: the token is presented by the Verifier it was
+     *       issued to, so a token captured by one Verifier cannot be used by another</li>
+     *   <li>the signature verifies with a {@code capabilityInvocation} key of this participant's DID
+     *       document (the key that signs its Self-Issued ID Tokens)</li>
+     *   <li>{@code exp} and {@code iat} are present and current, and {@code nbf} if present has passed,
+     *       with the configured clock skew</li>
+     * </ul>
+     *
+     * <p>The {@code jti} is not recorded for replay protection: the access token is always carried inside a
+     * Self-Issued ID Token of the Verifier, whose own {@code jti} is checked by {@link #validateToken(String)}.
+     *
+     * @param accessToken the access token taken from the {@code token} claim of the Verifier's Self-Issued ID Token
+     * @param expectedVerifierDid the validated {@code sub} of the Verifier's Self-Issued ID Token
+     * @return the validated access token claims
+     * @throws SecurityException if the access token is missing or invalid
+     */
+    public JWTClaimsSet validateAccessToken(String accessToken, String expectedVerifierDid) {
+        try {
+            if (accessToken == null || accessToken.isBlank()) {
+                throw new SecurityException("Access token is required");
+            }
+            SignedJWT jwt = SignedJWT.parse(accessToken);
+            JWTClaimsSet claims = jwt.getJWTClaimsSet();
+
+            JOSEObjectType type = jwt.getHeader().getType();
+            if (type == null || !ACCESS_TOKEN_TYPE.equalsIgnoreCase(type.getType())) {
+                throw new SecurityException("Access token typ must be " + ACCESS_TOKEN_TYPE);
+            }
+
+            String ownDid = config.getDid();
+            String issuer = claims.getIssuer();
+            String subject = claims.getSubject();
+            if (ownDid == null || issuer == null || subject == null
+                    || !DidUrlConverter.compareDids(issuer, ownDid) || !DidUrlConverter.compareDids(subject, ownDid)) {
+                throw new SecurityException("Access token was not issued by this Credential Service's holder");
+            }
+
+            List<String> audience = claims.getAudience();
+            if (expectedVerifierDid == null || audience == null
+                    || audience.stream().noneMatch(aud -> DidUrlConverter.compareDids(aud, expectedVerifierDid))) {
+                throw new SecurityException("Access token aud does not match the querying Verifier");
+            }
+
+            JWK jwk = didResolver.resolvePublicKey(ownDid, jwt.getHeader().getKeyID(), DidDocument.CAPABILITY_INVOCATION);
+            if (jwk == null) {
+                throw new SecurityException("No JWK found for the access token signing key");
+            }
+            if (!jwt.verify(createVerifier(jwk))) {
+                throw new SecurityException("Invalid access token signature");
+            }
+
+            Instant now = Instant.now();
+            Date nbf = claims.getNotBeforeTime();
+            if (nbf != null && now.isBefore(nbf.toInstant().minusSeconds(clockSkewSeconds))) {
+                throw new SecurityException("Access token not valid yet (nbf)");
+            }
+            Date exp = claims.getExpirationTime();
+            if (exp == null || now.isAfter(exp.toInstant().plusSeconds(clockSkewSeconds))) {
+                throw new SecurityException("Access token expired");
+            }
+            Date iat = claims.getIssueTime();
+            if (iat == null || now.isBefore(iat.toInstant().minusSeconds(clockSkewSeconds))) {
+                throw new SecurityException("Access token iat missing or in the future");
+            }
+
+            log.debug("Access token validated for verifier: {}", expectedVerifierDid);
+            return claims;
+        } catch (SecurityException e) {
+            auditAccessTokenRejected(e.getMessage());
+            throw e;
+        } catch (DidResolutionException e) {
+            String reason = "Failed to resolve DID: " + e.getMessage();
+            auditAccessTokenRejected(reason);
+            throw new SecurityException(reason, e);
+        } catch (JOSEException e) {
+            auditAccessTokenRejected("Invalid access token signature");
+            throw new SecurityException("Invalid access token signature", e);
+        } catch (ParseException e) {
+            auditAccessTokenRejected("Invalid access token format");
+            throw new SecurityException("Invalid access token format", e);
+        }
+    }
+
+    /**
+     * Logs and audits a rejected access token.
+     *
+     * @param reason the rejection reason, without token content
+     */
+    private void auditAccessTokenRejected(String reason) {
+        log.warn("Access token validation failed: {}", reason);
+        auditPublisher.publishEvent(
+                DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                "Access token validation failed: " + reason,
+                "common",
+                null, null, null, null,
+                Map.of("reason", reason));
     }
 
     /**

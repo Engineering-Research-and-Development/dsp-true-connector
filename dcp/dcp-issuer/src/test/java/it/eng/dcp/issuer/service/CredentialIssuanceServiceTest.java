@@ -113,8 +113,8 @@ class CredentialIssuanceServiceTest {
         when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
         lenient().when(keyService.getSigningJwk(any())).thenReturn(testSigningKey);
         // Always return a dummy status list entry for any call
-        lenient().when(statusListService.allocateStatusEntry(any(), any()))
-                .thenReturn(new StatusListService.StatusListEntryInfo("dummy-status-list-id", 0));
+        lenient().when(statusListService.allocateStatusEntry(any(), any(), any()))
+                .thenReturn(new StatusListService.StatusListEntry("dummy-status-list-id", 0));
 
         // Remove default VC20 profile setup here. Each test must call setupCredentialConfigs explicitly.
 

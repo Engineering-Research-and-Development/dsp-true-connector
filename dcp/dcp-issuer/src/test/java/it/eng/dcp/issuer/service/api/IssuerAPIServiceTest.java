@@ -9,6 +9,8 @@ import it.eng.dcp.issuer.service.CredentialDeliveryService;
 import it.eng.dcp.issuer.service.CredentialIssuanceException;
 import it.eng.dcp.issuer.service.CredentialIssuanceService;
 import it.eng.dcp.issuer.service.IssuerService;
+import it.eng.dcp.issuer.service.StatusListService;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -18,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -35,6 +38,7 @@ public class IssuerAPIServiceTest {
     @Mock private CredentialDeliveryService deliveryService;
     @Mock private CredentialIssuanceService issuanceService;
     @Mock private DcpAuditEventPublisher auditPublisher;
+    @Mock private StatusListService statusListService;
 
     @Test
     void approveAndDeliverCredentials_success_autoGenerate1() {
@@ -150,5 +154,35 @@ public class IssuerAPIServiceTest {
         when(requestRepository.findByIssuerPid("bad")).thenReturn(Optional.empty());
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerAPIService.rejectCredentialRequest("bad", "reason"));
         assertTrue(ex.getMessage().contains("Credential request not found"));
+    }
+
+    @Test
+    @DisplayName("revokeStatusEntry revokes the entry and emits CREDENTIAL_REVOKED")
+    void revokeStatusEntry_revoked_emitsAuditEvent() {
+        when(statusListService.revoke("list-1", 4)).thenReturn(true);
+
+        assertTrue(issuerAPIService.revokeStatusEntry("list-1", 4));
+
+        verify(auditPublisher).publishEvent(eq(DcpAuditEventType.CREDENTIAL_REVOKED), any(), eq("issuer"),
+                isNull(), isNull(), isNull(), isNull(), eq(Map.of("statusListId", "list-1", "statusListIndex", 4)));
+    }
+
+    @Test
+    @DisplayName("revokeStatusEntry emits no audit event when the entry was already revoked")
+    void revokeStatusEntry_alreadyRevoked_noAuditEvent() {
+        when(statusListService.revoke("list-1", 4)).thenReturn(false);
+
+        assertFalse(issuerAPIService.revokeStatusEntry("list-1", 4));
+
+        verifyNoInteractions(auditPublisher);
+    }
+
+    @Test
+    @DisplayName("revokeStatusEntry propagates an unknown list")
+    void revokeStatusEntry_unknownList_throws() {
+        when(statusListService.revoke("missing", 0)).thenThrow(new NoSuchElementException("Status list not found"));
+
+        assertThrows(NoSuchElementException.class, () -> issuerAPIService.revokeStatusEntry("missing", 0));
+        verifyNoInteractions(auditPublisher);
     }
 }
