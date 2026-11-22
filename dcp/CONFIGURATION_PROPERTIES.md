@@ -149,7 +149,7 @@ Defines which credential issuers are trusted for each credential type. Credentia
 
 | Property | Required | Default | Description |
 |---|---|---|---|
-| `dcp.trusted-issuers.<CredentialType>` | **Yes** (at least one) | empty map | Comma-separated list of trusted issuer DIDs for the given credential type. The `<CredentialType>` key is case-sensitive and must match the `type` field in the received credential. |
+| `dcp.trusted-issuers.<CredentialType>` | **Yes** (at least one) | empty map | Comma-separated list of trusted issuer DIDs for the given credential type. The `<CredentialType>` key is case-sensitive and must match the `type` field in the received credential. An issuer listed for any credential type may also send credential offers to `POST /dcp/offers`. |
 
 ```properties
 # Single issuer

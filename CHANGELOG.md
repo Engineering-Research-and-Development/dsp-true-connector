@@ -107,6 +107,10 @@ Each realm has its own users, roles, and clients. The connector trusts only the 
   - The connector's consumer and provider configs now trust that issuer DID (`dcp.trusted-issuers.*`). Before, they listed `did:web:localhost%3A8084`, so credentials from the local issuer were rejected.
   - The e2e issuer profiles now repeat the `IssuerService` id and type next to `issuer-location`. Spring Boot does not merge list entries across property files, so the issuer had advertised a service entry with no type.
   - A new e2e test covers `POST /api/v1/dcp/credentials/request`.
+- **Security:** DCP Holder `POST /dcp/offers` now authenticates the Credential Issuer (DCP §6.6, §6.2, #406). Before, authentication was commented out, and for a sparse offer the holder built an `http://` URL from the offer's `issuer` and sent its own Self-Issued ID Token there, so any caller could make the holder call any host (SSRF) and capture a replayable token.
+  - A missing or invalid Self-Issued ID Token gets 401. A valid token whose `sub` is not the offer `issuer`, or whose issuer is not trusted for any credential type in `dcp.trusted-issuers.*`, gets 403.
+  - Sparse-offer metadata is fetched only from the `IssuerService` endpoint in the trusted issuer's DID document, with a token addressed to that issuer (`CredentialIssuanceClient.getIssuerMetadataOf()`). HTTPS for the discovered endpoint is #420.
+  - New `IssuerTrustService.isTrustedIssuer(String)`: trusted for at least one credential type.
 - DCP issuer documentation (`dcp/dcp-issuer/API.md`, `dcp/doc/quick_start.md`): approve, reject and key rotation are documented under the local administration API path `/api/issuer/...` (`/api/issuer/key/rotate`), with a note that authentication is not enforced yet (#405). `holderPid` is described as the Holder-side request ID (DCP §6.4.1), and credential request examples include `@context` and `type`. The non-existent `POST /issuer/requests` alias is removed, and the rejection body key is `reason` (not `rejectionReason`). Documentation only.
 
 ### Removed

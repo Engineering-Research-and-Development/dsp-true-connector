@@ -621,14 +621,15 @@ class HolderServiceTest {
                 .credentialsSupported(List.of(fullCredential))
                 .build();
 
-        when(issuanceClient.getIssuerMetadata("http://issuer.example.com/metadata")).thenReturn(metadata);
+        when(issuerTrustService.isTrustedIssuer("did:web:issuer.example.com")).thenReturn(true);
+        when(issuanceClient.getIssuerMetadataOf("did:web:issuer.example.com")).thenReturn(metadata);
 
         // Act
         boolean result = holderService.processCredentialOffer(offer);
 
         // Assert
         assertTrue(result);
-        verify(issuanceClient).getIssuerMetadata("http://issuer.example.com/metadata");
+        verify(issuanceClient).getIssuerMetadataOf("did:web:issuer.example.com");
     }
 
     @Test
@@ -655,7 +656,8 @@ class HolderServiceTest {
                 .credentialsSupported(List.of(fullCredential))
                 .build();
 
-        when(issuanceClient.getIssuerMetadata("http://issuer.example.com/metadata")).thenReturn(metadata);
+        when(issuerTrustService.isTrustedIssuer("did:web:issuer.example.com")).thenReturn(true);
+        when(issuanceClient.getIssuerMetadataOf("did:web:issuer.example.com")).thenReturn(metadata);
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -675,7 +677,8 @@ class HolderServiceTest {
         when(offer.getIssuer()).thenReturn("did:web:issuer.example.com");
         when(offer.getCredentialObjects()).thenReturn(List.of(sparseCredential));
 
-        when(issuanceClient.getIssuerMetadata("http://issuer.example.com/metadata"))
+        when(issuerTrustService.isTrustedIssuer("did:web:issuer.example.com")).thenReturn(true);
+        when(issuanceClient.getIssuerMetadataOf("did:web:issuer.example.com"))
             .thenThrow(new RuntimeException("Network error"));
 
         // Act & Assert
@@ -715,14 +718,15 @@ class HolderServiceTest {
                 .credentialsSupported(List.of(metadataCredential))
                 .build();
 
-        when(issuanceClient.getIssuerMetadata("http://issuer.example.com/metadata")).thenReturn(metadata);
+        when(issuerTrustService.isTrustedIssuer("did:web:issuer.example.com")).thenReturn(true);
+        when(issuanceClient.getIssuerMetadataOf("did:web:issuer.example.com")).thenReturn(metadata);
 
         // Act
         boolean result = holderService.processCredentialOffer(offer);
 
         // Assert
         assertTrue(result);
-        verify(issuanceClient).getIssuerMetadata("http://issuer.example.com/metadata");
+        verify(issuanceClient).getIssuerMetadataOf("did:web:issuer.example.com");
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────
