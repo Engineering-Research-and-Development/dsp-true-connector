@@ -5,6 +5,7 @@ import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,9 +15,14 @@ import java.util.Map;
 
 /**
  * Development/Testing utility controller for generating valid Self-Issued ID Tokens.
- * This endpoint should be disabled or secured in production environments.
+ *
+ * <p>The tokens are signed with the connector's DID key, so the controller is registered only when the
+ * dev-only property {@code dcp.dev.token-generator.enabled=true} is set; it is off by default. The host must
+ * place the path under an authenticated admin zone (the connector serves it under {@code /api/**}, which
+ * requires an admin); it must never be {@code permitAll}.
  */
 @RestController
+@ConditionalOnProperty(prefix = "dcp.dev.token-generator", name = "enabled", havingValue = "true")
 @RequestMapping(path = "/api/dev/token", produces = MediaType.APPLICATION_JSON_VALUE)
 @Slf4j
 public class TokenGeneratorAPIController {
