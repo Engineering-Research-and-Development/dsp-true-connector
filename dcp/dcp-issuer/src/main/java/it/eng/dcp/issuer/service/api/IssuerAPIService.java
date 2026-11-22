@@ -6,6 +6,7 @@ import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.issuer.service.CredentialDeliveryService;
+import it.eng.dcp.issuer.service.CredentialIssuanceException;
 import it.eng.dcp.issuer.service.CredentialIssuanceService;
 import it.eng.dcp.issuer.service.IssuerService;
 import it.eng.dcp.issuer.service.StatusListService;
@@ -81,11 +82,19 @@ public class IssuerAPIService {
 
             // The issuance service resolves each requested ID to its credentialsSupported entry and sets
             // that entry's type, profile and format on the generated credential
-            credentials = issuanceService.generateCredentials(
-                    credentialRequest,
-                    customClaims,
-                    constraintsData
-            );
+            try {
+                credentials = issuanceService.generateCredentials(
+                        credentialRequest,
+                        customClaims,
+                        constraintsData
+                );
+            } catch (CredentialIssuanceException e) {
+                // At least one credential could not be issued: deliver none and tell the holder (DCP 1.0.1 §6.5.1)
+                boolean rejected = deliveryService.rejectCredentialRequest(requestId, e.getMessage());
+                throw new IllegalStateException(rejected
+                        ? "Credential issuance failed, request rejected: " + e.getMessage()
+                        : "Credential issuance failed and the rejection could not be delivered: " + e.getMessage(), e);
+            }
 
             if (credentials.isEmpty()) {
                 throw new IllegalStateException("Failed to generate credentials for the requested types");

@@ -6,6 +6,7 @@ import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.issuer.service.CredentialDeliveryService;
+import it.eng.dcp.issuer.service.CredentialIssuanceException;
 import it.eng.dcp.issuer.service.CredentialIssuanceService;
 import it.eng.dcp.issuer.service.IssuerService;
 import it.eng.dcp.issuer.service.StatusListService;
@@ -89,6 +90,40 @@ public class IssuerAPIServiceTest {
         when(deliveryService.deliverCredentials(eq(requestId), any())).thenReturn(false);
         IllegalStateException ex = assertThrows(IllegalStateException.class, () -> issuerAPIService.approveAndDeliverCredentials(requestId, Map.of(), List.of(), null));
         assertTrue(ex.getMessage().contains("Failed to deliver credentials"));
+    }
+
+    @Test
+    void approveAndDeliverCredentials_partialIssuanceFailure_sendsRejectedAndDeliversNothing() {
+        String requestId = "id1";
+        CredentialRequest req = mock(CredentialRequest.class);
+        when(requestRepository.findByIssuerPid(requestId)).thenReturn(Optional.of(req));
+        when(req.getCredentialIds()).thenReturn(List.of("cred1", "cred2"));
+        when(issuanceService.generateCredentials(eq(req), any(), any()))
+                .thenThrow(new CredentialIssuanceException("Failed to issue credential(s) [cred2]", List.of("cred2")));
+        when(deliveryService.rejectCredentialRequest(eq(requestId), contains("cred2"))).thenReturn(true);
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> issuerAPIService.approveAndDeliverCredentials(requestId, Map.of(), List.of(), null));
+
+        assertTrue(ex.getMessage().contains("request rejected"));
+        verify(deliveryService, never()).deliverCredentials(any(), any());
+        verify(auditPublisher, never()).publishEvent(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void approveAndDeliverCredentials_partialIssuanceFailure_rejectionNotDelivered_reportsIt() {
+        String requestId = "id1";
+        CredentialRequest req = mock(CredentialRequest.class);
+        when(requestRepository.findByIssuerPid(requestId)).thenReturn(Optional.of(req));
+        when(issuanceService.generateCredentials(eq(req), any(), any()))
+                .thenThrow(new CredentialIssuanceException("Failed to issue credential(s) [cred2]", List.of("cred2")));
+        when(deliveryService.rejectCredentialRequest(eq(requestId), any())).thenReturn(false);
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> issuerAPIService.approveAndDeliverCredentials(requestId, Map.of(), List.of(), null));
+
+        assertTrue(ex.getMessage().contains("rejection could not be delivered"));
+        verify(deliveryService, never()).deliverCredentials(any(), any());
     }
 
     // --- rejectCredentialRequest ---

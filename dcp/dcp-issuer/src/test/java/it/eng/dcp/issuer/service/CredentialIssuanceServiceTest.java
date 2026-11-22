@@ -396,6 +396,28 @@ class CredentialIssuanceServiceTest {
     }
 
     @Test
+    @DisplayName("A request where one credential fails delivers none of them and names the failed one")
+    void generateCredentials_mixedSuccessAndFailure_throwsAndReturnsNothing() throws JOSEException {
+        CredentialRequest mixed = CredentialRequest.Builder.newInstance()
+                .issuerPid("issuer-pid-mixed")
+                .holderPid("holder-pid-456")
+                .holderDid(HOLDER_DID)
+                .credentialIds(List.of("MembershipCredential", "OrganizationCredential"))
+                .status(CredentialStatus.PENDING)
+                .createdAt(Instant.now())
+                .build();
+        // The first credential is signed, the second one fails
+        when(keyService.getSigningJwk(any())).thenReturn(testSigningKey).thenThrow(new RuntimeException("sign failed"));
+
+        CredentialIssuanceException ex = assertThrows(CredentialIssuanceException.class,
+                () -> issuanceService.generateCredentials(mixed));
+
+        assertEquals(List.of("OrganizationCredential"), ex.getFailedCredentialIds());
+        assertTrue(ex.getMessage().contains("OrganizationCredential"));
+        assertFalse(ex.getMessage().contains("sign failed"));
+    }
+
+    @Test
     void generateCredentials_backwardCompatibility_noCustomClaimsOrConstraints() {
         List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
 
