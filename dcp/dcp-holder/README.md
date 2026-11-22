@@ -88,6 +88,21 @@ All these beans are automatically available for `@Autowired` injection:
 
 See [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md#available-dcp-beans) for the complete list.
 
+## Presentation Query Authentication
+
+`POST /dcp/presentations/query` follows DCP v1.0.1 §5.3.1. The bearer token must be the Verifier's own
+Self-Issued ID Token (`aud` = this holder's DID) with, in its `token` claim, an access token this holder issued
+to that Verifier (format: [ADR D-TEC-014](../../doc/decisions/technical/D-TEC-014-credential-service-access-token-format.md)).
+`HolderService.authorizePresentationQuery()` validates both; a missing access token or an invalid token of
+either kind returns 401.
+
+- Authorized scopes come only from the validated access token `scope`. Requested scopes it does not
+  authorize are dropped, and the response is 2xx with fewer presentations. A token without scopes authorizes
+  nothing.
+- Credential lookups are constrained to the holder DID (`findByHolderDidInAndCredentialTypeIn`,
+  `findByHolderDidInAndIdIn`, matching the plain and percent-encoded `did:web` forms); there is no unscoped lookup.
+- The rate limit is keyed by the Verifier DID.
+
 ## Configuration Properties
 
 All properties use the `dcp.*` prefix:
