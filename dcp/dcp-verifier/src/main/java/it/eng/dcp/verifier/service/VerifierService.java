@@ -1,10 +1,10 @@
 package it.eng.dcp.verifier.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.ECDSAVerifier;
 import com.nimbusds.jose.jwk.ECKey;
-import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.audit.DcpAuditEventType;
@@ -18,6 +18,7 @@ import it.eng.dcp.common.model.ServiceEntry;
 import it.eng.dcp.common.service.IssuerTrustService;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.HttpDidResolverService;
+import it.eng.dcp.common.service.did.ResolvedVerificationMethod;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.dcp.common.util.DidUrlConverter;
 import lombok.Getter;
@@ -66,6 +67,7 @@ public class VerifierService {
     private static final String CREDENTIAL_SERVICE_TYPE = "CredentialService";
     private static final String PRESENTATIONS_QUERY_PATH = "/presentations/query";
     private static final String PRESENTATION_CONTEXT = "Presentation";
+    private static final String CREDENTIAL_CONTEXT = "Credential";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
     private static final String VERIFIER_SOURCE = "verifier";
@@ -307,10 +309,11 @@ public class VerifierService {
      * <p>This validates the presentation JWT(s) received from the holder:
      * <ul>
      *   <li>Decodes each presentation JWT</li>
-     *   <li>Validates outer JWT signature using holder's DID public key</li>
      *   <li>Verifies holder DID matches expected holder</li>
+     *   <li>Validates the presentation proof with a key of the holder DID that has the {@code authentication}
+     *       verification relationship</li>
      *   <li>Extracts embedded verifiable credentials from 'vp.verifiableCredential' claim</li>
-     *   <li>Validates each credential JWT signature using issuer's DID public key</li>
+     *   <li>Validates each credential proof with an {@code assertionMethod} key of the credential issuer</li>
      *   <li>Verifies credential claims (iss, sub, exp, etc.)</li>
      * </ul>
      *
@@ -362,9 +365,8 @@ public class VerifierService {
 
                 log.debug("Presentation holder DID verified: {}", holderDid);
 
-                // Verify presentation JWT signature using holder's public key
-                String kid = presentationSignedJwt.getHeader().getKeyID();
-                validateJwtSignature(presentationSignedJwt, holderDid, kid, PRESENTATION_CONTEXT);
+                // Verify the VP proof with an authentication key of the holder (DCP §5.4.3)
+                verifyProof(presentationSignedJwt, holderDid, DidDocument.AUTHENTICATION, PRESENTATION_CONTEXT);
 
                 log.debug("Presentation JWT signature verified");
 
@@ -432,8 +434,9 @@ public class VerifierService {
      *
      * <p>Validates:
      * <ul>
-     *   <li>JWT signature using issuer's DID public key</li>
      *   <li>Issuer DID presence (iss claim)</li>
+     *   <li>JWT signature with an {@code assertionMethod} key whose verification method DID equals the issuer</li>
+     *   <li>The {@code issuer} property, when present, names the same DID as {@code iss}</li>
      *   <li>Subject matches holder DID</li>
      *   <li>Expiration date (exp claim)</li>
      *   <li>Issuance date (iat claim)</li>
@@ -461,11 +464,13 @@ public class VerifierService {
 
             log.debug("Validating credential from issuer: {}", issuerDid);
 
-            // Verify credential JWT signature using issuer's public key
-            String kid = credentialSignedJwt.getHeader().getKeyID();
-            validateJwtSignature(credentialSignedJwt, issuerDid, kid, "Credential");
+            // Verify the VC proof with an assertionMethod key controlled by the issuer (DCP §5.4.3)
+            verifyProof(credentialSignedJwt, issuerDid, DidDocument.ASSERTION_METHOD, CREDENTIAL_CONTEXT);
 
             log.debug("✓ Credential JWT signature verified for issuer: {}", issuerDid);
+
+            // The VC issuer property, when present, must name the same DID as iss (DCP §5.4.3)
+            requireIssuerPropertyMatches(credentialClaims, issuerDid);
 
             // Holder binding: the credential subject must be the participant presenting it (DCP §5.4.3)
             verifyHolderBinding(credentialClaims, expectedHolderDid);
@@ -546,6 +551,35 @@ public class VerifierService {
         }
     }
 
+    /**
+     * Checks that the {@code issuer} property of a credential names the same DID as its {@code iss} claim.
+     *
+     * <p>The property is read where each JWT shape carries it: under the {@code vc} claim (VC 1.1) and at
+     * the top level (VC 2.0). It may be a DID string or an object with an {@code id}. An absent property is
+     * accepted, since the VC-JWT encoding lets {@code iss} stand in for it. Because the proof key must belong
+     * to {@code iss}, this check makes the verification method DID equal the VC issuer.
+     *
+     * @param credentialClaims the claims of the credential JWT
+     * @param issDid the {@code iss} claim of the credential JWT
+     * @throws SecurityException if an {@code issuer} property names another DID or has no {@code id}
+     */
+    private static void requireIssuerPropertyMatches(JWTClaimsSet credentialClaims, String issDid) {
+        List<Object> issuerProperties = new ArrayList<>();
+        if (credentialClaims.getClaim("vc") instanceof Map<?, ?> vcClaim && vcClaim.get("issuer") != null) {
+            issuerProperties.add(vcClaim.get("issuer"));
+        }
+        if (credentialClaims.getClaim("issuer") != null) {
+            issuerProperties.add(credentialClaims.getClaim("issuer"));
+        }
+        for (Object issuerProperty : issuerProperties) {
+            Object id = issuerProperty instanceof Map<?, ?> issuerMap ? issuerMap.get("id") : issuerProperty;
+            if (!(id instanceof String issuerId) || !isSameDid(issuerId, issDid)) {
+                throw new SecurityException(String.format(
+                        "Credential issuer mismatch: iss=%s, issuer=%s", issDid, id));
+            }
+        }
+    }
+
     private static List<Object> asList(Object claim) {
         if (claim == null) {
             return List.of();
@@ -581,56 +615,59 @@ public class VerifierService {
     }
 
     /**
-     * Validate JWT signature using DID-based key resolution.
+     * Verifies the proof of a presentation or credential JWT (DCP §5.4.3).
      *
-     * @param signedJwt The signed JWT to validate
-     * @param issuerDid The DID of the JWT issuer
-     * @param kid The key ID from JWT header
-     * @param contextName Context name for logging (e.g., "Presentation", "Credential")
-     * @throws SecurityException if signature validation fails
+     * <p>Resolves the verification method referenced by the JWT {@code kid} from the signer's DID document.
+     * The method must be referenced by the given verification relationship ({@code authentication} for a
+     * Verifiable Presentation, {@code assertionMethod} for a Verifiable Credential), its DID part must equal
+     * the signer DID, and its key must verify the JWT signature.
+     *
+     * @param signedJwt the signed JWT to verify
+     * @param signerDid the DID that must control the signing key: the holder for a VP, the issuer for a VC
+     * @param verificationRelationship the verification relationship the key must have
+     * @param contextName context name for messages ({@code Presentation} or {@code Credential})
+     * @throws SecurityException if no suitable key exists, the key belongs to another DID, or the signature
+     *         does not verify
      */
-    private void validateJwtSignature(SignedJWT signedJwt, String issuerDid, String kid, String contextName)
-            throws SecurityException {
-
+    private void verifyProof(SignedJWT signedJwt, String signerDid, String verificationRelationship,
+            String contextName) throws SecurityException {
+        String kid = signedJwt.getHeader().getKeyID();
+        ResolvedVerificationMethod method;
         try {
-            // Resolve public key for the issuer DID
-            JWK jwk = didResolverService.resolvePublicKey(issuerDid, kid, "assertionMethod");
-            if (jwk == null) {
-                // Fallback to capabilityInvocation if assertionMethod not found
-                jwk = didResolverService.resolvePublicKey(issuerDid, kid, "capabilityInvocation");
-            }
-            if (jwk == null && PRESENTATION_CONTEXT.equals(contextName)) {
-                // VP proofs use the holder's authentication key (DID Core); the resolver now enforces
-                // relationships, so a key listed only under authentication must still be found
-                jwk = didResolverService.resolvePublicKey(issuerDid, kid, "authentication");
-            }
-
-            if (jwk == null) {
-                throw new SecurityException(String.format(
-                    "%s signature validation failed: No public key found for DID=%s, kid=%s",
-                    contextName, issuerDid, kid));
-            }
-
-            // Verify signature using resolved public key
-            ECKey ecPub = (ECKey) jwk;
-            JWSVerifier verifier = new ECDSAVerifier(ecPub.toECPublicKey());
-            if (!signedJwt.verify(verifier)) {
-                throw new SecurityException(String.format(
-                    "%s signature validation failed: Invalid signature for DID=%s",
-                    contextName, issuerDid));
-            }
-
-            log.debug("✓ {} JWT signature verified for DID: {}", contextName, issuerDid);
-
+            method = didResolverService.resolveVerificationMethod(signerDid, kid, verificationRelationship)
+                    .orElseThrow(() -> new SecurityException(String.format(
+                            "%s signature validation failed: No %s key found for DID=%s, kid=%s",
+                            contextName, verificationRelationship, signerDid, kid)));
         } catch (DidResolutionException e) {
             throw new SecurityException(String.format(
-                "%s signature validation failed: Cannot resolve DID=%s - %s",
-                contextName, issuerDid, e.getMessage()));
-        } catch (Exception e) {
-            throw new SecurityException(String.format(
-                "%s signature validation failed: %s",
-                contextName, e.getMessage()));
+                    "%s signature validation failed: Cannot resolve DID=%s - %s",
+                    contextName, signerDid, e.getMessage()));
         }
+
+        if (!DidUrlConverter.compareDids(method.id(), signerDid)) {
+            throw new SecurityException(String.format(
+                    "%s signature validation failed: verification method %s does not belong to DID=%s",
+                    contextName, method.id(), signerDid));
+        }
+
+        if (!(method.publicKey() instanceof ECKey ecPublicKey)) {
+            throw new SecurityException(String.format(
+                    "%s signature validation failed: unsupported key type %s for DID=%s",
+                    contextName, method.publicKey().getKeyType(), signerDid));
+        }
+
+        try {
+            JWSVerifier verifier = new ECDSAVerifier(ecPublicKey.toECPublicKey());
+            if (!signedJwt.verify(verifier)) {
+                throw new SecurityException(String.format(
+                        "%s signature validation failed: Invalid signature for DID=%s", contextName, signerDid));
+            }
+        } catch (JOSEException e) {
+            throw new SecurityException(String.format(
+                    "%s signature validation failed: %s", contextName, e.getMessage()));
+        }
+
+        log.debug("✓ {} JWT signature verified for DID: {}", contextName, signerDid);
     }
 
     /**

@@ -7,7 +7,10 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
+import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
+import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.audit.DcpAuditEventType;
@@ -20,6 +23,7 @@ import it.eng.dcp.common.model.ServiceEntry;
 import it.eng.dcp.common.service.IssuerTrustService;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.HttpDidResolverService;
+import it.eng.dcp.common.service.did.ResolvedVerificationMethod;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import okhttp3.RequestBody;
 import org.junit.jupiter.api.BeforeEach;
@@ -795,7 +799,7 @@ class VerifierServiceTest {
             setupSuccessfulPresentationQuery(List.of(presentationJwt));
 
             // Setup DID resolution to fail
-            when(didResolverService.resolvePublicKey(eq(HOLDER_DID), anyString(), anyString()))
+            when(didResolverService.resolveVerificationMethod(eq(HOLDER_DID), anyString(), anyString()))
                     .thenThrow(new DidResolutionException("Cannot resolve holder key"));
 
             // When/Then
@@ -978,10 +982,8 @@ class VerifierServiceTest {
             setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
 
             // Setup issuer key resolution to fail
-            when(didResolverService.resolvePublicKey(eq(ISSUER_DID), anyString(), eq("assertionMethod")))
+            when(didResolverService.resolveVerificationMethod(eq(ISSUER_DID), anyString(), eq("assertionMethod")))
                     .thenThrow(new DidResolutionException("Cannot resolve issuer key"));
-//            when(didResolverService.resolvePublicKey(eq(ISSUER_DID), anyString(), eq("capabilityInvocation")))
-//                    .thenThrow(new DidResolutionException("Cannot resolve issuer key"));
 
             // When/Then
             SecurityException exception = assertThrows(
@@ -1292,6 +1294,206 @@ class VerifierServiceTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════════════
+    // STEP 5: Presentation and Credential Proof Tests (DCP §5.4.3)
+    // ═════════════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("Step 5: Presentation and credential proofs")
+    class ProofValidationTests {
+
+        @Test
+        @DisplayName("Should reject a VP whose payload was changed after signing")
+        void shouldRejectTamperedPresentation() throws Exception {
+            String presentationJwt = createValidPresentationJWT(List.of(createValidCredentialJWT()));
+            JWTClaimsSet changed = new JWTClaimsSet.Builder(parseClaims(presentationJwt))
+                    .claim("vp", Map.of("type", List.of("VerifiablePresentation"),
+                            "verifiableCredential", List.of(createValidCredentialJWT("AdminCredential"))))
+                    .build();
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> runFlowWithPresentation(tamper(presentationJwt, changed)));
+
+            assertTrue(exception.getMessage().contains("Presentation signature validation failed: Invalid signature"));
+        }
+
+        @Test
+        @DisplayName("Should reject a VC whose payload was changed after signing")
+        void shouldRejectTamperedCredential() throws Exception {
+            String credentialJwt = createValidCredentialJWT();
+            JWTClaimsSet changed = new JWTClaimsSet.Builder(parseClaims(credentialJwt))
+                    .expirationTime(new Date(System.currentTimeMillis() + 10L * 365 * 86400000))
+                    .build();
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> runPresentationFlowWith(tamper(credentialJwt, changed)));
+
+            assertTrue(exception.getMessage().contains("Credential signature validation failed: Invalid signature"));
+        }
+
+        @Test
+        @DisplayName("Should reject a VC signed with a key that is not the issuer's")
+        void shouldRejectCredentialSignedWithForeignKey() throws Exception {
+            ECKey otherKey = new ECKeyGenerator(Curve.P_256).keyID(issuerKey.getKeyID()).generate();
+            String credentialJwt = createJWT(parseClaims(createValidCredentialJWT()), otherKey);
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> runPresentationFlowWith(credentialJwt));
+
+            assertTrue(exception.getMessage().contains("Credential signature validation failed: Invalid signature"));
+        }
+
+        @Test
+        @DisplayName("Should reject a VC whose verification method belongs to a DID other than the issuer")
+        void shouldRejectCredentialVerificationMethodOfOtherDid() throws Exception {
+            String selfIssuedToken = setUpPresentationResponse(createValidPresentationJWT(
+                    List.of(createValidCredentialJWT())));
+            setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
+            when(didResolverService.resolveVerificationMethod(eq(ISSUER_DID), anyString(), eq("assertionMethod")))
+                    .thenReturn(Optional.of(verificationMethod("did:web:attacker.example.com", issuerKey)));
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken));
+
+            assertTrue(exception.getMessage().contains(
+                    "verification method did:web:attacker.example.com#issuer-key-1 does not belong to DID="
+                            + ISSUER_DID));
+            verify(issuerTrustService, never()).isTrusted(anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("Should reject a VC whose issuer key has no assertionMethod relationship")
+        void shouldRejectCredentialKeyWithoutAssertionMethod() throws Exception {
+            String selfIssuedToken = setUpPresentationResponse(createValidPresentationJWT(
+                    List.of(createValidCredentialJWT())));
+            setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
+            when(didResolverService.resolveVerificationMethod(eq(ISSUER_DID), anyString(), eq("assertionMethod")))
+                    .thenReturn(Optional.empty());
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken));
+
+            assertTrue(exception.getMessage().contains("No assertionMethod key found for DID=" + ISSUER_DID));
+            verify(didResolverService, never()).resolveVerificationMethod(
+                    eq(ISSUER_DID), anyString(), eq("capabilityInvocation"));
+        }
+
+        @Test
+        @DisplayName("Should reject a VP whose holder key has no authentication relationship")
+        void shouldRejectPresentationKeyWithoutAuthentication() throws Exception {
+            String selfIssuedToken = setUpPresentationResponse(createValidPresentationJWT(
+                    List.of(createValidCredentialJWT())));
+            when(didResolverService.resolveVerificationMethod(eq(HOLDER_DID), anyString(), eq("authentication")))
+                    .thenReturn(Optional.empty());
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken));
+
+            assertTrue(exception.getMessage().contains("No authentication key found for DID=" + HOLDER_DID));
+            verify(didResolverService, never()).resolveVerificationMethod(
+                    eq(HOLDER_DID), anyString(), eq("assertionMethod"));
+            verify(didResolverService, never()).resolveVerificationMethod(
+                    eq(HOLDER_DID), anyString(), eq("capabilityInvocation"));
+        }
+
+        @Test
+        @DisplayName("Should reject a VP whose verification method belongs to a DID other than the holder")
+        void shouldRejectPresentationVerificationMethodOfOtherDid() throws Exception {
+            String selfIssuedToken = setUpPresentationResponse(createValidPresentationJWT(
+                    List.of(createValidCredentialJWT())));
+            when(didResolverService.resolveVerificationMethod(eq(HOLDER_DID), anyString(), eq("authentication")))
+                    .thenReturn(Optional.of(verificationMethod("did:web:attacker.example.com", holderKey)));
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken));
+
+            assertTrue(exception.getMessage().contains("does not belong to DID=" + HOLDER_DID));
+        }
+
+        @Test
+        @DisplayName("Should reject a VC 2.0 credential whose issuer property names a DID other than iss")
+        void shouldRejectVc20IssuerPropertyOfOtherDid() throws Exception {
+            JWTClaimsSet claims = new JWTClaimsSet.Builder(parseClaims(createVc20CredentialJWT(
+                    Optional.of(HOLDER_DID), Optional.of(Map.of("id", HOLDER_DID)))))
+                    .claim("issuer", Map.of("id", "did:web:attacker.example.com"))
+                    .build();
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> runPresentationFlowWith(createJWT(claims, issuerKey)));
+
+            assertTrue(exception.getMessage().contains("Credential issuer mismatch"));
+        }
+
+        @Test
+        @DisplayName("Should reject a VC 1.1 credential whose vc.issuer names a DID other than iss")
+        void shouldRejectVc11IssuerPropertyOfOtherDid() throws Exception {
+            JWTClaimsSet claims = new JWTClaimsSet.Builder(parseClaims(createValidCredentialJWT()))
+                    .claim("vc", Map.of(
+                            "type", List.of("VerifiableCredential", "MembershipCredential"),
+                            "issuer", "did:web:attacker.example.com",
+                            "credentialSubject", Map.of("id", HOLDER_DID)))
+                    .build();
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> runPresentationFlowWith(createJWT(claims, issuerKey)));
+
+            assertTrue(exception.getMessage().contains("Credential issuer mismatch"));
+        }
+
+        @Test
+        @DisplayName("Should accept a VC whose issuer property is an object naming the iss DID")
+        void shouldAcceptIssuerPropertyMatchingIss() throws Exception {
+            JWTClaimsSet claims = new JWTClaimsSet.Builder(parseClaims(createVc20CredentialJWT(
+                    Optional.of(HOLDER_DID), Optional.of(Map.of("id", HOLDER_DID)))))
+                    .claim("issuer", Map.of("id", ISSUER_DID, "name", "Issuer"))
+                    .build();
+
+            VerifierService.PresentationFlowResult result = runPresentationFlowWith(createJWT(claims, issuerKey));
+
+            assertEquals(ISSUER_DID, result.getValidatedPresentations().get(0).getCredentials().get(0).getIssuerDid());
+        }
+
+        @Test
+        @DisplayName("Should reject a proof whose key is not an EC key")
+        void shouldRejectNonEcKey() throws Exception {
+            String selfIssuedToken = setUpPresentationResponse(createValidPresentationJWT(
+                    List.of(createValidCredentialJWT())));
+            RSAKey rsaKey = new RSAKeyGenerator(2048).keyID("rsa-1").generate();
+            when(didResolverService.resolveVerificationMethod(eq(HOLDER_DID), anyString(), eq("authentication")))
+                    .thenReturn(Optional.of(new ResolvedVerificationMethod(HOLDER_DID + "#rsa-1",
+                            rsaKey.toPublicJWK())));
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken));
+
+            assertTrue(exception.getMessage().contains("unsupported key type RSA"));
+        }
+
+        /**
+         * Stubs the flow up to the presentation query, which returns the given presentation.
+         *
+         * @param presentationJwt the presentation the holder returns
+         * @return the Self-Issued ID Token that starts the flow
+         * @throws Exception if building the tokens fails
+         */
+        private String setUpPresentationResponse(String presentationJwt) throws Exception {
+            String selfIssuedToken = createValidSelfIssuedToken(createValidAccessToken());
+            when(tokenService.validateToken(selfIssuedToken)).thenReturn(parseClaims(selfIssuedToken));
+            setupSuccessfulHolderResolution();
+            setupSuccessfulPresentationQuery(List.of(presentationJwt));
+            return selfIssuedToken;
+        }
+
+        private void runFlowWithPresentation(String presentationJwt) throws Exception {
+            String selfIssuedToken = setUpPresentationResponse(presentationJwt);
+            setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
+            lenient().when(didResolverService.resolveVerificationMethod(eq(ISSUER_DID), anyString(),
+                    eq("assertionMethod"))).thenReturn(Optional.of(verificationMethod(ISSUER_DID, issuerKey)));
+            lenient().when(issuerTrustService.isTrusted(anyString(), eq(ISSUER_DID))).thenReturn(true);
+            verifierService.validateAndQueryHolderPresentations(selfIssuedToken);
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════════
     // COMPLETE SUCCESS SCENARIOS
     // ═════════════════════════════════════════════════════════════════════════════
 
@@ -1348,33 +1550,18 @@ class VerifierServiceTest {
         }
 
         @Test
-        @DisplayName("Should accept a presentation whose holder key is listed only under authentication")
-        void shouldAcceptPresentationKeyListedOnlyUnderAuthentication() throws Exception {
-            // Given
-            String accessToken = createValidAccessToken();
-            String selfIssuedToken = createValidSelfIssuedToken(accessToken);
-            when(tokenService.validateToken(selfIssuedToken)).thenReturn(parseClaims(selfIssuedToken));
-            setupSuccessfulHolderResolution();
-
-            String credentialJwt = createValidCredentialJWT();
-            String presentationJwt = createValidPresentationJWT(List.of(credentialJwt));
-            setupSuccessfulPresentationQuery(List.of(presentationJwt));
-            // Holder key: no assertionMethod / capabilityInvocation, only authentication. Lenient, because the
-            // verifier first tries (and misses) the other relationships with the same mock.
-            lenient().when(didResolverService.resolvePublicKey(eq(HOLDER_DID), anyString(), eq("authentication")))
-                    .thenReturn(holderKey.toPublicJWK());
-            lenient().when(didResolverService.resolvePublicKey(eq(ISSUER_DID), anyString(), eq("assertionMethod")))
-                    .thenReturn(issuerKey.toPublicJWK());
-            setupTrustedIssuer(ISSUER_DID);
-
+        @DisplayName("Should look up the VP key under authentication and the VC key under assertionMethod only")
+        void shouldUseOnlyTheSpecifiedVerificationRelationships() throws Exception {
             // When
-            VerifierService.PresentationFlowResult result =
-                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken);
+            VerifierService.PresentationFlowResult result = runPresentationFlowWith(createValidCredentialJWT());
 
             // Then
             assertEquals(1, result.getValidatedPresentations().size());
-            // Credential (issuer) keys are never looked up under authentication
-            verify(didResolverService, never()).resolvePublicKey(eq(ISSUER_DID), anyString(), eq("authentication"));
+            verify(didResolverService).resolveVerificationMethod(eq(HOLDER_DID), anyString(), eq("authentication"));
+            verify(didResolverService).resolveVerificationMethod(eq(ISSUER_DID), anyString(), eq("assertionMethod"));
+            verify(didResolverService, never()).resolveVerificationMethod(
+                    anyString(), anyString(), eq("capabilityInvocation"));
+            verify(didResolverService, never()).resolvePublicKey(anyString(), any(), any());
         }
 
         @Test
@@ -1671,11 +1858,34 @@ class VerifierServiceTest {
         )).thenReturn(response);
     }
 
+    /**
+     * Stubs the resolver to return the key of a DID under the relationship the verifier requires for it:
+     * {@code authentication} for the holder (VP proof), {@code assertionMethod} for any other DID (VC proof).
+     *
+     * @param did the DID that controls the key
+     * @param key the key to return
+     * @throws DidResolutionException never; declared by the stubbed method
+     */
     private void setupSuccessfulKeyResolution(String did, ECKey key) throws DidResolutionException {
-        when(didResolverService.resolvePublicKey(eq(did), anyString(), eq("assertionMethod")))
-                .thenReturn(key.toPublicJWK());
-//        when(didResolverService.resolvePublicKey(eq(did), anyString(), eq("capabilityInvocation")))
-//                .thenReturn(key.toPublicJWK());
+        String relationship = HOLDER_DID.equals(did) ? "authentication" : "assertionMethod";
+        when(didResolverService.resolveVerificationMethod(eq(did), anyString(), eq(relationship)))
+                .thenReturn(Optional.of(verificationMethod(did, key)));
+    }
+
+    private static ResolvedVerificationMethod verificationMethod(String did, ECKey key) {
+        return new ResolvedVerificationMethod(did + "#" + key.getKeyID(), key.toPublicJWK());
+    }
+
+    /**
+     * Replaces the payload of a signed JWT and keeps its original header and signature.
+     *
+     * @param jwt the signed JWT
+     * @param claims the claims to put in place of the signed payload
+     * @return the tampered JWT
+     */
+    private static String tamper(String jwt, JWTClaimsSet claims) {
+        String[] parts = jwt.split("\\.");
+        return parts[0] + "." + Base64URL.encode(claims.toString()) + "." + parts[2];
     }
 
     /**
