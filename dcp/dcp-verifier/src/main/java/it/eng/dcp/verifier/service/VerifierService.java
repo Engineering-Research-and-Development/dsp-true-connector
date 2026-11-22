@@ -117,13 +117,14 @@ public class VerifierService {
      * <ul>
      *   <li>Validates the self-issued ID token (iss==sub, aud==verifier DID, signature)</li>
      *   <li>Extracts the "token" claim containing the access token</li>
+     *   <li>Takes the presenting party's DID from the validated {@code sub} claim (DCP §4.3.3)</li>
      * </ul>
      *
      * @param bearerToken The self-issued ID token from Authorization header (without "Bearer " prefix)
-     * @return The access token extracted from the "token" claim
-     * @throws SecurityException if token is invalid or "token" claim is missing
+     * @return The validated {@code sub} DID and the access token extracted from the "token" claim
+     * @throws SecurityException if token is invalid, has no {@code sub}, or "token" claim is missing
      */
-    private String validateAndExtractAccessToken(String bearerToken) throws SecurityException {
+    private ValidatedSelfIssuedToken validateAndExtractAccessToken(String bearerToken) throws SecurityException {
         if (bearerToken == null || bearerToken.isBlank()) {
             auditPublisher.publishEvent(
                     DcpAuditEventType.TOKEN_VALIDATION_FAILED,
@@ -139,6 +140,18 @@ public class VerifierService {
         // Validate the self-issued ID token
         // This checks: iss==sub, aud==verifier DID, signature, expiry
         JWTClaimsSet claims = tokenService.validateToken(bearerToken);
+
+        // The presenting party is the validated sub; never a DID taken from the unverified access token
+        String subjectDid = claims.getSubject();
+        if (subjectDid == null || subjectDid.isBlank()) {
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Self-issued ID token validation failed: sub claim is missing",
+                    VERIFIER_SOURCE,
+                    null, null, null, null,
+                    Map.of("reason", "Self-issued ID token must contain a 'sub' claim"));
+            throw new SecurityException("Self-issued ID token must contain a 'sub' claim");
+        }
 
         // Extract the access token from "token" claim
         String accessToken;
@@ -172,8 +185,29 @@ public class VerifierService {
                 "Self-issued ID token validated, access token extracted",
                 VERIFIER_SOURCE,
                 null, null, null, null,
-                Map.of("holderDid", claims.getIssuer() != null ? claims.getIssuer() : ""));
-        return accessToken;
+                Map.of("holderDid", subjectDid));
+        return new ValidatedSelfIssuedToken(subjectDid, accessToken);
+    }
+
+    /**
+     * Checks that the access token was not issued by a party other than the presenting party.
+     *
+     * <p>The access token is not verified by the Verifier, so its {@code iss} is never used as the
+     * holder DID. It is only compared with the validated Self-Issued ID Token {@code sub}: an access
+     * token issued by a different DID is a token wrapped by another participant and is rejected. An
+     * absent {@code iss} is accepted, since the holder DID does not depend on it. The access token
+     * {@code sub} is not compared: its content is implementation-defined (other DCP implementations
+     * set it to the Verifier DID), and the holder DID never depends on it.
+     *
+     * @param accessTokenClaims the claims of the access token carried in the "token" claim
+     * @param holderDid the validated {@code sub} of the Self-Issued ID Token
+     * @throws SecurityException if the access token {@code iss} names a different DID
+     */
+    private void requireAccessTokenIssuedByHolder(JWTClaimsSet accessTokenClaims, String holderDid) {
+        String accessTokenIssuer = accessTokenClaims.getIssuer();
+        if (accessTokenIssuer != null && !DidUrlConverter.compareDids(accessTokenIssuer, holderDid)) {
+            throw new SecurityException("Access token 'iss' does not match the Self-Issued ID Token 'sub'");
+        }
     }
 
     /**
@@ -181,7 +215,7 @@ public class VerifierService {
      *
      * <p>Fetches the holder's DID document and extracts the CredentialService endpoint URL.
      *
-     * @param holderDid The holder's DID (from iss claim of self-issued ID token)
+     * @param holderDid The holder's DID (the validated sub claim of the self-issued ID token)
      * @return The holder's credential service endpoint URL
      * @throws DidResolutionException if DID cannot be resolved or service endpoint not found
      */
@@ -281,7 +315,7 @@ public class VerifierService {
      * </ul>
      *
      * @param presentationResponse The presentation response from holder
-     * @param expectedHolderDid The expected holder DID (from access token)
+     * @param expectedHolderDid The expected holder DID (the validated Self-Issued ID Token sub)
      * @return List of validated presentations with their credentials
      * @throws SecurityException if validation fails
      */
@@ -319,7 +353,7 @@ public class VerifierService {
                     throw new SecurityException("Presentation JWT missing holder DID (iss/sub claim)");
                 }
 
-                // Verify holder DID matches expected holder from access token
+                // Verify holder DID matches the presenting party (validated Self-Issued ID Token sub)
                 if (!DidUrlConverter.compareDids(holderDid, expectedHolderDid)) {
                     throw new SecurityException(String.format(
                         "Presentation holder DID mismatch: expected=%s, actual=%s",
@@ -652,8 +686,8 @@ public class VerifierService {
      * <ol>
      *   <li>Validate self-issued ID token from holder (Step 3a)</li>
      *   <li>Extract access token from "token" claim (Step 3a)</li>
-     *   <li>Parse access token to extract scopes (Step 3b)</li>
-     *   <li>Extract holder DID (Step 3b)</li>
+     *   <li>Take the holder DID from the validated Self-Issued ID Token {@code sub} (Step 3a)</li>
+     *   <li>Parse access token to extract scopes and reject it if another DID issued it (Step 3b)</li>
      *   <li>Resolve holder's credential service endpoint (Step 3c)</li>
      *   <li>Build PresentationQueryMessage with scopes from access token (Step 4)</li>
      *   <li>Query holder's credential service with access token (Step 4)</li>
@@ -705,9 +739,12 @@ public class VerifierService {
         // STEP 3a: Validate self-issued ID token and extract access token
         // ═════════════════════════════════════════════════════════════
         String accessToken;
+        String holderDid;
         try {
             log.info("STEP 3a: Validating self-issued ID token...");
-            accessToken = validateAndExtractAccessToken(selfIssuedIdToken);
+            ValidatedSelfIssuedToken validatedToken = validateAndExtractAccessToken(selfIssuedIdToken);
+            accessToken = validatedToken.accessToken();
+            holderDid = validatedToken.subjectDid();
             log.info("STEP 3a: ✓ Self-issued ID token valid, access token extracted");
         } catch (SecurityException e) {
             log.error("STEP 3a FAILED: {}", e.getMessage());
@@ -718,19 +755,15 @@ public class VerifierService {
         // STEP 3b: Parse access token to extract scopes
         // ═════════════════════════════════════════════════════════════
         List<String> scopes;
-        String holderDid;
         try {
-            log.info("STEP 3b: Parsing access token to extract scopes and holder DID...");
+            log.info("STEP 3b: Parsing access token to extract scopes...");
 
             // Parse access token JWT
             SignedJWT accessTokenJwt = SignedJWT.parse(accessToken);
             JWTClaimsSet accessTokenClaims = accessTokenJwt.getJWTClaimsSet();
 
-            // Extract holder DID from iss claim
-            holderDid = accessTokenClaims.getIssuer();
-            if (holderDid == null || holderDid.isBlank()) {
-                throw new SecurityException("Access token missing 'iss' claim (holder DID)");
-            }
+            // The holder DID is the validated sub; an access token issued by another DID is rejected
+            requireAccessTokenIssuedByHolder(accessTokenClaims, holderDid);
             log.debug("Holder DID: {}", holderDid);
 
             // Extract scopes from access token
@@ -750,8 +783,23 @@ public class VerifierService {
 
             log.info("STEP 3b: ✓ Access token parsed - Scopes: {}", scopes);
 
+        } catch (SecurityException e) {
+            log.error("STEP 3b FAILED: Access token is not bound to the presenting party - {}", e.getMessage());
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Access token rejected: " + e.getMessage(),
+                    VERIFIER_SOURCE,
+                    holderDid, null, null, null,
+                    Map.of("reason", e.getMessage()));
+            throw new SecurityException("Step 3b failed - " + e.getMessage());
         } catch (Exception e) {
             log.error("STEP 3b FAILED: Failed to parse access token - {}", e.getMessage());
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Access token rejected: cannot parse access token",
+                    VERIFIER_SOURCE,
+                    holderDid, null, null, null,
+                    Map.of("reason", String.valueOf(e.getMessage())));
             throw new SecurityException("Step 3b failed - Cannot parse access token: " + e.getMessage());
         }
 
@@ -874,7 +922,19 @@ public class VerifierService {
     }
 
     /**
+     * Outcome of Step 3a: the validated Self-Issued ID Token subject and the access token it carries.
+     *
+     * @param subjectDid the validated {@code sub} DID, which identifies the presenting party
+     * @param accessToken the access token from the "token" claim
+     */
+    private record ValidatedSelfIssuedToken(String subjectDid, String accessToken) {
+    }
+
+    /**
      * Result of the complete presentation flow containing all data from Steps 3-5.
+     *
+     * <p>{@code getHolderDid()} is the validated Self-Issued ID Token {@code sub}, so it identifies
+     * the party that presented the token.
      */
     @Getter
     public static class PresentationFlowResult {
