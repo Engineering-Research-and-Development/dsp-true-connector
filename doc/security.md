@@ -17,6 +17,13 @@ How people sign in depends on the mode. In `KEYCLOAK` mode the UI signs in to Ke
 [Internal Login Contract](#internal-login-contract-apiv1auth) and
 [Keycloak Authentication Mode](#keycloak-authentication-mode-keycloak) below.
 
+Endpoint security is being reorganised into URL zones (internal, admin / UI, DSP protocol, DCP
+protocol, public, and a deny-by-default rest), each with its own filter chain, token type and
+verifier. The decision, the token acceptance rules, the disabled-mode properties and the inventory of
+the paths the default chain serves today are in
+[D-ARC-008](decisions/architecture/D-ARC-008-endpoint-zone-security.md). The sections below describe
+the current chains.
+
 ---
 
 ## TLS Configuration

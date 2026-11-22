@@ -149,6 +149,18 @@ Or via environment variable:
 DCP_VERIFIER_ENABLED=false
 ```
 
+## Presentation Validation
+
+`VerifierService` is the only presentation validation path. It validates each Verifiable Presentation the holder returns (DCP §5.4.3):
+
+1. The VP JWT `iss` (or `sub`) is the holder DID.
+2. The VP proof is verified with the key its `kid` selects in the holder's DID document. That key must have the `authentication` verification relationship, and its verification method must belong to the holder DID.
+3. For each VC, the proof is verified with the key its `kid` selects in the issuer's DID document. That key must have the `assertionMethod` relationship, and the DID of its verification method must equal the VC `iss`. The VC `issuer` property (`vc.issuer` in VC 1.1, top-level `issuer` in VC 2.0, a DID or an object with `id`), when present, must name the same DID. No other relationship is accepted as a fallback.
+4. Holder binding: every `credentialSubject.id` and a present `sub` equal the holder DID.
+5. The VC validity dates are checked, and the issuer must be trusted for the credential type (`dcp.trusted-issuers.<type>`).
+
+A tampered VP or VC, a VC signed with a key of another DID, and a VP key without `authentication` make the presentation invalid, so the request is not authenticated.
+
 ## Token Validation
 
 The `SelfIssuedIdTokenService` provides comprehensive token validation:
@@ -161,6 +173,8 @@ The `SelfIssuedIdTokenService` provides comprehensive token validation:
 - ✅ Audience (`aud`) verification
 - ✅ Replay attack prevention via JTI cache
 - ✅ DID document verification relationship validation
+
+The presenting party is the validated `sub` of the Self-Issued ID Token. `VerifierService` uses it as the holder DID for the DID document lookup, the presentation query and presentation validation, and rejects the token when the access token in its `token` claim was issued by a different DID (its `iss`). The access token `sub` is not compared, since other DCP implementations set it to the Verifier DID.
 
 ## Usage Examples
 
