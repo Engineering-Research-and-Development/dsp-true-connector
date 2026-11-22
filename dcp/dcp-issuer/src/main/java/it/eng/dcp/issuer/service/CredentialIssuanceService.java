@@ -213,10 +213,11 @@ public class CredentialIssuanceService {
         var profile = profileExtractor.extractProfile(credentialType, context);
 //        var profile = context.getProfileId();
         if (profile == ProfileId.VC11_SL2021_JWT || profile == ProfileId.VC20_BSSL_JWT) {
-            var entryInfo = statusListService.allocateStatusEntry(issuerProperties.getConnectorDid(), "revocation");
+            StatusListService.StatusListEntry entry = statusListService.allocateStatusEntry(
+                    issuerProperties.getConnectorDid(), StatusListService.REVOCATION_PURPOSE, profile);
             return credentialGeneratorFactory
                     .createGeneratorWithStatus(credentialType)
-                    .generateCredential(context, entryInfo.getStatusListId(), entryInfo.getIndex());
+                    .generateCredential(context, entry.statusListCredential(), entry.index());
         }
         // Always use fallback generator if profile is null or not a status list type
         return credentialGeneratorFactory

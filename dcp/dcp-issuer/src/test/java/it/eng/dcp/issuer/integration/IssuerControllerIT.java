@@ -36,6 +36,7 @@ import java.util.stream.Stream;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -487,6 +488,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
 
         // Approve the request
         mockMvc.perform(post("/api/issuer/requests/{requestId}/approve", requestId)
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isOk());
@@ -533,6 +535,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         approvalBody.put("customClaims", customClaims);
 
         mockMvc.perform(post("/api/issuer/requests/{requestId}/approve", requestId)
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(approvalBody)))
                 .andExpect(status().isOk());
@@ -576,6 +579,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
 
         // Approve the request - should fail due to delivery failure
         mockMvc.perform(post("/api/issuer/requests/{requestId}/approve", requestId)
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isInternalServerError());
@@ -621,6 +625,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
 
         // Approve the request - should fail due to exception
         mockMvc.perform(post("/api/issuer/requests/{requestId}/approve", requestId)
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isInternalServerError());
@@ -634,6 +639,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
     @Test
     void approveRequest_failure_invalidRequestId() throws Exception {
         mockMvc.perform(post("/api/issuer/requests/{requestId}/approve", "invalid-request-id")
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -678,6 +684,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         rejectionBody.put("reason", "Holder not verified");
 
         mockMvc.perform(post("/api/issuer/requests/{requestId}/reject", requestId)
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(rejectionBody)))
                 .andExpect(status().isOk());
@@ -725,6 +732,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         rejectionBody.put("reason", "Holder not verified");
 
         mockMvc.perform(post("/api/issuer/requests/{requestId}/reject", requestId)
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(rejectionBody)))
                 .andExpect(status().isInternalServerError());
@@ -773,6 +781,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         rejectionBody.put("reason", "Holder not verified");
 
         mockMvc.perform(post("/api/issuer/requests/{requestId}/reject", requestId)
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(rejectionBody)))
                 .andExpect(status().isInternalServerError());
@@ -789,6 +798,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         rejectionBody.put("reason", "Invalid holder");
 
         mockMvc.perform(post("/api/issuer/requests/invalid-id/reject")
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(rejectionBody)))
                 .andExpect(status().isBadRequest());

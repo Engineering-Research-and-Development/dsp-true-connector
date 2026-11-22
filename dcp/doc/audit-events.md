@@ -97,9 +97,9 @@ All audit events are published from the **service layer**; the controller contai
 
 | Enum constant | JSON label | When fired | Notable `details` keys |
 |---|---|---|---|
-| `PRESENTATION_QUERY_RECEIVED` | `"Presentation query received"` | `HolderService.authorizePresentationQuery()` — bearer token validated successfully | `holderDid` |
-| `PRESENTATION_CREATED` | `"Presentation created"` | `HolderService.createPresentation()` — VP built and returned | `scopes` |
-| `TOKEN_VALIDATION_FAILED` | `"Token validation failed"` | `HolderService.authorizePresentationQuery()` — null/blank bearer token | `reason` |
+| `PRESENTATION_QUERY_RECEIVED` | `"Presentation query received"` | `HolderService.authorizePresentationQuery()` — the Verifier's Self-Issued ID Token and the access token it carries are both valid | `holderDid`, `verifierDid` |
+| `PRESENTATION_CREATED` | `"Presentation created"` | `HolderService.createPresentation()` — VP built and returned | `scopes`, `verifierDid` |
+| `TOKEN_VALIDATION_FAILED` | `"Token validation failed"` | `HolderService.authorizePresentationQuery()` — null/blank bearer token, or the Verifier's Self-Issued ID Token has no access token (or a non-string one) in its `token` claim | `reason` |
 
 ---
 
@@ -109,8 +109,8 @@ Emitted by **`VerifierService`** (`dcp-verifier`, source = `"verifier"`).
 
 | Enum constant | JSON label | When fired | Notable `details` keys |
 |---|---|---|---|
-| `SELF_ISSUED_TOKEN_VALIDATED` | `"Self-issued ID token validated"` | Step 3a succeeds — self-issued ID token is valid and access token is extracted | `holderDid` |
-| `TOKEN_VALIDATION_FAILED` | `"Token validation failed"` | Step 3a fails — bearer token is null/blank, `token` claim is missing/unparseable, or `validateToken` throws | `reason` |
+| `SELF_ISSUED_TOKEN_VALIDATED` | `"Self-issued ID token validated"` | Step 3a succeeds — self-issued ID token is valid and access token is extracted | `holderDid` (the validated `sub`) |
+| `TOKEN_VALIDATION_FAILED` | `"Token validation failed"` | Step 3a fails — bearer token is null/blank, `sub` is missing, `token` claim is missing/unparseable, or `validateToken` throws; Step 3b fails — the access token's `iss` names a DID other than the validated `sub`, or the access token cannot be parsed | `reason` |
 | `PRESENTATION_QUERY_SENT` | `"Presentation query sent"` | Step 4 — presentation query dispatched to holder's Credential Service | `credentialServiceUrl`, `scopes` |
 | `PRESENTATION_VERIFIED` | `"Presentation verified"` | Step 5 succeeds — all presentation JWTs and embedded credentials validated | `presentationCount` |
 | `PRESENTATION_INVALID` | `"Presentation validation failed"` | Step 5 fails — signature mismatch, expired credential, untrusted issuer, holder DID mismatch, etc. | `reason` |
@@ -128,7 +128,7 @@ PRESENTATION_VERIFIED        (Step 5  — presentations and credentials valid)
 **Verifier flow — event sequence (failure paths):**
 
 ```
-TOKEN_VALIDATION_FAILED      (Step 3a — any token validation failure)
+TOKEN_VALIDATION_FAILED      (Step 3a — any token validation failure; Step 3b — access token names another DID)
 PRESENTATION_INVALID         (Step 5  — any presentation / credential validation failure)
 ```
 
@@ -147,6 +147,7 @@ Emitted by **`SelfIssuedIdTokenService`** (`dcp-common`, source = `"common"`).
 | `TOKEN_VALIDATION_FAILED` | `"Token validation failed"` | `createAccessTokenWithScopes()` fails with `JOSEException` | `verifier`, `error` |
 | `SELF_ISSUED_TOKEN_VALIDATED` | `"Self-issued ID token validated"` | `validateToken()` succeeds — all claims valid, JTI not replayed | `subject`, `audience` |
 | `TOKEN_VALIDATION_FAILED` | `"Token validation failed"` | `validateToken()` fails — any claim check, DID resolution failure, or parse error | `reason` |
+| `TOKEN_VALIDATION_FAILED` | `"Token validation failed"` | `validateAccessToken()` fails — access token missing, not a JWT, wrong `typ`, not issued by this holder, `aud` not the querying Verifier, bad signature or key, or expired | `reason` |
 
 > **Note:** `IDENTITY_VERIFIED` and `IDENTITY_VERIFICATION_FAILED` are defined in the enum but not yet emitted by any service.
 
@@ -190,7 +191,7 @@ The following table lists every constant in `DcpAuditEventType` in declaration o
 | 3 | `CREDENTIAL_DENIED` | `"Credential denied"` | ✅ `CredentialDeliveryService` |
 | 4 | `CREDENTIAL_DELIVERED` | `"Credential delivered"` | ✅ `CredentialDeliveryService` |
 | 5 | `CREDENTIAL_DELIVERY_FAILED` | `"Credential delivery failed"` | ✅ `CredentialDeliveryService` |
-| 6 | `CREDENTIAL_REVOKED` | `"Credential revoked"` | ⏳ |
+| 6 | `CREDENTIAL_REVOKED` | `"Credential revoked"` | ✅ `IssuerAPIService` |
 | 7 | `CREDENTIAL_REQUESTED` | `"Credential requested"` | ✅ `CredentialIssuanceClient` |
 | 8 | `CREDENTIAL_REQUEST_FAILED` | `"Credential request failed"` | ✅ `CredentialIssuanceClient` |
 | 9 | `ISSUER_METADATA_FETCHED` | `"Issuer metadata fetched"` | ✅ `CredentialIssuanceClient` |
