@@ -26,7 +26,7 @@ import java.util.*;
  *   <li>Uses /2018/credentials/v1 context</li>
  *   <li>Uses issuanceDate/expirationDate</li>
  *   <li>External proof (proof object inside vc claim)</li>
- *   <li>StatusList2021Entry for credential status (placeholder)</li>
+ *   <li>StatusList2021Entry for credential status, pointing at the Issuer's public status list URL</li>
  *   <li>JWT header type: standard "JWT"</li>
  *   <li>Nested structure (credential data in vc claim)</li>
  * </ul>

@@ -26,8 +26,10 @@ Authorization: Bearer <self-issued-id-token>
 | `/issuer/metadata` | GET | Yes | Get issuer metadata |
 | `/issuer/credentials` | POST | Yes | Request credentials |
 | `/issuer/requests/{id}` | GET | Yes | Get request status |
+| `/issuer/status/{listId}` | GET | No | Get the signed status list credential (DCP §6.10) |
 | `/api/issuer/requests/{id}/approve` | POST | No, see #405 | Approve request (local admin API) |
 | `/api/issuer/requests/{id}/reject` | POST | No, see #405 | Reject request (local admin API) |
+| `/api/issuer/status-lists/{listId}/entries/{index}/revoke` | POST | No, see #405 | Revoke a credential (local admin API) |
 | `/api/issuer/key/rotate` | POST | No, see #405 | Manual key rotation (local admin API) |
 | `/actuator/health` | GET | No | Health check |
 
@@ -85,6 +87,54 @@ GET /.well-known/did.json
 **Status Codes**:
 - `200 OK`: DID document returned successfully
 - `404 Not Found`: Issuer not configured or DID document not generated
+
+---
+
+### Get Status List Credential
+
+Returns the signed status list credential that the `credentialStatus.statusListCredential` of an issued credential points at. Verifiers use it to check revocation (DCP v1.0.1 §6.10). The endpoint is public by design and carries only status bits, no holder data.
+
+```http
+GET /issuer/status/{listId}
+```
+
+**Authentication**: None
+
+**Path Parameters**:
+- `listId` (string, required): List ID, the last path segment of the `statusListCredential` URL
+
+**Response**: `200 OK` with a compact JWT signed by the Issuer's current signing key. The format follows the profile of the credentials in the list:
+
+| Profile | Content-Type | Credential |
+|---------|--------------|------------|
+| `vc20-bssl/jwt` | `application/vc+ld+jwt` | VC 2.0 `BitstringStatusListCredential` as JWT claims; `credentialSubject.type` is `BitstringStatusList` |
+| `vc11-sl2021/jwt` | `application/jwt` | VC 1.1 `StatusList2021Credential` in the `vc` claim; `credentialSubject.type` is `StatusList2021` |
+
+Decoded claims of a `vc20-bssl/jwt` list:
+
+```json
+{
+  "iss": "did:web:localhost%3A8084:issuer",
+  "sub": "http://localhost:8084/issuer/status/3f2c...#list",
+  "@context": ["https://www.w3.org/ns/credentials/v2"],
+  "id": "http://localhost:8084/issuer/status/3f2c...",
+  "type": ["VerifiableCredential", "BitstringStatusListCredential"],
+  "issuer": {"id": "did:web:localhost%3A8084:issuer"},
+  "validFrom": "2026-11-20T10:00:00Z",
+  "credentialSubject": {
+    "id": "http://localhost:8084/issuer/status/3f2c...#list",
+    "type": "BitstringStatusList",
+    "statusPurpose": "revocation",
+    "encodedList": "uH4sIAAAAAAAA..."
+  }
+}
+```
+
+`encodedList` is the GZIP-compressed bitstring, base64url-encoded without padding; BitstringStatusList adds the multibase prefix `u`. Index 0 is the left-most bit of the first byte. A bit of 0 means valid, 1 means revoked. Each list has 131072 entries (16 KB, the minimum the status list specifications set for group privacy).
+
+**Status Codes**:
+- `200 OK`: List found and returned
+- `404 Not Found`: Unknown list
 
 ---
 
@@ -310,6 +360,33 @@ Credential request rejected successfully
 - `400 Bad Request`: Request already processed
 - `404 Not Found`: Request not found
 - `500 Internal Server Error`: Server error
+
+---
+
+### Revoke Credential
+
+Revokes the credential that holds a status list entry: sets the entry's bit to 1 and re-signs the published status list. Take `listId` and `index` from the credential's `credentialStatus` (`statusListCredential` ends with `/issuer/status/{listId}`; `statusListIndex` is the index). Revocation is not reversible. The Issuer emits the `CREDENTIAL_REVOKED` audit event.
+
+```http
+POST /api/issuer/status-lists/{listId}/entries/{index}/revoke
+```
+
+**Path Parameters**:
+- `listId` (string, required): Status list ID
+- `index` (integer, required): Status list index of the credential
+
+**Response**: `200 OK`
+
+```text
+Credential revoked
+```
+
+Revoking an entry that is already revoked answers `200 OK` with `Credential already revoked` and changes nothing.
+
+**Status Codes**:
+- `200 OK`: Entry revoked, or already revoked
+- `400 Bad Request`: The index has not been allocated to a credential
+- `404 Not Found`: Unknown status list
 
 ---
 
