@@ -3,6 +3,7 @@ package it.eng.dcp.holder.rest;
 import com.nimbusds.jwt.JWTClaimsSet;
 import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.holder.service.HolderService;
+import it.eng.dcp.holder.service.PresentationQueryAuthorization;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,7 +42,8 @@ class DcpControllerPresentationDefinitionTest {
 
     private void authorize() throws Exception {
         when(holderService.authorizePresentationQuery(anyString()))
-                .thenReturn(new JWTClaimsSet.Builder().subject("did:web:verifier").build());
+                .thenReturn(new PresentationQueryAuthorization("did:web:verifier", "did:web:holder",
+                        new JWTClaimsSet.Builder().subject("did:web:verifier").build()));
     }
 
     private static Map<String, Object> definition() {
@@ -60,7 +62,7 @@ class DcpControllerPresentationDefinitionTest {
 
         assertEquals(501, response.getStatusCode().value());
         assertEquals(DcpController.PRESENTATION_DEFINITION_NOT_SUPPORTED, response.getBody());
-        verify(holderService, never()).createPresentation(any(), anyString(), any());
+        verify(holderService, never()).createPresentation(any(), any());
         verify(holderService, never()).checkRateLimit(anyString());
     }
 
@@ -76,7 +78,7 @@ class DcpControllerPresentationDefinitionTest {
         ResponseEntity<?> response = controller.queryPresentations(BEARER, query);
 
         assertEquals(400, response.getStatusCode().value());
-        verify(holderService, never()).createPresentation(any(), anyString(), any());
+        verify(holderService, never()).createPresentation(any(), any());
     }
 
     @Test

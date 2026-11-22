@@ -162,8 +162,6 @@ public class WebSecurityConfig {
                                     "/transfers/**",
                                     "/consumer/transfers/**")
                             .hasRole("CONNECTOR")
-                            // Development/Testing token generator (disable in production)
-                            .requestMatchers("/api/dev/token/**").permitAll()
                             .requestMatchers("/api/**").hasRole("ADMIN")
                             // DCP endpoints handle their own authentication (Self-Issued ID Tokens)
                             .requestMatchers("/dcp/**").permitAll()

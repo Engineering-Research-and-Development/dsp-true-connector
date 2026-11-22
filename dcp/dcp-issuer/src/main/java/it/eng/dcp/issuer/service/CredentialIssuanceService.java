@@ -70,7 +70,9 @@ public class CredentialIssuanceService {
      * @param request The credential request containing requested credential IDs
      * @param customClaims Optional custom claims to include
      * @param constraintsData Optional constraints to verify before issuance
-     * @return List of credential containers ready for delivery
+     * @return List of credential containers ready for delivery, one for each requested credential
+     * @throws CredentialIssuanceException if any requested credential could not be issued; nothing is returned
+     *         for such a request, so it can be rejected as a whole
      */
     public List<CredentialMessage.CredentialContainer> generateCredentials(
             CredentialRequest request,
@@ -108,6 +110,7 @@ public class CredentialIssuanceService {
         }
 
         List<CredentialMessage.CredentialContainer> credentials = new ArrayList<>();
+        List<String> failedIds = new ArrayList<>();
         log.info("Generating {} credentials for request {} (holder: {}) with {} custom claims and {} constraints",
                 requestedConfigs.size(), request.getIssuerPid(), request.getHolderPid(),
                 customClaims != null ? customClaims.size() : 0,
@@ -136,11 +139,15 @@ public class CredentialIssuanceService {
             } catch (Exception e) {
                 log.error("Failed to generate credential '{}' for request {}: {}",
                         config.getId(), request.getIssuerPid(), e.getMessage(), e);
+                failedIds.add(config.getId());
             }
         }
 
-        if (credentials.isEmpty()) {
-            throw new IllegalStateException("Failed to generate any credentials for request: " + request.getIssuerPid());
+        if (!failedIds.isEmpty()) {
+            // A request is all or nothing (DCP 1.0.1 §6.5.1): drop the credentials that were generated
+            throw new CredentialIssuanceException(
+                    "Failed to issue credential(s) " + failedIds + " for request " + request.getIssuerPid(),
+                    failedIds);
         }
 
         return credentials;
@@ -213,10 +220,11 @@ public class CredentialIssuanceService {
         var profile = profileExtractor.extractProfile(credentialType, context);
 //        var profile = context.getProfileId();
         if (profile == ProfileId.VC11_SL2021_JWT || profile == ProfileId.VC20_BSSL_JWT) {
-            var entryInfo = statusListService.allocateStatusEntry(issuerProperties.getConnectorDid(), "revocation");
+            StatusListService.StatusListEntry entry = statusListService.allocateStatusEntry(
+                    issuerProperties.getConnectorDid(), StatusListService.REVOCATION_PURPOSE, profile);
             return credentialGeneratorFactory
                     .createGeneratorWithStatus(credentialType)
-                    .generateCredential(context, entryInfo.getStatusListId(), entryInfo.getIndex());
+                    .generateCredential(context, entry.statusListCredential(), entry.index());
         }
         // Always use fallback generator if profile is null or not a status list type
         return credentialGeneratorFactory

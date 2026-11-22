@@ -537,6 +537,43 @@ class CredentialIssuanceClientTest {
         assertNotNull(result);
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, result.getStatusCode());
     }
+
+    // ── getIssuerMetadataOf ───────────────────────────────────────────────────
+
+    @DisplayName("getIssuerMetadataOf fetches metadata from the IssuerService endpoint of the given DID with a token for that DID")
+    @Test
+    void getIssuerMetadataOf_UsesAdvertisedEndpointAndIssuerAudience() throws Exception {
+        var offeringIssuer = "did:web:other-issuer.example.com";
+        when(didResolverService.fetchDidDocumentCached(eq(offeringIssuer)))
+                .thenReturn(didDocumentWith("IssuerService", "https://issuer-service.other.example.com/api/issuer"));
+        when(tokenService.createAndSignToken(eq(offeringIssuer), isNull(), eq(config))).thenReturn("offer-token");
+        when(restClient.executeAndDeserialize(
+                eq("https://issuer-service.other.example.com/api/issuer/metadata"), eq("GET"),
+                eq(Map.of("Authorization", "Bearer offer-token")), isNull(), eq(IssuerMetadata.class)
+        )).thenReturn(createValidIssuerMetadata());
+
+        assertNotNull(client.getIssuerMetadataOf(offeringIssuer));
+
+        verify(didResolverService, never()).fetchDidDocumentCached(eq("did:web:issuer.example.com"));
+        verify(auditPublisher).publishEvent(eq(DcpAuditEventType.ISSUER_METADATA_FETCHED), any(), any(), any(),
+                eq(offeringIssuer), any(), any(), any());
+    }
+
+    @DisplayName("getIssuerMetadataOf makes no metadata request when the DID document has no IssuerService")
+    @Test
+    void getIssuerMetadataOf_Throws_WhenNoIssuerService() throws Exception {
+        var offeringIssuer = "did:web:other-issuer.example.com";
+        when(didResolverService.fetchDidDocumentCached(eq(offeringIssuer)))
+                .thenReturn(didDocumentWith("CredentialService", "https://other-issuer.example.com"));
+
+        assertThrows(IssuerServiceNotFoundException.class, () -> client.getIssuerMetadataOf(offeringIssuer));
+        verify(restClient, never()).executeAndDeserialize(any(), any(), any(), any(), any());
+    }
+
+    @DisplayName("discoverIssuerService(String) rejects a null or blank DID")
+    @Test
+    void discoverIssuerServiceForDid_Throws_WhenDidBlank() {
+        assertThrows(IllegalArgumentException.class, () -> client.discoverIssuerService(null));
+        assertThrows(IllegalArgumentException.class, () -> client.discoverIssuerService(" "));
+    }
 }
-
-

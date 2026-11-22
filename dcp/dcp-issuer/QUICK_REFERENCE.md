@@ -52,19 +52,22 @@ curl -X POST \
 ```
 
 ### Approve Request
+Admin API: HTTP Basic, authority `DCP_ISSUER_ADMIN` (see [DEPLOYMENT.md](DEPLOYMENT.md#administration-api-users)).
 ```bash
 curl -X POST \
+  -u issuer-admin:<admin password> \
   -H "Content-Type: application/json" \
   -d '{"customClaims":{"role":"admin"}}' \
-  http://localhost:8084/issuer/requests/REQUEST_ID/approve
+  http://localhost:8084/api/issuer/requests/REQUEST_ID/approve
 ```
 
 ### Reject Request
 ```bash
 curl -X POST \
+  -u issuer-admin:<admin password> \
   -H "Content-Type: application/json" \
   -d '{"reason":"Invalid"}' \
-  http://localhost:8084/issuer/requests/REQUEST_ID/reject
+  http://localhost:8084/api/issuer/requests/REQUEST_ID/reject
 ```
 
 ### Get DID Document
