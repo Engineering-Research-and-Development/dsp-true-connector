@@ -6,6 +6,10 @@
 
 This endpoint triggers Step 3 of the DCP flow: delivering credentials to the holder.
 
+It belongs to the Issuer administration API (`/api/issuer/**`), which requires HTTP Basic credentials of a
+user with the authority `DCP_ISSUER_ADMIN` (`dcp.admin.users[n]`, none configured by default). See
+[`dcp-issuer/DEPLOYMENT.md`](../dcp-issuer/DEPLOYMENT.md#administration-api-users).
+
 ---
 
 ## ⚡ Quick Test in Postman
@@ -35,6 +39,7 @@ Content-Type: application/json
 **Simple Approval (Recommended for UI):**
 ```
 POST http://localhost:8080/api/issuer/requests/req-{uuid}/approve
+Authorization: Basic <base64(admin-username:admin-password)>
 Content-Type: application/json
 
 {}
@@ -55,6 +60,7 @@ Credentials issued and delivered successfully
 **Manual Approval (Advanced - with custom credentials):**
 ```
 POST http://localhost:8080/api/issuer/requests/req-{uuid}/approve
+Authorization: Basic <base64(admin-username:admin-password)>
 Content-Type: application/json
 
 {
@@ -96,6 +102,7 @@ GET http://localhost:8080/issuer/requests/req-{uuid}
 
 ```
 POST http://localhost:8080/api/issuer/requests/req-{uuid}/reject
+Authorization: Basic <base64(admin-username:admin-password)>
 Content-Type: application/json
 
 {

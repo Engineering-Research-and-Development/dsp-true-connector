@@ -31,6 +31,7 @@ import java.util.zip.GZIPInputStream;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -77,14 +78,16 @@ class StatusListControllerIT extends BaseIssuerIntegrationTest {
         SignedJWT before = fetchStatusList(path, profile);
         assertFalse(bitAt(before, profile, index), "A newly issued credential must not be revoked");
 
-        mockMvc.perform(post("/api/issuer/status-lists/" + listId + "/entries/" + index + "/revoke"))
+        mockMvc.perform(post("/api/issuer/status-lists/" + listId + "/entries/" + index + "/revoke")
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD)))
                 .andExpect(status().isOk());
 
         SignedJWT after = fetchStatusList(path, profile);
         assertTrue(bitAt(after, profile, index), "A revoked credential must have its bit set");
         assertNotEquals(before.serialize(), after.serialize(), "Revocation must re-sign the list");
 
-        mockMvc.perform(post("/api/issuer/status-lists/" + listId + "/entries/" + index + "/revoke"))
+        mockMvc.perform(post("/api/issuer/status-lists/" + listId + "/entries/" + index + "/revoke")
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD)))
                 .andExpect(status().isOk());
     }
 
@@ -102,7 +105,8 @@ class StatusListControllerIT extends BaseIssuerIntegrationTest {
     @DisplayName("An unknown status list is 404 on fetch and revoke")
     void unknownList_notFound() throws Exception {
         mockMvc.perform(get("/issuer/status/unknown-list")).andExpect(status().isNotFound());
-        mockMvc.perform(post("/api/issuer/status-lists/unknown-list/entries/0/revoke"))
+        mockMvc.perform(post("/api/issuer/status-lists/unknown-list/entries/0/revoke")
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD)))
                 .andExpect(status().isNotFound());
     }
 
@@ -112,7 +116,8 @@ class StatusListControllerIT extends BaseIssuerIntegrationTest {
         String url = (String) issueCredential(ProfileId.VC11_SL2021_JWT).get("statusListCredential");
         String listId = url.substring(url.lastIndexOf('/') + 1);
 
-        mockMvc.perform(post("/api/issuer/status-lists/" + listId + "/entries/131071/revoke"))
+        mockMvc.perform(post("/api/issuer/status-lists/" + listId + "/entries/131071/revoke")
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD)))
                 .andExpect(status().isBadRequest());
     }
 

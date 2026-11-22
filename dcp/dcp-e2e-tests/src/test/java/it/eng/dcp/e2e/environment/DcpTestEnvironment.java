@@ -72,7 +72,13 @@ public abstract class DcpTestEnvironment {
     protected static String holderBaseUrl;
     protected static String verifierBaseUrl;
 
+    /** Issuer administration user configured in {@code application-issuer.properties}. */
+    protected static final String ISSUER_ADMIN_USERNAME = "issuer-admin";
+    /** Plain password of {@link #ISSUER_ADMIN_USERNAME}; e2e test value only. */
+    protected static final String ISSUER_ADMIN_PASSWORD = "issuer-admin-e2e-password";
+
     protected static RestTemplate issuerClient;
+    protected static RestTemplate issuerAdminClient;
     protected static RestTemplate holderClient;
     protected static RestTemplate verifierClient;
 
@@ -268,6 +274,9 @@ public abstract class DcpTestEnvironment {
         RestTemplateBuilder builder = new RestTemplateBuilder();
 
         issuerClient = builder.rootUri(issuerBaseUrl).build();
+        issuerAdminClient = builder.rootUri(issuerBaseUrl)
+                .basicAuthentication(ISSUER_ADMIN_USERNAME, ISSUER_ADMIN_PASSWORD)
+                .build();
         holderClient = builder.rootUri(holderBaseUrl).build();
         verifierClient = builder.rootUri(verifierBaseUrl).build();
     }
@@ -310,6 +319,15 @@ public abstract class DcpTestEnvironment {
      */
     public RestTemplate getIssuerClient() {
         return issuerClient;
+    }
+
+    /**
+     * Gets the RestTemplate for the Issuer administration API ({@code /api/issuer/**}), with HTTP Basic credentials.
+     *
+     * @return configured RestTemplate
+     */
+    public RestTemplate getIssuerAdminClient() {
+        return issuerAdminClient;
     }
 
     /**

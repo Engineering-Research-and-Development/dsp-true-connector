@@ -42,6 +42,9 @@ public class IssuerProperties {
     /** Supported credentials configuration. */
     private Credentials credentials = new Credentials();
 
+    /** Administration API users. */
+    private Admin admin = new Admin();
+
     /**
      * Get the connector DID.
      * @return connector DID
@@ -168,6 +171,22 @@ public class IssuerProperties {
      */
     public void setCredentials(Credentials credentials) {
         this.credentials = credentials;
+    }
+
+    /**
+     * Get the administration API configuration.
+     * @return administration API configuration
+     */
+    public Admin getAdmin() {
+        return admin;
+    }
+
+    /**
+     * Set the administration API configuration.
+     * @param admin administration API configuration
+     */
+    public void setAdmin(Admin admin) {
+        this.admin = admin;
     }
 
     /**
@@ -497,6 +516,93 @@ public class IssuerProperties {
          */
         public void setFormat(String format) {
             this.format = format;
+        }
+    }
+
+    /**
+     * Administration API configuration properties ({@code dcp.admin.*}).
+     *
+     * <p>The administration API ({@code /api/issuer/**}) authenticates these users with HTTP Basic.
+     * No user is configured by default, so every administration request is denied until one is added.
+     */
+    public static class Admin {
+        /** Users allowed to authenticate on the administration API. */
+        private List<AdminUser> users = Collections.emptyList();
+
+        /**
+         * Get the administration API users.
+         * @return administration API users
+         */
+        public List<AdminUser> getUsers() {
+            return users;
+        }
+
+        /**
+         * Set the administration API users.
+         * @param users administration API users
+         */
+        public void setUsers(List<AdminUser> users) {
+            this.users = users;
+        }
+    }
+
+    /**
+     * One administration API user ({@code dcp.admin.users[n].*}).
+     *
+     * <p>The password is a {@code DelegatingPasswordEncoder} value, for example {@code {bcrypt}$2a$10$...}.
+     * This class deliberately has no {@code toString()} so the password hash never reaches a log.
+     */
+    public static class AdminUser {
+        private String username;
+        private String password;
+        private List<String> authorities = Collections.emptyList();
+
+        /**
+         * Get the user name.
+         * @return user name
+         */
+        public String getUsername() {
+            return username;
+        }
+
+        /**
+         * Set the user name.
+         * @param username user name
+         */
+        public void setUsername(String username) {
+            this.username = username;
+        }
+
+        /**
+         * Get the encoded password, in {@code DelegatingPasswordEncoder} format.
+         * @return encoded password
+         */
+        public String getPassword() {
+            return password;
+        }
+
+        /**
+         * Set the encoded password, in {@code DelegatingPasswordEncoder} format.
+         * @param password encoded password
+         */
+        public void setPassword(String password) {
+            this.password = password;
+        }
+
+        /**
+         * Get the granted authorities, for example {@code DCP_ISSUER_ADMIN}.
+         * @return granted authorities
+         */
+        public List<String> getAuthorities() {
+            return authorities;
+        }
+
+        /**
+         * Set the granted authorities.
+         * @param authorities granted authorities
+         */
+        public void setAuthorities(List<String> authorities) {
+            this.authorities = authorities;
         }
     }
 }
