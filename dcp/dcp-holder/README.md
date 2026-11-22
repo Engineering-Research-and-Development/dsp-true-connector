@@ -103,6 +103,10 @@ either kind returns 401.
   `findByHolderDidInAndIdIn`, matching the plain and percent-encoded `did:web` forms); there is no unscoped lookup.
 - The rate limit is keyed by the Verifier DID.
 
+## Presentation Queries
+
+`POST /dcp/presentations/query` supports `scope` queries only. A query carrying `presentationDefinition` (Presentation Exchange) is answered with `501 Not Implemented` after the token check and structural validation, as DCP v1.0.1 §5.4.1.1 allows. A query with both `scope` and `presentationDefinition`, or with neither, returns `400`.
+
 ## Configuration Properties
 
 All properties use the `dcp.*` prefix:

@@ -26,6 +26,9 @@ import java.util.Map;
 @Slf4j
 public class DcpController {
 
+    static final String PRESENTATION_DEFINITION_NOT_SUPPORTED =
+            "presentationDefinition is not supported; use scope";
+
     private static final ObjectMapper OFFER_MAPPER = new ObjectMapper();
 
     private final HolderService holderService;
@@ -44,9 +47,13 @@ public class DcpController {
      * Verifier. A missing or invalid token of either kind, including a missing access token, gets 401.
      * Requested scopes the access token does not authorize are dropped (fewer presentations, still 200).
      *
+     * <p>A query carrying {@code presentationDefinition} (and no {@code scope}) is not supported and gets 501
+     * after authentication and structural validation. A query carrying both {@code scope} and
+     * {@code presentationDefinition}, or neither, gets 400.
+     *
      * @param authorization HTTP Authorization header with Bearer token
      * @param query The presentation query message
-     * @return PresentationResponseMessage or error response
+     * @return PresentationResponseMessage or error response (400, 401, 429, 500, 501)
      */
     @PostMapping(path = "/presentations/query")
     public ResponseEntity<?> queryPresentations(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
@@ -80,6 +87,12 @@ public class DcpController {
             if (validationError != null) {
                 log.error("Presentation query validation failed: {}", validationError);
                 return ResponseEntity.status(400).body(validationError);
+            }
+
+            // Presentation definitions are optional in DCP v1.0.1 (section 5.4.1.1) and are not supported
+            if (query.getPresentationDefinition() != null) {
+                log.warn("Presentation query with presentationDefinition rejected: not supported");
+                return ResponseEntity.status(501).body(PRESENTATION_DEFINITION_NOT_SUPPORTED);
             }
 
             // Rate limiting per querying Verifier DID

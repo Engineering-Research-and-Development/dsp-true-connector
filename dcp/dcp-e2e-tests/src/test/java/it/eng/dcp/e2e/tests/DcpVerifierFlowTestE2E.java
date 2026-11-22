@@ -462,8 +462,7 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
 
     /**
      * Test presentation query with presentation definition.
-     * Implementation MAY support presentationDefinition parameter.
-     * If not supported, must return 501 Not Implemented.
+     * The Holder does not support presentationDefinition and must return 501 Not Implemented.
      */
     @Test
     void testPresentationQueryWithPresentationDefinition() {
@@ -509,25 +508,15 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
 
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(query, headers);
 
-        try {
-            ResponseEntity<PresentationResponseMessage> response = getHolderClient().exchange(
+        HttpServerErrorException ex = assertThrows(HttpServerErrorException.class, () ->
+            getHolderClient().exchange(
                 "/dcp/presentations/query",
                 HttpMethod.POST,
                 requestEntity,
                 PresentationResponseMessage.class
-            );
-
-            if (response.getStatusCode() == HttpStatus.OK) {
-                log.info("✓ Presentation definition supported and query succeeded");
-                assertNotNull(response.getBody());
-            }
-        } catch (HttpClientErrorException | HttpServerErrorException e) {
-            if (e.getStatusCode() == HttpStatus.NOT_IMPLEMENTED) {
-                log.info("✓ Presentation definition not supported (501 Not Implemented) - acceptable");
-            } else {
-                fail("Unexpected error for presentation definition query: " + e.getStatusCode());
-            }
-        }
+            ));
+        assertEquals(HttpStatus.NOT_IMPLEMENTED, ex.getStatusCode());
+        log.info("✓ Presentation definition not supported (501 Not Implemented)");
 
         log.info("\n═══════════════════════════════════════════════");
         log.info("✓✓✓ PRESENTATION DEFINITION TEST PASSED");
