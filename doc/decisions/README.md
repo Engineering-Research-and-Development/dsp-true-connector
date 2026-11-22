@@ -12,6 +12,7 @@ This directory captures architecturally significant decisions: choices that shap
 | [D-ARC-004](architecture/D-ARC-004-trusted-issuers-from-config-and-tenant-registry.md) | Trusted issuers come from configuration and the tenant registry | Accepted | Architecture |
 | [D-ARC-005](architecture/D-ARC-005-internal-call-zone-with-in-memory-key.md) | Loopback calls use an /internal zone and a token signed with an in-memory key | Accepted | Architecture |
 | [D-ARC-006](architecture/D-ARC-006-per-realm-role-allow-list-and-per-tenant-realm-credentials.md) | Per-realm role allow-list with tenant binding (per-tenant realm credentials part withdrawn) | Accepted | Architecture |
+| [D-ARC-007](architecture/D-ARC-007-dcp-participant-context.md) | DCP participant context: one identity, route, key set and data partition per participant | Accepted | Architecture |
 | [D-TEC-001](technical/D-TEC-001-mongodb-persistence.md)                  | MongoDB as the persistence layer | Accepted | Technical |
 | [D-TEC-002](technical/D-TEC-002-testcontainers-integration-testing.md)   | Testcontainers for integration testing | Accepted | Technical |
 | [D-TEC-003](technical/D-TEC-003-async-s3-multipart-upload.md)            | Asynchronous parallel S3 multipart upload | Accepted | Technical |
