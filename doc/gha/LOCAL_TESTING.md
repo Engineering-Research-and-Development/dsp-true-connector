@@ -217,6 +217,7 @@ newman run test-cases/dcp-obtain-vc/dcp-gha-tests.postman_collection.json
 **Why is this mandatory?**
 - DCP mode tests require Verifiable Credentials for authentication
 - This collection obtains VCs for both Connector A and Connector B
+- It first logs in as `admin@mail.com`: the dev token generator (`dcp.dev.token-generator.enabled=true`, set in the CI `connector_a_resources` and `connector_b_resources` properties) requires an admin
 - Subsequent tests will fail without VCs
 
 ### Step 6: Run DCP Tests

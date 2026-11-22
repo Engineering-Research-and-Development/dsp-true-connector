@@ -101,7 +101,6 @@ The following services are automatically registered and available for injection:
 ### Core Services
 - `HolderService` - Holder-side operations
 - `PresentationService` - Create and manage presentations
-- `PresentationValidationService` - Validate presentations
 - `DcpCredentialService` - Credential management
 - `CredentialIssuanceClient` - Interact with issuers
 - `DcpVerifierClient` - Interact with verifiers
