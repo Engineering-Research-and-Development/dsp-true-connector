@@ -12,6 +12,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.MongoDBContainer;
@@ -24,7 +25,27 @@ import static org.mockito.Mockito.when;
 @SpringBootTest
 @AutoConfigureMockMvc
 @Testcontainers
+@TestPropertySource(properties = {
+        "dcp.admin.users[0].username=" + BaseIssuerIntegrationTest.ADMIN_USERNAME,
+        "dcp.admin.users[0].password=" + BaseIssuerIntegrationTest.ADMIN_PASSWORD_HASH,
+        "dcp.admin.users[0].authorities[0]=DCP_ISSUER_ADMIN",
+        "dcp.admin.users[1].username=" + BaseIssuerIntegrationTest.NON_ADMIN_USERNAME,
+        "dcp.admin.users[1].password={noop}" + BaseIssuerIntegrationTest.NON_ADMIN_PASSWORD,
+        "dcp.admin.users[1].authorities[0]=DCP_ISSUER_AUDITOR"
+})
 public class BaseIssuerIntegrationTest {
+
+    /** Administration user with the {@code DCP_ISSUER_ADMIN} authority. */
+    protected static final String ADMIN_USERNAME = "issuer-admin";
+    /** Plain password of {@link #ADMIN_USERNAME}; test value only. */
+    protected static final String ADMIN_PASSWORD = "issuer-admin-test-password";
+    /** BCrypt hash of {@link #ADMIN_PASSWORD} in DelegatingPasswordEncoder format. */
+    protected static final String ADMIN_PASSWORD_HASH =
+            "{bcrypt}$2a$10$aZXjLqJPPXsBq7zSJRnID.6fAO9oPNoB.fNQf8.XMH8k43qBEOnB6";
+    /** Authenticated user without the {@code DCP_ISSUER_ADMIN} authority. */
+    protected static final String NON_ADMIN_USERNAME = "issuer-auditor";
+    /** Plain password of {@link #NON_ADMIN_USERNAME}; test value only. */
+    protected static final String NON_ADMIN_PASSWORD = "issuer-auditor-test-password";
 
     private static final String HOLDER_KEY_ID = "holder-key-1";
     private static final String ISSUER_KEY_ID = "issuer-key-1";

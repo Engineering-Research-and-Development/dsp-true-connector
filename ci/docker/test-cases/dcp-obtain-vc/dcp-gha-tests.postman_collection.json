@@ -200,11 +200,16 @@
       "name": "connector-a issuer approve",
       "request": {
         "auth": {
-          "type": "bearer",
-          "bearer": [
+          "type": "basic",
+          "basic": [
             {
-              "key": "token",
-              "value": "{{authToken}}",
+              "key": "username",
+              "value": "issuer-admin",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "issuer-admin-ci-password",
               "type": "string"
             }
           ]
@@ -432,11 +437,16 @@
       "name": "connector-b issuer approve",
       "request": {
         "auth": {
-          "type": "bearer",
-          "bearer": [
+          "type": "basic",
+          "basic": [
             {
-              "key": "token",
-              "value": "{{authToken-b}}",
+              "key": "username",
+              "value": "issuer-admin",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "issuer-admin-ci-password",
               "type": "string"
             }
           ]

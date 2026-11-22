@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.Map;
 
 /**
@@ -74,7 +75,7 @@ public class TokenGeneratorAPIController {
      * @param clientId Client identifier
      * @param clientSecret Client secret
      * @param audience Target audience DID
-     * @param bearerAccessScope Requested scopes
+     * @param bearerAccessScope Requested scopes, separated by spaces or commas
      * @return JSON with the generated token
      */
     @PostMapping(value = "/generate/token", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
@@ -92,7 +93,11 @@ public class TokenGeneratorAPIController {
         try {
 //            audience = "did:web:localhost:8080:holder";  // Hardcoded for dummy testing
             // Generate STS-compatible token with nested token claim for dummy testing
-            String token = tokenService.createStsCompatibleToken(audience, config, bearerAccessScope);
+            // Several scopes may be sent separated by spaces or commas; each becomes one access token scope
+            String[] scopes = bearerAccessScope == null ? new String[0]
+                    : Arrays.stream(bearerAccessScope.split("[\\s,]+")).filter(scope -> !scope.isBlank())
+                            .toArray(String[]::new);
+            String token = tokenService.createStsCompatibleToken(audience, config, scopes);
             return ResponseEntity.ok(Map.of(
                 "access_token", token,
                 "token_type", "Bearer",

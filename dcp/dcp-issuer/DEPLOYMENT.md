@@ -86,6 +86,40 @@ issuer.credentials.supported[0].profile=VC11_SL2021_JWT
 issuer.credentials.supported[0].format=jwt_vc
 ```
 
+### Administration API users
+
+The administration API (`/api/issuer/**`: approve, reject, credential revocation, key rotation) uses HTTP Basic. Users come from
+configuration; the password is stored as a hash in Spring Security `DelegatingPasswordEncoder` format
+(`{bcrypt}<hash>`, `{argon2}...`, `{pbkdf2}...`, `{scrypt}...`). Every user that may call the API needs the
+authority `DCP_ISSUER_ADMIN`; an authenticated user without it gets `403`.
+
+```properties
+dcp.admin.users[0].username=issuer-admin
+dcp.admin.users[0].password={bcrypt}$2a$10$<bcrypt hash of the password>
+dcp.admin.users[0].authorities[0]=DCP_ISSUER_ADMIN
+```
+
+The same user through environment variables (in Docker Compose, write every `$` of the hash as `$$`):
+
+```bash
+DCP_ADMIN_USERS_0_USERNAME=issuer-admin
+DCP_ADMIN_USERS_0_PASSWORD='{bcrypt}$2a$10$<bcrypt hash of the password>'
+DCP_ADMIN_USERS_0_AUTHORITIES_0=DCP_ISSUER_ADMIN
+```
+
+Generate the hash with any bcrypt tool, for example `htpasswd -bnBC 10 "" '<password>' | tr -d ':\n'`
+(Spring accepts both the `$2y$` prefix it prints and `$2a$`).
+
+- **No user is configured by default.** Without one, every administration request gets `401` (fail closed)
+  and the Issuer logs a WARN at startup. The DCP protocol endpoints keep working.
+- **Startup fails** when a user has a blank username or password, a username or password with leading or
+  trailing whitespace, a repeated username (case-insensitive), a password that is not in
+  `DelegatingPasswordEncoder` format with a known id, or a malformed `{bcrypt}` hash (for example when Docker
+  Compose removed the `$` signs). The error names the property, never the password.
+- `{noop}<plain password>` and the weak legacy encodings (`{MD4}`, `{MD5}`, `{SHA-1}`, `{SHA-256}`, `{sha256}`,
+  `{ldap}`) are accepted but log a WARN; use them for local tests only, never in production.
+- The Issuer never logs passwords or their hashes. Send the credentials over TLS only (`server.ssl.enabled=true`).
+
 ### Step 3: Configure MongoDB
 
 For production, secure your MongoDB instance:
@@ -221,20 +255,27 @@ docker-compose down
    - Use TLS/SSL connections
    - Restrict network access
 
-3. **Rotate Keys**: Configure automatic key rotation:
+3. **Configure administration users**: add at least one `dcp.admin.users[n]` user with the authority
+   `DCP_ISSUER_ADMIN` and a bcrypt (or stronger) hash, from a secret store rather than a committed file
+   (see [Administration API users](#administration-api-users)). Without one, approve, reject and key
+   rotation are unavailable.
+
+4. **Rotate Keys**: Configure automatic key rotation:
    ```properties
    issuer.keystore.rotation-days=90
    ```
 
-4. **Environment Variables**: Store secrets in environment variables, not properties files:
+5. **Environment Variables**: Store secrets in environment variables, not properties files:
    ```bash
    export ISSUER_KEYSTORE_PASSWORD=secure-password
    export SPRING_DATA_MONGODB_PASSWORD=mongo-password
+   export DCP_ADMIN_USERS_0_PASSWORD='{bcrypt}$2a$10$<bcrypt hash>'
    ```
 
 ### Monitoring
 
-1. **Enable Actuator Endpoints**:
+1. **Enable Actuator Endpoints** (only `/actuator/health` is public; the security filter chain denies every
+   other actuator path, so exposing more endpoints does not make them reachable):
    ```properties
    management.endpoints.web.exposure.include=health,info,metrics
    management.endpoint.health.show-details=always
