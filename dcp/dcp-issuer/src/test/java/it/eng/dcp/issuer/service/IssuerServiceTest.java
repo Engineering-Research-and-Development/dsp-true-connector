@@ -110,18 +110,44 @@ class IssuerServiceTest {
 
     // --- getRequestByIssuerPid ---
     @Test
-    void getRequestByIssuerPid_success() {
+    void getRequestByIssuerPid_owner_returnsRequest() {
         CredentialRequest req = mock(CredentialRequest.class);
+        when(req.getHolderDid()).thenReturn("did:example:holder");
         when(requestRepository.findByIssuerPid("id1")).thenReturn(Optional.of(req));
-        Optional<CredentialRequest> result = issuerService.getRequestByIssuerPid("id1");
+        Optional<CredentialRequest> result = issuerService.getRequestByIssuerPid("id1", "did:example:holder");
         assertTrue(result.isPresent());
         assertSame(req, result.get());
     }
 
     @Test
-    void getRequestByIssuerPid_nullOrBlank_returnsEmpty() {
-        assertTrue(issuerService.getRequestByIssuerPid(null).isEmpty());
-        assertTrue(issuerService.getRequestByIssuerPid("").isEmpty());
+    void getRequestByIssuerPid_otherClient_returnsEmpty() {
+        CredentialRequest req = mock(CredentialRequest.class);
+        when(req.getHolderDid()).thenReturn("did:example:holder");
+        when(requestRepository.findByIssuerPid("id1")).thenReturn(Optional.of(req));
+        assertTrue(issuerService.getRequestByIssuerPid("id1", "did:example:other").isEmpty());
+    }
+
+    @Test
+    void getRequestByIssuerPid_noStoredOwner_returnsEmpty() {
+        CredentialRequest req = mock(CredentialRequest.class);
+        when(req.getHolderDid()).thenReturn(null);
+        when(requestRepository.findByIssuerPid("id1")).thenReturn(Optional.of(req));
+        assertTrue(issuerService.getRequestByIssuerPid("id1", "did:example:holder").isEmpty());
+    }
+
+    @Test
+    void getRequestByIssuerPid_unknownRequest_returnsEmpty() {
+        when(requestRepository.findByIssuerPid("id1")).thenReturn(Optional.empty());
+        assertTrue(issuerService.getRequestByIssuerPid("id1", "did:example:holder").isEmpty());
+    }
+
+    @Test
+    void getRequestByIssuerPid_nullOrBlankArguments_returnsEmpty() {
+        assertTrue(issuerService.getRequestByIssuerPid(null, "did:example:holder").isEmpty());
+        assertTrue(issuerService.getRequestByIssuerPid("", "did:example:holder").isEmpty());
+        assertTrue(issuerService.getRequestByIssuerPid("id1", null).isEmpty());
+        assertTrue(issuerService.getRequestByIssuerPid("id1", " ").isEmpty());
+        verifyNoInteractions(requestRepository);
     }
 
     // --- getMetadata ---
