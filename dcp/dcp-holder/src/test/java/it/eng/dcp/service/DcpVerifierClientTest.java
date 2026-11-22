@@ -10,6 +10,7 @@ import okhttp3.RequestBody;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -23,6 +24,8 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class DcpVerifierClientTest {
+
+    private static final String SI_TOKEN = "verifier-self-issued-id-token";
 
     @Mock
     private SimpleOkHttpRestClient okHttpRestClient;
@@ -50,7 +53,7 @@ class DcpVerifierClientTest {
                 eq(PresentationResponseMessage.class)))
                 .thenReturn(mockResponse);
 
-        var result = client.fetchPresentations("https://holder.example", List.of("SomeType"), null);
+        var result = client.fetchPresentations("https://holder.example", List.of("SomeType"), SI_TOKEN);
         assertNotNull(result);
         assertNotNull(result.getPresentation());
         assertTrue(result.getPresentation().isEmpty());
@@ -73,7 +76,7 @@ class DcpVerifierClientTest {
                 eq(PresentationResponseMessage.class)))
                 .thenThrow(new IOException("401 Unauthorized"));
 
-        assertThrows(RemoteHolderAuthException.class, () -> client.fetchPresentations("https://holder.example", List.of("t"), null));
+        assertThrows(RemoteHolderAuthException.class, () -> client.fetchPresentations("https://holder.example", List.of("t"), SI_TOKEN));
 
         verify(okHttpRestClient, times(1)).executeAndDeserialize(
                 anyString(),
@@ -93,7 +96,7 @@ class DcpVerifierClientTest {
                 eq(PresentationResponseMessage.class)))
                 .thenThrow(new IOException("400 Bad Request"));
 
-        assertThrows(RemoteHolderClientException.class, () -> client.fetchPresentations("https://holder.example", List.of("t"), null));
+        assertThrows(RemoteHolderClientException.class, () -> client.fetchPresentations("https://holder.example", List.of("t"), SI_TOKEN));
 
         verify(okHttpRestClient, times(1)).executeAndDeserialize(
                 anyString(),
@@ -118,7 +121,7 @@ class DcpVerifierClientTest {
                 .thenThrow(new IOException("network error"))
                 .thenReturn(mockResponse);
 
-        var result = client.fetchPresentations("https://holder.example", List.of("SomeType"), null);
+        var result = client.fetchPresentations("https://holder.example", List.of("SomeType"), SI_TOKEN);
         assertNotNull(result);
         assertTrue(result.getPresentation().isEmpty());
 
@@ -131,8 +134,37 @@ class DcpVerifierClientTest {
     }
 
     @Test
+    void fetchPresentations_sendsSelfIssuedIdTokenAsBearer() throws Exception {
+        PresentationResponseMessage mockResponse = PresentationResponseMessage.Builder.newInstance()
+                .presentation(List.of())
+                .build();
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Map<String, String>> headers = ArgumentCaptor.forClass(Map.class);
+        when(okHttpRestClient.executeAndDeserialize(
+                anyString(),
+                eq("POST"),
+                headers.capture(),
+                any(RequestBody.class),
+                eq(PresentationResponseMessage.class)))
+                .thenReturn(mockResponse);
+
+        client.fetchPresentations("https://holder.example", List.of("SomeType"), SI_TOKEN);
+
+        assertEquals("Bearer " + SI_TOKEN, headers.getValue().get("Authorization"));
+    }
+
+    @Test
+    void fetchPresentations_missingSelfIssuedIdToken_throwsIllegalArgumentException() {
+        assertThrows(IllegalArgumentException.class,
+                () -> client.fetchPresentations("https://holder.example", List.of("t"), null));
+        assertThrows(IllegalArgumentException.class,
+                () -> client.fetchPresentations("https://holder.example", List.of("t"), " "));
+        verifyNoInteractions(okHttpRestClient);
+    }
+
+    @Test
     void fetchPresentations_insecureEndpoint_throwsInsecureEndpointException() {
-        assertThrows(InsecureEndpointException.class, () -> client.fetchPresentations("http://insecure.example", List.of("t"), null));
+        assertThrows(InsecureEndpointException.class, () -> client.fetchPresentations("http://insecure.example", List.of("t"), SI_TOKEN));
     }
 
     @Test
@@ -142,12 +174,12 @@ class DcpVerifierClientTest {
                 any(RequestBody.class), eq(PresentationResponseMessage.class)))
                 .thenReturn(mock(PresentationResponseMessage.class));
 
-        assertDoesNotThrow(() -> client.fetchPresentations("http://holder.example", List.of("t"), null));
+        assertDoesNotThrow(() -> client.fetchPresentations("http://holder.example", List.of("t"), SI_TOKEN));
     }
 
     @Test
     void fetchPresentations_nonHttpScheme_rejectedEvenWhenInsecureAllowed() {
         org.springframework.test.util.ReflectionTestUtils.setField(client, "allowInsecureHttp", true);
-        assertThrows(InsecureEndpointException.class, () -> client.fetchPresentations("ftp://holder.example", List.of("t"), null));
+        assertThrows(InsecureEndpointException.class, () -> client.fetchPresentations("ftp://holder.example", List.of("t"), SI_TOKEN));
     }
 }

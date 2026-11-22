@@ -18,6 +18,7 @@ import it.eng.dcp.holder.repository.CredentialStatusRepository;
 import it.eng.dcp.holder.repository.VerifiableCredentialRepository;
 import it.eng.dcp.holder.service.CredentialIssuanceClient;
 import it.eng.dcp.holder.service.HolderService;
+import it.eng.dcp.holder.service.PresentationQueryAuthorization;
 import it.eng.dcp.holder.service.PresentationRateLimiter;
 import it.eng.dcp.holder.service.PresentationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -84,28 +85,107 @@ class HolderServiceTest {
     }
 
     @Test
-    void authorizePresentationQuery_validToken_success() {
-        // Arrange
-        String bearerToken = "valid-token";
+    void authorizePresentationQuery_validTokens_success() {
+        // Arrange: the Verifier's Self-Issued ID Token carries the holder-issued access token
+        String bearerToken = "verifier-id-token";
+        String verifierDid = "did:example:verifier";
         String holderDid = "did:example:holder123";
 
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+        JWTClaimsSet idTokenClaims = new JWTClaimsSet.Builder()
+                .issuer(verifierDid)
+                .subject(verifierDid)
+                .claim("token", "access-token")
+                .build();
+        JWTClaimsSet accessTokenClaims = new JWTClaimsSet.Builder()
+                .issuer(holderDid)
                 .subject(holderDid)
+                .audience(verifierDid)
+                .claim("scope", List.of("MembershipCredential"))
                 .build();
 
-        when(tokenService.validateToken(bearerToken)).thenReturn(claims);
+        when(tokenService.validateToken(bearerToken)).thenReturn(idTokenClaims);
+        when(tokenService.validateAccessToken("access-token", verifierDid)).thenReturn(accessTokenClaims);
 
         // Act
-        JWTClaimsSet result = holderService.authorizePresentationQuery(bearerToken);
+        PresentationQueryAuthorization result = holderService.authorizePresentationQuery(bearerToken);
 
         // Assert
-        assertNotNull(result);
-        assertEquals(holderDid, result.getSubject());
+        assertEquals(verifierDid, result.verifierDid());
+        assertEquals(holderDid, result.holderDid());
+        assertSame(accessTokenClaims, result.accessTokenClaims());
         verify(tokenService).validateToken(bearerToken);
+        verify(tokenService).validateAccessToken("access-token", verifierDid);
 
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
         assertEquals(DcpAuditEventType.PRESENTATION_QUERY_RECEIVED, typeCaptor.getValue());
+    }
+
+    @Test
+    @DisplayName("A Self-Issued ID Token without an access token in 'token' is rejected (DCP v1.0.1 §5.3.1)")
+    void authorizePresentationQuery_missingAccessToken_throwsSecurityException() {
+        JWTClaimsSet idTokenClaims = new JWTClaimsSet.Builder()
+                .issuer("did:example:verifier")
+                .subject("did:example:verifier")
+                .build();
+        when(tokenService.validateToken("verifier-id-token")).thenReturn(idTokenClaims);
+
+        SecurityException exception = assertThrows(SecurityException.class,
+                () -> holderService.authorizePresentationQuery("verifier-id-token"));
+
+        assertTrue(exception.getMessage().contains("no access token"));
+        verify(tokenService, never()).validateAccessToken(any(), any());
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.TOKEN_VALIDATION_FAILED, typeCaptor.getValue());
+    }
+
+    @Test
+    void authorizePresentationQuery_blankAccessToken_throwsSecurityException() {
+        JWTClaimsSet idTokenClaims = new JWTClaimsSet.Builder()
+                .subject("did:example:verifier")
+                .claim("token", " ")
+                .build();
+        when(tokenService.validateToken("verifier-id-token")).thenReturn(idTokenClaims);
+
+        assertThrows(SecurityException.class, () -> holderService.authorizePresentationQuery("verifier-id-token"));
+        verify(tokenService, never()).validateAccessToken(any(), any());
+    }
+
+    @Test
+    void authorizePresentationQuery_nonStringAccessToken_throwsSecurityException() {
+        JWTClaimsSet idTokenClaims = new JWTClaimsSet.Builder()
+                .subject("did:example:verifier")
+                .claim("token", List.of("not", "a", "string"))
+                .build();
+        when(tokenService.validateToken("verifier-id-token")).thenReturn(idTokenClaims);
+
+        assertThrows(SecurityException.class, () -> holderService.authorizePresentationQuery("verifier-id-token"));
+        verify(tokenService, never()).validateAccessToken(any(), any());
+    }
+
+    @Test
+    @DisplayName("A foreign or misbound access token is rejected")
+    void authorizePresentationQuery_invalidAccessToken_throwsSecurityException() {
+        JWTClaimsSet idTokenClaims = new JWTClaimsSet.Builder()
+                .subject("did:example:verifier")
+                .claim("token", "foreign-access-token")
+                .build();
+        when(tokenService.validateToken("verifier-id-token")).thenReturn(idTokenClaims);
+        when(tokenService.validateAccessToken("foreign-access-token", "did:example:verifier"))
+                .thenThrow(new SecurityException("Access token was not issued by this Credential Service's holder"));
+
+        assertThrows(SecurityException.class, () -> holderService.authorizePresentationQuery("verifier-id-token"));
+        verify(auditPublisher, never()).publishEvent(eq(DcpAuditEventType.PRESENTATION_QUERY_RECEIVED),
+                any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void authorizePresentationQuery_invalidIdToken_throwsSecurityException() {
+        when(tokenService.validateToken("bad-token")).thenThrow(new SecurityException("aud claim must match verifier DID"));
+
+        assertThrows(SecurityException.class, () -> holderService.authorizePresentationQuery("bad-token"));
+        verify(tokenService, never()).validateAccessToken(any(), any());
     }
 
     @Test
@@ -173,18 +253,21 @@ class HolderServiceTest {
 
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .subject(holderDid)
+                .claim("scope", List.of("MembershipCredential"))
                 .build();
+        PresentationQueryAuthorization authorization =
+                new PresentationQueryAuthorization("did:example:verifier", holderDid, claims);
 
-        when(presentationService.createPresentation(query, claims)).thenReturn(expectedResponse);
+        when(presentationService.createPresentation(query, holderDid, claims)).thenReturn(expectedResponse);
         when(query.getScope()).thenReturn(List.of("MembershipCredential"));
 
         // Act
-        PresentationResponseMessage result = holderService.createPresentation(query, holderDid, claims);
+        PresentationResponseMessage result = holderService.createPresentation(query, authorization);
 
         // Assert
         assertNotNull(result);
         assertEquals(expectedResponse, result);
-        verify(presentationService).createPresentation(query, claims);
+        verify(presentationService).createPresentation(query, holderDid, claims);
 
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
@@ -538,14 +621,15 @@ class HolderServiceTest {
                 .credentialsSupported(List.of(fullCredential))
                 .build();
 
-        when(issuanceClient.getIssuerMetadata("https://issuer.example.com/metadata")).thenReturn(metadata);
+        when(issuerTrustService.isTrustedIssuer("did:web:issuer.example.com")).thenReturn(true);
+        when(issuanceClient.getIssuerMetadataOf("did:web:issuer.example.com")).thenReturn(metadata);
 
         // Act
         boolean result = holderService.processCredentialOffer(offer);
 
         // Assert
         assertTrue(result);
-        verify(issuanceClient).getIssuerMetadata("https://issuer.example.com/metadata");
+        verify(issuanceClient).getIssuerMetadataOf("did:web:issuer.example.com");
     }
 
     @Test
@@ -572,7 +656,8 @@ class HolderServiceTest {
                 .credentialsSupported(List.of(fullCredential))
                 .build();
 
-        when(issuanceClient.getIssuerMetadata("https://issuer.example.com/metadata")).thenReturn(metadata);
+        when(issuerTrustService.isTrustedIssuer("did:web:issuer.example.com")).thenReturn(true);
+        when(issuanceClient.getIssuerMetadataOf("did:web:issuer.example.com")).thenReturn(metadata);
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
@@ -592,7 +677,8 @@ class HolderServiceTest {
         when(offer.getIssuer()).thenReturn("did:web:issuer.example.com");
         when(offer.getCredentialObjects()).thenReturn(List.of(sparseCredential));
 
-        when(issuanceClient.getIssuerMetadata("https://issuer.example.com/metadata"))
+        when(issuerTrustService.isTrustedIssuer("did:web:issuer.example.com")).thenReturn(true);
+        when(issuanceClient.getIssuerMetadataOf("did:web:issuer.example.com"))
             .thenThrow(new RuntimeException("Network error"));
 
         // Act & Assert
@@ -632,14 +718,15 @@ class HolderServiceTest {
                 .credentialsSupported(List.of(metadataCredential))
                 .build();
 
-        when(issuanceClient.getIssuerMetadata("https://issuer.example.com/metadata")).thenReturn(metadata);
+        when(issuerTrustService.isTrustedIssuer("did:web:issuer.example.com")).thenReturn(true);
+        when(issuanceClient.getIssuerMetadataOf("did:web:issuer.example.com")).thenReturn(metadata);
 
         // Act
         boolean result = holderService.processCredentialOffer(offer);
 
         // Assert
         assertTrue(result);
-        verify(issuanceClient).getIssuerMetadata("https://issuer.example.com/metadata");
+        verify(issuanceClient).getIssuerMetadataOf("did:web:issuer.example.com");
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────

@@ -220,8 +220,6 @@ public class ConnectorSecurityConfig {
                             .requestMatchers(ApiEndpoints.PROPERTIES_V1 + "/**").hasRole(Role.SUPER_ADMIN.name())
                             .requestMatchers(ApiEndpoints.DASHBOARD_V1 + "/**")
                             .hasAnyRole(Role.ADMIN.name(),Role.SUPER_ADMIN.name())
-                            // DCP dev token generator (dcp-holder TokenGeneratorAPIController)
-                            .requestMatchers("/api/dev/token/**").permitAll()
                             .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         } else {
@@ -245,7 +243,6 @@ public class ConnectorSecurityConfig {
                             .requestMatchers(ApiEndpoints.DASHBOARD_V1 + "/**")
                             .hasAnyRole(Role.ADMIN.name(),Role.SUPER_ADMIN.name())
                             .requestMatchers(ApiEndpoints.AUTH_V1 + "/**").permitAll()
-                            .requestMatchers("/api/dev/token/**").permitAll()
                             .anyRequest().hasAnyRole(Role.ADMIN.name(), Role.SUPER_ADMIN.name()))
                     .exceptionHandling(ex -> ex.authenticationEntryPoint(authEntryPoint));
         }

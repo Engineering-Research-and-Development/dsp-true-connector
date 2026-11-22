@@ -71,7 +71,7 @@ Want to get started quickly? We have a comprehensive guide to get you up and run
 │                                         │
 │  Public:  /.well-known/did.json         │
 │  API:     /issuer/*                     │
-│  Admin:   /issuer/admin/*               │
+│  Admin:   /api/issuer/* (HTTP Basic)    │
 └─────────────────────────────────────────┘
             │
             ▼
@@ -106,7 +106,8 @@ This DCP issuer can be deployed in various dataspace scenarios:
 
 - **Separate Identity**: Dedicated DID and keystore (not shared with holder)
 - **Key Rotation**: Automated rotation every 90 days (configurable)
-- **Authentication**: Bearer token validation for all protected endpoints
+- **Authentication**: Bearer token (Self-Issued ID Token) validation on the DCP protocol endpoints
+- **Administration API**: `/api/issuer/**` requires HTTP Basic and the authority `DCP_ISSUER_ADMIN`; no admin user is configured by default, so it is closed until one is added (see [Deployment Guide](DEPLOYMENT.md#administration-api-users))
 - **Cryptography**: ES256 (ECDSA P-256 + SHA-256) for signing
 - **Database Isolation**: Separate MongoDB database
 
