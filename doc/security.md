@@ -882,6 +882,15 @@ application.auth.provider=DISABLED
 
 ---
 
+## DCP Transport Security
+
+DCP endpoints must use HTTPS (DCP v1.0.1, Transport Security). `dcp.allow-insecure-http` (default
+`false`) is a development switch: when `true`, `http` is accepted for DID resolution, advertised
+endpoints and discovered endpoints, and a startup warning is logged. With the default, `http`
+`dcp.base-url` or `issuer-location` values stop the application at startup, DID documents are fetched
+over https, and discovered `IssuerService` / `CredentialService` endpoints and holder presentation
+endpoints that are not `https` are refused. See `dcp/CONFIGURATION_PROPERTIES.md`.
+
 ## DCP Authentication (Future — Stub)
 
 When `application.auth.dcp.enabled=true`, the protocol filter chain replaces the provider's

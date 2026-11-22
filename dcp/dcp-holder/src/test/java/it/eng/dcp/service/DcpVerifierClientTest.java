@@ -2,7 +2,7 @@ package it.eng.dcp.service;
 
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.model.PresentationResponseMessage;
-import it.eng.dcp.holder.exception.InsecureEndpointException;
+import it.eng.dcp.common.exception.InsecureEndpointException;
 import it.eng.dcp.holder.exception.RemoteHolderAuthException;
 import it.eng.dcp.holder.exception.RemoteHolderClientException;
 import it.eng.dcp.holder.service.DcpVerifierClient;
@@ -165,5 +165,21 @@ class DcpVerifierClientTest {
     @Test
     void fetchPresentations_insecureEndpoint_throwsInsecureEndpointException() {
         assertThrows(InsecureEndpointException.class, () -> client.fetchPresentations("http://insecure.example", List.of("t"), SI_TOKEN));
+    }
+
+    @Test
+    void fetchPresentations_insecureEndpointAllowed_doesNotRejectHttp() throws Exception {
+        org.springframework.test.util.ReflectionTestUtils.setField(client, "allowInsecureHttp", true);
+        when(okHttpRestClient.executeAndDeserialize(anyString(), eq("POST"), any(Map.class),
+                any(RequestBody.class), eq(PresentationResponseMessage.class)))
+                .thenReturn(mock(PresentationResponseMessage.class));
+
+        assertDoesNotThrow(() -> client.fetchPresentations("http://holder.example", List.of("t"), SI_TOKEN));
+    }
+
+    @Test
+    void fetchPresentations_nonHttpScheme_rejectedEvenWhenInsecureAllowed() {
+        org.springframework.test.util.ReflectionTestUtils.setField(client, "allowInsecureHttp", true);
+        assertThrows(InsecureEndpointException.class, () -> client.fetchPresentations("ftp://holder.example", List.of("t"), SI_TOKEN));
     }
 }

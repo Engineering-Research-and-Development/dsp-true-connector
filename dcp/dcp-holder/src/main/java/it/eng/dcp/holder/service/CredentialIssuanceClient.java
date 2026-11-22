@@ -1,6 +1,7 @@
 package it.eng.dcp.holder.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.util.DcpTransportSecurity;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.config.DidDocumentConfig;
@@ -46,6 +47,9 @@ public class CredentialIssuanceClient {
     private final DidResolverService didResolverService;
     private final DcpAuditEventPublisher auditPublisher;
 
+    @Value("${dcp.allow-insecure-http:false}")
+    private boolean allowInsecureHttp;
+
     @Value("${dcp.issuer.location:}")
     private String issuerDid;
 
@@ -87,6 +91,7 @@ public class CredentialIssuanceClient {
      * @return service endpoint URL (e.g., {@code https://issuer.example.com})
      * @throws IssuerServiceNotFoundException if IssuerService entry not found in DID document
      * @throws IllegalStateException if {@code dcp.issuer.location} is not a DID
+     * @throws it.eng.dcp.common.exception.InsecureEndpointException if the endpoint is not HTTPS and insecure HTTP is not allowed
      * @throws RuntimeException if failed to fetch DID document
      */
     public String discoverIssuerService() {
@@ -104,6 +109,7 @@ public class CredentialIssuanceClient {
      * @return service endpoint URL (e.g., {@code https://issuer.example.com})
      * @throws IllegalArgumentException if targetIssuerDid is null or blank
      * @throws IssuerServiceNotFoundException if IssuerService entry not found in DID document
+     * @throws it.eng.dcp.common.exception.InsecureEndpointException if the endpoint is not HTTPS and insecure HTTP is not allowed
      * @throws RuntimeException if failed to fetch DID document
      */
     public String discoverIssuerService(String targetIssuerDid) {
@@ -119,11 +125,13 @@ public class CredentialIssuanceClient {
         }
 
         if (didDocument != null && didDocument.getServices() != null) {
-            return didDocument.getServices().stream()
+            String endpoint = didDocument.getServices().stream()
                     .filter(service -> "IssuerService".equals(service.type()))
                     .findFirst()
                     .map(ServiceEntry::serviceEndpoint)
                     .orElseThrow(() -> new IssuerServiceNotFoundException("IssuerService entry not found in DID document for issuer: " + targetIssuerDid));
+            DcpTransportSecurity.requireSecure(endpoint, "IssuerService endpoint of " + targetIssuerDid, allowInsecureHttp);
+            return endpoint;
         }
 
         throw new IssuerServiceNotFoundException("IssuerService entry not found in DID document for issuer: " + targetIssuerDid);

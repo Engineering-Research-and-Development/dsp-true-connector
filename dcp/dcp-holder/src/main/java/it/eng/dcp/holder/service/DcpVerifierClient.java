@@ -5,7 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.PresentationResponseMessage;
-import it.eng.dcp.holder.exception.InsecureEndpointException;
+import it.eng.dcp.common.exception.InsecureEndpointException;
+import it.eng.dcp.common.util.DcpTransportSecurity;
 import it.eng.dcp.holder.exception.RemoteHolderAuthException;
 import it.eng.dcp.holder.exception.RemoteHolderClientException;
 import lombok.extern.slf4j.Slf4j;
@@ -13,11 +14,10 @@ import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +35,9 @@ public class DcpVerifierClient {
 
     private final SimpleOkHttpRestClient httpClient;
     private final ObjectMapper mapper;
+
+    @Value("${dcp.allow-insecure-http:false}")
+    private boolean allowInsecureHttp;
 
     @Autowired
     public DcpVerifierClient(SimpleOkHttpRestClient httpClient, ObjectMapper mapper) {
@@ -84,23 +87,13 @@ public class DcpVerifierClient {
     }
 
     /**
-     * Validates that the endpoint uses HTTPS protocol.
+     * Validates that the endpoint uses HTTPS (or HTTP when {@code dcp.allow-insecure-http} is set).
      *
      * @param holderBase the base URL to validate
-     * @throws InsecureEndpointException if the endpoint is not HTTPS
+     * @throws InsecureEndpointException if the endpoint is not allowed
      */
     private void validateSecureEndpoint(String holderBase) {
-        try {
-            URI uri = new URI(holderBase);
-            if (!"https".equalsIgnoreCase(uri.getScheme())) {
-                throw new InsecureEndpointException("Insecure holder endpoint: " + holderBase);
-            }
-        } catch (URISyntaxException e) {
-            // Allow non-absolute URIs, but still require https prefix
-            if (!holderBase.toLowerCase().startsWith("https://")) {
-                throw new InsecureEndpointException("Insecure or invalid holder endpoint: " + holderBase);
-            }
-        }
+        DcpTransportSecurity.requireSecure(holderBase, "holder endpoint", allowInsecureHttp);
     }
 
     /**

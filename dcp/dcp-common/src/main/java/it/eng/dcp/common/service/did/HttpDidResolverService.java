@@ -6,6 +6,7 @@ import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.VerificationMethod;
+import it.eng.dcp.common.util.DcpTransportSecurity;
 import it.eng.dcp.common.util.DidUrlConverter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -96,6 +97,9 @@ public class HttpDidResolverService implements DidResolverService {
 
     @Value("${server.ssl.enabled:false}")
     private boolean sslEnabled;
+
+    @Value("${dcp.allow-insecure-http:false}")
+    private boolean allowInsecureHttp;
 
     /**
      * {@inheritDoc}
@@ -300,7 +304,8 @@ public class HttpDidResolverService implements DidResolverService {
      * @return the DID document URL
      */
     private String didDocumentUrl(String did) {
-        String url = DidUrlConverter.convertDidToUrl(did, sslEnabled);
+        String url = DidUrlConverter.convertDidToUrl(did,
+                DcpTransportSecurity.scheme(allowInsecureHttp, sslEnabled).equals("https"));
         return DidUrlConverter.extractBaseUrl(url) + "/.well-known/did.json";
     }
 

@@ -20,13 +20,16 @@ import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.HttpDidResolverService;
 import it.eng.dcp.common.service.did.ResolvedVerificationMethod;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
+import it.eng.dcp.common.util.DcpTransportSecurity;
 import it.eng.dcp.common.util.DidUrlConverter;
+import it.eng.dcp.common.exception.InsecureEndpointException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -80,6 +83,9 @@ public class VerifierService {
     private final DidDocumentConfig didConfig;
     private final IssuerTrustService issuerTrustService;
     private final DcpAuditEventPublisher auditPublisher;
+
+    @Value("${dcp.allow-insecure-http:false}")
+    private boolean allowInsecureHttp;
 
     /**
      * Constructor with explicit verifier configuration injection.
@@ -247,6 +253,12 @@ public class VerifierService {
             if (CREDENTIAL_SERVICE_TYPE.equals(service.type())) {
                 String endpoint = service.serviceEndpoint();
                 log.debug("Found holder credential service endpoint: {}", endpoint);
+                try {
+                    DcpTransportSecurity.requireSecure(endpoint,
+                            "CredentialService endpoint of " + holderDid, allowInsecureHttp);
+                } catch (InsecureEndpointException e) {
+                    throw new DidResolutionException(e.getMessage(), e);
+                }
                 return endpoint;
             }
         }
