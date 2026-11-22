@@ -88,7 +88,7 @@ issuer.credentials.supported[0].format=jwt_vc
 
 ### Administration API users
 
-The administration API (`/api/issuer/**`: approve, reject, key rotation) uses HTTP Basic. Users come from
+The administration API (`/api/issuer/**`: approve, reject, credential revocation, key rotation) uses HTTP Basic. Users come from
 configuration; the password is stored as a hash in Spring Security `DelegatingPasswordEncoder` format
 (`{bcrypt}<hash>`, `{argon2}...`, `{pbkdf2}...`, `{scrypt}...`). Every user that may call the API needs the
 authority `DCP_ISSUER_ADMIN`; an authenticated user without it gets `403`.

@@ -223,7 +223,7 @@ public class CredentialUtils {
 	 */
 	private String[] parseScopes(String vpScope) {
 		if (vpScope == null || vpScope.trim().isEmpty()) {
-			log.debug("No scopes configured - token will grant access to all presentations");
+			log.debug("No scopes configured - the access token will authorize no credentials");
 			return new String[0];
 		}
 

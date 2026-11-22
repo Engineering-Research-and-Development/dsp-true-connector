@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,8 @@ import java.util.UUID;
 public class HolderService {
 
     private static final String HOLDER_SOURCE = "holder";
+
+    private static final String TOKEN_CLAIM = "token";
 
     private final SelfIssuedIdTokenService tokenService;
     private final PresentationService presentationService;
@@ -67,73 +70,101 @@ public class HolderService {
     }
 
     /**
-     * Authorize a presentation query request by validating the bearer token.
+     * Authorize a presentation query request (DCP v1.0.1 §5.1 step 7, §5.3.1).
+     *
+     * <p>Validates the bearer token as the Verifier's Self-Issued ID Token ({@code aud} = this participant's
+     * DID, signature against the Verifier's DID document, {@code jti} replay check), then validates the access
+     * token in its {@code token} claim: issued by this Credential Service's holder and bound to that Verifier
+     * ({@code aud} = the Self-Issued ID Token {@code sub}).
      *
      * @param bearerToken The bearer token from Authorization header (without "Bearer " prefix)
-     * @return JWTClaimsSet if valid
-     * @throws SecurityException if token is invalid
+     * @return the Verifier DID, the holder DID and the validated access token claims
+     * @throws SecurityException if either token is missing or invalid
      */
-    public JWTClaimsSet authorizePresentationQuery(String bearerToken) throws SecurityException {
+    public PresentationQueryAuthorization authorizePresentationQuery(String bearerToken) throws SecurityException {
         if (bearerToken == null || bearerToken.isBlank()) {
-            auditPublisher.publishEvent(
-                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
-                    "Presentation query authorization failed: bearer token is missing",
-                    HOLDER_SOURCE,
-                    null, null, null, null,
-                    Map.of("reason", "Bearer token is required"));
-            throw new SecurityException("Bearer token is required");
+            throw presentationQueryRejected("Bearer token is required");
         }
 
-        log.debug("Validating bearer token for presentation query");
-        JWTClaimsSet claims = tokenService.validateToken(bearerToken);
-        String holderDid = claims.getSubject();
+        log.debug("Validating the Verifier's Self-Issued ID Token for presentation query");
+        JWTClaimsSet idTokenClaims = tokenService.validateToken(bearerToken);
+        String verifierDid = idTokenClaims.getSubject();
+
+        String accessToken;
+        try {
+            accessToken = idTokenClaims.getStringClaim(TOKEN_CLAIM);
+        } catch (ParseException e) {
+            throw presentationQueryRejected("Self-Issued ID Token 'token' claim is not a string");
+        }
+        if (accessToken == null || accessToken.isBlank()) {
+            throw presentationQueryRejected("Self-Issued ID Token carries no access token in its 'token' claim");
+        }
+
+        JWTClaimsSet accessTokenClaims = tokenService.validateAccessToken(accessToken, verifierDid);
+        String holderDid = accessTokenClaims.getSubject();
         auditPublisher.publishEvent(
                 DcpAuditEventType.PRESENTATION_QUERY_RECEIVED,
-                "Presentation query received from verifier for holder: " + holderDid,
+                "Presentation query received from verifier: " + verifierDid,
                 HOLDER_SOURCE,
                 holderDid, null, null, null,
-                Map.of("holderDid", holderDid != null ? holderDid : ""));
-        return claims;
+                Map.of("holderDid", holderDid, "verifierDid", verifierDid));
+        return new PresentationQueryAuthorization(verifierDid, holderDid, accessTokenClaims);
     }
 
     /**
-     * Check rate limit for a holder.
+     * Audits a rejected presentation query and creates the exception to throw.
      *
-     * @param holderDid The holder's DID
+     * @param reason the rejection reason
+     * @return the exception to throw
+     */
+    private SecurityException presentationQueryRejected(String reason) {
+        auditPublisher.publishEvent(
+                DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                "Presentation query authorization failed: " + reason,
+                HOLDER_SOURCE,
+                null, null, null, null,
+                Map.of("reason", reason));
+        return new SecurityException(reason);
+    }
+
+    /**
+     * Check the presentation query rate limit for a caller.
+     *
+     * @param callerDid The DID of the querying party (the Verifier)
      * @return true if request is allowed, false if rate limit exceeded
      */
-    public boolean checkRateLimit(String holderDid) {
-        boolean allowed = rateLimiter.tryConsume(holderDid);
+    public boolean checkRateLimit(String callerDid) {
+        boolean allowed = rateLimiter.tryConsume(callerDid);
         if (!allowed) {
-            log.warn("Presentation query rate limit exceeded for holder: {}", holderDid);
+            log.warn("Presentation query rate limit exceeded for caller: {}", callerDid);
         }
         return allowed;
     }
 
     /**
-     * Create a presentation response for a query with scope enforcement.
+     * Create a presentation response for an authorized query.
      *
-     * <p>Per DCP Protocol v1.0 Section 5.1, the access token scopes define which
-     * credentials the verifier is authorized to access. The verifier's requested
-     * scopes must be validated against the authorized scopes from the access token.
+     * <p>Per DCP v1.0.1 §5.3.1 and §5.4.1.2, the authorized scopes come only from the validated access
+     * token, and only credentials of the holder that owns this Credential Service are returned.
      *
      * @param query The presentation query message containing requested scopes
-     * @param holderDid The holder's DID for logging
-     * @param accessTokenClaims The validated access token claims containing authorized scopes
+     * @param authorization The result of {@link #authorizePresentationQuery(String)}
      * @return PresentationResponseMessage with only authorized credentials
      */
-    public PresentationResponseMessage createPresentation(PresentationQueryMessage query, String holderDid,
-                                                          JWTClaimsSet accessTokenClaims) {
-        log.info("Creating presentation response with scope enforcement for holder: {}", holderDid);
-        PresentationResponseMessage response = presentationService.createPresentation(query, accessTokenClaims);
-        log.info("Successfully created presentation response for holder: {}", holderDid);
+    public PresentationResponseMessage createPresentation(PresentationQueryMessage query,
+                                                          PresentationQueryAuthorization authorization) {
+        String holderDid = authorization.holderDid();
+        log.info("Creating presentation response for verifier {} from holder {}",
+                authorization.verifierDid(), holderDid);
+        PresentationResponseMessage response = presentationService.createPresentation(
+                query, holderDid, authorization.accessTokenClaims());
         List<String> scopes = query.getScope() != null ? query.getScope() : List.of();
         auditPublisher.publishEvent(
                 DcpAuditEventType.PRESENTATION_CREATED,
                 "Verifiable Presentation created for holder: " + holderDid,
                 HOLDER_SOURCE,
                 holderDid, null, scopes, null,
-                Map.of("scopes", scopes));
+                Map.of("scopes", scopes, "verifierDid", authorization.verifierDid()));
         return response;
     }
 
