@@ -67,6 +67,29 @@ class DcpVerifierClientTest {
     }
 
     @Test
+    void fetchPresentations_qualifiesRequiredTypesInScope() throws Exception {
+        when(okHttpRestClient.executeAndDeserialize(anyString(), eq("POST"), any(Map.class), any(RequestBody.class),
+                eq(PresentationResponseMessage.class)))
+                .thenReturn(PresentationResponseMessage.Builder.newInstance().presentation(List.of()).build());
+
+        client.fetchPresentations("https://holder.example",
+                List.of("MembershipCredential", "org.eclipse.dspace.dcp.vc.type:Other",
+                        "org.eclipse.dspace.dcp.vc.id:urn:uuid:1"), SI_TOKEN);
+
+        org.mockito.ArgumentCaptor<RequestBody> body = org.mockito.ArgumentCaptor.forClass(RequestBody.class);
+        verify(okHttpRestClient).executeAndDeserialize(anyString(), eq("POST"), any(Map.class), body.capture(),
+                eq(PresentationResponseMessage.class));
+        okio.Buffer buffer = new okio.Buffer();
+        body.getValue().writeTo(buffer);
+        com.fasterxml.jackson.databind.JsonNode scope = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readTree(buffer.readUtf8()).get("scope");
+        assertEquals(3, scope.size());
+        assertEquals("org.eclipse.dspace.dcp.vc.type:MembershipCredential", scope.get(0).asText());
+        assertEquals("org.eclipse.dspace.dcp.vc.type:Other", scope.get(1).asText());
+        assertEquals("org.eclipse.dspace.dcp.vc.id:urn:uuid:1", scope.get(2).asText());
+    }
+
+    @Test
     void fetchPresentations_unauthorized_throwsRemoteHolderAuthException() throws Exception {
         when(okHttpRestClient.executeAndDeserialize(
                 anyString(),

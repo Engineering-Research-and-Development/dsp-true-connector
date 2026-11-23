@@ -5,6 +5,7 @@ import it.eng.dcp.common.model.DCPConstants;
 import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.model.ProfileId;
+import it.eng.dcp.common.util.DcpScope;
 import it.eng.dcp.common.util.DidUrlConverter;
 import it.eng.dcp.holder.model.VerifiableCredential;
 import it.eng.dcp.holder.model.VerifiablePresentation;
@@ -62,7 +63,7 @@ public class PresentationService {
      * <ul>
      *   <li>org.eclipse.dspace.dcp.vc.type:MembershipCredential - access by credential type</li>
      *   <li>org.eclipse.dspace.dcp.vc.id:uuid - access by credential ID</li>
-     *   <li>MembershipCredential - simple format (backward compatibility)</li>
+     *   <li>MembershipCredential - unqualified format (deprecated, accepted with a warning)</li>
      * </ul>
      *
      * @param query the presentation query message containing requested scope
@@ -75,6 +76,8 @@ public class PresentationService {
                                                            JWTClaimsSet accessTokenClaims) {
         List<String> authorizedScopes = extractScopesFromClaims(accessTokenClaims);
         List<String> requestedScopes = query.getScope();
+        warnOnUnqualifiedScopes(requestedScopes);
+        warnOnUnqualifiedScopes(authorizedScopes);
 
         List<String> effectiveScopes = determineEffectiveScopes(requestedScopes, authorizedScopes);
 
@@ -261,7 +264,7 @@ public class PresentationService {
      * <p>This implementation uses <b>generic parsing</b> to support:
      * <ul>
      *   <li><b>Any alias format:</b> prefix:discriminator → extracts discriminator</li>
-     *   <li><b>Simple format:</b> credential → returns as-is (backward compatibility)</li>
+     *   <li><b>Unqualified format:</b> credential → returned as-is (deprecated; a warning is logged by the caller)</li>
      * </ul>
      *
      * <p>Examples:
@@ -320,76 +323,26 @@ public class PresentationService {
      * @return ParsedScope object containing alias type, base discriminator, and optional action
      */
     private ParsedScope parseScope(String scope) {
-        if (scope == null || scope.isBlank()) {
-            return new ParsedScope(false, "", null);
-        }
-
-        // Check if scope contains colon (aliased format)
-        int firstColon = scope.indexOf(':');
-        if (firstColon == -1) {
-            // Simple format (no alias) - treat as type query
-            return new ParsedScope(false, scope, null);
-        }
-
-        // Extract alias and discriminator
-        String alias = scope.substring(0, firstColon);
-        String discriminator = scope.substring(firstColon + 1);
-
-        // Check if this is an ID alias
-        boolean isIdAlias = DCPConstants.SCOPE_ALIAS_VC_ID.equals(alias);
-
-        // Extract action suffix if present
-        String action = extractActionSuffix(discriminator);
-        String baseDiscriminator = action != null ? stripActionSuffix(discriminator) : discriminator;
-
-        return new ParsedScope(isIdAlias, baseDiscriminator, action);
+        DcpScope parsed = DcpScope.parse(scope);
+        return new ParsedScope(parsed.isIdAlias(), parsed.discriminator(), parsed.action());
     }
 
     /**
-     * Extract action suffix from a discriminator if present.
+     * Logs a deprecation warning once per unqualified scope (for example {@code MembershipCredential}).
+     * Unqualified scopes are still accepted and read as type scopes.
      *
-     * @param discriminator The discriminator that may have an action suffix
-     * @return The action suffix (e.g., "read", "write") or null if not present
+     * @param scopes the scopes to check, may be null
      */
-    private String extractActionSuffix(String discriminator) {
-        if (discriminator == null || discriminator.isBlank()) {
-            return null;
+    private void warnOnUnqualifiedScopes(List<String> scopes) {
+        if (scopes == null) {
+            return;
         }
-
-        // Common action suffixes (for downstream policy evaluation)
-        String[] actionSuffixes = {":read", ":write", ":delete", ":admin", ":execute"};
-
-        for (String suffix : actionSuffixes) {
-            if (discriminator.endsWith(suffix)) {
-                return suffix.substring(1); // Remove leading colon
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Strip action suffix from a discriminator.
-     * Used to get the base type/id for repository queries.
-     *
-     * @param discriminator The discriminator with action suffix
-     * @return The discriminator without action suffix
-     */
-    private String stripActionSuffix(String discriminator) {
-        if (discriminator == null || discriminator.isBlank()) {
-            return discriminator;
-        }
-
-        // Common action suffixes
-        String[] actionSuffixes = {":read", ":write", ":delete", ":admin", ":execute"};
-
-        for (String suffix : actionSuffixes) {
-            if (discriminator.endsWith(suffix)) {
-                return discriminator.substring(0, discriminator.length() - suffix.length());
-            }
-        }
-
-        return discriminator;
+        scopes.stream()
+                .filter(scope -> scope != null && !scope.isBlank())
+                .filter(scope -> DcpScope.parse(scope).isUnqualified())
+                .distinct()
+                .forEach(scope -> log.warn("Deprecated unqualified scope '{}' accepted as a credential type; "
+                        + "use '{}' (DCP section 5.4.1.2)", scope, DcpScope.qualifyType(scope)));
     }
 
     /**

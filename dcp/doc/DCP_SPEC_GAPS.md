@@ -47,7 +47,7 @@ Each item below was re-checked against the code after merging `develop` (Keycloa
 | Review: correctness | `CredentialMessage` optional fields required | **Done** (PR #433) | `credentials` and `holderPid` are optional; the `"No type"` placeholder is no longer added on rejection. |
 | Multitenancy | All 9 items | Open | No `tenantId` / `TenantContextHolder` in any `dcp` module; fixed `/dcp` and `/issuer` routes; resolver still drops the DID path. |
 | Multitenancy | Participant context design (ADR) | **Done** (PR #450) | [D-ARC-007](../../doc/decisions/architecture/D-ARC-007-dcp-participant-context.md) records the participant context SPI, `did:web` DIDs and routes per participant, `aud` binding and status codes, `participantContextId` partitioning and migration, key separation and the connector adapter boundary (spec #439). The 9 items stay open until their implementation tickets land. |
-| Scope handling risk | Unqualified scopes | Open | `DcpVerifierClient.buildQueryMessage()` still copies `requiredTypes` into `scope`. |
+| Scope handling risk | Unqualified scopes | Done (#421) | `DcpVerifierClient.buildQueryMessage()` qualifies types as `org.eclipse.dspace.dcp.vc.type:<Type>`; `PresentationService` still accepts unqualified scopes as type scopes and logs a deprecation warning. |
 | Documentation conflicts | `API.md`, `quick_start.md` | **Done** (PR #429) | Approve, reject and key rotation are documented under the local admin API path `/api/issuer/...`; `holderPid` is documented as the Holder-side request ID; credential request examples include `@context` and `type`. Old paths remain in `dcp/dcp-issuer/QUICKSTART.md` and `QUICK_REFERENCE.md`, which are outside #422. |
 | Spec clarification | 7 notes | n/a | Upstream specification questions; no code status. |
 
@@ -120,7 +120,7 @@ Implement tenant resolution and authorization consistently across protocol contr
 
 ### Scope handling risk
 
-`DcpVerifierClient.buildQueryMessage()` copies its `requiredTypes` argument directly into `scope`. `PresentationService.parseScope()` also accepts unqualified strings such as `MembershipCredential` as a compatibility form. DCP defines scopes as `[alias]:[discriminator]` and requires the aliases `org.eclipse.dspace.dcp.vc.type` and `org.eclipse.dspace.dcp.vc.id`. Confirm that interoperable callers supply those forms; a caller-supplied unqualified type string is not one of the two defined standard aliases.
+Resolved in #421. `DcpVerifierClient.buildQueryMessage()` qualifies every required type as `org.eclipse.dspace.dcp.vc.type:<Type>` (a value that already carries an alias is sent unchanged). Alias and action-suffix parsing lives in `it.eng.dcp.common.util.DcpScope`. `PresentationService` keeps accepting unqualified strings such as `MembershipCredential` as type scopes for compatibility and logs a deprecation warning for each; the default `dcp.vp.scope` values use the qualified form.
 
 ## Existing documentation conflicts (resolved in #422)
 
