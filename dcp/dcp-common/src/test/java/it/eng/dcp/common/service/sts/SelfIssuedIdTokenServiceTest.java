@@ -1,5 +1,6 @@
 package it.eng.dcp.common.service.sts;
 
+import com.nimbusds.jose.JOSEObjectType;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSSigner;
@@ -8,6 +9,7 @@ import com.nimbusds.jose.crypto.ECDSAVerifier;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.OctetSequenceKey;
+import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jose.jwk.gen.OctetSequenceKeyGenerator;
 import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jwt.JWTClaimsSet;
@@ -33,6 +35,7 @@ import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.time.Instant;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -563,5 +566,189 @@ class SelfIssuedIdTokenServiceTest {
         JWTClaimsSet result = holderService.validateToken(jwt);
         assertEquals(encodedIssuerDid, result.getIssuer());
         assertEquals(encodedIssuerDid, result.getSubject());
+    }
+
+    // ── Access tokens for the Credential Service (ADR D-TEC-014, DCP v1.0.1 §5.3.1) ──────────────
+
+    private static final String HOLDER_DID = "did:web:test:holder";
+    private static final String VERIFIER_DID = "did:web:test:the-verifier";
+
+    private String createAccessJwt(JWTClaimsSet claims, ECKey key, String typ) throws Exception {
+        JWSHeader.Builder header = new JWSHeader.Builder(JWSAlgorithm.ES256).keyID(key.getKeyID());
+        if (typ != null) {
+            header.type(new JOSEObjectType(typ));
+        }
+        SignedJWT jwt = new SignedJWT(header.build(), claims);
+        jwt.sign(new ECDSASigner(key.toECPrivateKey()));
+        return jwt.serialize();
+    }
+
+    private JWTClaimsSet.Builder accessClaims() {
+        Instant now = Instant.now();
+        return new JWTClaimsSet.Builder()
+                .issuer(HOLDER_DID)
+                .subject(HOLDER_DID)
+                .audience(VERIFIER_DID)
+                .issueTime(Date.from(now))
+                .notBeforeTime(Date.from(now))
+                .expirationTime(Date.from(now.plusSeconds(300)))
+                .jwtID("urn:uuid:" + UUID.randomUUID())
+                .claim("scope", List.of("MembershipCredential"));
+    }
+
+    @Test
+    @DisplayName("createStsCompatibleToken binds the nested access token to the Verifier")
+    void createStsCompatibleToken_innerAccessTokenBoundToVerifier() throws Exception {
+        DidDocumentConfig didConfig = mock(DidDocumentConfig.class);
+        when(didConfig.getDid()).thenReturn(HOLDER_DID);
+        when(keyService.getSigningJwk(didConfig)).thenReturn(ecJwk);
+
+        String wrapper = service.createStsCompatibleToken(VERIFIER_DID, didConfig, "MembershipCredential");
+
+        JWTClaimsSet outer = SignedJWT.parse(wrapper).getJWTClaimsSet();
+        assertEquals(List.of(VERIFIER_DID), outer.getAudience());
+        assertEquals(HOLDER_DID, outer.getSubject());
+        SignedJWT inner = SignedJWT.parse(outer.getStringClaim("token"));
+        assertEquals(SelfIssuedIdTokenService.ACCESS_TOKEN_TYPE, inner.getHeader().getType().getType());
+        assertEquals(List.of(VERIFIER_DID), inner.getJWTClaimsSet().getAudience());
+        assertEquals(HOLDER_DID, inner.getJWTClaimsSet().getIssuer());
+        assertEquals(HOLDER_DID, inner.getJWTClaimsSet().getSubject());
+        assertEquals(List.of("MembershipCredential"), inner.getJWTClaimsSet().getStringListClaim("scope"));
+        assertTrue(inner.verify(new ECDSAVerifier(ecJwk.toECPublicKey())));
+    }
+
+    @Test
+    void createAccessTokenWithScopes_noScopes_omitsScopeClaim() throws Exception {
+        DidDocumentConfig didConfig = mock(DidDocumentConfig.class);
+        when(didConfig.getDid()).thenReturn(HOLDER_DID);
+        when(keyService.getSigningJwk(didConfig)).thenReturn(ecJwk);
+
+        String token = service.createAccessTokenWithScopes(VERIFIER_DID, didConfig);
+
+        assertNull(SignedJWT.parse(token).getJWTClaimsSet().getClaim("scope"));
+    }
+
+    @Test
+    void createAccessTokenWithScopes_blankVerifier_throws() {
+        DidDocumentConfig didConfig = mock(DidDocumentConfig.class);
+        assertThrows(IllegalArgumentException.class, () -> service.createAccessTokenWithScopes(" ", didConfig, "s"));
+    }
+
+    @Test
+    void validateAccessToken_roundTrip_success() throws Exception {
+        DidDocumentConfig didConfig = mock(DidDocumentConfig.class);
+        when(didConfig.getDid()).thenReturn(HOLDER_DID);
+        when(keyService.getSigningJwk(didConfig)).thenReturn(ecJwk);
+        when(config.getDid()).thenReturn(HOLDER_DID);
+        when(didResolver.resolvePublicKey(HOLDER_DID, KID, "capabilityInvocation")).thenReturn(ecJwk);
+
+        String token = service.createAccessTokenWithScopes(VERIFIER_DID, didConfig, "MembershipCredential");
+        JWTClaimsSet claims = service.validateAccessToken(token, VERIFIER_DID);
+
+        assertEquals(HOLDER_DID, claims.getSubject());
+        assertEquals(List.of("MembershipCredential"), claims.getStringListClaim("scope"));
+        verifyNoInteractions(jtiCache);
+    }
+
+    @Test
+    void validateAccessToken_missing_rejected() {
+        assertThrows(SecurityException.class, () -> service.validateAccessToken(null, VERIFIER_DID));
+        assertThrows(SecurityException.class, () -> service.validateAccessToken(" ", VERIFIER_DID));
+    }
+
+    @Test
+    void validateAccessToken_notAJwt_rejected() {
+        SecurityException ex = assertThrows(SecurityException.class,
+                () -> service.validateAccessToken("opaque-value", VERIFIER_DID));
+        assertTrue(ex.getMessage().contains("format"));
+    }
+
+    @Test
+    @DisplayName("A Self-Issued ID Token (no at+jwt typ) is not accepted as an access token")
+    void validateAccessToken_wrongType_rejected() throws Exception {
+        String token = createAccessJwt(accessClaims().build(), ecJwk, null);
+        SecurityException ex = assertThrows(SecurityException.class,
+                () -> service.validateAccessToken(token, VERIFIER_DID));
+        assertTrue(ex.getMessage().contains("typ"));
+    }
+
+    @Test
+    @DisplayName("An access token issued by another participant is rejected")
+    void validateAccessToken_foreignIssuer_rejected() throws Exception {
+        when(config.getDid()).thenReturn(HOLDER_DID);
+        String token = createAccessJwt(accessClaims().issuer("did:web:test:other").subject("did:web:test:other").build(),
+                ecJwk, SelfIssuedIdTokenService.ACCESS_TOKEN_TYPE);
+        SecurityException ex = assertThrows(SecurityException.class,
+                () -> service.validateAccessToken(token, VERIFIER_DID));
+        assertTrue(ex.getMessage().contains("not issued"));
+        verify(didResolver, never()).resolvePublicKey(any(), any(), any());
+    }
+
+    @Test
+    void validateAccessToken_subjectNotHolder_rejected() throws Exception {
+        when(config.getDid()).thenReturn(HOLDER_DID);
+        String token = createAccessJwt(accessClaims().subject(VERIFIER_DID).build(),
+                ecJwk, SelfIssuedIdTokenService.ACCESS_TOKEN_TYPE);
+        assertThrows(SecurityException.class, () -> service.validateAccessToken(token, VERIFIER_DID));
+    }
+
+    @Test
+    @DisplayName("An access token issued to one Verifier cannot be used by another")
+    void validateAccessToken_otherVerifier_rejected() throws Exception {
+        when(config.getDid()).thenReturn(HOLDER_DID);
+        String token = createAccessJwt(accessClaims().build(), ecJwk, SelfIssuedIdTokenService.ACCESS_TOKEN_TYPE);
+        SecurityException ex = assertThrows(SecurityException.class,
+                () -> service.validateAccessToken(token, "did:web:test:another-verifier"));
+        assertTrue(ex.getMessage().contains("aud"));
+    }
+
+    @Test
+    void validateAccessToken_invalidSignature_rejected() throws Exception {
+        when(config.getDid()).thenReturn(HOLDER_DID);
+        ECKey otherKey = new ECKeyGenerator(Curve.P_256).keyID(KID).generate();
+        String token = createAccessJwt(accessClaims().build(), otherKey, SelfIssuedIdTokenService.ACCESS_TOKEN_TYPE);
+        when(didResolver.resolvePublicKey(HOLDER_DID, KID, "capabilityInvocation")).thenReturn(ecJwk.toPublicJWK());
+        SecurityException ex = assertThrows(SecurityException.class,
+                () -> service.validateAccessToken(token, VERIFIER_DID));
+        assertTrue(ex.getMessage().contains("signature"));
+    }
+
+    @Test
+    void validateAccessToken_noKey_rejected() throws Exception {
+        when(config.getDid()).thenReturn(HOLDER_DID);
+        String token = createAccessJwt(accessClaims().build(), ecJwk, SelfIssuedIdTokenService.ACCESS_TOKEN_TYPE);
+        when(didResolver.resolvePublicKey(HOLDER_DID, KID, "capabilityInvocation")).thenReturn(null);
+        assertThrows(SecurityException.class, () -> service.validateAccessToken(token, VERIFIER_DID));
+    }
+
+    @Test
+    void validateAccessToken_expired_rejected() throws Exception {
+        when(config.getDid()).thenReturn(HOLDER_DID);
+        Instant past = Instant.now().minusSeconds(3600);
+        String token = createAccessJwt(accessClaims()
+                        .issueTime(Date.from(past)).notBeforeTime(Date.from(past))
+                        .expirationTime(Date.from(past.plusSeconds(300))).build(),
+                ecJwk, SelfIssuedIdTokenService.ACCESS_TOKEN_TYPE);
+        when(didResolver.resolvePublicKey(HOLDER_DID, KID, "capabilityInvocation")).thenReturn(ecJwk);
+        SecurityException ex = assertThrows(SecurityException.class,
+                () -> service.validateAccessToken(token, VERIFIER_DID));
+        assertTrue(ex.getMessage().contains("expired"));
+    }
+
+    @Test
+    void validateAccessToken_rejection_isAudited() throws Exception {
+        String token = createAccessJwt(accessClaims().build(), ecJwk, null);
+        assertThrows(SecurityException.class, () -> service.validateAccessToken(token, VERIFIER_DID));
+        verify(auditPublisher).publishEvent(eq(DcpAuditEventType.TOKEN_VALIDATION_FAILED), anyString(), eq("common"),
+                isNull(), isNull(), isNull(), isNull(), any(Map.class));
+    }
+
+    @Test
+    @DisplayName("An access token is never accepted as a Self-Issued ID Token")
+    void validateToken_accessTokenType_rejected() throws Exception {
+        String token = createAccessJwt(baseClaims().build(), ecJwk, SelfIssuedIdTokenService.ACCESS_TOKEN_TYPE);
+        SecurityException ex = assertThrows(SecurityException.class, () -> service.validateToken(token));
+        assertTrue(ex.getMessage().contains("access token"));
+        verifyNoInteractions(jtiCache);
     }
 }

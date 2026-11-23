@@ -68,6 +68,7 @@ These properties define **who** the connector is in the DCP ecosystem.
 | `dcp.connector-did-verifier` | No | falls back to `dcp.connector-did` | Override the DID used specifically for the verifier role. Use only when the verifier needs a separate DID from the holder. |
 | `dcp.host` | No | `localhost` | Hostname used to build service endpoint URLs in the DID document when `dcp.base-url` is not set. |
 | `dcp.base-url` | No | built from `protocol + host + port` | Explicit base URL for service endpoints (e.g. `https://connector.example.com`). Overrides `dcp.host` and `server.port` for URL construction. |
+| `dcp.allow-insecure-http` | No | `false` | Development switch. By default DCP endpoints must be `https`: the DID resolver fetches DID documents over https, the DID document advertises https endpoints (the application refuses to start with an `http` `dcp.base-url` or `issuer-location`), and clients reject discovered `http` endpoints with `InsecureEndpointException`. When `true`, `http` is accepted (and derived when `server.ssl.enabled=false`) and a startup warning is logged. Never enable it in production. |
 | `dcp.auto-register-path-endpoints` | No | `true` | When `true`, the DID document controller dynamically registers path-based endpoints derived from the DID path segments (e.g. `/connector/.well-known/did.json`). Set to `false` to expose only `/.well-known/did.json`. |
 | `dcp.enable-legacy-endpoints` | No | `true` | When `true`, also registers legacy convenience endpoints such as `/{role}/did.json` (e.g. `/connector/did.json`). Set to `false` for strict W3C-only endpoint registration. |
 
@@ -149,7 +150,7 @@ Defines which credential issuers are trusted for each credential type. Credentia
 
 | Property | Required | Default | Description |
 |---|---|---|---|
-| `dcp.trusted-issuers.<CredentialType>` | **Yes** (at least one) | empty map | Comma-separated list of trusted issuer DIDs for the given credential type. The `<CredentialType>` key is case-sensitive and must match the `type` field in the received credential. |
+| `dcp.trusted-issuers.<CredentialType>` | **Yes** (at least one) | empty map | Comma-separated list of trusted issuer DIDs for the given credential type. The `<CredentialType>` key is case-sensitive and must match the `type` field in the received credential. An issuer listed for any credential type may also send credential offers to `POST /dcp/offers`. |
 
 ```properties
 # Single issuer

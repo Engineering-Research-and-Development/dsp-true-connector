@@ -5,17 +5,24 @@ import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.Map;
 
 /**
  * Development/Testing utility controller for generating valid Self-Issued ID Tokens.
- * This endpoint should be disabled or secured in production environments.
+ *
+ * <p>The tokens are signed with the connector's DID key, so the controller is registered only when the
+ * dev-only property {@code dcp.dev.token-generator.enabled=true} is set; it is off by default. The host must
+ * place the path under an authenticated admin zone (the connector serves it under {@code /api/**}, which
+ * requires an admin); it must never be {@code permitAll}.
  */
 @RestController
+@ConditionalOnProperty(prefix = "dcp.dev.token-generator", name = "enabled", havingValue = "true")
 @RequestMapping(path = "/api/dev/token", produces = MediaType.APPLICATION_JSON_VALUE)
 @Slf4j
 public class TokenGeneratorAPIController {
@@ -68,7 +75,7 @@ public class TokenGeneratorAPIController {
      * @param clientId Client identifier
      * @param clientSecret Client secret
      * @param audience Target audience DID
-     * @param bearerAccessScope Requested scopes
+     * @param bearerAccessScope Requested scopes, separated by spaces or commas
      * @return JSON with the generated token
      */
     @PostMapping(value = "/generate/token", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
@@ -86,7 +93,11 @@ public class TokenGeneratorAPIController {
         try {
 //            audience = "did:web:localhost:8080:holder";  // Hardcoded for dummy testing
             // Generate STS-compatible token with nested token claim for dummy testing
-            String token = tokenService.createStsCompatibleToken(audience, config, bearerAccessScope);
+            // Several scopes may be sent separated by spaces or commas; each becomes one access token scope
+            String[] scopes = bearerAccessScope == null ? new String[0]
+                    : Arrays.stream(bearerAccessScope.split("[\\s,]+")).filter(scope -> !scope.isBlank())
+                            .toArray(String[]::new);
+            String token = tokenService.createStsCompatibleToken(audience, config, scopes);
             return ResponseEntity.ok(Map.of(
                 "access_token", token,
                 "token_type", "Bearer",

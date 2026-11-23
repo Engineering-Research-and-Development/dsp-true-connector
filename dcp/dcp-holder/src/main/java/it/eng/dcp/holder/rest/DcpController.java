@@ -1,13 +1,13 @@
 package it.eng.dcp.holder.rest;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nimbusds.jwt.JWTClaimsSet;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialOfferMessage;
 import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.PresentationResponseMessage;
+import it.eng.dcp.holder.exception.CredentialOfferForbiddenException;
 import it.eng.dcp.holder.service.HolderService;
+import it.eng.dcp.holder.service.PresentationQueryAuthorization;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -26,6 +26,11 @@ import java.util.Map;
 @Slf4j
 public class DcpController {
 
+    static final String PRESENTATION_DEFINITION_NOT_SUPPORTED =
+            "presentationDefinition is not supported; use scope";
+
+    private static final ObjectMapper OFFER_MAPPER = new ObjectMapper();
+
     private final HolderService holderService;
 
     @Autowired
@@ -37,9 +42,18 @@ public class DcpController {
      * Presentation query endpoint.
      * Accepts presentation queries from verifiers and returns verifiable presentations.
      *
+     * <p>Per DCP v1.0.1 §5.3.1 the bearer token is the Verifier's Self-Issued ID Token, addressed to this
+     * participant, carrying in its {@code token} claim an access token that this participant issued to that
+     * Verifier. A missing or invalid token of either kind, including a missing access token, gets 401.
+     * Requested scopes the access token does not authorize are dropped (fewer presentations, still 200).
+     *
+     * <p>A query carrying {@code presentationDefinition} (and no {@code scope}) is not supported and gets 501
+     * after authentication and structural validation. A query carrying both {@code scope} and
+     * {@code presentationDefinition}, or neither, gets 400.
+     *
      * @param authorization HTTP Authorization header with Bearer token
      * @param query The presentation query message
-     * @return PresentationResponseMessage or error response
+     * @return PresentationResponseMessage or error response (400, 401, 429, 500, 501)
      */
     @PostMapping(path = "/presentations/query")
     public ResponseEntity<?> queryPresentations(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
@@ -63,10 +77,10 @@ public class DcpController {
         String token = authorization.substring("Bearer ".length());
 
         try {
-            // Validate token (includes signature, expiry, audience, etc.)
-            JWTClaimsSet claims = holderService.authorizePresentationQuery(token);
-            String holderDid = claims.getSubject();
-            log.info("Presentation query from holder: {}", holderDid);
+            // Validate the Verifier's Self-Issued ID Token, then the access token it carries
+            PresentationQueryAuthorization queryAuthorization = holderService.authorizePresentationQuery(token);
+            String verifierDid = queryAuthorization.verifierDid();
+            log.info("Presentation query from verifier: {}", verifierDid);
 
             // Validate presentation query message structure
             String validationError = validatePresentationQuery(query);
@@ -75,14 +89,20 @@ public class DcpController {
                 return ResponseEntity.status(400).body(validationError);
             }
 
-            // Rate limiting per holder DID
-            if (!holderService.checkRateLimit(holderDid)) {
-                log.warn("Presentation query rate limit exceeded for holder: {}", holderDid);
+            // Presentation definitions are optional in DCP v1.0.1 (section 5.4.1.1) and are not supported
+            if (query.getPresentationDefinition() != null) {
+                log.warn("Presentation query with presentationDefinition rejected: not supported");
+                return ResponseEntity.status(501).body(PRESENTATION_DEFINITION_NOT_SUPPORTED);
+            }
+
+            // Rate limiting per querying Verifier DID
+            if (!holderService.checkRateLimit(verifierDid)) {
+                log.warn("Presentation query rate limit exceeded for verifier: {}", verifierDid);
                 return ResponseEntity.status(429).build();
             }
 
             // Create presentation
-            PresentationResponseMessage resp = holderService.createPresentation(query, holderDid, claims);
+            PresentationResponseMessage resp = holderService.createPresentation(query, queryAuthorization);
             return ResponseEntity.ok(resp);
         } catch (SecurityException se) {
             log.error("Security exception during presentation query - invalid token: {}", se.getMessage());
@@ -220,27 +240,47 @@ public class DcpController {
     }
 
     /**
-     * Credential offer reception endpoint.
+     * Credential offer reception endpoint (DCP v1.0.1 §6.6).
      * Receives credential offers from issuers.
      *
+     * <p>The issuer authenticates with a Self-Issued ID Token addressed to this participant. A missing or invalid
+     * token gets 401. A valid token whose {@code sub} is not the offer's {@code issuer}, or whose issuer is not a
+     * trusted issuer, gets 403. Sparse offers are resolved from the metadata of the trusted issuer, fetched from
+     * the {@code IssuerService} endpoint of its DID document.
+     *
+     * @param authorization HTTP Authorization header with Bearer token from issuer
      * @param offer The credential offer message
-//     * @param authorization HTTP Authorization header with Bearer token from issuer
-     * @return Acceptance response
+     * @return Acceptance response, or 400, 401, 403 or 500
      */
     @PostMapping(path = "/offers")
-    public ResponseEntity<?> receiveOffer(@RequestBody Map<String, Object> offer
-//                                          @RequestHeader(value = HttpHeaders.AUTHORIZATION) String authorization
-    )
-            throws JsonProcessingException {
-        // Authorization is optional for offers, but if present, validate it
-//       String token =  extractBearerToken(authorization);
-       ObjectMapper objectMapper = new ObjectMapper();
-        log.info("Received credential offer {}", objectMapper.writeValueAsString(offer));
+    public ResponseEntity<?> receiveOffer(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
+                                          @RequestBody Map<String, Object> offer) {
+        log.info("Received credential offer");
+
+        if (authorization == null || authorization.trim().isEmpty()) {
+            log.error("Missing Authorization header");
+            return ResponseEntity.status(401).body("Missing Authorization header");
+        }
+        if (!authorization.startsWith("Bearer ")) {
+            log.error("Invalid Authorization header format");
+            return ResponseEntity.status(401).body("Invalid Authorization header format");
+        }
+        String token = authorization.substring("Bearer ".length());
+
         try {
-//            holderService.authorizeIssuer(token);
-            CredentialOfferMessage com = objectMapper.convertValue(offer, CredentialOfferMessage.class);
+            Object rawIssuer = offer != null ? offer.get("issuer") : null;
+            String offerIssuer = rawIssuer instanceof String issuer ? issuer : null;
+            holderService.authorizeCredentialOffer(token, offerIssuer);
+
+            CredentialOfferMessage com = OFFER_MAPPER.convertValue(offer, CredentialOfferMessage.class);
             boolean accepted = holderService.processCredentialOffer(com);
             return ResponseEntity.ok(Map.of("accepted", accepted));
+        } catch (SecurityException se) {
+            log.error("Security exception during credential offer - invalid token: {}", se.getMessage());
+            return ResponseEntity.status(401).body("Invalid token");
+        } catch (CredentialOfferForbiddenException fe) {
+            log.error("Credential offer rejected: {}", fe.getMessage());
+            return ResponseEntity.status(403).body(fe.getMessage());
         } catch (IllegalArgumentException e) {
             log.error("Invalid credential offer: {}", e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());

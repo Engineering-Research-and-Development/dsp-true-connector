@@ -1,5 +1,6 @@
 package it.eng.dcp.common.config;
 
+import it.eng.dcp.common.util.DcpTransportSecurity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,7 +44,11 @@ public class BaseDidDocumentConfiguration {
      */
     @Bean
     public DidDocumentConfig didDocumentConfig() {
-        String protocol = sslEnabled ? "https" : "http";
+        String protocol = DcpTransportSecurity.scheme(dcpProperties.isAllowInsecureHttp(), sslEnabled);
+        if (dcpProperties.isAllowInsecureHttp()) {
+            log.warn("dcp.allow-insecure-http=true: DCP endpoints may use plain HTTP. "
+                    + "Use this for development and tests only; production must use HTTPS.");
+        }
 
         List<DidDocumentConfig.ServiceEntryConfig> serviceEntries = new ArrayList<>();
 
@@ -71,7 +76,7 @@ public class BaseDidDocumentConfiguration {
         log.info("Creating DID document configuration for: {} with {} service entries",
                 dcpProperties.getConnectorDid(), serviceEntries.size());
 
-        return DidDocumentConfig.builder()
+        DidDocumentConfig config = DidDocumentConfig.builder()
                 .did(dcpProperties.getConnectorDid())
                 .baseUrl(dcpProperties.getBaseUrl() != null && !dcpProperties.getBaseUrl().isBlank()
                         ? dcpProperties.getBaseUrl() : null)
@@ -84,6 +89,25 @@ public class BaseDidDocumentConfiguration {
                 .keystoreAlias(dcpProperties.getKeystore().getAlias())
                 .serviceEntries(serviceEntries)
                 .build();
+        validateAdvertisedEndpoints(config);
+        return config;
+    }
+
+    /**
+     * Fails startup when the DID document would advertise a non-HTTPS endpoint, unless
+     * {@code dcp.allow-insecure-http} is set.
+     *
+     * @param config the configuration the DID document is generated from
+     * @throws it.eng.dcp.common.exception.InsecureEndpointException if an advertised endpoint is not allowed
+     */
+    private void validateAdvertisedEndpoints(DidDocumentConfig config) {
+        boolean allowInsecure = dcpProperties.isAllowInsecureHttp();
+        String baseUrl = config.getEffectiveBaseUrl();
+        DcpTransportSecurity.requireSecure(baseUrl, "DCP base URL (dcp.base-url)", allowInsecure);
+        for (DidDocumentConfig.ServiceEntryConfig entry : config.getServiceEntries()) {
+            DcpTransportSecurity.requireSecure(entry.getFullEndpoint(baseUrl),
+                    "service endpoint of " + entry.getId(), allowInsecure);
+        }
     }
 
     /**

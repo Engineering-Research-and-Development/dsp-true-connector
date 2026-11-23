@@ -4,6 +4,25 @@
 
 This implementation adds support for authenticating requests using Verifiable Credentials (VC) and Verifiable Presentations (VP) to the True Connector. This provides an alternative to the existing JWT bearer token authentication for protocol endpoints.
 
+## Tokens in the DCP Presentation Flow (DCP v1.0.1 §5.1, §5.3.1)
+
+When `dcp.vp.enabled=true`, a calling connector (the holder) and the called connector (the Verifier) exchange
+three tokens. The access token format is recorded in
+[ADR D-TEC-014](../../doc/decisions/technical/D-TEC-014-credential-service-access-token-format.md).
+
+| Token | Issued by | `iss` / `sub` | `aud` | Carries |
+|---|---|---|---|---|
+| Holder's Self-Issued ID Token (DSP request `Authorization`) | holder (`CredentialUtils` → `createStsCompatibleToken()`) | holder DID | Verifier DID | the access token in `token` |
+| Access token (`typ` `at+jwt`) | holder (`createAccessTokenWithScopes()`) | holder DID | Verifier DID | `scope` from `dcp.vp.scope` |
+| Verifier's Self-Issued ID Token (`/presentations/query` `Authorization`) | Verifier (`VerifierService`) | Verifier DID | holder DID | the same access token in `token` |
+
+The holder's Credential Service (`/dcp/presentations/query`) validates the Verifier's Self-Issued ID Token,
+then the access token: issued by this holder, bound to the querying Verifier (`aud` = the Verifier's `sub`),
+signed with the holder's DID key and current. A missing or invalid token of either kind returns **401**.
+Authorized scopes come only from the access token; requested scopes outside them are dropped (2xx with fewer
+presentations), and only credentials of the holder are returned. An access token without `scope`
+authorizes no credentials, so keep `dcp.vp.scope` set (for example `MembershipCredential`).
+
 ## Authentication Flow
 
 The authentication system now supports three authentication methods, prioritized in the following order:

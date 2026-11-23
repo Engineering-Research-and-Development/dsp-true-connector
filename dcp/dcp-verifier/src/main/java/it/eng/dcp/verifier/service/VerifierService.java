@@ -1,10 +1,10 @@
 package it.eng.dcp.verifier.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.ECDSAVerifier;
 import com.nimbusds.jose.jwk.ECKey;
-import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.audit.DcpAuditEventType;
@@ -18,14 +18,18 @@ import it.eng.dcp.common.model.ServiceEntry;
 import it.eng.dcp.common.service.IssuerTrustService;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.HttpDidResolverService;
+import it.eng.dcp.common.service.did.ResolvedVerificationMethod;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
+import it.eng.dcp.common.util.DcpTransportSecurity;
 import it.eng.dcp.common.util.DidUrlConverter;
+import it.eng.dcp.common.exception.InsecureEndpointException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -44,7 +48,8 @@ import static org.springframework.http.HttpStatus.BAD_REQUEST;
  * <p>This service handles the verifier's role in the DCP protocol (Steps 3-4):
  * <ul>
  *   <li>Step 3: Validate self-issued ID token from holder, extract access token</li>
- *   <li>Step 4: Query holder's credential service using the access token</li>
+ *   <li>Step 4: Query holder's credential service with the Verifier's own Self-Issued ID Token carrying
+ *       the access token</li>
  * </ul>
  *
  * <p>Key responsibilities:
@@ -66,6 +71,7 @@ public class VerifierService {
     private static final String CREDENTIAL_SERVICE_TYPE = "CredentialService";
     private static final String PRESENTATIONS_QUERY_PATH = "/presentations/query";
     private static final String PRESENTATION_CONTEXT = "Presentation";
+    private static final String CREDENTIAL_CONTEXT = "Credential";
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
     private static final String VERIFIER_SOURCE = "verifier";
@@ -77,6 +83,9 @@ public class VerifierService {
     private final DidDocumentConfig didConfig;
     private final IssuerTrustService issuerTrustService;
     private final DcpAuditEventPublisher auditPublisher;
+
+    @Value("${dcp.allow-insecure-http:false}")
+    private boolean allowInsecureHttp;
 
     /**
      * Constructor with explicit verifier configuration injection.
@@ -117,13 +126,14 @@ public class VerifierService {
      * <ul>
      *   <li>Validates the self-issued ID token (iss==sub, aud==verifier DID, signature)</li>
      *   <li>Extracts the "token" claim containing the access token</li>
+     *   <li>Takes the presenting party's DID from the validated {@code sub} claim (DCP §4.3.3)</li>
      * </ul>
      *
      * @param bearerToken The self-issued ID token from Authorization header (without "Bearer " prefix)
-     * @return The access token extracted from the "token" claim
-     * @throws SecurityException if token is invalid or "token" claim is missing
+     * @return The validated {@code sub} DID and the access token extracted from the "token" claim
+     * @throws SecurityException if token is invalid, has no {@code sub}, or "token" claim is missing
      */
-    private String validateAndExtractAccessToken(String bearerToken) throws SecurityException {
+    private ValidatedSelfIssuedToken validateAndExtractAccessToken(String bearerToken) throws SecurityException {
         if (bearerToken == null || bearerToken.isBlank()) {
             auditPublisher.publishEvent(
                     DcpAuditEventType.TOKEN_VALIDATION_FAILED,
@@ -139,6 +149,18 @@ public class VerifierService {
         // Validate the self-issued ID token
         // This checks: iss==sub, aud==verifier DID, signature, expiry
         JWTClaimsSet claims = tokenService.validateToken(bearerToken);
+
+        // The presenting party is the validated sub; never a DID taken from the unverified access token
+        String subjectDid = claims.getSubject();
+        if (subjectDid == null || subjectDid.isBlank()) {
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Self-issued ID token validation failed: sub claim is missing",
+                    VERIFIER_SOURCE,
+                    null, null, null, null,
+                    Map.of("reason", "Self-issued ID token must contain a 'sub' claim"));
+            throw new SecurityException("Self-issued ID token must contain a 'sub' claim");
+        }
 
         // Extract the access token from "token" claim
         String accessToken;
@@ -172,8 +194,29 @@ public class VerifierService {
                 "Self-issued ID token validated, access token extracted",
                 VERIFIER_SOURCE,
                 null, null, null, null,
-                Map.of("holderDid", claims.getIssuer() != null ? claims.getIssuer() : ""));
-        return accessToken;
+                Map.of("holderDid", subjectDid));
+        return new ValidatedSelfIssuedToken(subjectDid, accessToken);
+    }
+
+    /**
+     * Checks that the access token was not issued by a party other than the presenting party.
+     *
+     * <p>The access token is not verified by the Verifier, so its {@code iss} is never used as the
+     * holder DID. It is only compared with the validated Self-Issued ID Token {@code sub}: an access
+     * token issued by a different DID is a token wrapped by another participant and is rejected. An
+     * absent {@code iss} is accepted, since the holder DID does not depend on it. The access token
+     * {@code sub} is not compared: its content is implementation-defined (other DCP implementations
+     * set it to the Verifier DID), and the holder DID never depends on it.
+     *
+     * @param accessTokenClaims the claims of the access token carried in the "token" claim
+     * @param holderDid the validated {@code sub} of the Self-Issued ID Token
+     * @throws SecurityException if the access token {@code iss} names a different DID
+     */
+    private void requireAccessTokenIssuedByHolder(JWTClaimsSet accessTokenClaims, String holderDid) {
+        String accessTokenIssuer = accessTokenClaims.getIssuer();
+        if (accessTokenIssuer != null && !DidUrlConverter.compareDids(accessTokenIssuer, holderDid)) {
+            throw new SecurityException("Access token 'iss' does not match the Self-Issued ID Token 'sub'");
+        }
     }
 
     /**
@@ -181,7 +224,7 @@ public class VerifierService {
      *
      * <p>Fetches the holder's DID document and extracts the CredentialService endpoint URL.
      *
-     * @param holderDid The holder's DID (from iss claim of self-issued ID token)
+     * @param holderDid The holder's DID (the validated sub claim of the self-issued ID token)
      * @return The holder's credential service endpoint URL
      * @throws DidResolutionException if DID cannot be resolved or service endpoint not found
      */
@@ -210,6 +253,12 @@ public class VerifierService {
             if (CREDENTIAL_SERVICE_TYPE.equals(service.type())) {
                 String endpoint = service.serviceEndpoint();
                 log.debug("Found holder credential service endpoint: {}", endpoint);
+                try {
+                    DcpTransportSecurity.requireSecure(endpoint,
+                            "CredentialService endpoint of " + holderDid, allowInsecureHttp);
+                } catch (InsecureEndpointException e) {
+                    throw new DidResolutionException(e.getMessage(), e);
+                }
                 return endpoint;
             }
         }
@@ -221,11 +270,14 @@ public class VerifierService {
     /**
      * STEP 4: Query holder's credential service for verifiable presentations.
      *
-     * <p>Sends a POST request to {holder-credential-service}/presentations/query
-     * with the access token in Authorization header.
+     * <p>Sends a POST request to {holder-credential-service}/presentations/query. Per DCP v1.0.1 §5.1
+     * step 6 and §5.3.1, the Verifier authenticates with a Self-Issued ID Token of its own
+     * ({@code iss} = {@code sub} = Verifier DID, {@code aud} = holder DID) that carries the access token
+     * it received from the holder, unchanged, in its {@code token} claim.
      *
      * @param credentialServiceUrl The holder's credential service base URL
-     * @param accessToken The access token (from "token" claim of self-issued ID token)
+     * @param holderDid The holder's DID, the audience of the Verifier's Self-Issued ID Token
+     * @param accessToken The access token (from "token" claim of the holder's self-issued ID token)
      * @param presentationQueryMessage The query message with scopes
      * @return The presentation response from holder
      * @throws IOException if HTTP request fails
@@ -233,22 +285,25 @@ public class VerifierService {
      */
     private PresentationResponseMessage queryHolderPresentations(
             String credentialServiceUrl,
+            String holderDid,
             String accessToken,
             PresentationQueryMessage presentationQueryMessage) throws IOException, SecurityException {
 
         String queryUrl = credentialServiceUrl + PRESENTATIONS_QUERY_PATH;
         log.debug("STEP 4: Querying holder credential service: {}", queryUrl);
 
-        // Prepare headers with access token
+        // The Verifier's own Self-Issued ID Token, bound to the holder, carrying the access token
+        String verifierIdToken = tokenService.createAndSignToken(holderDid, accessToken, didConfig);
+
         Map<String, String> headers = new HashMap<>();
-        headers.put("Authorization", "Bearer " + accessToken);
+        headers.put("Authorization", "Bearer " + verifierIdToken);
         headers.put("Content-Type", "application/json");
 
         // Serialize query message to JSON
         String jsonBody = objectMapper.writeValueAsString(presentationQueryMessage);
         RequestBody requestBody = RequestBody.create(jsonBody, JSON);
 
-        log.debug("Sending presentation query with access token to holder");
+        log.debug("Sending presentation query with the Verifier's Self-Issued ID Token to holder");
 
         // Execute request
         PresentationResponseMessage response = httpClient.executeAndDeserialize(
@@ -273,15 +328,16 @@ public class VerifierService {
      * <p>This validates the presentation JWT(s) received from the holder:
      * <ul>
      *   <li>Decodes each presentation JWT</li>
-     *   <li>Validates outer JWT signature using holder's DID public key</li>
      *   <li>Verifies holder DID matches expected holder</li>
+     *   <li>Validates the presentation proof with a key of the holder DID that has the {@code authentication}
+     *       verification relationship</li>
      *   <li>Extracts embedded verifiable credentials from 'vp.verifiableCredential' claim</li>
-     *   <li>Validates each credential JWT signature using issuer's DID public key</li>
+     *   <li>Validates each credential proof with an {@code assertionMethod} key of the credential issuer</li>
      *   <li>Verifies credential claims (iss, sub, exp, etc.)</li>
      * </ul>
      *
      * @param presentationResponse The presentation response from holder
-     * @param expectedHolderDid The expected holder DID (from access token)
+     * @param expectedHolderDid The expected holder DID (the validated Self-Issued ID Token sub)
      * @return List of validated presentations with their credentials
      * @throws SecurityException if validation fails
      */
@@ -319,7 +375,7 @@ public class VerifierService {
                     throw new SecurityException("Presentation JWT missing holder DID (iss/sub claim)");
                 }
 
-                // Verify holder DID matches expected holder from access token
+                // Verify holder DID matches the presenting party (validated Self-Issued ID Token sub)
                 if (!DidUrlConverter.compareDids(holderDid, expectedHolderDid)) {
                     throw new SecurityException(String.format(
                         "Presentation holder DID mismatch: expected=%s, actual=%s",
@@ -328,9 +384,8 @@ public class VerifierService {
 
                 log.debug("Presentation holder DID verified: {}", holderDid);
 
-                // Verify presentation JWT signature using holder's public key
-                String kid = presentationSignedJwt.getHeader().getKeyID();
-                validateJwtSignature(presentationSignedJwt, holderDid, kid, PRESENTATION_CONTEXT);
+                // Verify the VP proof with an authentication key of the holder (DCP §5.4.3)
+                verifyProof(presentationSignedJwt, holderDid, DidDocument.AUTHENTICATION, PRESENTATION_CONTEXT);
 
                 log.debug("Presentation JWT signature verified");
 
@@ -398,8 +453,9 @@ public class VerifierService {
      *
      * <p>Validates:
      * <ul>
-     *   <li>JWT signature using issuer's DID public key</li>
      *   <li>Issuer DID presence (iss claim)</li>
+     *   <li>JWT signature with an {@code assertionMethod} key whose verification method DID equals the issuer</li>
+     *   <li>The {@code issuer} property, when present, names the same DID as {@code iss}</li>
      *   <li>Subject matches holder DID</li>
      *   <li>Expiration date (exp claim)</li>
      *   <li>Issuance date (iat claim)</li>
@@ -427,11 +483,13 @@ public class VerifierService {
 
             log.debug("Validating credential from issuer: {}", issuerDid);
 
-            // Verify credential JWT signature using issuer's public key
-            String kid = credentialSignedJwt.getHeader().getKeyID();
-            validateJwtSignature(credentialSignedJwt, issuerDid, kid, "Credential");
+            // Verify the VC proof with an assertionMethod key controlled by the issuer (DCP §5.4.3)
+            verifyProof(credentialSignedJwt, issuerDid, DidDocument.ASSERTION_METHOD, CREDENTIAL_CONTEXT);
 
             log.debug("✓ Credential JWT signature verified for issuer: {}", issuerDid);
+
+            // The VC issuer property, when present, must name the same DID as iss (DCP §5.4.3)
+            requireIssuerPropertyMatches(credentialClaims, issuerDid);
 
             // Holder binding: the credential subject must be the participant presenting it (DCP §5.4.3)
             verifyHolderBinding(credentialClaims, expectedHolderDid);
@@ -512,6 +570,35 @@ public class VerifierService {
         }
     }
 
+    /**
+     * Checks that the {@code issuer} property of a credential names the same DID as its {@code iss} claim.
+     *
+     * <p>The property is read where each JWT shape carries it: under the {@code vc} claim (VC 1.1) and at
+     * the top level (VC 2.0). It may be a DID string or an object with an {@code id}. An absent property is
+     * accepted, since the VC-JWT encoding lets {@code iss} stand in for it. Because the proof key must belong
+     * to {@code iss}, this check makes the verification method DID equal the VC issuer.
+     *
+     * @param credentialClaims the claims of the credential JWT
+     * @param issDid the {@code iss} claim of the credential JWT
+     * @throws SecurityException if an {@code issuer} property names another DID or has no {@code id}
+     */
+    private static void requireIssuerPropertyMatches(JWTClaimsSet credentialClaims, String issDid) {
+        List<Object> issuerProperties = new ArrayList<>();
+        if (credentialClaims.getClaim("vc") instanceof Map<?, ?> vcClaim && vcClaim.get("issuer") != null) {
+            issuerProperties.add(vcClaim.get("issuer"));
+        }
+        if (credentialClaims.getClaim("issuer") != null) {
+            issuerProperties.add(credentialClaims.getClaim("issuer"));
+        }
+        for (Object issuerProperty : issuerProperties) {
+            Object id = issuerProperty instanceof Map<?, ?> issuerMap ? issuerMap.get("id") : issuerProperty;
+            if (!(id instanceof String issuerId) || !isSameDid(issuerId, issDid)) {
+                throw new SecurityException(String.format(
+                        "Credential issuer mismatch: iss=%s, issuer=%s", issDid, id));
+            }
+        }
+    }
+
     private static List<Object> asList(Object claim) {
         if (claim == null) {
             return List.of();
@@ -547,56 +634,59 @@ public class VerifierService {
     }
 
     /**
-     * Validate JWT signature using DID-based key resolution.
+     * Verifies the proof of a presentation or credential JWT (DCP §5.4.3).
      *
-     * @param signedJwt The signed JWT to validate
-     * @param issuerDid The DID of the JWT issuer
-     * @param kid The key ID from JWT header
-     * @param contextName Context name for logging (e.g., "Presentation", "Credential")
-     * @throws SecurityException if signature validation fails
+     * <p>Resolves the verification method referenced by the JWT {@code kid} from the signer's DID document.
+     * The method must be referenced by the given verification relationship ({@code authentication} for a
+     * Verifiable Presentation, {@code assertionMethod} for a Verifiable Credential), its DID part must equal
+     * the signer DID, and its key must verify the JWT signature.
+     *
+     * @param signedJwt the signed JWT to verify
+     * @param signerDid the DID that must control the signing key: the holder for a VP, the issuer for a VC
+     * @param verificationRelationship the verification relationship the key must have
+     * @param contextName context name for messages ({@code Presentation} or {@code Credential})
+     * @throws SecurityException if no suitable key exists, the key belongs to another DID, or the signature
+     *         does not verify
      */
-    private void validateJwtSignature(SignedJWT signedJwt, String issuerDid, String kid, String contextName)
-            throws SecurityException {
-
+    private void verifyProof(SignedJWT signedJwt, String signerDid, String verificationRelationship,
+            String contextName) throws SecurityException {
+        String kid = signedJwt.getHeader().getKeyID();
+        ResolvedVerificationMethod method;
         try {
-            // Resolve public key for the issuer DID
-            JWK jwk = didResolverService.resolvePublicKey(issuerDid, kid, "assertionMethod");
-            if (jwk == null) {
-                // Fallback to capabilityInvocation if assertionMethod not found
-                jwk = didResolverService.resolvePublicKey(issuerDid, kid, "capabilityInvocation");
-            }
-            if (jwk == null && PRESENTATION_CONTEXT.equals(contextName)) {
-                // VP proofs use the holder's authentication key (DID Core); the resolver now enforces
-                // relationships, so a key listed only under authentication must still be found
-                jwk = didResolverService.resolvePublicKey(issuerDid, kid, "authentication");
-            }
-
-            if (jwk == null) {
-                throw new SecurityException(String.format(
-                    "%s signature validation failed: No public key found for DID=%s, kid=%s",
-                    contextName, issuerDid, kid));
-            }
-
-            // Verify signature using resolved public key
-            ECKey ecPub = (ECKey) jwk;
-            JWSVerifier verifier = new ECDSAVerifier(ecPub.toECPublicKey());
-            if (!signedJwt.verify(verifier)) {
-                throw new SecurityException(String.format(
-                    "%s signature validation failed: Invalid signature for DID=%s",
-                    contextName, issuerDid));
-            }
-
-            log.debug("✓ {} JWT signature verified for DID: {}", contextName, issuerDid);
-
+            method = didResolverService.resolveVerificationMethod(signerDid, kid, verificationRelationship)
+                    .orElseThrow(() -> new SecurityException(String.format(
+                            "%s signature validation failed: No %s key found for DID=%s, kid=%s",
+                            contextName, verificationRelationship, signerDid, kid)));
         } catch (DidResolutionException e) {
             throw new SecurityException(String.format(
-                "%s signature validation failed: Cannot resolve DID=%s - %s",
-                contextName, issuerDid, e.getMessage()));
-        } catch (Exception e) {
-            throw new SecurityException(String.format(
-                "%s signature validation failed: %s",
-                contextName, e.getMessage()));
+                    "%s signature validation failed: Cannot resolve DID=%s - %s",
+                    contextName, signerDid, e.getMessage()));
         }
+
+        if (!DidUrlConverter.compareDids(method.id(), signerDid)) {
+            throw new SecurityException(String.format(
+                    "%s signature validation failed: verification method %s does not belong to DID=%s",
+                    contextName, method.id(), signerDid));
+        }
+
+        if (!(method.publicKey() instanceof ECKey ecPublicKey)) {
+            throw new SecurityException(String.format(
+                    "%s signature validation failed: unsupported key type %s for DID=%s",
+                    contextName, method.publicKey().getKeyType(), signerDid));
+        }
+
+        try {
+            JWSVerifier verifier = new ECDSAVerifier(ecPublicKey.toECPublicKey());
+            if (!signedJwt.verify(verifier)) {
+                throw new SecurityException(String.format(
+                        "%s signature validation failed: Invalid signature for DID=%s", contextName, signerDid));
+            }
+        } catch (JOSEException e) {
+            throw new SecurityException(String.format(
+                    "%s signature validation failed: %s", contextName, e.getMessage()));
+        }
+
+        log.debug("✓ {} JWT signature verified for DID: {}", contextName, signerDid);
     }
 
     /**
@@ -652,11 +742,12 @@ public class VerifierService {
      * <ol>
      *   <li>Validate self-issued ID token from holder (Step 3a)</li>
      *   <li>Extract access token from "token" claim (Step 3a)</li>
-     *   <li>Parse access token to extract scopes (Step 3b)</li>
-     *   <li>Extract holder DID (Step 3b)</li>
+     *   <li>Take the holder DID from the validated Self-Issued ID Token {@code sub} (Step 3a)</li>
+     *   <li>Parse access token to extract scopes and reject it if another DID issued it (Step 3b)</li>
      *   <li>Resolve holder's credential service endpoint (Step 3c)</li>
      *   <li>Build PresentationQueryMessage with scopes from access token (Step 4)</li>
-     *   <li>Query holder's credential service with access token (Step 4)</li>
+     *   <li>Query holder's credential service with the Verifier's own Self-Issued ID Token, which carries
+     *       the access token in its {@code token} claim (Step 4)</li>
      *   <li>Validate presentation JWTs and embedded credentials (Step 5)</li>
      * </ol>
      *
@@ -705,9 +796,12 @@ public class VerifierService {
         // STEP 3a: Validate self-issued ID token and extract access token
         // ═════════════════════════════════════════════════════════════
         String accessToken;
+        String holderDid;
         try {
             log.info("STEP 3a: Validating self-issued ID token...");
-            accessToken = validateAndExtractAccessToken(selfIssuedIdToken);
+            ValidatedSelfIssuedToken validatedToken = validateAndExtractAccessToken(selfIssuedIdToken);
+            accessToken = validatedToken.accessToken();
+            holderDid = validatedToken.subjectDid();
             log.info("STEP 3a: ✓ Self-issued ID token valid, access token extracted");
         } catch (SecurityException e) {
             log.error("STEP 3a FAILED: {}", e.getMessage());
@@ -718,19 +812,15 @@ public class VerifierService {
         // STEP 3b: Parse access token to extract scopes
         // ═════════════════════════════════════════════════════════════
         List<String> scopes;
-        String holderDid;
         try {
-            log.info("STEP 3b: Parsing access token to extract scopes and holder DID...");
+            log.info("STEP 3b: Parsing access token to extract scopes...");
 
             // Parse access token JWT
             SignedJWT accessTokenJwt = SignedJWT.parse(accessToken);
             JWTClaimsSet accessTokenClaims = accessTokenJwt.getJWTClaimsSet();
 
-            // Extract holder DID from iss claim
-            holderDid = accessTokenClaims.getIssuer();
-            if (holderDid == null || holderDid.isBlank()) {
-                throw new SecurityException("Access token missing 'iss' claim (holder DID)");
-            }
+            // The holder DID is the validated sub; an access token issued by another DID is rejected
+            requireAccessTokenIssuedByHolder(accessTokenClaims, holderDid);
             log.debug("Holder DID: {}", holderDid);
 
             // Extract scopes from access token
@@ -750,8 +840,23 @@ public class VerifierService {
 
             log.info("STEP 3b: ✓ Access token parsed - Scopes: {}", scopes);
 
+        } catch (SecurityException e) {
+            log.error("STEP 3b FAILED: Access token is not bound to the presenting party - {}", e.getMessage());
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Access token rejected: " + e.getMessage(),
+                    VERIFIER_SOURCE,
+                    holderDid, null, null, null,
+                    Map.of("reason", e.getMessage()));
+            throw new SecurityException("Step 3b failed - " + e.getMessage());
         } catch (Exception e) {
             log.error("STEP 3b FAILED: Failed to parse access token - {}", e.getMessage());
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                    "Access token rejected: cannot parse access token",
+                    VERIFIER_SOURCE,
+                    holderDid, null, null, null,
+                    Map.of("reason", String.valueOf(e.getMessage())));
             throw new SecurityException("Step 3b failed - Cannot parse access token: " + e.getMessage());
         }
 
@@ -794,6 +899,7 @@ public class VerifierService {
             // Query holder with access token
             PresentationResponseMessage presentationResponse = queryHolderPresentations(
                 credentialServiceUrl,
+                holderDid,
                 accessToken,
                 queryMessage
             );
@@ -874,7 +980,19 @@ public class VerifierService {
     }
 
     /**
+     * Outcome of Step 3a: the validated Self-Issued ID Token subject and the access token it carries.
+     *
+     * @param subjectDid the validated {@code sub} DID, which identifies the presenting party
+     * @param accessToken the access token from the "token" claim
+     */
+    private record ValidatedSelfIssuedToken(String subjectDid, String accessToken) {
+    }
+
+    /**
      * Result of the complete presentation flow containing all data from Steps 3-5.
+     *
+     * <p>{@code getHolderDid()} is the validated Self-Issued ID Token {@code sub}, so it identifies
+     * the party that presented the token.
      */
     @Getter
     public static class PresentationFlowResult {

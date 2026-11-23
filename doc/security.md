@@ -17,6 +17,13 @@ How people sign in depends on the mode. In `KEYCLOAK` mode the UI signs in to Ke
 [Internal Login Contract](#internal-login-contract-apiv1auth) and
 [Keycloak Authentication Mode](#keycloak-authentication-mode-keycloak) below.
 
+Endpoint security is being reorganised into URL zones (internal, admin / UI, DSP protocol, DCP
+protocol, public, and a deny-by-default rest), each with its own filter chain, token type and
+verifier. The decision, the token acceptance rules, the disabled-mode properties and the inventory of
+the paths the default chain serves today are in
+[D-ARC-008](decisions/architecture/D-ARC-008-endpoint-zone-security.md). The sections below describe
+the current chains.
+
 ---
 
 ## TLS Configuration
@@ -121,6 +128,10 @@ application.auth.provider=KEYCLOAK
 | 1 | `/api/**`, `/actuator/**`, `/env` | The configured provider, never DCP. In `KEYCLOAK` mode: tenant, `connector-admin` and `platform` issuers, each with its own rules (see [Trust scope per chain](#trust-scope-per-chain)) | `ROLE_ADMIN` or `ROLE_SUPER_ADMIN` |
 | 2 | `/connector/**`, `/catalog/**`, `/negotiations/**`, `/transfers/**` | DCP when `dcp.enabled=true`, otherwise the configured provider. In `KEYCLOAK` mode: `platform` issuer only (see [Protocol Trust](#protocol-trust-in-keycloak-mode)) | `ROLE_CONNECTOR` |
 | 3 | everything else | `permitAll()` | none |
+
+The dev-only DCP token generator (`/api/dev/token/**`) is not part of any public zone. It is registered only
+when `dcp.dev.token-generator.enabled=true` (default `false`, so the path answers 404); when it is on, it lives
+in the `/api/**` zone and needs `ROLE_ADMIN` or `ROLE_SUPER_ADMIN`.
 
 ### Swagger/OpenAPI Documentation
 
@@ -871,6 +882,15 @@ application.auth.provider=DISABLED
 
 ---
 
+## DCP Transport Security
+
+DCP endpoints must use HTTPS (DCP v1.0.1, Transport Security). `dcp.allow-insecure-http` (default
+`false`) is a development switch: when `true`, `http` is accepted for DID resolution, advertised
+endpoints and discovered endpoints, and a startup warning is logged. With the default, `http`
+`dcp.base-url` or `issuer-location` values stop the application at startup, DID documents are fetched
+over https, and discovered `IssuerService` / `CredentialService` endpoints and holder presentation
+endpoints that are not `https` are refused. See `dcp/CONFIGURATION_PROPERTIES.md`.
+
 ## DCP Authentication (Future — Stub)
 
 When `application.auth.dcp.enabled=true`, the protocol filter chain replaces the provider's
@@ -879,6 +899,34 @@ that will be filled in with Decentralized Claims Protocol JWT validation logic.
 
 This flag is independent of `application.auth.provider` — it can be combined with `KEYCLOAK` or
 `INTERNAL` (admin zone always uses the provider, only the protocol zone switches to DCP).
+
+---
+
+## DCP Issuer Administration API (standalone Issuer)
+
+The standalone DCP Issuer application (`dcp/dcp-issuer`) is not part of the connector and has its own
+Spring Security configuration (`IssuerSecurityConfig`), independent of `application.auth.provider`.
+See [D-TEC-013](decisions/technical/D-TEC-013-issuer-admin-api-http-basic.md).
+
+| Order | Paths | Authentication | Access |
+|---|---|---|---|
+| 1 | `/api/issuer/**` (approve, reject, credential revocation, key rotation, and any later admin endpoint) | HTTP Basic, users from `dcp.admin.users[n]` (`username`, `password` as a `DelegatingPasswordEncoder` hash, `authorities`) | Authority `DCP_ISSUER_ADMIN`: 401 without valid credentials, 403 without the authority |
+| 2 | `/issuer/**` (DCP protocol endpoints, status list), `/.well-known/**`, `GET`/`HEAD` `/**/did.json` (also below `/api/issuer`, not below `/actuator`), `/actuator/health`, `/error` | None at the filter chain; the DCP controllers keep validating the Self-Issued ID Token | Public at the chain level |
+| 2 | Any other path | — | Denied (403) |
+
+- **Fail closed.** No administration user is configured by default. Without one, every
+  `/api/issuer/**` request gets 401 and the Issuer logs a WARN at startup.
+- **Startup validation.** A blank username or password, surrounding whitespace, a repeated username, a
+  password that is not in `DelegatingPasswordEncoder` format with a known id, or a malformed `{bcrypt}` hash
+  stops the Issuer from starting. The error names the property, not the value. `{noop}` and weak legacy
+  encodings (`{MD5}`, `{SHA-1}`, ...) start with a WARN.
+- **No secrets in logs.** Passwords and their hashes are never logged. The shipped
+  `application.properties` contains no user; CI credentials live only in `ci/docker/docker-compose-dcp.yml`,
+  the Newman collections and the DCP e2e test properties.
+- **Stateless.** No session cookie is created; CSRF protection is off because no browser session exists.
+- Send the credentials over TLS only (`server.ssl.enabled=true`).
+
+Configuration and examples: [`dcp/dcp-issuer/DEPLOYMENT.md`](../dcp/dcp-issuer/DEPLOYMENT.md#administration-api-users).
 
 ---
 

@@ -1,6 +1,7 @@
 package it.eng.dcp.holder.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.util.DcpTransportSecurity;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.config.DidDocumentConfig;
@@ -46,6 +47,9 @@ public class CredentialIssuanceClient {
     private final DidResolverService didResolverService;
     private final DcpAuditEventPublisher auditPublisher;
 
+    @Value("${dcp.allow-insecure-http:false}")
+    private boolean allowInsecureHttp;
+
     @Value("${dcp.issuer.location:}")
     private String issuerDid;
 
@@ -82,51 +86,92 @@ public class CredentialIssuanceClient {
     }
 
     /**
-     * Discovers the Issuer Service endpoint from the issuer's DID document.
+     * Discovers the Issuer Service endpoint from the configured issuer's DID document.
      *
      * @return service endpoint URL (e.g., {@code https://issuer.example.com})
      * @throws IssuerServiceNotFoundException if IssuerService entry not found in DID document
      * @throws IllegalStateException if {@code dcp.issuer.location} is not a DID
+     * @throws it.eng.dcp.common.exception.InsecureEndpointException if the endpoint is not HTTPS and insecure HTTP is not allowed
      * @throws RuntimeException if failed to fetch DID document
      */
     public String discoverIssuerService() {
         requireIssuerDid();
+        return discoverIssuerService(issuerDid);
+    }
+
+    /**
+     * Discovers the Issuer Service endpoint from the DID document of the given issuer (DCP v1.0.1 §6.2).
+     *
+     * <p>The endpoint is the {@code serviceEndpoint} of the first {@code IssuerService} entry of the resolved
+     * DID document. Callers must pass a DID they trust: the DID host is contacted to resolve the document.
+     *
+     * @param targetIssuerDid the issuer DID whose DID document advertises the Issuer Service
+     * @return service endpoint URL (e.g., {@code https://issuer.example.com})
+     * @throws IllegalArgumentException if targetIssuerDid is null or blank
+     * @throws IssuerServiceNotFoundException if IssuerService entry not found in DID document
+     * @throws it.eng.dcp.common.exception.InsecureEndpointException if the endpoint is not HTTPS and insecure HTTP is not allowed
+     * @throws RuntimeException if failed to fetch DID document
+     */
+    public String discoverIssuerService(String targetIssuerDid) {
+        if (targetIssuerDid == null || targetIssuerDid.isBlank()) {
+            throw new IllegalArgumentException("issuer DID required");
+        }
         DidDocument didDocument;
         try {
-            didDocument = didResolverService.fetchDidDocumentCached(issuerDid);
+            didDocument = didResolverService.fetchDidDocumentCached(targetIssuerDid);
         } catch (IOException e) {
-            log.error("Failed to fetch issuer DID document from {}: {}", issuerDid, e.getMessage());
+            log.error("Failed to fetch issuer DID document from {}: {}", targetIssuerDid, e.getMessage());
             throw new RuntimeException("Failed to fetch issuer DID document: " + e.getMessage(), e);
         }
 
         if (didDocument != null && didDocument.getServices() != null) {
-            return didDocument.getServices().stream()
+            String endpoint = didDocument.getServices().stream()
                     .filter(service -> "IssuerService".equals(service.type()))
                     .findFirst()
                     .map(ServiceEntry::serviceEndpoint)
-                    .orElseThrow(() -> new IssuerServiceNotFoundException("IssuerService entry not found in DID document for issuer: " + issuerDid));
+                    .orElseThrow(() -> new IssuerServiceNotFoundException("IssuerService entry not found in DID document for issuer: " + targetIssuerDid));
+            DcpTransportSecurity.requireSecure(endpoint, "IssuerService endpoint of " + targetIssuerDid, allowInsecureHttp);
+            return endpoint;
         }
 
-        throw new IssuerServiceNotFoundException("IssuerService entry not found in DID document for issuer: " + issuerDid);
+        throw new IssuerServiceNotFoundException("IssuerService entry not found in DID document for issuer: " + targetIssuerDid);
     }
 
     /**
-     * Fetches issuer metadata from the issuer service base URL + /metadata.
+     * Fetches issuer metadata of the configured issuer ({@code dcp.issuer.location}).
      *
      * @return the IssuerMetadata object
+     * @throws IllegalStateException if {@code dcp.issuer.location} is not a DID
      * @throws RuntimeException if failed to fetch metadata
      */
     public IssuerMetadata getPersonalIssuerMetadata() {
-        // Discover issuer service URL from DID document
-        String issuerBase = discoverIssuerService();
+        requireIssuerDid();
+        return getIssuerMetadataOf(issuerDid);
+    }
+
+    /**
+     * Fetches the metadata of the given issuer from the Issuer Service endpoint advertised in its DID document.
+     *
+     * <p>The URL is the discovered {@code IssuerService} endpoint + {@code /metadata} (DCP v1.0.1 §6.2, §6.7); it
+     * is never derived from the DID itself. The request carries a Self-Issued ID Token whose audience is the
+     * given issuer DID.
+     *
+     * @param targetIssuerDid the issuer DID; callers must pass a DID they trust
+     * @return the IssuerMetadata object
+     * @throws IllegalArgumentException if targetIssuerDid is null or blank
+     * @throws IssuerServiceNotFoundException if the DID document advertises no IssuerService
+     * @throws RuntimeException if failed to fetch the DID document or the metadata
+     */
+    public IssuerMetadata getIssuerMetadataOf(String targetIssuerDid) {
+        String issuerBase = discoverIssuerService(targetIssuerDid);
         String metadataUrl = issuerBase.endsWith("/") ? issuerBase + DCPConstants.ISSUER_METADATA_PATH.substring(1) : issuerBase + DCPConstants.ISSUER_METADATA_PATH;
-        IssuerMetadata metadata = getIssuerMetadata(metadataUrl);
+        IssuerMetadata metadata = fetchIssuerMetadata(metadataUrl, targetIssuerDid);
         auditPublisher.publishEvent(
                 DcpAuditEventType.ISSUER_METADATA_FETCHED,
                 "Issuer metadata fetched from: " + metadataUrl,
                 HOLDER_SOURCE,
-                null, issuerDid, null, null,
-                Map.of("issuerDid", issuerDid, "metadataUrl", metadataUrl));
+                null, targetIssuerDid, null, null,
+                Map.of("issuerDid", targetIssuerDid, "metadataUrl", metadataUrl));
         return metadata;
     }
 
@@ -142,10 +187,19 @@ public class CredentialIssuanceClient {
         if (metadataUrl == null) {
             throw new IllegalArgumentException("metadataUrl required");
         }
+        return fetchIssuerMetadata(metadataUrl, issuerDid);
+    }
 
-        // Create token for issuer audience if possible
-        // Use the issuer DID as audience; tokenService may return null if not configured
-        String audience = issuerDid;
+    /**
+     * Fetches issuer metadata from the given URL with a Self-Issued ID Token for the given audience.
+     *
+     * @param metadataUrl the metadata URL
+     * @param audience the issuer DID the token is addressed to
+     * @return the IssuerMetadata object
+     * @throws RuntimeException if failed to fetch metadata
+     */
+    private IssuerMetadata fetchIssuerMetadata(String metadataUrl, String audience) {
+        // Create token for issuer audience if possible; tokenService may return null if not configured
         String token = null;
         try {
             token = tokenService.createAndSignToken(audience, null, config);

@@ -12,6 +12,38 @@ Holder   → (2) Creates JWT VP (signed by holder) → Verifier
 Verifier → (3) Verifies holder signature + issuer signatures → Decision
 ```
 
+## Authenticating the Query (DCP v1.0.1 §5.1, §5.3.1)
+
+The client (holder) authenticates to the Verifier with a Self-Issued ID Token (`iss` = `sub` = holder DID,
+`aud` = Verifier DID). Its `token` claim carries an **access token** for the holder's Credential Service,
+built by `SelfIssuedIdTokenService.createAccessTokenWithScopes()` in the format of
+[ADR D-TEC-014](../../doc/decisions/technical/D-TEC-014-credential-service-access-token-format.md):
+
+| Part | Value |
+|---|---|
+| JWS header `typ` | `at+jwt` (never accepted as a Self-Issued ID Token) |
+| `iss`, `sub` | holder DID |
+| `aud` | Verifier DID: only this Verifier can use it |
+| `scope` | the scopes the Verifier may query (`dcp.vp.scope`); no scope authorizes nothing |
+| `iat`, `nbf`, `exp`, `jti` | 5 minutes validity |
+
+The Verifier does not send that access token as its bearer token. `VerifierService` builds a Self-Issued ID
+Token **of its own** (`iss` = `sub` = Verifier DID, `aud` = holder DID) with the received access token,
+unchanged, in its `token` claim, and sends it to `POST {CredentialService}/presentations/query`.
+
+The Credential Service (`HolderService.authorizePresentationQuery()`) then checks, in order:
+
+1. the bearer token is a valid Self-Issued ID Token with `aud` = its own DID (`SelfIssuedIdTokenService.validateToken()`);
+2. its `token` claim holds an access token, otherwise **401** (#407 decision Q2);
+3. the access token is valid (`SelfIssuedIdTokenService.validateAccessToken()`): `typ` `at+jwt`, issued by this
+   holder (`iss` = `sub` = own DID), signed with a `capabilityInvocation` key of the holder DID document,
+   current, and `aud` = the Verifier's `sub`, so a token captured by one Verifier cannot be used by another.
+
+Any failure is **401**. `PresentationService` then takes the authorized scopes **only** from the validated
+access token: effective scopes = requested ∩ authorized. A requested scope that is not authorized is dropped
+and the response is still 2xx, with fewer presentations. Every credential lookup is constrained to the holder
+DID (the access token `sub`); there is no unscoped `findAll()`. Rate limiting is keyed by the Verifier DID.
+
 ---
 
 ## Step 1: Verifier Sends PresentationQueryMessage
@@ -19,12 +51,16 @@ Verifier → (3) Verifies holder signature + issuer signatures → Decision
 ### Location
 - **Class**: `DcpVerifierClient`
 - **File**: `dcp/src/main/java/it/eng/dcp/service/DcpVerifierClient.java`
-- **Method**: `fetchPresentations(String holderBase, List<String> requiredTypes, String accessToken)`
+- **Method**: `fetchPresentations(String holderBase, List<String> requiredTypes, String selfIssuedIdToken)`
+
+The connector's active Verifier path is `VerifierService.validateAndQueryHolderPresentations()` (module
+`dcp-verifier`); `DcpVerifierClient` is a standalone client with the same contract.
 
 ### What Happens
 1. Verifier creates a `PresentationQueryMessage` with required credential types
 2. Sends POST request to holder's endpoint: `/dcp/presentations/query`
-3. Includes Bearer token for authentication (optional)
+3. Authenticates with the Verifier's own Self-Issued ID Token carrying the holder-issued access token
+   (required; see *Authenticating the Query* above)
 
 ### Code Reference
 ```java
@@ -53,12 +89,12 @@ public ResponseEntity<?> queryPresentations(
     @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
     @RequestBody PresentationQueryMessage query) {
     
-    // Validate verifier's bearer token
-    var claims = holderService.authorizePresentationQuery(token);
-    String holderDid = claims.getSubject();
-    
-    // Create presentation
-    PresentationResponseMessage resp = holderService.createPresentation(query, holderDid);
+    // Validate the Verifier's Self-Issued ID Token, then the access token in its "token" claim
+    PresentationQueryAuthorization queryAuthorization = holderService.authorizePresentationQuery(token);
+
+    // Rate limit per Verifier DID, then create the presentation
+    holderService.checkRateLimit(queryAuthorization.verifierDid());
+    PresentationResponseMessage resp = holderService.createPresentation(query, queryAuthorization);
     return ResponseEntity.ok(resp);
 }
 ```
@@ -69,24 +105,26 @@ public ResponseEntity<?> queryPresentations(
 
 #### a) HolderService delegates to PresentationService
 - **File**: `dcp/src/main/java/it/eng/dcp/service/HolderService.java`
-- **Method**: `createPresentation(PresentationQueryMessage query, String holderDid)`
+- **Method**: `createPresentation(PresentationQueryMessage query, PresentationQueryAuthorization authorization)`
 
 ```java
-public PresentationResponseMessage createPresentation(PresentationQueryMessage query, String holderDid) {
-    log.info("Creating presentation response for holder: {}", holderDid);
-    PresentationResponseMessage response = presentationService.createPresentation(query);
-    return response;
+public PresentationResponseMessage createPresentation(PresentationQueryMessage query,
+                                                      PresentationQueryAuthorization authorization) {
+    return presentationService.createPresentation(
+            query, authorization.holderDid(), authorization.accessTokenClaims());
 }
 ```
 
 #### b) PresentationService fetches credentials and groups by profileId
 - **File**: `dcp/src/main/java/it/eng/dcp/service/PresentationService.java`
-- **Method**: `createPresentation(PresentationQueryMessage query)`
+- **Method**: `createPresentation(PresentationQueryMessage query, String holderDid, JWTClaimsSet accessTokenClaims)`
 
 ```java
-public PresentationResponseMessage createPresentation(PresentationQueryMessage query) {
-    // Fetch credentials based on scope (required types)
-    List<VerifiableCredential> fetched = credentialRepository.findByCredentialTypeIn(requiredTypes);
+public PresentationResponseMessage createPresentation(PresentationQueryMessage query, String holderDid,
+                                                      JWTClaimsSet accessTokenClaims) {
+    // Effective scopes = requested ∩ authorized (access token "scope"); lookups constrained to the holder
+    List<VerifiableCredential> fetched =
+            credentialRepository.findByHolderDidInAndCredentialTypeIn(holderDidForms(holderDid), credentialTypes);
     
     // Group credentials by profileId for homogeneous presentations
     Map<String, List<VerifiableCredential>> groups = fetched.stream()
@@ -201,125 +239,36 @@ The `PresentationResponseMessage` contains:
 
 ### 3.2 Verifier Validates the Presentation
 
-**Location**: `PresentationValidationServiceImpl`
-- **File**: `dcp/src/main/java/it/eng/dcp/service/PresentationValidationServiceImpl.java`
-- **Method**: `validate(PresentationResponseMessage rsp, List<String> requiredCredentialTypes, TokenContext tokenCtx)`
+**Location**: `VerifierService` (module `dcp-verifier`)
+- **File**: `dcp/dcp-verifier/src/main/java/it/eng/dcp/verifier/service/VerifierService.java`
+- **Entry point**: `validateAndQueryHolderPresentations(String selfIssuedIdToken)`, called by the connector's `DcpVerifierAuthenticationProvider`, which grants `ROLE_CONNECTOR` only when it succeeds
+- **Validation**: `validatePresentationResponse()` and `validateCredential()`, both using `verifyProof()`
 
-### 3.3 JWT VP Signature Verification Logic
+`VerifierService` is the only presentation validation path. The former Holder-side `PresentationValidationServiceImpl` had no callers and verified no proofs; it was removed (#402).
 
-**IMPORTANT**: Currently, the VP signature verification is **NOT explicitly implemented** in the validation service. However, based on the pattern used for other JWT validation, here's where it SHOULD be added:
+### 3.3 VP Proof Verification (DCP §5.4.3)
 
-#### Expected VP Signature Verification Flow (following SelfIssuedIdTokenService pattern):
+For each JWT VP in the response:
 
-**Reference Implementation**: `SelfIssuedIdTokenService.validateToken()`
-- **File**: `dcp/src/main/java/it/eng/dcp/service/SelfIssuedIdTokenService.java`
+1. The holder DID is the VP `iss` (or `sub` when `iss` is absent) and must equal the presenting holder.
+2. `HttpDidResolverService.resolveVerificationMethod(holderDid, kid, "authentication")` selects the verification method the JWT `kid` references in the holder's DID document (DCP §4.3.3 key selection). The method must be referenced by the `authentication` relationship; no other relationship is tried.
+3. The DID part of the selected verification method's ID must equal the holder DID.
+4. The JWT signature must verify with that key (EC keys, ES256).
 
-```java
-public JWTClaimsSet validateToken(String token) {
-    try {
-        // 1. Parse the JWT
-        SignedJWT jwt = SignedJWT.parse(token);
-        
-        // 2. Extract holder DID from issuer claim
-        String issuer = jwt.getJWTClaimsSet().getIssuer();
-        String kid = jwt.getHeader().getKeyID();
-        
-        // 3. Resolve holder's public key using DID resolver
-        JWK jwk = didResolver.resolvePublicKey(issuer, kid, null);
-        ECKey ecPub = (ECKey) jwk;
-        
-        // 4. Verify the signature using holder's public key
-        JWSVerifier verifier = new ECDSAVerifier(ecPub.toECPublicKey());
-        if (!jwt.verify(verifier)) {
-            throw new SecurityException("Invalid signature");
-        }
-        
-        // 5. Validate claims (exp, iat, jti)
-        JWTClaimsSet claims = jwt.getJWTClaimsSet();
-        Instant now = Instant.now();
-        if (claims.getExpirationTime().toInstant().isBefore(now)) {
-            throw new SecurityException("Token expired");
-        }
-        
-        return claims;
-    } catch (Exception e) {
-        throw new RuntimeException(e);
-    }
-}
-```
+### 3.4 VC Proof Verification Inside the VP
 
-### 3.4 Credential Validation Inside VP
+For each JWT VC in `vp.verifiableCredential`:
 
-Once the VP signature is verified, the service validates each embedded credential:
+1. The issuer DID is the VC `iss`.
+2. `resolveVerificationMethod(issuerDid, kid, "assertionMethod")` selects the issuer key. It must be referenced by `assertionMethod`; `capabilityInvocation` and `authentication` are not accepted.
+3. The DID part of the selected verification method's ID must equal the VC `iss`, and the `issuer` property (`vc.issuer` in VC 1.1, top-level `issuer` in VC 2.0), when present, must name the same DID (§5.4.3: "the DID in the VerificationMethod of the Verifiable Credential has the same value as the issuer"). This check runs after the signature check.
+4. The JWT signature must verify with that key.
+5. Holder binding: every `credentialSubject.id` and a present `sub` equal the holder DID.
+6. `exp` and `iat` are checked, and `IssuerTrustService` must trust the issuer for the credential type.
 
-**Location**: `PresentationValidationServiceImpl.validate()`
+Any failure makes the presentation invalid: `VerifierService` throws `SecurityException`, publishes `PRESENTATION_INVALID`, and the request is not authenticated. Rejected cases include a tampered VP or VC (invalid signature), a VC signed with a key of a DID other than its issuer, and a VP key without `authentication`.
 
-```java
-// For each presentation (JWT string or JSON-LD object)
-for (Object pObj : presentations) {
-    // Parse VP and extract credentials
-    VerifiablePresentation vp = parseVp(pObj);
-    List<VerifiableCredential> creds = extractCredentialsFromVp(vp);
-    
-    // For each credential in the presentation
-    for (VerifiableCredential vc : creds) {
-        // 1. Verify issuer trust
-        String issuer = extractIssuer(vc);
-        if (!issuerTrustService.isTrusted(vc.getCredentialType(), issuer)) {
-            report.addError("ISSUER_UNTRUSTED", "Issuer not trusted: " + issuer);
-        }
-        
-        // 2. Verify credential signature (VC JWT)
-        // This uses the same pattern: parse VC JWT, resolve issuer's key, verify signature
-        
-        // 3. Check dates (issuance, expiration)
-        if (vc.getExpirationDate() != null && vc.getExpirationDate().isBefore(now)) {
-            report.addError("VC_EXPIRED", "Credential expired");
-        }
-        
-        // 4. Check revocation status
-        if (revocationService.isRevoked(vc)) {
-            report.addError("VC_REVOKED", "Credential revoked");
-        }
-        
-        // 5. Validate schema
-        if (schemaId != null && !schemaRegistryService.exists(schemaId)) {
-            report.addError("VC_SCHEMA_NOT_FOUND", "Schema not found");
-        }
-    }
-}
-```
-
----
-
-## Summary: Where is the Verification Logic?
-
-### For VP (Verifiable Presentation) Signature Verification:
-
-**Current Status**: Not explicitly implemented yet in the validation service.
-
-**Should be implemented in**: `PresentationValidationServiceImpl` following the pattern from `SelfIssuedIdTokenService.validateToken()`
-
-**The verification would**:
-1. Parse JWT VP string using `SignedJWT.parse(vpJwtString)`
-2. Extract holder DID from `iss` claim
-3. Resolve holder's public key using `DidResolver.resolvePublicKey(holderDid, kid)`
-4. Verify signature using `jwt.verify(new ECDSAVerifier(holderPublicKey))`
-5. Validate JWT claims (exp, iat, jti)
-
-### For VC (Verifiable Credential) Signature Verification:
-
-**Location**: Should be in `PresentationValidationServiceImpl.validate()`
-
-**The verification process**:
-1. Extract VCs from VP's `verifiableCredential` array
-2. For each VC JWT:
-   - Parse JWT using `SignedJWT.parse(vcJwtString)`
-   - Extract issuer DID from `iss` claim
-   - Verify issuer is trusted: `issuerTrustService.isTrusted(credType, issuerDid)`
-   - Resolve issuer's public key: `didResolver.resolvePublicKey(issuerDid, kid)`
-   - Verify signature: `jwt.verify(new ECDSAVerifier(issuerPublicKey))`
-   - Check credential status (dates, revocation, schema)
+Not covered yet: credential revocation status (#418) and VP audience and lifetime (#403).
 
 ---
 
@@ -331,9 +280,8 @@ for (Object pObj : presentations) {
 | **Holder Endpoint** | `DcpController.java` | `queryPresentations()` |
 | **Presentation Creation** | `PresentationService.java` | `createPresentation()` |
 | **VP JWT Signing** | `BasicVerifiablePresentationSigner.java` | `sign(vp, "jwt")` |
-| **VP/VC Validation** | `PresentationValidationServiceImpl.java` | `validate()` |
-| **JWT Verification Pattern** | `SelfIssuedIdTokenService.java` | `validateToken()` |
-| **DID Resolution** | `DidDocumentService.java` | `resolvePublicKey()` |
+| **VP/VC Validation** | `VerifierService.java` | `validateAndQueryHolderPresentations()` |
+| **Key selection** | `HttpDidResolverService.java` | `resolveVerificationMethod()` |
 | **Key Management** | `KeyService.java` | `getSigningJwk()` |
 
 ---
@@ -349,25 +297,5 @@ for (Object pObj : presentations) {
    - Embeds credential references in `vp.verifiableCredential`
    - Sets holder DID as `iss` and `sub`
 6. **Holder** returns `PresentationResponseMessage` with JWT VP string
-7. **Verifier** receives response via `DcpVerifierClient`
-8. **Verifier** validates using `PresentationValidationServiceImpl`:
-   - Parse JWT VP and verify holder's signature (**to be implemented**)
-   - Extract embedded VCs
-   - Verify each VC's issuer signature
-   - Check issuer trust, dates, revocation, schema
-9. **Verifier** makes access decision based on `ValidationReport`
-
----
-
-## Implementation Gap
-
-**Missing**: Explicit JWT VP signature verification in `PresentationValidationServiceImpl`
-
-**Recommendation**: Add a method like `verifyVpSignature(String vpJwt)` that:
-- Parses the JWT VP
-- Resolves holder's public key from DID
-- Verifies the signature
-- Returns the parsed VP claims
-
-This should be called before validating the embedded credentials to ensure the VP itself is authentic and signed by the claimed holder.
-
+7. **Verifier** validates it in `VerifierService` (sections 3.2 to 3.4)
+8. **Connector** grants `ROLE_CONNECTOR` only when validation succeeds

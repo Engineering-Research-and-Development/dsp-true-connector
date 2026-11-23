@@ -50,6 +50,12 @@ public class DcpProperties {
     /** Host name or IP address. */
     private String host = "localhost";
 
+    /**
+     * Development switch: allow {@code http} for DID resolution, discovered endpoints and advertised
+     * endpoints. Defaults to false, so DCP endpoints must use HTTPS (DCP v1.0.1, Transport Security).
+     */
+    private boolean allowInsecureHttp = false;
+
     /** Allowed clock skew in seconds for token validation. Defaults to 120 seconds. */
     @Min(0)
     private int clockSkewSeconds = 120;

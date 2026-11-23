@@ -121,10 +121,11 @@ public class IssuerController {
         String token = authorization.substring("Bearer ".length());
 
         try {
-            // Validate the token
-            issuerService.authorizeRequest(token, null);
+            // Validate the token; its subject identifies the calling client
+            JWTClaimsSet claims = issuerService.authorizeRequest(token, null);
 
-            Optional<CredentialRequest> requestOpt = issuerService.getRequestByIssuerPid(requestId);
+            // A request owned by another client is reported as not found so its existence is not revealed
+            Optional<CredentialRequest> requestOpt = issuerService.getRequestByIssuerPid(requestId, claims.getSubject());
             if (requestOpt.isEmpty()) {
                 return ResponseEntity.status(404).body("Request not found");
             }
