@@ -115,7 +115,7 @@ public class CredentialIssuanceServiceIT extends BaseIssuerIntegrationTest {
         CredentialRequest request = CredentialRequest.Builder.newInstance()
             .holderPid("holder-pid-1")
             .holderDid("did:web:holder.example.com")
-            .credentialIds(List.of("d5c77b0e-7f4e-4fd5-8c5f-28b5fc3f96d1"))
+            .credentialIds(List.of("urn:uuid:d5c77b0e-7f4e-4fd5-8c5f-28b5fc3f96d1"))
             .build();
 
         List<CredentialMessage.CredentialContainer> result = credentialIssuanceService.generateCredentials(request);

@@ -41,7 +41,7 @@ class CredentialMetadataConfigLoaderTest {
                 .orElse(null);
 
         assertNotNull(membershipCred, "MembershipCredential should be loaded");
-        assertEquals("550e8400-e29b-41d4-a716-446655440000", membershipCred.getId());
+        assertEquals("urn:uuid:550e8400-e29b-41d4-a716-446655440000", membershipCred.getId());
         assertEquals("CredentialObject", membershipCred.getType());
         assertEquals("https://example.com/schemas/membership-credential.json",
                 membershipCred.getCredentialSchema());
@@ -63,7 +63,7 @@ class CredentialMetadataConfigLoaderTest {
                 .orElse(null);
 
         assertNotNull(companyCred, "CompanyCredential should be loaded");
-        assertEquals("d5c77b0e-7f4e-4fd5-8c5f-28b5fc3f96d1", companyCred.getId());
+        assertEquals("urn:uuid:d5c77b0e-7f4e-4fd5-8c5f-28b5fc3f96d1", companyCred.getId());
         assertEquals("reissue", companyCred.getOfferReason());
 
         // Verify issuance policy is loaded
