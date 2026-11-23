@@ -35,7 +35,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +88,9 @@ public class VerifierService {
 
     @Value("${dcp.allow-insecure-http:false}")
     private boolean allowInsecureHttp;
+
+    @Value("${dcp.clock-skew-seconds:120}")
+    private long clockSkewSeconds;
 
     /**
      * Constructor with explicit verifier configuration injection.
@@ -338,12 +343,14 @@ public class VerifierService {
      *
      * @param presentationResponse The presentation response from holder
      * @param expectedHolderDid The expected holder DID (the validated Self-Issued ID Token sub)
+     * @param expectedVerifierDid The verifier DID that the presentation must target
      * @return List of validated presentations with their credentials
      * @throws SecurityException if validation fails
      */
     private List<ValidatedPresentation> validatePresentationResponse(
             PresentationResponseMessage presentationResponse,
-            String expectedHolderDid) throws SecurityException {
+            String expectedHolderDid,
+            String expectedVerifierDid) throws SecurityException {
 
         log.debug("STEP 5: Validating presentation response from holder: {}", expectedHolderDid);
 
@@ -383,6 +390,7 @@ public class VerifierService {
                 }
 
                 log.debug("Presentation holder DID verified: {}", holderDid);
+                validatePresentationBinding(presentationClaims, expectedVerifierDid);
 
                 // Verify the VP proof with an authentication key of the holder (DCP §5.4.3)
                 verifyProof(presentationSignedJwt, holderDid, DidDocument.AUTHENTICATION, PRESENTATION_CONTEXT);
@@ -446,6 +454,28 @@ public class VerifierService {
         }
 
         return validatedPresentations;
+    }
+
+    /**
+     * Validates the audience and expiration claims of a presentation.
+     *
+     * @param presentationClaims the signed presentation claims
+     * @param expectedVerifierDid the verifier DID that queried the holder
+     * @throws SecurityException if the audience or expiration is invalid
+     */
+    private void validatePresentationBinding(JWTClaimsSet presentationClaims,
+                                             String expectedVerifierDid) throws SecurityException {
+        List<String> audiences = presentationClaims.getAudience();
+        if (audiences == null || audiences.stream()
+                .noneMatch(audience -> DidUrlConverter.compareDids(audience, expectedVerifierDid))) {
+            throw new SecurityException("Presentation audience does not match verifier DID");
+        }
+
+        Date expiration = presentationClaims.getExpirationTime();
+        if (expiration == null
+                || Instant.now().isAfter(expiration.toInstant().plusSeconds(clockSkewSeconds))) {
+            throw new SecurityException("Presentation expired");
+        }
     }
 
     /**
@@ -922,7 +952,8 @@ public class VerifierService {
             List<ValidatedPresentation> validatedPresentations;
             try {
                 log.info("STEP 5: Validating presentation JWTs and embedded credentials...");
-                validatedPresentations = validatePresentationResponse(presentationResponse, holderDid);
+                validatedPresentations = validatePresentationResponse(
+                        presentationResponse, holderDid, didConfig.getDid());
                 log.info("STEP 5: ✓ Validated {} presentation(s) with credentials", validatedPresentations.size());
 
                 // Log summary of validated credentials

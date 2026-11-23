@@ -120,6 +120,7 @@ class VerifierServiceTest {
                 issuerTrustService,
                 auditPublisher
         );
+        when(verifierConfig.getDid()).thenReturn(VERIFIER_DID);
     }
 
     // ═════════════════════════════════════════════════════════════════════════════
@@ -885,6 +886,8 @@ class VerifierServiceTest {
                     new JWTClaimsSet.Builder()
                             .issuer(HOLDER_DID)
                             .subject(HOLDER_DID)
+                            .audience(VERIFIER_DID)
+                            .expirationTime(new Date(System.currentTimeMillis() + 300000))
                             // Missing vp claim
                             .build(),
                     holderKey
@@ -929,6 +932,8 @@ class VerifierServiceTest {
                     new JWTClaimsSet.Builder()
                             .issuer(HOLDER_DID)
                             .subject(HOLDER_DID)
+                            .audience(VERIFIER_DID)
+                            .expirationTime(new Date(System.currentTimeMillis() + 300000))
                             .claim("vp", Map.of(
                                     "verifiableCredential", List.of(Map.of("invalid", "credential"))
                             ))
@@ -1269,6 +1274,66 @@ class VerifierServiceTest {
 
             assertTrue(exception.getMessage().contains("Step 5 failed"));
             assertTrue(exception.getMessage().toLowerCase().contains("expired"));
+        }
+
+        @Test
+        @DisplayName("Should fail when presentation is expired")
+        void shouldFailWhenPresentationExpired() throws Exception {
+            String selfIssuedToken = createValidSelfIssuedToken(createValidAccessToken());
+            when(tokenService.validateToken(selfIssuedToken)).thenReturn(parseClaims(selfIssuedToken));
+            setupSuccessfulHolderResolution();
+
+            String expiredPresentation = createJWT(
+                    new JWTClaimsSet.Builder()
+                            .issuer(HOLDER_DID)
+                            .subject(HOLDER_DID)
+                            .audience(VERIFIER_DID)
+                            .claim("vp", Map.of(
+                                    "type", List.of("VerifiablePresentation"),
+                                    "verifiableCredential", List.of(createValidCredentialJWT())
+                            ))
+                            .expirationTime(new Date(System.currentTimeMillis() - 3600000))
+                            .build(),
+                    holderKey
+            );
+            setupSuccessfulPresentationQuery(List.of(expiredPresentation));
+
+            SecurityException exception = assertThrows(
+                    SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+            );
+
+            assertTrue(exception.getMessage().toLowerCase().contains("expired"));
+        }
+
+        @Test
+        @DisplayName("Should fail when presentation targets another verifier")
+        void shouldFailWhenPresentationAudienceDoesNotMatch() throws Exception {
+            String selfIssuedToken = createValidSelfIssuedToken(createValidAccessToken());
+            when(tokenService.validateToken(selfIssuedToken)).thenReturn(parseClaims(selfIssuedToken));
+            setupSuccessfulHolderResolution();
+
+            String wrongAudiencePresentation = createJWT(
+                    new JWTClaimsSet.Builder()
+                            .issuer(HOLDER_DID)
+                            .subject(HOLDER_DID)
+                            .audience("did:web:other.example.com:verifier")
+                            .claim("vp", Map.of(
+                                    "type", List.of("VerifiablePresentation"),
+                                    "verifiableCredential", List.of(createValidCredentialJWT())
+                            ))
+                            .expirationTime(new Date(System.currentTimeMillis() + 300000))
+                            .build(),
+                    holderKey
+            );
+            setupSuccessfulPresentationQuery(List.of(wrongAudiencePresentation));
+
+            SecurityException exception = assertThrows(
+                    SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+            );
+
+            assertTrue(exception.getMessage().toLowerCase().contains("audience"));
         }
 
         @Test
@@ -1869,12 +1934,14 @@ class VerifierServiceTest {
                 new JWTClaimsSet.Builder()
                         .issuer(HOLDER_DID)
                         .subject(HOLDER_DID)
+                        .audience(VERIFIER_DID)
                         .claim("vp", Map.of(
                                 "@context", List.of("https://www.w3.org/2018/credentials/v1"),
                                 "type", List.of("VerifiablePresentation"),
                                 "verifiableCredential", credentialJwts
                         ))
                         .issueTime(new Date())
+                        .expirationTime(new Date(System.currentTimeMillis() + 300000))
                         .jwtID(UUID.randomUUID().toString())
                         .build(),
                 holderKey

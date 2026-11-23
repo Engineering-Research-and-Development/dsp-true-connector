@@ -57,7 +57,7 @@ class BasicVerifiablePresentationSignerTest {
                 .build();
 
         // Act
-        Object result = signer.sign(vp, "jwt");
+        Object result = signer.sign(vp, "jwt", "did:web:localhost:8080:verifier");
 
         // Assert
         assertNotNull(result);
@@ -80,6 +80,8 @@ class BasicVerifiablePresentationSignerTest {
         // Verify payload contains VP claim
         assertNotNull(signedJWT.getJWTClaimsSet().getClaim("vp"), "Should contain vp claim");
         assertEquals(vp.getHolderDid(), signedJWT.getJWTClaimsSet().getIssuer(), "Issuer should be holder DID");
+        assertEquals(List.of("did:web:localhost:8080:verifier"), signedJWT.getJWTClaimsSet().getAudience());
+        assertNotNull(signedJWT.getJWTClaimsSet().getExpirationTime());
         assertEquals(vp.getId(), signedJWT.getJWTClaimsSet().getJWTID(), "JTI should be VP ID");
 
         // Verify signature is not empty
@@ -102,7 +104,7 @@ class BasicVerifiablePresentationSignerTest {
                 .build();
 
         // Act
-        String jwt = (String) signer.sign(vp, "jwt");
+        String jwt = (String) signer.sign(vp, "jwt", "did:web:example.com:verifier");
         SignedJWT signedJWT = SignedJWT.parse(jwt);
 
         // Assert - Check VP claim structure
@@ -134,12 +136,15 @@ class BasicVerifiablePresentationSignerTest {
                 .build();
 
         // Act
-        Object result = signer.sign(vp, "json-ld");
+        Object result = signer.sign(vp, "json-ld", "did:web:localhost:8080:verifier");
 
         // Assert
         assertNotNull(result);
         assertTrue(result instanceof com.fasterxml.jackson.databind.node.ObjectNode,
                    "JSON-LD should be an ObjectNode");
+        JsonNode presentation = (JsonNode) result;
+        assertEquals("did:web:localhost:8080:verifier", presentation.get("aud").asText());
+        assertTrue(presentation.get("exp").asLong() > 0);
     }
 }
 

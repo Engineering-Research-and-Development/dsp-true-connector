@@ -158,7 +158,7 @@ public class HolderService {
         log.info("Creating presentation response for verifier {} from holder {}",
                 authorization.verifierDid(), holderDid);
         PresentationResponseMessage response = presentationService.createPresentation(
-                query, holderDid, authorization.accessTokenClaims());
+                query, holderDid, authorization.accessTokenClaims(), authorization.verifierDid());
         List<String> scopes = query.getScope() != null ? query.getScope() : List.of();
         auditPublisher.publishEvent(
                 DcpAuditEventType.PRESENTATION_CREATED,

@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## [0.7.8-SNAPSHOT] - 26.10.2026. - Keycloak multi realm support
 
 ### Added
+- DCP presentation binding (#403): holders bind every signed Verifiable Presentation to the querying verifier with `aud` and a five-minute `exp`; verifiers reject presentations intended for another verifier or outside their validity window.
 - `DcpScope` (`dcp-common`): parses DCP scopes (`[alias]:[discriminator]`, optional action suffix) and qualifies credential types as `org.eclipse.dspace.dcp.vc.type:<Type>`.
 - DCP holder: a presentation query carrying `presentationDefinition` (without `scope`) now returns `501 Not Implemented` after authentication and validation, as DCP v1.0.1 §5.4.1.1 allows for Credential Services without Presentation Exchange support. A query with both `scope` and `presentationDefinition`, or neither, still returns `400`.
 - DCP Issuer status lists (#417): credentials of `vc11-sl2021/jwt` carry a StatusList2021 entry and credentials of `vc20-bssl/jwt` a BitstringStatusList entry whose `statusListCredential` is a resolvable URL, `<dcp.base-url>/issuer/status/{listId}`. That public endpoint serves the list as a compact JWT signed by the Issuer (`application/jwt` or `application/vc+ld+jwt`). New admin operation `POST /api/issuer/status-lists/{listId}/entries/{index}/revoke` sets the entry's bit, re-signs the list and emits `CREDENTIAL_REVOKED`. `dcp.base-url` is now required: the Issuer fails at startup without it.
