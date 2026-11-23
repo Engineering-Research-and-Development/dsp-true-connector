@@ -258,7 +258,8 @@ class HolderServiceTest {
         PresentationQueryAuthorization authorization =
                 new PresentationQueryAuthorization("did:example:verifier", holderDid, claims);
 
-        when(presentationService.createPresentation(query, holderDid, claims)).thenReturn(expectedResponse);
+        when(presentationService.createPresentation(query, holderDid, claims, "did:example:verifier"))
+                .thenReturn(expectedResponse);
         when(query.getScope()).thenReturn(List.of("MembershipCredential"));
 
         // Act
@@ -267,7 +268,7 @@ class HolderServiceTest {
         // Assert
         assertNotNull(result);
         assertEquals(expectedResponse, result);
-        verify(presentationService).createPresentation(query, holderDid, claims);
+        verify(presentationService).createPresentation(query, holderDid, claims, "did:example:verifier");
 
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());

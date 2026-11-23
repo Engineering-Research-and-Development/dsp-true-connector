@@ -17,9 +17,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.time.Instant;
 
 @Service
 public class BasicVerifiablePresentationSigner implements VerifiablePresentationSigner {
+
+    private static final long PRESENTATION_LIFETIME_SECONDS = 300;
 
     private final ObjectMapper mapper = new ObjectMapper();
     private final KeyService keyService;
@@ -33,8 +36,11 @@ public class BasicVerifiablePresentationSigner implements VerifiablePresentation
     }
 
     @Override
-    public Object sign(VerifiablePresentation vp, String format) {
+    public Object sign(VerifiablePresentation vp, String format, String verifierDid) {
         if (format == null) format = "json-ld";
+        Instant now = Instant.now();
+        Date issuedAt = Date.from(now);
+        Date expiresAt = Date.from(now.plusSeconds(PRESENTATION_LIFETIME_SECONDS));
         switch (format.toLowerCase()) {
             case "jwt":
                 // Produce a signed JWT VP using ES256 algorithm with the holder's key
@@ -43,13 +49,17 @@ public class BasicVerifiablePresentationSigner implements VerifiablePresentation
                     ECKey signingKey = keyService.getSigningJwk(config);
 
                     // Build JWT claims for Verifiable Presentation
-                    JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+                    JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
                             .claim("vp", buildVPClaim(vp))
                             .issuer(vp.getHolderDid())
                             .subject(vp.getHolderDid())
-                            .issueTime(new Date())
-                            .jwtID(vp.getId())
-                            .build();
+                            .issueTime(issuedAt)
+                            .expirationTime(expiresAt)
+                            .jwtID(vp.getId());
+                    if (verifierDid != null && !verifierDid.isBlank()) {
+                        claimsBuilder.audience(verifierDid);
+                    }
+                    JWTClaimsSet claimsSet = claimsBuilder.build();
 
                     // Create JWS header with key ID
                     JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256)
@@ -82,6 +92,10 @@ public class BasicVerifiablePresentationSigner implements VerifiablePresentation
                     presentation.putArray("type").add("VerifiablePresentation");
                     presentation.putPOJO("verifiableCredential", vp.getCredentialIds());
                     presentation.put("holder", vp.getHolderDid());
+                    if (verifierDid != null && !verifierDid.isBlank()) {
+                        presentation.put("aud", verifierDid);
+                    }
+                    presentation.put("exp", expiresAt.toInstant().getEpochSecond());
 
                     if (vp.getProfileId() != null) {
                         presentation.put("profileId", vp.getProfileId().getSpecAlias());
@@ -90,7 +104,7 @@ public class BasicVerifiablePresentationSigner implements VerifiablePresentation
                     // Create the proof using JWS (detached signature)
                     // Per W3C VC Data Model, we use JsonWebSignature2020
                     String verificationMethod = vp.getHolderDid() + "#" + signingKey.getKeyID();
-                    String created = java.time.Instant.now().toString();
+                    String created = now.toString();
 
                     // Create canonical representation for signing
                     String canonicalPresentation = mapper.writeValueAsString(presentation);
