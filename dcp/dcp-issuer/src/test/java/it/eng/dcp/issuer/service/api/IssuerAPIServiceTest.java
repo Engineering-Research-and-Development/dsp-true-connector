@@ -6,8 +6,11 @@ import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.issuer.service.CredentialDeliveryService;
+import it.eng.dcp.issuer.service.CredentialIssuanceException;
 import it.eng.dcp.issuer.service.CredentialIssuanceService;
 import it.eng.dcp.issuer.service.IssuerService;
+import it.eng.dcp.issuer.service.StatusListService;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -17,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -34,6 +38,7 @@ public class IssuerAPIServiceTest {
     @Mock private CredentialDeliveryService deliveryService;
     @Mock private CredentialIssuanceService issuanceService;
     @Mock private DcpAuditEventPublisher auditPublisher;
+    @Mock private StatusListService statusListService;
 
     @Test
     void approveAndDeliverCredentials_success_autoGenerate1() {
@@ -87,6 +92,40 @@ public class IssuerAPIServiceTest {
         assertTrue(ex.getMessage().contains("Failed to deliver credentials"));
     }
 
+    @Test
+    void approveAndDeliverCredentials_partialIssuanceFailure_sendsRejectedAndDeliversNothing() {
+        String requestId = "id1";
+        CredentialRequest req = mock(CredentialRequest.class);
+        when(requestRepository.findByIssuerPid(requestId)).thenReturn(Optional.of(req));
+        when(req.getCredentialIds()).thenReturn(List.of("cred1", "cred2"));
+        when(issuanceService.generateCredentials(eq(req), any(), any()))
+                .thenThrow(new CredentialIssuanceException("Failed to issue credential(s) [cred2]", List.of("cred2")));
+        when(deliveryService.rejectCredentialRequest(eq(requestId), contains("cred2"))).thenReturn(true);
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> issuerAPIService.approveAndDeliverCredentials(requestId, Map.of(), List.of(), null));
+
+        assertTrue(ex.getMessage().contains("request rejected"));
+        verify(deliveryService, never()).deliverCredentials(any(), any());
+        verify(auditPublisher, never()).publishEvent(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void approveAndDeliverCredentials_partialIssuanceFailure_rejectionNotDelivered_reportsIt() {
+        String requestId = "id1";
+        CredentialRequest req = mock(CredentialRequest.class);
+        when(requestRepository.findByIssuerPid(requestId)).thenReturn(Optional.of(req));
+        when(issuanceService.generateCredentials(eq(req), any(), any()))
+                .thenThrow(new CredentialIssuanceException("Failed to issue credential(s) [cred2]", List.of("cred2")));
+        when(deliveryService.rejectCredentialRequest(eq(requestId), any())).thenReturn(false);
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> issuerAPIService.approveAndDeliverCredentials(requestId, Map.of(), List.of(), null));
+
+        assertTrue(ex.getMessage().contains("rejection could not be delivered"));
+        verify(deliveryService, never()).deliverCredentials(any(), any());
+    }
+
     // --- rejectCredentialRequest ---
     @Test
     void rejectCredentialRequest_success() {
@@ -115,5 +154,35 @@ public class IssuerAPIServiceTest {
         when(requestRepository.findByIssuerPid("bad")).thenReturn(Optional.empty());
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerAPIService.rejectCredentialRequest("bad", "reason"));
         assertTrue(ex.getMessage().contains("Credential request not found"));
+    }
+
+    @Test
+    @DisplayName("revokeStatusEntry revokes the entry and emits CREDENTIAL_REVOKED")
+    void revokeStatusEntry_revoked_emitsAuditEvent() {
+        when(statusListService.revoke("list-1", 4)).thenReturn(true);
+
+        assertTrue(issuerAPIService.revokeStatusEntry("list-1", 4));
+
+        verify(auditPublisher).publishEvent(eq(DcpAuditEventType.CREDENTIAL_REVOKED), any(), eq("issuer"),
+                isNull(), isNull(), isNull(), isNull(), eq(Map.of("statusListId", "list-1", "statusListIndex", 4)));
+    }
+
+    @Test
+    @DisplayName("revokeStatusEntry emits no audit event when the entry was already revoked")
+    void revokeStatusEntry_alreadyRevoked_noAuditEvent() {
+        when(statusListService.revoke("list-1", 4)).thenReturn(false);
+
+        assertFalse(issuerAPIService.revokeStatusEntry("list-1", 4));
+
+        verifyNoInteractions(auditPublisher);
+    }
+
+    @Test
+    @DisplayName("revokeStatusEntry propagates an unknown list")
+    void revokeStatusEntry_unknownList_throws() {
+        when(statusListService.revoke("missing", 0)).thenThrow(new NoSuchElementException("Status list not found"));
+
+        assertThrows(NoSuchElementException.class, () -> issuerAPIService.revokeStatusEntry("missing", 0));
+        verifyNoInteractions(auditPublisher);
     }
 }

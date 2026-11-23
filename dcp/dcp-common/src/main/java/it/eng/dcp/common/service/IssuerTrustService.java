@@ -29,6 +29,17 @@ public interface IssuerTrustService {
     boolean isTrusted(String credentialType, String issuerDid);
 
     /**
+     * Returns whether the given issuer is trusted for at least one credential type.
+     *
+     * <p>Used where the credential type is not known yet, for example to authenticate the sender of a
+     * credential offer before any of its credential objects are resolved.
+     *
+     * @param issuerDid the issuer DID to check
+     * @return {@code true} if the issuer is trusted for any credential type
+     */
+    boolean isTrustedIssuer(String issuerDid);
+
+    /**
      * Returns all trusted issuer DIDs for the given credential type.
      *
      * @param credentialType the credential type to query

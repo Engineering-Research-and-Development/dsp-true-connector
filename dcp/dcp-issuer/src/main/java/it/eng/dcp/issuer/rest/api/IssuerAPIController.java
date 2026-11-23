@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping(path = "/api/issuer", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -91,6 +92,32 @@ public class IssuerAPIController {
             return ResponseEntity.badRequest().body("Invalid rejection request: " + e.getMessage());
         } catch (Exception e) {
             log.error("Error rejecting request: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body("Internal error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Revoke a credential by its status list entry endpoint.
+     * Sets the entry's status bit to 1 and re-signs the published status list. Revocation is not reversible.
+     *
+     * @param listId the status list ID, the last path segment of the credential's {@code statusListCredential}
+     * @param index the credential's {@code statusListIndex}
+     * @return 200 when the entry is revoked (also when it already was), 404 when the list does not exist,
+     *         400 when the index has not been allocated, 500 on any other failure
+     */
+    @PostMapping(path = "/status-lists/{listId}/entries/{index}/revoke")
+    public ResponseEntity<String> revokeStatusEntry(@PathVariable String listId, @PathVariable int index) {
+        try {
+            boolean revoked = issuerAPIService.revokeStatusEntry(listId, index);
+            return ResponseEntity.ok(revoked ? "Credential revoked" : "Credential already revoked");
+        } catch (NoSuchElementException e) {
+            log.warn("Revocation for unknown status list {}", listId);
+            return ResponseEntity.status(404).body("Status list not found");
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid revocation request: {}", e.getMessage());
+            return ResponseEntity.badRequest().body("Invalid revocation request: " + e.getMessage());
+        } catch (Exception e) {
+            log.error("Error revoking status list entry: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body("Internal error: " + e.getMessage());
         }
     }

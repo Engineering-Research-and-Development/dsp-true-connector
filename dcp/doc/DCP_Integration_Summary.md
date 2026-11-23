@@ -79,7 +79,7 @@ dcp.enabled=true
 dcp.connector.did=did:web:localhost:8080
 dcp.vp.enabled=true
 dcp.vp.use-dcp-compliant=false  # or omit (defaults to false)
-dcp.vp.scope=MembershipCredential
+dcp.vp.scope=org.eclipse.dspace.dcp.vc.type:MembershipCredential
 ```
 
 **Result:** Existing behavior maintained, full VP embedded in JWT
@@ -91,7 +91,7 @@ dcp.enabled=true
 dcp.connector.did=did:web:localhost:8080
 dcp.vp.enabled=true
 dcp.vp.use-dcp-compliant=true  # Enable DCP-compliant mode
-dcp.vp.scope=MembershipCredential,OrganizationCredential
+dcp.vp.scope=org.eclipse.dspace.dcp.vc.type:MembershipCredential,org.eclipse.dspace.dcp.vc.type:OrganizationCredential
 dcp.vp.target-verifier-did=did:web:verifier.example  # REQUIRED
 ```
 
@@ -200,7 +200,7 @@ DEBUG - Generated LEGACY bearer token with embedded VP (size: 52341 bytes)
 dcp.vp.enabled=true
 dcp.vp.use-dcp-compliant=true
 dcp.vp.target-verifier-did=did:web:localhost:8081
-dcp.vp.scope=MembershipCredential
+dcp.vp.scope=org.eclipse.dspace.dcp.vc.type:MembershipCredential
 logging.level.it.eng.dcp.holder.service.DcpCredentialService=DEBUG
 ```
 

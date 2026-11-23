@@ -172,4 +172,42 @@ class IssuerControllerTest {
         assertNotNull(response.getBody());
         assertTrue(response.getBody().toString().contains("Internal error: fail"));
     }
+
+    // --- getRequest tests ---
+
+    @Test
+    void getRequest_passesTokenSubjectToService() {
+        String token = "token";
+        doReturn("did:example:holder").when(jwtClaimsSet).getSubject();
+        when(issuerService.authorizeRequest(eq(token), isNull())).thenReturn(jwtClaimsSet);
+        CredentialRequest req = mock(CredentialRequest.class);
+        when(req.getIssuerPid()).thenReturn("issuer1");
+        when(issuerService.getRequestByIssuerPid("issuer1", "did:example:holder")).thenReturn(java.util.Optional.of(req));
+
+        ResponseEntity<?> response = issuerController.getRequest("Bearer " + token, "issuer1");
+        assertEquals(200, response.getStatusCode().value());
+    }
+
+    @Test
+    void getRequest_notOwner_returns404() {
+        String token = "token";
+        doReturn("did:example:other").when(jwtClaimsSet).getSubject();
+        when(issuerService.authorizeRequest(eq(token), isNull())).thenReturn(jwtClaimsSet);
+        when(issuerService.getRequestByIssuerPid("issuer1", "did:example:other")).thenReturn(java.util.Optional.empty());
+
+        ResponseEntity<?> response = issuerController.getRequest("Bearer " + token, "issuer1");
+        assertEquals(404, response.getStatusCode().value());
+        assertEquals("Request not found", response.getBody());
+    }
+
+    @Test
+    void getRequest_missingAuthHeader() {
+        assertEquals(401, issuerController.getRequest(null, "issuer1").getStatusCode().value());
+    }
+
+    @Test
+    void getRequest_unauthorized() {
+        doThrow(new SecurityException("bad token")).when(issuerService).authorizeRequest(eq("bad"), isNull());
+        assertEquals(401, issuerController.getRequest("Bearer bad", "issuer1").getStatusCode().value());
+    }
 }

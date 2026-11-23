@@ -5,7 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.PresentationResponseMessage;
-import it.eng.dcp.holder.exception.InsecureEndpointException;
+import it.eng.dcp.common.exception.InsecureEndpointException;
+import it.eng.dcp.common.util.DcpScope;
+import it.eng.dcp.common.util.DcpTransportSecurity;
 import it.eng.dcp.holder.exception.RemoteHolderAuthException;
 import it.eng.dcp.holder.exception.RemoteHolderClientException;
 import lombok.extern.slf4j.Slf4j;
@@ -13,11 +15,10 @@ import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +37,9 @@ public class DcpVerifierClient {
     private final SimpleOkHttpRestClient httpClient;
     private final ObjectMapper mapper;
 
+    @Value("${dcp.allow-insecure-http:false}")
+    private boolean allowInsecureHttp;
+
     @Autowired
     public DcpVerifierClient(SimpleOkHttpRestClient httpClient, ObjectMapper mapper) {
         this.httpClient = httpClient;
@@ -46,19 +50,28 @@ public class DcpVerifierClient {
     /**
      * Fetch presentations from a remote holder.
      *
-     * @param holderBase    base URL for holder (e.g., {@code https://holder.example})
-     * @param requiredTypes list of credential types to request (may be empty or null)
-     * @param accessToken   optional access token (raw token string, not including "Bearer ")
+     * <p>Per DCP v1.0.1 §5.3.1, the holder's Credential Service authenticates the query with the Verifier's
+     * own Self-Issued ID Token ({@code aud} = holder DID) that carries the holder-issued access token in its
+     * {@code token} claim. The Credential Service rejects a query without it (401), so it is required.
+     *
+     * @param holderBase        base URL for holder (e.g., {@code https://holder.example})
+     * @param requiredTypes     list of credential types to request (may be empty or null)
+     * @param selfIssuedIdToken the Verifier's Self-Issued ID Token carrying the access token
+     *                          (raw token string, not including "Bearer ")
      * @return PresentationResponseMessage deserialized from the response
-     * @throws IllegalArgumentException    if holderBase is null or blank
+     * @throws IllegalArgumentException    if holderBase or selfIssuedIdToken is null or blank
      * @throws InsecureEndpointException   if the holder endpoint is not HTTPS
      * @throws RemoteHolderAuthException   if authentication fails (401/403)
      * @throws RemoteHolderClientException if a client error occurs (4xx)
      * @throws RuntimeException            if the request fails after all retries
      */
-    public PresentationResponseMessage fetchPresentations(String holderBase, List<String> requiredTypes, String accessToken) {
+    public PresentationResponseMessage fetchPresentations(String holderBase, List<String> requiredTypes,
+                                                          String selfIssuedIdToken) {
         if (holderBase == null || holderBase.isBlank()) {
             throw new IllegalArgumentException("holderBase is required");
+        }
+        if (StringUtils.isBlank(selfIssuedIdToken)) {
+            throw new IllegalArgumentException("selfIssuedIdToken is required");
         }
 
         // Enforce HTTPS
@@ -71,27 +84,17 @@ public class DcpVerifierClient {
         PresentationQueryMessage query = buildQueryMessage(requiredTypes);
 
         // Execute request with retry mechanism
-        return executeWithRetries(target, query, accessToken);
+        return executeWithRetries(target, query, selfIssuedIdToken);
     }
 
     /**
-     * Validates that the endpoint uses HTTPS protocol.
+     * Validates that the endpoint uses HTTPS (or HTTP when {@code dcp.allow-insecure-http} is set).
      *
      * @param holderBase the base URL to validate
-     * @throws InsecureEndpointException if the endpoint is not HTTPS
+     * @throws InsecureEndpointException if the endpoint is not allowed
      */
     private void validateSecureEndpoint(String holderBase) {
-        try {
-            URI uri = new URI(holderBase);
-            if (!"https".equalsIgnoreCase(uri.getScheme())) {
-                throw new InsecureEndpointException("Insecure holder endpoint: " + holderBase);
-            }
-        } catch (URISyntaxException e) {
-            // Allow non-absolute URIs, but still require https prefix
-            if (!holderBase.toLowerCase().startsWith("https://")) {
-                throw new InsecureEndpointException("Insecure or invalid holder endpoint: " + holderBase);
-            }
-        }
+        DcpTransportSecurity.requireSecure(holderBase, "holder endpoint", allowInsecureHttp);
     }
 
     /**
@@ -108,6 +111,8 @@ public class DcpVerifierClient {
 
     /**
      * Builds a PresentationQueryMessage with the required credential types.
+     * Each type is sent as a qualified scope ({@code org.eclipse.dspace.dcp.vc.type:<type>}, DCP section 5.4.1.2);
+     * a value that already carries an alias is sent unchanged.
      *
      * @param requiredTypes list of credential types to request
      * @return the constructed PresentationQueryMessage
@@ -115,7 +120,7 @@ public class DcpVerifierClient {
     private PresentationQueryMessage buildQueryMessage(List<String> requiredTypes) {
         PresentationQueryMessage.Builder builder = PresentationQueryMessage.Builder.newInstance();
         if (requiredTypes != null && !requiredTypes.isEmpty()) {
-            builder.scope(requiredTypes);
+            builder.scope(DcpScope.qualifyTypes(requiredTypes));
         }
         return builder.build();
     }
@@ -125,20 +130,21 @@ public class DcpVerifierClient {
      *
      * @param target      the target URL
      * @param query       the query message
-     * @param accessToken optional access token
+     * @param selfIssuedIdToken the Verifier's Self-Issued ID Token
      * @return the deserialized PresentationResponseMessage
      * @throws RemoteHolderAuthException   if authentication fails
      * @throws RemoteHolderClientException if a client error occurs
      * @throws RuntimeException            if all retry attempts fail
      */
-    private PresentationResponseMessage executeWithRetries(String target, PresentationQueryMessage query, String accessToken) {
+    private PresentationResponseMessage executeWithRetries(String target, PresentationQueryMessage query,
+                                                           String selfIssuedIdToken) {
         int attempt = 0;
         long backoffMs = INITIAL_BACKOFF_MS;
 
         while (attempt < MAX_RETRIES) {
             attempt++;
             try {
-                return executeRequest(target, query, accessToken);
+                return executeRequest(target, query, selfIssuedIdToken);
             } catch (IOException e) {
                 log.warn("Attempt {}/{} failed for {}: {}", attempt, MAX_RETRIES, target, e.getMessage());
 
@@ -181,11 +187,12 @@ public class DcpVerifierClient {
      *
      * @param target      the target URL
      * @param query       the query message
-     * @param accessToken optional access token
+     * @param selfIssuedIdToken the Verifier's Self-Issued ID Token
      * @return the deserialized PresentationResponseMessage
      * @throws IOException if the request fails or response cannot be deserialized
      */
-    private PresentationResponseMessage executeRequest(String target, PresentationQueryMessage query, String accessToken) throws IOException {
+    private PresentationResponseMessage executeRequest(String target, PresentationQueryMessage query,
+                                                       String selfIssuedIdToken) throws IOException {
         // Serialize query to JSON
         JsonNode bodyNode = mapper.valueToTree(query);
         String jsonBody = bodyNode.toPrettyString();
@@ -198,10 +205,7 @@ public class DcpVerifierClient {
         headers.put("Content-Type", "application/json");
         headers.put("Accept", "application/json");
 
-        // Add authorization if provided
-        if (StringUtils.isNotBlank(accessToken)) {
-            headers.put("Authorization", "Bearer " + accessToken);
-        }
+        headers.put("Authorization", "Bearer " + selfIssuedIdToken);
 
         log.debug("Sending presentation query to {}", target);
 

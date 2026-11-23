@@ -23,6 +23,10 @@ import java.util.List;
  *   <li>Step 5: Validates presentations and embedded credentials</li>
  * </ul>
  *
+ * <p>The authenticated principal is the validated Self-Issued ID Token {@code sub} DID (DCP §4.3.3),
+ * never a DID taken from the unverified access token carried in its {@code token} claim. A token
+ * whose access token names another DID is rejected by {@link VerifierService}.
+ *
  * <p>Can be enabled/disabled via the dcp.vp.enabled property.
  * When disabled, this provider returns null to allow fallback to other authentication providers.
  */
@@ -69,7 +73,7 @@ public class DcpVerifierAuthenticationProvider implements AuthenticationProvider
             log.info("  - Scopes: {}", result.getScopes());
             log.info("  - Validated presentations: {}", result.getValidatedPresentations().size());
 
-            // Create authenticated token with the holder DID as principal
+            // Principal = validated Self-Issued ID Token sub (VerifierService takes the holder DID from it)
             UsernamePasswordAuthenticationToken authenticatedToken = new UsernamePasswordAuthenticationToken(
                 result.getHolderDid(),
                 selfIssuedIdToken,

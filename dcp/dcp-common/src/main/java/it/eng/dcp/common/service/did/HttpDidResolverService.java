@@ -6,6 +6,7 @@ import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.VerificationMethod;
+import it.eng.dcp.common.util.DcpTransportSecurity;
 import it.eng.dcp.common.util.DidUrlConverter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -96,6 +98,9 @@ public class HttpDidResolverService implements DidResolverService {
     @Value("${server.ssl.enabled:false}")
     private boolean sslEnabled;
 
+    @Value("${dcp.allow-insecure-http:false}")
+    private boolean allowInsecureHttp;
+
     /**
      * {@inheritDoc}
      *
@@ -113,21 +118,43 @@ public class HttpDidResolverService implements DidResolverService {
      */
     @Override
     public JWK resolvePublicKey(String did, String kid, String verificationRelationship) throws DidResolutionException {
+        return resolveVerificationMethod(did, kid, verificationRelationship)
+                .map(ResolvedVerificationMethod::publicKey)
+                .orElse(null);
+    }
+
+    /**
+     * Resolves the verification method a token references, with its absolute ID and public key.
+     *
+     * <p>Selects the key exactly as {@link #resolvePublicKey(String, String, String)} does, and also returns
+     * the absolute DID URL of the selected verification method. Callers use its DID part to check who
+     * controls the key, for example that a Verifiable Credential was signed with a key of its issuer
+     * (DCP §5.4.3).
+     *
+     * @param did the DID to resolve (for example {@code did:web:example.com})
+     * @param kid the {@code kid} header of the token, or null if the token has none
+     * @param verificationRelationship the relationship the key must be referenced by, or null for any
+     * @return the selected verification method, or empty if no key satisfies the selection rules
+     * @throws DidResolutionException if the DID document cannot be fetched or the selected JWK cannot be parsed
+     */
+    public Optional<ResolvedVerificationMethod> resolveVerificationMethod(String did, String kid,
+            String verificationRelationship) throws DidResolutionException {
         if (did == null) {
-            return null;
+            return Optional.empty();
         }
 
         if (!did.toLowerCase(Locale.ROOT).startsWith("did:web:")) {
-            return null; // unsupported DID method
+            return Optional.empty(); // unsupported DID method
         }
 
         try {
-            Optional<JWK> key = selectKey(fetchDidDocumentCached(did), kid, verificationRelationship);
-            if (key.isEmpty() && kid != null && !kid.isBlank() && evictIfRefreshAllowed(did)) {
+            Optional<ResolvedVerificationMethod> method =
+                    selectKey(fetchDidDocumentCached(did), kid, verificationRelationship);
+            if (method.isEmpty() && kid != null && !kid.isBlank() && evictIfRefreshAllowed(did)) {
                 log.debug("kid {} not found in cached DID document of {}; fetching it again", kid, did);
-                key = selectKey(fetchDidDocumentCached(did), kid, verificationRelationship);
+                method = selectKey(fetchDidDocumentCached(did), kid, verificationRelationship);
             }
-            return key.orElse(null);
+            return method;
         } catch (IOException e) {
             throw new DidResolutionException("Failed to fetch or parse DID document", e);
         }
@@ -139,10 +166,10 @@ public class HttpDidResolverService implements DidResolverService {
      * @param didDocument the resolved DID document, may be null
      * @param kid the {@code kid} header of the token, or null
      * @param verificationRelationship the relationship the key must be referenced by, or null for any
-     * @return the selected public key, or empty if none qualifies
+     * @return the selected verification method with its absolute ID, or empty if none qualifies
      * @throws DidResolutionException if the selected JWK cannot be parsed
      */
-    private Optional<JWK> selectKey(DidDocument didDocument, String kid, String verificationRelationship)
+    private Optional<ResolvedVerificationMethod> selectKey(DidDocument didDocument, String kid, String verificationRelationship)
             throws DidResolutionException {
         if (didDocument == null || didDocument.getVerificationMethods().isEmpty()) {
             return Optional.empty();
@@ -173,20 +200,26 @@ public class HttpDidResolverService implements DidResolverService {
             }
         }
 
+        // Prefer a method of the document's own DID, so a foreign method sharing a JWK kid cannot shadow it
         Optional<VerificationMethod> selected = candidates.stream()
                 .filter(vm -> !relationshipRequired
                         || isReferencedByRelationship(didDocument, vm.getId(), verificationRelationship))
-                .findFirst();
+                .min(Comparator.comparing((VerificationMethod vm) -> !isOwnMethod(vm, docId)));
         if (selected.isEmpty()) {
             log.debug("No verification method of {} matches kid {} with relationship {}",
                     docId, kid, verificationRelationship);
             return Optional.empty();
         }
         try {
-            return Optional.of(JWK.parse(selected.get().getPublicKeyJwk()));
+            return Optional.of(new ResolvedVerificationMethod(
+                    absolutize(selected.get().getId(), docId), JWK.parse(selected.get().getPublicKeyJwk())));
         } catch (ParseException pe) {
             throw new DidResolutionException("Failed to parse JWK", pe);
         }
+    }
+
+    private static boolean isOwnMethod(VerificationMethod vm, String docId) {
+        return absolutize(vm.getId(), docId).startsWith(docId + "#");
     }
 
     private static boolean hasJwk(VerificationMethod vm) {
@@ -271,7 +304,8 @@ public class HttpDidResolverService implements DidResolverService {
      * @return the DID document URL
      */
     private String didDocumentUrl(String did) {
-        String url = DidUrlConverter.convertDidToUrl(did, sslEnabled);
+        String url = DidUrlConverter.convertDidToUrl(did,
+                DcpTransportSecurity.scheme(allowInsecureHttp, sslEnabled).equals("https"));
         return DidUrlConverter.extractBaseUrl(url) + "/.well-known/did.json";
     }
 

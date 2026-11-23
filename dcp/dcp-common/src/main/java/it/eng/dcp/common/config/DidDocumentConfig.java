@@ -25,10 +25,10 @@ public class DidDocumentConfig {
     private final String baseUrl;
 
     /**
-     * Protocol to use (http or https).
+     * Protocol to use (http or https). Defaults to https.
      */
     @Builder.Default
-    private final String protocol = "http";
+    private final String protocol = "https";
 
     /**
      * Host name or IP address.

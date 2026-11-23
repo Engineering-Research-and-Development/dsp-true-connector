@@ -113,8 +113,8 @@ class CredentialIssuanceServiceTest {
         when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
         lenient().when(keyService.getSigningJwk(any())).thenReturn(testSigningKey);
         // Always return a dummy status list entry for any call
-        lenient().when(statusListService.allocateStatusEntry(any(), any()))
-                .thenReturn(new StatusListService.StatusListEntryInfo("dummy-status-list-id", 0));
+        lenient().when(statusListService.allocateStatusEntry(any(), any(), any()))
+                .thenReturn(new StatusListService.StatusListEntry("dummy-status-list-id", 0));
 
         // Remove default VC20 profile setup here. Each test must call setupCredentialConfigs explicitly.
 
@@ -393,6 +393,28 @@ class CredentialIssuanceServiceTest {
             when(keyService.getSigningJwk(any())).thenThrow(new RuntimeException("Key generation failed"));
             issuanceService.generateCredentials(testRequest);
         });
+    }
+
+    @Test
+    @DisplayName("A request where one credential fails delivers none of them and names the failed one")
+    void generateCredentials_mixedSuccessAndFailure_throwsAndReturnsNothing() throws JOSEException {
+        CredentialRequest mixed = CredentialRequest.Builder.newInstance()
+                .issuerPid("issuer-pid-mixed")
+                .holderPid("holder-pid-456")
+                .holderDid(HOLDER_DID)
+                .credentialIds(List.of("MembershipCredential", "OrganizationCredential"))
+                .status(CredentialStatus.PENDING)
+                .createdAt(Instant.now())
+                .build();
+        // The first credential is signed, the second one fails
+        when(keyService.getSigningJwk(any())).thenReturn(testSigningKey).thenThrow(new RuntimeException("sign failed"));
+
+        CredentialIssuanceException ex = assertThrows(CredentialIssuanceException.class,
+                () -> issuanceService.generateCredentials(mixed));
+
+        assertEquals(List.of("OrganizationCredential"), ex.getFailedCredentialIds());
+        assertTrue(ex.getMessage().contains("OrganizationCredential"));
+        assertFalse(ex.getMessage().contains("sign failed"));
     }
 
     @Test

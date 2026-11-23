@@ -78,7 +78,6 @@ All these beans are automatically available for `@Autowired` injection:
 - `HolderService` - Holder operations
 - `PresentationService` - Create presentations
 - `DcpCredentialService` - Credential management
-- `PresentationValidationService` - Validate presentations
 - `CredentialIssuanceClient` - Request credentials
 - And many more...
 
@@ -88,6 +87,25 @@ All these beans are automatically available for `@Autowired` injection:
 - `CredentialStatusRepository` - Track status
 
 See [IMPLEMENTATION_SUMMARY.md](./IMPLEMENTATION_SUMMARY.md#available-dcp-beans) for the complete list.
+
+## Presentation Query Authentication
+
+`POST /dcp/presentations/query` follows DCP v1.0.1 §5.3.1. The bearer token must be the Verifier's own
+Self-Issued ID Token (`aud` = this holder's DID) with, in its `token` claim, an access token this holder issued
+to that Verifier (format: [ADR D-TEC-014](../../doc/decisions/technical/D-TEC-014-credential-service-access-token-format.md)).
+`HolderService.authorizePresentationQuery()` validates both; a missing access token or an invalid token of
+either kind returns 401.
+
+- Authorized scopes come only from the validated access token `scope`. Requested scopes it does not
+  authorize are dropped, and the response is 2xx with fewer presentations. A token without scopes authorizes
+  nothing.
+- Credential lookups are constrained to the holder DID (`findByHolderDidInAndCredentialTypeIn`,
+  `findByHolderDidInAndIdIn`, matching the plain and percent-encoded `did:web` forms); there is no unscoped lookup.
+- The rate limit is keyed by the Verifier DID.
+
+## Presentation Queries
+
+`POST /dcp/presentations/query` supports `scope` queries only. A query carrying `presentationDefinition` (Presentation Exchange) is answered with `501 Not Implemented` after the token check and structural validation, as DCP v1.0.1 §5.4.1.1 allows. A query with both `scope` and `presentationDefinition`, or with neither, returns `400`.
 
 ## Configuration Properties
 
@@ -110,7 +128,15 @@ dcp.issuer.location=did:web:issuer.example.com
 
 # Trusted issuers
 dcp.trusted-issuers.MembershipCredential=did:web:issuer1.com,did:web:issuer2.com
+
+# Dev-only token generator (/api/dev/token/**), off by default
+dcp.dev.token-generator.enabled=false
 ```
+
+`TokenGeneratorAPIController` mints Self-Issued ID Tokens signed with the connector's DID key. It is registered
+only when `dcp.dev.token-generator.enabled=true`; otherwise `/api/dev/token/**` answers 404. Enable it only in
+development and test setups. The host must protect the path: the connector serves it in the `/api/**` zone, which
+needs an admin (401 without credentials, 403 for a non-admin), and never makes it `permitAll`.
 
 ## FAQ
 

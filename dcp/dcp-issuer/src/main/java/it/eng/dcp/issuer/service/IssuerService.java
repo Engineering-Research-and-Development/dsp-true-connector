@@ -156,16 +156,21 @@ public class IssuerService {
     }
 
     /**
-     * Retrieve a credential request by issuerPid.
+     * Retrieve a credential request by issuerPid, restricted to the client that created it.
+     * The stored holder DID must equal the requester DID. A request owned by another client,
+     * a request without a stored owner and an unknown request all return an empty result, so the
+     * caller cannot tell whether the request exists (DCP 1.0.1 section 6.8).
      *
-     * @param requestId The issuerPid identifier
-     * @return Optional containing the request if found
+     * @param requestId    The issuerPid identifier
+     * @param requesterDid The DID of the authenticated caller (token subject)
+     * @return Optional containing the request if found and owned by the requester
      */
-    public Optional<CredentialRequest> getRequestByIssuerPid(String requestId) {
-        if (requestId == null || requestId.isBlank()) {
+    public Optional<CredentialRequest> getRequestByIssuerPid(String requestId, String requesterDid) {
+        if (requestId == null || requestId.isBlank() || requesterDid == null || requesterDid.isBlank()) {
             return Optional.empty();
         }
-        return requestRepository.findByIssuerPid(requestId);
+        return requestRepository.findByIssuerPid(requestId)
+                .filter(request -> requesterDid.equals(request.getHolderDid()));
     }
 
     /**
