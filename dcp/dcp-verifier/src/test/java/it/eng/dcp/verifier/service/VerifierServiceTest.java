@@ -26,21 +26,41 @@ import it.eng.dcp.common.service.did.HttpDidResolverService;
 import it.eng.dcp.common.service.did.ResolvedVerificationMethod;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import okhttp3.RequestBody;
+import okhttp3.MediaType;
+import okhttp3.Protocol;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.Arrays;
+import java.util.Base64;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.zip.GZIPOutputStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -1357,6 +1377,333 @@ class VerifierServiceTest {
     @Nested
     @DisplayName("Step 5: Presentation and credential proofs")
     class ProofValidationTests {
+
+        private static final String STATUS_URL = "https://issuer.example/status/1";
+
+        @Test
+        @DisplayName("Reject a credential when its status list cannot be fetched")
+        void shouldRejectCredentialWhenStatusListUnavailable() throws Exception {
+            JWTClaimsSet claims = new JWTClaimsSet.Builder(parseClaims(createValidCredentialJWT()))
+                    .claim("vc", Map.of(
+                            "type", List.of("VerifiableCredential", "MembershipCredential"),
+                            "credentialSubject", Map.of("id", HOLDER_DID),
+                            "credentialStatus", Map.of(
+                                    "type", "StatusList2021Entry",
+                                    "statusPurpose", "revocation",
+                                    "statusListCredential", "https://issuer.example/status/1",
+                                    "statusListIndex", "5")))
+                    .build();
+
+            assertThrows(SecurityException.class, () -> runPresentationFlowWith(createJWT(claims, issuerKey)));
+        }
+
+        @ParameterizedTest
+        @ValueSource(booleans = {false, true})
+        @DisplayName("Accept a valid status bit in both supported credential profiles")
+        void shouldAcceptUnrevokedStatus(boolean vc20) throws Exception {
+            stubStatusList(statusList(vc20, new byte[] {(byte) 0x80}, issuerKey, ISSUER_DID, STATUS_URL));
+            assertNotNull(runPresentationFlowWith(credentialWithStatus(vc20, "1")));
+        }
+
+        @Test
+        @DisplayName("Accept VC 1.1 JWT status lists whose issuer and ID are represented by iss and jti")
+        void shouldAcceptVc11JwtRegisteredClaims() throws Exception {
+            JWTClaimsSet claims = parseClaims(statusList(false, new byte[] {0}, issuerKey, ISSUER_DID, STATUS_URL));
+            Map<String, Object> vc = new HashMap<>(claims.getJSONObjectClaim("vc"));
+            vc.remove("id");
+            vc.remove("issuer");
+            stubStatusList(createJWT(new JWTClaimsSet.Builder(claims).claim("vc", vc).build(), issuerKey));
+            assertNotNull(runPresentationFlowWith(credentialWithStatus(false, "0")));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"id", "issuer"})
+        @DisplayName("Reject embedded VC 1.1 status-list identifiers that conflict with JWT claims")
+        void shouldRejectConflictingVc11EmbeddedIdentifiers(String field) throws Exception {
+            JWTClaimsSet claims = parseClaims(statusList(false, new byte[] {0}, issuerKey, ISSUER_DID, STATUS_URL));
+            Map<String, Object> vc = new HashMap<>(claims.getJSONObjectClaim("vc"));
+            vc.put(field, field.equals("id") ? STATUS_URL + "-other" : "did:web:attacker.example");
+            stubStatusList(createJWT(new JWTClaimsSet.Builder(claims).claim("vc", vc).build(), issuerKey));
+            assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialWithStatus(false, "0")));
+        }
+
+        @ParameterizedTest
+        @ValueSource(booleans = {false, true})
+        @DisplayName("Reject a revoked status bit in both supported credential profiles")
+        void shouldRejectRevokedStatus(boolean vc20) throws Exception {
+            stubStatusList(statusList(vc20, new byte[] {(byte) 0x80}, issuerKey, ISSUER_DID, STATUS_URL));
+            assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialWithStatus(vc20, "0")));
+        }
+
+        @Test
+        @DisplayName("Reject a status list signed by a different key")
+        void shouldRejectForgedStatusList() throws Exception {
+            ECKey attackerKey = new ECKeyGenerator(Curve.P_256).keyID(issuerKey.getKeyID()).generate();
+            stubStatusList(statusList(false, new byte[] {0}, attackerKey, ISSUER_DID, STATUS_URL));
+            assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialWithStatus(false, "0")));
+        }
+
+        @Test
+        @DisplayName("Reject a status list for a different issuer")
+        void shouldRejectStatusListWithWrongIssuer() throws Exception {
+            stubStatusList(statusList(false, new byte[] {0}, issuerKey, "did:web:attacker.example", STATUS_URL));
+            assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialWithStatus(false, "0")));
+        }
+
+        @Test
+        @DisplayName("Reject a status list for a different URL")
+        void shouldRejectStatusListWithWrongId() throws Exception {
+            stubStatusList(statusList(false, new byte[] {0}, issuerKey, ISSUER_DID, STATUS_URL + "-other"));
+            assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialWithStatus(false, "0")));
+        }
+
+        @Test
+        @DisplayName("Reject an expired status list")
+        void shouldRejectExpiredStatusList() throws Exception {
+            JWTClaimsSet expired = new JWTClaimsSet.Builder(
+                    parseClaims(statusList(false, new byte[] {0}, issuerKey, ISSUER_DID, STATUS_URL)))
+                    .expirationTime(new Date(System.currentTimeMillis() - 60000)).build();
+            stubStatusList(createJWT(expired, issuerKey));
+            assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialWithStatus(false, "0")));
+        }
+
+        @Test
+        @DisplayName("Reject a VC 2.0 status list after validUntil")
+        void shouldRejectStatusListPastValidUntil() throws Exception {
+            JWTClaimsSet expired = new JWTClaimsSet.Builder(
+                    parseClaims(statusList(true, new byte[] {0}, issuerKey, ISSUER_DID, STATUS_URL)))
+                    .claim("validUntil", Instant.now().minusSeconds(60).toString()).build();
+            stubStatusList(createJWT(expired, issuerKey));
+            assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialWithStatus(true, "0")));
+        }
+
+        @Test
+        @DisplayName("Reject a VC 2.0 status list before validFrom")
+        void shouldRejectStatusListBeforeValidFrom() throws Exception {
+            JWTClaimsSet future = new JWTClaimsSet.Builder(
+                    parseClaims(statusList(true, new byte[] {0}, issuerKey, ISSUER_DID, STATUS_URL)))
+                    .claim("validFrom", Instant.now().plusSeconds(60).toString()).build();
+            stubStatusList(createJWT(future, issuerKey));
+            assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialWithStatus(true, "0")));
+        }
+
+        @Test
+        @DisplayName("Reject a malformed status list credential")
+        void shouldRejectMalformedStatusList() throws Exception {
+            stubStatusList("not-a-signed-credential");
+            assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialWithStatus(false, "0")));
+        }
+
+        @Test
+        @DisplayName("Reject a status list response without a body")
+        void shouldRejectStatusListWithoutBody() throws Exception {
+            when(httpClient.executeCallWithoutRedirects(any(Request.class))).thenAnswer(invocation ->
+                    new Response.Builder().request(new Request.Builder().url(STATUS_URL).build())
+                            .protocol(Protocol.HTTP_1_1).code(200).message("OK").build());
+            assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialWithStatus(false, "0")));
+        }
+
+        @Test
+        @DisplayName("Reuse the verified list when two credentials reference it")
+        void shouldCacheVerifiedStatusList() throws Exception {
+            stubStatusList(statusList(false, new byte[] {0}, issuerKey, ISSUER_DID, STATUS_URL));
+            String first = credentialWithStatus(false, "0");
+            String second = credentialWithStatus(false, "1");
+            runFlowWithPresentation(createValidPresentationJWT(List.of(first, second)));
+            verify(httpClient, times(1)).executeCallWithoutRedirects(any(Request.class));
+        }
+
+        @Test
+        @DisplayName("Refetch the status list after the cache TTL")
+        void shouldRefetchAfterCacheExpiry() throws Exception {
+            AtomicReference<Instant> now = new AtomicReference<>(Instant.parse("2026-01-01T00:00:00Z"));
+            Clock clock = new Clock() {
+                @Override
+                public ZoneId getZone() {
+                    return ZoneOffset.UTC;
+                }
+
+                @Override
+                public Clock withZone(ZoneId zone) {
+                    return this;
+                }
+
+                @Override
+                public Instant instant() {
+                    return now.get();
+                }
+            };
+            CredentialStatusVerifier checker = new CredentialStatusVerifier(httpClient, objectMapper, clock);
+            String valid = statusList(false, new byte[] {0}, issuerKey, ISSUER_DID, STATUS_URL);
+            String revoked = statusList(false, new byte[] {(byte) 0x80}, issuerKey, ISSUER_DID, STATUS_URL);
+            when(httpClient.executeCallWithoutRedirects(any(Request.class)))
+                    .thenAnswer(invocation -> response(valid))
+                    .thenAnswer(invocation -> response(revoked));
+            var status = objectMapper.valueToTree(Map.of(
+                    "type", "StatusList2021Entry", "statusPurpose", "revocation",
+                    "statusListCredential", STATUS_URL, "statusListIndex", "0"));
+
+            checker.verify(status, ISSUER_DID, false, (jwt, did) -> { });
+            now.set(now.get().plusSeconds(301));
+            assertThrows(SecurityException.class, () -> checker.verify(status, ISSUER_DID, false, (jwt, did) -> { }));
+            verify(httpClient, times(2)).executeCallWithoutRedirects(any(Request.class));
+        }
+
+        @Test
+        @DisplayName("A slow status list does not block unrelated status checks")
+        void shouldNotBlockOtherListsWhileFetching() throws Exception {
+            String slowUrl = STATUS_URL + "-slow";
+            String fastUrl = STATUS_URL + "-fast";
+            String slowList = statusList(false, new byte[] {0}, issuerKey, ISSUER_DID, slowUrl);
+            String fastList = statusList(false, new byte[] {0}, issuerKey, ISSUER_DID, fastUrl);
+            CountDownLatch slowStarted = new CountDownLatch(1);
+            CountDownLatch releaseSlow = new CountDownLatch(1);
+            when(httpClient.executeCallWithoutRedirects(any(Request.class))).thenAnswer(invocation -> {
+                Request request = invocation.getArgument(0);
+                if (request.url().toString().equals(slowUrl)) {
+                    slowStarted.countDown();
+                    if (!releaseSlow.await(10, TimeUnit.SECONDS)) {
+                        throw new IOException("Timed out waiting for test");
+                    }
+                    return response(slowList);
+                }
+                return response(fastList);
+            });
+            CredentialStatusVerifier checker = new CredentialStatusVerifier(httpClient, objectMapper);
+            var slow = objectMapper.valueToTree(Map.of(
+                    "type", "StatusList2021Entry", "statusPurpose", "revocation",
+                    "statusListCredential", slowUrl, "statusListIndex", "0"));
+            var fast = objectMapper.valueToTree(Map.of(
+                    "type", "StatusList2021Entry", "statusPurpose", "revocation",
+                    "statusListCredential", fastUrl, "statusListIndex", "0"));
+
+            try (var executor = Executors.newFixedThreadPool(2)) {
+                try {
+                    var first = executor.submit(() -> checker.verify(slow, ISSUER_DID, false, (jwt, did) -> { }));
+                    assertTrue(slowStarted.await(5, TimeUnit.SECONDS));
+                    var second = executor.submit(() -> checker.verify(fast, ISSUER_DID, false, (jwt, did) -> { }));
+                    second.get(3, TimeUnit.SECONDS);
+                    releaseSlow.countDown();
+                    first.get(5, TimeUnit.SECONDS);
+                } finally {
+                    releaseSlow.countDown();
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("Reject malformed status instead of treating it as absent")
+        void shouldRejectMalformedStatus() throws Exception {
+            JWTClaimsSet claims = new JWTClaimsSet.Builder(parseClaims(createValidCredentialJWT()))
+                    .claim("credentialStatus", Map.of("type", "StatusList2021Entry"))
+                    .build();
+            assertThrows(SecurityException.class, () -> runPresentationFlowWith(createJWT(claims, issuerKey)));
+            verify(httpClient, never()).executeCallWithoutRedirects(any(Request.class));
+        }
+
+        @Test
+        @DisplayName("Reject insecure status URLs without exposing their contents")
+        void shouldRejectInsecureStatusUrlWithoutDisclosure() throws Exception {
+            JWTClaimsSet claims = new JWTClaimsSet.Builder(parseClaims(createValidCredentialJWT()))
+                    .claim("credentialStatus", Map.of(
+                            "type", "StatusList2021Entry", "statusPurpose", "revocation",
+                            "statusListCredential", "http://issuer.example/status?private-value",
+                            "statusListIndex", "0"))
+                    .build();
+            SecurityException failure = assertThrows(SecurityException.class,
+                    () -> runPresentationFlowWith(createJWT(claims, issuerKey)));
+            assertFalse(failure.getMessage().contains("private-value"));
+            verify(httpClient, never()).executeCallWithoutRedirects(any(Request.class));
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"-1", "131072", "invalid"})
+        @DisplayName("Reject a malformed or out-of-range status index")
+        void shouldRejectInvalidIndex(String index) throws Exception {
+            lenient().when(httpClient.executeCallWithoutRedirects(any(Request.class)))
+                    .thenAnswer(invocation -> response(statusList(false, new byte[] {0}, issuerKey, ISSUER_DID, STATUS_URL)));
+            assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialWithStatus(false, index)));
+        }
+
+        @Test
+        @DisplayName("Reject status entries requiring unsupported multibit decoding")
+        void shouldRejectMultibitStatusEntry() throws Exception {
+            JWTClaimsSet claims = parseClaims(credentialWithStatus(true, "1"));
+            Map<String, Object> status = new HashMap<>(claims.getJSONObjectClaim("credentialStatus"));
+            status.put("statusSize", 2);
+            lenient().when(httpClient.executeCallWithoutRedirects(any(Request.class)))
+                    .thenAnswer(invocation -> response(statusList(true, new byte[] {0}, issuerKey, ISSUER_DID, STATUS_URL)));
+            assertThrows(SecurityException.class, () -> runPresentationFlowWith(
+                    createJWT(new JWTClaimsSet.Builder(claims).claim("credentialStatus", status).build(), issuerKey)));
+        }
+
+        @Test
+        @DisplayName("Reject a status list shorter than the minimum privacy size")
+        void shouldRejectUndersizedStatusList() throws Exception {
+            stubStatusList(statusList(false, new byte[] {0}, issuerKey, ISSUER_DID, STATUS_URL, false));
+            assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialWithStatus(false, "0")));
+        }
+
+        private String credentialWithStatus(boolean vc20, String index) throws Exception {
+            Map<String, Object> status = Map.of(
+                    "type", vc20 ? "BitstringStatusListEntry" : "StatusList2021Entry",
+                    "statusPurpose", "revocation",
+                    "statusListCredential", STATUS_URL,
+                    "statusListIndex", index);
+            JWTClaimsSet claims;
+            if (vc20) {
+                claims = new JWTClaimsSet.Builder(parseClaims(createVc20CredentialJWT(
+                        Optional.of(HOLDER_DID), Optional.of(Map.of("id", HOLDER_DID)))))
+                        .claim("credentialStatus", status).build();
+            } else {
+                claims = new JWTClaimsSet.Builder(parseClaims(createValidCredentialJWT()))
+                        .claim("vc", Map.of(
+                                "type", List.of("VerifiableCredential", "MembershipCredential"),
+                                "credentialSubject", Map.of("id", HOLDER_DID),
+                                "credentialStatus", status)).build();
+            }
+            return createJWT(claims, issuerKey);
+        }
+
+        private String statusList(boolean vc20, byte[] bits, ECKey key, String issuer, String url) throws Exception {
+            return statusList(vc20, bits, key, issuer, url, true);
+        }
+
+        private String statusList(boolean vc20, byte[] bits, ECKey key, String issuer, String url,
+                boolean padToMinimum) throws Exception {
+            ByteArrayOutputStream compressed = new ByteArrayOutputStream();
+            try (GZIPOutputStream gzip = new GZIPOutputStream(compressed)) {
+                gzip.write(padToMinimum ? Arrays.copyOf(bits, 16384) : bits);
+            }
+            String encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(compressed.toByteArray());
+            Map<String, Object> subject = Map.of(
+                    "id", url + "#list",
+                    "type", vc20 ? "BitstringStatusList" : "StatusList2021",
+                    "statusPurpose", "revocation",
+                    "encodedList", vc20 ? "u" + encoded : encoded);
+            JWTClaimsSet.Builder claims = new JWTClaimsSet.Builder().issuer(issuer).jwtID(url);
+            if (vc20) {
+                claims.claim("id", url)
+                        .claim("issuer", Map.of("id", issuer))
+                        .claim("type", List.of("VerifiableCredential", "BitstringStatusListCredential"))
+                        .claim("credentialSubject", subject);
+            } else {
+                claims.claim("vc", Map.of("id", url, "issuer", issuer,
+                        "type", List.of("VerifiableCredential", "StatusList2021Credential"),
+                        "credentialSubject", subject));
+            }
+            return createJWT(claims.build(), key);
+        }
+
+        private void stubStatusList(String jwt) throws IOException {
+            when(httpClient.executeCallWithoutRedirects(any(Request.class))).thenAnswer(invocation -> response(jwt));
+        }
+
+        private Response response(String jwt) {
+            return new Response.Builder().request(new Request.Builder().url(STATUS_URL).build())
+                    .protocol(Protocol.HTTP_1_1).code(200).message("OK")
+                    .body(ResponseBody.create(jwt, MediaType.parse("application/jwt"))).build();
+        }
 
         @Test
         @DisplayName("Should reject a VP whose payload was changed after signing")

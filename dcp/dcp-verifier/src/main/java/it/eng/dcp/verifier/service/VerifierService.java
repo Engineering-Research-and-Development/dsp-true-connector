@@ -1,6 +1,7 @@
 package it.eng.dcp.verifier.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.ECDSAVerifier;
@@ -83,6 +84,7 @@ public class VerifierService {
     private final DidDocumentConfig didConfig;
     private final IssuerTrustService issuerTrustService;
     private final DcpAuditEventPublisher auditPublisher;
+    private final CredentialStatusVerifier statusVerifier;
 
     @Value("${dcp.allow-insecure-http:false}")
     private boolean allowInsecureHttp;
@@ -114,6 +116,7 @@ public class VerifierService {
         this.didConfig = didConfig;
         this.issuerTrustService = issuerTrustService;
         this.auditPublisher = auditPublisher;
+        this.statusVerifier = new CredentialStatusVerifier(httpClient, objectMapper);
 
         log.info("VerifierService initialized with verifier DID: {}", didConfig.getDid());
     }
@@ -517,6 +520,17 @@ public class VerifierService {
                     "Credential issuer not trusted: issuer=%s, credentialType=%s. " +
                     "Configure dcp.trusted-issuers.%s=<issuerDid> to trust this issuer.",
                     issuerDid, credentialType, credentialType));
+            }
+
+            JsonNode credential = objectMapper.valueToTree(credentialClaims.getClaims());
+            if (credential.has("credentialStatus")) {
+                statusVerifier.verify(credential.get("credentialStatus"), issuerDid, allowInsecureHttp,
+                        (jwt, did) -> verifyProof(jwt, did, DidDocument.ASSERTION_METHOD, "Status list"));
+            }
+            JsonNode vc = credential.path("vc");
+            if (vc.has("credentialStatus")) {
+                statusVerifier.verify(vc.get("credentialStatus"), issuerDid, allowInsecureHttp,
+                        (jwt, did) -> verifyProof(jwt, did, DidDocument.ASSERTION_METHOD, "Status list"));
             }
 
             log.debug("✓ Credential validated: type={}, issuer={}", credentialType, issuerDid);
