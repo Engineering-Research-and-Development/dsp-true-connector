@@ -141,5 +141,35 @@ class BasicVerifiablePresentationSignerTest {
         assertTrue(result instanceof com.fasterxml.jackson.databind.node.ObjectNode,
                    "JSON-LD should be an ObjectNode");
     }
-}
 
+    @Test
+    void testJwtBoundToVerifierAndShortLived() throws Exception {
+        VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
+                .holderDid("did:web:example.com")
+                .credentialIds(List.of("urn:uuid:credential-123"))
+                .profileId(ProfileId.VC11_SL2021_JWT)
+                .build();
+
+        String jwt = (String) signer.sign(vp, "jwt", "did:web:verifier.example.com");
+        var claims = SignedJWT.parse(jwt).getJWTClaimsSet();
+
+        assertEquals(List.of("did:web:verifier.example.com"), claims.getAudience());
+        assertNotNull(claims.getExpirationTime());
+        assertTrue(claims.getExpirationTime().after(claims.getIssueTime()));
+        assertTrue(claims.getExpirationTime().getTime() - claims.getIssueTime().getTime() <= 300_000L + 1000L);
+    }
+
+    @Test
+    void testJwtWithoutVerifierHasNoAudience() throws Exception {
+        VerifiablePresentation vp = VerifiablePresentation.Builder.newInstance()
+                .holderDid("did:web:example.com")
+                .credentialIds(List.of("urn:uuid:credential-123"))
+                .profileId(ProfileId.VC11_SL2021_JWT)
+                .build();
+
+        var claims = SignedJWT.parse((String) signer.sign(vp, "jwt")).getJWTClaimsSet();
+
+        assertNull(claims.getAudience() == null || claims.getAudience().isEmpty() ? null : claims.getAudience());
+        assertNotNull(claims.getExpirationTime());
+    }
+}

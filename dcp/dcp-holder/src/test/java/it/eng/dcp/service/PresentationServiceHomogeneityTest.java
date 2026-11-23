@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 class PresentationServiceHomogeneityTest {
 
     private static final String HOLDER_DID = "did:holder:1";
+    private static final String VERIFIER_DID = "did:verifier:1";
     private static final Set<String> HOLDER_DIDS = Set.of(HOLDER_DID);
 
     private VerifiableCredentialRepository repo;
@@ -81,7 +82,7 @@ class PresentationServiceHomogeneityTest {
                 .scope(List.of("typeA", "typeB"))
                 .build();
 
-        var resp = svc.createPresentation(query, HOLDER_DID, claims);
+        var resp = svc.createPresentation(query, HOLDER_DID, claims, VERIFIER_DID);
         assertNotNull(resp);
         assertTrue(resp.getPresentation().size() >= 2, "Should produce separate presentations for different profiles");
     }
@@ -115,7 +116,7 @@ class PresentationServiceHomogeneityTest {
                 .scope(List.of("typeA"))
                 .build();
 
-        var resp = svc.createPresentation(query, HOLDER_DID, claims);
+        var resp = svc.createPresentation(query, HOLDER_DID, claims, VERIFIER_DID);
         assertNotNull(resp);
         assertEquals(1, resp.getPresentation().size(), "Single profile should yield one presentation grouping both creds");
     }

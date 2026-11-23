@@ -14,8 +14,10 @@ import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.holder.model.VerifiablePresentation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.Date;
 
 @Service
@@ -25,6 +27,9 @@ public class BasicVerifiablePresentationSigner implements VerifiablePresentation
     private final KeyService keyService;
     private final DidDocumentConfig config;
 
+    @Value("${dcp.presentation.ttl-seconds:300}")
+    private long presentationTtlSeconds = 300L;
+
     @Autowired
     public BasicVerifiablePresentationSigner(KeyService keyService,
                                              DidDocumentConfig config) {
@@ -32,8 +37,11 @@ public class BasicVerifiablePresentationSigner implements VerifiablePresentation
         this.config = config;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public Object sign(VerifiablePresentation vp, String format) {
+    public Object sign(VerifiablePresentation vp, String format, String verifierDid) {
         if (format == null) format = "json-ld";
         switch (format.toLowerCase()) {
             case "jwt":
@@ -43,13 +51,18 @@ public class BasicVerifiablePresentationSigner implements VerifiablePresentation
                     ECKey signingKey = keyService.getSigningJwk(config);
 
                     // Build JWT claims for Verifiable Presentation
-                    JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+                    Instant now = Instant.now();
+                    JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
                             .claim("vp", buildVPClaim(vp))
                             .issuer(vp.getHolderDid())
                             .subject(vp.getHolderDid())
-                            .issueTime(new Date())
-                            .jwtID(vp.getId())
-                            .build();
+                            .issueTime(Date.from(now))
+                            .expirationTime(Date.from(now.plusSeconds(presentationTtlSeconds)))
+                            .jwtID(vp.getId());
+                    if (verifierDid != null && !verifierDid.isBlank()) {
+                        claimsBuilder.audience(verifierDid);
+                    }
+                    JWTClaimsSet claimsSet = claimsBuilder.build();
 
                     // Create JWS header with key ID
                     JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256)

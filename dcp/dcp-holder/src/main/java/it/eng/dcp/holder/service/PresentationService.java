@@ -69,11 +69,13 @@ public class PresentationService {
      * @param query the presentation query message containing requested scope
      * @param holderDid the DID of the holder that owns this Credential Service
      * @param accessTokenClaims the validated access token claims with authorized scopes
+     * @param verifierDid the DID of the querying verifier, used as audience of the signed presentations
      * @return the presentation response with only authorized credentials of the holder
      */
     public PresentationResponseMessage createPresentation(PresentationQueryMessage query,
                                                            String holderDid,
-                                                           JWTClaimsSet accessTokenClaims) {
+                                                           JWTClaimsSet accessTokenClaims,
+                                                           String verifierDid) {
         List<String> authorizedScopes = extractScopesFromClaims(accessTokenClaims);
         List<String> requestedScopes = query.getScope();
         warnOnUnqualifiedScopes(requestedScopes);
@@ -85,7 +87,7 @@ public class PresentationService {
                 requestedScopes, authorizedScopes, effectiveScopes);
 
         List<VerifiableCredential> fetched = fetchCredentialsByScopes(holderDid, effectiveScopes);
-        return buildPresentationResponse(fetched);
+        return buildPresentationResponse(fetched, verifierDid);
     }
 
     /**
@@ -398,9 +400,10 @@ public class PresentationService {
      * Groups credentials by profile and signs each group.
      *
      * @param fetched The credentials to include in presentations
+     * @param verifierDid The DID of the querying verifier, used as presentation audience
      * @return The presentation response message
      */
-    private PresentationResponseMessage buildPresentationResponse(List<VerifiableCredential> fetched) {
+    private PresentationResponseMessage buildPresentationResponse(List<VerifiableCredential> fetched, String verifierDid) {
 
         // Group by profileId (null profile grouped under default VC20_BSSL_JWT)
         Map<ProfileId, List<VerifiableCredential>> groups = fetched.stream()
@@ -445,7 +448,7 @@ public class PresentationService {
 
             // All official DCP profiles use JWT format
             String format = profile.getFormat();
-            Object signed = vpSigner.sign(vp, format);
+            Object signed = vpSigner.sign(vp, format, verifierDid);
             signedPresentations.add(signed);
         }
 

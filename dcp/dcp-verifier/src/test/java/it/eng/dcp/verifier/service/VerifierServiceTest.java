@@ -110,6 +110,8 @@ class VerifierServiceTest {
                 .keyID("verifier-key-1")
                 .generate();
 
+        lenient().when(verifierConfig.getDid()).thenReturn(VERIFIER_DID);
+
         // Create service instance
         verifierService = new VerifierService(
                 tokenService,
@@ -1742,6 +1744,46 @@ class VerifierServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("Presentation binding (aud / exp)")
+    class PresentationBinding {
+
+        private String selfIssuedToken;
+
+        private void givenPresentation(String presentationJwt) throws Exception {
+            String accessToken = createValidAccessToken();
+            selfIssuedToken = createValidSelfIssuedToken(accessToken);
+            when(tokenService.validateToken(selfIssuedToken)).thenReturn(parseClaims(selfIssuedToken));
+            setupSuccessfulHolderResolution();
+            setupSuccessfulPresentationQuery(List.of(presentationJwt));
+            setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
+        }
+
+        @Test
+        @DisplayName("Should reject expired presentation")
+        void shouldRejectExpiredPresentation() throws Exception {
+            givenPresentation(createPresentationJWT(List.of(), VERIFIER_DID,
+                    new Date(System.currentTimeMillis() - 60_000L)));
+
+            SecurityException ex = assertThrows(SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken));
+
+            assertTrue(ex.getMessage().contains("Presentation has expired"));
+        }
+
+        @Test
+        @DisplayName("Should reject presentation addressed to another verifier")
+        void shouldRejectPresentationForWrongAudience() throws Exception {
+            givenPresentation(createPresentationJWT(List.of(), "did:web:other-verifier.example.com",
+                    new Date(System.currentTimeMillis() + 300_000L)));
+
+            SecurityException ex = assertThrows(SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken));
+
+            assertTrue(ex.getMessage().contains("audience does not match"));
+        }
+    }
+
     // ═════════════════════════════════════════════════════════════════════════════
     // HELPER METHODS
     // ═════════════════════════════════════════════════════════════════════════════
@@ -1865,20 +1907,28 @@ class VerifierServiceTest {
     }
 
     private String createValidPresentationJWT(List<String> credentialJwts) throws JOSEException {
-        return createJWT(
-                new JWTClaimsSet.Builder()
-                        .issuer(HOLDER_DID)
-                        .subject(HOLDER_DID)
-                        .claim("vp", Map.of(
-                                "@context", List.of("https://www.w3.org/2018/credentials/v1"),
-                                "type", List.of("VerifiablePresentation"),
-                                "verifiableCredential", credentialJwts
-                        ))
-                        .issueTime(new Date())
-                        .jwtID(UUID.randomUUID().toString())
-                        .build(),
-                holderKey
-        );
+        return createPresentationJWT(credentialJwts, VERIFIER_DID, new Date(System.currentTimeMillis() + 300_000L));
+    }
+
+    private String createPresentationJWT(List<String> credentialJwts, String audience, Date expiration)
+            throws JOSEException {
+        JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder()
+                .issuer(HOLDER_DID)
+                .subject(HOLDER_DID)
+                .claim("vp", Map.of(
+                        "@context", List.of("https://www.w3.org/2018/credentials/v1"),
+                        "type", List.of("VerifiablePresentation"),
+                        "verifiableCredential", credentialJwts
+                ))
+                .issueTime(new Date())
+                .jwtID(UUID.randomUUID().toString());
+        if (audience != null) {
+            builder.audience(audience);
+        }
+        if (expiration != null) {
+            builder.expirationTime(expiration);
+        }
+        return createJWT(builder.build(), holderKey);
     }
 
     private JWTClaimsSet parseClaims(String jwt) throws Exception {

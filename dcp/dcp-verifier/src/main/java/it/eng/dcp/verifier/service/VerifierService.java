@@ -35,7 +35,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -389,6 +391,8 @@ public class VerifierService {
 
                 log.debug("Presentation JWT signature verified");
 
+                validatePresentationBinding(presentationClaims);
+
                 // Extract VP claim containing the presentation data
                 Object vpClaimObj = presentationClaims.getClaim("vp");
                 if (vpClaimObj == null) {
@@ -446,6 +450,28 @@ public class VerifierService {
         }
 
         return validatedPresentations;
+    }
+
+    /**
+     * Check the validity claims of a presentation JWT, when present.
+     *
+     * <p>A presentation that carries an {@code exp} claim must not be expired, and one that carries an
+     * {@code aud} claim must be addressed to this verifier's DID.
+     *
+     * @param presentationClaims the claims of the presentation JWT
+     * @throws SecurityException if the presentation is expired or addressed to another audience
+     */
+    private void validatePresentationBinding(JWTClaimsSet presentationClaims) {
+        Date expiration = presentationClaims.getExpirationTime();
+        if (expiration != null && !expiration.toInstant().isAfter(Instant.now())) {
+            throw new SecurityException("Presentation has expired");
+        }
+
+        List<String> audience = presentationClaims.getAudience();
+        if (audience != null && !audience.isEmpty()
+                && audience.stream().noneMatch(aud -> DidUrlConverter.compareDids(aud, didConfig.getDid()))) {
+            throw new SecurityException("Presentation audience does not match verifier DID");
+        }
     }
 
     /**
