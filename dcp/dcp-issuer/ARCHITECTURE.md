@@ -176,6 +176,22 @@
    └─────────────┘
 ```
 
+## Credential Write Authorization (DCP v1.0.1 §6.1, §6.4, §6.5)
+
+The Holder sends its Self-Issued ID Token to `POST /issuer/credentials`. When that token carries a `token` claim,
+the Issuer stores the original Holder-issued access token only on the internal `CredentialRequest` record; the
+field is excluded from JSON and is not included in request-status responses.
+
+For both issued credentials and rejection notifications, the Issuer sends its own Self-Issued ID Token to the
+Holder's Credential Service. The token is Issuer-signed and addressed to the Holder DID, and its `token` claim
+contains the exact Holder-issued access token received with the request. Before processing either message, the
+Holder validates the Issuer token and then validates the nested access token with the Issuer DID as its audience.
+After successful delivery, the Issuer persists the terminal request state without the access token; failed
+deliveries retain it for retry until it expires.
+
+The Holder's `POST /api/v1/dcp/credentials/request` helper creates a Holder access token and includes it in the
+Self-Issued ID Token sent to the Issuer.
+
 ## Credential Status Lists
 
 Credentials of the `vc11-sl2021/jwt` and `vc20-bssl/jwt` profiles carry a `credentialStatus` entry for revocation (DCP v1.0.1 §6.10). `StatusListService` manages the lists in the `status_lists` collection:

@@ -646,8 +646,10 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
      */
     private String createCredentialRequest(String holderPid) {
         String issuerDid = getIssuerDid();
-        String validToken = generateValidToken(issuerDid);
-        String credentialId = getAnyCredentialId();
+        Map<String, Object> credential = getAnyCredential();
+        String validToken = generateValidTokenWithCredentialAccessToken(
+            issuerDid, (String) credential.get("credentialType"));
+        String credentialId = (String) credential.get("id");
 
         Map<String, Object> credentialRequest = Map.of(
             "@context", List.of("https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"),
@@ -728,7 +730,7 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
      *
      * @return a credential ID that the issuer supports
      */
-    private String getAnyCredentialId() {
+    private Map<String, Object> getAnyCredential() {
         String issuerDid = getIssuerDid();
         String validToken = generateValidToken(issuerDid);
 
@@ -752,7 +754,7 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
             (List<Map<String, Object>>) metadata.get("credentialsSupported");
         assertFalse(credentialsSupported.isEmpty(), "Issuer must have at least one credential configured");
 
-        return (String) credentialsSupported.get(0).get("id");
+        return credentialsSupported.get(0);
     }
 
     /**
@@ -865,7 +867,26 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
      * @return valid JWT Bearer token
      */
     private String generateValidToken(String audienceDid) {
-        Map<String, String> tokenRequest = Map.of("audienceDid", audienceDid);
+        return generateValidToken(audienceDid, null);
+    }
+
+    /**
+     * Generates a valid Self-Issued ID Token carrying a Holder access token for a credential type.
+     *
+     * @param audienceDid the DID of the audience for the token
+     * @param credentialType the credential type authorized by the nested access token
+     * @return valid JWT Bearer token
+     */
+    private String generateValidTokenWithCredentialAccessToken(String audienceDid, String credentialType) {
+        return generateValidToken(audienceDid, getHolderAccessToken(audienceDid, credentialType));
+    }
+
+    private String generateValidToken(String audienceDid, String accessToken) {
+        Map<String, String> tokenRequest = new HashMap<>();
+        tokenRequest.put("audienceDid", audienceDid);
+        if (accessToken != null) {
+            tokenRequest.put("accessToken", accessToken);
+        }
 
         HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(tokenRequest);
 

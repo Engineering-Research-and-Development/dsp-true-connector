@@ -1,5 +1,6 @@
 package it.eng.dcp.common.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import jakarta.validation.ValidationException;
@@ -45,6 +46,9 @@ public class CredentialRequest {
      * Decentralized Identifier (DID) of the holder (if available).
      */
     private String holderDid;
+
+    @JsonIgnore
+    private String clientAccessToken;
 
     /**
      * List of credential object ids requested (references into credentialsSupported).
@@ -107,6 +111,17 @@ public class CredentialRequest {
 
         public Builder holderDid(String holderDid) {
             req.holderDid = holderDid;
+            return this;
+        }
+
+        /**
+         * Set the access token supplied with the holder's credential request.
+         *
+         * @param clientAccessToken the holder-issued access token
+         * @return this builder
+         */
+        public Builder clientAccessToken(String clientAccessToken) {
+            req.clientAccessToken = clientAccessToken;
             return this;
         }
 

@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -83,18 +84,27 @@ public class IssuerService {
      * Validates that all requested credentials are supported by the issuer.
      *
      * @param msg     The CredentialRequestMessage
-     * @param holderDid The DID of the holder making the request
+     * @param claims The validated claims from the holder's access token
      * @return The persisted CredentialRequest
      * @throws IllegalArgumentException if any requested credential type is not supported
      */
-    public CredentialRequest createCredentialRequest(CredentialRequestMessage msg, String holderDid) {
+    public CredentialRequest createCredentialRequest(CredentialRequestMessage msg, JWTClaimsSet claims) {
         // Validate that all requested credentials are supported
         validateRequestedCredentials(msg);
+
+        String holderDid = claims.getSubject();
+        String clientAccessToken;
+        try {
+            clientAccessToken = claims.getStringClaim("token");
+        } catch (ParseException e) {
+            throw new SecurityException("The token claim must be a string", e);
+        }
 
         CredentialRequest req = CredentialRequest.Builder.newInstance()
                 .issuerPid("req-" + UUID.randomUUID())
                 .holderPid(msg.getHolderPid())
                 .holderDid(holderDid)
+                .clientAccessToken(clientAccessToken)
                 .credentialIds(msg.getCredentials().stream()
                         .map(CredentialRequestMessage.CredentialReference::getId)
                         .toList())

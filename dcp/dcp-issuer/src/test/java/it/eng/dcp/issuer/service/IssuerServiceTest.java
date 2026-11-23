@@ -59,7 +59,7 @@ class IssuerServiceTest {
 
     // --- createCredentialRequest ---
     @Test
-    void createCredentialRequest_success() {
+    void createCredentialRequest_success() throws Exception {
         IssuerMetadata metadata = mock(IssuerMetadata.class);
         IssuerMetadata.CredentialObject credObj = mock(IssuerMetadata.CredentialObject.class);
         when(credObj.getId()).thenReturn("cred1");
@@ -75,12 +75,41 @@ class IssuerServiceTest {
         when(req.getIssuerPid()).thenReturn("req-123");
         when(requestRepository.save(any())).thenReturn(req);
 
-        CredentialRequest result = issuerService.createCredentialRequest(msg, "did:web:holder.example.com");
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject("did:web:holder.example.com")
+                .claim("token", "holder-access-token")
+                .build();
+        CredentialRequest result = issuerService.createCredentialRequest(msg, claims);
 
         assertSame(req, result);
+        ArgumentCaptor<CredentialRequest> requestCaptor = ArgumentCaptor.forClass(CredentialRequest.class);
+        verify(requestRepository).save(requestCaptor.capture());
+        assertEquals("did:web:holder.example.com", requestCaptor.getValue().getHolderDid());
+        assertEquals("holder-access-token", requestCaptor.getValue().getClientAccessToken());
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
         assertEquals(DcpAuditEventType.CREDENTIAL_REQUEST_RECEIVED, typeCaptor.getValue());
+    }
+
+    @Test
+    void createCredentialRequest_nonStringClientToken_throwsSecurityException() {
+        IssuerMetadata metadata = mock(IssuerMetadata.class);
+        IssuerMetadata.CredentialObject credObj = mock(IssuerMetadata.CredentialObject.class);
+        when(credObj.getId()).thenReturn("cred1");
+        when(metadata.getCredentialsSupported()).thenReturn(List.of(credObj));
+        when(credentialMetadataService.buildIssuerMetadata()).thenReturn(metadata);
+        CredentialRequestMessage msg = CredentialRequestMessage.Builder.newInstance()
+                .holderPid("holder1")
+                .credentials(List.of(
+                        CredentialRequestMessage.CredentialReference.Builder.newInstance().id("cred1").build()
+                ))
+                .build();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject("did:web:holder.example.com")
+                .claim("token", 123)
+                .build();
+
+        assertThrows(SecurityException.class, () -> issuerService.createCredentialRequest(msg, claims));
     }
 
     @Test
@@ -96,7 +125,7 @@ class IssuerServiceTest {
                 CredentialRequestMessage.CredentialReference.Builder.newInstance().id("bad").build()
             ))
             .build();
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerService.createCredentialRequest(msg, jwtClaimsSet.getSubject()));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerService.createCredentialRequest(msg, jwtClaimsSet));
         assertTrue(ex.getMessage().contains("Credential 'bad' is not supported by this issuer."));
     }
 
@@ -104,7 +133,7 @@ class IssuerServiceTest {
     void createCredentialRequest_metadataNotAvailable_throws() {
         CredentialRequestMessage msg = mock(CredentialRequestMessage.class);
         when(credentialMetadataService.buildIssuerMetadata()).thenThrow(new IllegalStateException("no meta"));
-        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> issuerService.createCredentialRequest(msg, jwtClaimsSet.getSubject()));
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> issuerService.createCredentialRequest(msg, jwtClaimsSet));
         assertTrue(ex.getMessage().contains("Issuer metadata not configured"));
     }
 

@@ -112,7 +112,7 @@ public class CredentialDeliveryService {
                     .credentials(credentials)
                     .build();
 
-            String token = tokenService.createAndSignToken(holderDid, null, config);
+            String token = tokenService.createAndSignToken(holderDid, request.getClientAccessToken(), config);
             String messageJson = mapper.writeValueAsString(message);
 
             Request httpRequest = new Request.Builder()
@@ -221,7 +221,7 @@ public class CredentialDeliveryService {
                     .rejectionReason(rejectionReason)
                     .build();
 
-            String token = tokenService.createAndSignToken(holderDid, null, config);
+            String token = tokenService.createAndSignToken(holderDid, request.getClientAccessToken(), config);
             String messageJson = mapper.writeValueAsString(message);
 
             Request httpRequest = new Request.Builder()
