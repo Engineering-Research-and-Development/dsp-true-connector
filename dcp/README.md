@@ -8,6 +8,7 @@ This module implements the Eclipse Decentralized Claims Protocol (DCP) for manag
 - **[ProfileId Guide](doc/PROFILEID_GUIDE.md)** - Understanding the mandatory profileId field and how it's automatically determined
 - **[Quick Start Guide](doc/quick_start.md)** - Fast-track testing with Postman examples
 - **[Credential Examples](doc/credential_message_examples.md)** - Ready-to-use JSON examples
+- **[Credential delivery authorization decision](doc/decisions/D-TEC-015-credential-delivery-token-forwarding.md)** - DCP v1.0.1 token flow, implementation choices, and sequence diagram
 
 ## Overview
 
