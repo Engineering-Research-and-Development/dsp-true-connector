@@ -58,6 +58,18 @@ public class SimpleOkHttpRestClient {
     }
 
     /**
+     * Executes a request without following redirects.
+     *
+     * @param request the request to execute
+     * @return the response, which the caller must close
+     * @throws IOException if the request fails
+     */
+    public Response executeCallWithoutRedirects(Request request) throws IOException {
+        return okHttpClient.newBuilder().followRedirects(false).followSslRedirects(false)
+                .build().newCall(request).execute();
+    }
+
+    /**
      * Executes an HTTP request with custom headers and deserializes the response body to the specified type.
      * This method builds a request with the provided URL, HTTP method, headers, and optional request body,
      * then executes it and deserializes the successful response (2xx status codes) to the target class.
