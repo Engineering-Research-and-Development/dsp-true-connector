@@ -1,6 +1,7 @@
 package it.eng.dcp.e2e.tests;
 
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.model.CredentialRequestMessage;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.e2e.environment.DcpTestEnvironment;
@@ -290,20 +291,18 @@ class DcpCredentialFlowTestE2E extends DcpTestEnvironment {
         String validToken = generateValidTokenWithCredentialAccessToken(issuerDid, credential.getCredentialType());
         String credentialId = credential.getId();
 
-        Map<String, Object> credentialRequest = Map.of(
-            "@context", List.of("https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"),
-            "type", "CredentialRequestMessage",
-            "holderPid", holderPid,
-            "credentials", List.of(
-                Map.of("id", credentialId)
-            )
-        );
+        CredentialRequestMessage credentialRequest = CredentialRequestMessage.Builder.newInstance()
+            .holderPid(holderPid)
+            .credentials(List.of(CredentialRequestMessage.CredentialReference.Builder.newInstance()
+                .id(credentialId)
+                .build()))
+            .build();
 
         HttpHeaders requestHeaders = new HttpHeaders();
         requestHeaders.setContentType(MediaType.APPLICATION_JSON);
         requestHeaders.set("Authorization", "Bearer " + validToken);
 
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(credentialRequest, requestHeaders);
+        HttpEntity<CredentialRequestMessage> requestEntity = new HttpEntity<>(credentialRequest, requestHeaders);
 
         ResponseEntity<Void> createResponse = getIssuerClient().exchange(
             "/issuer/credentials",
@@ -417,20 +416,18 @@ class DcpCredentialFlowTestE2E extends DcpTestEnvironment {
         String validToken = generateValidTokenWithCredentialAccessToken(issuerDid, credential.getCredentialType());
         String credentialId = credential.getId();
 
-        Map<String, Object> credentialRequest = Map.of(
-            "@context", List.of("https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"),
-            "type", "CredentialRequestMessage",
-            "holderPid", holderPid,
-            "credentials", List.of(
-                Map.of("id", credentialId)
-            )
-        );
+        CredentialRequestMessage credentialRequest = CredentialRequestMessage.Builder.newInstance()
+            .holderPid(holderPid)
+            .credentials(List.of(CredentialRequestMessage.CredentialReference.Builder.newInstance()
+                .id(credentialId)
+                .build()))
+            .build();
 
         HttpHeaders requestHeaders = new HttpHeaders();
         requestHeaders.setContentType(MediaType.APPLICATION_JSON);
         requestHeaders.set("Authorization", "Bearer " + validToken);
 
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(credentialRequest, requestHeaders);
+        HttpEntity<CredentialRequestMessage> requestEntity = new HttpEntity<>(credentialRequest, requestHeaders);
 
         ResponseEntity<Void> createResponse = getIssuerClient().exchange(
             "/issuer/credentials",
@@ -504,12 +501,12 @@ class DcpCredentialFlowTestE2E extends DcpTestEnvironment {
         IssuerMetadata.CredentialObject credential = getAnyCredential();
         String holderPid = "holder-no-access-token-" + System.currentTimeMillis();
 
-        Map<String, Object> credentialRequest = Map.of(
-                "@context", List.of("https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"),
-                "type", "CredentialRequestMessage",
-                "holderPid", holderPid,
-                "credentials", List.of(Map.of("id", credential.getId()))
-        );
+        CredentialRequestMessage credentialRequest = CredentialRequestMessage.Builder.newInstance()
+                .holderPid(holderPid)
+                .credentials(List.of(CredentialRequestMessage.CredentialReference.Builder.newInstance()
+                        .id(credential.getId())
+                        .build()))
+                .build();
         HttpHeaders requestHeaders = new HttpHeaders();
         requestHeaders.setContentType(MediaType.APPLICATION_JSON);
         requestHeaders.setBearerAuth(holderToken);
@@ -687,18 +684,18 @@ class DcpCredentialFlowTestE2E extends DcpTestEnvironment {
         // Fetch a valid credential ID from the issuer metadata
         String credentialId = getAnyCredentialId();
 
-        Map<String, Object> credentialRequest = Map.of(
-            "@context", List.of("https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"),
-            "type", "CredentialRequestMessage",
-            "holderPid", "test-holder",
-            "credentials", List.of(Map.of("id", credentialId))
-        );
+        CredentialRequestMessage credentialRequest = CredentialRequestMessage.Builder.newInstance()
+            .holderPid("test-holder")
+            .credentials(List.of(CredentialRequestMessage.CredentialReference.Builder.newInstance()
+                .id(credentialId)
+                .build()))
+            .build();
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         // No Authorization header
 
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(credentialRequest, headers);
+        HttpEntity<CredentialRequestMessage> requestEntity = new HttpEntity<>(credentialRequest, headers);
 
         try {
             getIssuerClient().exchange(
@@ -861,18 +858,18 @@ class DcpCredentialFlowTestE2E extends DcpTestEnvironment {
         String validToken = generateValidTokenWithCredentialAccessToken(issuerDid, credential.getCredentialType());
         String credentialId = credential.getId();
 
-        Map<String, Object> credentialRequest = Map.of(
-            "@context", List.of("https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"),
-            "type", "CredentialRequestMessage",
-            "holderPid", holderPid,
-            "credentials", List.of(Map.of("id", credentialId))
-        );
+        CredentialRequestMessage credentialRequest = CredentialRequestMessage.Builder.newInstance()
+            .holderPid(holderPid)
+            .credentials(List.of(CredentialRequestMessage.CredentialReference.Builder.newInstance()
+                .id(credentialId)
+                .build()))
+            .build();
 
         HttpHeaders requestHeaders = new HttpHeaders();
         requestHeaders.setContentType(MediaType.APPLICATION_JSON);
         requestHeaders.set("Authorization", "Bearer " + validToken);
 
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(credentialRequest, requestHeaders);
+        HttpEntity<CredentialRequestMessage> requestEntity = new HttpEntity<>(credentialRequest, requestHeaders);
 
         ResponseEntity<Void> response = getIssuerClient().exchange(
             "/issuer/credentials",

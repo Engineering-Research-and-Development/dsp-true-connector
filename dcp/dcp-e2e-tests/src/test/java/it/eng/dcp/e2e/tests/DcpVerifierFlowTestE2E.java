@@ -1,6 +1,8 @@
 package it.eng.dcp.e2e.tests;
 
 import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.model.CredentialRequestMessage;
+import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.e2e.environment.DcpTestEnvironment;
@@ -646,23 +648,22 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
      */
     private String createCredentialRequest(String holderPid) {
         String issuerDid = getIssuerDid();
-        Map<String, Object> credential = getAnyCredential();
+        IssuerMetadata.CredentialObject credential = getAnyCredential();
         String validToken = generateValidTokenWithCredentialAccessToken(
-            issuerDid, (String) credential.get("credentialType"));
-        String credentialId = (String) credential.get("id");
+            issuerDid, credential.getCredentialType());
 
-        Map<String, Object> credentialRequest = Map.of(
-            "@context", List.of("https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"),
-            "type", "CredentialRequestMessage",
-            "holderPid", holderPid,
-            "credentials", List.of(Map.of("id", credentialId))
-        );
+        CredentialRequestMessage credentialRequest = CredentialRequestMessage.Builder.newInstance()
+            .holderPid(holderPid)
+            .credentials(List.of(CredentialRequestMessage.CredentialReference.Builder.newInstance()
+                .id(credential.getId())
+                .build()))
+            .build();
 
         HttpHeaders requestHeaders = new HttpHeaders();
         requestHeaders.setContentType(MediaType.APPLICATION_JSON);
         requestHeaders.set("Authorization", "Bearer " + validToken);
 
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(credentialRequest, requestHeaders);
+        HttpEntity<CredentialRequestMessage> requestEntity = new HttpEntity<>(credentialRequest, requestHeaders);
 
         ResponseEntity<Void> response = getIssuerClient().exchange(
             "/issuer/credentials",
@@ -726,11 +727,11 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
     }
 
     /**
-     * Retrieves any available credential ID from the issuer's metadata.
+     * Retrieves any available credential from the issuer's metadata.
      *
-     * @return a credential ID that the issuer supports
+     * @return a credential supported by the issuer
      */
-    private Map<String, Object> getAnyCredential() {
+    private IssuerMetadata.CredentialObject getAnyCredential() {
         String issuerDid = getIssuerDid();
         String validToken = generateValidToken(issuerDid);
 
@@ -738,23 +739,18 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
         headers.set("Authorization", "Bearer " + validToken);
         HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
 
-        ResponseEntity<Map<String, Object>> metadataResponse = getIssuerClient().exchange(
+        ResponseEntity<IssuerMetadata> metadataResponse = getIssuerClient().exchange(
             "/issuer/metadata",
             HttpMethod.GET,
             requestEntity,
-            new ParameterizedTypeReference<>() {}
+            IssuerMetadata.class
         );
 
         assertEquals(HttpStatus.OK, metadataResponse.getStatusCode());
-        Map<String, Object> metadata = metadataResponse.getBody();
+        IssuerMetadata metadata = metadataResponse.getBody();
         assertNotNull(metadata);
-
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> credentialsSupported =
-            (List<Map<String, Object>>) metadata.get("credentialsSupported");
-        assertFalse(credentialsSupported.isEmpty(), "Issuer must have at least one credential configured");
-
-        return credentialsSupported.get(0);
+        assertFalse(metadata.getCredentialsSupported().isEmpty(), "Issuer must have at least one credential configured");
+        return metadata.getCredentialsSupported().get(0);
     }
 
     /**
