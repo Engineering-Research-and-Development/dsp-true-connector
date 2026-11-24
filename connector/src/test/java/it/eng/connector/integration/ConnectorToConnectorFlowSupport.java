@@ -430,9 +430,9 @@ abstract class ConnectorToConnectorFlowSupport {
     }
 
     // Every protocol request either instance received carried the mode's connector token and succeeded.
-    // The one tolerated failure is a 404 on the agreement route that a later retry turned into a success:
-    // the provider can send the agreement before the consumer has stored its negotiation, and the
-    // negotiation retry delivers it again.
+    // The tolerated failures are races that a later retry turned into a success: a 404 on the agreement
+    // route (the provider can send the agreement before the consumer has stored its negotiation) and a 400
+    // on the verification route (the consumer can verify before the provider has saved AGREED).
     private void assertProtocolCalls() {
         List<RecordedCall> providerProtocol = provider.callsTo("/" + TENANT_ID + "/").stream()
                 .filter(call -> !call.path().startsWith("/" + TENANT_ID + "/artifacts/"))
@@ -449,7 +449,7 @@ abstract class ConnectorToConnectorFlowSupport {
         for (List<RecordedCall> calls : List.of(providerProtocol, consumerProtocol)) {
             for (int i = 0; i < calls.size(); i++) {
                 RecordedCall call = calls.get(i);
-                if (!isRetriedNotFound(call, calls.subList(i + 1, calls.size()))) {
+                if (!isRetriedRace(call, calls.subList(i + 1, calls.size()))) {
                     assertThat(call.status()).as("%s %s", call.method(), call.path()).isBetween(200, 299);
                 }
                 assertConnectorToken(call);
@@ -457,9 +457,12 @@ abstract class ConnectorToConnectorFlowSupport {
         }
     }
 
-    // A 404 on the consumer's agreement route followed by a successful call with the same method and path.
-    private static boolean isRetriedNotFound(RecordedCall call, List<RecordedCall> later) {
-        return call.status() == 404 && call.path().endsWith("/agreement") && later.stream().anyMatch(retry -> retry.method().equals(call.method())
+    // A 404 on the consumer's agreement route or a 400 on the provider's verification route, followed by
+    // a successful call with the same method and path.
+    private static boolean isRetriedRace(RecordedCall call, List<RecordedCall> later) {
+        boolean racedStatus = call.status() == 404 && call.path().endsWith("/agreement")
+                || call.status() == 400 && call.path().endsWith("/agreement/verification");
+        return racedStatus && later.stream().anyMatch(retry -> retry.method().equals(call.method())
                 && retry.path().equals(call.path()) && retry.status() >= 200 && retry.status() < 300);
     }
 
