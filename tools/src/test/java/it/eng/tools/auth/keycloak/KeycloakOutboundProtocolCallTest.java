@@ -48,7 +48,7 @@ class KeycloakOutboundProtocolCallTest {
         ObjectProvider<ConnectorCredentialProvider> noInternalProvider = mock(ObjectProvider.class);
         ObjectProvider<KeycloakAuthenticationService> keycloakProvider = mock(ObjectProvider.class);
         when(keycloakProvider.getIfAvailable()).thenReturn(service);
-        credentialUtils = new CredentialUtils(okHttpClient, null, null, tokenCache, noInternalProvider, keycloakProvider);
+        credentialUtils = new CredentialUtils(okHttpClient, null, null, null, tokenCache, noInternalProvider, keycloakProvider);
         restClient = new OkHttpRestClient(okHttpClient, credentialUtils, new InternalCallTokenIssuer(), "8080", false);
     }
 

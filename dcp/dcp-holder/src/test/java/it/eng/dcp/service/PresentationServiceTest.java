@@ -6,6 +6,9 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.common.model.ProfileId;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantState;
+import it.eng.dcp.common.participant.SigningKeyReference;
 import it.eng.dcp.holder.model.VerifiableCredential;
 import it.eng.dcp.holder.model.VerifiablePresentation;
 import it.eng.dcp.holder.repository.VerifiableCredentialRepository;
@@ -37,6 +40,9 @@ class PresentationServiceTest {
     @Mock
     private VerifiablePresentationSigner vpSigner;
 
+    private final ParticipantContext participant = new ParticipantContext("default", HOLDER_DID,
+            new SigningKeyReference("eckey.p12", "alias"), List.of(), Map.of(), null, ParticipantState.ENABLED);
+
     private PresentationService presentationService;
 
     @BeforeEach
@@ -58,7 +64,7 @@ class PresentationServiceTest {
         when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of());
         when(credentialRepository.findByHolderDidInAndIdIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of());
 
-        presentationService.createPresentation(query, HOLDER_DID, claims);
+        presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
         verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(HOLDER_DIDS, List.of("MembershipCredential"));
         verify(credentialRepository).findByHolderDidInAndIdIn(HOLDER_DIDS, List.of("urn:uuid:test-123"));
@@ -73,7 +79,7 @@ class PresentationServiceTest {
                 .build();
         when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of());
 
-        presentationService.createPresentation(query, HOLDER_DID, claims);
+        presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
         verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(HOLDER_DIDS, List.of("MembershipCredential"));
         verify(credentialRepository, never()).findByHolderDidInAndIdIn(any(), anyList());
@@ -88,7 +94,7 @@ class PresentationServiceTest {
                 .build();
         when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of());
 
-        presentationService.createPresentation(query, HOLDER_DID, claims);
+        presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
         verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(HOLDER_DIDS, List.of("MembershipCredential"));
     }
@@ -113,11 +119,11 @@ class PresentationServiceTest {
                 .build();
 
         when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
-        when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+        when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                 .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.signature");
 
         // Act
-        PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+        PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
         // Assert
         assertNotNull(response);
@@ -132,7 +138,7 @@ class PresentationServiceTest {
         System.out.println("JWT Presentation: " + jwtString);
 
         // Verify that vpSigner.sign was called with "jwt" format
-        verify(vpSigner).sign(any(VerifiablePresentation.class), eq("jwt"));
+        verify(vpSigner).sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant));
     }
 
     @Test
@@ -162,11 +168,11 @@ class PresentationServiceTest {
                 .build();
 
         when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
-        when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+        when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                 .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.signature");
 
         // Act
-        PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+        PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
         // Assert
         assertNotNull(response);
@@ -175,7 +181,7 @@ class PresentationServiceTest {
                    "Should return JWT based on presentationDefinition format");
 
         // Verify that vpSigner.sign was called with "jwt" format
-        verify(vpSigner).sign(any(VerifiablePresentation.class), eq("jwt"));
+        verify(vpSigner).sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant));
     }
 
     @Test
@@ -211,11 +217,11 @@ class PresentationServiceTest {
         ObjectNode jsonLdPresentation = mapper.createObjectNode();
         jsonLdPresentation.put("id", "urn:uuid:vp-123");
 
-        when(vpSigner.sign(any(VerifiablePresentation.class), eq("json-ld")))
+        when(vpSigner.sign(any(VerifiablePresentation.class), eq("json-ld"), eq(participant)))
                 .thenReturn(jsonLdPresentation);
 
         // Act
-        PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+        PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
         // Assert
         assertNotNull(response);
@@ -224,7 +230,7 @@ class PresentationServiceTest {
                    "Should return JSON-LD based on presentationDefinition format");
 
         // Verify that vpSigner.sign was called with "json-ld" format
-        verify(vpSigner).sign(any(VerifiablePresentation.class), eq("json-ld"));
+        verify(vpSigner).sign(any(VerifiablePresentation.class), eq("json-ld"), eq(participant));
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -257,11 +263,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should only fetch MembershipCredential (the intersection)
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
@@ -295,11 +301,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc1));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should fetch all authorized types
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
@@ -324,11 +330,11 @@ class PresentationServiceTest {
                     .scope(List.of("Iso27001Credential"))
                     .build();
 
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should not fetch any credentials (empty intersection)
             verify(credentialRepository, never()).findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList());
@@ -351,7 +357,7 @@ class PresentationServiceTest {
                     .build();
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: an access token without scopes authorizes nothing; 2xx with no presentations
             verifyNoInteractions(credentialRepository);
@@ -379,11 +385,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should correctly parse space-delimited scopes and match
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
@@ -417,11 +423,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should strip :read and query by base type only
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
@@ -468,11 +474,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc1, vc2));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should strip action suffixes and query by base types only
             // scope1 "org.eclipse.dspace.dcp.vc.type:MembershipCredential:read" → "MembershipCredential"
@@ -512,11 +518,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should MATCH because action suffixes are stripped for credential selection
             // Both ":read" and ":write" normalize to "MembershipCredential"
@@ -542,7 +548,7 @@ class PresentationServiceTest {
                     .build();
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: no unscoped lookup at all
             verify(credentialRepository, never()).findAll();
@@ -565,7 +571,7 @@ class PresentationServiceTest {
                     .build();
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: empty authorized scopes authorize nothing
             verifyNoInteractions(credentialRepository);
@@ -587,7 +593,7 @@ class PresentationServiceTest {
                     .build();
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then
             verifyNoInteractions(credentialRepository);
@@ -608,7 +614,7 @@ class PresentationServiceTest {
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(anyCollection(), anyList())).thenReturn(List.of());
             when(credentialRepository.findByHolderDidInAndIdIn(anyCollection(), anyList())).thenReturn(List.of());
 
-            presentationService.createPresentation(query, HOLDER_DID, claims);
+            presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             verify(credentialRepository).findByHolderDidInAndCredentialTypeIn(HOLDER_DIDS, List.of("MembershipCredential"));
             verify(credentialRepository).findByHolderDidInAndIdIn(HOLDER_DIDS, List.of("cred-1"));
@@ -625,7 +631,7 @@ class PresentationServiceTest {
                     .scope(List.of("MembershipCredential"))
                     .build();
 
-            PresentationResponseMessage response = presentationService.createPresentation(query, null, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, null, claims, participant);
 
             verifyNoInteractions(credentialRepository);
             assertThat(response.getPresentation()).isEmpty();
@@ -676,11 +682,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc1, vc2));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should extract simple credential types (stripping DCP prefix and :read)
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
@@ -713,11 +719,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should extract "MembershipCredential"
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
@@ -762,11 +768,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc1, vc2));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJno25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should strip :read for query and handle both formats
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
@@ -820,11 +826,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc1, vc2, vc3));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should extract credential types from custom aliases
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
@@ -857,11 +863,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should extract "SpecialCredential" regardless of prefix depth
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
@@ -894,11 +900,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should extract everything after first colon, stripping :read
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
@@ -952,11 +958,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc1, vc2, vc3));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should handle all three formats correctly
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
@@ -992,11 +998,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should match because both normalize to "MembershipCredential"
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
@@ -1032,11 +1038,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJno25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should match because both normalize to "MembershipCredential"
             ArgumentCaptor<List<String>> scopeCaptor = ArgumentCaptor.forClass(List.class);
@@ -1085,11 +1091,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc1, vc2));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should match first two (MembershipCredential and EmployeeCredential)
             // ContractCredential should be excluded (not authorized)
@@ -1127,11 +1133,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndIdIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should query by ID, not by type
             ArgumentCaptor<List<String>> idCaptor = ArgumentCaptor.forClass(List.class);
@@ -1191,11 +1197,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndIdIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc1, vc2, vc3));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should query all three by ID
             ArgumentCaptor<List<String>> idCaptor = ArgumentCaptor.forClass(List.class);
@@ -1254,11 +1260,11 @@ class PresentationServiceTest {
 
             when(credentialRepository.findByHolderDidInAndCredentialTypeIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vcType1, vcType2));
             when(credentialRepository.findByHolderDidInAndIdIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vcId));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should query both by type and by ID
             ArgumentCaptor<List<String>> typeCaptor = ArgumentCaptor.forClass(List.class);
@@ -1299,11 +1305,11 @@ class PresentationServiceTest {
                     .build();
 
             when(credentialRepository.findByHolderDidInAndIdIn(eq(HOLDER_DIDS), anyList())).thenReturn(List.of(vc));
-            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt")))
+            when(vpSigner.sign(any(VerifiablePresentation.class), eq("jwt"), eq(participant)))
                     .thenReturn("eyJhbGciOiJub25lIn0.eyJ2cElkIjoidGVzdCJ9.");
 
             // When
-            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims);
+            PresentationResponseMessage response = presentationService.createPresentation(query, HOLDER_DID, claims, participant);
 
             // Then: Should query with :read stripped (base ID only)
             ArgumentCaptor<List<String>> idCaptor = ArgumentCaptor.forClass(List.class);

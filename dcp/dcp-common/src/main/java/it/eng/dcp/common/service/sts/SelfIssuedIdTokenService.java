@@ -8,10 +8,10 @@ import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.audit.DcpAuditEventType;
-import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.DidDocument;
-import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantKeyProvider;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.common.util.DidUrlConverter;
@@ -61,8 +61,7 @@ public class SelfIssuedIdTokenService {
 //    private final String connectorDid;
     private final DidResolverService didResolver;
     private final JtiReplayCache jtiCache;
-    private final KeyService keyService;
-    private final DidDocumentConfig config;
+    private final ParticipantKeyProvider keyProvider;
     private final DcpAuditEventPublisher auditPublisher;
 
     /**
@@ -79,14 +78,12 @@ public class SelfIssuedIdTokenService {
 //            @Value("${dcp.connector.did:}") String connectorDid,
             DidResolverService didResolver,
             JtiReplayCache jtiCache,
-            KeyService keyService,
-            DidDocumentConfig config,
+            ParticipantKeyProvider keyProvider,
             DcpAuditEventPublisher auditPublisher) {
 //        this.connectorDid = connectorDid;
         this.didResolver = didResolver;
         this.jtiCache = jtiCache;
-        this.keyService = keyService;
-        this.config = config;
+        this.keyProvider = keyProvider;
         this.auditPublisher = auditPublisher;
     }
 
@@ -95,20 +92,20 @@ public class SelfIssuedIdTokenService {
      *
      * @param audienceDid The DID of the intended audience (verifier)
      * @param accessToken Optional access token to include in the token claims
-     * @param config DidDocumentConfig containing keystore details for signing
+     * @param participant the participant that signs; its DID is the issuer and subject
      * @return Signed JWT token as a string
      * @throws IllegalArgumentException if audienceDid is null or blank
      * @throws IllegalStateException if connectorDid is not configured
      * @throws RuntimeException if signing fails
      */
-    public String createAndSignToken(String audienceDid, String accessToken, DidDocumentConfig config) {
+    public String createAndSignToken(String audienceDid, String accessToken, ParticipantContext participant) {
         if (audienceDid == null || audienceDid.isBlank()) {
             throw new IllegalArgumentException("audienceDid required");
         }
 
         log.debug("Creating token for audience: {}", audienceDid);
 
-        if (config.getDid() == null || config.getDid().isBlank()) {
+        if (participant.did() == null || participant.did().isBlank()) {
             log.error("connectorDid is null or blank!");
             throw new IllegalStateException("connectorDid is not configured. Please set dcp.connector.did property");
         }
@@ -119,7 +116,7 @@ public class SelfIssuedIdTokenService {
             String jti = UUID.randomUUID().toString();
 
             JWTClaimsSet.Builder cb = new JWTClaimsSet.Builder();
-            cb.issuer(config.getDid()).subject(config.getDid());
+            cb.issuer(participant.did()).subject(participant.did());
             cb.audience(audienceDid);
             cb.issueTime(Date.from(now));
             cb.expirationTime(Date.from(exp));
@@ -135,10 +132,10 @@ public class SelfIssuedIdTokenService {
             if (overrideSigningKey != null) {
                 signingJwk = overrideSigningKey;
             } else {
-                if (keyService == null) {
-                    throw new IllegalStateException("KeyService is not available for signing");
+                if (keyProvider == null) {
+                    throw new IllegalStateException("ParticipantKeyProvider is not available for signing");
                 }
-                signingJwk = keyService.getSigningJwk(config);
+                signingJwk = keyProvider.activeSigningKey(participant);
             }
 
             JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256)
@@ -185,10 +182,11 @@ public class SelfIssuedIdTokenService {
      * </ul>
      * 
      * @param token The JWT token string to validate
+     * @param participant the participant the token must be addressed to
      * @return The validated JWT claims
      * @throws SecurityException if validation or parsing fails
      */
-    public JWTClaimsSet validateToken(String token) {
+    public JWTClaimsSet validateToken(String token, ParticipantContext participant) {
         try {
             SignedJWT jwt = SignedJWT.parse(token);
             JWTClaimsSet claims = jwt.getJWTClaimsSet();
@@ -210,7 +208,7 @@ public class SelfIssuedIdTokenService {
                 throw new SecurityException("iss and sub must be present and equal");
             }
 
-            String connectorDid = config.getDid();
+            String connectorDid = participant.did();
             // 2. aud must match verifierDid (using robust DID comparison)
             if (aud == null || connectorDid == null || !DidUrlConverter.compareDids(aud, connectorDid)) {
                 throw new SecurityException("aud claim must match verifier DID");
@@ -352,18 +350,18 @@ public class SelfIssuedIdTokenService {
      * <ul>
      *   <li>Outer JWT: Self-Issued ID Token (iss==sub, aud = Verifier DID, contains "token" claim)</li>
      *   <li>Inner JWT: Access Token for this participant's Credential Service, bound to the same Verifier
-     *       ({@code aud} = Verifier DID), see {@link #createAccessTokenWithScopes(String, DidDocumentConfig, String...)}</li>
+     *       ({@code aud} = Verifier DID), see {@link #createAccessTokenWithScopes(String, ParticipantContext, String...)}</li>
      * </ul>
      *
      * @param audienceDid The DID of the intended audience (verifier)
-     * @param config DidDocumentConfig containing keystore details for signing
+     * @param participant the participant that signs; its DID is the issuer and subject
      * @param scopes The credential types or scopes the verifier is authorized to access
      * @return Signed JWT token with nested access token containing scopes
      * @throws IllegalArgumentException if audienceDid is null or blank
      * @throws IllegalStateException if connectorDid is not configured
      * @throws RuntimeException if signing fails
      */
-    public String createStsCompatibleToken(String audienceDid, DidDocumentConfig config, String... scopes) {
+    public String createStsCompatibleToken(String audienceDid, ParticipantContext participant, String... scopes) {
         if (audienceDid == null || audienceDid.isBlank()) {
             throw new IllegalArgumentException("audienceDid required");
         }
@@ -371,14 +369,14 @@ public class SelfIssuedIdTokenService {
         log.info("Creating STS-compatible wrapper token for audience: {} with {} scopes",
                  audienceDid, scopes != null ? scopes.length : 0);
 
-        if (config.getDid() == null || config.getDid().isBlank()) {
+        if (participant.did() == null || participant.did().isBlank()) {
             log.error("connectorDid is null or blank!");
             throw new IllegalStateException("connectorDid is not configured. Please set dcp.connector.did property");
         }
 
         try {
             // The inner access token is bound to the Verifier that will present it back to our Credential Service
-            String innerToken = createAccessTokenWithScopes(audienceDid, config, scopes);
+            String innerToken = createAccessTokenWithScopes(audienceDid, participant, scopes);
 
             // Now create a wrapper Self-Issued ID Token that contains the inner token in the "token" claim
             Instant now = Instant.now();
@@ -386,7 +384,7 @@ public class SelfIssuedIdTokenService {
             String jti = "urn:uuid:" + UUID.randomUUID();
 
             JWTClaimsSet.Builder cb = new JWTClaimsSet.Builder();
-            cb.issuer(config.getDid()).subject(config.getDid()); // Self-issued: iss == sub
+            cb.issuer(participant.did()).subject(participant.did()); // Self-issued: iss == sub
             cb.audience(audienceDid);
             cb.issueTime(Date.from(now));
             cb.expirationTime(Date.from(exp));
@@ -400,10 +398,10 @@ public class SelfIssuedIdTokenService {
             if (overrideSigningKey != null) {
                 signingJwk = overrideSigningKey;
             } else {
-                if (keyService == null) {
-                    throw new IllegalStateException("KeyService is not available for signing");
+                if (keyProvider == null) {
+                    throw new IllegalStateException("ParticipantKeyProvider is not available for signing");
                 }
-                signingJwk = keyService.getSigningJwk(config);
+                signingJwk = keyProvider.activeSigningKey(participant);
             }
 
             JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256)
@@ -445,18 +443,18 @@ public class SelfIssuedIdTokenService {
      * </ul>
      *
      * @param verifierDid the DID of the Verifier the token is bound to
-     * @param config DidDocumentConfig containing the holder's DID and keystore
+     * @param participant the participant that issues the access token
      * @param scopes the scopes the Verifier is authorized to query
      * @return the signed JWT access token
      * @throws IllegalArgumentException if verifierDid is null or blank
      * @throws IllegalStateException if the holder DID is not configured
      * @throws RuntimeException if signing fails
      */
-    public String createAccessTokenWithScopes(String verifierDid, DidDocumentConfig config, String... scopes) {
+    public String createAccessTokenWithScopes(String verifierDid, ParticipantContext participant, String... scopes) {
         if (verifierDid == null || verifierDid.isBlank()) {
             throw new IllegalArgumentException("verifierDid required");
         }
-        if (config.getDid() == null || config.getDid().isBlank()) {
+        if (participant.did() == null || participant.did().isBlank()) {
             throw new IllegalStateException("connectorDid is not configured. Please set dcp.connector.did property");
         }
 
@@ -465,8 +463,8 @@ public class SelfIssuedIdTokenService {
         String jti = "urn:uuid:" + UUID.randomUUID();
 
         JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
-            .issuer(config.getDid())
-            .subject(config.getDid()) // the holder is both issuer and subject of its access token
+            .issuer(participant.did())
+            .subject(participant.did()) // the holder is both issuer and subject of its access token
             .audience(verifierDid)
             .issueTime(Date.from(now))
             .expirationTime(Date.from(exp))
@@ -486,7 +484,7 @@ public class SelfIssuedIdTokenService {
         JWTClaimsSet claims = claimsBuilder.build();
 
         try {
-            ECKey signingJwk = overrideSigningKey != null ? overrideSigningKey : keyService.getSigningJwk(config);
+            ECKey signingJwk = overrideSigningKey != null ? overrideSigningKey : keyProvider.activeSigningKey(participant);
 
             JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256)
                     .keyID(signingJwk.getKeyID())
@@ -534,14 +532,15 @@ public class SelfIssuedIdTokenService {
      * </ul>
      *
      * <p>The {@code jti} is not recorded for replay protection: the access token is always carried inside a
-     * Self-Issued ID Token of the Verifier, whose own {@code jti} is checked by {@link #validateToken(String)}.
+     * Self-Issued ID Token of the Verifier, whose own {@code jti} is checked by {@link #validateToken(String, ParticipantContext)}.
      *
      * @param accessToken the access token taken from the {@code token} claim of the Verifier's Self-Issued ID Token
      * @param expectedVerifierDid the validated {@code sub} of the Verifier's Self-Issued ID Token
+     * @param participant the participant that issued the access token
      * @return the validated access token claims
      * @throws SecurityException if the access token is missing or invalid
      */
-    public JWTClaimsSet validateAccessToken(String accessToken, String expectedVerifierDid) {
+    public JWTClaimsSet validateAccessToken(String accessToken, String expectedVerifierDid, ParticipantContext participant) {
         try {
             if (accessToken == null || accessToken.isBlank()) {
                 throw new SecurityException("Access token is required");
@@ -554,7 +553,7 @@ public class SelfIssuedIdTokenService {
                 throw new SecurityException("Access token typ must be " + ACCESS_TOKEN_TYPE);
             }
 
-            String ownDid = config.getDid();
+            String ownDid = participant.did();
             String issuer = claims.getIssuer();
             String subject = claims.getSubject();
             if (ownDid == null || issuer == null || subject == null
@@ -627,14 +626,14 @@ public class SelfIssuedIdTokenService {
      * Backward-compatible overload without scopes.
      *
      * @param audienceDid The DID of the intended audience (verifier)
-     * @param config DidDocumentConfig containing keystore details for signing
+     * @param participant the participant that signs; its DID is the issuer and subject
      * @return Signed JWT token with nested token claim (without scope restrictions)
-     * @deprecated Use {@link #createStsCompatibleToken(String, DidDocumentConfig, String...)} with explicit scopes
+     * @deprecated Use {@link #createStsCompatibleToken(String, ParticipantContext, String...)} with explicit scopes
      */
     @Deprecated
-    public String createStsCompatibleToken(String audienceDid, DidDocumentConfig config) {
+    public String createStsCompatibleToken(String audienceDid, ParticipantContext participant) {
         log.warn("Creating STS-compatible token WITHOUT scopes - consider specifying scopes for security");
-        return createStsCompatibleToken(audienceDid, config, new String[0]);
+        return createStsCompatibleToken(audienceDid, participant, new String[0]);
     }
 
     /**

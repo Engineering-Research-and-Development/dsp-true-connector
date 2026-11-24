@@ -93,7 +93,17 @@ public class KeyService {
         String activeAlias = keyMetadataService.getActiveKeyMetadata()
                 .map(it.eng.dcp.common.model.KeyMetadata::getAlias)
                 .orElse(config.getKeystoreAlias());
+        return loadKeyPair(config, activeAlias);
+    }
 
+    /**
+     * Loads the key pair stored under the given alias, with caching.
+     *
+     * @param config DidDocumentConfig containing keystore details
+     * @param activeAlias alias of the key entry to load, for example the alias of a recently retired key
+     * @return The loaded KeyPair
+     */
+    public KeyPair loadKeyPair(DidDocumentConfig config, String activeAlias) {
         String cacheKey = config.getKeystorePath() + "::" + activeAlias;
         Instant now = Instant.now();
 

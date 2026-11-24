@@ -3,6 +3,7 @@ package it.eng.dcp.issuer.service.api;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
+import it.eng.dcp.common.participant.ParticipantContext;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.issuer.service.CredentialDeliveryService;
@@ -34,6 +35,8 @@ public class IssuerAPIServiceTest {
     @InjectMocks
     private IssuerAPIService issuerAPIService;
 
+    private final ParticipantContext participant = mock(ParticipantContext.class);
+
     @Mock private CredentialRequestRepository requestRepository;
     @Mock private CredentialDeliveryService deliveryService;
     @Mock private CredentialIssuanceService issuanceService;
@@ -48,10 +51,10 @@ public class IssuerAPIServiceTest {
         when(req.getCredentialIds()).thenReturn(List.of("cred1"));
         CredentialMessage.CredentialContainer container = mock(CredentialMessage.CredentialContainer.class);
         when(container.getCredentialType()).thenReturn("MembershipCredential");
-        when(issuanceService.generateCredentials(eq(req), any(), any())).thenReturn(List.of(container));
-        when(deliveryService.deliverCredentials(eq(requestId), any())).thenReturn(true);
+        when(issuanceService.generateCredentials(eq(req), any(), any(), any())).thenReturn(List.of(container));
+        when(deliveryService.deliverCredentials(eq(requestId), any(), any())).thenReturn(true);
 
-        IssuerService.ApprovalResult result = issuerAPIService.approveAndDeliverCredentials(requestId, Map.of(), List.of(), null);
+        IssuerService.ApprovalResult result = issuerAPIService.approveAndDeliverCredentials(requestId, Map.of(), List.of(), null, participant);
 
         assertTrue(result.isSuccess());
         assertTrue(result.getCredentialsCount() > 0);
@@ -67,8 +70,8 @@ public class IssuerAPIServiceTest {
         CredentialRequest req = mock(CredentialRequest.class);
         when(requestRepository.findByIssuerPid(requestId)).thenReturn(Optional.of(req));
         List<Map<String, Object>> provided = List.of(Map.of("credentialType", "cred1", "payload", "data", "format", "jwt"));
-        when(deliveryService.deliverCredentials(eq(requestId), any())).thenReturn(true);
-        IssuerService.ApprovalResult result = issuerAPIService.approveAndDeliverCredentials(requestId, null, null, provided);
+        when(deliveryService.deliverCredentials(eq(requestId), any(), any())).thenReturn(true);
+        IssuerService.ApprovalResult result = issuerAPIService.approveAndDeliverCredentials(requestId, null, null, provided, participant);
         assertTrue(result.isSuccess());
         assertTrue(result.getCredentialsCount() > 0);
     }
@@ -76,7 +79,7 @@ public class IssuerAPIServiceTest {
     @Test
     void approveAndDeliverCredentials_requestNotFound_throws() {
         when(requestRepository.findByIssuerPid("bad")).thenReturn(Optional.empty());
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerAPIService.approveAndDeliverCredentials("bad", null, null, null));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerAPIService.approveAndDeliverCredentials("bad", null, null, null, participant));
         assertTrue(ex.getMessage().contains("Credential request not found"));
     }
 
@@ -86,9 +89,9 @@ public class IssuerAPIServiceTest {
         CredentialRequest req = mock(CredentialRequest.class);
         when(requestRepository.findByIssuerPid(requestId)).thenReturn(Optional.of(req));
         when(req.getCredentialIds()).thenReturn(List.of("cred1"));
-        when(issuanceService.generateCredentials(eq(req), any(), any())).thenReturn(List.of(mock(CredentialMessage.CredentialContainer.class)));
-        when(deliveryService.deliverCredentials(eq(requestId), any())).thenReturn(false);
-        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> issuerAPIService.approveAndDeliverCredentials(requestId, Map.of(), List.of(), null));
+        when(issuanceService.generateCredentials(eq(req), any(), any(), any())).thenReturn(List.of(mock(CredentialMessage.CredentialContainer.class)));
+        when(deliveryService.deliverCredentials(eq(requestId), any(), any())).thenReturn(false);
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> issuerAPIService.approveAndDeliverCredentials(requestId, Map.of(), List.of(), null, participant));
         assertTrue(ex.getMessage().contains("Failed to deliver credentials"));
     }
 
@@ -98,15 +101,15 @@ public class IssuerAPIServiceTest {
         CredentialRequest req = mock(CredentialRequest.class);
         when(requestRepository.findByIssuerPid(requestId)).thenReturn(Optional.of(req));
         when(req.getCredentialIds()).thenReturn(List.of("cred1", "cred2"));
-        when(issuanceService.generateCredentials(eq(req), any(), any()))
+        when(issuanceService.generateCredentials(eq(req), any(), any(), any()))
                 .thenThrow(new CredentialIssuanceException("Failed to issue credential(s) [cred2]", List.of("cred2")));
-        when(deliveryService.rejectCredentialRequest(eq(requestId), contains("cred2"))).thenReturn(true);
+        when(deliveryService.rejectCredentialRequest(eq(requestId), contains("cred2"), any())).thenReturn(true);
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> issuerAPIService.approveAndDeliverCredentials(requestId, Map.of(), List.of(), null));
+                () -> issuerAPIService.approveAndDeliverCredentials(requestId, Map.of(), List.of(), null, participant));
 
         assertTrue(ex.getMessage().contains("request rejected"));
-        verify(deliveryService, never()).deliverCredentials(any(), any());
+        verify(deliveryService, never()).deliverCredentials(any(), any(), any());
         verify(auditPublisher, never()).publishEvent(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
@@ -115,15 +118,15 @@ public class IssuerAPIServiceTest {
         String requestId = "id1";
         CredentialRequest req = mock(CredentialRequest.class);
         when(requestRepository.findByIssuerPid(requestId)).thenReturn(Optional.of(req));
-        when(issuanceService.generateCredentials(eq(req), any(), any()))
+        when(issuanceService.generateCredentials(eq(req), any(), any(), any()))
                 .thenThrow(new CredentialIssuanceException("Failed to issue credential(s) [cred2]", List.of("cred2")));
-        when(deliveryService.rejectCredentialRequest(eq(requestId), any())).thenReturn(false);
+        when(deliveryService.rejectCredentialRequest(eq(requestId), any(), any())).thenReturn(false);
 
         IllegalStateException ex = assertThrows(IllegalStateException.class,
-                () -> issuerAPIService.approveAndDeliverCredentials(requestId, Map.of(), List.of(), null));
+                () -> issuerAPIService.approveAndDeliverCredentials(requestId, Map.of(), List.of(), null, participant));
 
         assertTrue(ex.getMessage().contains("rejection could not be delivered"));
-        verify(deliveryService, never()).deliverCredentials(any(), any());
+        verify(deliveryService, never()).deliverCredentials(any(), any(), any());
     }
 
     // --- rejectCredentialRequest ---
@@ -133,35 +136,35 @@ public class IssuerAPIServiceTest {
         String reason = "bad reason";
         CredentialRequest req = mock(CredentialRequest.class);
         when(requestRepository.findByIssuerPid(requestId)).thenReturn(Optional.of(req));
-        when(deliveryService.rejectCredentialRequest(requestId, reason)).thenReturn(true);
-        assertTrue(issuerAPIService.rejectCredentialRequest(requestId, reason));
+        when(deliveryService.rejectCredentialRequest(requestId, reason, participant)).thenReturn(true);
+        assertTrue(issuerAPIService.rejectCredentialRequest(requestId, reason, participant));
     }
 
     @Test
     void rejectCredentialRequest_missingRequestId_throws() {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerAPIService.rejectCredentialRequest(null, "reason"));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerAPIService.rejectCredentialRequest(null, "reason", participant));
         assertTrue(ex.getMessage().contains("requestId is required"));
     }
 
     @Test
     void rejectCredentialRequest_missingReason_throws() {
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerAPIService.rejectCredentialRequest("id1", null));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerAPIService.rejectCredentialRequest("id1", null, participant));
         assertTrue(ex.getMessage().contains("rejectionReason is required"));
     }
 
     @Test
     void rejectCredentialRequest_requestNotFound_throws() {
         when(requestRepository.findByIssuerPid("bad")).thenReturn(Optional.empty());
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerAPIService.rejectCredentialRequest("bad", "reason"));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerAPIService.rejectCredentialRequest("bad", "reason", participant));
         assertTrue(ex.getMessage().contains("Credential request not found"));
     }
 
     @Test
     @DisplayName("revokeStatusEntry revokes the entry and emits CREDENTIAL_REVOKED")
     void revokeStatusEntry_revoked_emitsAuditEvent() {
-        when(statusListService.revoke("list-1", 4)).thenReturn(true);
+        when(statusListService.revoke("list-1", 4, participant)).thenReturn(true);
 
-        assertTrue(issuerAPIService.revokeStatusEntry("list-1", 4));
+        assertTrue(issuerAPIService.revokeStatusEntry("list-1", 4, participant));
 
         verify(auditPublisher).publishEvent(eq(DcpAuditEventType.CREDENTIAL_REVOKED), any(), eq("issuer"),
                 isNull(), isNull(), isNull(), isNull(), eq(Map.of("statusListId", "list-1", "statusListIndex", 4)));
@@ -170,9 +173,9 @@ public class IssuerAPIServiceTest {
     @Test
     @DisplayName("revokeStatusEntry emits no audit event when the entry was already revoked")
     void revokeStatusEntry_alreadyRevoked_noAuditEvent() {
-        when(statusListService.revoke("list-1", 4)).thenReturn(false);
+        when(statusListService.revoke("list-1", 4, participant)).thenReturn(false);
 
-        assertFalse(issuerAPIService.revokeStatusEntry("list-1", 4));
+        assertFalse(issuerAPIService.revokeStatusEntry("list-1", 4, participant));
 
         verifyNoInteractions(auditPublisher);
     }
@@ -180,9 +183,9 @@ public class IssuerAPIServiceTest {
     @Test
     @DisplayName("revokeStatusEntry propagates an unknown list")
     void revokeStatusEntry_unknownList_throws() {
-        when(statusListService.revoke("missing", 0)).thenThrow(new NoSuchElementException("Status list not found"));
+        when(statusListService.revoke("missing", 0, participant)).thenThrow(new NoSuchElementException("Status list not found"));
 
-        assertThrows(NoSuchElementException.class, () -> issuerAPIService.revokeStatusEntry("missing", 0));
+        assertThrows(NoSuchElementException.class, () -> issuerAPIService.revokeStatusEntry("missing", 0, participant));
         verifyNoInteractions(auditPublisher);
     }
 }

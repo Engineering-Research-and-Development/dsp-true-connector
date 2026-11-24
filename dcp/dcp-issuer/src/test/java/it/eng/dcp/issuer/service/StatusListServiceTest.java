@@ -1,6 +1,9 @@
 package it.eng.dcp.issuer.service;
 
 import it.eng.dcp.common.model.ProfileId;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantState;
+import it.eng.dcp.common.participant.SigningKeyReference;
 import it.eng.dcp.issuer.config.IssuerProperties;
 import it.eng.dcp.issuer.model.StatusList;
 import it.eng.dcp.issuer.repository.StatusListRepository;
@@ -14,6 +17,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.OptimisticLockingFailureException;
 
+import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 
@@ -25,6 +30,8 @@ import static org.mockito.Mockito.*;
 class StatusListServiceTest {
 
     private static final String ISSUER_DID = "did:web:issuer.example.com";
+    private static final ParticipantContext PARTICIPANT = new ParticipantContext("default", ISSUER_DID,
+            new SigningKeyReference("eckey-issuer.p12", "issuer"), List.of(), Map.of(), null, ParticipantState.ENABLED);
     private static final String BASE_URL = "http://issuer.example.com:8084";
     private static final String PURPOSE = StatusListService.REVOCATION_PURPOSE;
 
@@ -50,10 +57,10 @@ class StatusListServiceTest {
         when(statusListRepository.findFirstByIssuerDidAndStatusPurposeAndProfileOrderByCreatedAtDesc(
                 ISSUER_DID, PURPOSE, ProfileId.VC20_BSSL_JWT)).thenReturn(Optional.empty());
         when(statusListRepository.save(any(StatusList.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(credentialGenerator.generate(any())).thenReturn("signed-jwt");
+        when(credentialGenerator.generate(any(), any())).thenReturn("signed-jwt");
 
         StatusListService.StatusListEntry entry =
-                statusListService.allocateStatusEntry(ISSUER_DID, PURPOSE, ProfileId.VC20_BSSL_JWT);
+                statusListService.allocateStatusEntry(PARTICIPANT, PURPOSE, ProfileId.VC20_BSSL_JWT);
 
         StatusList saved = captureSaved();
         assertEquals(0, entry.index());
@@ -76,7 +83,7 @@ class StatusListServiceTest {
         when(statusListRepository.save(any(StatusList.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         StatusListService.StatusListEntry entry =
-                statusListService.allocateStatusEntry(ISSUER_DID, PURPOSE, ProfileId.VC11_SL2021_JWT);
+                statusListService.allocateStatusEntry(PARTICIPANT, PURPOSE, ProfileId.VC11_SL2021_JWT);
 
         assertTrue(entry.statusListCredential().startsWith(BASE_URL + "/issuer/status/"));
     }
@@ -90,7 +97,7 @@ class StatusListServiceTest {
         when(statusListRepository.save(existing)).thenReturn(existing);
 
         StatusListService.StatusListEntry entry =
-                statusListService.allocateStatusEntry(ISSUER_DID, PURPOSE, ProfileId.VC11_SL2021_JWT);
+                statusListService.allocateStatusEntry(PARTICIPANT, PURPOSE, ProfileId.VC11_SL2021_JWT);
 
         assertEquals(5, entry.index());
         assertEquals(existing.getUrl(), entry.statusListCredential());
@@ -109,7 +116,7 @@ class StatusListServiceTest {
         when(statusListRepository.save(existing)).thenReturn(existing);
 
         StatusListService.StatusListEntry entry =
-                statusListService.allocateStatusEntry(ISSUER_DID, PURPOSE, ProfileId.VC20_BSSL_JWT);
+                statusListService.allocateStatusEntry(PARTICIPANT, PURPOSE, ProfileId.VC20_BSSL_JWT);
 
         assertEquals(2, entry.index());
         assertTrue(existing.isSet(1));
@@ -124,7 +131,7 @@ class StatusListServiceTest {
         when(statusListRepository.save(any(StatusList.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         StatusListService.StatusListEntry entry =
-                statusListService.allocateStatusEntry(ISSUER_DID, PURPOSE, ProfileId.VC20_BSSL_JWT);
+                statusListService.allocateStatusEntry(PARTICIPANT, PURPOSE, ProfileId.VC20_BSSL_JWT);
 
         assertEquals(0, entry.index());
         assertNotEquals(full.getUrl(), entry.statusListCredential());
@@ -155,7 +162,7 @@ class StatusListServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         StatusListService.StatusListEntry entry =
-                statusListService.allocateStatusEntry(ISSUER_DID, PURPOSE, ProfileId.VC20_BSSL_JWT);
+                statusListService.allocateStatusEntry(PARTICIPANT, PURPOSE, ProfileId.VC20_BSSL_JWT);
 
         assertEquals(4, entry.index());
         verify(statusListRepository, times(2)).save(any());
@@ -169,7 +176,7 @@ class StatusListServiceTest {
         when(statusListRepository.save(any(StatusList.class))).thenThrow(new OptimisticLockingFailureException("conflict"));
 
         assertThrows(IllegalStateException.class,
-                () -> statusListService.allocateStatusEntry(ISSUER_DID, PURPOSE, ProfileId.VC20_BSSL_JWT));
+                () -> statusListService.allocateStatusEntry(PARTICIPANT, PURPOSE, ProfileId.VC20_BSSL_JWT));
     }
 
     @Test
@@ -177,9 +184,9 @@ class StatusListServiceTest {
     void revoke_setsBitAndResigns() {
         StatusList existing = list(ProfileId.VC20_BSSL_JWT, 16, 3);
         when(statusListRepository.findById("list-1")).thenReturn(Optional.of(existing));
-        when(credentialGenerator.generate(existing)).thenReturn("re-signed-jwt");
+        when(credentialGenerator.generate(existing, PARTICIPANT)).thenReturn("re-signed-jwt");
 
-        assertTrue(statusListService.revoke("list-1", 2));
+        assertTrue(statusListService.revoke("list-1", 2, PARTICIPANT));
 
         StatusList saved = captureSaved();
         assertTrue(saved.isSet(2));
@@ -194,7 +201,7 @@ class StatusListServiceTest {
         existing.setBit(2);
         when(statusListRepository.findById("list-1")).thenReturn(Optional.of(existing));
 
-        assertFalse(statusListService.revoke("list-1", 2));
+        assertFalse(statusListService.revoke("list-1", 2, PARTICIPANT));
 
         verify(statusListRepository, never()).save(any());
         verifyNoInteractions(credentialGenerator);
@@ -205,13 +212,13 @@ class StatusListServiceTest {
     void revoke_unknownList_throws() {
         when(statusListRepository.findById("missing")).thenReturn(Optional.empty());
 
-        assertThrows(NoSuchElementException.class, () -> statusListService.revoke("missing", 0));
+        assertThrows(NoSuchElementException.class, () -> statusListService.revoke("missing", 0, PARTICIPANT));
     }
 
     @Test
     @DisplayName("Revoke rejects a blank list ID without querying the repository")
     void revoke_blankListId_throws() {
-        assertThrows(NoSuchElementException.class, () -> statusListService.revoke(" ", 0));
+        assertThrows(NoSuchElementException.class, () -> statusListService.revoke(" ", 0, PARTICIPANT));
         verifyNoInteractions(statusListRepository);
     }
 
@@ -220,8 +227,8 @@ class StatusListServiceTest {
     void revoke_unallocatedIndex_throws() {
         when(statusListRepository.findById("list-1")).thenReturn(Optional.of(list(ProfileId.VC20_BSSL_JWT, 16, 3)));
 
-        assertThrows(IllegalArgumentException.class, () -> statusListService.revoke("list-1", 3));
-        assertThrows(IllegalArgumentException.class, () -> statusListService.revoke("list-1", -1));
+        assertThrows(IllegalArgumentException.class, () -> statusListService.revoke("list-1", 3, PARTICIPANT));
+        assertThrows(IllegalArgumentException.class, () -> statusListService.revoke("list-1", -1, PARTICIPANT));
         verify(statusListRepository, never()).save(any());
     }
 
@@ -231,9 +238,9 @@ class StatusListServiceTest {
         StatusList existing = list(ProfileId.VC11_SL2021_JWT, 16, 1);
         existing.setSignedCredential("stored-jwt");
         when(statusListRepository.findById("list-1")).thenReturn(Optional.of(existing));
-        when(credentialGenerator.isSignedWithCurrentKey("stored-jwt")).thenReturn(true);
+        when(credentialGenerator.isSignedWithCurrentKey("stored-jwt", PARTICIPANT)).thenReturn(true);
 
-        StatusListService.PublishedStatusList published = statusListService.publishStatusList("list-1").orElseThrow();
+        StatusListService.PublishedStatusList published = statusListService.publishStatusList("list-1", PARTICIPANT).orElseThrow();
 
         assertEquals("stored-jwt", published.credential());
         assertEquals(StatusListCredentialGenerator.VC11_MEDIA_TYPE, published.mediaType());
@@ -246,11 +253,11 @@ class StatusListServiceTest {
         StatusList existing = list(ProfileId.VC20_BSSL_JWT, 16, 1);
         existing.setSignedCredential("old-key-jwt");
         when(statusListRepository.findById("list-1")).thenReturn(Optional.of(existing));
-        when(credentialGenerator.isSignedWithCurrentKey("old-key-jwt")).thenReturn(false);
-        when(credentialGenerator.generate(existing)).thenReturn("new-key-jwt");
+        when(credentialGenerator.isSignedWithCurrentKey("old-key-jwt", PARTICIPANT)).thenReturn(false);
+        when(credentialGenerator.generate(existing, PARTICIPANT)).thenReturn("new-key-jwt");
         when(statusListRepository.save(existing)).thenReturn(existing);
 
-        StatusListService.PublishedStatusList published = statusListService.publishStatusList("list-1").orElseThrow();
+        StatusListService.PublishedStatusList published = statusListService.publishStatusList("list-1", PARTICIPANT).orElseThrow();
 
         assertEquals("new-key-jwt", published.credential());
         assertEquals(StatusListCredentialGenerator.VC20_MEDIA_TYPE, published.mediaType());
@@ -261,8 +268,8 @@ class StatusListServiceTest {
     void publishStatusList_unknownList_empty() {
         when(statusListRepository.findById("missing")).thenReturn(Optional.empty());
 
-        assertTrue(statusListService.publishStatusList("missing").isEmpty());
-        assertTrue(statusListService.publishStatusList(null).isEmpty());
+        assertTrue(statusListService.publishStatusList("missing", PARTICIPANT).isEmpty());
+        assertTrue(statusListService.publishStatusList(null, PARTICIPANT).isEmpty());
     }
 
     private StatusList captureSaved() {

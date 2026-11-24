@@ -1,6 +1,8 @@
 package it.eng.dcp.holder.rest;
 
 import it.eng.dcp.common.model.CredentialOfferMessage;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.RequestParticipantContext;
 import it.eng.dcp.holder.exception.CredentialOfferForbiddenException;
 import it.eng.dcp.holder.service.HolderService;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +23,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -55,6 +58,12 @@ class DcpControllerOfferTest {
     @Mock
     private HolderService holderService;
 
+    @Mock
+    private RequestParticipantContext requestParticipantContext;
+
+    @Mock
+    private ParticipantContext participant;
+
     @InjectMocks
     private DcpController controller;
 
@@ -62,14 +71,15 @@ class DcpControllerOfferTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(requestParticipantContext.require(any())).thenReturn(participant);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
     }
 
     @Test
     @DisplayName("POST /dcp/offers accepts an offer from a trusted issuer with a valid token")
     void receiveOffer_validTokenTrustedIssuer_returns200() throws Exception {
-        when(holderService.authorizeCredentialOffer(TOKEN, ISSUER_DID)).thenReturn(ISSUER_DID);
-        when(holderService.processCredentialOffer(any(CredentialOfferMessage.class))).thenReturn(true);
+        when(holderService.authorizeCredentialOffer(TOKEN, ISSUER_DID, participant)).thenReturn(ISSUER_DID);
+        when(holderService.processCredentialOffer(any(CredentialOfferMessage.class), eq(participant))).thenReturn(true);
 
         mockMvc.perform(post("/dcp/offers")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
@@ -106,7 +116,7 @@ class DcpControllerOfferTest {
     @DisplayName("POST /dcp/offers returns 401 for an invalid token and does not process the offer")
     void receiveOffer_invalidToken_returns401() throws Exception {
         doThrow(new SecurityException("Invalid signature"))
-                .when(holderService).authorizeCredentialOffer(TOKEN, ISSUER_DID);
+                .when(holderService).authorizeCredentialOffer(TOKEN, ISSUER_DID, participant);
 
         mockMvc.perform(post("/dcp/offers")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
@@ -114,14 +124,14 @@ class DcpControllerOfferTest {
                         .content(OFFER))
                 .andExpect(status().isUnauthorized());
 
-        verify(holderService, never()).processCredentialOffer(any());
+        verify(holderService, never()).processCredentialOffer(any(), any());
     }
 
     @Test
     @DisplayName("POST /dcp/offers returns 403 when the token sub is not the offer issuer")
     void receiveOffer_subjectMismatch_returns403() throws Exception {
         doThrow(new CredentialOfferForbiddenException("Token subject does not match the offer issuer"))
-                .when(holderService).authorizeCredentialOffer(TOKEN, ISSUER_DID);
+                .when(holderService).authorizeCredentialOffer(TOKEN, ISSUER_DID, participant);
 
         mockMvc.perform(post("/dcp/offers")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
@@ -129,14 +139,14 @@ class DcpControllerOfferTest {
                         .content(OFFER))
                 .andExpect(status().isForbidden());
 
-        verify(holderService, never()).processCredentialOffer(any());
+        verify(holderService, never()).processCredentialOffer(any(), any());
     }
 
     @Test
     @DisplayName("POST /dcp/offers returns 403 when the issuer is not trusted")
     void receiveOffer_untrustedIssuer_returns403() throws Exception {
         doThrow(new CredentialOfferForbiddenException("Offer issuer is not trusted"))
-                .when(holderService).authorizeCredentialOffer(TOKEN, ISSUER_DID);
+                .when(holderService).authorizeCredentialOffer(TOKEN, ISSUER_DID, participant);
 
         mockMvc.perform(post("/dcp/offers")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
@@ -144,14 +154,14 @@ class DcpControllerOfferTest {
                         .content(OFFER))
                 .andExpect(status().isForbidden());
 
-        verify(holderService, never()).processCredentialOffer(any());
+        verify(holderService, never()).processCredentialOffer(any(), any());
     }
 
     @Test
     @DisplayName("POST /dcp/offers passes a null issuer to authorization when the offer issuer is not a string")
     void receiveOffer_nonStringIssuer_returns400() throws Exception {
         doThrow(new IllegalArgumentException("issuer must be provided"))
-                .when(holderService).authorizeCredentialOffer(eq(TOKEN), isNull());
+                .when(holderService).authorizeCredentialOffer(eq(TOKEN), isNull(), eq(participant));
 
         mockMvc.perform(post("/dcp/offers")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
@@ -159,14 +169,14 @@ class DcpControllerOfferTest {
                         .content(OFFER.replace("\"issuer\": \"did:web:issuer.example.com\"", "\"issuer\": 42")))
                 .andExpect(status().isBadRequest());
 
-        verify(holderService, never()).processCredentialOffer(any());
+        verify(holderService, never()).processCredentialOffer(any(), any());
     }
 
     @Test
     @DisplayName("POST /dcp/offers returns 403 when sparse resolution finds the issuer untrusted")
     void receiveOffer_processForbidden_returns403() throws Exception {
-        when(holderService.authorizeCredentialOffer(anyString(), anyString())).thenReturn(ISSUER_DID);
-        when(holderService.processCredentialOffer(any(CredentialOfferMessage.class)))
+        when(holderService.authorizeCredentialOffer(anyString(), anyString(), eq(participant))).thenReturn(ISSUER_DID);
+        when(holderService.processCredentialOffer(any(CredentialOfferMessage.class), eq(participant)))
                 .thenThrow(new CredentialOfferForbiddenException("Offer issuer is not trusted"));
 
         mockMvc.perform(post("/dcp/offers")

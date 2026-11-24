@@ -8,8 +8,8 @@ import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
-import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantKeyProvider;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
@@ -34,31 +34,28 @@ import java.util.*;
 @Slf4j
 public class VC20JwtGenerator implements VcJwtGenerator {
 
-    private final String issuerDid;
-    private final KeyService keyService;
-    private final BaseDidDocumentConfiguration didDocumentConfig;
+    private final ParticipantKeyProvider keyProvider;
 
     /**
      * Create a new VC 2.0 JWT generator.
      *
-     * @param issuerDid The issuer's DID
-     * @param keyService Service for retrieving signing keys
-     * @param didDocumentConfig DID document configuration
+     * @param keyProvider Provider of the participant signing key
      */
-    public VC20JwtGenerator(String issuerDid, KeyService keyService, BaseDidDocumentConfiguration didDocumentConfig) {
-        this.issuerDid = issuerDid;
-        this.keyService = keyService;
-        this.didDocumentConfig = didDocumentConfig;
+    public VC20JwtGenerator(ParticipantKeyProvider keyProvider) {
+        this.keyProvider = keyProvider;
     }
 
     @Override
-    public String generateJwt(String holderDid, String credentialType, Map<String, String> claims) {
-        return generateJwt(holderDid, credentialType, claims, null, null);
+    public String generateJwt(ParticipantContext participant, String holderDid, String credentialType, Map<String, String> claims) {
+        return generateJwt(participant, holderDid, credentialType, claims, null, null);
     }
 
-    public String generateJwt(String holderDid, String credentialType, Map<String, String> claims, String statusListId, Integer statusListIndex) {
+    @Override
+    public String generateJwt(ParticipantContext participant, String holderDid, String credentialType,
+                              Map<String, String> claims, String statusListId, Integer statusListIndex) {
         try {
-            ECKey signingKey = keyService.getSigningJwk(didDocumentConfig.getDidDocumentConfig());
+            String issuerDid = participant.did();
+            ECKey signingKey = keyProvider.activeSigningKey(participant);
 
             Instant now = Instant.now();
             Instant expiration = now.plusSeconds(365 * 24 * 60 * 60); // 1 year

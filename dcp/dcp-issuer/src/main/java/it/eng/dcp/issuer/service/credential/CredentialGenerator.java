@@ -2,6 +2,7 @@ package it.eng.dcp.issuer.service.credential;
 
 import it.eng.dcp.common.model.CredentialGenerationContext;
 import it.eng.dcp.common.model.CredentialMessage;
+import it.eng.dcp.common.participant.ParticipantContext;
 
 /**
  * Interface for generating specific types of verifiable credentials.
@@ -12,20 +13,23 @@ public interface CredentialGenerator {
     /**
      * Generate a credential of a specific type.
      *
+     * @param participant The issuer participant that signs the credential
      * @param context The generation context containing request, claims, and constraints
      * @return A credential container with the generated credential
      */
-    CredentialMessage.CredentialContainer generateCredential(CredentialGenerationContext context);
+    CredentialMessage.CredentialContainer generateCredential(ParticipantContext participant, CredentialGenerationContext context);
 
     /**
      * Generate a credential of a specific type, with status list info.
      *
+     * @param participant The issuer participant that signs the credential
      * @param context The generation context containing request, claims, and constraints
      * @param statusListId The status list resource ID (nullable for non-status-list profiles)
      * @param statusListIndex The status list index (nullable for non-status-list profiles)
      * @return A credential container with the generated credential
      */
-    default CredentialMessage.CredentialContainer generateCredential(CredentialGenerationContext context, String statusListId, Integer statusListIndex) {
+    default CredentialMessage.CredentialContainer generateCredential(ParticipantContext participant, CredentialGenerationContext context,
+                                                                    String statusListId, Integer statusListIndex) {
         throw new UnsupportedOperationException("Status list not supported for this credential type");
     }
 

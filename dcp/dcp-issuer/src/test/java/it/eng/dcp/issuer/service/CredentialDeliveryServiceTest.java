@@ -2,8 +2,10 @@ package it.eng.dcp.issuer.service;
 
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
-import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.*;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantState;
+import it.eng.dcp.common.participant.SigningKeyReference;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
@@ -22,6 +24,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -30,10 +33,12 @@ import static org.mockito.Mockito.*;
 
 class CredentialDeliveryServiceTest {
 
+    private static final ParticipantContext PARTICIPANT = new ParticipantContext("default", "did:web:issuer.example.com",
+            new SigningKeyReference("eckey-issuer.p12", "issuer"), List.of(), Map.of(), null, ParticipantState.ENABLED);
+
     @Mock private CredentialRequestRepository requestRepository;
     @Mock private SelfIssuedIdTokenService tokenService;
     @Mock private SimpleOkHttpRestClient httpClient;
-    @Mock private DidDocumentConfig config;
     @Mock private DidResolverService didResolverService;
     @Mock private DcpAuditEventPublisher auditPublisher;
 
@@ -49,7 +54,7 @@ class CredentialDeliveryServiceTest {
         closeable = MockitoAnnotations.openMocks(this);
 
         deliveryService = new CredentialDeliveryService(
-                requestRepository, tokenService, httpClient, config, didResolverService, auditPublisher
+                requestRepository, tokenService, httpClient, didResolverService, auditPublisher
         );
 
         testRequest = CredentialRequest.Builder.newInstance()
@@ -83,7 +88,7 @@ class CredentialDeliveryServiceTest {
                 .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
         when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(200, "OK"));
 
-        boolean result = deliveryService.deliverCredentials("issuer-pid-123", testCredentials);
+        boolean result = deliveryService.deliverCredentials("issuer-pid-123", testCredentials, PARTICIPANT);
 
         assertTrue(result);
         verify(requestRepository).save(argThat(req ->
@@ -102,7 +107,7 @@ class CredentialDeliveryServiceTest {
                 .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
         when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(500, "Internal Server Error"));
 
-        boolean result = deliveryService.deliverCredentials("issuer-pid-123", testCredentials);
+        boolean result = deliveryService.deliverCredentials("issuer-pid-123", testCredentials, PARTICIPANT);
 
         assertFalse(result);
         verify(requestRepository, never()).save(any());
@@ -120,7 +125,7 @@ class CredentialDeliveryServiceTest {
                 .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
         when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(200, "OK"));
 
-        boolean result = deliveryService.rejectCredentialRequest("issuer-pid-123", "Invalid credentials");
+        boolean result = deliveryService.rejectCredentialRequest("issuer-pid-123", "Invalid credentials", PARTICIPANT);
 
         assertTrue(result);
         verify(requestRepository).save(argThat(req ->
@@ -140,7 +145,7 @@ class CredentialDeliveryServiceTest {
                 .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
         when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(200, "OK"));
 
-        assertTrue(deliveryService.rejectCredentialRequest("issuer-pid-123", "Invalid credentials"));
+        assertTrue(deliveryService.rejectCredentialRequest("issuer-pid-123", "Invalid credentials", PARTICIPANT));
 
         ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
         verify(httpClient).executeCall(sent.capture());
@@ -156,7 +161,7 @@ class CredentialDeliveryServiceTest {
     @Test
     @DisplayName("Delivery with no credentials sends nothing")
     void deliverCredentials_noCredentials_returnsFalseWithoutSending() throws Exception {
-        assertFalse(deliveryService.deliverCredentials("issuer-pid-123", List.of()));
+        assertFalse(deliveryService.deliverCredentials("issuer-pid-123", List.of(), PARTICIPANT));
         verify(httpClient, never()).executeCall(any());
     }
 
@@ -169,26 +174,26 @@ class CredentialDeliveryServiceTest {
                 .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
         when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(200, "OK"));
 
-        assertTrue(deliveryService.rejectCredentialRequest("issuer-pid-123", null));
+        assertTrue(deliveryService.rejectCredentialRequest("issuer-pid-123", null, PARTICIPANT));
         verify(auditPublisher).publishEvent(eq(DcpAuditEventType.CREDENTIAL_DENIED), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
     void deliverCredentials_nullIssuerPid_returnsFalse() {
-        assertFalse(deliveryService.deliverCredentials(null, testCredentials));
+        assertFalse(deliveryService.deliverCredentials(null, testCredentials, PARTICIPANT));
         verify(requestRepository, never()).findByIssuerPid(any());
     }
 
     @Test
     void deliverCredentials_blankIssuerPid_returnsFalse() {
-        assertFalse(deliveryService.deliverCredentials("", testCredentials));
+        assertFalse(deliveryService.deliverCredentials("", testCredentials, PARTICIPANT));
         verify(requestRepository, never()).findByIssuerPid(any());
     }
 
     @Test
     void deliverCredentials_requestNotFound_throwsException() {
         when(requestRepository.findByIssuerPid("unknown-pid")).thenReturn(Optional.empty());
-        assertThrows(IllegalArgumentException.class, () -> deliveryService.deliverCredentials("unknown-pid", testCredentials));
+        assertThrows(IllegalArgumentException.class, () -> deliveryService.deliverCredentials("unknown-pid", testCredentials, PARTICIPANT));
     }
 
     @Test
@@ -198,7 +203,7 @@ class CredentialDeliveryServiceTest {
                 .credentialIds(List.of("MembershipCredential")).status(CredentialStatus.ISSUED)
                 .createdAt(Instant.now()).build();
         when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(issuedRequest));
-        assertFalse(deliveryService.deliverCredentials("issuer-pid-123", testCredentials));
+        assertFalse(deliveryService.deliverCredentials("issuer-pid-123", testCredentials, PARTICIPANT));
         verify(httpClient, never()).executeCall(any());
     }
 
@@ -209,7 +214,7 @@ class CredentialDeliveryServiceTest {
                 .credentialIds(List.of("MembershipCredential")).status(CredentialStatus.REJECTED)
                 .createdAt(Instant.now()).build();
         when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(rejectedRequest));
-        assertFalse(deliveryService.deliverCredentials("issuer-pid-123", testCredentials));
+        assertFalse(deliveryService.deliverCredentials("issuer-pid-123", testCredentials, PARTICIPANT));
         verify(httpClient, never()).executeCall(any());
     }
 
@@ -220,26 +225,26 @@ class CredentialDeliveryServiceTest {
                 .credentialIds(List.of("MembershipCredential")).status(CredentialStatus.PENDING)
                 .createdAt(Instant.now()).build();
         when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(invalidRequest));
-        assertFalse(deliveryService.deliverCredentials("issuer-pid-123", testCredentials));
+        assertFalse(deliveryService.deliverCredentials("issuer-pid-123", testCredentials, PARTICIPANT));
         verify(httpClient, never()).executeCall(any());
     }
 
     @Test
     void rejectCredentialRequest_nullIssuerPid_returnsFalse() {
-        assertFalse(deliveryService.rejectCredentialRequest(null, "reason"));
+        assertFalse(deliveryService.rejectCredentialRequest(null, "reason", PARTICIPANT));
         verify(requestRepository, never()).findByIssuerPid(any());
     }
 
     @Test
     void rejectCredentialRequest_blankIssuerPid_returnsFalse() {
-        assertFalse(deliveryService.rejectCredentialRequest("", "reason"));
+        assertFalse(deliveryService.rejectCredentialRequest("", "reason", PARTICIPANT));
         verify(requestRepository, never()).findByIssuerPid(any());
     }
 
     @Test
     void rejectCredentialRequest_requestNotFound_throwsException() {
         when(requestRepository.findByIssuerPid("unknown-pid")).thenReturn(Optional.empty());
-        assertThrows(IllegalArgumentException.class, () -> deliveryService.rejectCredentialRequest("unknown-pid", "reason"));
+        assertThrows(IllegalArgumentException.class, () -> deliveryService.rejectCredentialRequest("unknown-pid", "reason", PARTICIPANT));
     }
 
     @Test
@@ -249,7 +254,7 @@ class CredentialDeliveryServiceTest {
                 .credentialIds(List.of("MembershipCredential")).status(CredentialStatus.ISSUED)
                 .createdAt(Instant.now()).build();
         when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(issuedRequest));
-        assertFalse(deliveryService.rejectCredentialRequest("issuer-pid-123", "reason"));
+        assertFalse(deliveryService.rejectCredentialRequest("issuer-pid-123", "reason", PARTICIPANT));
         verify(httpClient, never()).executeCall(any());
     }
 
@@ -260,7 +265,7 @@ class CredentialDeliveryServiceTest {
                 .credentialIds(List.of("MembershipCredential")).status(CredentialStatus.PENDING)
                 .createdAt(Instant.now()).build();
         when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(invalidRequest));
-        assertFalse(deliveryService.rejectCredentialRequest("issuer-pid-123", "reason"));
+        assertFalse(deliveryService.rejectCredentialRequest("issuer-pid-123", "reason", PARTICIPANT));
         verify(httpClient, never()).executeCall(any());
     }
 
@@ -271,7 +276,7 @@ class CredentialDeliveryServiceTest {
         when(didResolverService.fetchDidDocumentCached("did:web:example.com:holder"))
                 .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
         when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(500, "Internal Server Error"));
-        assertFalse(deliveryService.rejectCredentialRequest("issuer-pid-123", "reason"));
+        assertFalse(deliveryService.rejectCredentialRequest("issuer-pid-123", "reason", PARTICIPANT));
         verify(requestRepository, never()).save(any());
     }
 
@@ -283,7 +288,7 @@ class CredentialDeliveryServiceTest {
                 .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/"));
         when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(200, "OK"));
 
-        deliveryService.deliverCredentials("issuer-pid-123", testCredentials);
+        deliveryService.deliverCredentials("issuer-pid-123", testCredentials, PARTICIPANT);
 
         ArgumentCaptor<Request> requestCaptor = ArgumentCaptor.forClass(Request.class);
         verify(httpClient).executeCall(requestCaptor.capture());

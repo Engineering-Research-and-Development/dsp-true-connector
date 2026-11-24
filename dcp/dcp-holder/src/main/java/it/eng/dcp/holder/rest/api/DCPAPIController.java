@@ -1,7 +1,10 @@
 package it.eng.dcp.holder.rest.api;
 
 import it.eng.dcp.common.model.IssuerMetadata;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.RequestParticipantContext;
 import it.eng.dcp.holder.service.CredentialIssuanceClient;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -9,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
@@ -24,14 +28,19 @@ import java.util.Map;
 public class DCPAPIController {
 
     private final CredentialIssuanceClient credentialIssuanceClient;
+    private final RequestParticipantContext requestParticipantContext;
 
     @Autowired
-    public DCPAPIController(CredentialIssuanceClient credentialIssuanceClient) {
+    public DCPAPIController(CredentialIssuanceClient credentialIssuanceClient,
+                            RequestParticipantContext requestParticipantContext) {
         this.credentialIssuanceClient = credentialIssuanceClient;
+        this.requestParticipantContext = requestParticipantContext;
     }
 
     @PostMapping(value = "/credentials/request")
-    public ResponseEntity<?> requestCredentials(@RequestBody List<String> credentialIds) {
+    public ResponseEntity<?> requestCredentials(@RequestBody List<String> credentialIds,
+                                                HttpServletRequest request, Principal principal) {
+        ParticipantContext participant = requestParticipantContext.requireForAdmin(request, principal);
         log.info("Received request to request credentials from issuer");
 
         if (credentialIds == null || credentialIds.isEmpty()) {
@@ -41,7 +50,7 @@ public class DCPAPIController {
 
         try {
             log.debug("Requesting {} credentials", credentialIds.size());
-            String statusUrl = credentialIssuanceClient.requestCredential(credentialIds);
+            String statusUrl = credentialIssuanceClient.requestCredential(credentialIds, participant);
             log.info("Credential request successful for {} credentials, status URL: {}", credentialIds.size(), statusUrl);
             return ResponseEntity.status(201)
                 .header(HttpHeaders.LOCATION, statusUrl)
@@ -62,9 +71,10 @@ public class DCPAPIController {
     }
 
     @GetMapping("/issuer-metadata")
-    public ResponseEntity<?> getIssuerMetadata() {
+    public ResponseEntity<?> getIssuerMetadata(HttpServletRequest request, Principal principal) {
+        ParticipantContext participant = requestParticipantContext.requireForAdmin(request, principal);
         try {
-            IssuerMetadata issuerMetadata = credentialIssuanceClient.getPersonalIssuerMetadata();
+            IssuerMetadata issuerMetadata = credentialIssuanceClient.getPersonalIssuerMetadata(participant);
             log.info("Successfully retrieved issuer metadata");
             return ResponseEntity.ok(issuerMetadata);
         } catch (IllegalArgumentException e) {

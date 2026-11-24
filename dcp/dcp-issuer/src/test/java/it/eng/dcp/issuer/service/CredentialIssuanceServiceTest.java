@@ -6,16 +6,17 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialStatus;
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantKeyProvider;
+import it.eng.dcp.common.participant.ParticipantState;
+import it.eng.dcp.common.participant.SigningKeyReference;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig.CredentialConfig;
 import it.eng.dcp.issuer.config.CredentialMetadataConfigLoader;
-import it.eng.dcp.issuer.config.IssuerProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -42,13 +43,7 @@ import static org.mockito.Mockito.*;
 class CredentialIssuanceServiceTest {
 
     @Mock
-    private IssuerProperties issuerProperties;
-
-    @Mock
-    private KeyService keyService;
-
-    @Mock
-    private BaseDidDocumentConfiguration didDocumentConfig;
+    private ParticipantKeyProvider keyProvider;
 
     @Mock
     private StatusListService statusListService;
@@ -67,6 +62,9 @@ class CredentialIssuanceServiceTest {
     private CredentialMetadataConfig mockConfig;
 
     private static final String HOLDER_DID = "did:web:holder.example.com";
+    private static final String ISSUER_DID = "did:web:issuer.example.com";
+    private static final ParticipantContext PARTICIPANT = new ParticipantContext("default", ISSUER_DID,
+            new SigningKeyReference("eckey-issuer.p12", "issuer"), List.of(), Map.of(), null, ParticipantState.ENABLED);
 
     /**
      * Configures the supported credentials. In these tests each credential ID is also its credential type.
@@ -110,20 +108,19 @@ class CredentialIssuanceServiceTest {
         lenient().when(credentialMetadataConfigLoader.credentialMetadataConfig()).thenReturn(mockConfig);
 
         // Setup mocks BEFORE creating the service
-        when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
-        lenient().when(keyService.getSigningJwk(any())).thenReturn(testSigningKey);
+        lenient().when(keyProvider.activeSigningKey(any())).thenReturn(testSigningKey);
         // Always return a dummy status list entry for any call
         lenient().when(statusListService.allocateStatusEntry(any(), any(), any()))
                 .thenReturn(new StatusListService.StatusListEntry("dummy-status-list-id", 0));
 
         // Remove default VC20 profile setup here. Each test must call setupCredentialConfigs explicitly.
 
-        issuanceService = new CredentialIssuanceService(issuerProperties, keyService, didDocumentConfig, statusListService, credentialMetadataConfigLoader);
+        issuanceService = new CredentialIssuanceService(keyProvider, statusListService, credentialMetadataConfigLoader);
     }
 
     @Test
     void generateCredentials_success_membershipCredential() {
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         assertNotNull(credentials);
         assertEquals(1, credentials.size());
@@ -136,7 +133,7 @@ class CredentialIssuanceServiceTest {
         assertDoesNotThrow(() -> {
             SignedJWT jwt = SignedJWT.parse((String) credential.getPayload());
             assertNotNull(jwt.getJWTClaimsSet());
-            assertEquals("did:web:issuer.example.com", jwt.getJWTClaimsSet().getIssuer());
+            assertEquals(ISSUER_DID, jwt.getJWTClaimsSet().getIssuer());
 
             // VC 2.0 doesn't use JWT sub claim - check credentialSubject.id instead
             @SuppressWarnings("unchecked")
@@ -157,7 +154,7 @@ class CredentialIssuanceServiceTest {
                 .createdAt(Instant.now())
                 .build();
 
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(orgRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(orgRequest, PARTICIPANT);
 
         assertNotNull(credentials);
         assertEquals(1, credentials.size());
@@ -177,7 +174,7 @@ class CredentialIssuanceServiceTest {
                 .createdAt(Instant.now())
                 .build();
 
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(multiRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(multiRequest, PARTICIPANT);
 
         assertNotNull(credentials);
         assertEquals(2, credentials.size());
@@ -188,7 +185,7 @@ class CredentialIssuanceServiceTest {
     @Test
     void generateCredentials_nullRequest_throwsException() {
         assertThrows(IllegalArgumentException.class, () ->
-                issuanceService.generateCredentials(null)
+                issuanceService.generateCredentials(null, PARTICIPANT)
         );
     }
 
@@ -199,7 +196,7 @@ class CredentialIssuanceServiceTest {
         customClaims.put("level", 5);
 
         List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
-                testRequest, customClaims, null
+                testRequest, customClaims, null, PARTICIPANT
         );
 
         assertNotNull(credentials);
@@ -216,7 +213,7 @@ class CredentialIssuanceServiceTest {
         constraintsData.add(constraint);
 
         List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
-                testRequest, null, constraintsData
+                testRequest, null, constraintsData, PARTICIPANT
         );
 
         assertNotNull(credentials);
@@ -232,7 +229,7 @@ class CredentialIssuanceServiceTest {
         constraintsData.add(invalidConstraint);
 
         List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
-                testRequest, null, constraintsData
+                testRequest, null, constraintsData, PARTICIPANT
         );
 
         assertNotNull(credentials);
@@ -252,7 +249,7 @@ class CredentialIssuanceServiceTest {
                 .build();
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> issuanceService.generateCredentials(unknownRequest));
+                () -> issuanceService.generateCredentials(unknownRequest, PARTICIPANT));
         assertTrue(ex.getMessage().contains("NotConfiguredCredential"));
     }
 
@@ -272,7 +269,7 @@ class CredentialIssuanceServiceTest {
                 .createdAt(Instant.now())
                 .build();
 
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(request);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(request, PARTICIPANT);
 
         assertEquals(2, credentials.size());
         assertEquals("MembershipCredential", credentials.get(0).getCredentialType());
@@ -291,7 +288,7 @@ class CredentialIssuanceServiceTest {
                 .createdAt(Instant.now())
                 .build();
 
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(customRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(customRequest, PARTICIPANT);
 
         assertNotNull(credentials);
         assertEquals(1, credentials.size());
@@ -300,7 +297,7 @@ class CredentialIssuanceServiceTest {
 
     @Test
     void generateCredentials_jwtContainsVerifiableCredential() throws ParseException {
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         CredentialMessage.CredentialContainer credential = credentials.get(0);
         SignedJWT jwt = SignedJWT.parse((String) credential.getPayload());
@@ -326,7 +323,7 @@ class CredentialIssuanceServiceTest {
 
     @Test
     void generateCredentials_jwtContainsMembershipFields() throws ParseException {
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         CredentialMessage.CredentialContainer credential = credentials.get(0);
         SignedJWT jwt = SignedJWT.parse((String) credential.getPayload());
@@ -345,7 +342,7 @@ class CredentialIssuanceServiceTest {
 
     @Test
     void generateCredentials_jwtSignedWithES256() throws ParseException {
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         CredentialMessage.CredentialContainer credential = credentials.get(0);
         SignedJWT jwt = SignedJWT.parse((String) credential.getPayload());
@@ -356,7 +353,7 @@ class CredentialIssuanceServiceTest {
 
     @Test
     void generateCredentials_jwtHasExpirationTime() throws ParseException {
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         CredentialMessage.CredentialContainer credential = credentials.get(0);
         SignedJWT jwt = SignedJWT.parse((String) credential.getPayload());
@@ -368,8 +365,8 @@ class CredentialIssuanceServiceTest {
 
     @Test
     void generateCredentials_jwtHasUniqueJwtId() throws ParseException {
-        List<CredentialMessage.CredentialContainer> credentials1 = issuanceService.generateCredentials(testRequest);
-        List<CredentialMessage.CredentialContainer> credentials2 = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials1 = issuanceService.generateCredentials(testRequest, PARTICIPANT);
+        List<CredentialMessage.CredentialContainer> credentials2 = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         SignedJWT jwt1 = SignedJWT.parse((String) credentials1.get(0).getPayload());
         SignedJWT jwt2 = SignedJWT.parse((String) credentials2.get(0).getPayload());
@@ -382,16 +379,16 @@ class CredentialIssuanceServiceTest {
     @Test
     void generateCredentials_signingFailure_throwsException() {
         assertThrows(RuntimeException.class, () -> {
-            when(keyService.getSigningJwk(any())).thenThrow(new JOSEException("Signing failed"));
-            issuanceService.generateCredentials(testRequest);
+            when(keyProvider.activeSigningKey(any())).thenThrow(new RuntimeException("Signing failed"));
+            issuanceService.generateCredentials(testRequest, PARTICIPANT);
         });
     }
 
     @Test
     void generateCredentials_allCredentialsFail_throwsException() {
         assertThrows(IllegalStateException.class, () -> {
-            when(keyService.getSigningJwk(any())).thenThrow(new RuntimeException("Key generation failed"));
-            issuanceService.generateCredentials(testRequest);
+            when(keyProvider.activeSigningKey(any())).thenThrow(new RuntimeException("Key generation failed"));
+            issuanceService.generateCredentials(testRequest, PARTICIPANT);
         });
     }
 
@@ -407,10 +404,10 @@ class CredentialIssuanceServiceTest {
                 .createdAt(Instant.now())
                 .build();
         // The first credential is signed, the second one fails
-        when(keyService.getSigningJwk(any())).thenReturn(testSigningKey).thenThrow(new RuntimeException("sign failed"));
+        when(keyProvider.activeSigningKey(any())).thenReturn(testSigningKey).thenThrow(new RuntimeException("sign failed"));
 
         CredentialIssuanceException ex = assertThrows(CredentialIssuanceException.class,
-                () -> issuanceService.generateCredentials(mixed));
+                () -> issuanceService.generateCredentials(mixed, PARTICIPANT));
 
         assertEquals(List.of("OrganizationCredential"), ex.getFailedCredentialIds());
         assertTrue(ex.getMessage().contains("OrganizationCredential"));
@@ -419,11 +416,11 @@ class CredentialIssuanceServiceTest {
 
     @Test
     void generateCredentials_backwardCompatibility_noCustomClaimsOrConstraints() {
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         assertNotNull(credentials);
         assertEquals(1, credentials.size());
-        verify(keyService, atLeastOnce()).getSigningJwk(any());
+        verify(keyProvider, atLeastOnce()).activeSigningKey(any());
     }
 
     // ============================================
@@ -433,7 +430,7 @@ class CredentialIssuanceServiceTest {
     @Test
     void generateCredentials_vc20Profile_hasCorrectContext() throws ParseException {
         // By default, credentials use VC 2.0 profile
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -446,7 +443,7 @@ class CredentialIssuanceServiceTest {
 
     @Test
     void generateCredentials_vc20Profile_hasValidFromAndValidUntil() throws ParseException {
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -464,7 +461,7 @@ class CredentialIssuanceServiceTest {
 
     @Test
     void generateCredentials_vc20Profile_hasEnvelopedProof() throws ParseException {
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -478,7 +475,7 @@ class CredentialIssuanceServiceTest {
 
     @Test
     void generateCredentials_vc20Profile_hasBitstringStatusListEntry() throws ParseException {
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -495,7 +492,7 @@ class CredentialIssuanceServiceTest {
 
     @Test
     void generateCredentials_vc20Profile_issuerIsObject() throws ParseException {
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -506,12 +503,12 @@ class CredentialIssuanceServiceTest {
 
         @SuppressWarnings("unchecked")
         Map<String, Object> issuerObj = (Map<String, Object>) issuer;
-        assertEquals("did:web:issuer.example.com", issuerObj.get("id"));
+        assertEquals(ISSUER_DID, issuerObj.get("id"));
     }
 
     @Test
     void generateCredentials_vc20Profile_jwtHeaderHasCorrectType() throws ParseException {
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -522,7 +519,7 @@ class CredentialIssuanceServiceTest {
 
     @Test
     void generateCredentials_vc20Profile_flatStructureNoNestedVc() throws ParseException {
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -548,7 +545,7 @@ class CredentialIssuanceServiceTest {
         setupCredentialConfigs(vc11Profiles);
 
         // The profile comes from the configured credentialsSupported entry, not from custom claims
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -571,7 +568,7 @@ class CredentialIssuanceServiceTest {
         setupCredentialConfigs(vc11Profiles);
 
         // The profile comes from the configured credentialsSupported entry, not from custom claims
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -592,7 +589,7 @@ class CredentialIssuanceServiceTest {
         setupCredentialConfigs(vc11Profiles);
 
         // The profile comes from the configured credentialsSupported entry, not from custom claims
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -614,7 +611,7 @@ class CredentialIssuanceServiceTest {
         setupCredentialConfigs(vc11Profiles);
 
         // The profile comes from the configured credentialsSupported entry, not from custom claims
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -639,7 +636,7 @@ class CredentialIssuanceServiceTest {
         setupCredentialConfigs(vc11Profiles);
 
         // The profile comes from the configured credentialsSupported entry, not from custom claims
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest, PARTICIPANT);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 

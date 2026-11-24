@@ -1,10 +1,13 @@
 package it.eng.dcp.common.service.did;
 
-import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.ServiceEntry;
 import it.eng.dcp.common.model.VerificationMethod;
-import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantKeyProvider;
+import it.eng.dcp.common.participant.ParticipantKeyProvider.PublishedKey;
+import it.eng.dcp.common.participant.ParticipantState;
+import it.eng.dcp.common.participant.SigningKeyReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -12,265 +15,102 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Test class for DidDocumentService.
- */
 @ExtendWith(MockitoExtension.class)
 class DidDocumentServiceTest {
+
+    private static final String DID = "did:web:example.com:holder";
+
     @Mock
-    private KeyService keyService;
+    private ParticipantKeyProvider keyProvider;
 
     private DidDocumentService didDocumentService;
-    private KeyPair testKeyPair;
 
-    /**
-     * Set up test fixtures.
-     */
     @BeforeEach
-    void setUp() throws Exception {
-        didDocumentService = new DidDocumentService(keyService);
-
-        // Generate a test key pair
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
-        kpg.initialize(256);
-        testKeyPair = kpg.generateKeyPair();
-
-        // Mock the overloaded methods that accept KeyPair
-        when(keyService.loadKeyPairWithActiveAlias(any(DidDocumentConfig.class))).thenReturn(testKeyPair);
-        when(keyService.getKidFromPublicKey(any(DidDocumentConfig.class), any(KeyPair.class))).thenReturn("kid123");
-        when(keyService.convertPublicKeyToJWK(any(DidDocumentConfig.class), any(KeyPair.class))).thenReturn(Map.of("kty", "EC"));
+    void setUp() {
+        didDocumentService = new DidDocumentService(keyProvider);
     }
 
-    /**
-     * Test that provideDidDocument returns valid DidDocument with HTTPS.
-     */
-    @DisplayName("provideDidDocument returns valid DidDocument with HTTPS")
+    private ParticipantContext participant(List<ServiceEntry> services) {
+        return new ParticipantContext("default", DID, new SigningKeyReference("eckey.p12", "alias"),
+                services, Map.of(), null, ParticipantState.ENABLED);
+    }
+
+    private PublishedKey key(String kid, boolean active) {
+        return new PublishedKey(kid, Map.of("kty", "EC", "kid", DID + "#" + kid), active);
+    }
+
     @Test
-    void provideDidDocument_ReturnsValidDidDocument_WithHTTPS() {
-        // Arrange
-        DidDocumentConfig config = DidDocumentConfig.builder()
-                .did("did:web:example.com:holder")
-                .protocol("https")
-                .host("example.com")
-                .port("8080")
-                .keystorePath("eckey.p12")
-                .keystorePassword("password")
-                .serviceEntries(List.of(
-                        DidDocumentConfig.ServiceEntryConfig.builder()
-                                .id("CredentialService")
-                                .type("CredentialService")
-                                .endpointPath("")
-                                .build()
-                ))
-                .build();
+    @DisplayName("provideDidDocument publishes the participant's services and its active key")
+    void provideDidDocument_publishesServicesAndActiveKey() {
+        ParticipantContext participant = participant(
+                List.of(new ServiceEntry("CredentialService", "CredentialService", "https://example.com:8080")));
+        when(keyProvider.publishedKeys(participant)).thenReturn(List.of(key("kid123", true)));
 
-        // Act
-        DidDocument doc = didDocumentService.provideDidDocument(config);
+        DidDocument doc = didDocumentService.provideDidDocument(participant);
 
-        // Assert
-        assertEquals("did:web:example.com:holder", doc.getId());
+        assertEquals(DID, doc.getId());
         assertEquals(1, doc.getServices().size());
-        ServiceEntry service = doc.getServices().get(0);
-        assertEquals("CredentialService", service.id());
-        assertEquals("CredentialService", service.type());
-        assertEquals("https://example.com:8080", service.serviceEndpoint());
+        assertEquals("https://example.com:8080", doc.getServices().get(0).serviceEndpoint());
         assertEquals(1, doc.getVerificationMethods().size());
         VerificationMethod vm = doc.getVerificationMethods().get(0);
-        assertTrue(vm.getId().endsWith("#kid123"));
+        assertEquals(DID + "#kid123", vm.getId());
         assertEquals("JsonWebKey2020", vm.getType());
-        assertEquals("did:web:example.com:holder", vm.getController());
+        assertEquals(DID, vm.getController());
         assertEquals("EC", vm.getPublicKeyJwk().get("kty"));
-        // The key is listed under authentication and capabilityInvocation; not an issuer, so no assertionMethod
         assertEquals(List.of(vm.getId()), doc.getAuthentication());
         assertEquals(List.of(vm.getId()), doc.getCapabilityInvocation());
         assertTrue(doc.getAssertionMethod().isEmpty());
-        verify(keyService).loadKeyPairWithActiveAlias(config);
+        verify(keyProvider).publishedKeys(participant);
     }
 
-    /**
-     * Test that provideDidDocument returns valid DidDocument with HTTP.
-     */
-    @DisplayName("provideDidDocument returns valid DidDocument with HTTP")
     @Test
-    void provideDidDocument_ReturnsValidDidDocument_WithHTTP() {
-        // Arrange
-        DidDocumentConfig config = DidDocumentConfig.builder()
-                .did("did:web:localhost%3A8090:holder")
-                .protocol("http")
-                .host("localhost")
-                .port("8090")
-                .keystorePath("eckey.p12")
-                .keystorePassword("password")
-                .serviceEntries(List.of(
-                        DidDocumentConfig.ServiceEntryConfig.builder()
-                                .id("CredentialService")
-                                .type("CredentialService")
-                                .endpointPath("")
-                                .build(),
-                        DidDocumentConfig.ServiceEntryConfig.builder()
-                                .id("IssuerService")
-                                .type("IssuerService")
-                                .endpointPath("/issuer")
-                                .build()
-                ))
-                .build();
+    @DisplayName("provideDidDocument also publishes keys retired within the grace period")
+    void provideDidDocument_publishesRetiredKeys() {
+        ParticipantContext participant = participant(
+                List.of(new ServiceEntry("CredentialService", "CredentialService", "https://example.com:8080")));
+        when(keyProvider.publishedKeys(participant)).thenReturn(List.of(key("new", true), key("old", false)));
 
-        // Act
-        DidDocument doc = didDocumentService.provideDidDocument(config);
+        DidDocument doc = didDocumentService.provideDidDocument(participant);
 
-        // Assert
-        assertEquals("did:web:localhost%3A8090:holder", doc.getId());
-        assertEquals(2, doc.getServices().size());
-        ServiceEntry service = doc.getServices().get(0);
-        assertEquals("CredentialService", service.id());
-        assertEquals("CredentialService", service.type());
-        assertEquals("http://localhost:8090", service.serviceEndpoint());
+        assertEquals(List.of(DID + "#new", DID + "#old"),
+                doc.getVerificationMethods().stream().map(VerificationMethod::getId).toList());
+        assertEquals(List.of(DID + "#new", DID + "#old"), doc.getCapabilityInvocation());
+    }
 
-        ServiceEntry issuerService = doc.getServices().get(1);
-        assertEquals("http://localhost:8090/issuer", issuerService.serviceEndpoint());
+    @Test
+    @DisplayName("provideDidDocument lists the key under assertionMethod when an IssuerService is advertised")
+    void provideDidDocument_issuerListsAssertionMethod() {
+        ParticipantContext participant = participant(List.of(
+                new ServiceEntry("CredentialService", "CredentialService", "http://localhost:8090"),
+                new ServiceEntry("IssuerService", "IssuerService", "http://localhost:8090/issuer")));
+        when(keyProvider.publishedKeys(participant)).thenReturn(List.of(key("kid123", true)));
 
-        // A document advertising an IssuerService also lists the key under assertionMethod
+        DidDocument doc = didDocumentService.provideDidDocument(participant);
+
         String vmId = doc.getVerificationMethods().get(0).getId();
-        assertEquals(List.of(vmId), doc.getAuthentication());
-        assertEquals(List.of(vmId), doc.getCapabilityInvocation());
         assertEquals(List.of(vmId), doc.getAssertionMethod());
-
-        verify(keyService).loadKeyPairWithActiveAlias(config);
     }
 
-    /**
-     * Test that provideDidDocument uses default alias if metadata is absent.
-     */
-    @DisplayName("provideDidDocument uses default alias if metadata is absent")
     @Test
-    void provideDidDocument_UsesDefaultAlias_WhenMetadataAbsent() {
-        // Arrange
+    @DisplayName("getDidDocument returns a JSON string")
+    void getDidDocument_returnsJson() {
+        ParticipantContext participant = participant(
+                List.of(new ServiceEntry("CredentialService", "CredentialService", "http://localhost:8080")));
+        when(keyProvider.publishedKeys(participant)).thenReturn(List.of(key("kid123", true)));
 
-        DidDocumentConfig config = DidDocumentConfig.builder()
-                .did("did:web:localhost:holder")
-                .protocol("https")
-                .host("localhost")
-                .port("8080")
-                .keystorePath("eckey.p12")
-                .keystorePassword("password")
-                .serviceEntries(List.of(
-                        DidDocumentConfig.ServiceEntryConfig.builder()
-                                .id("Service1")
-                                .type("Type1")
-                                .build()
-                ))
-                .build();
+        String json = didDocumentService.getDidDocument(participant);
 
-        // Act
-        didDocumentService.provideDidDocument(config);
-
-        // Assert
-        verify(keyService).loadKeyPairWithActiveAlias(config);
+        assertNotNull(json);
+        assertTrue(json.contains(DID));
+        assertTrue(json.contains("CredentialService"));
     }
-
-    /**
-     * Test that provideDidDocument uses custom controller for verification method.
-     */
-    @DisplayName("provideDidDocument uses custom controller for verification method")
-    @Test
-    void provideDidDocument_UsesCustomController() {
-        // Arrange
-        DidDocumentConfig config = DidDocumentConfig.builder()
-                .did("did:web:example.com:issuer")
-                .protocol("https")
-                .host("example.com")
-                .port("9443")
-                .verificationMethodController("did:web:example.com:controller")
-                .keystorePath("eckey-issuer.p12")
-                .keystorePassword("secret")
-                .serviceEntries(List.of(
-                        DidDocumentConfig.ServiceEntryConfig.builder()
-                                .id("IssuerService")
-                                .type("IssuerService")
-                                .build()
-                ))
-                .build();
-
-        // Act
-        DidDocument doc = didDocumentService.provideDidDocument(config);
-
-        // Assert
-        ServiceEntry service = doc.getServices().get(0);
-        assertEquals("https://example.com:9443", service.serviceEndpoint());
-
-        VerificationMethod vm = doc.getVerificationMethods().get(0);
-        assertEquals("did:web:example.com:controller", vm.getController());
-        verify(keyService).loadKeyPairWithActiveAlias(config);
-    }
-
-    /**
-     * Test that provideDidDocument uses baseUrl if provided.
-     */
-    @DisplayName("provideDidDocument uses baseUrl if provided")
-    @Test
-    void provideDidDocument_UsesBaseUrl_WhenProvided() {
-        // Arrange
-        DidDocumentConfig config = DidDocumentConfig.builder()
-                .did("did:web:production.example.com:holder")
-                .baseUrl("https://production.example.com")
-                .keystorePath("eckey.p12")
-                .keystorePassword("password")
-                .serviceEntries(List.of(
-                        DidDocumentConfig.ServiceEntryConfig.builder()
-                                .id("Service1")
-                                .type("Type1")
-                                .endpointPath("/api/v1")
-                                .build()
-                ))
-                .build();
-
-        // Act
-        DidDocument doc = didDocumentService.provideDidDocument(config);
-
-        // Assert
-        ServiceEntry service = doc.getServices().get(0);
-        assertEquals("https://production.example.com/api/v1", service.serviceEndpoint());
-    }
-
-    /**
-     * Test that getDidDocument returns JSON string.
-     */
-    @DisplayName("getDidDocument returns valid JSON string")
-    @Test
-    void getDidDocument_ReturnsValidJsonString() {
-        // Arrange
-        DidDocumentConfig config = DidDocumentConfig.builder()
-                .did("did:web:localhost:holder")
-                .protocol("http")
-                .host("localhost")
-                .port("8080")
-                .keystorePath("eckey.p12")
-                .keystorePassword("password")
-                .serviceEntries(List.of(
-                        DidDocumentConfig.ServiceEntryConfig.builder()
-                                .id("CredentialService")
-                                .type("CredentialService")
-                                .build()
-                ))
-                .build();
-
-        // Act
-        String jsonDidDocument = didDocumentService.getDidDocument(config);
-
-        // Assert
-        assertNotNull(jsonDidDocument);
-        assertTrue(jsonDidDocument.contains("did:web:localhost:holder"));
-        assertTrue(jsonDidDocument.contains("CredentialService"));
-    }
-
 }

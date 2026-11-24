@@ -1,6 +1,7 @@
 package it.eng.tools.util;
 
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
+import it.eng.dcp.common.config.DcpProperties;
+import it.eng.dcp.common.participant.ParticipantContextProvider;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.tools.auth.ConnectorCredentialProvider;
 import it.eng.tools.auth.M2mTokenCache;
@@ -56,14 +57,15 @@ class CredentialUtilsTest {
     @Mock
     private SelfIssuedIdTokenService selfIssuedIdTokenService;
     @Mock
-    private BaseDidDocumentConfiguration didDocumentConfig;
+    private ParticipantContextProvider participantContextProvider;
 
     private CredentialUtils credentialUtils;
     private Method normalizeUrlMethod;
 
     @BeforeEach
     void setUp() throws Exception {
-        credentialUtils = new CredentialUtils(new OkHttpClient(), selfIssuedIdTokenService, didDocumentConfig,
+        credentialUtils = new CredentialUtils(new OkHttpClient(), selfIssuedIdTokenService,
+                participantContextProvider, new DcpProperties(),
                 m2mTokenCache, connectorCredentialProviderObjectProvider, keycloakServiceObjectProvider);
 
         // Get access to the private normalizeUrl method using reflection

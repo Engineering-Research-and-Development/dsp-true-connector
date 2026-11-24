@@ -8,9 +8,9 @@ import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantKeyProvider;
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.issuer.model.StatusList;
 import org.springframework.stereotype.Component;
 
@@ -56,30 +56,28 @@ public class StatusListCredentialGenerator {
     private static final String MULTIBASE_BASE64URL_PREFIX = "u";
     private static final String SUBJECT_FRAGMENT = "#list";
 
-    private final KeyService keyService;
-    private final BaseDidDocumentConfiguration didDocumentConfig;
+    private final ParticipantKeyProvider keyProvider;
 
     /**
      * Creates the generator.
      *
-     * @param keyService service that provides the Issuer's signing key
-     * @param didDocumentConfig the Issuer's DID document configuration
+     * @param keyProvider provider of the Issuer's signing key
      */
-    public StatusListCredentialGenerator(KeyService keyService, BaseDidDocumentConfiguration didDocumentConfig) {
-        this.keyService = keyService;
-        this.didDocumentConfig = didDocumentConfig;
+    public StatusListCredentialGenerator(ParticipantKeyProvider keyProvider) {
+        this.keyProvider = keyProvider;
     }
 
     /**
      * Builds and signs the status list credential of a list.
      *
      * @param statusList the status list
+     * @param participant the Issuer participant whose key signs the credential
      * @return the compact JWT of the signed status list credential
      * @throws IllegalStateException if signing fails
      */
-    public String generate(StatusList statusList) {
+    public String generate(StatusList statusList, ParticipantContext participant) {
         Objects.requireNonNull(statusList, "statusList");
-        ECKey signingKey = currentSigningKey();
+        ECKey signingKey = keyProvider.activeSigningKey(participant);
         Instant now = Instant.now();
         boolean vc20 = statusList.getProfile() == ProfileId.VC20_BSSL_JWT;
 
@@ -130,15 +128,16 @@ public class StatusListCredentialGenerator {
      * Tells whether a signed status list credential was signed with the Issuer's current signing key.
      *
      * @param signedCredential the compact JWT, may be null
+     * @param participant the Issuer participant whose current key is compared
      * @return true when the JWT parses and its {@code kid} is the current signing key ID
      */
-    public boolean isSignedWithCurrentKey(String signedCredential) {
+    public boolean isSignedWithCurrentKey(String signedCredential, ParticipantContext participant) {
         if (signedCredential == null || signedCredential.isBlank()) {
             return false;
         }
         try {
             String kid = SignedJWT.parse(signedCredential).getHeader().getKeyID();
-            return Objects.equals(kid, currentSigningKey().getKeyID());
+            return Objects.equals(kid, keyProvider.activeSigningKey(participant).getKeyID());
         } catch (ParseException e) {
             return false;
         }
@@ -164,10 +163,6 @@ public class StatusListCredentialGenerator {
     static String encodeList(byte[] bitstring, ProfileId profile) {
         String base64url = Base64.getUrlEncoder().withoutPadding().encodeToString(gzip(bitstring));
         return profile == ProfileId.VC20_BSSL_JWT ? MULTIBASE_BASE64URL_PREFIX + base64url : base64url;
-    }
-
-    private ECKey currentSigningKey() {
-        return keyService.getSigningJwk(didDocumentConfig.getDidDocumentConfig());
     }
 
     private static byte[] gzip(byte[] data) {

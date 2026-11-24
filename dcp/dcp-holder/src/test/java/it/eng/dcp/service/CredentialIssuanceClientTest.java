@@ -2,7 +2,7 @@ package it.eng.dcp.service;
 
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
-import it.eng.dcp.common.config.DidDocumentConfig;
+import it.eng.dcp.common.participant.ParticipantContext;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.model.ServiceEntry;
@@ -49,7 +49,7 @@ class CredentialIssuanceClientTest {
     private SelfIssuedIdTokenService tokenService;
 
     @Mock
-    private DidDocumentConfig config;
+    private ParticipantContext participant;
 
     @Mock
     private DidResolverService didResolverService;
@@ -194,12 +194,12 @@ class CredentialIssuanceClientTest {
                 isNull(), eq(IssuerMetadata.class)
         )).thenReturn(metadata);
 
-        var result = client.getIssuerMetadata(metadataUrl);
+        var result = client.getIssuerMetadata(metadataUrl, participant);
 
         assertNotNull(result);
         assertEquals("did:web:issuer.example.com", result.getIssuer());
         assertEquals(1, result.getCredentialsSupported().size());
-        verify(tokenService).createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(config));
+        verify(tokenService).createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(participant));
         verify(restClient).executeAndDeserialize(eq(metadataUrl), eq("GET"), any(Map.class), isNull(), eq(IssuerMetadata.class));
     }
 
@@ -215,7 +215,7 @@ class CredentialIssuanceClientTest {
                 eq(metadataUrl), eq("GET"), any(Map.class), isNull(), eq(IssuerMetadata.class)
         )).thenReturn(metadata);
 
-        var result = client.getIssuerMetadata(metadataUrl);
+        var result = client.getIssuerMetadata(metadataUrl, participant);
 
         assertNotNull(result);
         assertEquals("did:web:issuer.example.com", result.getIssuer());
@@ -224,7 +224,7 @@ class CredentialIssuanceClientTest {
     @DisplayName("getIssuerMetadata throws IllegalArgumentException when metadataUrl is null")
     @Test
     void getIssuerMetadata_Throws_WhenUrlNull() {
-        assertThrows(IllegalArgumentException.class, () -> client.getIssuerMetadata(null));
+        assertThrows(IllegalArgumentException.class, () -> client.getIssuerMetadata(null, participant));
     }
 
     @DisplayName("getIssuerMetadata throws RuntimeException when HTTP request fails")
@@ -235,7 +235,7 @@ class CredentialIssuanceClientTest {
                 .thenThrow(new IOException("Network error"));
 
         var exception = assertThrows(RuntimeException.class,
-                () -> client.getIssuerMetadata("https://issuer.example.com/metadata"));
+                () -> client.getIssuerMetadata("https://issuer.example.com/metadata", participant));
         assertEquals("Failed to fetch issuer metadata from https://issuer.example.com/metadata: Network error",
                 exception.getMessage());
     }
@@ -253,7 +253,7 @@ class CredentialIssuanceClientTest {
                 isNull(), eq(IssuerMetadata.class)
         )).thenReturn(metadata);
 
-        assertNotNull(client.getIssuerMetadata(metadataUrl));
+        assertNotNull(client.getIssuerMetadata(metadataUrl, participant));
         verify(restClient).executeAndDeserialize(
                 eq(metadataUrl), eq("GET"),
                 eq(Map.of()),
@@ -273,7 +273,7 @@ class CredentialIssuanceClientTest {
                 isNull(), eq(IssuerMetadata.class)
         )).thenReturn(metadata);
 
-        assertNotNull(client.getIssuerMetadata(metadataUrl));
+        assertNotNull(client.getIssuerMetadata(metadataUrl, participant));
         verify(restClient).executeAndDeserialize(
                 eq(metadataUrl), eq("GET"),
                 eq(Map.of("Authorization", "Bearer    ")),
@@ -294,7 +294,7 @@ class CredentialIssuanceClientTest {
                 any(Map.class), isNull(), eq(IssuerMetadata.class)
         )).thenReturn(createValidIssuerMetadata());
 
-        var result = client.getPersonalIssuerMetadata();
+        var result = client.getPersonalIssuerMetadata(participant);
 
         assertNotNull(result);
         assertEquals("did:web:issuer.example.com", result.getIssuer());
@@ -320,7 +320,7 @@ class CredentialIssuanceClientTest {
                 any(Map.class), isNull(), eq(IssuerMetadata.class)
         )).thenReturn(createValidIssuerMetadata());
 
-        assertNotNull(client.getPersonalIssuerMetadata());
+        assertNotNull(client.getPersonalIssuerMetadata(participant));
         verify(restClient).executeAndDeserialize(
                 eq("https://issuer.example.com/metadata"), eq("GET"),
                 any(Map.class), isNull(), eq(IssuerMetadata.class));
@@ -332,7 +332,7 @@ class CredentialIssuanceClientTest {
         when(didResolverService.fetchDidDocumentCached(eq("did:web:issuer.example.com")))
                 .thenThrow(new IOException("DID resolution failed"));
 
-        assertThrows(RuntimeException.class, () -> client.getPersonalIssuerMetadata());
+        assertThrows(RuntimeException.class, () -> client.getPersonalIssuerMetadata(participant));
     }
 
     @DisplayName("getPersonalIssuerMetadata throws when metadata fetch fails")
@@ -344,7 +344,7 @@ class CredentialIssuanceClientTest {
         when(restClient.executeAndDeserialize(any(), any(), any(), any(), any()))
                 .thenThrow(new IOException("Metadata fetch failed"));
 
-        assertThrows(RuntimeException.class, () -> client.getPersonalIssuerMetadata());
+        assertThrows(RuntimeException.class, () -> client.getPersonalIssuerMetadata(participant));
     }
 
     // ── requestCredential ─────────────────────────────────────────────────────
@@ -366,7 +366,7 @@ class CredentialIssuanceClientTest {
                         .build());
 
         assertEquals("https://issuer.example.com/requests/req123",
-                client.requestCredential(List.of("cred1")));
+                client.requestCredential(List.of("cred1"), participant));
 
         var typeCaptor = org.mockito.ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
@@ -383,7 +383,7 @@ class CredentialIssuanceClientTest {
                 okHttpResponse("https://issuer.example.com/credentials",
                         HttpStatus.BAD_REQUEST.value(), "Bad request", "Bad request"));
 
-        assertThrows(RuntimeException.class, () -> client.requestCredential(List.of("cred1")));
+        assertThrows(RuntimeException.class, () -> client.requestCredential(List.of("cred1"), participant));
 
         var typeCaptor = org.mockito.ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
@@ -398,17 +398,17 @@ class CredentialIssuanceClientTest {
         var statusUrl = "https://issuer.example.com/status/req-123";
         var statusJson = "{\"status\":\"completed\",\"credentials\":[]}";
 
-        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(config)))
+        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(participant)))
                 .thenReturn("valid-token");
         when(restClient.executeCall(any(Request.class)))
                 .thenReturn(okHttpResponse(statusUrl, HttpStatus.OK.value(), "OK", statusJson));
 
-        var result = client.getRequestStatus(statusUrl, "did:web:issuer.example.com");
+        var result = client.getRequestStatus(statusUrl, "did:web:issuer.example.com", participant);
 
         assertNotNull(result);
         assertEquals(HttpStatus.OK, result.getStatusCode());
         assertEquals(statusJson, result.getBody());
-        verify(tokenService).createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(config));
+        verify(tokenService).createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(participant));
         verify(restClient).executeCall(any(Request.class));
     }
 
@@ -416,7 +416,7 @@ class CredentialIssuanceClientTest {
     @Test
     void getRequestStatus_Throws_WhenUrlNull() {
         assertThrows(IllegalArgumentException.class,
-                () -> client.getRequestStatus(null, "did:web:issuer.example.com"));
+                () -> client.getRequestStatus(null, "did:web:issuer.example.com", participant));
     }
 
     @DisplayName("getRequestStatus works without Authorization header when token is null")
@@ -424,11 +424,11 @@ class CredentialIssuanceClientTest {
     void getRequestStatus_WorksWithoutToken_WhenTokenNull() {
         var statusUrl = "https://issuer.example.com/status/req-123";
 
-        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(config))).thenReturn(null);
+        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(participant))).thenReturn(null);
         when(restClient.executeCall(any(Request.class)))
                 .thenReturn(okHttpResponse(statusUrl, HttpStatus.OK.value(), "OK", "{\"status\":\"pending\"}"));
 
-        var result = client.getRequestStatus(statusUrl, "did:web:issuer.example.com");
+        var result = client.getRequestStatus(statusUrl, "did:web:issuer.example.com", participant);
 
         assertNotNull(result);
         assertEquals(HttpStatus.OK, result.getStatusCode());
@@ -439,11 +439,11 @@ class CredentialIssuanceClientTest {
     void getRequestStatus_WorksWithoutToken_WhenTokenBlank() {
         var statusUrl = "https://issuer.example.com/status/req-123";
 
-        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(config))).thenReturn("   ");
+        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(participant))).thenReturn("   ");
         when(restClient.executeCall(any(Request.class)))
                 .thenReturn(okHttpResponse(statusUrl, HttpStatus.OK.value(), "OK", "{\"status\":\"processing\"}"));
 
-        var result = client.getRequestStatus(statusUrl, "did:web:issuer.example.com");
+        var result = client.getRequestStatus(statusUrl, "did:web:issuer.example.com", participant);
 
         assertNotNull(result);
         assertEquals(HttpStatus.OK, result.getStatusCode());
@@ -454,11 +454,11 @@ class CredentialIssuanceClientTest {
     void getRequestStatus_Returns202_WhenAccepted() {
         var statusUrl = "https://issuer.example.com/status/req-123";
 
-        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(config))).thenReturn("valid-token");
+        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(participant))).thenReturn("valid-token");
         when(restClient.executeCall(any(Request.class)))
                 .thenReturn(okHttpResponse(statusUrl, HttpStatus.ACCEPTED.value(), "Accepted", "{\"status\":\"processing\"}"));
 
-        var result = client.getRequestStatus(statusUrl, "did:web:issuer.example.com");
+        var result = client.getRequestStatus(statusUrl, "did:web:issuer.example.com", participant);
 
         assertNotNull(result);
         assertEquals(HttpStatus.ACCEPTED, result.getStatusCode());
@@ -469,11 +469,11 @@ class CredentialIssuanceClientTest {
     void getRequestStatus_Returns404_WhenNotFound() {
         var statusUrl = "https://issuer.example.com/status/req-123";
 
-        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(config))).thenReturn("valid-token");
+        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(participant))).thenReturn("valid-token");
         when(restClient.executeCall(any(Request.class)))
                 .thenReturn(okHttpResponse(statusUrl, HttpStatus.NOT_FOUND.value(), "Not Found", "{\"error\":\"Request not found\"}"));
 
-        var result = client.getRequestStatus(statusUrl, "did:web:issuer.example.com");
+        var result = client.getRequestStatus(statusUrl, "did:web:issuer.example.com", participant);
 
         assertNotNull(result);
         assertEquals(HttpStatus.NOT_FOUND, result.getStatusCode());
@@ -484,11 +484,11 @@ class CredentialIssuanceClientTest {
     void getRequestStatus_Throws_WhenResponseNull() {
         var statusUrl = "https://issuer.example.com/status/req-123";
 
-        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(config))).thenReturn("valid-token");
+        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(participant))).thenReturn("valid-token");
         when(restClient.executeCall(any(Request.class))).thenReturn(null);
 
         var exception = assertThrows(RuntimeException.class,
-                () -> client.getRequestStatus(statusUrl, "did:web:issuer.example.com"));
+                () -> client.getRequestStatus(statusUrl, "did:web:issuer.example.com", participant));
         assertEquals("No response from issuer at " + statusUrl, exception.getMessage());
     }
 
@@ -497,7 +497,7 @@ class CredentialIssuanceClientTest {
     void getRequestStatus_PreservesHeaders() {
         var statusUrl = "https://issuer.example.com/status/req-123";
 
-        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(config))).thenReturn("valid-token");
+        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(participant))).thenReturn("valid-token");
         when(restClient.executeCall(any(Request.class))).thenReturn(
                 new Response.Builder()
                         .request(new Request.Builder().url(statusUrl).build())
@@ -509,7 +509,7 @@ class CredentialIssuanceClientTest {
                         .body(ResponseBody.create("{\"status\":\"completed\"}", MediaType.parse("application/json")))
                         .build());
 
-        var result = client.getRequestStatus(statusUrl, "did:web:issuer.example.com");
+        var result = client.getRequestStatus(statusUrl, "did:web:issuer.example.com", participant);
 
         assertNotNull(result.getHeaders());
         assertEquals("application/json", result.getHeaders().getFirst("Content-Type"));
@@ -521,7 +521,7 @@ class CredentialIssuanceClientTest {
     void getRequestStatus_HandlesEmptyBody() {
         var statusUrl = "https://issuer.example.com/status/req-123";
 
-        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(config))).thenReturn("valid-token");
+        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(participant))).thenReturn("valid-token");
         when(restClient.executeCall(any(Request.class))).thenReturn(
                 new Response.Builder()
                         .request(new Request.Builder().url(statusUrl).build())
@@ -531,7 +531,7 @@ class CredentialIssuanceClientTest {
                         .body(ResponseBody.create("", MediaType.parse("application/json")))
                         .build());
 
-        var result = client.getRequestStatus(statusUrl, "did:web:issuer.example.com");
+        var result = client.getRequestStatus(statusUrl, "did:web:issuer.example.com", participant);
 
         assertNotNull(result);
         assertEquals(HttpStatus.OK, result.getStatusCode());
@@ -542,7 +542,7 @@ class CredentialIssuanceClientTest {
     void getRequestStatus_ResolvesUnknownStatusTo500() {
         var statusUrl = "https://issuer.example.com/status/req-123";
 
-        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(config))).thenReturn("valid-token");
+        when(tokenService.createAndSignToken(eq("did:web:issuer.example.com"), isNull(), eq(participant))).thenReturn("valid-token");
         when(restClient.executeCall(any(Request.class))).thenReturn(
                 new Response.Builder()
                         .request(new Request.Builder().url(statusUrl).build())
@@ -552,7 +552,7 @@ class CredentialIssuanceClientTest {
                         .body(ResponseBody.create("{}", MediaType.parse("application/json")))
                         .build());
 
-        var result = client.getRequestStatus(statusUrl, "did:web:issuer.example.com");
+        var result = client.getRequestStatus(statusUrl, "did:web:issuer.example.com", participant);
 
         assertNotNull(result);
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, result.getStatusCode());
@@ -566,13 +566,13 @@ class CredentialIssuanceClientTest {
         var offeringIssuer = "did:web:other-issuer.example.com";
         when(didResolverService.fetchDidDocumentCached(eq(offeringIssuer)))
                 .thenReturn(didDocumentWith("IssuerService", "https://issuer-service.other.example.com/api/issuer"));
-        when(tokenService.createAndSignToken(eq(offeringIssuer), isNull(), eq(config))).thenReturn("offer-token");
+        when(tokenService.createAndSignToken(eq(offeringIssuer), isNull(), eq(participant))).thenReturn("offer-token");
         when(restClient.executeAndDeserialize(
                 eq("https://issuer-service.other.example.com/api/issuer/metadata"), eq("GET"),
                 eq(Map.of("Authorization", "Bearer offer-token")), isNull(), eq(IssuerMetadata.class)
         )).thenReturn(createValidIssuerMetadata());
 
-        assertNotNull(client.getIssuerMetadataOf(offeringIssuer));
+        assertNotNull(client.getIssuerMetadataOf(offeringIssuer, participant));
 
         verify(didResolverService, never()).fetchDidDocumentCached(eq("did:web:issuer.example.com"));
         verify(auditPublisher).publishEvent(eq(DcpAuditEventType.ISSUER_METADATA_FETCHED), any(), any(), any(),
@@ -586,7 +586,7 @@ class CredentialIssuanceClientTest {
         when(didResolverService.fetchDidDocumentCached(eq(offeringIssuer)))
                 .thenReturn(didDocumentWith("CredentialService", "https://other-issuer.example.com"));
 
-        assertThrows(IssuerServiceNotFoundException.class, () -> client.getIssuerMetadataOf(offeringIssuer));
+        assertThrows(IssuerServiceNotFoundException.class, () -> client.getIssuerMetadataOf(offeringIssuer, participant));
         verify(restClient, never()).executeAndDeserialize(any(), any(), any(), any(), any());
     }
 

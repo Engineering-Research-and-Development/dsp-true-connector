@@ -3,6 +3,7 @@ package it.eng.dcp.issuer.service.api;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
+import it.eng.dcp.common.participant.ParticipantContext;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.issuer.service.CredentialDeliveryService;
@@ -47,13 +48,15 @@ public class IssuerAPIService {
      * @param customClaims Optional custom claims to include in generated credentials (e.g., country_code, role)
      * @param constraintsData Optional constraints to verify before issuance
      * @param providedCredentials Optional list of manually provided credentials (can be null for auto-generation)
+     * @param participant The issuer participant that issues and signs
      * @return ApprovalResult containing success status and metadata
      * @throws IllegalArgumentException if request not found or constraint verification fails
      */
     public IssuerService.ApprovalResult approveAndDeliverCredentials(String requestId,
                                                                      Map<String, Object> customClaims,
                                                                      List<Map<String, Object>> constraintsData,
-                                                                     List<Map<String, Object>> providedCredentials) {
+                                                                     List<Map<String, Object>> providedCredentials,
+                                                                     ParticipantContext participant) {
         if (requestId == null || requestId.isBlank()) {
             throw new IllegalArgumentException("requestId is required");
         }
@@ -86,11 +89,12 @@ public class IssuerAPIService {
                 credentials = issuanceService.generateCredentials(
                         credentialRequest,
                         customClaims,
-                        constraintsData
+                        constraintsData,
+                        participant
                 );
             } catch (CredentialIssuanceException e) {
                 // At least one credential could not be issued: deliver none and tell the holder (DCP 1.0.1 §6.5.1)
-                boolean rejected = deliveryService.rejectCredentialRequest(requestId, e.getMessage());
+                boolean rejected = deliveryService.rejectCredentialRequest(requestId, e.getMessage(), participant);
                 throw new IllegalStateException(rejected
                         ? "Credential issuance failed, request rejected: " + e.getMessage()
                         : "Credential issuance failed and the rejection could not be delivered: " + e.getMessage(), e);
@@ -101,7 +105,7 @@ public class IssuerAPIService {
             }
         }
 
-        boolean success = deliveryService.deliverCredentials(requestId, credentials);
+        boolean success = deliveryService.deliverCredentials(requestId, credentials, participant);
 
         if (!success) {
             throw new IllegalStateException("Failed to deliver credentials to holder");
@@ -131,9 +135,10 @@ public class IssuerAPIService {
      *
      * @param requestId The issuer PID identifier
      * @param rejectionReason The reason for rejection
+     * @param participant The issuer participant that signs the rejection
      * @return true if successful
      */
-    public boolean rejectCredentialRequest(String requestId, String rejectionReason) {
+    public boolean rejectCredentialRequest(String requestId, String rejectionReason, ParticipantContext participant) {
         if (requestId == null || requestId.isBlank()) {
             throw new IllegalArgumentException("requestId is required");
         }
@@ -145,7 +150,7 @@ public class IssuerAPIService {
         requestRepository.findByIssuerPid(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Credential request not found: " + requestId));
 
-        return deliveryService.rejectCredentialRequest(requestId, rejectionReason);
+        return deliveryService.rejectCredentialRequest(requestId, rejectionReason, participant);
     }
 
     /**
@@ -154,12 +159,13 @@ public class IssuerAPIService {
      *
      * @param statusListId the status list ID, the last path segment of the credential's {@code statusListCredential}
      * @param index the credential's {@code statusListIndex}
+     * @param participant the Issuer participant whose key re-signs the list
      * @return true when the entry was revoked by this call, false when it was already revoked
      * @throws java.util.NoSuchElementException if the status list does not exist
      * @throws IllegalArgumentException if the index has not been allocated
      */
-    public boolean revokeStatusEntry(String statusListId, int index) {
-        boolean revoked = statusListService.revoke(statusListId, index);
+    public boolean revokeStatusEntry(String statusListId, int index, ParticipantContext participant) {
+        boolean revoked = statusListService.revoke(statusListId, index, participant);
         if (revoked) {
             auditPublisher.publishEvent(
                     DcpAuditEventType.CREDENTIAL_REVOKED,

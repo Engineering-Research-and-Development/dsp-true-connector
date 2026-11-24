@@ -1,6 +1,8 @@
 package it.eng.dcp.issuer.rest;
 
+import it.eng.dcp.common.participant.RequestParticipantContext;
 import it.eng.dcp.issuer.service.StatusListService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,30 +17,35 @@ import org.springframework.web.bind.annotation.RestController;
  * points at without authentication. The list carries only status bits, no holder data.
  */
 @RestController
-@RequestMapping(path = "/issuer/status")
+@RequestMapping(path = "/${dcp.base-path.issuer:issuer}/status")
 public class StatusListController {
 
     private final StatusListService statusListService;
+    private final RequestParticipantContext requestParticipantContext;
 
     /**
      * Creates the controller.
      *
      * @param statusListService the status list service
+     * @param requestParticipantContext resolves the participant a request addresses
      */
-    public StatusListController(StatusListService statusListService) {
+    public StatusListController(StatusListService statusListService,
+                                RequestParticipantContext requestParticipantContext) {
         this.statusListService = statusListService;
+        this.requestParticipantContext = requestParticipantContext;
     }
 
     /**
      * Returns the signed status list credential of a list as a compact JWT.
      *
      * @param listId the list ID, the last path segment of the {@code statusListCredential} URL
+     * @param request the inbound request, which addresses the participant
      * @return 200 with the JWT ({@code application/vc+ld+jwt} for BitstringStatusList, {@code application/jwt} for
      *         StatusList2021), or 404 when the list does not exist
      */
     @GetMapping(path = "/{listId}")
-    public ResponseEntity<String> getStatusList(@PathVariable String listId) {
-        return statusListService.publishStatusList(listId)
+    public ResponseEntity<String> getStatusList(@PathVariable String listId, HttpServletRequest request) {
+        return statusListService.publishStatusList(listId, requestParticipantContext.require(request))
                 .map(published -> ResponseEntity.ok()
                         .contentType(MediaType.parseMediaType(published.mediaType()))
                         .body(published.credential()))

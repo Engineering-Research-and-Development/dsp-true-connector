@@ -2,6 +2,7 @@ package it.eng.dcp.issuer.service.credential;
 
 import it.eng.dcp.common.model.CredentialGenerationContext;
 import it.eng.dcp.common.model.CredentialMessage;
+import it.eng.dcp.common.participant.ParticipantContext;
 import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.issuer.service.jwt.VcJwtGeneratorFactory;
 
@@ -31,12 +32,13 @@ public class MembershipCredentialGenerator implements CredentialGenerator {
     }
 
     @Override
-    public CredentialMessage.CredentialContainer generateCredential(CredentialGenerationContext context) {
-        return generateCredential(context, null, null);
+    public CredentialMessage.CredentialContainer generateCredential(ParticipantContext participant, CredentialGenerationContext context) {
+        return generateCredential(participant, context, null, null);
     }
 
     @Override
-    public CredentialMessage.CredentialContainer generateCredential(CredentialGenerationContext context, String statusListId, Integer statusListIndex) {
+    public CredentialMessage.CredentialContainer generateCredential(ParticipantContext participant, CredentialGenerationContext context,
+                                                                    String statusListId, Integer statusListIndex) {
         ProfileId profile = profileExtractor.extractProfile(getCredentialType(), context);
         Map<String, String> claims = new HashMap<>();
         claims.put("membershipType", "Premium");
@@ -45,13 +47,13 @@ public class MembershipCredentialGenerator implements CredentialGenerator {
         String signedJwt;
         if (ProfileId.VC20_BSSL_JWT.equals(profile)) {
             signedJwt = jwtGeneratorFactory.createGenerator(profile)
-                .generateJwt(context.getRequest().getHolderDid(), getCredentialType(), claims, statusListId, statusListIndex);
+                .generateJwt(participant, context.getRequest().getHolderDid(), getCredentialType(), claims, statusListId, statusListIndex);
         } else if (ProfileId.VC11_SL2021_JWT.equals(profile)) {
             signedJwt = jwtGeneratorFactory.createGenerator(profile)
-                .generateJwt(context.getRequest().getHolderDid(), getCredentialType(), claims, statusListId, statusListIndex);
+                .generateJwt(participant, context.getRequest().getHolderDid(), getCredentialType(), claims, statusListId, statusListIndex);
         } else {
             signedJwt = jwtGeneratorFactory.createGenerator(profile)
-                .generateJwt(context.getRequest().getHolderDid(), getCredentialType(), claims);
+                .generateJwt(participant, context.getRequest().getHolderDid(), getCredentialType(), claims);
         }
         return CredentialMessage.CredentialContainer.Builder.newInstance()
                 .credentialType(getCredentialType())

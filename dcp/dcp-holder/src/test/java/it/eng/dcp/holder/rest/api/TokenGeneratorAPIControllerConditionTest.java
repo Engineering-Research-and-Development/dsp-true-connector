@@ -1,6 +1,6 @@
 package it.eng.dcp.holder.rest.api;
 
-import it.eng.dcp.common.config.DidDocumentConfig;
+import it.eng.dcp.common.participant.RequestParticipantContext;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,7 +13,7 @@ class TokenGeneratorAPIControllerConditionTest {
 
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withBean("selfIssuedIdTokenService", SelfIssuedIdTokenService.class, () -> mock(SelfIssuedIdTokenService.class))
-            .withBean(DidDocumentConfig.class, () -> mock(DidDocumentConfig.class))
+            .withBean(RequestParticipantContext.class, () -> mock(RequestParticipantContext.class))
             .withUserConfiguration(TokenGeneratorAPIController.class);
 
     @Test

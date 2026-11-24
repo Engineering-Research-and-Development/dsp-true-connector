@@ -1,10 +1,10 @@
 package it.eng.dcp.holder.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.participant.ParticipantContext;
 import it.eng.dcp.common.util.DcpTransportSecurity;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
-import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.*;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
@@ -43,7 +43,6 @@ public class CredentialIssuanceClient {
     private final SimpleOkHttpRestClient rest;
     private final SelfIssuedIdTokenService tokenService;
     private final ObjectMapper mapper = new ObjectMapper();
-    private final DidDocumentConfig config;
     private final DidResolverService didResolverService;
     private final DcpAuditEventPublisher auditPublisher;
 
@@ -56,12 +55,10 @@ public class CredentialIssuanceClient {
     @Autowired
     public CredentialIssuanceClient(SimpleOkHttpRestClient rest,
                                     @Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
-                                    DidDocumentConfig config,
                                     DidResolverService didResolverService,
                                     DcpAuditEventPublisher auditPublisher) {
         this.rest = rest;
         this.tokenService = tokenService;
-        this.config = config;
         this.didResolverService = didResolverService;
         this.auditPublisher = auditPublisher;
     }
@@ -140,13 +137,14 @@ public class CredentialIssuanceClient {
     /**
      * Fetches issuer metadata of the configured issuer ({@code dcp.issuer.location}).
      *
+     * @param participant the participant that authenticates the request with its Self-Issued ID Token
      * @return the IssuerMetadata object
      * @throws IllegalStateException if {@code dcp.issuer.location} is not a DID
      * @throws RuntimeException if failed to fetch metadata
      */
-    public IssuerMetadata getPersonalIssuerMetadata() {
+    public IssuerMetadata getPersonalIssuerMetadata(ParticipantContext participant) {
         requireIssuerDid();
-        return getIssuerMetadataOf(issuerDid);
+        return getIssuerMetadataOf(issuerDid, participant);
     }
 
     /**
@@ -157,15 +155,16 @@ public class CredentialIssuanceClient {
      * given issuer DID.
      *
      * @param targetIssuerDid the issuer DID; callers must pass a DID they trust
+     * @param participant the participant that authenticates the request with its Self-Issued ID Token
      * @return the IssuerMetadata object
      * @throws IllegalArgumentException if targetIssuerDid is null or blank
      * @throws IssuerServiceNotFoundException if the DID document advertises no IssuerService
      * @throws RuntimeException if failed to fetch the DID document or the metadata
      */
-    public IssuerMetadata getIssuerMetadataOf(String targetIssuerDid) {
+    public IssuerMetadata getIssuerMetadataOf(String targetIssuerDid, ParticipantContext participant) {
         String issuerBase = discoverIssuerService(targetIssuerDid);
         String metadataUrl = issuerBase.endsWith("/") ? issuerBase + DCPConstants.ISSUER_METADATA_PATH.substring(1) : issuerBase + DCPConstants.ISSUER_METADATA_PATH;
-        IssuerMetadata metadata = fetchIssuerMetadata(metadataUrl, targetIssuerDid);
+        IssuerMetadata metadata = fetchIssuerMetadata(metadataUrl, targetIssuerDid, participant);
         auditPublisher.publishEvent(
                 DcpAuditEventType.ISSUER_METADATA_FETCHED,
                 "Issuer metadata fetched from: " + metadataUrl,
@@ -179,15 +178,16 @@ public class CredentialIssuanceClient {
      * Fetches issuer metadata from the given URL (issuer base + /metadata or provided URL).
      *
      * @param metadataUrl the metadata URL
+     * @param participant the participant that authenticates the request with its Self-Issued ID Token
      * @return the IssuerMetadata object
      * @throws IllegalArgumentException if metadataUrl is null
      * @throws RuntimeException if failed to fetch metadata
      */
-    public IssuerMetadata getIssuerMetadata(String metadataUrl) {
+    public IssuerMetadata getIssuerMetadata(String metadataUrl, ParticipantContext participant) {
         if (metadataUrl == null) {
             throw new IllegalArgumentException("metadataUrl required");
         }
-        return fetchIssuerMetadata(metadataUrl, issuerDid);
+        return fetchIssuerMetadata(metadataUrl, issuerDid, participant);
     }
 
     /**
@@ -195,14 +195,15 @@ public class CredentialIssuanceClient {
      *
      * @param metadataUrl the metadata URL
      * @param audience the issuer DID the token is addressed to
+     * @param participant the participant that authenticates the request with its Self-Issued ID Token
      * @return the IssuerMetadata object
      * @throws RuntimeException if failed to fetch metadata
      */
-    private IssuerMetadata fetchIssuerMetadata(String metadataUrl, String audience) {
+    private IssuerMetadata fetchIssuerMetadata(String metadataUrl, String audience, ParticipantContext participant) {
         // Create token for issuer audience if possible; tokenService may return null if not configured
         String token = null;
         try {
-            token = tokenService.createAndSignToken(audience, null, config);
+            token = tokenService.createAndSignToken(audience, null, participant);
         } catch (Exception e) {
             log.debug("No token could be created for issuer audience {}: {}", audience, e.getMessage());
         }
@@ -223,11 +224,12 @@ public class CredentialIssuanceClient {
      * <p>Returns Location header (status URL) on 201/202 response.
      *
      * @param credentialObjectIds the list of credential object IDs to request
+     * @param participant the participant that authenticates the request with its Self-Issued ID Token
      * @return the status URL from Location header
      * @throws IllegalArgumentException if credentialObjectIds is null or empty
      * @throws RuntimeException if the request fails
      */
-    public String requestCredential(List<String> credentialObjectIds) {
+    public String requestCredential(List<String> credentialObjectIds, ParticipantContext participant) {
         if (credentialObjectIds == null || credentialObjectIds.isEmpty()) {
             throw new IllegalArgumentException("credentialObjectIds (non-empty list) is required");
         }
@@ -253,7 +255,7 @@ public class CredentialIssuanceClient {
         String audience = issuerDid;
         String token = null;
         try {
-            token = tokenService.createAndSignToken(audience, null, config);
+            token = tokenService.createAndSignToken(audience, null, participant);
         } catch (Exception e) {
             log.debug("No token could be created for issuer audience {}: {}", audience, e.getMessage());
         }
@@ -331,16 +333,17 @@ public class CredentialIssuanceClient {
      *
      * @param statusUrl the status URL
      * @param audience the audience for the token
+     * @param participant the participant that authenticates the request with its Self-Issued ID Token
      * @return the ResponseEntity with status JSON body
      * @throws IllegalArgumentException if statusUrl is null
      * @throws RuntimeException if the request fails
      */
-    public ResponseEntity<String> getRequestStatus(String statusUrl, String audience) {
+    public ResponseEntity<String> getRequestStatus(String statusUrl, String audience, ParticipantContext participant) {
         if (statusUrl == null) {
             throw new IllegalArgumentException("statusUrl required");
         }
 
-        String token = tokenService.createAndSignToken(audience, null, config);
+        String token = tokenService.createAndSignToken(audience, null, participant);
 
         Request.Builder rb = new Request.Builder().url(statusUrl).get();
         if (token != null && !token.isBlank()) {
@@ -380,16 +383,17 @@ public class CredentialIssuanceClient {
      * @param audience the audience for the token
      * @param timeout maximum duration to wait
      * @param backoff initial backoff duration between attempts
+     * @param participant the participant that authenticates the request with its Self-Issued ID Token
      * @return the final status response body
      * @throws InterruptedException if interrupted while waiting
      * @throws RuntimeException if status polling times out
      */
-    public String awaitStatus(String statusUrl, String audience, Duration timeout, Duration backoff) throws InterruptedException {
+    public String awaitStatus(String statusUrl, String audience, Duration timeout, Duration backoff, ParticipantContext participant) throws InterruptedException {
         long deadline = System.currentTimeMillis() + timeout.toMillis();
         long delay = backoff.toMillis();
         while (System.currentTimeMillis() < deadline) {
             try {
-                ResponseEntity<String> resp = getRequestStatus(statusUrl, audience);
+                ResponseEntity<String> resp = getRequestStatus(statusUrl, audience, participant);
                 if (resp.getStatusCode().is2xxSuccessful()) {
                     // assume body contains status JSON; caller will parse
                     return resp.getBody();

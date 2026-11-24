@@ -6,6 +6,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.model.*;
+import it.eng.dcp.common.participant.ParticipantContext;
 import it.eng.dcp.common.service.IssuerTrustService;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
@@ -79,16 +80,17 @@ public class HolderService {
      * ({@code aud} = the Self-Issued ID Token {@code sub}).
      *
      * @param bearerToken The bearer token from Authorization header (without "Bearer " prefix)
+     * @param participant the participant the Verifier's token must be addressed to
      * @return the Verifier DID, the holder DID and the validated access token claims
      * @throws SecurityException if either token is missing or invalid
      */
-    public PresentationQueryAuthorization authorizePresentationQuery(String bearerToken) throws SecurityException {
+    public PresentationQueryAuthorization authorizePresentationQuery(String bearerToken, ParticipantContext participant) throws SecurityException {
         if (bearerToken == null || bearerToken.isBlank()) {
             throw presentationQueryRejected("Bearer token is required");
         }
 
         log.debug("Validating the Verifier's Self-Issued ID Token for presentation query");
-        JWTClaimsSet idTokenClaims = tokenService.validateToken(bearerToken);
+        JWTClaimsSet idTokenClaims = tokenService.validateToken(bearerToken, participant);
         String verifierDid = idTokenClaims.getSubject();
 
         String accessToken;
@@ -101,7 +103,7 @@ public class HolderService {
             throw presentationQueryRejected("Self-Issued ID Token carries no access token in its 'token' claim");
         }
 
-        JWTClaimsSet accessTokenClaims = tokenService.validateAccessToken(accessToken, verifierDid);
+        JWTClaimsSet accessTokenClaims = tokenService.validateAccessToken(accessToken, verifierDid, participant);
         String holderDid = accessTokenClaims.getSubject();
         auditPublisher.publishEvent(
                 DcpAuditEventType.PRESENTATION_QUERY_RECEIVED,
@@ -149,16 +151,18 @@ public class HolderService {
      * token, and only credentials of the holder that owns this Credential Service are returned.
      *
      * @param query The presentation query message containing requested scopes
-     * @param authorization The result of {@link #authorizePresentationQuery(String)}
+     * @param authorization The result of {@link #authorizePresentationQuery(String, ParticipantContext)}
+     * @param participant The participant that owns this Credential Service and signs the presentations
      * @return PresentationResponseMessage with only authorized credentials
      */
     public PresentationResponseMessage createPresentation(PresentationQueryMessage query,
-                                                          PresentationQueryAuthorization authorization) {
+                                                          PresentationQueryAuthorization authorization,
+                                                          ParticipantContext participant) {
         String holderDid = authorization.holderDid();
         log.info("Creating presentation response for verifier {} from holder {}",
                 authorization.verifierDid(), holderDid);
         PresentationResponseMessage response = presentationService.createPresentation(
-                query, holderDid, authorization.accessTokenClaims());
+                query, holderDid, authorization.accessTokenClaims(), participant);
         List<String> scopes = query.getScope() != null ? query.getScope() : List.of();
         auditPublisher.publishEvent(
                 DcpAuditEventType.PRESENTATION_CREATED,
@@ -173,10 +177,11 @@ public class HolderService {
      * Authorize and validate an issuer's credential delivery request.
      *
      * @param bearerToken The bearer token from Authorization header (without "Bearer " prefix)
+     * @param participant the participant the token must be addressed to
      * @return The issuer's DID from the token
      * @throws SecurityException if token is invalid or missing issuer claim
      */
-    public String authorizeIssuer(String bearerToken) throws SecurityException {
+    public String authorizeIssuer(String bearerToken, ParticipantContext participant) throws SecurityException {
         if (bearerToken == null || bearerToken.isBlank()) {
             auditPublisher.publishEvent(
                     DcpAuditEventType.TOKEN_VALIDATION_FAILED,
@@ -188,7 +193,7 @@ public class HolderService {
         }
 
         log.debug("Validating issuer token for credential delivery");
-        JWTClaimsSet claims = tokenService.validateToken(bearerToken);
+        JWTClaimsSet claims = tokenService.validateToken(bearerToken, participant);
 
         String issuerDid = claims.getIssuer();
         if (issuerDid == null || issuerDid.isBlank()) {
@@ -216,25 +221,26 @@ public class HolderService {
      * Authorizes a credential offer (DCP v1.0.1 §6.6).
      *
      * <p>The bearer token must be a valid Self-Issued ID Token addressed to this participant (validated by
-     * {@link SelfIssuedIdTokenService#validateToken(String)}). Its {@code sub} must equal the offer's
+     * {@link SelfIssuedIdTokenService#validateToken(String, ParticipantContext)}). Its {@code sub} must equal the offer's
      * {@code issuer}, and that issuer must be trusted for at least one credential type
      * ({@code dcp.trusted-issuers.*}).
      *
      * @param bearerToken the bearer token from the Authorization header (without "Bearer " prefix)
      * @param offerIssuer the {@code issuer} of the received offer
+     * @param participant the participant the token must be addressed to
      * @return the authenticated and trusted issuer DID (the token {@code sub})
      * @throws SecurityException if the token is missing or invalid
      * @throws IllegalArgumentException if the offer has no issuer
      * @throws CredentialOfferForbiddenException if {@code sub} is not the offer issuer or the issuer is not trusted
      */
-    public String authorizeCredentialOffer(String bearerToken, String offerIssuer) {
+    public String authorizeCredentialOffer(String bearerToken, String offerIssuer, ParticipantContext participant) {
         if (bearerToken == null || bearerToken.isBlank()) {
             publishOfferRejected("bearer token is missing", null);
             throw new SecurityException("Bearer token is required");
         }
 
         log.debug("Validating issuer token for credential offer");
-        JWTClaimsSet claims = tokenService.validateToken(bearerToken);
+        JWTClaimsSet claims = tokenService.validateToken(bearerToken, participant);
         String subject = claims.getSubject();
 
         if (offerIssuer == null || offerIssuer.isBlank()) {
@@ -383,15 +389,16 @@ public class HolderService {
     /**
      * Process a credential offer message.
      *
-     * <p>Call {@link #authorizeCredentialOffer(String, String)} first. Sparse credential entries are resolved
+     * <p>Call {@link #authorizeCredentialOffer(String, String, ParticipantContext)} first. Sparse credential entries are resolved
      * from the metadata of the offer's issuer, which must be trusted.
      *
      * @param offer The credential offer message
+     * @param participant The participant that received the offer; its identity authenticates the metadata request
      * @return true if offer is accepted
      * @throws IllegalArgumentException if the offer is invalid or its sparse credentials cannot be resolved
      * @throws CredentialOfferForbiddenException if the offer has sparse credentials and its issuer is not trusted
      */
-    public boolean processCredentialOffer(CredentialOfferMessage offer) {
+    public boolean processCredentialOffer(CredentialOfferMessage offer, ParticipantContext participant) {
         // Validate required fields per DCP spec 6.6.1
         if (offer == null || offer.getCredentialObjects() == null || offer.getCredentialObjects().isEmpty()) {
             log.error("Invalid credential offer: offeredCredentials is null or empty");
@@ -418,7 +425,7 @@ public class HolderService {
         if (hasSparseCredentials(offer.getCredentialObjects())) {
             log.info("Detected sparse credentials in offer - resolving from issuer metadata");
             try {
-                resolveInlineCredentials(offer);
+                resolveInlineCredentials(offer, participant);
                 sparseResolved = true;
             } catch (CredentialOfferForbiddenException e) {
                 throw e;
@@ -470,10 +477,11 @@ public class HolderService {
      * trusted issuer (DCP v1.0.1 §6.2); no URL is derived from the offer itself.
      *
      * @param offer The credential offer containing sparse credentials
+     * @param participant The participant that received the offer
      * @throws CredentialOfferForbiddenException if the offer issuer is not trusted
      * @throws RuntimeException if metadata cannot be fetched or credentials cannot be resolved
      */
-    private void resolveInlineCredentials(CredentialOfferMessage offer) {
+    private void resolveInlineCredentials(CredentialOfferMessage offer, ParticipantContext participant) {
         String offerIssuer = offer.getIssuer();
         if (!issuerTrustService.isTrustedIssuer(offerIssuer)) {
             throw new CredentialOfferForbiddenException("Offer issuer is not trusted");
@@ -482,7 +490,7 @@ public class HolderService {
         log.debug("Fetching issuer metadata of {} from its advertised IssuerService endpoint", offerIssuer);
         IssuerMetadata metadata;
         try {
-            metadata = issuanceClient.getIssuerMetadataOf(offerIssuer);
+            metadata = issuanceClient.getIssuerMetadataOf(offerIssuer, participant);
         } catch (Exception e) {
             log.error("Failed to fetch issuer metadata of {}: {}", offerIssuer, e.getMessage());
             throw new RuntimeException("Cannot resolve sparse credentials - metadata fetch failed", e);

@@ -1,5 +1,6 @@
 package it.eng.dcp.holder.service;
 
+import it.eng.dcp.common.participant.ParticipantContext;
 import it.eng.dcp.holder.model.VerifiablePresentation;
 
 /**
@@ -12,9 +13,10 @@ public interface VerifiablePresentationSigner {
      *
      * @param vp     the presentation to sign
      * @param format the target format, e.g. "jwt" or "json-ld"
+     * @param participant the participant whose key signs the presentation
      * @return if format is "jwt" a compact JWT string; if "json-ld" a signed JSON object representation (as Object);
      *         caller is responsible for casting/serializing as needed.
      */
-    Object sign(VerifiablePresentation vp, String format);
+    Object sign(VerifiablePresentation vp, String format, ParticipantContext participant);
 }
 

@@ -1,6 +1,7 @@
 package it.eng.dcp.issuer.service;
 
 import com.nimbusds.jwt.JWTClaimsSet;
+import it.eng.dcp.common.participant.ParticipantContext;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialRequestMessage;
@@ -51,10 +52,11 @@ public class IssuerService {
      *
      * @param bearerToken The bearer token from Authorization header (without "Bearer " prefix)
      * @param holderPid The holder PID from the request message (can be null for endpoints that don't require matching)
+     * @param participant The issuer participant the token must be addressed to
      * @return JWTClaimsSet if valid
      * @throws SecurityException if token is invalid or holderPid doesn't match
      */
-    public JWTClaimsSet authorizeRequest(String bearerToken, String holderPid) throws SecurityException {
+    public JWTClaimsSet authorizeRequest(String bearerToken, String holderPid, ParticipantContext participant) throws SecurityException {
         if (bearerToken == null || bearerToken.isBlank()) {
             auditPublisher.publishEvent(
                     DcpAuditEventType.TOKEN_VALIDATION_FAILED,
@@ -65,7 +67,7 @@ public class IssuerService {
             throw new SecurityException("Bearer token is required");
         }
 
-        return tokenService.validateToken(bearerToken);
+        return tokenService.validateToken(bearerToken, participant);
 
 //        // If holderPid is provided, validate that it matches the token subject
         //Not sure that this is requirement at all according to DCP protocol

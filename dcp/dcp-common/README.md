@@ -27,9 +27,27 @@ The `dcp-common` library contains:
 
 - **DidUrlConverter**: Utility for converting URLs to DID:web identifiers and extracting base URLs
 
+### Participant context
+
+A DCP host serves one or more participants. `it.eng.dcp.common.participant` defines the SPI the library uses to find out who it acts as; the services take the participant as an explicit parameter and never rely on a thread-local.
+
+| Type | Role | Default (registered only when the host defines no bean) |
+|---|---|---|
+| `ParticipantContext` | Immutable record: ID, DID, signing key reference, advertised service entries, trusted issuers, issuer metadata configuration and state (`ENABLED`/`DISABLED`). | - |
+| `ParticipantContextProvider` | `find(id)` returns the context (also a disabled one, which reports `DISABLED`) or empty for an unknown ID; `findEnabled(id)` never returns a disabled participant. | `SingleParticipantContextProvider`: one participant, ID `default`, built from the `dcp.*` properties. |
+| `ParticipantContextResolver` | Determines the participant ID of an HTTP request. | `FixedParticipantContextResolver` (`dcp.participant.resolver=fixed`). `PathParticipantContextResolver` (`path`) takes the first path segment before a DCP base path; an unscoped request and a reserved ID resolve to empty. |
+| `ParticipantKeyProvider` | `activeSigningKey`, `publishedKeys` (active key plus keys retired within `dcp.key-grace-period`) and `rotate`. Signing, DID document generation and key rotation always go through it. | `DefaultParticipantKeyProvider`, wrapping `KeyService` and `KeyMetadataService`. |
+| `ParticipantAdminAuthorization` | Asks the host whether an administration principal may act on a participant. | Allows any administration principal on the single participant. |
+
+`ParticipantContextConfiguration` registers the defaults with `@ConditionalOnMissingBean`; `DcpHolderAutoConfiguration`, `DcpVerifierAutoConfiguration` and `IssuerApplication` import it. A host replaces a default by defining its own bean of that type, ahead of the library configuration. DCP keys are separate from TLS keys.
+
+Controllers use `RequestParticipantContext` at the edge: `require(request)` resolves the usable participant for protocol routes and throws `ParticipantNotFoundException` (`404`, before any token validation) for an unscoped, unknown or disabled participant; `requireForAdmin(request, principal)` additionally asks `ParticipantAdminAuthorization` and throws `ParticipantForbiddenException` (`403`). Asynchronous work receives the `ParticipantContext` as a parameter.
+
+The path resolver never resolves the IDs in `dcp.participant.reserved-ids` (`internal`, `api`, `actuator`, `.well-known` and the DSP protocol prefixes) or the configured base paths. Serving DID documents at their DID path is not part of this SPI (#424).
+
 ### Self-Issued ID Token validation
 
-`SelfIssuedIdTokenService.validateToken()` applies the checks of DCP v1.0.1 §4.3.3 *Validating Self-Issued ID Tokens*. A token is accepted only if all of them pass:
+`SelfIssuedIdTokenService.validateToken(token, participant)` applies the checks of DCP v1.0.1 §4.3.3 *Validating Self-Issued ID Tokens*. A token is accepted only if all of them pass:
 
 1. `iss` and `sub` are present and equal.
 2. `aud` equals this participant's DID.
@@ -76,6 +94,7 @@ This module is intended to be used as a dependency in other DCP modules:
 
 ```
 it.eng.dcp.common
+├── participant/    # Participant context SPI and single-participant defaults
 ├── model/          # Shared data models
 │   ├── BaseDcpMessage.java
 │   ├── CredentialStatus.java

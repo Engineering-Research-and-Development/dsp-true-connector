@@ -6,9 +6,11 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantKeyProvider;
+import it.eng.dcp.common.participant.ParticipantState;
+import it.eng.dcp.common.participant.SigningKeyReference;
 import it.eng.dcp.holder.model.VerifiablePresentation;
 import it.eng.dcp.holder.service.BasicVerifiablePresentationSigner;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +19,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
@@ -24,9 +27,9 @@ import static org.mockito.Mockito.when;
 class BasicVerifiablePresentationSignerTest {
 
     @Mock
-    private KeyService keyService;
-    @Mock
-    private DidDocumentConfig config;
+    private ParticipantKeyProvider keyProvider;
+
+    private ParticipantContext participant;
 
     private BasicVerifiablePresentationSigner signer;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -35,16 +38,18 @@ class BasicVerifiablePresentationSignerTest {
     @BeforeEach
     void setUp() throws Exception {
         MockitoAnnotations.openMocks(this);
+        participant = new ParticipantContext("default", "did:web:localhost:8080", new SigningKeyReference("eckey.p12", "alias"),
+                List.of(), Map.of(), null, ParticipantState.ENABLED);
 
         // Generate a test EC key for signing
         testKey = new ECKeyGenerator(Curve.P_256)
                 .keyID("test-key-id")
                 .generate();
 
-        // Mock KeyService to return test key
-        when(keyService.getSigningJwk(config)).thenReturn(testKey);
+        // Mock key provider to return test key
+        when(keyProvider.activeSigningKey(participant)).thenReturn(testKey);
 
-        signer = new BasicVerifiablePresentationSigner(keyService, config);
+        signer = new BasicVerifiablePresentationSigner(keyProvider);
     }
 
     @Test
@@ -57,7 +62,7 @@ class BasicVerifiablePresentationSignerTest {
                 .build();
 
         // Act
-        Object result = signer.sign(vp, "jwt");
+        Object result = signer.sign(vp, "jwt", participant);
 
         // Assert
         assertNotNull(result);
@@ -102,7 +107,7 @@ class BasicVerifiablePresentationSignerTest {
                 .build();
 
         // Act
-        String jwt = (String) signer.sign(vp, "jwt");
+        String jwt = (String) signer.sign(vp, "jwt", participant);
         SignedJWT signedJWT = SignedJWT.parse(jwt);
 
         // Assert - Check VP claim structure
@@ -134,7 +139,7 @@ class BasicVerifiablePresentationSignerTest {
                 .build();
 
         // Act
-        Object result = signer.sign(vp, "json-ld");
+        Object result = signer.sign(vp, "json-ld", participant);
 
         // Assert
         assertNotNull(result);
