@@ -3,7 +3,6 @@ package it.eng.dcp.issuer.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
-import it.eng.dcp.common.participant.ParticipantContext;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialStatus;
@@ -37,6 +36,7 @@ public class CredentialDeliveryService {
 
     private final CredentialRequestRepository requestRepository;
     private final SelfIssuedIdTokenService tokenService;
+    private final IssuerIdentity issuerIdentity;
     private final ObjectMapper mapper = new ObjectMapper();
     private final SimpleOkHttpRestClient httpClient;
     private final DidResolverService didResolverService;
@@ -45,11 +45,13 @@ public class CredentialDeliveryService {
     @Autowired
     public CredentialDeliveryService(CredentialRequestRepository requestRepository,
                                      @Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
+                                     IssuerIdentity issuerIdentity,
                                      SimpleOkHttpRestClient httpClient,
                                      DidResolverService didResolverService,
                                      DcpAuditEventPublisher auditPublisher) {
         this.requestRepository = requestRepository;
         this.tokenService = tokenService;
+        this.issuerIdentity = issuerIdentity;
         this.httpClient = httpClient;
         this.didResolverService = didResolverService;
         this.auditPublisher = auditPublisher;
@@ -60,12 +62,9 @@ public class CredentialDeliveryService {
      *
      * @param issuerPid The issuer PID of the credential request
      * @param credentials List of credentials to deliver
-     * @param participant The issuer participant that signs the delivery; passed explicitly so it also holds
-     *                    for asynchronous callers
      * @return true if delivery was successful, false otherwise
      */
-    public boolean deliverCredentials(String issuerPid, List<CredentialMessage.CredentialContainer> credentials,
-                                      ParticipantContext participant) {
+    public boolean deliverCredentials(String issuerPid, List<CredentialMessage.CredentialContainer> credentials) {
         if (issuerPid == null || issuerPid.isBlank()) {
             log.error("issuerPid is required");
             return false;
@@ -112,7 +111,7 @@ public class CredentialDeliveryService {
                     .credentials(credentials)
                     .build();
 
-            String token = tokenService.createAndSignToken(holderDid, null, participant);
+            String token = tokenService.createAndSignToken(holderDid, null, issuerIdentity.participant());
             String messageJson = mapper.writeValueAsString(message);
 
             Request httpRequest = new Request.Builder()
@@ -183,10 +182,9 @@ public class CredentialDeliveryService {
      *
      * @param issuerPid The issuer PID of the credential request
      * @param rejectionReason The reason for rejection
-     * @param participant The issuer participant that signs the message
      * @return true if rejection was successful, false otherwise
      */
-    public boolean rejectCredentialRequest(String issuerPid, String rejectionReason, ParticipantContext participant) {
+    public boolean rejectCredentialRequest(String issuerPid, String rejectionReason) {
         if (issuerPid == null || issuerPid.isBlank()) {
             log.error("issuerPid is required");
             return false;
@@ -222,7 +220,7 @@ public class CredentialDeliveryService {
                     .rejectionReason(rejectionReason)
                     .build();
 
-            String token = tokenService.createAndSignToken(holderDid, null, participant);
+            String token = tokenService.createAndSignToken(holderDid, null, issuerIdentity.participant());
             String messageJson = mapper.writeValueAsString(message);
 
             Request httpRequest = new Request.Builder()

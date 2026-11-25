@@ -5,7 +5,6 @@ import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialRequestMessage;
 import it.eng.dcp.common.model.IssuerMetadata;
-import it.eng.dcp.common.participant.ParticipantContext;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
@@ -30,14 +29,13 @@ class IssuerServiceTest {
     @Mock
     private SelfIssuedIdTokenService tokenService;
     @Mock
+    private IssuerIdentity issuerIdentity;
+    @Mock
     private CredentialRequestRepository requestRepository;
     @Mock
     private CredentialMetadataService credentialMetadataService;
     @Mock
     private DcpAuditEventPublisher auditPublisher;
-
-    @Mock
-    private ParticipantContext participant;
 
     @InjectMocks
     private IssuerService issuerService;
@@ -46,14 +44,14 @@ class IssuerServiceTest {
     @Test
     void authorizeRequest_success() {
         String token = "token";
-        when(tokenService.validateToken(token, participant)).thenReturn(jwtClaimsSet);
-        JWTClaimsSet result = issuerService.authorizeRequest(token, null, participant);
+        when(tokenService.validateToken(eq(token), any())).thenReturn(jwtClaimsSet);
+        JWTClaimsSet result = issuerService.authorizeRequest(token, null);
         assertSame(jwtClaimsSet, result);
     }
 
     @Test
     void authorizeRequest_nullToken_throws() {
-        SecurityException ex = assertThrows(SecurityException.class, () -> issuerService.authorizeRequest(null, null, participant));
+        SecurityException ex = assertThrows(SecurityException.class, () -> issuerService.authorizeRequest(null, null));
         assertTrue(ex.getMessage().contains("Bearer token is required"));
 
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);

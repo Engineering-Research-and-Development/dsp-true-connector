@@ -21,14 +21,17 @@ public class CredentialGeneratorFactory {
     private final Map<String, CredentialGenerator> generators;
     private final VcJwtGeneratorFactory jwtGeneratorFactory;
     private final ProfileExtractor profileExtractor;
+    private final String issuerDid;
 
     /**
      * Create a new credential generator factory.
      *
      * @param jwtGeneratorFactory Factory for creating profile-specific JWT generators
+     * @param issuerDid The issuer's DID
      */
-    public CredentialGeneratorFactory(VcJwtGeneratorFactory jwtGeneratorFactory) {
+    public CredentialGeneratorFactory(VcJwtGeneratorFactory jwtGeneratorFactory, String issuerDid) {
         this.jwtGeneratorFactory = jwtGeneratorFactory;
+        this.issuerDid = issuerDid;
         this.profileExtractor = new ProfileExtractor();
         this.generators = new HashMap<>();
 
@@ -59,7 +62,7 @@ public class CredentialGeneratorFactory {
         }
 
         // Fall back to generic generator for unknown types
-        return new GenericCredentialGenerator(jwtGeneratorFactory, profileExtractor, credentialType);
+        return new GenericCredentialGenerator(jwtGeneratorFactory, profileExtractor, issuerDid, credentialType);
     }
 
     // New method to support status list info

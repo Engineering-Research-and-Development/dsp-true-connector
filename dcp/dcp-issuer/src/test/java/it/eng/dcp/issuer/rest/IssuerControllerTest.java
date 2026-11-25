@@ -4,11 +4,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialRequestMessage;
 import it.eng.dcp.common.model.IssuerMetadata;
-import it.eng.dcp.common.participant.ParticipantContext;
-import it.eng.dcp.common.participant.RequestParticipantContext;
 import it.eng.dcp.issuer.service.IssuerService;
-import org.junit.jupiter.api.BeforeEach;
-import org.springframework.mock.web.MockHttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -18,7 +14,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
@@ -30,20 +25,9 @@ class IssuerControllerTest {
     private IssuerService issuerService;
     @Mock
     private JWTClaimsSet jwtClaimsSet;
-    @Mock
-    private RequestParticipantContext requestParticipantContext;
-    @Mock
-    private ParticipantContext participant;
 
     @InjectMocks
     private IssuerController issuerController;
-
-    private final MockHttpServletRequest httpRequest = new MockHttpServletRequest("POST", "/issuer/credentials");
-
-    @BeforeEach
-    void setUp() {
-        lenient().when(requestParticipantContext.require(any())).thenReturn(participant);
-    }
 
     // --- getMetadata tests ---
 
@@ -53,24 +37,24 @@ class IssuerControllerTest {
         String authHeader = "Bearer " + token;
 
         IssuerMetadata metadata = mock(IssuerMetadata.class);
-        when(issuerService.authorizeRequest(eq(token), isNull(), eq(participant))).thenReturn(jwtClaimsSet);
+        when(issuerService.authorizeRequest(eq(token), isNull())).thenReturn(jwtClaimsSet);
         when(issuerService.getMetadata()).thenReturn(metadata);
 
-        ResponseEntity<?> response = issuerController.getMetadata(authHeader, httpRequest);
+        ResponseEntity<?> response = issuerController.getMetadata(authHeader);
         assertEquals(200, response.getStatusCode().value());
         assertSame(metadata, response.getBody());
     }
 
     @Test
     void getMetadata_missingAuthHeader() {
-        ResponseEntity<?> response = issuerController.getMetadata(null, httpRequest);
+        ResponseEntity<?> response = issuerController.getMetadata(null);
         assertEquals(401, response.getStatusCode().value());
         assertEquals("Missing or invalid Authorization header", response.getBody());
     }
 
     @Test
     void getMetadata_invalidAuthHeader() {
-        ResponseEntity<?> response = issuerController.getMetadata("Basic abc", httpRequest);
+        ResponseEntity<?> response = issuerController.getMetadata("Basic abc");
         assertEquals(401, response.getStatusCode().value());
         assertEquals("Missing or invalid Authorization header", response.getBody());
     }
@@ -79,9 +63,9 @@ class IssuerControllerTest {
     void getMetadata_unauthorized() {
         String token = "bad-token";
         String authHeader = "Bearer " + token;
-        doThrow(new SecurityException("bad token")).when(issuerService).authorizeRequest(eq(token), isNull(), eq(participant));
+        doThrow(new SecurityException("bad token")).when(issuerService).authorizeRequest(eq(token), isNull());
 
-        ResponseEntity<?> response = issuerController.getMetadata(authHeader, httpRequest);
+        ResponseEntity<?> response = issuerController.getMetadata(authHeader);
         assertEquals(401, response.getStatusCode().value());
         assertEquals("Unauthorized: bad token", response.getBody());
     }
@@ -90,11 +74,11 @@ class IssuerControllerTest {
     void getMetadata_internalError() {
         String token = "token";
         String authHeader = "Bearer " + token;
-        when(issuerService.authorizeRequest(eq(token), isNull(), eq(participant))).thenReturn(jwtClaimsSet);
+        when(issuerService.authorizeRequest(eq(token), isNull())).thenReturn(jwtClaimsSet);
 
         when(issuerService.getMetadata()).thenThrow(new RuntimeException("fail"));
 
-        ResponseEntity<?> response = issuerController.getMetadata(authHeader, httpRequest);
+        ResponseEntity<?> response = issuerController.getMetadata(authHeader);
         assertEquals(500, response.getStatusCode().value());
         assertNotNull(response.getBody());
         assertTrue(response.getBody().toString().contains("Internal error: fail"));
@@ -115,11 +99,11 @@ class IssuerControllerTest {
         when(req.getHolderPid()).thenReturn("holder1");
         when(req.getCredentialIds()).thenReturn(java.util.List.of("cred1"));
 
-        when(issuerService.authorizeRequest(eq(token), eq("holder1"), eq(participant))).thenReturn(jwtClaimsSet);
+        when(issuerService.authorizeRequest(eq(token), eq("holder1"))).thenReturn(jwtClaimsSet);
         doReturn(subject).when(jwtClaimsSet).getSubject();
         when(issuerService.createCredentialRequest(msg, subject)).thenReturn(req);
 
-        ResponseEntity<?> response = issuerController.createCredentialRequest(authHeader, msg, httpRequest);
+        ResponseEntity<?> response = issuerController.createCredentialRequest(authHeader, msg);
         assertEquals(201, response.getStatusCode().value());
         assertNotNull(response.getHeaders().getFirst(HttpHeaders.LOCATION));
         assertTrue(response.getHeaders().getFirst(HttpHeaders.LOCATION).contains("/issuer/requests/issuer1"));
@@ -128,7 +112,7 @@ class IssuerControllerTest {
     @Test
     void createCredentialRequest_missingAuthHeader() {
         CredentialRequestMessage msg = mock(CredentialRequestMessage.class);
-        ResponseEntity<?> response = issuerController.createCredentialRequest(null, msg, httpRequest);
+        ResponseEntity<?> response = issuerController.createCredentialRequest(null, msg);
         assertEquals(401, response.getStatusCode().value());
         assertEquals("Missing or invalid Authorization header", response.getBody());
     }
@@ -136,7 +120,7 @@ class IssuerControllerTest {
     @Test
     void createCredentialRequest_invalidAuthHeader() {
         CredentialRequestMessage msg = mock(CredentialRequestMessage.class);
-        ResponseEntity<?> response = issuerController.createCredentialRequest("Basic abc", msg, httpRequest);
+        ResponseEntity<?> response = issuerController.createCredentialRequest("Basic abc", msg);
         assertEquals(401, response.getStatusCode().value());
         assertEquals("Missing or invalid Authorization header", response.getBody());
     }
@@ -147,9 +131,9 @@ class IssuerControllerTest {
         String authHeader = "Bearer " + token;
         CredentialRequestMessage msg = mock(CredentialRequestMessage.class);
         when(msg.getHolderPid()).thenReturn("holder1");
-        doThrow(new SecurityException("bad token")).when(issuerService).authorizeRequest(eq(token), eq("holder1"), eq(participant));
+        doThrow(new SecurityException("bad token")).when(issuerService).authorizeRequest(eq(token), eq("holder1"));
 
-        ResponseEntity<?> response = issuerController.createCredentialRequest(authHeader, msg, httpRequest);
+        ResponseEntity<?> response = issuerController.createCredentialRequest(authHeader, msg);
         assertEquals(401, response.getStatusCode().value());
         assertNotNull(response.getBody());
         assertTrue(response.getBody().toString().contains("Unauthorized: bad token"));
@@ -162,11 +146,11 @@ class IssuerControllerTest {
         String subject = "subject1";
         CredentialRequestMessage msg = mock(CredentialRequestMessage.class);
         when(msg.getHolderPid()).thenReturn("holder1");
-        when(issuerService.authorizeRequest(eq(token), eq("holder1"), eq(participant))).thenReturn(jwtClaimsSet);
+        when(issuerService.authorizeRequest(eq(token), eq("holder1"))).thenReturn(jwtClaimsSet);
         doReturn(subject).when(jwtClaimsSet).getSubject();
         doThrow(new IllegalArgumentException("bad req")).when(issuerService).createCredentialRequest(msg, subject);
 
-        ResponseEntity<?> response = issuerController.createCredentialRequest(authHeader, msg, httpRequest);
+        ResponseEntity<?> response = issuerController.createCredentialRequest(authHeader, msg);
         assertEquals(400, response.getStatusCode().value());
         assertNotNull(response.getBody());
         assertTrue(response.getBody().toString().contains("bad req"));
@@ -179,11 +163,11 @@ class IssuerControllerTest {
         String subject = "subject1";
         CredentialRequestMessage msg = mock(CredentialRequestMessage.class);
         when(msg.getHolderPid()).thenReturn("holder1");
-        when(issuerService.authorizeRequest(eq(token), eq("holder1"), eq(participant))).thenReturn(jwtClaimsSet);
+        when(issuerService.authorizeRequest(eq(token), eq("holder1"))).thenReturn(jwtClaimsSet);
         doReturn(subject).when(jwtClaimsSet).getSubject();
         doThrow(new RuntimeException("fail")).when(issuerService).createCredentialRequest(msg, subject);
 
-        ResponseEntity<?> response = issuerController.createCredentialRequest(authHeader, msg, httpRequest);
+        ResponseEntity<?> response = issuerController.createCredentialRequest(authHeader, msg);
         assertEquals(500, response.getStatusCode().value());
         assertNotNull(response.getBody());
         assertTrue(response.getBody().toString().contains("Internal error: fail"));
@@ -195,12 +179,12 @@ class IssuerControllerTest {
     void getRequest_passesTokenSubjectToService() {
         String token = "token";
         doReturn("did:example:holder").when(jwtClaimsSet).getSubject();
-        when(issuerService.authorizeRequest(eq(token), isNull(), eq(participant))).thenReturn(jwtClaimsSet);
+        when(issuerService.authorizeRequest(eq(token), isNull())).thenReturn(jwtClaimsSet);
         CredentialRequest req = mock(CredentialRequest.class);
         when(req.getIssuerPid()).thenReturn("issuer1");
         when(issuerService.getRequestByIssuerPid("issuer1", "did:example:holder")).thenReturn(java.util.Optional.of(req));
 
-        ResponseEntity<?> response = issuerController.getRequest("Bearer " + token, "issuer1", httpRequest);
+        ResponseEntity<?> response = issuerController.getRequest("Bearer " + token, "issuer1");
         assertEquals(200, response.getStatusCode().value());
     }
 
@@ -208,22 +192,22 @@ class IssuerControllerTest {
     void getRequest_notOwner_returns404() {
         String token = "token";
         doReturn("did:example:other").when(jwtClaimsSet).getSubject();
-        when(issuerService.authorizeRequest(eq(token), isNull(), eq(participant))).thenReturn(jwtClaimsSet);
+        when(issuerService.authorizeRequest(eq(token), isNull())).thenReturn(jwtClaimsSet);
         when(issuerService.getRequestByIssuerPid("issuer1", "did:example:other")).thenReturn(java.util.Optional.empty());
 
-        ResponseEntity<?> response = issuerController.getRequest("Bearer " + token, "issuer1", httpRequest);
+        ResponseEntity<?> response = issuerController.getRequest("Bearer " + token, "issuer1");
         assertEquals(404, response.getStatusCode().value());
         assertEquals("Request not found", response.getBody());
     }
 
     @Test
     void getRequest_missingAuthHeader() {
-        assertEquals(401, issuerController.getRequest(null, "issuer1", httpRequest).getStatusCode().value());
+        assertEquals(401, issuerController.getRequest(null, "issuer1").getStatusCode().value());
     }
 
     @Test
     void getRequest_unauthorized() {
-        doThrow(new SecurityException("bad token")).when(issuerService).authorizeRequest(eq("bad"), isNull(), eq(participant));
-        assertEquals(401, issuerController.getRequest("Bearer bad", "issuer1", httpRequest).getStatusCode().value());
+        doThrow(new SecurityException("bad token")).when(issuerService).authorizeRequest(eq("bad"), isNull());
+        assertEquals(401, issuerController.getRequest("Bearer bad", "issuer1").getStatusCode().value());
     }
 }

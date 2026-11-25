@@ -5,10 +5,7 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.participant.ParticipantContext;
-import it.eng.dcp.common.participant.ParticipantKeyProvider;
-import it.eng.dcp.common.participant.ParticipantState;
-import it.eng.dcp.common.participant.SigningKeyReference;
+import it.eng.dcp.issuer.service.IssuerIdentity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +30,7 @@ import static org.mockito.Mockito.when;
 class VC11JwtGeneratorTest {
 
     @Mock
-    private ParticipantKeyProvider keyProvider;
+    private IssuerIdentity issuerIdentity;
 
     @InjectMocks
     private VC11JwtGenerator generator;
@@ -41,8 +38,6 @@ class VC11JwtGeneratorTest {
     private ECKey testSigningKey;
 
     private static final String ISSUER_DID = "did:web:issuer.example.com";
-    private static final ParticipantContext PARTICIPANT = new ParticipantContext("default", ISSUER_DID,
-            new SigningKeyReference("eckey-issuer.p12", "issuer"), List.of(), Map.of(), null, ParticipantState.ENABLED);
     private static final String HOLDER_DID = "did:web:holder.example.com";
 
     @BeforeEach
@@ -51,16 +46,17 @@ class VC11JwtGeneratorTest {
                 .keyID("test-key-1")
                 .generate();
 
-        when(keyProvider.activeSigningKey(any())).thenReturn(testSigningKey);
+        when(issuerIdentity.signingKey()).thenReturn(testSigningKey);
+        when(issuerIdentity.did()).thenReturn(ISSUER_DID);
 
-        generator = new VC11JwtGenerator(keyProvider);
+        generator = new VC11JwtGenerator(issuerIdentity);
     }
 
     @Test
     void generateJwt_hasNestedVcClaim() throws ParseException {
         Map<String, String> claims = createTestClaims();
 
-        String jwt = generator.generateJwt(PARTICIPANT, HOLDER_DID, "MembershipCredential", claims);
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims);
 
         SignedJWT signedJWT = SignedJWT.parse(jwt);
 
@@ -80,7 +76,7 @@ class VC11JwtGeneratorTest {
     void generateJwt_hasCorrectContext() throws ParseException {
         Map<String, String> claims = createTestClaims();
 
-        String jwt = generator.generateJwt(PARTICIPANT, HOLDER_DID, "MembershipCredential", claims);
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims);
 
         SignedJWT signedJWT = SignedJWT.parse(jwt);
 
@@ -98,7 +94,7 @@ class VC11JwtGeneratorTest {
     void generateJwt_hasIssuanceDateAndExpirationDate() throws ParseException {
         Map<String, String> claims = createTestClaims();
 
-        String jwt = generator.generateJwt(PARTICIPANT, HOLDER_DID, "MembershipCredential", claims);
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims);
 
         SignedJWT signedJWT = SignedJWT.parse(jwt);
 
@@ -121,7 +117,7 @@ class VC11JwtGeneratorTest {
     void generateJwt_hasExternalProof() throws ParseException {
         Map<String, String> claims = createTestClaims();
 
-        String jwt = generator.generateJwt(PARTICIPANT, HOLDER_DID, "MembershipCredential", claims);
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims);
 
         SignedJWT signedJWT = SignedJWT.parse(jwt);
 
@@ -143,7 +139,7 @@ class VC11JwtGeneratorTest {
     void generateJwt_jwtHeaderHasStandardType() throws ParseException {
         Map<String, String> claims = createTestClaims();
 
-        String jwt = generator.generateJwt(PARTICIPANT, HOLDER_DID, "MembershipCredential", claims);
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims);
 
         SignedJWT signedJWT = SignedJWT.parse(jwt);
 
@@ -161,7 +157,7 @@ class VC11JwtGeneratorTest {
     void generateJwt_hasCorrectType() throws ParseException {
         Map<String, String> claims = createTestClaims();
 
-        String jwt = generator.generateJwt(PARTICIPANT, HOLDER_DID, "MembershipCredential", claims);
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims);
 
         SignedJWT signedJWT = SignedJWT.parse(jwt);
 
@@ -180,7 +176,7 @@ class VC11JwtGeneratorTest {
     void generateJwt_issuerIsString() throws ParseException {
         Map<String, String> claims = createTestClaims();
 
-        String jwt = generator.generateJwt(PARTICIPANT, HOLDER_DID, "MembershipCredential", claims);
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims);
 
         SignedJWT signedJWT = SignedJWT.parse(jwt);
 
@@ -198,7 +194,7 @@ class VC11JwtGeneratorTest {
     void generateJwt_hasCredentialSubjectWithHolderDid() throws ParseException {
         Map<String, String> claims = createTestClaims();
 
-        String jwt = generator.generateJwt(PARTICIPANT, HOLDER_DID, "MembershipCredential", claims);
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims);
 
         SignedJWT signedJWT = SignedJWT.parse(jwt);
 
@@ -218,7 +214,7 @@ class VC11JwtGeneratorTest {
     void generateJwt_hasCredentialId() throws ParseException {
         Map<String, String> claims = createTestClaims();
 
-        String jwt = generator.generateJwt(PARTICIPANT, HOLDER_DID, "MembershipCredential", claims);
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims);
 
         SignedJWT signedJWT = SignedJWT.parse(jwt);
 
@@ -233,7 +229,7 @@ class VC11JwtGeneratorTest {
     void generateJwt_signedWithES256() throws ParseException {
         Map<String, String> claims = createTestClaims();
 
-        String jwt = generator.generateJwt(PARTICIPANT, HOLDER_DID, "MembershipCredential", claims);
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims);
 
         SignedJWT signedJWT = SignedJWT.parse(jwt);
 
@@ -245,7 +241,7 @@ class VC11JwtGeneratorTest {
     void generateJwt_hasStandardJwtClaims() throws ParseException {
         Map<String, String> claims = createTestClaims();
 
-        String jwt = generator.generateJwt(PARTICIPANT, HOLDER_DID, "MembershipCredential", claims);
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims);
 
         SignedJWT signedJWT = SignedJWT.parse(jwt);
 
@@ -260,7 +256,7 @@ class VC11JwtGeneratorTest {
     void generateJwt_noFieldsAtRootLevel() throws ParseException {
         Map<String, String> claims = createTestClaims();
 
-        String jwt = generator.generateJwt(PARTICIPANT, HOLDER_DID, "MembershipCredential", claims);
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims);
 
         SignedJWT signedJWT = SignedJWT.parse(jwt);
 
@@ -281,7 +277,7 @@ class VC11JwtGeneratorTest {
         claims.put("foo", "bar");
         String statusListId = "did:web:issuer.example.com/status/1";
         int statusListIndex = 42;
-        String jwt = generator.generateJwt(PARTICIPANT, HOLDER_DID, "MembershipCredential", claims, statusListId, statusListIndex);
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims, statusListId, statusListIndex);
         SignedJWT signedJWT = SignedJWT.parse(jwt);
         Map<String, Object> vc = (Map<String, Object>) signedJWT.getJWTClaimsSet().getClaim("vc");
         assertNotNull(vc, "VC 1.1 should have nested 'vc' claim");
@@ -298,7 +294,7 @@ class VC11JwtGeneratorTest {
     void generateJwt_withoutStatusListInfo_noCredentialStatus() throws Exception {
         Map<String, String> claims = new HashMap<>();
         claims.put("foo", "bar");
-        String jwt = generator.generateJwt(PARTICIPANT, HOLDER_DID, "MembershipCredential", claims);
+        String jwt = generator.generateJwt(HOLDER_DID, "MembershipCredential", claims);
         SignedJWT signedJWT = SignedJWT.parse(jwt);
         Map<String, Object> vc = (Map<String, Object>) signedJWT.getJWTClaimsSet().getClaim("vc");
         assertNotNull(vc, "VC 1.1 should have nested 'vc' claim");

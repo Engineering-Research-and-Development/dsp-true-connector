@@ -8,8 +8,7 @@ import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.participant.ParticipantContext;
-import it.eng.dcp.common.participant.ParticipantKeyProvider;
+import it.eng.dcp.issuer.service.IssuerIdentity;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
@@ -34,28 +33,28 @@ import java.util.*;
 @Slf4j
 public class VC11JwtGenerator implements VcJwtGenerator {
 
-    private final ParticipantKeyProvider keyProvider;
+    private final IssuerIdentity issuerIdentity;
 
     /**
      * Create a new VC 1.1 JWT generator.
      *
-     * @param keyProvider Provider of the participant signing key
+     * @param issuerIdentity The single Issuer identity, which holds its DID and signing key
      */
-    public VC11JwtGenerator(ParticipantKeyProvider keyProvider) {
-        this.keyProvider = keyProvider;
+    public VC11JwtGenerator(IssuerIdentity issuerIdentity) {
+        this.issuerIdentity = issuerIdentity;
     }
 
     @Override
-    public String generateJwt(ParticipantContext participant, String holderDid, String credentialType, Map<String, String> claims) {
-        return generateJwt(participant, holderDid, credentialType, claims, null, null);
+    public String generateJwt(String holderDid, String credentialType, Map<String, String> claims) {
+        return generateJwt(holderDid, credentialType, claims, null, null);
     }
 
     @Override
-    public String generateJwt(ParticipantContext participant, String holderDid, String credentialType,
+    public String generateJwt(String holderDid, String credentialType,
                               Map<String, String> claims, String statusListId, Integer statusListIndex) {
         try {
-            String issuerDid = participant.did();
-            ECKey signingKey = keyProvider.activeSigningKey(participant);
+            String issuerDid = issuerIdentity.did();
+            ECKey signingKey = issuerIdentity.signingKey();
 
             Instant now = Instant.now();
             Instant expiration = now.plusSeconds(365 * 24 * 60 * 60); // 1 year

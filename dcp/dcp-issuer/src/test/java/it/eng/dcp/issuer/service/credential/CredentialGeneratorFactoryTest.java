@@ -3,7 +3,7 @@ package it.eng.dcp.issuer.service.credential;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
-import it.eng.dcp.common.participant.ParticipantKeyProvider;
+import it.eng.dcp.issuer.service.IssuerIdentity;
 import it.eng.dcp.issuer.service.jwt.VcJwtGeneratorFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,7 +22,7 @@ import static org.mockito.Mockito.lenient;
 class CredentialGeneratorFactoryTest {
 
     @Mock
-    private ParticipantKeyProvider keyProvider;
+    private IssuerIdentity issuerIdentity;
 
     private CredentialGeneratorFactory factory;
     private VcJwtGeneratorFactory jwtGeneratorFactory;
@@ -39,10 +39,11 @@ class CredentialGeneratorFactoryTest {
                 .generate();
 
         // Use lenient stubbing since not all tests will use this mock
-        lenient().when(keyProvider.activeSigningKey(any())).thenReturn(testSigningKey);
+        lenient().when(issuerIdentity.signingKey()).thenReturn(testSigningKey);
+        lenient().when(issuerIdentity.did()).thenReturn(ISSUER_DID);
 
-        jwtGeneratorFactory = new VcJwtGeneratorFactory(keyProvider);
-        factory = new CredentialGeneratorFactory(jwtGeneratorFactory);
+        jwtGeneratorFactory = new VcJwtGeneratorFactory(issuerIdentity);
+        factory = new CredentialGeneratorFactory(jwtGeneratorFactory, ISSUER_DID);
     }
 
     @AfterEach

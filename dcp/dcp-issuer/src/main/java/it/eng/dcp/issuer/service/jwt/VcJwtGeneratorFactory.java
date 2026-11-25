@@ -1,7 +1,7 @@
 package it.eng.dcp.issuer.service.jwt;
 
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.common.participant.ParticipantKeyProvider;
+import it.eng.dcp.issuer.service.IssuerIdentity;
 
 /**
  * Factory for creating profile-specific VC JWT generators.
@@ -14,15 +14,15 @@ import it.eng.dcp.common.participant.ParticipantKeyProvider;
  */
 public class VcJwtGeneratorFactory {
 
-    private final ParticipantKeyProvider keyProvider;
+    private final IssuerIdentity issuerIdentity;
 
     /**
      * Create a new JWT generator factory.
      *
-     * @param keyProvider Provider of the participant signing key
+     * @param issuerIdentity The single Issuer identity
      */
-    public VcJwtGeneratorFactory(ParticipantKeyProvider keyProvider) {
-        this.keyProvider = keyProvider;
+    public VcJwtGeneratorFactory(IssuerIdentity issuerIdentity) {
+        this.issuerIdentity = issuerIdentity;
     }
 
     /**
@@ -33,9 +33,9 @@ public class VcJwtGeneratorFactory {
      */
     public VcJwtGenerator createGenerator(ProfileId profileId) {
         if (profileId == ProfileId.VC20_BSSL_JWT) {
-            return new VC20JwtGenerator(keyProvider);
+            return new VC20JwtGenerator(issuerIdentity);
         } else {
-            return new VC11JwtGenerator(keyProvider);
+            return new VC11JwtGenerator(issuerIdentity);
         }
     }
 }

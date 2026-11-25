@@ -1,7 +1,6 @@
 package it.eng.dcp.issuer.service;
 
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.common.participant.ParticipantContext;
 import it.eng.dcp.issuer.config.IssuerProperties;
 import it.eng.dcp.issuer.model.StatusList;
 import it.eng.dcp.issuer.repository.StatusListRepository;
@@ -74,22 +73,21 @@ public class StatusListService {
      * Allocates a new status entry for a credential of the given profile. The entry's status bit stays 0, so the
      * credential is valid until it is revoked. A new list is created when there is none or the current one is full.
      *
-     * @param participant the Issuer participant that owns the list and signs it
+     * @param issuerDid the issuer DID
      * @param statusPurpose the status purpose, for example {@code revocation}
      * @param profile the credential profile, which selects the status list format
      * @return the status list credential URL and the allocated index
      * @throws IllegalStateException if the list stays contended
      */
-    public StatusListEntry allocateStatusEntry(ParticipantContext participant, String statusPurpose, ProfileId profile) {
-        Objects.requireNonNull(participant, "participant");
-        String issuerDid = participant.did();
+    public StatusListEntry allocateStatusEntry(String issuerDid, String statusPurpose, ProfileId profile) {
+        Objects.requireNonNull(issuerDid, "issuerDid");
         Objects.requireNonNull(statusPurpose, "statusPurpose");
         Objects.requireNonNull(profile, "profile");
         return withRetry(() -> {
             StatusList statusList = statusListRepository
                     .findFirstByIssuerDidAndStatusPurposeAndProfileOrderByCreatedAtDesc(issuerDid, statusPurpose, profile)
                     .filter(list -> !list.isFull())
-                    .orElseGet(() -> newStatusList(participant, statusPurpose, profile));
+                    .orElseGet(() -> newStatusList(issuerDid, statusPurpose, profile));
             int index = statusList.allocateIndex();
             StatusList saved = statusListRepository.save(statusList);
             log.debug("Allocated status list entry {} in list {}", index, saved.getId());
@@ -103,12 +101,11 @@ public class StatusListService {
      *
      * @param statusListId the list ID
      * @param index the status list index
-     * @param participant the Issuer participant whose key re-signs the list
      * @return true when the entry was revoked by this call, false when it was already revoked
      * @throws NoSuchElementException if the list does not exist
      * @throws IllegalArgumentException if the index has not been allocated
      */
-    public boolean revoke(String statusListId, int index, ParticipantContext participant) {
+    public boolean revoke(String statusListId, int index) {
         return withRetry(() -> {
             StatusList statusList = findList(statusListId)
                     .orElseThrow(() -> new NoSuchElementException("Status list not found: " + statusListId));
@@ -120,7 +117,7 @@ public class StatusListService {
                 return false;
             }
             statusList.setBit(index);
-            statusList.setSignedCredential(credentialGenerator.generate(statusList, participant));
+            statusList.setSignedCredential(credentialGenerator.generate(statusList));
             statusListRepository.save(statusList);
             log.info("Revoked status list entry {} in list {}", index, statusListId);
             return true;
@@ -132,14 +129,13 @@ public class StatusListService {
      * signed with a key that is no longer the Issuer's current signing key.
      *
      * @param statusListId the list ID
-     * @param participant the Issuer participant whose key signs the list
      * @return the published credential, or empty if the list does not exist
      */
-    public Optional<PublishedStatusList> publishStatusList(String statusListId, ParticipantContext participant) {
+    public Optional<PublishedStatusList> publishStatusList(String statusListId) {
         return withRetry(() -> findList(statusListId).map(statusList -> {
             StatusList published = statusList;
-            if (!credentialGenerator.isSignedWithCurrentKey(statusList.getSignedCredential(), participant)) {
-                statusList.setSignedCredential(credentialGenerator.generate(statusList, participant));
+            if (!credentialGenerator.isSignedWithCurrentKey(statusList.getSignedCredential())) {
+                statusList.setSignedCredential(credentialGenerator.generate(statusList));
                 published = statusListRepository.save(statusList);
             }
             return new PublishedStatusList(published.getSignedCredential(),
@@ -154,17 +150,17 @@ public class StatusListService {
         return statusListRepository.findById(statusListId);
     }
 
-    private StatusList newStatusList(ParticipantContext participant, String statusPurpose, ProfileId profile) {
+    private StatusList newStatusList(String issuerDid, String statusPurpose, ProfileId profile) {
         String listId = UUID.randomUUID().toString();
         StatusList statusList = StatusList.Builder.newInstance()
                 .id(listId)
                 .url(statusListUrl(listId))
-                .issuerDid(participant.did())
+                .issuerDid(issuerDid)
                 .statusPurpose(statusPurpose)
                 .profile(profile)
                 .size(DEFAULT_STATUS_LIST_SIZE)
                 .build();
-        statusList.setSignedCredential(credentialGenerator.generate(statusList, participant));
+        statusList.setSignedCredential(credentialGenerator.generate(statusList));
         log.info("Created {} status list {} for purpose {}", profile.getStatusListType(), listId, statusPurpose);
         return statusList;
     }

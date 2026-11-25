@@ -4,10 +4,7 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.participant.ParticipantContext;
-import it.eng.dcp.common.participant.ParticipantKeyProvider;
-import it.eng.dcp.common.participant.ParticipantState;
-import it.eng.dcp.common.participant.SigningKeyReference;
+import it.eng.dcp.issuer.service.IssuerIdentity;
 import it.eng.dcp.common.model.CredentialGenerationContext;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
@@ -37,7 +34,7 @@ import static org.mockito.Mockito.when;
 class GenericCredentialGeneratorTest {
 
     @Mock
-    private ParticipantKeyProvider keyProvider;
+    private IssuerIdentity issuerIdentity;
     @Mock
     private CredentialMetadataConfigLoader configLoader;
 
@@ -47,8 +44,6 @@ class GenericCredentialGeneratorTest {
     private AutoCloseable closeable;
 
     private static final String ISSUER_DID = "did:web:issuer.example.com";
-    private static final ParticipantContext PARTICIPANT = new ParticipantContext("default", ISSUER_DID,
-            new SigningKeyReference("eckey-issuer.p12", "issuer"), List.of(), Map.of(), null, ParticipantState.ENABLED);
     private static final String HOLDER_DID = "did:web:holder.example.com";
     private static final String HOLDER_PID = "holder-request-123";
     private static final String CUSTOM_CREDENTIAL_TYPE = "CustomCredential";
@@ -61,11 +56,12 @@ class GenericCredentialGeneratorTest {
                 .keyID("test-key-1")
                 .generate();
 
-        when(keyProvider.activeSigningKey(any())).thenReturn(testSigningKey);
+        when(issuerIdentity.signingKey()).thenReturn(testSigningKey);
+        when(issuerIdentity.did()).thenReturn(ISSUER_DID);
 
-        jwtGeneratorFactory = new VcJwtGeneratorFactory(keyProvider);
+        jwtGeneratorFactory = new VcJwtGeneratorFactory(issuerIdentity);
         profileExtractor = new ProfileExtractor();
-        generator = new GenericCredentialGenerator(jwtGeneratorFactory, profileExtractor, CUSTOM_CREDENTIAL_TYPE);
+        generator = new GenericCredentialGenerator(jwtGeneratorFactory, profileExtractor, ISSUER_DID, CUSTOM_CREDENTIAL_TYPE);
     }
 
     @AfterEach
@@ -84,7 +80,7 @@ class GenericCredentialGeneratorTest {
     void generateCredential_createsValidContainer() {
         CredentialGenerationContext context = createTestContext();
 
-        CredentialMessage.CredentialContainer container = generator.generateCredential(PARTICIPANT, context);
+        CredentialMessage.CredentialContainer container = generator.generateCredential(context);
 
         assertNotNull(container);
         assertEquals(CUSTOM_CREDENTIAL_TYPE, container.getCredentialType());
@@ -97,7 +93,7 @@ class GenericCredentialGeneratorTest {
     void generateCredential_jwtContainsGenericClaims() throws ParseException {
         CredentialGenerationContext context = createTestContext();
 
-        CredentialMessage.CredentialContainer container = generator.generateCredential(PARTICIPANT, context);
+        CredentialMessage.CredentialContainer container = generator.generateCredential(context);
 
         SignedJWT jwt = SignedJWT.parse((String) container.getPayload());
 
@@ -114,7 +110,7 @@ class GenericCredentialGeneratorTest {
     void generateCredential_usesDefaultVC20Profile() throws ParseException {
         CredentialGenerationContext context = createTestContext();
 
-        CredentialMessage.CredentialContainer container = generator.generateCredential(PARTICIPANT, context);
+        CredentialMessage.CredentialContainer container = generator.generateCredential(context);
 
         SignedJWT jwt = SignedJWT.parse((String) container.getPayload());
 
@@ -133,7 +129,7 @@ class GenericCredentialGeneratorTest {
     void generateCredential_jwtIsSignedAndValid() throws ParseException {
         CredentialGenerationContext context = createTestContext();
 
-        CredentialMessage.CredentialContainer container = generator.generateCredential(PARTICIPANT, context);
+        CredentialMessage.CredentialContainer container = generator.generateCredential(context);
 
         SignedJWT jwt = SignedJWT.parse((String) container.getPayload());
 
@@ -146,7 +142,7 @@ class GenericCredentialGeneratorTest {
     void generateCredential_handlesCredentialTypeInJwt() throws ParseException {
         CredentialGenerationContext context = createTestContext();
 
-        CredentialMessage.CredentialContainer container = generator.generateCredential(PARTICIPANT, context);
+        CredentialMessage.CredentialContainer container = generator.generateCredential(context);
 
         SignedJWT jwt = SignedJWT.parse((String) container.getPayload());
 

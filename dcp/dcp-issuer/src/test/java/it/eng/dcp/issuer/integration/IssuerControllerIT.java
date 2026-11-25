@@ -88,8 +88,8 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         // This ensures consistent behavior across all tests and allows individual tests
         // to override when testing failure scenarios
         reset(credentialDeliveryService);
-        when(credentialDeliveryService.deliverCredentials(anyString(), anyList(), any())).thenReturn(true);
-        when(credentialDeliveryService.rejectCredentialRequest(anyString(), anyString(), any())).thenReturn(true);
+        when(credentialDeliveryService.deliverCredentials(anyString(), anyList())).thenReturn(true);
+        when(credentialDeliveryService.rejectCredentialRequest(anyString(), anyString())).thenReturn(true);
     }
 
     /**
@@ -548,7 +548,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
     @Test
     void approveRequest_failure_deliveryFails() throws Exception {
         // Mock delivery service to return false (delivery failed)
-        when(credentialDeliveryService.deliverCredentials(anyString(), anyList(), any())).thenReturn(false);
+        when(credentialDeliveryService.deliverCredentials(anyString(), anyList())).thenReturn(false);
 
         // First create a credential request
         when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
@@ -593,7 +593,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
     @Test
     void approveRequest_failure_deliveryThrowsException() throws Exception {
         // Mock delivery service to throw exception
-        when(credentialDeliveryService.deliverCredentials(anyString(), anyList(), any()))
+        when(credentialDeliveryService.deliverCredentials(anyString(), anyList()))
                 .thenThrow(new RuntimeException("Network error"));
 
         // First create a credential request
@@ -698,7 +698,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
     @Test
     void rejectRequest_failure_deliveryFails() throws Exception {
         // Mock rejection delivery to return false
-        when(credentialDeliveryService.rejectCredentialRequest(anyString(), anyString(), any())).thenReturn(false);
+        when(credentialDeliveryService.rejectCredentialRequest(anyString(), anyString())).thenReturn(false);
 
         // First create a credential request
         when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
@@ -746,7 +746,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
     @Test
     void rejectRequest_failure_deliveryThrowsException() throws Exception {
         // Mock rejection delivery to throw exception
-        when(credentialDeliveryService.rejectCredentialRequest(anyString(), anyString(), any()))
+        when(credentialDeliveryService.rejectCredentialRequest(anyString(), anyString()))
                 .thenThrow(new RuntimeException("Connection timeout"));
 
         // First create a credential request

@@ -4,10 +4,7 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.participant.ParticipantContext;
-import it.eng.dcp.common.participant.ParticipantKeyProvider;
-import it.eng.dcp.common.participant.ParticipantState;
-import it.eng.dcp.common.participant.SigningKeyReference;
+import it.eng.dcp.issuer.service.IssuerIdentity;
 import it.eng.dcp.common.model.CredentialGenerationContext;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
@@ -36,7 +33,7 @@ import static org.mockito.Mockito.when;
 class OrganizationCredentialGeneratorTest {
 
     @Mock
-    private ParticipantKeyProvider keyProvider;
+    private IssuerIdentity issuerIdentity;
 
     private OrganizationCredentialGenerator generator;
     private VcJwtGeneratorFactory jwtGeneratorFactory;
@@ -44,8 +41,6 @@ class OrganizationCredentialGeneratorTest {
     private AutoCloseable closeable;
 
     private static final String ISSUER_DID = "did:web:issuer.example.com";
-    private static final ParticipantContext PARTICIPANT = new ParticipantContext("default", ISSUER_DID,
-            new SigningKeyReference("eckey-issuer.p12", "issuer"), List.of(), Map.of(), null, ParticipantState.ENABLED);
     private static final String HOLDER_DID = "did:web:holder.example.com";
 
     @BeforeEach
@@ -56,9 +51,10 @@ class OrganizationCredentialGeneratorTest {
                 .keyID("test-key-1")
                 .generate();
 
-        when(keyProvider.activeSigningKey(any())).thenReturn(testSigningKey);
+        when(issuerIdentity.signingKey()).thenReturn(testSigningKey);
+        when(issuerIdentity.did()).thenReturn(ISSUER_DID);
 
-        jwtGeneratorFactory = new VcJwtGeneratorFactory(keyProvider);
+        jwtGeneratorFactory = new VcJwtGeneratorFactory(issuerIdentity);
         profileExtractor = new ProfileExtractor();
         generator = new OrganizationCredentialGenerator(jwtGeneratorFactory, profileExtractor);
     }
@@ -79,7 +75,7 @@ class OrganizationCredentialGeneratorTest {
     void generateCredential_createsValidContainer() {
         CredentialGenerationContext context = createTestContext();
 
-        CredentialMessage.CredentialContainer container = generator.generateCredential(PARTICIPANT, context);
+        CredentialMessage.CredentialContainer container = generator.generateCredential(context);
 
         assertNotNull(container);
         assertEquals("OrganizationCredential", container.getCredentialType());
@@ -92,7 +88,7 @@ class OrganizationCredentialGeneratorTest {
     void generateCredential_jwtContainsOrganizationClaims() throws ParseException {
         CredentialGenerationContext context = createTestContext();
 
-        CredentialMessage.CredentialContainer container = generator.generateCredential(PARTICIPANT, context);
+        CredentialMessage.CredentialContainer container = generator.generateCredential(context);
 
         SignedJWT jwt = SignedJWT.parse((String) container.getPayload());
 
@@ -111,7 +107,7 @@ class OrganizationCredentialGeneratorTest {
     void generateCredential_usesDefaultVC20Profile() throws ParseException {
         CredentialGenerationContext context = createTestContext();
 
-        CredentialMessage.CredentialContainer container = generator.generateCredential(PARTICIPANT, context);
+        CredentialMessage.CredentialContainer container = generator.generateCredential(context);
 
         SignedJWT jwt = SignedJWT.parse((String) container.getPayload());
 
@@ -130,7 +126,7 @@ class OrganizationCredentialGeneratorTest {
     void generateCredential_jwtIsSignedAndValid() throws ParseException {
         CredentialGenerationContext context = createTestContext();
 
-        CredentialMessage.CredentialContainer container = generator.generateCredential(PARTICIPANT, context);
+        CredentialMessage.CredentialContainer container = generator.generateCredential(context);
 
         SignedJWT jwt = SignedJWT.parse((String) container.getPayload());
 

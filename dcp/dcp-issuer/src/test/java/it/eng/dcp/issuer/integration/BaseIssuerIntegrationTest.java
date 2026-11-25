@@ -5,8 +5,6 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import it.eng.dcp.common.config.DidDocumentConfig;
-import it.eng.dcp.common.participant.ParticipantContext;
-import it.eng.dcp.common.participant.ParticipantContextProvider;
 import it.eng.dcp.common.service.KeyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,20 +64,8 @@ public class BaseIssuerIntegrationTest {
     @MockitoBean
     protected KeyService keyService;
 
-    @Autowired
-    protected ParticipantContextProvider participantContextProvider;
-
     protected ECKey holderKeyPair;
     protected ECKey issuerKeyPair;
-
-    /**
-     * Returns the default participant served by this connector.
-     *
-     * @return the default participant context
-     */
-    protected ParticipantContext defaultParticipant() {
-        return participantContextProvider.find(ParticipantContext.DEFAULT_ID).orElseThrow();
-    }
 
     @DynamicPropertySource
     static void containersProperties(DynamicPropertyRegistry registry) {

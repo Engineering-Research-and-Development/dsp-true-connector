@@ -1,16 +1,12 @@
 package it.eng.dcp.issuer.rest.api;
 
-import it.eng.dcp.common.participant.ParticipantContext;
-import it.eng.dcp.common.participant.RequestParticipantContext;
 import it.eng.dcp.issuer.service.IssuerService;
 import it.eng.dcp.issuer.service.api.IssuerAPIService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -21,11 +17,9 @@ import java.util.NoSuchElementException;
 public class IssuerAPIController {
 
     private final IssuerAPIService issuerAPIService;
-    private final RequestParticipantContext requestParticipantContext;
 
-    public IssuerAPIController(IssuerAPIService issuerAPIService, RequestParticipantContext requestParticipantContext) {
+    public IssuerAPIController(IssuerAPIService issuerAPIService) {
         this.issuerAPIService = issuerAPIService;
-        this.requestParticipantContext = requestParticipantContext;
     }
 
     /**
@@ -33,16 +27,12 @@ public class IssuerAPIController {
      *
      * @param requestId The credential request ID
      * @param requestBody Optional request body with customClaims, constraints, or credentials
-     * @param request The inbound request, which addresses the participant
-     * @param principal The authenticated administration principal
      * @return ResponseEntity with approval result or error
      */
     @PostMapping(path = "/requests/{requestId}/approve")
     public ResponseEntity<?> approveRequest(
             @PathVariable String requestId,
-            @RequestBody(required = false) Map<String, Object> requestBody,
-            HttpServletRequest request, Principal principal) {
-        ParticipantContext participant = requestParticipantContext.requireForAdmin(request, principal);
+            @RequestBody(required = false) Map<String, Object> requestBody) {
 
         try {
             Map<String, Object> customClaims = null;
@@ -56,7 +46,7 @@ public class IssuerAPIController {
             }
 
             IssuerService.ApprovalResult result = issuerAPIService.approveAndDeliverCredentials(
-                    requestId, customClaims, constraints, providedCredentials, participant);
+                    requestId, customClaims, constraints, providedCredentials);
 
             log.info("Approved and delivered {} credentials for request {}: types={}",
                     result.getCredentialsCount(), requestId, result.getCredentialTypes());
@@ -77,16 +67,12 @@ public class IssuerAPIController {
      *
      * @param requestId The credential request ID
      * @param requestBody Request body containing rejection reason
-     * @param request The inbound request, which addresses the participant
-     * @param principal The authenticated administration principal
      * @return ResponseEntity with rejection result or error
      */
     @PostMapping(path = "/requests/{requestId}/reject")
     public ResponseEntity<?> rejectRequest(
             @PathVariable String requestId,
-            @RequestBody Map<String, String> requestBody,
-            HttpServletRequest request, Principal principal) {
-        ParticipantContext participant = requestParticipantContext.requireForAdmin(request, principal);
+            @RequestBody Map<String, String> requestBody) {
 
         String rejectionReason = requestBody.get("reason");
         if (rejectionReason == null || rejectionReason.isBlank()) {
@@ -94,7 +80,7 @@ public class IssuerAPIController {
         }
 
         try {
-            boolean success = issuerAPIService.rejectCredentialRequest(requestId, rejectionReason, participant);
+            boolean success = issuerAPIService.rejectCredentialRequest(requestId, rejectionReason);
             if (success) {
                 log.info("Rejected credential request {}: {}", requestId, rejectionReason);
                 return ResponseEntity.ok("Credential request rejected successfully");
@@ -116,17 +102,13 @@ public class IssuerAPIController {
      *
      * @param listId the status list ID, the last path segment of the credential's {@code statusListCredential}
      * @param index the credential's {@code statusListIndex}
-     * @param request The inbound request, which addresses the participant
-     * @param principal The authenticated administration principal
      * @return 200 when the entry is revoked (also when it already was), 404 when the list does not exist,
      *         400 when the index has not been allocated, 500 on any other failure
      */
     @PostMapping(path = "/status-lists/{listId}/entries/{index}/revoke")
-    public ResponseEntity<String> revokeStatusEntry(@PathVariable String listId, @PathVariable int index,
-                                                     HttpServletRequest request, Principal principal) {
-        ParticipantContext participant = requestParticipantContext.requireForAdmin(request, principal);
+    public ResponseEntity<String> revokeStatusEntry(@PathVariable String listId, @PathVariable int index) {
         try {
-            boolean revoked = issuerAPIService.revokeStatusEntry(listId, index, participant);
+            boolean revoked = issuerAPIService.revokeStatusEntry(listId, index);
             return ResponseEntity.ok(revoked ? "Credential revoked" : "Credential already revoked");
         } catch (NoSuchElementException e) {
             log.warn("Revocation for unknown status list {}", listId);

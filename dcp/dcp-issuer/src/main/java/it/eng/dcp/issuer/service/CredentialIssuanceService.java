@@ -1,10 +1,9 @@
 package it.eng.dcp.issuer.service;
 
 import it.eng.dcp.common.model.*;
-import it.eng.dcp.common.participant.ParticipantContext;
-import it.eng.dcp.common.participant.ParticipantKeyProvider;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig;
 import it.eng.dcp.issuer.config.CredentialMetadataConfigLoader;
+import it.eng.dcp.issuer.config.IssuerProperties;
 import it.eng.dcp.issuer.service.credential.CredentialGeneratorFactory;
 import it.eng.dcp.issuer.service.credential.ProfileExtractor;
 import it.eng.dcp.issuer.service.jwt.VcJwtGeneratorFactory;
@@ -24,35 +23,38 @@ import java.util.Map;
 @Slf4j
 public class CredentialIssuanceService {
 
+    private final IssuerProperties issuerProperties;
     private final CredentialGeneratorFactory credentialGeneratorFactory;
     private final StatusListService statusListService;
     private final ProfileExtractor profileExtractor = new ProfileExtractor();
     private final CredentialMetadataConfigLoader credentialMetadataConfigLoader;
 
     @Autowired
-    public CredentialIssuanceService(ParticipantKeyProvider keyProvider,
+    public CredentialIssuanceService(IssuerProperties issuerProperties, IssuerIdentity issuerIdentity,
                                      StatusListService statusListService,
                                      CredentialMetadataConfigLoader credentialMetadataConfigLoader) {
+        this.issuerProperties = issuerProperties;
         this.statusListService = statusListService;
         this.credentialMetadataConfigLoader = credentialMetadataConfigLoader;
 
         // Create JWT generator factory
-        VcJwtGeneratorFactory jwtGeneratorFactory = new VcJwtGeneratorFactory(keyProvider);
+        VcJwtGeneratorFactory jwtGeneratorFactory = new VcJwtGeneratorFactory(issuerIdentity);
 
         // Create credential generator factory
-        this.credentialGeneratorFactory = new CredentialGeneratorFactory(jwtGeneratorFactory);
+        this.credentialGeneratorFactory = new CredentialGeneratorFactory(
+                jwtGeneratorFactory,
+                issuerProperties.getConnectorDid()
+        );
     }
 
     /**
      * Generate credentials for an approved credential request (backward compatible).
      *
      * @param request The credential request
-     * @param participant The issuer participant that signs the credentials
      * @return List of credential containers ready for delivery
      */
-    public List<CredentialMessage.CredentialContainer> generateCredentials(CredentialRequest request,
-                                                                           ParticipantContext participant) {
-        return generateCredentials(request, null, null, participant);
+    public List<CredentialMessage.CredentialContainer> generateCredentials(CredentialRequest request) {
+        return generateCredentials(request, null, null);
     }
 
     /**
@@ -61,7 +63,6 @@ public class CredentialIssuanceService {
      * @param request The credential request containing requested credential IDs
      * @param customClaims Optional custom claims to include
      * @param constraintsData Optional constraints to verify before issuance
-     * @param participant The issuer participant that signs the credentials
      * @return List of credential containers ready for delivery, one for each requested credential
      * @throws CredentialIssuanceException if any requested credential could not be issued; nothing is returned
      *         for such a request, so it can be rejected as a whole
@@ -69,8 +70,7 @@ public class CredentialIssuanceService {
     public List<CredentialMessage.CredentialContainer> generateCredentials(
             CredentialRequest request,
             Map<String, Object> customClaims,
-            List<Map<String, Object>> constraintsData,
-            ParticipantContext participant) {
+            List<Map<String, Object>> constraintsData) {
 
         if (request == null || request.getCredentialIds() == null || request.getCredentialIds().isEmpty()) {
             throw new IllegalArgumentException("Credential request must contain at least one credential ID");
@@ -125,7 +125,7 @@ public class CredentialIssuanceService {
                     constraints
                 );
                 CredentialMessage.CredentialContainer generated =
-                        generateCredentialForType(config.getCredentialType(), context, participant);
+                        generateCredentialForType(config.getCredentialType(), context);
                 credentials.add(withFormatOfProfile(generated, config.getProfile()));
                 log.debug("Generated credential '{}' of type '{}' for holder {}",
                         config.getId(), config.getCredentialType(), request.getHolderPid());
@@ -204,26 +204,24 @@ public class CredentialIssuanceService {
      *
      * @param credentialType The credential type of the resolved credentialsSupported entry
      * @param context The generation context with request, claims, and constraints
-     * @param participant The issuer participant that signs the credential
      * @return A credential container with the generated credential
      */
     private CredentialMessage.CredentialContainer generateCredentialForType(
             String credentialType,
-            CredentialGenerationContext context,
-            ParticipantContext participant) {
+            CredentialGenerationContext context) {
         // Use ProfileExtractor to get the profile
         var profile = profileExtractor.extractProfile(credentialType, context);
 //        var profile = context.getProfileId();
         if (profile == ProfileId.VC11_SL2021_JWT || profile == ProfileId.VC20_BSSL_JWT) {
             StatusListService.StatusListEntry entry = statusListService.allocateStatusEntry(
-                    participant, StatusListService.REVOCATION_PURPOSE, profile);
+                    issuerProperties.getConnectorDid(), StatusListService.REVOCATION_PURPOSE, profile);
             return credentialGeneratorFactory
                     .createGeneratorWithStatus(credentialType)
-                    .generateCredential(participant, context, entry.statusListCredential(), entry.index());
+                    .generateCredential(context, entry.statusListCredential(), entry.index());
         }
         // Always use fallback generator if profile is null or not a status list type
         return credentialGeneratorFactory
                 .createGenerator(credentialType)
-                .generateCredential(participant, context);
+                .generateCredential(context);
     }
 }

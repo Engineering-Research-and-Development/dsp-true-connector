@@ -2,7 +2,6 @@ package it.eng.dcp.issuer.service.credential;
 
 import it.eng.dcp.common.model.CredentialGenerationContext;
 import it.eng.dcp.common.model.CredentialMessage;
-import it.eng.dcp.common.participant.ParticipantContext;
 import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.issuer.service.jwt.VC11JwtGenerator;
 import it.eng.dcp.issuer.service.jwt.VC20JwtGenerator;
@@ -23,6 +22,7 @@ public class GenericCredentialGenerator implements CredentialGenerator {
 
     private final VcJwtGeneratorFactory jwtGeneratorFactory;
     private final ProfileExtractor profileExtractor;
+    private final String issuerDid;
     private final String credentialType;
 
     /**
@@ -30,29 +30,32 @@ public class GenericCredentialGenerator implements CredentialGenerator {
      *
      * @param jwtGeneratorFactory Factory for creating profile-specific JWT generators
      * @param profileExtractor Extractor for determining credential profile
+     * @param issuerDid The issuer's DID
      * @param credentialType The credential type to generate
      */
     public GenericCredentialGenerator(VcJwtGeneratorFactory jwtGeneratorFactory,
                                      ProfileExtractor profileExtractor,
+                                     String issuerDid,
                                      String credentialType) {
         this.jwtGeneratorFactory = jwtGeneratorFactory;
         this.profileExtractor = profileExtractor;
+        this.issuerDid = issuerDid;
         this.credentialType = credentialType;
     }
 
     @Override
-    public CredentialMessage.CredentialContainer generateCredential(ParticipantContext participant, CredentialGenerationContext context) {
+    public CredentialMessage.CredentialContainer generateCredential(CredentialGenerationContext context) {
         log.warn("Unknown credential type '{}', generating generic credential", credentialType);
 
         ProfileId profile = profileExtractor.extractProfile(credentialType, context);
 
         Map<String, String> claims = new HashMap<>();
         claims.put("status", "Active");
-        claims.put("issuedBy", participant.did());
+        claims.put("issuedBy", issuerDid);
 
         String signedJwt = jwtGeneratorFactory
                 .createGenerator(profile)
-                .generateJwt(participant, context.getRequest().getHolderDid(), credentialType, claims);
+                .generateJwt(context.getRequest().getHolderDid(), credentialType, claims);
 
         return CredentialMessage.CredentialContainer.Builder.newInstance()
                 .credentialType(credentialType)
@@ -62,19 +65,18 @@ public class GenericCredentialGenerator implements CredentialGenerator {
     }
 
     @Override
-    public CredentialMessage.CredentialContainer generateCredential(ParticipantContext participant, CredentialGenerationContext context,
-                                                                    String statusListId, Integer statusListIndex) {
+    public CredentialMessage.CredentialContainer generateCredential(CredentialGenerationContext context, String statusListId, Integer statusListIndex) {
         ProfileId profile = profileExtractor.extractProfile(credentialType, context);
         Map<String, String> claims = new HashMap<>();
         claims.put("status", "Active");
-        claims.put("issuedBy", participant.did());
+        claims.put("issuedBy", issuerDid);
         String signedJwt;
         var generator = jwtGeneratorFactory.createGenerator(profile);
         if ((generator instanceof VC20JwtGenerator vc20) ||
             (generator instanceof VC11JwtGenerator vc11)) {
-            signedJwt = generator.generateJwt(participant, context.getRequest().getHolderDid(), credentialType, claims, statusListId, statusListIndex);
+            signedJwt = generator.generateJwt(context.getRequest().getHolderDid(), credentialType, claims, statusListId, statusListIndex);
         } else {
-            signedJwt = generator.generateJwt(participant, context.getRequest().getHolderDid(), credentialType, claims);
+            signedJwt = generator.generateJwt(context.getRequest().getHolderDid(), credentialType, claims);
         }
         return CredentialMessage.CredentialContainer.Builder.newInstance()
                 .credentialType(credentialType)

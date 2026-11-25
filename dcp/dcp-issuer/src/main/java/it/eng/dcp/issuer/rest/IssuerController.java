@@ -5,12 +5,10 @@ import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialRequestMessage;
 import it.eng.dcp.common.model.DCPConstants;
 import it.eng.dcp.common.model.IssuerMetadata;
-import it.eng.dcp.common.participant.ParticipantContext;
-import it.eng.dcp.common.participant.RequestParticipantContext;
 import it.eng.dcp.issuer.service.IssuerService;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,12 +29,14 @@ import java.util.Optional;
 public class IssuerController {
 
     private final IssuerService issuerService;
-    private final RequestParticipantContext requestParticipantContext;
+
+    /** Base path of the issuer controllers, {@code dcp.base-path.issuer}. */
+    @Value("${dcp.base-path.issuer:issuer}")
+    private String issuerBasePath = "issuer";
 
     @Autowired
-    public IssuerController(IssuerService issuerService, RequestParticipantContext requestParticipantContext) {
+    public IssuerController(IssuerService issuerService) {
         this.issuerService = issuerService;
-        this.requestParticipantContext = requestParticipantContext;
     }
 
     /**
@@ -44,21 +44,17 @@ public class IssuerController {
      * This is a public discovery endpoint per DCP spec 6.7 - no authentication required.
      *
      * @param authorization HTTP Authorization header with Bearer token
-     * @param request The inbound request, which addresses the participant
      * @return ResponseEntity with issuer metadata or error
      */
     @GetMapping(path = "/metadata")
-    public ResponseEntity<?> getMetadata(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
-                                         HttpServletRequest request) {
-        // Unknown or disabled participant gets 404 before any token validation
-        ParticipantContext participant = requestParticipantContext.require(request);
+    public ResponseEntity<?> getMetadata(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
         if (authorization == null || !authorization.startsWith("Bearer ")) {
             return ResponseEntity.status(401).body("Missing or invalid Authorization header");
         }
         String token = authorization.substring("Bearer ".length());
 
         try {
-            issuerService.authorizeRequest(token, null, participant);
+            issuerService.authorizeRequest(token, null);
             IssuerMetadata metadata = issuerService.getMetadata();
             return ResponseEntity.ok(metadata);
         } catch (SecurityException e) {
@@ -75,15 +71,12 @@ public class IssuerController {
      *
      * @param authorization HTTP Authorization header with Bearer token
      * @param requestMessage The credential request message
-     * @param request The inbound request, which addresses the participant
      * @return ResponseEntity with created request or error
      */
     @PostMapping(path = "/credentials", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> createCredentialRequest(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
-            @RequestBody CredentialRequestMessage requestMessage,
-            HttpServletRequest request) {
-        ParticipantContext participant = requestParticipantContext.require(request);
+            @RequestBody CredentialRequestMessage requestMessage) {
 
         log.info("Received credential request creation");
 
@@ -93,15 +86,13 @@ public class IssuerController {
         String token = authorization.substring("Bearer ".length());
 
         try {
-            JWTClaimsSet jwtClaimsSet = issuerService.authorizeRequest(token, requestMessage.getHolderPid(), participant);
-            CredentialRequest credentialRequest = issuerService.createCredentialRequest(requestMessage, jwtClaimsSet.getSubject());
+            JWTClaimsSet jwtClaimsSet = issuerService.authorizeRequest(token, requestMessage.getHolderPid());
+            CredentialRequest request = issuerService.createCredentialRequest(requestMessage, jwtClaimsSet.getSubject());
 
             log.info("Created credential request: issuerPid={}, holderPid={}, credentials={}",
-                    credentialRequest.getIssuerPid(), credentialRequest.getHolderPid(), credentialRequest.getCredentialIds());
+                    request.getIssuerPid(), request.getHolderPid(), request.getCredentialIds());
 
-            // The request status lives next to the credentials endpoint, under the same base path and participant prefix
-            String location = request.getRequestURI().replaceAll("/credentials/?$", "")
-                    + "/requests/" + credentialRequest.getIssuerPid();
+            String location = "/" + issuerBasePath + "/requests/" + request.getIssuerPid();
             return ResponseEntity.created(URI.create(location)).header(HttpHeaders.LOCATION, location).build();
         } catch (SecurityException e) {
             log.warn("Authorization failed: {}", e.getMessage());
@@ -121,15 +112,12 @@ public class IssuerController {
      *
      * @param authorization HTTP Authorization header with Bearer token
      * @param requestId The credential request ID
-     * @param request The inbound request, which addresses the participant
      * @return ResponseEntity with the request or error
      */
     @GetMapping(path = "/requests/{requestId}")
     public ResponseEntity<?> getRequest(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
-            @PathVariable String requestId,
-            HttpServletRequest request) {
-        ParticipantContext participant = requestParticipantContext.require(request);
+            @PathVariable String requestId) {
 
         // Validate authorization header
         if (authorization == null || !authorization.startsWith("Bearer ")) {
@@ -139,7 +127,7 @@ public class IssuerController {
 
         try {
             // Validate the token; its subject identifies the calling client
-            JWTClaimsSet claims = issuerService.authorizeRequest(token, null, participant);
+            JWTClaimsSet claims = issuerService.authorizeRequest(token, null);
 
             // A request owned by another client is reported as not found so its existence is not revealed
             Optional<CredentialRequest> requestOpt = issuerService.getRequestByIssuerPid(requestId, claims.getSubject());

@@ -1,46 +1,36 @@
 package it.eng.dcp.issuer.rest.api;
 
-import it.eng.dcp.common.participant.ParticipantKeyProvider;
-import it.eng.dcp.common.participant.RequestParticipantContext;
-import jakarta.servlet.http.HttpServletRequest;
+import it.eng.dcp.issuer.service.IssuerIdentity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.security.Principal;
-
 /**
- * REST API controller to rotate the issuer signing key.
+ * REST API controller to rotate the signing key of the Issuer.
  */
 @RestController
 @RequestMapping("/api/issuer/key")
 public class IssuerKeyRotationAPIController {
-    private final ParticipantKeyProvider keyProvider;
-    private final RequestParticipantContext requestParticipantContext;
+    private final IssuerIdentity issuerIdentity;
 
     /**
      * Constructor.
      *
-     * @param keyProvider provider that rotates the participant key
-     * @param requestParticipantContext resolves the participant an administration request acts on
+     * @param issuerIdentity the single Issuer identity, which rotates its key
      */
-    public IssuerKeyRotationAPIController(ParticipantKeyProvider keyProvider,
-                                          RequestParticipantContext requestParticipantContext) {
-        this.keyProvider = keyProvider;
-        this.requestParticipantContext = requestParticipantContext;
+    public IssuerKeyRotationAPIController(IssuerIdentity issuerIdentity) {
+        this.issuerIdentity = issuerIdentity;
     }
 
     /**
-     * Rotates the signing key of the participant the request acts on.
+     * Rotates the signing key of the Issuer.
      *
-     * @param request   the inbound request
-     * @param principal the authenticated administration principal
      * @return the alias of the new key
      */
     @PostMapping("/rotate")
-    public ResponseEntity<String> rotateKey(HttpServletRequest request, Principal principal) {
-        String alias = keyProvider.rotate(requestParticipantContext.requireForAdmin(request, principal));
+    public ResponseEntity<String> rotateKey() {
+        String alias = issuerIdentity.rotateKey();
         return ResponseEntity.ok("Key rotated. New alias: " + alias);
     }
 }

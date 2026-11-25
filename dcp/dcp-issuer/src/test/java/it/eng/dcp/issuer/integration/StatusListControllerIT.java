@@ -133,7 +133,7 @@ class StatusListControllerIT extends BaseIssuerIntegrationTest {
                 .holderDid("did:web:holder.example.com")
                 .credentialIds(List.of(credentialId))
                 .build();
-        CredentialMessage.CredentialContainer container = credentialIssuanceService.generateCredentials(request, defaultParticipant()).get(0);
+        CredentialMessage.CredentialContainer container = credentialIssuanceService.generateCredentials(request).get(0);
         Map<String, Object> claims = SignedJWT.parse(String.valueOf(container.getPayload())).getJWTClaimsSet().getClaims();
         Map<String, Object> vc = profile == ProfileId.VC11_SL2021_JWT ? (Map<String, Object>) claims.get("vc") : claims;
         return (Map<String, Object>) vc.get("credentialStatus");

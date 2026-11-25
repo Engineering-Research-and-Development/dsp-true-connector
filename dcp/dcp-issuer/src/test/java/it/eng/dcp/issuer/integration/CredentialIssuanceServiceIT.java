@@ -40,7 +40,7 @@ public class CredentialIssuanceServiceIT extends BaseIssuerIntegrationTest {
             .build();
 
         List<CredentialMessage.CredentialContainer> result =
-                credentialIssuanceService.generateCredentials(request, defaultParticipant());
+                credentialIssuanceService.generateCredentials(request);
 
         assertThat(result).isNotEmpty();
         CredentialMessage.CredentialContainer container = result.get(0);
@@ -82,7 +82,7 @@ public class CredentialIssuanceServiceIT extends BaseIssuerIntegrationTest {
             .build();
 
         List<CredentialMessage.CredentialContainer> result =
-                credentialIssuanceService.generateCredentials(request, defaultParticipant());
+                credentialIssuanceService.generateCredentials(request);
 
         assertThat(result).isNotEmpty();
         CredentialMessage.CredentialContainer container = result.get(0);
@@ -118,7 +118,7 @@ public class CredentialIssuanceServiceIT extends BaseIssuerIntegrationTest {
             .credentialIds(List.of("urn:uuid:d5c77b0e-7f4e-4fd5-8c5f-28b5fc3f96d1"))
             .build();
 
-        List<CredentialMessage.CredentialContainer> result = credentialIssuanceService.generateCredentials(request, defaultParticipant());
+        List<CredentialMessage.CredentialContainer> result = credentialIssuanceService.generateCredentials(request);
 
         assertEquals(1, result.size());
         assertEquals("CompanyCredential", result.get(0).getCredentialType());
