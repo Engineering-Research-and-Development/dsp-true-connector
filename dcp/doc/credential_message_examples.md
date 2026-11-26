@@ -1,5 +1,16 @@
 # Credential Message Examples for Postman
 
+## Credential Write Authorization
+
+The `CredentialMessage` JSON examples below do not contain authentication tokens. Send the Holder's
+Self-Issued ID Token as the bearer token to `POST /issuer/credentials`; when it contains a `token` claim, the
+Issuer retains that Holder-issued access token internally.
+
+For delivery or rejection, the Issuer sends its own Self-Issued ID Token to the Holder's `/dcp/credentials`
+endpoint. Its `iss` and `sub` identify the Issuer, `aud` is the Holder DID, and its `token` claim is the exact
+Holder-issued access token received with the credential request. The Holder validates both tokens before
+processing the message. Do not put either token in the `CredentialMessage` body.
+
 ## Example 1: JWT Credential (MembershipCredential)
 
 Use this JSON in Postman for `POST /dcp/credentials`:

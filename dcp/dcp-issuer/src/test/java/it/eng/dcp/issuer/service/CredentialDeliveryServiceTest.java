@@ -56,6 +56,7 @@ class CredentialDeliveryServiceTest {
                 .issuerPid("issuer-pid-123")
                 .holderPid("holder-pid-123")
                 .holderDid("did:web:example.com:holder")
+                .clientAccessToken("holder-access-token")
                 .credentialIds(List.of("MembershipCredential"))
                 .status(CredentialStatus.PENDING)
                 .createdAt(Instant.now())
@@ -86,8 +87,12 @@ class CredentialDeliveryServiceTest {
         boolean result = deliveryService.deliverCredentials("issuer-pid-123", testCredentials);
 
         assertTrue(result);
-        verify(requestRepository).save(argThat(req ->
-                req.getStatus() == CredentialStatus.ISSUED && req.getIssuerPid().equals("issuer-pid-123")));
+        verify(tokenService).createAndSignToken("did:web:example.com:holder", "holder-access-token", config);
+        ArgumentCaptor<CredentialRequest> savedRequest = ArgumentCaptor.forClass(CredentialRequest.class);
+        verify(requestRepository).save(savedRequest.capture());
+        assertEquals(CredentialStatus.ISSUED, savedRequest.getValue().getStatus());
+        assertEquals("issuer-pid-123", savedRequest.getValue().getIssuerPid());
+        assertNull(savedRequest.getValue().getClientAccessToken());
 
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
@@ -123,8 +128,12 @@ class CredentialDeliveryServiceTest {
         boolean result = deliveryService.rejectCredentialRequest("issuer-pid-123", "Invalid credentials");
 
         assertTrue(result);
-        verify(requestRepository).save(argThat(req ->
-                req.getStatus() == CredentialStatus.REJECTED && req.getRejectionReason().equals("Invalid credentials")));
+        verify(tokenService).createAndSignToken("did:web:example.com:holder", "holder-access-token", config);
+        ArgumentCaptor<CredentialRequest> savedRequest = ArgumentCaptor.forClass(CredentialRequest.class);
+        verify(requestRepository).save(savedRequest.capture());
+        assertEquals(CredentialStatus.REJECTED, savedRequest.getValue().getStatus());
+        assertEquals("Invalid credentials", savedRequest.getValue().getRejectionReason());
+        assertNull(savedRequest.getValue().getClientAccessToken());
 
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());

@@ -248,15 +248,10 @@ public class CredentialIssuanceClient {
                 .credentials(credentialRefs)
                 .build();
 
-        // Create token for issuer audience if possible
-        // Use the issuer DID as audience; tokenService may return null if not configured
+        // The Issuer will include this Holder-issued token in its delivery message.
         String audience = issuerDid;
-        String token = null;
-        try {
-            token = tokenService.createAndSignToken(audience, null, config);
-        } catch (Exception e) {
-            log.debug("No token could be created for issuer audience {}: {}", audience, e.getMessage());
-        }
+        String accessToken = tokenService.createAccessTokenWithScopes(audience, config);
+        String token = tokenService.createAndSignToken(audience, accessToken, config);
 
         try {
             String json = mapper.writeValueAsString(req);

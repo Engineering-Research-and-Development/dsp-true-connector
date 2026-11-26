@@ -172,9 +172,12 @@ public class HolderService {
     /**
      * Authorize and validate an issuer's credential delivery request.
      *
+     * <p>Validates the issuer's Self-Issued ID Token and the Holder-issued access token carried in its
+     * {@code token} claim. The nested access token must be addressed to the authenticated issuer DID.
+     *
      * @param bearerToken The bearer token from Authorization header (without "Bearer " prefix)
      * @return The issuer's DID from the token
-     * @throws SecurityException if token is invalid or missing issuer claim
+     * @throws SecurityException if either token is invalid or missing
      */
     public String authorizeIssuer(String bearerToken) throws SecurityException {
         if (bearerToken == null || bearerToken.isBlank()) {
@@ -202,6 +205,23 @@ public class HolderService {
             throw new SecurityException("Invalid token: missing issuer claim");
         }
 
+        String accessToken;
+        try {
+            accessToken = claims.getStringClaim(TOKEN_CLAIM);
+        } catch (ParseException e) {
+            throw credentialDeliveryRejected("Self-Issued ID Token 'token' claim is not a string", issuerDid, e);
+        }
+        if (accessToken == null || accessToken.isBlank()) {
+            throw credentialDeliveryRejected(
+                    "Self-Issued ID Token carries no access token in its 'token' claim", issuerDid, null);
+        }
+
+        try {
+            tokenService.validateAccessToken(accessToken, issuerDid);
+        } catch (SecurityException e) {
+            throw credentialDeliveryRejected("Holder access token is invalid", issuerDid, e);
+        }
+
         log.info("Authenticated issuer: {}", issuerDid);
         auditPublisher.publishEvent(
                 DcpAuditEventType.CREDENTIAL_MESSAGE_RECEIVED,
@@ -210,6 +230,16 @@ public class HolderService {
                 null, issuerDid, null, null,
                 Map.of("issuerDid", issuerDid));
         return issuerDid;
+    }
+
+    private SecurityException credentialDeliveryRejected(String reason, String issuerDid, Exception cause) {
+        auditPublisher.publishEvent(
+                DcpAuditEventType.TOKEN_VALIDATION_FAILED,
+                "Credential delivery authorization failed: " + reason,
+                HOLDER_SOURCE,
+                null, issuerDid, null, null,
+                Map.of("reason", reason));
+        return new SecurityException(reason, cause);
     }
 
     /**
