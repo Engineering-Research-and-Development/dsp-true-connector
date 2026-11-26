@@ -286,23 +286,59 @@ class HolderServiceTest {
         // Arrange
         String bearerToken = "valid-token";
         String issuerDid = "did:example:issuer123";
+        String holderDid = "did:example:holder123";
 
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .issuer(issuerDid)
+                .claim("token", "holder-access-token")
+                .build();
+        JWTClaimsSet accessTokenClaims = new JWTClaimsSet.Builder()
+                .issuer(holderDid)
+                .subject(holderDid)
+                .audience(issuerDid)
                 .build();
 
         when(tokenService.validateToken(bearerToken, participant)).thenReturn(claims);
+        when(tokenService.validateAccessToken("holder-access-token", issuerDid)).thenReturn(accessTokenClaims);
 
         // Act
         String result = holderService.authorizeIssuer(bearerToken, participant);
 
         // Assert
         assertEquals(issuerDid, result);
+        verify(tokenService).validateAccessToken("holder-access-token", issuerDid);
         verify(tokenService).validateToken(bearerToken, participant);
 
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
         assertEquals(DcpAuditEventType.CREDENTIAL_MESSAGE_RECEIVED, typeCaptor.getValue());
+    }
+
+    @Test
+    void authorizeIssuer_missingAccessToken_throwsSecurityException() {
+        String issuerDid = "did:example:issuer123";
+        JWTClaimsSet claims = new JWTClaimsSet.Builder().issuer(issuerDid).build();
+        when(tokenService.validateToken("valid-token")).thenReturn(claims);
+
+        assertThrows(SecurityException.class, () -> holderService.authorizeIssuer("valid-token"));
+
+        verify(tokenService, never()).validateAccessToken(any(), any());
+    }
+
+    @Test
+    void authorizeIssuer_invalidAccessToken_throwsSecurityException() {
+        String issuerDid = "did:example:issuer123";
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .issuer(issuerDid)
+                .claim("token", "invalid-holder-access-token")
+                .build();
+        when(tokenService.validateToken("valid-token")).thenReturn(claims);
+        when(tokenService.validateAccessToken("invalid-holder-access-token", issuerDid))
+                .thenThrow(new SecurityException("Access token audience does not match"));
+
+        assertThrows(SecurityException.class, () -> holderService.authorizeIssuer("valid-token"));
+
+        verify(tokenService).validateAccessToken("invalid-holder-access-token", issuerDid);
     }
 
     @Test

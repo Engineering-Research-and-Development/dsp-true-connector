@@ -4,6 +4,7 @@ import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.ProfileId;
+import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig.CredentialConfig;
 import it.eng.dcp.issuer.config.CredentialMetadataConfigLoader;
 import it.eng.dcp.issuer.service.CredentialIssuanceService;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,6 +28,24 @@ public class CredentialIssuanceServiceIT extends BaseIssuerIntegrationTest {
 
     @Autowired
     private CredentialMetadataConfigLoader credentialMetadataConfigLoader;
+
+    @Autowired
+    private CredentialRequestRepository credentialRequestRepository;
+
+    @Test
+    @DisplayName("The client's access token survives request persistence")
+    public void clientAccessTokenSurvivesPersistence() {
+        CredentialRequest request = CredentialRequest.Builder.newInstance()
+                .holderPid("holder-pid-" + UUID.randomUUID())
+                .credentialIds(List.of("membership"))
+                .clientAccessToken("holder-access-token")
+                .build();
+
+        credentialRequestRepository.save(request);
+
+        CredentialRequest loaded = credentialRequestRepository.findByIssuerPid(request.getIssuerPid()).orElseThrow();
+        assertThat(loaded.getClientAccessToken()).isEqualTo("holder-access-token");
+    }
 
     @Test
     public void generateVC11Credentials_Test() throws ParseException {

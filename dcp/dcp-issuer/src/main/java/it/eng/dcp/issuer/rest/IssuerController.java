@@ -87,7 +87,7 @@ public class IssuerController {
 
         try {
             JWTClaimsSet jwtClaimsSet = issuerService.authorizeRequest(token, requestMessage.getHolderPid());
-            CredentialRequest request = issuerService.createCredentialRequest(requestMessage, jwtClaimsSet.getSubject());
+            CredentialRequest request = issuerService.createCredentialRequest(requestMessage, jwtClaimsSet);
 
             log.info("Created credential request: issuerPid={}, holderPid={}, credentials={}",
                     request.getIssuerPid(), request.getHolderPid(), request.getCredentialIds());

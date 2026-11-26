@@ -66,11 +66,8 @@
               "// Parse the JSON response\r",
               "var jsonData = pm.response.json();\r",
               "\r",
-              "// Extract the token field and save it to environment variable\r",
-              "pm.environment.set(\"authToken\", jsonData.token);\r",
-              "\r",
-              "// Extract the authorization field and save it to environment variable\r",
-              "pm.environment.set(\"authorizationHeader\", jsonData.authorization);"
+              "// Extract the Self-Issued ID Token carrying the Holder access token.\r",
+              "pm.environment.set(\"authToken\", jsonData.access_token);"
             ],
             "type": "text/javascript",
             "packages": {},
@@ -80,18 +77,35 @@
       ],
       "request": {
         "method": "POST",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\"audienceDid\": \"did:web:dcp-issuer%3A8084:issuer\"}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded",
+            "type": "text"
           }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "client_credentials",
+              "type": "text"
+            },
+            {
+              "key": "audience",
+              "value": "did:web:dcp-issuer%3A8084:issuer",
+              "type": "text"
+            },
+            {
+              "key": "bearer_access_scope",
+              "value": "MembershipCredential",
+              "type": "text"
+            }
+          ]
         },
         "url": {
-          "raw": "http://localhost:8080/api/dev/token/generate",
+          "raw": "http://localhost:8080/api/dev/token/generate/token",
           "protocol": "http",
           "host": [
             "localhost"
@@ -101,7 +115,8 @@
             "api",
             "dev",
             "token",
-            "generate"
+            "generate",
+            "token"
           ]
         },
         "auth": {
@@ -303,11 +318,8 @@
               "// Parse the JSON response\r",
               "var jsonData = pm.response.json();\r",
               "\r",
-              "// Extract the token field and save it to environment variable\r",
-              "pm.environment.set(\"authToken-b\", jsonData.token);\r",
-              "\r",
-              "// Extract the authorization field and save it to environment variable\r",
-              "pm.environment.set(\"authorizationHeader-b\", jsonData.authorization);"
+              "// Extract the Self-Issued ID Token carrying the Holder access token.\r",
+              "pm.environment.set(\"authToken-b\", jsonData.access_token);"
             ],
             "type": "text/javascript",
             "packages": {},
@@ -317,18 +329,35 @@
       ],
       "request": {
         "method": "POST",
-        "header": [],
-        "body": {
-          "mode": "raw",
-          "raw": "{\"audienceDid\": \"did:web:dcp-issuer%3A8084:issuer\"}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded",
+            "type": "text"
           }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "grant_type",
+              "value": "client_credentials",
+              "type": "text"
+            },
+            {
+              "key": "audience",
+              "value": "did:web:dcp-issuer%3A8084:issuer",
+              "type": "text"
+            },
+            {
+              "key": "bearer_access_scope",
+              "value": "MembershipCredential",
+              "type": "text"
+            }
+          ]
         },
         "url": {
-          "raw": "http://localhost:8090/api/dev/token/generate",
+          "raw": "http://localhost:8090/api/dev/token/generate/token",
           "protocol": "http",
           "host": [
             "localhost"
@@ -338,7 +367,8 @@
             "api",
             "dev",
             "token",
-            "generate"
+            "generate",
+            "token"
           ]
         },
         "auth": {

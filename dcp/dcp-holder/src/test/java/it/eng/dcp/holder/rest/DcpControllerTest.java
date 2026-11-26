@@ -39,6 +39,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class DcpControllerTest {
 
     private static final String QUERY_PATH = "/dcp/presentations/query";
+    private static final String CREDENTIALS_PATH = "/dcp/credentials";
+    private static final String CREDENTIAL_MESSAGE = """
+            {"issuerPid":"issuer-request","status":"ISSUED","credentials":[]}
+            """;
     private static final String VERIFIER_DID = "did:web:verifier.example";
     private static final String HOLDER_DID = "did:web:holder.example";
     private static final String QUERY_BODY = """
@@ -120,6 +124,36 @@ class DcpControllerTest {
                         .content(QUERY_BODY))
                 .andExpect(status().isOk());
         verify(holderService).checkRateLimit(VERIFIER_DID);
+    }
+
+    @Test
+    @DisplayName("A credential message without a Holder access token gets 401 before processing")
+    void receiveCredentials_missingAccessToken_401() throws Exception {
+        when(holderService.authorizeIssuer("id-token"))
+                .thenThrow(new SecurityException("Self-Issued ID Token carries no access token in its 'token' claim"));
+
+        mockMvc.perform(post(CREDENTIALS_PATH)
+                        .header("Authorization", "Bearer id-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(CREDENTIAL_MESSAGE))
+                .andExpect(status().isUnauthorized());
+        verify(holderService, never()).processIssuedCredentials(any(), anyString());
+        verify(holderService, never()).processRejectedCredentials(any());
+    }
+
+    @Test
+    @DisplayName("A credential message with an invalid Holder access token gets 401 before processing")
+    void receiveCredentials_invalidAccessToken_401() throws Exception {
+        when(holderService.authorizeIssuer("id-token"))
+                .thenThrow(new SecurityException("Holder access token is invalid"));
+
+        mockMvc.perform(post(CREDENTIALS_PATH)
+                        .header("Authorization", "Bearer id-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(CREDENTIAL_MESSAGE))
+                .andExpect(status().isUnauthorized());
+        verify(holderService, never()).processIssuedCredentials(any(), anyString());
+        verify(holderService, never()).processRejectedCredentials(any());
     }
 
     @Test

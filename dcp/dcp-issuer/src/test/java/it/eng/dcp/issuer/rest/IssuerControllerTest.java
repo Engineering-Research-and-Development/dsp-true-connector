@@ -90,7 +90,6 @@ class IssuerControllerTest {
     void createCredentialRequest_success() {
         String token = "valid-token";
         String authHeader = "Bearer " + token;
-        String subject = "subject1";
         CredentialRequestMessage msg = mock(CredentialRequestMessage.class);
         when(msg.getHolderPid()).thenReturn("holder1");
 
@@ -100,11 +99,11 @@ class IssuerControllerTest {
         when(req.getCredentialIds()).thenReturn(java.util.List.of("cred1"));
 
         when(issuerService.authorizeRequest(eq(token), eq("holder1"))).thenReturn(jwtClaimsSet);
-        doReturn(subject).when(jwtClaimsSet).getSubject();
-        when(issuerService.createCredentialRequest(msg, subject)).thenReturn(req);
+        when(issuerService.createCredentialRequest(msg, jwtClaimsSet)).thenReturn(req);
 
         ResponseEntity<?> response = issuerController.createCredentialRequest(authHeader, msg);
         assertEquals(201, response.getStatusCode().value());
+        verify(issuerService).createCredentialRequest(msg, jwtClaimsSet);
         assertNotNull(response.getHeaders().getFirst(HttpHeaders.LOCATION));
         assertTrue(response.getHeaders().getFirst(HttpHeaders.LOCATION).contains("/issuer/requests/issuer1"));
     }
@@ -143,12 +142,10 @@ class IssuerControllerTest {
     void createCredentialRequest_badRequest() {
         String token = "token";
         String authHeader = "Bearer " + token;
-        String subject = "subject1";
         CredentialRequestMessage msg = mock(CredentialRequestMessage.class);
         when(msg.getHolderPid()).thenReturn("holder1");
         when(issuerService.authorizeRequest(eq(token), eq("holder1"))).thenReturn(jwtClaimsSet);
-        doReturn(subject).when(jwtClaimsSet).getSubject();
-        doThrow(new IllegalArgumentException("bad req")).when(issuerService).createCredentialRequest(msg, subject);
+        doThrow(new IllegalArgumentException("bad req")).when(issuerService).createCredentialRequest(msg, jwtClaimsSet);
 
         ResponseEntity<?> response = issuerController.createCredentialRequest(authHeader, msg);
         assertEquals(400, response.getStatusCode().value());
@@ -160,12 +157,10 @@ class IssuerControllerTest {
     void createCredentialRequest_internalError() {
         String token = "token";
         String authHeader = "Bearer " + token;
-        String subject = "subject1";
         CredentialRequestMessage msg = mock(CredentialRequestMessage.class);
         when(msg.getHolderPid()).thenReturn("holder1");
         when(issuerService.authorizeRequest(eq(token), eq("holder1"))).thenReturn(jwtClaimsSet);
-        doReturn(subject).when(jwtClaimsSet).getSubject();
-        doThrow(new RuntimeException("fail")).when(issuerService).createCredentialRequest(msg, subject);
+        doThrow(new RuntimeException("fail")).when(issuerService).createCredentialRequest(msg, jwtClaimsSet);
 
         ResponseEntity<?> response = issuerController.createCredentialRequest(authHeader, msg);
         assertEquals(500, response.getStatusCode().value());

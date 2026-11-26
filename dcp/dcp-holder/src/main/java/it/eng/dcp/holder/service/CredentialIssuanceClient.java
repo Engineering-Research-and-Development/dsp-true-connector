@@ -5,6 +5,7 @@ import it.eng.dcp.common.participant.ParticipantContext;
 import it.eng.dcp.common.util.DcpTransportSecurity;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
+import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.*;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
@@ -43,6 +44,7 @@ public class CredentialIssuanceClient {
     private final SimpleOkHttpRestClient rest;
     private final SelfIssuedIdTokenService tokenService;
     private final ObjectMapper mapper = new ObjectMapper();
+    private final DidDocumentConfig config;
     private final DidResolverService didResolverService;
     private final DcpAuditEventPublisher auditPublisher;
 
@@ -55,10 +57,12 @@ public class CredentialIssuanceClient {
     @Autowired
     public CredentialIssuanceClient(SimpleOkHttpRestClient rest,
                                     @Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
+                                    DidDocumentConfig config,
                                     DidResolverService didResolverService,
                                     DcpAuditEventPublisher auditPublisher) {
         this.rest = rest;
         this.tokenService = tokenService;
+        this.config = config;
         this.didResolverService = didResolverService;
         this.auditPublisher = auditPublisher;
     }
@@ -253,9 +257,10 @@ public class CredentialIssuanceClient {
         // Create token for issuer audience if possible
         // Use the issuer DID as audience; tokenService may return null if not configured
         String audience = issuerDid;
+        String accessToken = tokenService.createAccessTokenWithScopes(audience, config);
         String token = null;
         try {
-            token = tokenService.createAndSignToken(audience, null, participant);
+            token = tokenService.createAndSignToken(audience, accessToken, participant);
         } catch (Exception e) {
             log.debug("No token could be created for issuer audience {}: {}", audience, e.getMessage());
         }
