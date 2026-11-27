@@ -256,13 +256,12 @@ public class CredentialIssuanceClient {
 
         // Create token for issuer audience if possible
         // Use the issuer DID as audience; tokenService may return null if not configured
-        String audience = issuerDid;
-        String accessToken = tokenService.createAccessTokenWithScopes(audience, config);
+        String accessToken = tokenService.createAccessTokenWithScopes(issuerDid, participant);
         String token = null;
         try {
-            token = tokenService.createAndSignToken(audience, accessToken, participant);
+            token = tokenService.createAndSignToken(issuerDid, accessToken, participant);
         } catch (Exception e) {
-            log.debug("No token could be created for issuer audience {}: {}", audience, e.getMessage());
+            log.debug("No token could be created for issuer audience {}: {}", issuerDid, e.getMessage());
         }
 
         try {

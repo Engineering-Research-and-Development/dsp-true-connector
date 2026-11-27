@@ -222,7 +222,7 @@ public class HolderService {
         }
 
         try {
-            tokenService.validateAccessToken(accessToken, issuerDid);
+            tokenService.validateAccessToken(accessToken, issuerDid, participant);
         } catch (SecurityException e) {
             throw credentialDeliveryRejected("Holder access token is invalid", issuerDid, e);
         }

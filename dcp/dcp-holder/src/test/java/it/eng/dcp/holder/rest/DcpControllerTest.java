@@ -129,7 +129,7 @@ class DcpControllerTest {
     @Test
     @DisplayName("A credential message without a Holder access token gets 401 before processing")
     void receiveCredentials_missingAccessToken_401() throws Exception {
-        when(holderService.authorizeIssuer("id-token"))
+        when(holderService.authorizeIssuer("id-token", participant))
                 .thenThrow(new SecurityException("Self-Issued ID Token carries no access token in its 'token' claim"));
 
         mockMvc.perform(post(CREDENTIALS_PATH)
@@ -144,7 +144,7 @@ class DcpControllerTest {
     @Test
     @DisplayName("A credential message with an invalid Holder access token gets 401 before processing")
     void receiveCredentials_invalidAccessToken_401() throws Exception {
-        when(holderService.authorizeIssuer("id-token"))
+        when(holderService.authorizeIssuer("id-token", participant))
                 .thenThrow(new SecurityException("Holder access token is invalid"));
 
         mockMvc.perform(post(CREDENTIALS_PATH)

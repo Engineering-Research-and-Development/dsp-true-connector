@@ -50,9 +50,6 @@ class CredentialIssuanceClientTest {
     private SelfIssuedIdTokenService tokenService;
 
     @Mock
-    private DidDocumentConfig config;
-
-    @Mock
     private ParticipantContext participant;
 
     @Mock
@@ -359,6 +356,8 @@ class CredentialIssuanceClientTest {
         when(didResolverService.fetchDidDocumentCached(eq("did:web:issuer.example.com")))
                 .thenReturn(didDocumentWith("IssuerService", "https://issuer.example.com"));
         when(tokenService.createAndSignToken(any(), any(), any())).thenReturn("mock-token");
+        when(tokenService.createAccessTokenWithScopes("did:web:issuer.example.com", participant))
+                .thenReturn("holder-access-token");
         when(restClient.executeCall(any(Request.class))).thenReturn(
                 new Response.Builder()
                         .request(new Request.Builder().url("https://issuer.example.com/credentials").build())
@@ -371,8 +370,8 @@ class CredentialIssuanceClientTest {
 
         assertEquals("https://issuer.example.com/requests/req123",
                 client.requestCredential(List.of("cred1"), participant));
-        verify(tokenService).createAccessTokenWithScopes("did:web:issuer.example.com", config);
-        verify(tokenService).createAndSignToken("did:web:issuer.example.com", "holder-access-token", config);
+        verify(tokenService).createAccessTokenWithScopes("did:web:issuer.example.com", participant);
+        verify(tokenService).createAndSignToken("did:web:issuer.example.com", "holder-access-token", participant);
 
         var typeCaptor = org.mockito.ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
@@ -384,7 +383,7 @@ class CredentialIssuanceClientTest {
     void requestCredential_Throws_On400() throws Exception {
         when(didResolverService.fetchDidDocumentCached(eq("did:web:issuer.example.com")))
                 .thenReturn(didDocumentWith("IssuerService", "https://issuer.example.com"));
-        when(tokenService.createAccessTokenWithScopes("did:web:issuer.example.com", config))
+        when(tokenService.createAccessTokenWithScopes("did:web:issuer.example.com", participant))
                 .thenReturn("holder-access-token");
         when(tokenService.createAndSignToken(any(), any(), any())).thenReturn("mock-token");
         when(restClient.executeCall(any(Request.class))).thenReturn(

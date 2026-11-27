@@ -299,14 +299,14 @@ class HolderServiceTest {
                 .build();
 
         when(tokenService.validateToken(bearerToken, participant)).thenReturn(claims);
-        when(tokenService.validateAccessToken("holder-access-token", issuerDid)).thenReturn(accessTokenClaims);
+        when(tokenService.validateAccessToken("holder-access-token", issuerDid, participant)).thenReturn(accessTokenClaims);
 
         // Act
         String result = holderService.authorizeIssuer(bearerToken, participant);
 
         // Assert
         assertEquals(issuerDid, result);
-        verify(tokenService).validateAccessToken("holder-access-token", issuerDid);
+        verify(tokenService).validateAccessToken("holder-access-token", issuerDid, participant);
         verify(tokenService).validateToken(bearerToken, participant);
 
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
@@ -318,11 +318,11 @@ class HolderServiceTest {
     void authorizeIssuer_missingAccessToken_throwsSecurityException() {
         String issuerDid = "did:example:issuer123";
         JWTClaimsSet claims = new JWTClaimsSet.Builder().issuer(issuerDid).build();
-        when(tokenService.validateToken("valid-token")).thenReturn(claims);
+        when(tokenService.validateToken("valid-token", participant)).thenReturn(claims);
 
-        assertThrows(SecurityException.class, () -> holderService.authorizeIssuer("valid-token"));
+        assertThrows(SecurityException.class, () -> holderService.authorizeIssuer("valid-token", participant));
 
-        verify(tokenService, never()).validateAccessToken(any(), any());
+        verify(tokenService, never()).validateAccessToken(any(), any(), eq(participant));
     }
 
     @Test
@@ -332,13 +332,13 @@ class HolderServiceTest {
                 .issuer(issuerDid)
                 .claim("token", "invalid-holder-access-token")
                 .build();
-        when(tokenService.validateToken("valid-token")).thenReturn(claims);
-        when(tokenService.validateAccessToken("invalid-holder-access-token", issuerDid))
+        when(tokenService.validateToken("valid-token", participant)).thenReturn(claims);
+        when(tokenService.validateAccessToken("invalid-holder-access-token", issuerDid, participant))
                 .thenThrow(new SecurityException("Access token audience does not match"));
 
-        assertThrows(SecurityException.class, () -> holderService.authorizeIssuer("valid-token"));
+        assertThrows(SecurityException.class, () -> holderService.authorizeIssuer("valid-token", participant));
 
-        verify(tokenService).validateAccessToken("invalid-holder-access-token", issuerDid);
+        verify(tokenService).validateAccessToken("invalid-holder-access-token", issuerDid, participant);
     }
 
     @Test

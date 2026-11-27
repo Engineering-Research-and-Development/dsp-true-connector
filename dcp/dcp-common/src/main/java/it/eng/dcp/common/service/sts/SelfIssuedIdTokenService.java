@@ -431,7 +431,7 @@ public class SelfIssuedIdTokenService {
      * <p>The access token is carried in the {@code token} claim of a Self-Issued ID Token. The Verifier
      * places it, unchanged, in the {@code token} claim of its own Self-Issued ID Token when it queries the
      * Credential Service, which then validates it with
-     * {@link #validateAccessToken(String, String)}. The format is decided in ADR D-TEC-014:
+     * {@link #validateAccessToken(String, String, ParticipantContext)}. The format is decided in ADR D-TEC-014:
      * <ul>
      *   <li>JWS header {@code typ} = {@value #ACCESS_TOKEN_TYPE} (RFC 9068), so it cannot be confused with a
      *       Self-Issued ID Token</li>
