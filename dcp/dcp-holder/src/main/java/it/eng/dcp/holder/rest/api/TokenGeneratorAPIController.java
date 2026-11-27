@@ -1,7 +1,9 @@
 package it.eng.dcp.holder.rest.api;
 
-import it.eng.dcp.common.config.DidDocumentConfig;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.RequestParticipantContext;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -10,6 +12,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.Arrays;
 import java.util.Map;
 
@@ -28,24 +31,28 @@ import java.util.Map;
 public class TokenGeneratorAPIController {
 
     private final SelfIssuedIdTokenService tokenService;
-    private final DidDocumentConfig config;
+    private final RequestParticipantContext requestParticipantContext;
 
     @Autowired
     public TokenGeneratorAPIController(
             @Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
-            DidDocumentConfig config) {
+            RequestParticipantContext requestParticipantContext) {
         this.tokenService = tokenService;
-        this.config = config;
+        this.requestParticipantContext = requestParticipantContext;
     }
 
     /**
      * Generate a valid Self-Issued ID Token for testing purposes.
      *
      * @param request Request body containing audienceDid and optional accessToken
+     * @param httpRequest the inbound request
+     * @param principal the authenticated administration principal
      * @return JSON with the generated token
      */
     @PostMapping("/generate")
-    public ResponseEntity<?> generateToken(@RequestBody Map<String, String> request) {
+    public ResponseEntity<?> generateToken(@RequestBody Map<String, String> request,
+                                           HttpServletRequest httpRequest, Principal principal) {
+        ParticipantContext participant = requestParticipantContext.requireForAdmin(httpRequest, principal);
         log.info("Received request to generate Self-Issued ID Token");
         String audienceDid = request.get("audienceDid");
         String accessToken = request.get("accessToken");
@@ -55,7 +62,7 @@ public class TokenGeneratorAPIController {
         }
 
         try {
-            String token = tokenService.createAndSignToken(audienceDid, accessToken, config);
+            String token = tokenService.createAndSignToken(audienceDid, accessToken, participant);
             return ResponseEntity.ok(Map.of(
                 "token", token,
                 "authorization", "Bearer " + token,
@@ -76,6 +83,8 @@ public class TokenGeneratorAPIController {
      * @param clientSecret Client secret
      * @param audience Target audience DID
      * @param bearerAccessScope Requested scopes, separated by spaces or commas
+     * @param httpRequest the inbound request
+     * @param principal the authenticated administration principal
      * @return JSON with the generated token
      */
     @PostMapping(value = "/generate/token", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
@@ -84,7 +93,9 @@ public class TokenGeneratorAPIController {
             @RequestParam(value = "client_id", required = false) String clientId,
             @RequestParam(value = "client_secret", required = false) String clientSecret,
             @RequestParam(value = "audience", required = false) String audience,
-            @RequestParam(value = "bearer_access_scope", required = false) String bearerAccessScope) {
+            @RequestParam(value = "bearer_access_scope", required = false) String bearerAccessScope,
+            HttpServletRequest httpRequest, Principal principal) {
+        ParticipantContext participant = requestParticipantContext.requireForAdmin(httpRequest, principal);
 
         log.info("Received form-urlencoded request to generate Self-Issued ID Token");
         log.info("grant_type: {}, client_id: {}, audience: {}, bearer_access_scope: {}",
@@ -97,7 +108,7 @@ public class TokenGeneratorAPIController {
             String[] scopes = bearerAccessScope == null ? new String[0]
                     : Arrays.stream(bearerAccessScope.split("[\\s,]+")).filter(scope -> !scope.isBlank())
                             .toArray(String[]::new);
-            String token = tokenService.createStsCompatibleToken(audience, config, scopes);
+            String token = tokenService.createStsCompatibleToken(audience, participant, scopes);
             return ResponseEntity.ok(Map.of(
                 "access_token", token,
                 "token_type", "Bearer",

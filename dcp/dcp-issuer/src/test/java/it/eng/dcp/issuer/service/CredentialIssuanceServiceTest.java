@@ -6,12 +6,10 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialStatus;
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig.CredentialConfig;
 import it.eng.dcp.issuer.config.CredentialMetadataConfigLoader;
@@ -45,10 +43,7 @@ class CredentialIssuanceServiceTest {
     private IssuerProperties issuerProperties;
 
     @Mock
-    private KeyService keyService;
-
-    @Mock
-    private BaseDidDocumentConfiguration didDocumentConfig;
+    private IssuerIdentity issuerIdentity;
 
     @Mock
     private StatusListService statusListService;
@@ -111,14 +106,15 @@ class CredentialIssuanceServiceTest {
 
         // Setup mocks BEFORE creating the service
         when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
-        lenient().when(keyService.getSigningJwk(any())).thenReturn(testSigningKey);
+        lenient().when(issuerIdentity.signingKey()).thenReturn(testSigningKey);
+        lenient().when(issuerIdentity.did()).thenReturn("did:web:issuer.example.com");
         // Always return a dummy status list entry for any call
         lenient().when(statusListService.allocateStatusEntry(any(), any(), any()))
                 .thenReturn(new StatusListService.StatusListEntry("dummy-status-list-id", 0));
 
         // Remove default VC20 profile setup here. Each test must call setupCredentialConfigs explicitly.
 
-        issuanceService = new CredentialIssuanceService(issuerProperties, keyService, didDocumentConfig, statusListService, credentialMetadataConfigLoader);
+        issuanceService = new CredentialIssuanceService(issuerProperties, issuerIdentity, statusListService, credentialMetadataConfigLoader);
     }
 
     @Test
@@ -382,7 +378,7 @@ class CredentialIssuanceServiceTest {
     @Test
     void generateCredentials_signingFailure_throwsException() {
         assertThrows(RuntimeException.class, () -> {
-            when(keyService.getSigningJwk(any())).thenThrow(new JOSEException("Signing failed"));
+            when(issuerIdentity.signingKey()).thenThrow(new RuntimeException("Signing failed"));
             issuanceService.generateCredentials(testRequest);
         });
     }
@@ -390,7 +386,7 @@ class CredentialIssuanceServiceTest {
     @Test
     void generateCredentials_allCredentialsFail_throwsException() {
         assertThrows(IllegalStateException.class, () -> {
-            when(keyService.getSigningJwk(any())).thenThrow(new RuntimeException("Key generation failed"));
+            when(issuerIdentity.signingKey()).thenThrow(new RuntimeException("Key generation failed"));
             issuanceService.generateCredentials(testRequest);
         });
     }
@@ -407,7 +403,7 @@ class CredentialIssuanceServiceTest {
                 .createdAt(Instant.now())
                 .build();
         // The first credential is signed, the second one fails
-        when(keyService.getSigningJwk(any())).thenReturn(testSigningKey).thenThrow(new RuntimeException("sign failed"));
+        when(issuerIdentity.signingKey()).thenReturn(testSigningKey).thenThrow(new RuntimeException("sign failed"));
 
         CredentialIssuanceException ex = assertThrows(CredentialIssuanceException.class,
                 () -> issuanceService.generateCredentials(mixed));
@@ -423,7 +419,7 @@ class CredentialIssuanceServiceTest {
 
         assertNotNull(credentials);
         assertEquals(1, credentials.size());
-        verify(keyService, atLeastOnce()).getSigningJwk(any());
+        verify(issuerIdentity, atLeastOnce()).signingKey();
     }
 
     // ============================================

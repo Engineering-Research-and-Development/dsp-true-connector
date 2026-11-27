@@ -1,17 +1,14 @@
 package it.eng.dcp.common.service.did;
 
-import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.ServiceEntry;
 import it.eng.dcp.common.model.VerificationMethod;
-import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantKeyProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.security.KeyPair;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * Service for providing DID documents for both holder and issuer.
@@ -23,66 +20,48 @@ public class DidDocumentService {
     /** DID service type advertised by a Credential Issuer (DCP §6.2). */
     static final String ISSUER_SERVICE_TYPE = "IssuerService";
 
-    private final KeyService keyService;
+    private final ParticipantKeyProvider keyProvider;
 
     /**
      * Constructor for DidDocumentService.
      *
-     * @param keyService Service for key operations
+     * @param keyProvider provider of the keys the DID document publishes
      */
     @Autowired
-    public DidDocumentService(KeyService keyService) {
-        this.keyService = keyService;
+    public DidDocumentService(ParticipantKeyProvider keyProvider) {
+        this.keyProvider = keyProvider;
     }
 
     /**
-     * Provide a DID document based on the provided configuration.
+     * Provide the DID document of a participant. The verification methods are the participant's published
+     * keys: the active key plus the keys retired within the grace period.
      *
-     * @param config Configuration for the DID document
+     * @param participant the participant the DID document belongs to
      * @return DidDocument containing service endpoints and verification methods
      */
-    public DidDocument provideDidDocument(DidDocumentConfig config) {
-        // Load key pair with active alias ONCE (handles metadata and caching)
-        KeyPair keyPair = keyService.loadKeyPairWithActiveAlias(config);
+    public DidDocument provideDidDocument(ParticipantContext participant) {
+        List<ServiceEntry> services = participant.serviceEntries();
 
-        String baseUrl = config.getEffectiveBaseUrl();
-
-        // Build service entries
-        List<ServiceEntry> services = config.getServiceEntries().stream()
-                .map(serviceConfig -> new ServiceEntry(
-                        serviceConfig.getId(),
-                        serviceConfig.getType(),
-                        serviceConfig.getFullEndpoint(baseUrl)
-                ))
-                .collect(Collectors.toList());
-
-        // Compute kid and JWK using the loaded keyPair (no reloading!)
-        String kid = keyService.getKidFromPublicKey(config, keyPair);
-        Map<String, Object> jwk = keyService.convertPublicKeyToJWK(config, keyPair);
-
-        String verificationMethodId = config.getDid() + "#" + kid;
-
-        // Build verification methods
-        List<VerificationMethod> verificationMethods = List.of(
-                VerificationMethod.Builder.newInstance()
-                        .id(verificationMethodId)
+        List<VerificationMethod> verificationMethods = keyProvider.publishedKeys(participant).stream()
+                .map(key -> VerificationMethod.Builder.newInstance()
+                        .id(participant.did() + "#" + key.kid())
                         .type("JsonWebKey2020")
-                        .controller(config.getEffectiveController())
-                        .publicKeyJwk(jwk)
-                        .build()
-        );
+                        .controller(participant.did())
+                        .publicKeyJwk(key.jwk())
+                        .build())
+                .toList();
 
         // DCP §4.3.3 verifies Self-Issued ID Tokens with a capabilityInvocation key, and VP proofs
         // with an authentication key. Only an Issuer signs Verifiable Credentials (assertionMethod).
-        List<String> verificationMethodRef = List.of(verificationMethodId);
+        List<String> verificationMethodRefs = verificationMethods.stream().map(VerificationMethod::getId).toList();
         DidDocument.Builder builder = DidDocument.Builder.newInstance()
-                .id(config.getDid())
+                .id(participant.did())
                 .service(services)
                 .verificationMethod(verificationMethods)
-                .authentication(verificationMethodRef)
-                .capabilityInvocation(verificationMethodRef);
-        if (advertisesIssuerService(config)) {
-            builder.assertionMethod(verificationMethodRef);
+                .authentication(verificationMethodRefs)
+                .capabilityInvocation(verificationMethodRefs);
+        if (advertisesIssuerService(participant)) {
+            builder.assertionMethod(verificationMethodRefs);
         }
         return builder.build();
     }
@@ -91,22 +70,22 @@ public class DidDocumentService {
      * Tells whether the DID document belongs to a Credential Issuer, which is the case when it
      * advertises an {@code IssuerService} endpoint.
      *
-     * @param config Configuration for the DID document
+     * @param participant the participant the DID document belongs to
      * @return true if one of the service entries has type {@code IssuerService}
      */
-    private boolean advertisesIssuerService(DidDocumentConfig config) {
-        return config.getServiceEntries() != null && config.getServiceEntries().stream()
-                .anyMatch(entry -> ISSUER_SERVICE_TYPE.equals(entry.getType()));
+    private boolean advertisesIssuerService(ParticipantContext participant) {
+        return participant.serviceEntries().stream()
+                .anyMatch(entry -> ISSUER_SERVICE_TYPE.equals(entry.type()));
     }
 
     /**
      * Get the DID document as a JSON string based on the provided configuration.
      *
-     * @param config Configuration for the DID document
+     * @param participant the participant the DID document belongs to
      * @return JSON string representation of the DID document
      */
-    public String getDidDocument(DidDocumentConfig config) {
-        DidDocument didDocument = provideDidDocument(config);
+    public String getDidDocument(ParticipantContext participant) {
+        DidDocument didDocument = provideDidDocument(participant);
         try {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             return mapper.writeValueAsString(didDocument);

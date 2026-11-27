@@ -1,5 +1,8 @@
 package it.eng.connector.configuration;
 
+import it.eng.dcp.common.config.DcpProperties;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantContextProvider;
 import it.eng.dcp.verifier.service.VerifierService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +38,8 @@ import java.util.List;
 public class DcpVerifierAuthenticationProvider implements AuthenticationProvider {
 
     private final VerifierService verifierService;
+    private final ParticipantContextProvider participantContextProvider;
+    private final DcpProperties dcpProperties;
 
     @Value("${dcp.vp.enabled:false}")
     private boolean vcVpEnabled;
@@ -43,9 +48,15 @@ public class DcpVerifierAuthenticationProvider implements AuthenticationProvider
      * Constructs a new DcpVerifierAuthenticationProvider.
      *
      * @param verifierService The VerifierService for validating credentials
+     * @param participantContextProvider Provider of the participant the connector acts as
+     * @param dcpProperties DCP properties, naming the configured participant
      */
-    public DcpVerifierAuthenticationProvider(VerifierService verifierService) {
+    public DcpVerifierAuthenticationProvider(VerifierService verifierService,
+                                             ParticipantContextProvider participantContextProvider,
+                                             DcpProperties dcpProperties) {
         this.verifierService = verifierService;
+        this.participantContextProvider = participantContextProvider;
+        this.dcpProperties = dcpProperties;
     }
 
     @Override
@@ -62,10 +73,15 @@ public class DcpVerifierAuthenticationProvider implements AuthenticationProvider
         try {
             log.debug("Attempting DCP VP authentication using VerifierService");
 
+            // The connector acts as the single configured participant until tenants map to participants
+            ParticipantContext participant = participantContextProvider
+                    .findEnabled(dcpProperties.getParticipant().getId())
+                    .orElseThrow(() -> new IllegalStateException("No enabled DCP participant is configured"));
+
             // Call VerifierService.validateAndQueryHolderPresentations
             // This method will throw SecurityException if validation fails
             VerifierService.PresentationFlowResult result =
-                verifierService.validateAndQueryHolderPresentations(selfIssuedIdToken);
+                verifierService.validateAndQueryHolderPresentations(selfIssuedIdToken, participant);
 
             // If we get here, validation succeeded
             log.info("✓ DCP VP Authentication SUCCESS");

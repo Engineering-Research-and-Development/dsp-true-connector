@@ -21,6 +21,7 @@ All properties share the `dcp.*` prefix (bound to `DcpProperties`), with a few s
 12. [SSL / TLS (optional)](#12-ssl--tls-optional)
 13. [Complete Example — Holder + Verifier](#13-complete-example--holder--verifier)
 14. [Host Application Note — `dcp.did.cache.ttl`](#14-host-application-note--dcpdidcachettl)
+15. [Participant Context and Base Paths](#15-participant-context-and-base-paths)
 
 ---
 
@@ -365,6 +366,26 @@ spring.data.mongodb.authentication-database=admin
 dcp.did.cache.ttl=600
 ```
 
+---
 
+## 15. Participant Context and Base Paths
 
+With only the properties above a DCP node serves one participant, `default`, with the DID, keys and endpoints configured there. These optional properties select how a host with several participants identifies them. See the participant context section of the `dcp-common` README.
 
+| Property | Required | Default | Description |
+|---|---|---|---|
+| `dcp.participant.resolver` | No | `fixed` | `fixed`: every request addresses the single participant. `path`: the participant is the path segment before the DCP base path (`/<participantId>/dcp/...`, `/<participantId>/issuer/...`); an unscoped request resolves to no participant. |
+| `dcp.participant.id` | No | `default` | ID of the single participant built from the `dcp.*` properties. |
+| `dcp.participant.reserved-ids` | No | `internal`, `api`, `actuator`, `.well-known`, `connector`, `catalog`, `negotiations`, `transfers` | IDs the path resolver never resolves, because they collide with zone prefixes. The configured base paths are always reserved as well. |
+| `dcp.base-path.dcp` | No | `dcp` | Base path of the Holder / Credential Service endpoints. |
+| `dcp.base-path.issuer` | No | `issuer` | Base path of the Issuer endpoints, including the status lists. |
+| `dcp.key-grace-period` | No | `PT24H` | How long the public key of a rotated signing key stays published in the DID document, so tokens signed just before the rotation still verify. |
+
+An unknown or disabled participant gets `404` before any token validation. A host that defines its own `ParticipantContextProvider`, `ParticipantContextResolver`, `ParticipantKeyProvider` or `ParticipantAdminAuthorization` bean replaces the default of that type.
+
+```properties
+dcp.participant.resolver=fixed
+dcp.base-path.dcp=dcp
+dcp.base-path.issuer=issuer
+dcp.key-grace-period=PT24H
+```

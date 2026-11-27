@@ -4,10 +4,12 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
-import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantKeyProvider;
+import it.eng.dcp.common.participant.ParticipantState;
+import it.eng.dcp.common.participant.SigningKeyReference;
 import it.eng.dcp.holder.model.VerifiableCredential;
 import it.eng.dcp.holder.repository.VerifiableCredentialRepository;
 import it.eng.dcp.holder.service.BasicVerifiablePresentationSigner;
@@ -18,6 +20,7 @@ import org.mockito.Mockito;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -29,26 +32,27 @@ class PresentationServiceHomogeneityTest {
     private static final Set<String> HOLDER_DIDS = Set.of(HOLDER_DID);
 
     private VerifiableCredentialRepository repo;
-    private KeyService keyService;
+    private ParticipantKeyProvider keyProvider;
     private BasicVerifiablePresentationSigner signer;
     private PresentationService svc;
-    private DidDocumentConfig config;
+    private ParticipantContext participant;
 
     @BeforeEach
     void setup() throws Exception {
         repo = Mockito.mock(VerifiableCredentialRepository.class);
-        keyService = Mockito.mock(KeyService.class);
-        config = Mockito.mock(DidDocumentConfig.class);
+        keyProvider = Mockito.mock(ParticipantKeyProvider.class);
+        participant = new ParticipantContext("default", HOLDER_DID, new SigningKeyReference("eckey.p12", "alias"),
+                List.of(), Map.of(), null, ParticipantState.ENABLED);
 
         // Generate a test EC key for signing
         ECKey testKey = new ECKeyGenerator(Curve.P_256)
                 .keyID("test-key-id")
                 .generate();
 
-        // Mock KeyService to return test key
-        when(keyService.getSigningJwk(config)).thenReturn(testKey);
+        // Mock key provider to return test key
+        when(keyProvider.activeSigningKey(participant)).thenReturn(testKey);
 
-        signer = new BasicVerifiablePresentationSigner(keyService, config);
+        signer = new BasicVerifiablePresentationSigner(keyProvider);
         svc = new PresentationService(repo, signer);
     }
 
@@ -81,7 +85,7 @@ class PresentationServiceHomogeneityTest {
                 .scope(List.of("typeA", "typeB"))
                 .build();
 
-        var resp = svc.createPresentation(query, HOLDER_DID, claims);
+        var resp = svc.createPresentation(query, HOLDER_DID, claims, participant);
         assertNotNull(resp);
         assertTrue(resp.getPresentation().size() >= 2, "Should produce separate presentations for different profiles");
     }
@@ -115,7 +119,7 @@ class PresentationServiceHomogeneityTest {
                 .scope(List.of("typeA"))
                 .build();
 
-        var resp = svc.createPresentation(query, HOLDER_DID, claims);
+        var resp = svc.createPresentation(query, HOLDER_DID, claims, participant);
         assertNotNull(resp);
         assertEquals(1, resp.getPresentation().size(), "Single profile should yield one presentation grouping both creds");
     }

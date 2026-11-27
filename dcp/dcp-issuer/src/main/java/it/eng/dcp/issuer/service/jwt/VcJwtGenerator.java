@@ -1,5 +1,6 @@
 package it.eng.dcp.issuer.service.jwt;
 
+
 import java.util.Map;
 
 /**
@@ -28,7 +29,8 @@ public interface VcJwtGenerator {
      * @param statusListIndex The status list index (nullable for non-status-list profiles)
      * @return A properly signed JWT VC string
      */
-    default String generateJwt(String holderDid, String credentialType, Map<String, String> claims, String statusListId, Integer statusListIndex) {
+    default String generateJwt(String holderDid, String credentialType,
+                               Map<String, String> claims, String statusListId, Integer statusListIndex) {
         return generateJwt(holderDid, credentialType, claims);
     }
 }

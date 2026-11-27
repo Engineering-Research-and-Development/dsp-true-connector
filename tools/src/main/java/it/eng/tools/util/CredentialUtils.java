@@ -1,7 +1,9 @@
 package it.eng.tools.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
+import it.eng.dcp.common.config.DcpProperties;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantContextProvider;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import it.eng.tools.auth.ConnectorCredentialProvider;
 import it.eng.tools.auth.M2mTokenCache;
@@ -49,7 +51,8 @@ public class CredentialUtils {
 
 	// DCP services for self-issued ID token generation
 	private final SelfIssuedIdTokenService selfIssuedIdTokenService;
-	private final BaseDidDocumentConfiguration didDocumentConfig;
+	private final ParticipantContextProvider participantContextProvider;
+	private final DcpProperties dcpProperties;
 
 	private final M2mTokenCache m2mTokenCache;
 	private final ObjectProvider<ConnectorCredentialProvider> connectorCredentialProvider;
@@ -87,7 +90,8 @@ public class CredentialUtils {
 	 *
 	 * @param okHttpClient                  HTTP client used to fetch DID documents (DCP)
 	 * @param selfIssuedIdTokenService      DCP service that issues self-issued ID tokens
-	 * @param didDocumentConfig             DCP DID document configuration of this connector
+	 * @param participantContextProvider    provider of the DCP participant this connector acts as
+	 * @param dcpProperties                 DCP properties, naming the configured participant
 	 * @param m2mTokenCache                 the cache holding INTERNAL-mode M2M JWTs
 	 * @param connectorCredentialProvider   optional issuer of the locally minted connector-to-connector
 	 *                                      token in INTERNAL mode; empty in KEYCLOAK/DISABLED mode
@@ -96,13 +100,15 @@ public class CredentialUtils {
 	@Autowired
 	public CredentialUtils(OkHttpClient okHttpClient,
 			SelfIssuedIdTokenService selfIssuedIdTokenService,
-			BaseDidDocumentConfiguration didDocumentConfig,
+			ParticipantContextProvider participantContextProvider,
+			DcpProperties dcpProperties,
 			M2mTokenCache m2mTokenCache,
 			ObjectProvider<ConnectorCredentialProvider> connectorCredentialProvider,
 			ObjectProvider<KeycloakAuthenticationService> keycloakAuthenticationService) {
 		this.okHttpClient = okHttpClient;
 		this.selfIssuedIdTokenService = selfIssuedIdTokenService;
-		this.didDocumentConfig = didDocumentConfig;
+		this.participantContextProvider = participantContextProvider;
+		this.dcpProperties = dcpProperties;
 		this.m2mTokenCache = m2mTokenCache;
 		this.connectorCredentialProvider = connectorCredentialProvider;
 		this.keycloakAuthenticationService = keycloakAuthenticationService;
@@ -167,7 +173,7 @@ public class CredentialUtils {
 	 * @throws M2mTokenUnavailableException in {@code KEYCLOAK} mode, when the fallback token could not be obtained
 	 */
 	public String getConnectorCredentials(String targetUrl) {
-		if (vpEnabled && selfIssuedIdTokenService != null && didDocumentConfig != null) {
+		if (vpEnabled && selfIssuedIdTokenService != null && participantContextProvider != null) {
 			try {
 				if (targetUrl == null || targetUrl.isBlank()) {
 					log.warn("No target URL provided for VP JWT generation - falling back to provider credentials");
@@ -180,12 +186,15 @@ public class CredentialUtils {
 					return getConnectorCredentials();
 				}
 
+				ParticipantContext participant = participantContextProvider
+						.findEnabled(dcpProperties.getParticipant().getId())
+						.orElseThrow(() -> new IllegalStateException("No enabled DCP participant is configured"));
 				String[] scopes = parseScopes(vpScope);
 
 				log.debug("Generating VP JWT token for audience DID: {}", audienceDid);
 				String token = selfIssuedIdTokenService.createStsCompatibleToken(
 						audienceDid,
-						didDocumentConfig.getDidDocumentConfig(),
+						participant,
 						scopes
 				);
 

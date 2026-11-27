@@ -8,10 +8,9 @@ import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.issuer.model.StatusList;
+import it.eng.dcp.issuer.service.IssuerIdentity;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
@@ -56,18 +55,15 @@ public class StatusListCredentialGenerator {
     private static final String MULTIBASE_BASE64URL_PREFIX = "u";
     private static final String SUBJECT_FRAGMENT = "#list";
 
-    private final KeyService keyService;
-    private final BaseDidDocumentConfiguration didDocumentConfig;
+    private final IssuerIdentity issuerIdentity;
 
     /**
      * Creates the generator.
      *
-     * @param keyService service that provides the Issuer's signing key
-     * @param didDocumentConfig the Issuer's DID document configuration
+     * @param issuerIdentity the single Issuer identity, which holds its signing key
      */
-    public StatusListCredentialGenerator(KeyService keyService, BaseDidDocumentConfiguration didDocumentConfig) {
-        this.keyService = keyService;
-        this.didDocumentConfig = didDocumentConfig;
+    public StatusListCredentialGenerator(IssuerIdentity issuerIdentity) {
+        this.issuerIdentity = issuerIdentity;
     }
 
     /**
@@ -79,7 +75,7 @@ public class StatusListCredentialGenerator {
      */
     public String generate(StatusList statusList) {
         Objects.requireNonNull(statusList, "statusList");
-        ECKey signingKey = currentSigningKey();
+        ECKey signingKey = issuerIdentity.signingKey();
         Instant now = Instant.now();
         boolean vc20 = statusList.getProfile() == ProfileId.VC20_BSSL_JWT;
 
@@ -138,7 +134,7 @@ public class StatusListCredentialGenerator {
         }
         try {
             String kid = SignedJWT.parse(signedCredential).getHeader().getKeyID();
-            return Objects.equals(kid, currentSigningKey().getKeyID());
+            return Objects.equals(kid, issuerIdentity.signingKey().getKeyID());
         } catch (ParseException e) {
             return false;
         }
@@ -164,10 +160,6 @@ public class StatusListCredentialGenerator {
     static String encodeList(byte[] bitstring, ProfileId profile) {
         String base64url = Base64.getUrlEncoder().withoutPadding().encodeToString(gzip(bitstring));
         return profile == ProfileId.VC20_BSSL_JWT ? MULTIBASE_BASE64URL_PREFIX + base64url : base64url;
-    }
-
-    private ECKey currentSigningKey() {
-        return keyService.getSigningJwk(didDocumentConfig.getDidDocumentConfig());
     }
 
     private static byte[] gzip(byte[] data) {

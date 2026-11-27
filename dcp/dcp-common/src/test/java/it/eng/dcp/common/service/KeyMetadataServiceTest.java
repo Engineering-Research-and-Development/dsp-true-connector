@@ -111,4 +111,20 @@ class KeyMetadataServiceTest {
         Optional<KeyMetadata> result = service.getKeyMetadataByAlias("aliasY");
         assertFalse(result.isPresent());
     }
+
+    @Test
+    @DisplayName("getRecentlyRetiredKeys returns only keys archived within the grace period, most recent first")
+    void getRecentlyRetiredKeys_filtersByGracePeriod() {
+        KeyMetadata older = KeyMetadata.Builder.newInstance().alias("older").active(false).archived(true)
+                .archivedAt(Instant.now().minusSeconds(600)).build();
+        KeyMetadata newer = KeyMetadata.Builder.newInstance().alias("newer").active(false).archived(true)
+                .archivedAt(Instant.now().minusSeconds(60)).build();
+        KeyMetadata expired = KeyMetadata.Builder.newInstance().alias("expired").active(false).archived(true)
+                .archivedAt(Instant.now().minusSeconds(7200)).build();
+        when(repository.findByArchivedTrue()).thenReturn(List.of(older, expired, newer));
+
+        List<KeyMetadata> result = service.getRecentlyRetiredKeys(java.time.Duration.ofHours(1));
+
+        assertEquals(List.of("newer", "older"), result.stream().map(KeyMetadata::getAlias).toList());
+    }
 }

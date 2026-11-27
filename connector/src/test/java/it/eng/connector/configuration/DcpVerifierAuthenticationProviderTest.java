@@ -11,7 +11,11 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
-import it.eng.dcp.common.config.DidDocumentConfig;
+import it.eng.dcp.common.config.DcpProperties;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantContextProvider;
+import it.eng.dcp.common.participant.ParticipantState;
+import it.eng.dcp.common.participant.SigningKeyReference;
 import it.eng.dcp.common.service.IssuerTrustService;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.HttpDidResolverService;
@@ -29,9 +33,12 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
@@ -49,11 +56,19 @@ class DcpVerifierAuthenticationProviderTest {
     private static final String PRESENTER_DID = "did:web:localhost:8080:presenter";
     private static final String VICTIM_DID = "did:web:localhost:8080:victim";
 
+    @Mock
+    private ParticipantContextProvider participantContextProvider;
+
+    private final ParticipantContext participant = new ParticipantContext(ParticipantContext.DEFAULT_ID, VERIFIER_DID,
+            new SigningKeyReference("eckey.p12", "alias"), List.of(), Map.of(), null, ParticipantState.ENABLED);
+
     private DcpVerifierAuthenticationProvider provider;
 
     @BeforeEach
     void setUp() {
-        provider = new DcpVerifierAuthenticationProvider(verifierService);
+        lenient().when(participantContextProvider.findEnabled(ParticipantContext.DEFAULT_ID))
+                .thenReturn(Optional.of(participant));
+        provider = new DcpVerifierAuthenticationProvider(verifierService, participantContextProvider, new DcpProperties());
     }
 
     @Test
@@ -68,7 +83,7 @@ class DcpVerifierAuthenticationProviderTest {
 
         // Then: Returns null to allow fallback
         assertNull(result, "Should return null when disabled");
-        verify(verifierService, never()).validateAndQueryHolderPresentations(anyString());
+        verify(verifierService, never()).validateAndQueryHolderPresentations(anyString(), any());
     }
 
     @Test
@@ -82,7 +97,7 @@ class DcpVerifierAuthenticationProviderTest {
         when(mockResult.getHolderDid()).thenReturn("did:example:holder123");
         when(mockResult.getScopes()).thenReturn(List.of("org.eclipse.edc.vc.type:MembershipCredential:read"));
         when(mockResult.getValidatedPresentations()).thenReturn(List.of());
-        when(verifierService.validateAndQueryHolderPresentations("valid-token")).thenReturn(mockResult);
+        when(verifierService.validateAndQueryHolderPresentations("valid-token", participant)).thenReturn(mockResult);
 
         // When: Provider authenticates
         Authentication result = provider.authenticate(authRequest);
@@ -96,7 +111,7 @@ class DcpVerifierAuthenticationProviderTest {
                         .anyMatch(a -> a.getAuthority().equals("ROLE_CONNECTOR")),
                 "Should have ROLE_CONNECTOR authority");
 
-        verify(verifierService, times(1)).validateAndQueryHolderPresentations("valid-token");
+        verify(verifierService, times(1)).validateAndQueryHolderPresentations("valid-token", participant);
     }
 
     @Test
@@ -108,9 +123,10 @@ class DcpVerifierAuthenticationProviderTest {
         HttpDidResolverService didResolver = mock(HttpDidResolverService.class);
         SimpleOkHttpRestClient httpClient = mock(SimpleOkHttpRestClient.class);
         VerifierService realVerifier = new VerifierService(tokenService, didResolver, httpClient,
-                new ObjectMapper(), mock(DidDocumentConfig.class), mock(IssuerTrustService.class),
+                new ObjectMapper(), mock(IssuerTrustService.class),
                 mock(DcpAuditEventPublisher.class));
-        DcpVerifierAuthenticationProvider realProvider = new DcpVerifierAuthenticationProvider(realVerifier);
+        DcpVerifierAuthenticationProvider realProvider = new DcpVerifierAuthenticationProvider(realVerifier, participantContextProvider,
+                new DcpProperties());
         ReflectionTestUtils.setField(realProvider, "vcVpEnabled", true);
 
         ECKey presenterKey = new ECKeyGenerator(Curve.P_256).keyID("presenter-key").generate();
@@ -130,7 +146,7 @@ class DcpVerifierAuthenticationProviderTest {
                 .jwtID(UUID.randomUUID().toString())
                 .claim("token", victimAccessToken)
                 .build(), presenterKey);
-        when(tokenService.validateToken(wrappingToken)).thenReturn(SignedJWT.parse(wrappingToken).getJWTClaimsSet());
+        when(tokenService.validateToken(wrappingToken, participant)).thenReturn(SignedJWT.parse(wrappingToken).getJWTClaimsSet());
 
         // When
         Authentication result = realProvider.authenticate(new DcpBearerToken(wrappingToken));
@@ -147,7 +163,7 @@ class DcpVerifierAuthenticationProviderTest {
         ReflectionTestUtils.setField(provider, "vcVpEnabled", true);
         DcpBearerToken authRequest = new DcpBearerToken("invalid-token");
 
-        when(verifierService.validateAndQueryHolderPresentations("invalid-token"))
+        when(verifierService.validateAndQueryHolderPresentations("invalid-token", participant))
                 .thenThrow(new SecurityException("Invalid token"));
 
         // When: Provider authenticates
@@ -155,7 +171,7 @@ class DcpVerifierAuthenticationProviderTest {
 
         // Then: Returns null to allow fallback
         assertNull(result, "Should return null on validation failure");
-        verify(verifierService, times(1)).validateAndQueryHolderPresentations("invalid-token");
+        verify(verifierService, times(1)).validateAndQueryHolderPresentations("invalid-token", participant);
     }
 
     @Test
@@ -165,7 +181,7 @@ class DcpVerifierAuthenticationProviderTest {
         ReflectionTestUtils.setField(provider, "vcVpEnabled", true);
         DcpBearerToken authRequest = new DcpBearerToken("network-error-token");
 
-        when(verifierService.validateAndQueryHolderPresentations("network-error-token"))
+        when(verifierService.validateAndQueryHolderPresentations("network-error-token", participant))
                 .thenThrow(new IOException("Network error"));
 
         // When: Provider authenticates
@@ -173,7 +189,7 @@ class DcpVerifierAuthenticationProviderTest {
 
         // Then: Returns null to allow fallback
         assertNull(result, "Should return null on network error");
-        verify(verifierService, times(1)).validateAndQueryHolderPresentations("network-error-token");
+        verify(verifierService, times(1)).validateAndQueryHolderPresentations("network-error-token", participant);
     }
 
     @Test
@@ -183,7 +199,7 @@ class DcpVerifierAuthenticationProviderTest {
         ReflectionTestUtils.setField(provider, "vcVpEnabled", true);
         DcpBearerToken authRequest = new DcpBearerToken("error-token");
 
-        when(verifierService.validateAndQueryHolderPresentations("error-token"))
+        when(verifierService.validateAndQueryHolderPresentations("error-token", participant))
                 .thenThrow(new RuntimeException("Unexpected error"));
 
         // When: Provider authenticates
@@ -191,7 +207,7 @@ class DcpVerifierAuthenticationProviderTest {
 
         // Then: Returns null to allow fallback
         assertNull(result, "Should return null on unexpected error");
-        verify(verifierService, times(1)).validateAndQueryHolderPresentations("error-token");
+        verify(verifierService, times(1)).validateAndQueryHolderPresentations("error-token", participant);
     }
 
     @Test
@@ -221,7 +237,7 @@ class DcpVerifierAuthenticationProviderTest {
         ReflectionTestUtils.setField(provider, "vcVpEnabled", true);
         DcpBearerToken authRequest = new DcpBearerToken(null);
 
-        when(verifierService.validateAndQueryHolderPresentations(null))
+        when(verifierService.validateAndQueryHolderPresentations(null, participant))
                 .thenThrow(new IllegalArgumentException("Token cannot be null"));
 
         // When: Provider authenticates
@@ -238,7 +254,7 @@ class DcpVerifierAuthenticationProviderTest {
         ReflectionTestUtils.setField(provider, "vcVpEnabled", true);
         DcpBearerToken authRequest = new DcpBearerToken("");
 
-        when(verifierService.validateAndQueryHolderPresentations(""))
+        when(verifierService.validateAndQueryHolderPresentations("", participant))
                 .thenThrow(new IllegalArgumentException("Token cannot be empty"));
 
         // When: Provider authenticates

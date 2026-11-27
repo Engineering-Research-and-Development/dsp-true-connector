@@ -10,8 +10,8 @@ import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.config.DidDocumentConfig;
-import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantKeyProvider;
 import it.eng.dcp.holder.model.VerifiablePresentation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,25 +22,22 @@ import java.util.Date;
 public class BasicVerifiablePresentationSigner implements VerifiablePresentationSigner {
 
     private final ObjectMapper mapper = new ObjectMapper();
-    private final KeyService keyService;
-    private final DidDocumentConfig config;
+    private final ParticipantKeyProvider keyProvider;
 
     @Autowired
-    public BasicVerifiablePresentationSigner(KeyService keyService,
-                                             DidDocumentConfig config) {
-        this.keyService = keyService;
-        this.config = config;
+    public BasicVerifiablePresentationSigner(ParticipantKeyProvider keyProvider) {
+        this.keyProvider = keyProvider;
     }
 
     @Override
-    public Object sign(VerifiablePresentation vp, String format) {
+    public Object sign(VerifiablePresentation vp, String format, ParticipantContext participant) {
         if (format == null) format = "json-ld";
         switch (format.toLowerCase()) {
             case "jwt":
                 // Produce a signed JWT VP using ES256 algorithm with the holder's key
                 try {
-                    // Get the signing key from KeyService
-                    ECKey signingKey = keyService.getSigningJwk(config);
+                    // Get the signing key from the key provider
+                    ECKey signingKey = keyProvider.activeSigningKey(participant);
 
                     // Build JWT claims for Verifiable Presentation
                     JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
@@ -70,8 +67,8 @@ public class BasicVerifiablePresentationSigner implements VerifiablePresentation
             case "json-ld":
                 // Produce a signed JSON-LD VP with JsonWebSignature2020 proof
                 try {
-                    // Get the signing key from KeyService
-                    ECKey signingKey = keyService.getSigningJwk(config);
+                    // Get the signing key from the key provider
+                    ECKey signingKey = keyProvider.activeSigningKey(participant);
 
                     // Build the presentation document
                     ObjectNode presentation = mapper.createObjectNode();

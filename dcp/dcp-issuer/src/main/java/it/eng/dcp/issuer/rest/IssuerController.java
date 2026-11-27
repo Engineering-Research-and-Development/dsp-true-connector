@@ -8,6 +8,7 @@ import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.issuer.service.IssuerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,11 +24,15 @@ import java.util.Optional;
  * REST controller for issuer-side credential operations.
  */
 @RestController
-@RequestMapping(path = "/issuer", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(path = "/${dcp.base-path.issuer:issuer}", produces = MediaType.APPLICATION_JSON_VALUE)
 @Slf4j
 public class IssuerController {
 
     private final IssuerService issuerService;
+
+    /** Base path of the issuer controllers, {@code dcp.base-path.issuer}. */
+    @Value("${dcp.base-path.issuer:issuer}")
+    private String issuerBasePath = "issuer";
 
     @Autowired
     public IssuerController(IssuerService issuerService) {
@@ -87,7 +92,7 @@ public class IssuerController {
             log.info("Created credential request: issuerPid={}, holderPid={}, credentials={}",
                     request.getIssuerPid(), request.getHolderPid(), request.getCredentialIds());
 
-            String location = "/issuer/requests/" + request.getIssuerPid();
+            String location = "/" + issuerBasePath + "/requests/" + request.getIssuerPid();
             return ResponseEntity.created(URI.create(location)).header(HttpHeaders.LOCATION, location).build();
         } catch (SecurityException e) {
             log.warn("Authorization failed: {}", e.getMessage());

@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
  * points at without authentication. The list carries only status bits, no holder data.
  */
 @RestController
-@RequestMapping(path = "/issuer/status")
+@RequestMapping(path = "/${dcp.base-path.issuer:issuer}/status")
 public class StatusListController {
 
     private final StatusListService statusListService;

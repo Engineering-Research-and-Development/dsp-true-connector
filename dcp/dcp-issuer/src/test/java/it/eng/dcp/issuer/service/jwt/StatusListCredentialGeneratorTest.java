@@ -7,9 +7,8 @@ import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
+import it.eng.dcp.issuer.service.IssuerIdentity;
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.issuer.model.StatusList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -37,10 +36,7 @@ class StatusListCredentialGeneratorTest {
     private static final String URL = "http://issuer.example.com/issuer/status/list-1";
 
     @Mock
-    private KeyService keyService;
-
-    @Mock
-    private BaseDidDocumentConfiguration didDocumentConfig;
+    private IssuerIdentity issuerIdentity;
 
     private ECKey signingKey;
     private StatusListCredentialGenerator generator;
@@ -48,13 +44,13 @@ class StatusListCredentialGeneratorTest {
     @BeforeEach
     void setUp() throws Exception {
         signingKey = new ECKeyGenerator(Curve.P_256).keyID("issuer-key-1").generate();
-        generator = new StatusListCredentialGenerator(keyService, didDocumentConfig);
+        generator = new StatusListCredentialGenerator(issuerIdentity);
     }
 
     @Test
     @DisplayName("vc20-bssl/jwt: a signed BitstringStatusListCredential with a multibase encoded list")
     void generate_vc20_bitstringStatusListCredential() throws Exception {
-        when(keyService.getSigningJwk(any())).thenReturn(signingKey);
+        when(issuerIdentity.signingKey()).thenReturn(signingKey);
         StatusList list = revokedAtIndex(ProfileId.VC20_BSSL_JWT, 3);
 
         SignedJWT jwt = SignedJWT.parse(generator.generate(list));
@@ -81,7 +77,7 @@ class StatusListCredentialGeneratorTest {
     @DisplayName("vc11-sl2021/jwt: a signed StatusList2021Credential in the vc claim with a base64url encoded list")
     @SuppressWarnings("unchecked")
     void generate_vc11_statusList2021Credential() throws Exception {
-        when(keyService.getSigningJwk(any())).thenReturn(signingKey);
+        when(issuerIdentity.signingKey()).thenReturn(signingKey);
         StatusList list = revokedAtIndex(ProfileId.VC11_SL2021_JWT, 0);
 
         SignedJWT jwt = SignedJWT.parse(generator.generate(list));
@@ -106,7 +102,7 @@ class StatusListCredentialGeneratorTest {
     @Test
     @DisplayName("The status list credential carries no holder data")
     void generate_noHolderData() throws Exception {
-        when(keyService.getSigningJwk(any())).thenReturn(signingKey);
+        when(issuerIdentity.signingKey()).thenReturn(signingKey);
         StatusList list = revokedAtIndex(ProfileId.VC20_BSSL_JWT, 1);
 
         JWTClaimsSet claims = SignedJWT.parse(generator.generate(list)).getJWTClaimsSet();
@@ -119,12 +115,12 @@ class StatusListCredentialGeneratorTest {
     @Test
     @DisplayName("isSignedWithCurrentKey is true only for a JWT signed with the current key ID")
     void isSignedWithCurrentKey() throws Exception {
-        when(keyService.getSigningJwk(any())).thenReturn(signingKey);
+        when(issuerIdentity.signingKey()).thenReturn(signingKey);
         String jwt = generator.generate(revokedAtIndex(ProfileId.VC20_BSSL_JWT, 0));
 
         assertTrue(generator.isSignedWithCurrentKey(jwt));
 
-        when(keyService.getSigningJwk(any())).thenReturn(new ECKeyGenerator(Curve.P_256).keyID("rotated").generate());
+        when(issuerIdentity.signingKey()).thenReturn(new ECKeyGenerator(Curve.P_256).keyID("rotated").generate());
         assertFalse(generator.isSignedWithCurrentKey(jwt));
     }
 

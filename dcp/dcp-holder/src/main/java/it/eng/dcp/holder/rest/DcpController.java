@@ -5,9 +5,12 @@ import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialOfferMessage;
 import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.PresentationResponseMessage;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.RequestParticipantContext;
 import it.eng.dcp.holder.exception.CredentialOfferForbiddenException;
 import it.eng.dcp.holder.service.HolderService;
 import it.eng.dcp.holder.service.PresentationQueryAuthorization;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -22,7 +25,7 @@ import java.util.Map;
  * Delegates business logic to HolderService.
  */
 @RestController
-@RequestMapping(path = "/dcp", produces =  MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(path = "/${dcp.base-path.dcp:dcp}", produces =  MediaType.APPLICATION_JSON_VALUE)
 @Slf4j
 public class DcpController {
 
@@ -32,10 +35,12 @@ public class DcpController {
     private static final ObjectMapper OFFER_MAPPER = new ObjectMapper();
 
     private final HolderService holderService;
+    private final RequestParticipantContext requestParticipantContext;
 
     @Autowired
-    public DcpController(HolderService holderService) {
+    public DcpController(HolderService holderService, RequestParticipantContext requestParticipantContext) {
         this.holderService = holderService;
+        this.requestParticipantContext = requestParticipantContext;
     }
 
     /**
@@ -53,11 +58,15 @@ public class DcpController {
      *
      * @param authorization HTTP Authorization header with Bearer token
      * @param query The presentation query message
+     * @param request The inbound request, which addresses the participant
      * @return PresentationResponseMessage or error response (400, 401, 429, 500, 501)
      */
     @PostMapping(path = "/presentations/query")
     public ResponseEntity<?> queryPresentations(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
-                                                @RequestBody PresentationQueryMessage query) {
+                                                @RequestBody PresentationQueryMessage query,
+                                                HttpServletRequest request) {
+        // Unknown or disabled participant gets 404 before any token validation
+        ParticipantContext participant = requestParticipantContext.require(request);
         log.info("Received presentation query request");
         log.debug("Query details: scope={}, presentationDefinition present={}",
                 query != null ? query.getScope() : null,
@@ -78,7 +87,7 @@ public class DcpController {
 
         try {
             // Validate the Verifier's Self-Issued ID Token, then the access token it carries
-            PresentationQueryAuthorization queryAuthorization = holderService.authorizePresentationQuery(token);
+            PresentationQueryAuthorization queryAuthorization = holderService.authorizePresentationQuery(token, participant);
             String verifierDid = queryAuthorization.verifierDid();
             log.info("Presentation query from verifier: {}", verifierDid);
 
@@ -102,7 +111,7 @@ public class DcpController {
             }
 
             // Create presentation
-            PresentationResponseMessage resp = holderService.createPresentation(query, queryAuthorization);
+            PresentationResponseMessage resp = holderService.createPresentation(query, queryAuthorization, participant);
             return ResponseEntity.ok(resp);
         } catch (SecurityException se) {
             log.error("Security exception during presentation query - invalid token: {}", se.getMessage());
@@ -155,11 +164,14 @@ public class DcpController {
      *
      * @param authorization HTTP Authorization header with Bearer token from issuer
      * @param msg The credential message
+     * @param request The inbound request, which addresses the participant
      * @return Success response with saved/skipped counts or error response
      */
     @PostMapping(path = "/credentials")
     public ResponseEntity<?> receiveCredentials(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
-                                                @RequestBody CredentialMessage msg) {
+                                                @RequestBody CredentialMessage msg,
+                                                HttpServletRequest request) {
+        ParticipantContext participant = requestParticipantContext.require(request);
         log.info("Received credential message - status: {}, issuerPid: {}, holderPid: {}",
                 msg != null ? msg.getStatus() : "null",
                 msg != null ? msg.getIssuerPid() : "null",
@@ -180,7 +192,7 @@ public class DcpController {
 
         try {
             // Authorize issuer
-            String issuerDid = holderService.authorizeIssuer(token);
+            String issuerDid = holderService.authorizeIssuer(token, participant);
 
             // Validate message
             if (msg == null || msg.getStatus() == null) {
@@ -250,11 +262,14 @@ public class DcpController {
      *
      * @param authorization HTTP Authorization header with Bearer token from issuer
      * @param offer The credential offer message
+     * @param request The inbound request, which addresses the participant
      * @return Acceptance response, or 400, 401, 403 or 500
      */
     @PostMapping(path = "/offers")
     public ResponseEntity<?> receiveOffer(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
-                                          @RequestBody Map<String, Object> offer) {
+                                          @RequestBody Map<String, Object> offer,
+                                          HttpServletRequest request) {
+        ParticipantContext participant = requestParticipantContext.require(request);
         log.info("Received credential offer");
 
         if (authorization == null || authorization.trim().isEmpty()) {
@@ -270,10 +285,10 @@ public class DcpController {
         try {
             Object rawIssuer = offer != null ? offer.get("issuer") : null;
             String offerIssuer = rawIssuer instanceof String issuer ? issuer : null;
-            holderService.authorizeCredentialOffer(token, offerIssuer);
+            holderService.authorizeCredentialOffer(token, offerIssuer, participant);
 
             CredentialOfferMessage com = OFFER_MAPPER.convertValue(offer, CredentialOfferMessage.class);
-            boolean accepted = holderService.processCredentialOffer(com);
+            boolean accepted = holderService.processCredentialOffer(com, participant);
             return ResponseEntity.ok(Map.of("accepted", accepted));
         } catch (SecurityException se) {
             log.error("Security exception during credential offer - invalid token: {}", se.getMessage());

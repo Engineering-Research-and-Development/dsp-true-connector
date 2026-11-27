@@ -2,6 +2,8 @@ package it.eng.dcp.holder.rest;
 
 import com.nimbusds.jwt.JWTClaimsSet;
 import it.eng.dcp.common.model.PresentationQueryMessage;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.RequestParticipantContext;
 import it.eng.dcp.holder.service.HolderService;
 import it.eng.dcp.holder.service.PresentationQueryAuthorization;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,6 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.util.List;
 import java.util.Map;
@@ -18,6 +21,8 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,15 +38,24 @@ class DcpControllerPresentationDefinitionTest {
     @Mock
     private HolderService holderService;
 
+    @Mock
+    private RequestParticipantContext requestParticipantContext;
+
+    @Mock
+    private ParticipantContext participant;
+
+    private final MockHttpServletRequest request = new MockHttpServletRequest();
+
     private DcpController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new DcpController(holderService);
+        controller = new DcpController(holderService, requestParticipantContext);
+        lenient().when(requestParticipantContext.require(request)).thenReturn(participant);
     }
 
     private void authorize() throws Exception {
-        when(holderService.authorizePresentationQuery(anyString()))
+        when(holderService.authorizePresentationQuery(anyString(), eq(participant)))
                 .thenReturn(new PresentationQueryAuthorization("did:web:verifier", "did:web:holder",
                         new JWTClaimsSet.Builder().subject("did:web:verifier").build()));
     }
@@ -58,11 +72,11 @@ class DcpControllerPresentationDefinitionTest {
                 .presentationDefinition(definition())
                 .build();
 
-        ResponseEntity<?> response = controller.queryPresentations(BEARER, query);
+        ResponseEntity<?> response = controller.queryPresentations(BEARER, query, request);
 
         assertEquals(501, response.getStatusCode().value());
         assertEquals(DcpController.PRESENTATION_DEFINITION_NOT_SUPPORTED, response.getBody());
-        verify(holderService, never()).createPresentation(any(), any());
+        verify(holderService, never()).createPresentation(any(), any(), any());
         verify(holderService, never()).checkRateLimit(anyString());
     }
 
@@ -75,10 +89,10 @@ class DcpControllerPresentationDefinitionTest {
                 .presentationDefinition(definition())
                 .build();
 
-        ResponseEntity<?> response = controller.queryPresentations(BEARER, query);
+        ResponseEntity<?> response = controller.queryPresentations(BEARER, query, request);
 
         assertEquals(400, response.getStatusCode().value());
-        verify(holderService, never()).createPresentation(any(), any());
+        verify(holderService, never()).createPresentation(any(), any(), any());
     }
 
     @Test
@@ -87,7 +101,7 @@ class DcpControllerPresentationDefinitionTest {
         authorize();
         PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance().build();
 
-        ResponseEntity<?> response = controller.queryPresentations(BEARER, query);
+        ResponseEntity<?> response = controller.queryPresentations(BEARER, query, request);
 
         assertEquals(400, response.getStatusCode().value());
     }
@@ -99,7 +113,7 @@ class DcpControllerPresentationDefinitionTest {
                 .presentationDefinition(definition())
                 .build();
 
-        ResponseEntity<?> response = controller.queryPresentations(null, query);
+        ResponseEntity<?> response = controller.queryPresentations(null, query, request);
 
         assertEquals(401, response.getStatusCode().value());
     }
@@ -107,12 +121,12 @@ class DcpControllerPresentationDefinitionTest {
     @Test
     @DisplayName("definition-only query with an invalid token returns 401, not 501")
     void definitionOnly_invalidToken_returns401() throws Exception {
-        when(holderService.authorizePresentationQuery(anyString())).thenThrow(new SecurityException("bad"));
+        when(holderService.authorizePresentationQuery(anyString(), eq(participant))).thenThrow(new SecurityException("bad"));
         PresentationQueryMessage query = PresentationQueryMessage.Builder.newInstance()
                 .presentationDefinition(definition())
                 .build();
 
-        ResponseEntity<?> response = controller.queryPresentations(BEARER, query);
+        ResponseEntity<?> response = controller.queryPresentations(BEARER, query, request);
 
         assertEquals(401, response.getStatusCode().value());
     }

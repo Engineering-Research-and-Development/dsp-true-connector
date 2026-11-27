@@ -29,6 +29,8 @@ class IssuerServiceTest {
     @Mock
     private SelfIssuedIdTokenService tokenService;
     @Mock
+    private IssuerIdentity issuerIdentity;
+    @Mock
     private CredentialRequestRepository requestRepository;
     @Mock
     private CredentialMetadataService credentialMetadataService;
@@ -42,7 +44,7 @@ class IssuerServiceTest {
     @Test
     void authorizeRequest_success() {
         String token = "token";
-        when(tokenService.validateToken(token)).thenReturn(jwtClaimsSet);
+        when(tokenService.validateToken(eq(token), any())).thenReturn(jwtClaimsSet);
         JWTClaimsSet result = issuerService.authorizeRequest(token, null);
         assertSame(jwtClaimsSet, result);
     }

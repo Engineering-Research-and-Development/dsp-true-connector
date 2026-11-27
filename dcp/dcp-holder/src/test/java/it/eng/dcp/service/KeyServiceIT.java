@@ -2,6 +2,10 @@ package it.eng.dcp.service;
 
 import com.nimbusds.jose.jwk.JWKSet;
 import it.eng.dcp.common.config.DidDocumentConfig;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantKeyProvider;
+import it.eng.dcp.common.participant.ParticipantState;
+import it.eng.dcp.common.participant.SigningKeyReference;
 import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.InMemoryDidResolverService;
@@ -11,9 +15,12 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -57,20 +64,24 @@ class KeyServiceIT {
 
         // Prepare token service using real keyService
         String connectorDid = "did:example:connector";
+        ParticipantContext participant = new ParticipantContext("default", connectorDid,
+                new SigningKeyReference(keystorePath, alias), List.of(), Map.of(), null, ParticipantState.ENABLED);
+        ParticipantKeyProvider keyProvider = Mockito.mock(ParticipantKeyProvider.class);
+        Mockito.when(keyProvider.activeSigningKey(participant)).thenReturn(signingJwk);
 
         InMemoryDidResolverService didResolver = new InMemoryDidResolverService();
         InMemoryJtiReplayCache jtiCache = new InMemoryJtiReplayCache();
 
-        SelfIssuedIdTokenService svc = new SelfIssuedIdTokenService(didResolver, jtiCache, keyService, config, auditEventPublisher);
+        SelfIssuedIdTokenService svc = new SelfIssuedIdTokenService(didResolver, jtiCache, keyProvider, auditEventPublisher);
 
         // register public JWK in resolver so validation can fetch it
         didResolver.put(connectorDid, new JWKSet(signingJwk.toPublicJWK()));
 
         // create and validate token using the real signing key
-        String token = svc.createAndSignToken("did:example:aud", null, config);
+        String token = svc.createAndSignToken("did:example:aud", null, participant);
         assertNotNull(token);
 
-        var claims = svc.validateToken(token);
+        var claims = svc.validateToken(token, participant);
         assertEquals(connectorDid, claims.getIssuer());
 
         // Disable replay detection for now

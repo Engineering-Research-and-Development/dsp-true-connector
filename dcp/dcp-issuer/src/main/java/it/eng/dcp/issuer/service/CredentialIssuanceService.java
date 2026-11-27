@@ -1,8 +1,6 @@
 package it.eng.dcp.issuer.service;
 
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.model.*;
-import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig;
 import it.eng.dcp.issuer.config.CredentialMetadataConfigLoader;
 import it.eng.dcp.issuer.config.IssuerProperties;
@@ -32,8 +30,7 @@ public class CredentialIssuanceService {
     private final CredentialMetadataConfigLoader credentialMetadataConfigLoader;
 
     @Autowired
-    public CredentialIssuanceService(IssuerProperties issuerProperties, KeyService keyService,
-                                     BaseDidDocumentConfiguration didDocumentConfig,
+    public CredentialIssuanceService(IssuerProperties issuerProperties, IssuerIdentity issuerIdentity,
                                      StatusListService statusListService,
                                      CredentialMetadataConfigLoader credentialMetadataConfigLoader) {
         this.issuerProperties = issuerProperties;
@@ -41,11 +38,7 @@ public class CredentialIssuanceService {
         this.credentialMetadataConfigLoader = credentialMetadataConfigLoader;
 
         // Create JWT generator factory
-        VcJwtGeneratorFactory jwtGeneratorFactory = new VcJwtGeneratorFactory(
-                issuerProperties.getConnectorDid(),
-                keyService,
-                didDocumentConfig
-        );
+        VcJwtGeneratorFactory jwtGeneratorFactory = new VcJwtGeneratorFactory(issuerIdentity);
 
         // Create credential generator factory
         this.credentialGeneratorFactory = new CredentialGeneratorFactory(

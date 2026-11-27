@@ -4,9 +4,8 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
+import it.eng.dcp.issuer.service.IssuerIdentity;
 import it.eng.dcp.common.model.*;
-import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.issuer.service.jwt.VcJwtGeneratorFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,10 +30,7 @@ import static org.mockito.Mockito.when;
 class MembershipCredentialGeneratorTest {
 
     @Mock
-    private KeyService keyService;
-
-    @Mock
-    private BaseDidDocumentConfiguration didDocumentConfig;
+    private IssuerIdentity issuerIdentity;
 
     private MembershipCredentialGenerator generator;
     private VcJwtGeneratorFactory jwtGeneratorFactory;
@@ -52,9 +48,10 @@ class MembershipCredentialGeneratorTest {
                 .keyID("test-key-1")
                 .generate();
 
-        when(keyService.getSigningJwk(any())).thenReturn(testSigningKey);
+        when(issuerIdentity.signingKey()).thenReturn(testSigningKey);
+        when(issuerIdentity.did()).thenReturn(ISSUER_DID);
 
-        jwtGeneratorFactory = new VcJwtGeneratorFactory(ISSUER_DID, keyService, didDocumentConfig);
+        jwtGeneratorFactory = new VcJwtGeneratorFactory(issuerIdentity);
         profileExtractor = new ProfileExtractor();
         generator = new MembershipCredentialGenerator(jwtGeneratorFactory, profileExtractor);
     }

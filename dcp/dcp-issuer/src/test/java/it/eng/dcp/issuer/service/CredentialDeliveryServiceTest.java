@@ -2,8 +2,10 @@ package it.eng.dcp.issuer.service;
 
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
-import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.*;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantState;
+import it.eng.dcp.common.participant.SigningKeyReference;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
@@ -22,6 +24,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -33,7 +36,7 @@ class CredentialDeliveryServiceTest {
     @Mock private CredentialRequestRepository requestRepository;
     @Mock private SelfIssuedIdTokenService tokenService;
     @Mock private SimpleOkHttpRestClient httpClient;
-    @Mock private DidDocumentConfig config;
+    @Mock private IssuerIdentity issuerIdentity;
     @Mock private DidResolverService didResolverService;
     @Mock private DcpAuditEventPublisher auditPublisher;
 
@@ -44,12 +47,15 @@ class CredentialDeliveryServiceTest {
 
     private AutoCloseable closeable;
 
+    private final ParticipantContext participant = new ParticipantContext("default", "did:example:holder",
+            new SigningKeyReference("eckey.p12", "alias"), List.of(), Map.of(), null, ParticipantState.ENABLED);
+
     @BeforeEach
     void setUp() {
         closeable = MockitoAnnotations.openMocks(this);
 
         deliveryService = new CredentialDeliveryService(
-                requestRepository, tokenService, httpClient, config, didResolverService, auditPublisher
+                requestRepository, tokenService, issuerIdentity, httpClient, didResolverService, auditPublisher
         );
 
         testRequest = CredentialRequest.Builder.newInstance()
@@ -83,11 +89,12 @@ class CredentialDeliveryServiceTest {
         when(didResolverService.fetchDidDocumentCached("did:web:example.com:holder"))
                 .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
         when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(200, "OK"));
+        when(issuerIdentity.participant()).thenReturn(participant);
 
         boolean result = deliveryService.deliverCredentials("issuer-pid-123", testCredentials);
 
         assertTrue(result);
-        verify(tokenService).createAndSignToken("did:web:example.com:holder", "holder-access-token", config);
+        verify(tokenService).createAndSignToken("did:web:example.com:holder", "holder-access-token", participant);
         ArgumentCaptor<CredentialRequest> savedRequest = ArgumentCaptor.forClass(CredentialRequest.class);
         verify(requestRepository).save(savedRequest.capture());
         assertEquals(CredentialStatus.ISSUED, savedRequest.getValue().getStatus());
@@ -124,11 +131,12 @@ class CredentialDeliveryServiceTest {
         when(didResolverService.fetchDidDocumentCached("did:web:example.com:holder"))
                 .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
         when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(200, "OK"));
+        when(issuerIdentity.participant()).thenReturn(participant);
 
         boolean result = deliveryService.rejectCredentialRequest("issuer-pid-123", "Invalid credentials");
 
         assertTrue(result);
-        verify(tokenService).createAndSignToken("did:web:example.com:holder", "holder-access-token", config);
+        verify(tokenService).createAndSignToken("did:web:example.com:holder", "holder-access-token", participant);
         ArgumentCaptor<CredentialRequest> savedRequest = ArgumentCaptor.forClass(CredentialRequest.class);
         verify(requestRepository).save(savedRequest.capture());
         assertEquals(CredentialStatus.REJECTED, savedRequest.getValue().getStatus());

@@ -32,16 +32,19 @@ public class IssuerService {
     private static final String ISSUER_SOURCE = "issuer";
 
     private final SelfIssuedIdTokenService tokenService;
+    private final IssuerIdentity issuerIdentity;
     private final CredentialRequestRepository requestRepository;
     private final CredentialMetadataService credentialMetadataService;
     private final DcpAuditEventPublisher auditPublisher;
 
     @Autowired
     public IssuerService(@Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
+                        IssuerIdentity issuerIdentity,
                         CredentialRequestRepository requestRepository,
                         CredentialMetadataService credentialMetadataService,
                         DcpAuditEventPublisher auditPublisher) {
         this.tokenService = tokenService;
+        this.issuerIdentity = issuerIdentity;
         this.requestRepository = requestRepository;
         this.credentialMetadataService = credentialMetadataService;
         this.auditPublisher = auditPublisher;
@@ -66,7 +69,7 @@ public class IssuerService {
             throw new SecurityException("Bearer token is required");
         }
 
-        return tokenService.validateToken(bearerToken);
+        return tokenService.validateToken(bearerToken, issuerIdentity.participant());
 
 //        // If holderPid is provided, validate that it matches the token subject
         //Not sure that this is requirement at all according to DCP protocol

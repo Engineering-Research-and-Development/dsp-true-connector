@@ -8,8 +8,7 @@ import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
-import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.issuer.service.IssuerIdentity;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
@@ -34,21 +33,15 @@ import java.util.*;
 @Slf4j
 public class VC20JwtGenerator implements VcJwtGenerator {
 
-    private final String issuerDid;
-    private final KeyService keyService;
-    private final BaseDidDocumentConfiguration didDocumentConfig;
+    private final IssuerIdentity issuerIdentity;
 
     /**
      * Create a new VC 2.0 JWT generator.
      *
-     * @param issuerDid The issuer's DID
-     * @param keyService Service for retrieving signing keys
-     * @param didDocumentConfig DID document configuration
+     * @param issuerIdentity The single Issuer identity, which holds its DID and signing key
      */
-    public VC20JwtGenerator(String issuerDid, KeyService keyService, BaseDidDocumentConfiguration didDocumentConfig) {
-        this.issuerDid = issuerDid;
-        this.keyService = keyService;
-        this.didDocumentConfig = didDocumentConfig;
+    public VC20JwtGenerator(IssuerIdentity issuerIdentity) {
+        this.issuerIdentity = issuerIdentity;
     }
 
     @Override
@@ -56,9 +49,12 @@ public class VC20JwtGenerator implements VcJwtGenerator {
         return generateJwt(holderDid, credentialType, claims, null, null);
     }
 
-    public String generateJwt(String holderDid, String credentialType, Map<String, String> claims, String statusListId, Integer statusListIndex) {
+    @Override
+    public String generateJwt(String holderDid, String credentialType,
+                              Map<String, String> claims, String statusListId, Integer statusListIndex) {
         try {
-            ECKey signingKey = keyService.getSigningJwk(didDocumentConfig.getDidDocumentConfig());
+            String issuerDid = issuerIdentity.did();
+            ECKey signingKey = issuerIdentity.signingKey();
 
             Instant now = Instant.now();
             Instant expiration = now.plusSeconds(365 * 24 * 60 * 60); // 1 year

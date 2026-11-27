@@ -3,7 +3,6 @@ package it.eng.dcp.issuer.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
-import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialStatus;
@@ -37,23 +36,23 @@ public class CredentialDeliveryService {
 
     private final CredentialRequestRepository requestRepository;
     private final SelfIssuedIdTokenService tokenService;
+    private final IssuerIdentity issuerIdentity;
     private final ObjectMapper mapper = new ObjectMapper();
     private final SimpleOkHttpRestClient httpClient;
-    private final DidDocumentConfig config;
     private final DidResolverService didResolverService;
     private final DcpAuditEventPublisher auditPublisher;
 
     @Autowired
     public CredentialDeliveryService(CredentialRequestRepository requestRepository,
                                      @Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
+                                     IssuerIdentity issuerIdentity,
                                      SimpleOkHttpRestClient httpClient,
-                                     DidDocumentConfig config,
                                      DidResolverService didResolverService,
                                      DcpAuditEventPublisher auditPublisher) {
         this.requestRepository = requestRepository;
         this.tokenService = tokenService;
+        this.issuerIdentity = issuerIdentity;
         this.httpClient = httpClient;
-        this.config = config;
         this.didResolverService = didResolverService;
         this.auditPublisher = auditPublisher;
     }
@@ -112,7 +111,7 @@ public class CredentialDeliveryService {
                     .credentials(credentials)
                     .build();
 
-            String token = tokenService.createAndSignToken(holderDid, request.getClientAccessToken(), config);
+            String token = tokenService.createAndSignToken(holderDid, request.getClientAccessToken(), issuerIdentity.participant());
             String messageJson = mapper.writeValueAsString(message);
 
             Request httpRequest = new Request.Builder()
@@ -221,7 +220,7 @@ public class CredentialDeliveryService {
                     .rejectionReason(rejectionReason)
                     .build();
 
-            String token = tokenService.createAndSignToken(holderDid, request.getClientAccessToken(), config);
+            String token = tokenService.createAndSignToken(holderDid, request.getClientAccessToken(), issuerIdentity.participant());
             String messageJson = mapper.writeValueAsString(message);
 
             Request httpRequest = new Request.Builder()

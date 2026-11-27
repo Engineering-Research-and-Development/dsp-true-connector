@@ -1,28 +1,36 @@
 package it.eng.dcp.issuer.rest.api;
 
-import it.eng.dcp.common.service.KeyService;
-import it.eng.dcp.issuer.config.IssuerProperties;
+import it.eng.dcp.issuer.service.IssuerIdentity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * REST API controller to rotate the signing key of the Issuer.
+ */
 @RestController
 @RequestMapping("/api/issuer/key")
 public class IssuerKeyRotationAPIController {
-    private final KeyService keyService;
-    private final IssuerProperties issuerProperties;
+    private final IssuerIdentity issuerIdentity;
 
-    public IssuerKeyRotationAPIController(KeyService keyService, IssuerProperties issuerProperties) {
-        this.keyService = keyService;
-        this.issuerProperties = issuerProperties;
+    /**
+     * Constructor.
+     *
+     * @param issuerIdentity the single Issuer identity, which rotates its key
+     */
+    public IssuerKeyRotationAPIController(IssuerIdentity issuerIdentity) {
+        this.issuerIdentity = issuerIdentity;
     }
 
+    /**
+     * Rotates the signing key of the Issuer.
+     *
+     * @return the alias of the new key
+     */
     @PostMapping("/rotate")
     public ResponseEntity<String> rotateKey() {
-        String keystorePath = issuerProperties.getKeystore().getPath();
-        String keystorePassword = issuerProperties.getKeystore().getPassword();
-        String alias = keyService.rotateKeyAndUpdateMetadata(keystorePath, keystorePassword, issuerProperties.getKeystore().getAlias());
+        String alias = issuerIdentity.rotateKey();
         return ResponseEntity.ok("Key rotated. New alias: " + alias);
     }
 }

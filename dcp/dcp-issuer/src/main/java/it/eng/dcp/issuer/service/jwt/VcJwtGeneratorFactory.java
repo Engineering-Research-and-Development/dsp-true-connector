@@ -1,8 +1,7 @@
 package it.eng.dcp.issuer.service.jwt;
 
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.issuer.service.IssuerIdentity;
 
 /**
  * Factory for creating profile-specific VC JWT generators.
@@ -15,21 +14,15 @@ import it.eng.dcp.common.service.KeyService;
  */
 public class VcJwtGeneratorFactory {
 
-    private final String issuerDid;
-    private final KeyService keyService;
-    private final BaseDidDocumentConfiguration didDocumentConfig;
+    private final IssuerIdentity issuerIdentity;
 
     /**
      * Create a new JWT generator factory.
      *
-     * @param issuerDid The issuer's DID
-     * @param keyService Service for retrieving signing keys
-     * @param didDocumentConfig DID document configuration
+     * @param issuerIdentity The single Issuer identity
      */
-    public VcJwtGeneratorFactory(String issuerDid, KeyService keyService, BaseDidDocumentConfiguration didDocumentConfig) {
-        this.issuerDid = issuerDid;
-        this.keyService = keyService;
-        this.didDocumentConfig = didDocumentConfig;
+    public VcJwtGeneratorFactory(IssuerIdentity issuerIdentity) {
+        this.issuerIdentity = issuerIdentity;
     }
 
     /**
@@ -40,9 +33,9 @@ public class VcJwtGeneratorFactory {
      */
     public VcJwtGenerator createGenerator(ProfileId profileId) {
         if (profileId == ProfileId.VC20_BSSL_JWT) {
-            return new VC20JwtGenerator(issuerDid, keyService, didDocumentConfig);
+            return new VC20JwtGenerator(issuerIdentity);
         } else {
-            return new VC11JwtGenerator(issuerDid, keyService, didDocumentConfig);
+            return new VC11JwtGenerator(issuerIdentity);
         }
     }
 }

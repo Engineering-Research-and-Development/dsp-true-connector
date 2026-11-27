@@ -9,7 +9,7 @@ import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
-import it.eng.dcp.common.config.DidDocumentConfig;
+import it.eng.dcp.common.participant.ParticipantContext;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.PresentationQueryMessage;
@@ -80,7 +80,6 @@ public class VerifierService {
     private final HttpDidResolverService didResolverService;
     private final SimpleOkHttpRestClient httpClient;
     private final ObjectMapper objectMapper;
-    private final DidDocumentConfig didConfig;
     private final IssuerTrustService issuerTrustService;
     private final DcpAuditEventPublisher auditPublisher;
 
@@ -94,7 +93,6 @@ public class VerifierService {
      * @param didResolverService Service for resolving DIDs to DID documents
      * @param httpClient HTTP client for making REST calls
      * @param objectMapper JSON mapper for request/response serialization
-     * @param didConfig The verifier configuration (explicitly qualified)
      * @param issuerTrustService Service for checking whether a credential issuer is trusted
      * @param auditPublisher Publisher for DCP audit events
      */
@@ -104,18 +102,16 @@ public class VerifierService {
             HttpDidResolverService didResolverService,
             SimpleOkHttpRestClient httpClient,
             ObjectMapper objectMapper,
-            DidDocumentConfig didConfig,
             IssuerTrustService issuerTrustService,
             DcpAuditEventPublisher auditPublisher) {
         this.tokenService = tokenService;
         this.didResolverService = didResolverService;
         this.httpClient = httpClient;
         this.objectMapper = objectMapper;
-        this.didConfig = didConfig;
         this.issuerTrustService = issuerTrustService;
         this.auditPublisher = auditPublisher;
 
-        log.info("VerifierService initialized with verifier DID: {}", didConfig.getDid());
+        log.info("VerifierService initialized");
     }
 
 
@@ -130,10 +126,11 @@ public class VerifierService {
      * </ul>
      *
      * @param bearerToken The self-issued ID token from Authorization header (without "Bearer " prefix)
+     * @param participant The verifier participant the token must be addressed to
      * @return The validated {@code sub} DID and the access token extracted from the "token" claim
      * @throws SecurityException if token is invalid, has no {@code sub}, or "token" claim is missing
      */
-    private ValidatedSelfIssuedToken validateAndExtractAccessToken(String bearerToken) throws SecurityException {
+    private ValidatedSelfIssuedToken validateAndExtractAccessToken(String bearerToken, ParticipantContext participant) throws SecurityException {
         if (bearerToken == null || bearerToken.isBlank()) {
             auditPublisher.publishEvent(
                     DcpAuditEventType.TOKEN_VALIDATION_FAILED,
@@ -144,11 +141,11 @@ public class VerifierService {
             throw new SecurityException("Bearer token is required");
         }
 
-        log.debug("STEP 3: Validating self-issued ID token for verifier DID: {}", didConfig.getDid());
+        log.debug("STEP 3: Validating self-issued ID token for verifier DID: {}", participant.did());
 
         // Validate the self-issued ID token
         // This checks: iss==sub, aud==verifier DID, signature, expiry
-        JWTClaimsSet claims = tokenService.validateToken(bearerToken);
+        JWTClaimsSet claims = tokenService.validateToken(bearerToken, participant);
 
         // The presenting party is the validated sub; never a DID taken from the unverified access token
         String subjectDid = claims.getSubject();
@@ -279,6 +276,7 @@ public class VerifierService {
      * @param holderDid The holder's DID, the audience of the Verifier's Self-Issued ID Token
      * @param accessToken The access token (from "token" claim of the holder's self-issued ID token)
      * @param presentationQueryMessage The query message with scopes
+     * @param participant The verifier participant that signs the Self-Issued ID Token
      * @return The presentation response from holder
      * @throws IOException if HTTP request fails
      * @throws SecurityException if access token is rejected by holder
@@ -287,13 +285,14 @@ public class VerifierService {
             String credentialServiceUrl,
             String holderDid,
             String accessToken,
-            PresentationQueryMessage presentationQueryMessage) throws IOException, SecurityException {
+            PresentationQueryMessage presentationQueryMessage,
+            ParticipantContext participant) throws IOException, SecurityException {
 
         String queryUrl = credentialServiceUrl + PRESENTATIONS_QUERY_PATH;
         log.debug("STEP 4: Querying holder credential service: {}", queryUrl);
 
         // The Verifier's own Self-Issued ID Token, bound to the holder, carrying the access token
-        String verifierIdToken = tokenService.createAndSignToken(holderDid, accessToken, didConfig);
+        String verifierIdToken = tokenService.createAndSignToken(holderDid, accessToken, participant);
 
         Map<String, String> headers = new HashMap<>();
         headers.put("Authorization", "Bearer " + verifierIdToken);
@@ -780,16 +779,17 @@ public class VerifierService {
      * </pre>
      *
      * @param selfIssuedIdToken The JWT from Authorization header (without "Bearer " prefix)
+     * @param participant The verifier participant the token must be addressed to
      * @return PresentationFlowResult containing all flow data and the presentation response
      * @throws SecurityException if validation fails (HTTP 403 semantics)
      * @throws IOException if network/HTTP errors occur
      */
     public PresentationFlowResult validateAndQueryHolderPresentations(
-            String selfIssuedIdToken) throws SecurityException, IOException {
+            String selfIssuedIdToken, ParticipantContext participant) throws SecurityException, IOException {
 
         log.info("═══════════════════════════════════════════════════════════");
         log.info("MAIN FLOW: Starting complete DCP presentation authentication");
-        log.info("Verifier DID: {}", didConfig.getDid());
+        log.info("Verifier DID: {}", participant.did());
         log.info("═══════════════════════════════════════════════════════════");
 
         // ═════════════════════════════════════════════════════════════
@@ -799,7 +799,7 @@ public class VerifierService {
         String holderDid;
         try {
             log.info("STEP 3a: Validating self-issued ID token...");
-            ValidatedSelfIssuedToken validatedToken = validateAndExtractAccessToken(selfIssuedIdToken);
+            ValidatedSelfIssuedToken validatedToken = validateAndExtractAccessToken(selfIssuedIdToken, participant);
             accessToken = validatedToken.accessToken();
             holderDid = validatedToken.subjectDid();
             log.info("STEP 3a: ✓ Self-issued ID token valid, access token extracted");
@@ -901,7 +901,8 @@ public class VerifierService {
                 credentialServiceUrl,
                 holderDid,
                 accessToken,
-                queryMessage
+                queryMessage,
+                participant
             );
 
             if (presentationResponse == null) {

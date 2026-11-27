@@ -6,6 +6,7 @@ import it.eng.dcp.issuer.model.StatusList;
 import it.eng.dcp.issuer.repository.StatusListRepository;
 import it.eng.dcp.issuer.service.jwt.StatusListCredentialGenerator;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
@@ -39,6 +40,10 @@ public class StatusListService {
     static final int DEFAULT_STATUS_LIST_SIZE = 131_072;
 
     private static final int MAX_ATTEMPTS = 5;
+
+    /** Base path of the issuer controllers, {@code dcp.base-path.issuer}. */
+    @Value("${dcp.base-path.issuer:issuer}")
+    private String issuerBasePath = "issuer";
 
     private final StatusListRepository statusListRepository;
     private final IssuerProperties issuerProperties;
@@ -163,7 +168,7 @@ public class StatusListService {
     private String statusListUrl(String listId) {
         String baseUrl = issuerProperties.getBaseUrl();
         String trimmed = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
-        return trimmed + STATUS_PATH + listId;
+        return trimmed + "/" + issuerBasePath + "/status/" + listId;
     }
 
     private static <T> T withRetry(Supplier<T> action) {

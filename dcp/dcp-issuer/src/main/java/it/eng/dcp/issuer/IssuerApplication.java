@@ -2,10 +2,12 @@ package it.eng.dcp.issuer;
 
 import it.eng.dcp.common.audit.DcpAuditProperties;
 import it.eng.dcp.common.config.DcpProperties;
+import it.eng.dcp.common.config.ParticipantContextConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -26,6 +28,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 })
 @EnableScheduling
 @EnableAsync
+@Import(ParticipantContextConfiguration.class)
 @EnableConfigurationProperties({DcpProperties.class, DcpAuditProperties.class})
 public class IssuerApplication {
 
