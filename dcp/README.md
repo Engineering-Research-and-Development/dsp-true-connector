@@ -10,6 +10,17 @@ This module implements the Eclipse Decentralized Claims Protocol (DCP) for manag
 - **[Credential Examples](doc/credential_message_examples.md)** - Ready-to-use JSON examples
 - **[Credential delivery authorization decision](doc/decisions/D-TEC-015-credential-delivery-token-forwarding.md)** - DCP v1.0.1 token flow, implementation choices, and sequence diagram
 
+## Modules
+
+| Module | Purpose |
+|---|---|
+| `dcp-common` | Shared models, services and the participant context SPI (`it.eng.dcp.common.participant`) |
+| `dcp-holder` | Credential Service: stores credentials and creates presentations |
+| `dcp-verifier` | Verifier: requests and validates presentations |
+| `dcp-issuer` | Issuer Service: credential issuance, status lists and key management |
+| [`dcp-spi-testkit`](dcp-spi-testkit/README.md) | Abstract JUnit 5 contract tests for the participant context SPI; a host subclasses them to prove its implementation isolates participants |
+| `dcp-e2e-tests` | End-to-end tests of the Holder, Verifier and Issuer flows |
+
 ## Overview
 
 This module provides an auto-configuration for the DCP feature set so it will register its beans when the `dcp` JAR is present on the application's classpath.
