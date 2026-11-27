@@ -1,0 +1,47 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>it.eng</groupId>
+        <artifactId>dcp</artifactId>
+        <version>${revision}</version>
+    </parent>
+    <artifactId>dcp-spi-testkit</artifactId>
+    <name>Decentralized claims protocol - SPI contract test kit</name>
+    <description>Abstract JUnit 5 contract tests for the DCP participant context SPI</description>
+    <packaging>jar</packaging>
+
+    <dependencies>
+        <dependency>
+            <groupId>it.eng</groupId>
+            <artifactId>dcp-common</artifactId>
+            <version>${revision}</version>
+        </dependency>
+
+        <!-- The contracts live in src/main, so JUnit and AssertJ are compile scope here.
+             Hosts add this module with test scope. -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        <!-- MockHttpServletRequest, used to build requests for the resolver contract -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- dcp-common declares it as provided; the key metadata repository type needs it to be mocked -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

@@ -12,6 +12,7 @@
     <name>Decentralized claims protocol</name>
     <modules>
         <module>dcp-common</module>
+        <module>dcp-spi-testkit</module>
         <module>dcp-holder</module>
         <module>dcp-verifier</module>
         <module>dcp-issuer</module>
