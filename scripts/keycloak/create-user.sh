@@ -176,5 +176,5 @@ if [ "$NO_PASSWORD" = false ]; then
     echo "Test login:"
     echo "curl -X POST '$KEYCLOAK_PUBLIC_URL/realms/$REALM/protocol/openid-connect/token' \\"
     echo "  -d 'client_id=$KEYCLOAK_CLIENT_ID' -d 'grant_type=password' \\"
-    echo "  --data-urlencode 'username=$USERNAME' --data-urlencode 'password=<password>'"
+    echo "  --data-urlencode 'username=$USERNAME' --data-urlencode 'password=$PASSWORD'"
 fi
