@@ -13,6 +13,10 @@ test the wire protocol.
 | `ParticipantContextResolverContractTest` | `ParticipantContextResolver` | An unscoped request never resolves to an arbitrary participant in multi-participant mode. Reserved IDs are never resolved. Resolution is deterministic. A request addressed to a participant resolves to it. |
 | `ParticipantKeyProviderContractTest` | `ParticipantKeyProvider` | The active key signs and the published active key verifies the signature. After rotation the previous public key stays published (inactive) for the grace period and is removed once it has elapsed. Keys of different participants are never shared, and rotating one participant leaves the other's keys untouched. |
 
+The key provider contract also proves that the signing key reference of a context resolves to a usable key: it signs
+with the key the provider returns for the context. The contract uses ES256 and expects P-256 (secp256r1) keys, the
+curve the DCP modules generate.
+
 The cases that need two participants, or a disabled one, are skipped with JUnit assumptions when the
 implementation declares that it serves a single participant or cannot represent a disabled one.
 
