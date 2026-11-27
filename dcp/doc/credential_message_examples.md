@@ -1,5 +1,16 @@
 # Credential Message Examples for Postman
 
+## Credential Write Authorization
+
+The `CredentialMessage` JSON examples below do not contain authentication tokens. Send the Holder's
+Self-Issued ID Token as the bearer token to `POST /issuer/credentials`; when it contains a `token` claim, the
+Issuer retains that Holder-issued access token internally.
+
+For delivery or rejection, the Issuer sends its own Self-Issued ID Token to the Holder's `/dcp/credentials`
+endpoint. Its `iss` and `sub` identify the Issuer, `aud` is the Holder DID, and its `token` claim is the exact
+Holder-issued access token received with the credential request. The Holder validates both tokens before
+processing the message. Do not put either token in the `CredentialMessage` body.
+
 ## Example 1: JWT Credential (MembershipCredential)
 
 Use this JSON in Postman for `POST /dcp/credentials`:
@@ -11,7 +22,6 @@ Use this JSON in Postman for `POST /dcp/credentials`:
   "issuerPid" : "issuer-pid-12345",
   "holderPid" : "did:example:holder123",
   "status" : "ISSUED",
-  "rejectionReason" : null,
   "requestId" : "request-67890",
   "credentials" : [ {
     "credentialType" : "MembershipCredential",
@@ -61,7 +71,6 @@ Use this JSON in Postman for `POST /dcp/credentials`:
   "issuerPid" : "issuer-pid-12345",
   "holderPid" : "did:example:holder123",
   "status" : "ISSUED",
-  "rejectionReason" : null,
   "requestId" : "request-67890",
   "credentials" : [ {
     "credentialType" : "OrganizationCredential",
@@ -104,7 +113,6 @@ Use this JSON in Postman for `POST /dcp/credentials`:
   "issuerPid" : "issuer-pid-12345",
   "holderPid" : "did:example:holder123",
   "status" : "ISSUED",
-  "rejectionReason" : null,
   "requestId" : "request-67890",
   "credentials" : [ 
     {
@@ -146,8 +154,18 @@ Use this JSON in Postman for `POST /dcp/credentials`:
   "holderPid" : "did:example:holder123",
   "status" : "REJECTED",
   "rejectionReason" : "Holder organization not verified",
-  "requestId" : "request-67890",
-  "credentials" : [ ]
+  "requestId" : "request-67890"
+}
+```
+
+A rejection carries no `credentials`. `holderPid` and `rejectionReason` are optional (DCP §6.5.1): a rejection without a reason omits `rejectionReason` rather than sending `null`. The minimal rejected message is:
+
+```json
+{
+  "@context" : [ "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ],
+  "type" : "CredentialMessage",
+  "issuerPid" : "issuer-pid-12345",
+  "status" : "REJECTED"
 }
 ```
 

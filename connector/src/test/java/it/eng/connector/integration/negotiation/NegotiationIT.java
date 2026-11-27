@@ -1,17 +1,15 @@
 package it.eng.connector.integration.negotiation;
 
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
 import it.eng.negotiation.model.ContractNegotiationErrorMessage;
 import it.eng.negotiation.serializer.NegotiationSerializer;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.ResultActions;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -25,7 +23,7 @@ public class NegotiationIT extends BaseIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"/request", "/1/request", "/1/events", "/1/agreement/verification", "/1/termination"})
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void negotiationWrongMessageTests(String path) throws Exception {
         final ResultActions result =
                 mockMvc.perform(
@@ -41,7 +39,7 @@ public class NegotiationIT extends BaseIntegrationTest {
     }
 
     @Test
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     public void noNegotiationFoundTests() throws Exception {
 
         final ResultActions result =

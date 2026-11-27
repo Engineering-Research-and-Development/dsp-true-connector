@@ -12,6 +12,10 @@
 	<name>Catalog business logic</name>
 	<description>Catalog business logic</description>
 
+	<properties>
+		<openapi.examples.generator>it.eng.catalog.openapi.OpenApiExamplesGenerator</openapi.examples.generator>
+	</properties>
+
 	<dependencies>
 		<dependency>
 			<groupId>it.eng</groupId>
@@ -21,6 +25,10 @@
 			<groupId>it.eng</groupId>
 			<artifactId>dcp-verifier</artifactId>
 			<version>${revision}</version>
+		</dependency>
+		<dependency>
+			<groupId>io.swagger.core.v3</groupId>
+			<artifactId>swagger-annotations-jakarta</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -68,6 +76,10 @@
 	
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>exec-maven-plugin</artifactId>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>

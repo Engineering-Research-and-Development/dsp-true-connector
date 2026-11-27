@@ -1,5 +1,8 @@
 package it.eng.dcp.e2e.tests;
 
+import com.nimbusds.jwt.SignedJWT;
+import it.eng.dcp.common.model.CredentialRequestMessage;
+import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.model.PresentationQueryMessage;
 import it.eng.dcp.common.model.PresentationResponseMessage;
 import it.eng.dcp.e2e.environment.DcpTestEnvironment;
@@ -10,10 +13,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 
+import java.text.ParseException;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -173,50 +180,36 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
     }
 
     /**
-     * Test successful presentation query when holder has no matching credentials.
-     * The query should succeed but return an empty presentation list.
+     * Test scope narrowing (DCP v1.0.1 §5.4.1.2): requested scopes the access token does not authorize are
+     * dropped, and the holder answers 2xx with fewer presentations, here none. The holder holds a
+     * MembershipCredential but the access token authorizes only CompanyCredential, which the holder does not hold.
      */
     @Test
     void testSuccessfulPresentationQueryWithNoMatchingCredentials() {
         log.info("\n═══════════════════════════════════════════════");
-        log.info("TEST: Presentation Query with No Matching Credentials");
+        log.info("TEST: Presentation Query with No Matching Credentials (scope narrowing)");
         log.info("═══════════════════════════════════════════════");
 
-        // Query for credential type that doesn't exist
-        String selfIssuedToken = generateSelfIssuedIdTokenForVerifier();
+        String requestId = setupCredentialIssuance();
+        await()
+            .atMost(Duration.ofSeconds(CREDENTIAL_ISSUANCE_TIMEOUT_SECONDS))
+            .pollInterval(Duration.ofSeconds(CREDENTIAL_ISSUANCE_POLL_INTERVAL_SECONDS))
+            .untilAsserted(() -> assertEquals("ISSUED", getRequestStatus(requestId).get("status")));
 
-        PresentationQueryMessage query = createPresentationQuery(
-            List.of("org.example:NonExistentCredential")
-        );
+        String idToken = generateVerifierIdToken(getHolderAccessToken(getVerifierQueryDid(), "CompanyCredential"));
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization", "Bearer " + selfIssuedToken);
-
-        HttpEntity<PresentationQueryMessage> requestEntity = new HttpEntity<>(query, headers);
-
-        ResponseEntity<PresentationResponseMessage> response = getHolderClient().exchange(
-            "/dcp/presentations/query",
-            HttpMethod.POST,
-            requestEntity,
-            PresentationResponseMessage.class
-        );
+        ResponseEntity<PresentationResponseMessage> response = queryPresentations(idToken,
+            List.of("org.example:MembershipCredential", "org.example:CompanyCredential"));
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         PresentationResponseMessage presentationResponse = response.getBody();
         assertNotNull(presentationResponse);
-
-        // Should return empty presentation or null/empty list
         if (presentationResponse.getPresentation() != null) {
             assertTrue(presentationResponse.getPresentation().isEmpty(),
-                "Should have no presentations for non-existent credential type");
+                "An unentitled scope must not return presentations");
         }
 
-        log.info("✓ Query with no matching credentials handled correctly");
-
-        log.info("\n═══════════════════════════════════════════════");
-        log.info("✓✓✓ NO MATCHING CREDENTIALS TEST PASSED");
-        log.info("═══════════════════════════════════════════════\n");
+        log.info("✓ Unentitled scope dropped, no presentations returned");
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -338,6 +331,44 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
         log.info("═══════════════════════════════════════════════\n");
     }
 
+    /**
+     * A Verifier Self-Issued ID Token without an access token in {@code token} must get 401 (#407 Q2).
+     */
+    @Test
+    void testPresentationQueryWithoutAccessTokenIsRejected() {
+        String idTokenWithoutAccessToken = generateVerifierIdToken(null);
+
+        HttpClientErrorException e = assertThrows(HttpClientErrorException.class,
+            () -> queryPresentations(idTokenWithoutAccessToken, List.of("org.example:MembershipCredential")));
+        assertEquals(HttpStatus.UNAUTHORIZED, e.getStatusCode());
+    }
+
+    /**
+     * An access token issued to another party (here the issuer DID) cannot be used by this Verifier: 401.
+     */
+    @Test
+    void testPresentationQueryWithAccessTokenOfAnotherVerifierIsRejected() {
+        String foreignAccessToken = getHolderAccessToken(getIssuerDid(), "MembershipCredential");
+        String idToken = generateVerifierIdToken(foreignAccessToken);
+
+        HttpClientErrorException e = assertThrows(HttpClientErrorException.class,
+            () -> queryPresentations(idToken, List.of("org.example:MembershipCredential")));
+        assertEquals(HttpStatus.UNAUTHORIZED, e.getStatusCode());
+    }
+
+    /**
+     * The holder's own Self-Issued ID Token is not an access token, so it cannot stand in for one: 401.
+     */
+    @Test
+    void testPresentationQueryWithSelfIssuedIdTokenAsAccessTokenIsRejected() {
+        String holderIdToken = generateValidToken(getVerifierQueryDid());
+        String idToken = generateVerifierIdToken(holderIdToken);
+
+        HttpClientErrorException e = assertThrows(HttpClientErrorException.class,
+            () -> queryPresentations(idToken, List.of("org.example:MembershipCredential")));
+        assertEquals(HttpStatus.UNAUTHORIZED, e.getStatusCode());
+    }
+
     // ═══════════════════════════════════════════════════════════════════════════
     // Request Validation Scenarios
     // ═══════════════════════════════════════════════════════════════════════════
@@ -433,8 +464,7 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
 
     /**
      * Test presentation query with presentation definition.
-     * Implementation MAY support presentationDefinition parameter.
-     * If not supported, must return 501 Not Implemented.
+     * The Holder does not support presentationDefinition and must return 501 Not Implemented.
      */
     @Test
     void testPresentationQueryWithPresentationDefinition() {
@@ -480,25 +510,15 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
 
         HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(query, headers);
 
-        try {
-            ResponseEntity<PresentationResponseMessage> response = getHolderClient().exchange(
+        HttpServerErrorException ex = assertThrows(HttpServerErrorException.class, () ->
+            getHolderClient().exchange(
                 "/dcp/presentations/query",
                 HttpMethod.POST,
                 requestEntity,
                 PresentationResponseMessage.class
-            );
-
-            if (response.getStatusCode() == HttpStatus.OK) {
-                log.info("✓ Presentation definition supported and query succeeded");
-                assertNotNull(response.getBody());
-            }
-        } catch (HttpClientErrorException | HttpServerErrorException e) {
-            if (e.getStatusCode() == HttpStatus.NOT_IMPLEMENTED) {
-                log.info("✓ Presentation definition not supported (501 Not Implemented) - acceptable");
-            } else {
-                fail("Unexpected error for presentation definition query: " + e.getStatusCode());
-            }
-        }
+            ));
+        assertEquals(HttpStatus.NOT_IMPLEMENTED, ex.getStatusCode());
+        log.info("✓ Presentation definition not supported (501 Not Implemented)");
 
         log.info("\n═══════════════════════════════════════════════");
         log.info("✓✓✓ PRESENTATION DEFINITION TEST PASSED");
@@ -628,21 +648,22 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
      */
     private String createCredentialRequest(String holderPid) {
         String issuerDid = getIssuerDid();
-        String validToken = generateValidToken(issuerDid);
-        String credentialId = getAnyCredentialId();
+        IssuerMetadata.CredentialObject credential = getAnyCredential();
+        String validToken = generateValidTokenWithCredentialAccessToken(
+            issuerDid, credential.getCredentialType());
 
-        Map<String, Object> credentialRequest = Map.of(
-            "@context", List.of("https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"),
-            "type", "CredentialRequestMessage",
-            "holderPid", holderPid,
-            "credentials", List.of(Map.of("id", credentialId))
-        );
+        CredentialRequestMessage credentialRequest = CredentialRequestMessage.Builder.newInstance()
+            .holderPid(holderPid)
+            .credentials(List.of(CredentialRequestMessage.CredentialReference.Builder.newInstance()
+                .id(credential.getId())
+                .build()))
+            .build();
 
         HttpHeaders requestHeaders = new HttpHeaders();
         requestHeaders.setContentType(MediaType.APPLICATION_JSON);
         requestHeaders.set("Authorization", "Bearer " + validToken);
 
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(credentialRequest, requestHeaders);
+        HttpEntity<CredentialRequestMessage> requestEntity = new HttpEntity<>(credentialRequest, requestHeaders);
 
         ResponseEntity<Void> response = getIssuerClient().exchange(
             "/issuer/credentials",
@@ -670,7 +691,7 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
 
         HttpEntity<Map<String, Object>> approvalEntity = new HttpEntity<>(approvalRequest);
 
-        ResponseEntity<String> response = getIssuerClient().exchange(
+        ResponseEntity<String> response = getIssuerAdminClient().exchange(
             "/api/issuer/requests/" + requestId + "/approve",
             HttpMethod.POST,
             approvalEntity,
@@ -706,11 +727,11 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
     }
 
     /**
-     * Retrieves any available credential ID from the issuer's metadata.
+     * Retrieves any available credential from the issuer's metadata.
      *
-     * @return a credential ID that the issuer supports
+     * @return a credential supported by the issuer
      */
-    private String getAnyCredentialId() {
+    private IssuerMetadata.CredentialObject getAnyCredential() {
         String issuerDid = getIssuerDid();
         String validToken = generateValidToken(issuerDid);
 
@@ -718,53 +739,121 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
         headers.set("Authorization", "Bearer " + validToken);
         HttpEntity<Void> requestEntity = new HttpEntity<>(headers);
 
-        ResponseEntity<Map<String, Object>> metadataResponse = getIssuerClient().exchange(
+        ResponseEntity<IssuerMetadata> metadataResponse = getIssuerClient().exchange(
             "/issuer/metadata",
             HttpMethod.GET,
             requestEntity,
-            new ParameterizedTypeReference<>() {}
+            IssuerMetadata.class
         );
 
         assertEquals(HttpStatus.OK, metadataResponse.getStatusCode());
-        Map<String, Object> metadata = metadataResponse.getBody();
+        IssuerMetadata metadata = metadataResponse.getBody();
         assertNotNull(metadata);
-
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> credentialsSupported =
-            (List<Map<String, Object>>) metadata.get("credentialsSupported");
-        assertFalse(credentialsSupported.isEmpty(), "Issuer must have at least one credential configured");
-
-        return (String) credentialsSupported.get(0).get("id");
+        assertFalse(metadata.getCredentialsSupported().isEmpty(), "Issuer must have at least one credential configured");
+        return metadata.getCredentialsSupported().get(0);
     }
 
     /**
-     * Generates a valid Self-Issued ID Token for querying the holder's presentation endpoint.
-     * The audience must be the holder DID (the service receiving the request), not the verifier DID.
+     * Generates the Verifier's Self-Issued ID Token for querying the holder's presentation endpoint
+     * (DCP v1.0.1 §5.1 step 6, §5.3.1), authorized for {@code MembershipCredential}.
      *
-     * @return valid JWT Bearer token containing access token
+     * @return the Verifier's Self-Issued ID Token carrying a holder-issued access token
      */
     private String generateSelfIssuedIdTokenForVerifier() {
-        // The audience must be the holder DID (the service endpoint being called)
-        // NOT the verifier DID. The token is issued BY the holder TO the holder.
-        String holderDid = getHolderDid();
-        Map<String, String> tokenRequest = Map.of("audienceDid", holderDid);
+        return generateVerifierIdToken(getHolderAccessToken(getVerifierQueryDid(), "MembershipCredential"));
+    }
 
-        HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(tokenRequest);
+    /**
+     * The DID the Verifier authenticates with. In this environment the Verifier shares the holder DID and key
+     * (see {@code DcpCompleteFlowTestE2E}), so its Self-Issued ID Token {@code sub} is the holder DID.
+     *
+     * @return the querying Verifier's DID
+     */
+    private String getVerifierQueryDid() {
+        return getHolderDid();
+    }
+
+    /**
+     * Obtains an access token issued by the holder: the {@code token} claim of the holder's STS-style
+     * Self-Issued ID Token for the given audience.
+     *
+     * @param audienceDid the Verifier DID the access token is bound to
+     * @param scope the scope the access token authorizes
+     * @return the access token
+     */
+    private String getHolderAccessToken(String audienceDid, String scope) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
+        form.add("grant_type", "client_credentials");
+        form.add("audience", audienceDid);
+        form.add("bearer_access_scope", scope);
 
         ResponseEntity<Map<String, Object>> tokenResponse = getHolderClient().exchange(
-            "/api/dev/token/generate",
+            "/api/dev/token/generate/token",
             HttpMethod.POST,
-            requestEntity,
+            new HttpEntity<>(form, headers),
             new ParameterizedTypeReference<>() {}
         );
 
         assertEquals(HttpStatus.OK, tokenResponse.getStatusCode());
         Map<String, Object> tokenBody = tokenResponse.getBody();
         assertNotNull(tokenBody);
+        try {
+            String accessToken = SignedJWT.parse((String) tokenBody.get("access_token"))
+                .getJWTClaimsSet().getStringClaim("token");
+            assertNotNull(accessToken, "The holder's Self-Issued ID Token must carry an access token");
+            return accessToken;
+        } catch (ParseException e) {
+            throw new IllegalStateException("Token generator returned an unparseable token", e);
+        }
+    }
 
+    /**
+     * Generates the Verifier's Self-Issued ID Token ({@code aud} = holder DID) carrying the given access token.
+     *
+     * @param accessToken the access token for the {@code token} claim, or null for none
+     * @return the Verifier's Self-Issued ID Token
+     */
+    private String generateVerifierIdToken(String accessToken) {
+        Map<String, String> tokenRequest = new HashMap<>();
+        tokenRequest.put("audienceDid", getHolderDid());
+        if (accessToken != null) {
+            tokenRequest.put("accessToken", accessToken);
+        }
+
+        ResponseEntity<Map<String, Object>> tokenResponse = getHolderClient().exchange(
+            "/api/dev/token/generate",
+            HttpMethod.POST,
+            new HttpEntity<>(tokenRequest),
+            new ParameterizedTypeReference<>() {}
+        );
+
+        assertEquals(HttpStatus.OK, tokenResponse.getStatusCode());
+        Map<String, Object> tokenBody = tokenResponse.getBody();
+        assertNotNull(tokenBody);
         String token = (String) tokenBody.get("token");
         assertNotNull(token, "Token should not be null");
         return token;
+    }
+
+    /**
+     * Posts a presentation query with the given bearer token.
+     *
+     * @param bearerToken the bearer token
+     * @param scopes the requested scopes
+     * @return the response
+     */
+    private ResponseEntity<PresentationResponseMessage> queryPresentations(String bearerToken, List<String> scopes) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("Authorization", "Bearer " + bearerToken);
+        return getHolderClient().exchange(
+            "/dcp/presentations/query",
+            HttpMethod.POST,
+            new HttpEntity<>(createPresentationQuery(scopes), headers),
+            PresentationResponseMessage.class
+        );
     }
 
     /**
@@ -774,7 +863,26 @@ class DcpVerifierFlowTestE2E extends DcpTestEnvironment {
      * @return valid JWT Bearer token
      */
     private String generateValidToken(String audienceDid) {
-        Map<String, String> tokenRequest = Map.of("audienceDid", audienceDid);
+        return generateValidToken(audienceDid, null);
+    }
+
+    /**
+     * Generates a valid Self-Issued ID Token carrying a Holder access token for a credential type.
+     *
+     * @param audienceDid the DID of the audience for the token
+     * @param credentialType the credential type authorized by the nested access token
+     * @return valid JWT Bearer token
+     */
+    private String generateValidTokenWithCredentialAccessToken(String audienceDid, String credentialType) {
+        return generateValidToken(audienceDid, getHolderAccessToken(audienceDid, credentialType));
+    }
+
+    private String generateValidToken(String audienceDid, String accessToken) {
+        Map<String, String> tokenRequest = new HashMap<>();
+        tokenRequest.put("audienceDid", audienceDid);
+        if (accessToken != null) {
+            tokenRequest.put("accessToken", accessToken);
+        }
 
         HttpEntity<Map<String, String>> requestEntity = new HttpEntity<>(tokenRequest);
 

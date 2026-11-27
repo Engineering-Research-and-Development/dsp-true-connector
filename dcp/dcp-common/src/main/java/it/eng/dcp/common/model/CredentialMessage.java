@@ -2,6 +2,7 @@ package it.eng.dcp.common.model;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
@@ -10,7 +11,6 @@ import jakarta.validation.Validation;
 import jakarta.validation.ValidationException;
 import jakarta.validation.ValidatorFactory;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -38,19 +38,24 @@ public class CredentialMessage extends BaseDcpMessage {
     @NotNull
     private String issuerPid;
 
-    @NotNull
+    /** Holder-side request ID (DCP §6.5.1); optional. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String holderPid;
 
-    private String status; // e.g., ISSUED or REJECTED
+    /** ISSUED or REJECTED (DCP §6.5.1); required. */
+    @NotNull
+    private String status;
 
+    /** Optional reason for a rejection (DCP §6.5.1); omitted from JSON when absent, never sent as null. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String rejectionReason;
 
     // New: optional requestId coming from issuer to correlate requests
     private String requestId;
 
-    @NotNull
-    @Size(min = 1)
+    /** Issued credentials; optional, for example absent in a rejection (DCP §6.5.1 Example 9). */
     @JsonProperty(value = "credentials")
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
     private List<CredentialContainer> credentials = new ArrayList<>();
 
     @JsonPOJOBuilder(withPrefix = "")
@@ -115,10 +120,6 @@ public class CredentialMessage extends BaseDcpMessage {
         public CredentialMessage build() {
             try {
                 msg.validateBase();
-                // Additional conditional validation: if status == REJECTED, rejectionReason must be provided
-                if ("REJECTED".equalsIgnoreCase(msg.status) && (msg.rejectionReason == null || msg.rejectionReason.isBlank())) {
-                    throw new ValidationException("CredentialMessage - rejectionReason is required when status is REJECTED");
-                }
                 if (msg.credentials == null) {
                     msg.credentials = new ArrayList<>();
                 }

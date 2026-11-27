@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
  * Service for managing MongoDB-based users.
  *
  * <p>This service is active whenever Keycloak mode is not selected.
- * When Keycloak mode is active, user management is delegated to {@code KeycloakUserService}.
+ * When Keycloak mode is active, the connector manages no users: they are managed in Keycloak.
  */
 @Service
 @Slf4j

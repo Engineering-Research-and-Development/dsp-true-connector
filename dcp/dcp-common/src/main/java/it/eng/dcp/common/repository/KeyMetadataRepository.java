@@ -3,6 +3,7 @@ package it.eng.dcp.common.repository;
 import it.eng.dcp.common.model.KeyMetadata;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface KeyMetadataRepository extends MongoRepository<KeyMetadata, String> {
@@ -10,5 +11,7 @@ public interface KeyMetadataRepository extends MongoRepository<KeyMetadata, Stri
     Optional<KeyMetadata> findByActiveTrue();
 
     Optional<KeyMetadata> findByAlias(String alias);
+
+    List<KeyMetadata> findByArchivedTrue();
 }
 

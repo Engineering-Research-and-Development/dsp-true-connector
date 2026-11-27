@@ -14,15 +14,13 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class DataTransferPropertiesTest {
 
-    private static final String TENANT_ID = "engineering";
+    private static final String TENANT_ID = "engineering-a";
     private static final String GLOBAL_CALLBACK = "http://global.example.com";
 
     @Mock
@@ -42,7 +40,7 @@ class DataTransferPropertiesTest {
 
         enabledTenant = Tenant.Builder.newInstance()
                 .id(TENANT_ID)
-                .name("Engineering")
+                .name("EngineeringA")
                 .participantId("tenant-participant-id")
                 .automaticTransfer(true)
                 .enabled(true)
@@ -78,7 +76,7 @@ class DataTransferPropertiesTest {
     void providerCallbackAddress_withDisabledTenant_returnsGlobalProperty() {
         Tenant disabledTenant = Tenant.Builder.newInstance()
                 .id(TENANT_ID)
-                .name("Engineering")
+                .name("EngineeringA")
                 .participantId("tenant-participant-id")
                 .enabled(false)
                 .build();

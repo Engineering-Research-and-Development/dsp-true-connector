@@ -4,15 +4,18 @@ import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.ProfileId;
+import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig.CredentialConfig;
 import it.eng.dcp.issuer.config.CredentialMetadataConfigLoader;
 import it.eng.dcp.issuer.service.CredentialIssuanceService;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.text.ParseException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -25,6 +28,24 @@ public class CredentialIssuanceServiceIT extends BaseIssuerIntegrationTest {
 
     @Autowired
     private CredentialMetadataConfigLoader credentialMetadataConfigLoader;
+
+    @Autowired
+    private CredentialRequestRepository credentialRequestRepository;
+
+    @Test
+    @DisplayName("The client's access token survives request persistence")
+    public void clientAccessTokenSurvivesPersistence() {
+        CredentialRequest request = CredentialRequest.Builder.newInstance()
+                .holderPid("holder-pid-" + UUID.randomUUID())
+                .credentialIds(List.of("membership"))
+                .clientAccessToken("holder-access-token")
+                .build();
+
+        credentialRequestRepository.save(request);
+
+        CredentialRequest loaded = credentialRequestRepository.findByIssuerPid(request.getIssuerPid()).orElseThrow();
+        assertThat(loaded.getClientAccessToken()).isEqualTo("holder-access-token");
+    }
 
     @Test
     public void generateVC11Credentials_Test() throws ParseException {
@@ -106,5 +127,25 @@ public class CredentialIssuanceServiceIT extends BaseIssuerIntegrationTest {
         assertThat(claims).containsKeys("type", "credentialSubject", "issuer", "validFrom");
         // VC 2.0 does not have a "proof" object
         assertThat(claims).doesNotContainKey("proof");
+    }
+
+    @Test
+    @DisplayName("The shipped CompanyCredential ID yields a CompanyCredential with the vc20-bssl/jwt profile")
+    public void companyCredentialIdYieldsCompanyCredentialVc20() throws Exception {
+        CredentialRequest request = CredentialRequest.Builder.newInstance()
+            .holderPid("holder-pid-1")
+            .holderDid("did:web:holder.example.com")
+            .credentialIds(List.of("urn:uuid:d5c77b0e-7f4e-4fd5-8c5f-28b5fc3f96d1"))
+            .build();
+
+        List<CredentialMessage.CredentialContainer> result = credentialIssuanceService.generateCredentials(request);
+
+        assertEquals(1, result.size());
+        assertEquals("CompanyCredential", result.get(0).getCredentialType());
+        Map<String, Object> claims = SignedJWT.parse(String.valueOf(result.get(0).getPayload())).getJWTClaimsSet().getClaims();
+        // vc20-bssl/jwt: VC 2.0 shape (no vc claim) with a BitstringStatusList entry
+        assertThat(claims).doesNotContainKey("vc");
+        assertThat(String.valueOf(claims.get("type"))).contains("CompanyCredential");
+        assertThat(((Map<?, ?>) claims.get("credentialStatus")).get("type")).isEqualTo("BitstringStatusListEntry");
     }
 }

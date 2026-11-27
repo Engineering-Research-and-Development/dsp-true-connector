@@ -1,11 +1,14 @@
 package it.eng.dcp.issuer.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.model.ProfileId;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig;
 import it.eng.dcp.issuer.config.IssuerProperties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -14,6 +17,7 @@ import org.mockito.MockitoAnnotations;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.when;
@@ -126,46 +130,103 @@ class CredentialMetadataServiceTest {
     }
 
     @Test
-    void buildIssuerMetadata_noCredentialsConfigured_throwsException() {
+    @DisplayName("Empty configuration yields an empty credentialsSupported array")
+    void buildIssuerMetadata_noCredentialsConfigured_returnsEmptyArray() throws Exception {
+        when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
         when(credentialMetadataConfig.getSupported()).thenReturn(List.of());
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
-                metadataService.buildIssuerMetadata()
-        );
+        IssuerMetadata metadata = metadataService.buildIssuerMetadata();
 
-        assertTrue(exception.getMessage().contains("No credentials configured"));
+        assertTrue(metadata.getCredentialsSupported().isEmpty());
+        JsonNode json = new ObjectMapper().readTree(new ObjectMapper().writeValueAsString(metadata));
+        assertTrue(json.get("credentialsSupported").isArray());
+        assertEquals(0, json.get("credentialsSupported").size());
     }
 
     @Test
-    void buildIssuerMetadata_nullCredentialType_throwsException() {
-        when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
-
-        CredentialMetadataConfig.CredentialConfig invalidConfig = new CredentialMetadataConfig.CredentialConfig();
+    @DisplayName("Startup validation rejects an entry without credentialType")
+    void validateSupportedCredentials_missingCredentialType_throws() {
+        CredentialMetadataConfig.CredentialConfig invalidConfig = completeConfig("id-1");
         invalidConfig.setCredentialType(null);
-
         when(credentialMetadataConfig.getSupported()).thenReturn(List.of(invalidConfig));
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
-                metadataService.buildIssuerMetadata()
-        );
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> metadataService.validateSupportedCredentials());
 
-        assertTrue(exception.getMessage().contains("Failed to build any valid credentials"));
+        assertTrue(exception.getMessage().contains("dcp.credentials.supported[0] is missing credentialType"));
     }
 
     @Test
-    void buildIssuerMetadata_blankCredentialType_throwsException() {
-        when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
-
-        CredentialMetadataConfig.CredentialConfig invalidConfig = new CredentialMetadataConfig.CredentialConfig();
-        invalidConfig.setCredentialType("");
-
+    @DisplayName("Startup validation rejects an entry without credentialSchema and offerReason")
+    void validateSupportedCredentials_missingSchemaAndOfferReason_throws() {
+        CredentialMetadataConfig.CredentialConfig invalidConfig = completeConfig("id-2");
+        invalidConfig.setCredentialSchema(" ");
+        invalidConfig.setOfferReason(null);
         when(credentialMetadataConfig.getSupported()).thenReturn(List.of(invalidConfig));
 
-        IllegalStateException exception = assertThrows(IllegalStateException.class, () ->
-                metadataService.buildIssuerMetadata()
-        );
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> metadataService.validateSupportedCredentials());
 
-        assertTrue(exception.getMessage().contains("Failed to build any valid credentials"));
+        assertTrue(exception.getMessage().contains("dcp.credentials.supported[0] (MembershipCredential) is missing credentialSchema, offerReason"));
+    }
+
+    @Test
+    @DisplayName("Startup validation rejects an entry without id")
+    void validateSupportedCredentials_missingId_throws() {
+        CredentialMetadataConfig.CredentialConfig invalidConfig = completeConfig(" ");
+        when(credentialMetadataConfig.getSupported()).thenReturn(List.of(invalidConfig));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> metadataService.validateSupportedCredentials());
+
+        assertTrue(exception.getMessage().contains("dcp.credentials.supported[0] (MembershipCredential) is missing id"));
+    }
+
+    @Test
+    @DisplayName("Startup validation rejects two entries with the same id")
+    void validateSupportedCredentials_duplicateId_throws() {
+        when(credentialMetadataConfig.getSupported()).thenReturn(List.of(completeConfig("same"), completeConfig("same")));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> metadataService.validateSupportedCredentials());
+
+        assertTrue(exception.getMessage().contains("dcp.credentials.supported[1] (MembershipCredential) repeats id same"));
+    }
+
+    @Test
+    @DisplayName("Startup validation accepts complete entries and an empty configuration")
+    void validateSupportedCredentials_completeOrEmpty_passes() {
+        when(credentialMetadataConfig.getSupported()).thenReturn(List.of(completeConfig("id-3")));
+        assertDoesNotThrow(() -> metadataService.validateSupportedCredentials());
+
+        when(credentialMetadataConfig.getSupported()).thenReturn(List.of());
+        assertDoesNotThrow(() -> metadataService.validateSupportedCredentials());
+    }
+
+    @Test
+    @DisplayName("Every entry carries the five schema-required properties")
+    void buildIssuerMetadata_entryHasFiveRequiredProperties() {
+        when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
+        when(credentialMetadataConfig.getSupported()).thenReturn(List.of(completeConfig("id-4")));
+
+        IssuerMetadata.CredentialObject entry = metadataService.buildIssuerMetadata().getCredentialsSupported().get(0);
+
+        assertEquals("MembershipCredential", entry.getCredentialType());
+        assertEquals("https://example.com/schemas/membership.json", entry.getCredentialSchema());
+        assertEquals("issuance", entry.getOfferReason());
+        assertEquals(List.of("did:web"), entry.getBindingMethods());
+        assertEquals("vc20-bssl/jwt", entry.getProfile());
+    }
+
+    private static CredentialMetadataConfig.CredentialConfig completeConfig(String id) {
+        CredentialMetadataConfig.CredentialConfig config = new CredentialMetadataConfig.CredentialConfig();
+        config.setId(id);
+        config.setCredentialType("MembershipCredential");
+        config.setCredentialSchema("https://example.com/schemas/membership.json");
+        config.setOfferReason("issuance");
+        config.setBindingMethods(List.of("did:web"));
+        config.setProfile("vc20-bssl/jwt");
+        return config;
     }
 
     @Test
@@ -183,7 +244,8 @@ class CredentialMetadataServiceTest {
         assertNotNull(metadata);
         IssuerMetadata.CredentialObject credentialObject = metadata.getCredentialsSupported().get(0);
         assertNotNull(credentialObject.getId());
-        assertFalse(credentialObject.getId().isBlank());
+        assertTrue(credentialObject.getId().startsWith("urn:uuid:"));
+        assertDoesNotThrow(() -> UUID.fromString(credentialObject.getId().substring("urn:uuid:".length())));
     }
 
     @Test

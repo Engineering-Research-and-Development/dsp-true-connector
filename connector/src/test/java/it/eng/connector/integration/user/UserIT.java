@@ -42,7 +42,7 @@ public class UserIT extends BaseIntegrationTest {
             TestUtil.SUPER_ADMIN_USER
     );
 
-    private static final String KNOWN_TENANT_ID = "engineering";
+    private static final String KNOWN_TENANT_ID = "engineering-a";
     private static final String UNKNOWN_TENANT_ID = "non-existent-tenant-xyz";
 
     // updateUserNames test creates a duplicate entry under the super-admin email; track by ID for safe cleanup.

@@ -4,12 +4,11 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
+import it.eng.dcp.issuer.service.IssuerIdentity;
 import it.eng.dcp.common.model.CredentialGenerationContext;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialStatus;
-import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.issuer.config.CredentialMetadataConfigLoader;
 import it.eng.dcp.issuer.service.jwt.VcJwtGeneratorFactory;
 import org.junit.jupiter.api.AfterEach;
@@ -35,10 +34,7 @@ import static org.mockito.Mockito.when;
 class GenericCredentialGeneratorTest {
 
     @Mock
-    private KeyService keyService;
-
-    @Mock
-    private BaseDidDocumentConfiguration didDocumentConfig;
+    private IssuerIdentity issuerIdentity;
     @Mock
     private CredentialMetadataConfigLoader configLoader;
 
@@ -49,6 +45,7 @@ class GenericCredentialGeneratorTest {
 
     private static final String ISSUER_DID = "did:web:issuer.example.com";
     private static final String HOLDER_DID = "did:web:holder.example.com";
+    private static final String HOLDER_PID = "holder-request-123";
     private static final String CUSTOM_CREDENTIAL_TYPE = "CustomCredential";
 
     @BeforeEach
@@ -59,9 +56,10 @@ class GenericCredentialGeneratorTest {
                 .keyID("test-key-1")
                 .generate();
 
-        when(keyService.getSigningJwk(any())).thenReturn(testSigningKey);
+        when(issuerIdentity.signingKey()).thenReturn(testSigningKey);
+        when(issuerIdentity.did()).thenReturn(ISSUER_DID);
 
-        jwtGeneratorFactory = new VcJwtGeneratorFactory(ISSUER_DID, keyService, didDocumentConfig);
+        jwtGeneratorFactory = new VcJwtGeneratorFactory(issuerIdentity);
         profileExtractor = new ProfileExtractor();
         generator = new GenericCredentialGenerator(jwtGeneratorFactory, profileExtractor, ISSUER_DID, CUSTOM_CREDENTIAL_TYPE);
     }
@@ -159,7 +157,8 @@ class GenericCredentialGeneratorTest {
     private CredentialGenerationContext createTestContext() {
         CredentialRequest request = CredentialRequest.Builder.newInstance()
                 .issuerPid("test-issuer-pid")
-                .holderPid(HOLDER_DID)
+                .holderPid(HOLDER_PID)
+                .holderDid(HOLDER_DID)
                 .credentialIds(List.of(CUSTOM_CREDENTIAL_TYPE))
                 .status(CredentialStatus.PENDING)
                 .createdAt(Instant.now())

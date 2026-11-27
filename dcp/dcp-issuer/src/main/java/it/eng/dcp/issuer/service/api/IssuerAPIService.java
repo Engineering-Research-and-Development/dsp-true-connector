@@ -3,13 +3,13 @@ package it.eng.dcp.issuer.service.api;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
-import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.issuer.service.CredentialDeliveryService;
+import it.eng.dcp.issuer.service.CredentialIssuanceException;
 import it.eng.dcp.issuer.service.CredentialIssuanceService;
-import it.eng.dcp.issuer.service.CredentialMetadataService;
 import it.eng.dcp.issuer.service.IssuerService;
+import it.eng.dcp.issuer.service.StatusListService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -23,21 +23,21 @@ public class IssuerAPIService {
     private static final String ISSUER_SOURCE = "issuer";
 
     private final CredentialRequestRepository requestRepository;
-    private final CredentialMetadataService credentialMetadataService;
     private final CredentialIssuanceService issuanceService;
     private final CredentialDeliveryService deliveryService;
     private final DcpAuditEventPublisher auditPublisher;
+    private final StatusListService statusListService;
 
     public IssuerAPIService(CredentialRequestRepository requestRepository,
-                            CredentialMetadataService credentialMetadataService,
                             CredentialIssuanceService issuanceService,
                             CredentialDeliveryService deliveryService,
-                            DcpAuditEventPublisher auditPublisher) {
+                            DcpAuditEventPublisher auditPublisher,
+                            StatusListService statusListService) {
         this.requestRepository = requestRepository;
-        this.credentialMetadataService = credentialMetadataService;
         this.issuanceService = issuanceService;
         this.deliveryService = deliveryService;
         this.auditPublisher = auditPublisher;
+        this.statusListService = statusListService;
     }
 
     /**
@@ -80,27 +80,25 @@ public class IssuerAPIService {
                 log.info("Applying {} constraints to credential generation", constraintsData.size());
             }
 
-            // Retrieve issuer metadata to use profile/format information
-            IssuerMetadata metadata = credentialMetadataService.buildIssuerMetadata();
-
-            // Enrich custom claims with metadata-based profile information
-            Map<String, Object> enrichedClaims = enrichClaimsWithMetadata(
-                    credentialRequest.getCredentialIds(),
-                    metadata,
-                    customClaims);
-
-            credentials = issuanceService.generateCredentials(
-                    credentialRequest,
-                    enrichedClaims,
-                    constraintsData
-            );
+            // The issuance service resolves each requested ID to its credentialsSupported entry and sets
+            // that entry's type, profile and format on the generated credential
+            try {
+                credentials = issuanceService.generateCredentials(
+                        credentialRequest,
+                        customClaims,
+                        constraintsData
+                );
+            } catch (CredentialIssuanceException e) {
+                // At least one credential could not be issued: deliver none and tell the holder (DCP 1.0.1 §6.5.1)
+                boolean rejected = deliveryService.rejectCredentialRequest(requestId, e.getMessage());
+                throw new IllegalStateException(rejected
+                        ? "Credential issuance failed, request rejected: " + e.getMessage()
+                        : "Credential issuance failed and the rejection could not be delivered: " + e.getMessage(), e);
+            }
 
             if (credentials.isEmpty()) {
                 throw new IllegalStateException("Failed to generate credentials for the requested types");
             }
-
-            // Apply metadata profile/format to generated credentials
-            credentials = applyMetadataToCredentials(credentials, metadata);
         }
 
         boolean success = deliveryService.deliverCredentials(requestId, credentials);
@@ -151,6 +149,29 @@ public class IssuerAPIService {
     }
 
     /**
+     * Revoke the credential that holds a status list entry: sets the entry's status bit and re-signs the list.
+     * Revocation is not reversible; revoking an entry twice changes nothing and emits no second audit event.
+     *
+     * @param statusListId the status list ID, the last path segment of the credential's {@code statusListCredential}
+     * @param index the credential's {@code statusListIndex}
+     * @return true when the entry was revoked by this call, false when it was already revoked
+     * @throws java.util.NoSuchElementException if the status list does not exist
+     * @throws IllegalArgumentException if the index has not been allocated
+     */
+    public boolean revokeStatusEntry(String statusListId, int index) {
+        boolean revoked = statusListService.revoke(statusListId, index);
+        if (revoked) {
+            auditPublisher.publishEvent(
+                    DcpAuditEventType.CREDENTIAL_REVOKED,
+                    "Credential revoked: status list " + statusListId + ", index " + index,
+                    ISSUER_SOURCE,
+                    null, null, null, null,
+                    Map.of("statusListId", statusListId, "statusListIndex", index));
+        }
+        return revoked;
+    }
+
+    /**
      * Convert provided credential data maps to CredentialContainer objects.
      *
      * @param credentialsData List of maps containing credential data
@@ -183,98 +204,4 @@ public class IssuerAPIService {
         return credentials;
     }
 
-    /**
-     * Enrich custom claims with metadata information for credential types.
-     *
-     * @param credentialIds List of credential IDs being generated
-     * @param metadata Issuer metadata containing credential configurations
-     * @param customClaims Existing custom claims (can be null)
-     * @return Enriched claims map with metadata information
-     */
-    private Map<String, Object> enrichClaimsWithMetadata(List<String> credentialIds,
-                                                         IssuerMetadata metadata,
-                                                         Map<String, Object> customClaims) {
-        Map<String, Object> enriched = new java.util.HashMap<>(customClaims != null ? customClaims : Map.of());
-
-        Map<String, Map<String, Object>> metadataByType = new java.util.HashMap<>();
-
-        for (IssuerMetadata.CredentialObject credObj : metadata.getCredentialsSupported()) {
-            Map<String, Object> credMetadata = new java.util.HashMap<>();
-            credMetadata.put("profile", credObj.getProfile());
-            credMetadata.put("bindingMethods", credObj.getBindingMethods());
-            credMetadata.put("schema", credObj.getCredentialSchema());
-            metadataByType.put(credObj.getCredentialType(), credMetadata);
-        }
-
-        enriched.put("__credentialMetadata", metadataByType);
-
-        log.debug("Enriched claims with metadata for {} credential types", metadataByType.size());
-        return enriched;
-    }
-
-    /**
-     * Apply metadata profile and format information to generated credentials.
-     *
-     * @param credentials List of generated credentials
-     * @param metadata Issuer metadata containing credential configurations
-     * @return Updated credentials with proper format based on metadata
-     */
-    private List<CredentialMessage.CredentialContainer> applyMetadataToCredentials(
-            List<CredentialMessage.CredentialContainer> credentials,
-            IssuerMetadata metadata) {
-
-        Map<String, IssuerMetadata.CredentialObject> metadataMap = new java.util.HashMap<>();
-        for (IssuerMetadata.CredentialObject credObj : metadata.getCredentialsSupported()) {
-            metadataMap.put(credObj.getCredentialType(), credObj);
-        }
-
-        List<CredentialMessage.CredentialContainer> updatedCredentials = new java.util.ArrayList<>();
-
-        for (CredentialMessage.CredentialContainer credential : credentials) {
-            IssuerMetadata.CredentialObject credentialMetadata = metadataMap.get(credential.getCredentialType());
-
-            if (credentialMetadata != null && credentialMetadata.getProfile() != null) {
-                String format = extractFormatFromProfile(credentialMetadata.getProfile());
-
-                log.debug("Applying metadata to credential type '{}': profile='{}', format='{}'",
-                        credential.getCredentialType(), credentialMetadata.getProfile(), format);
-
-                CredentialMessage.CredentialContainer updated =
-                        CredentialMessage.CredentialContainer.Builder.newInstance()
-                                .credentialType(credential.getCredentialType())
-                                .payload(credential.getPayload())
-                                .format(format)
-                                .build();
-                updatedCredentials.add(updated);
-            } else {
-                log.debug("No metadata found for credential type '{}', using default format",
-                        credential.getCredentialType());
-                updatedCredentials.add(credential);
-            }
-        }
-
-        return updatedCredentials;
-    }
-
-    /**
-     * Extract format from profile string.
-     *
-     * @param profile The profile string
-     * @return Format extracted from profile (e.g., "jwt", "jsonld")
-     */
-    private String extractFormatFromProfile(String profile) {
-        if (profile == null || profile.isBlank()) {
-            return "jwt";
-        }
-
-        int slashIndex = profile.lastIndexOf('/');
-        if (slashIndex > 0 && slashIndex < profile.length() - 1) {
-            String format = profile.substring(slashIndex + 1);
-            log.debug("Extracted format '{}' from profile '{}'", format, profile);
-            return format;
-        }
-
-        log.debug("Could not extract format from profile '{}', using default 'jwt'", profile);
-        return "jwt";
-    }
 }

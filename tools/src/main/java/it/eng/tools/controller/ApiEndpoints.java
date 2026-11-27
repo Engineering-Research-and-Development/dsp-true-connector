@@ -22,10 +22,6 @@ public interface ApiEndpoints {
      */
     public static final String CATALOG_DISTRIBUTIONS_V1 = "/api/v1/distributions";
     /**
-     * Catalog module - v1 API endpoint for offers.
-     */
-    public static final String CATALOG_OFFERS_V1 = "/api/v1/offers";
-    /**
      * Catalog module - v1 API endpoint for artifact handling.
      */
     public static final String CATALOG_ARTIFACT_V1 = "/api/v1/artifacts";
@@ -34,10 +30,6 @@ public interface ApiEndpoints {
      * Negotation module - v1 API endpoint for negotations.
      */
     public static final String NEGOTIATION_V1 = "/api/v1/negotiations";
-    /**
-     * Negotation module - v1 API endpoint for agreements.
-     */
-    public static final String NEGOTIATION_AGREEMENTS_V1 = "/api/v1/agreements";
 
     /**
      * DataTransfer module - v1 API endpoint for transfers.
@@ -82,4 +74,30 @@ public interface ApiEndpoints {
      * Connector module - v1 API endpoint for the unified auth contract (login/refresh/logout).
      */
     public static final String AUTH_V1 = "/api/v1/auth";
+
+    /**
+     * Root of the internal zone, reachable only by the connector's own loopback calls. Its own security chain
+     * covers every path below it, and {@code internal} is therefore reserved as a tenant ID.
+     */
+    public static final String INTERNAL_ROOT = "/internal";
+
+    /**
+     * Internal zone, version 1.
+     */
+    public static final String INTERNAL_V1 = INTERNAL_ROOT + "/v1";
+
+    /**
+     * Catalog module - internal v1 endpoint for datasets (formats and artifact lookups).
+     */
+    public static final String INTERNAL_DATASETS_V1 = INTERNAL_V1 + "/datasets";
+
+    /**
+     * Catalog module - internal v1 endpoint for offer validation.
+     */
+    public static final String INTERNAL_OFFERS_V1 = INTERNAL_V1 + "/offers";
+
+    /**
+     * Negotiation module - internal v1 endpoint for agreement enforcement.
+     */
+    public static final String INTERNAL_AGREEMENTS_V1 = INTERNAL_V1 + "/agreements";
 }

@@ -50,46 +50,6 @@
           "response": []
         },
         {
-          "name": "[C] Login - CONNECTOR",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "//extract the access_token and refresh_token from the response body and store them in environment variables.\r",
-                  "pm.test(\"Retrieve access_token\", function () {\r",
-                  "    var jsonData = pm.response.json();\r",
-                  "    pm.collectionVariables.set(\"access_token_consumer_connector\", jsonData[\"access_token\"])\r",
-                  "});"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\r\n    \"email\": \"connector@mail.com\",\r\n    \"password\": \"password\"\r\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{CONSUMER_AUTH_LOGIN}}",
-              "host": [
-                "{{CONSUMER_AUTH_LOGIN}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
           "name": "[P] Login  - API",
           "event": [
             {
@@ -114,46 +74,6 @@
             "body": {
               "mode": "raw",
               "raw": "{\r\n    \"email\": \"admin@mail.com\",\r\n    \"password\": \"password\"\r\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{PROVIDER_AUTH_LOGIN}}",
-              "host": [
-                "{{PROVIDER_AUTH_LOGIN}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "[P] Login  - CONNECTOR",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": [
-                  "//extract the access_token and refresh_token from the response body and store them in environment variables.\r",
-                  "pm.test(\"Retrieve access_token\", function () {\r",
-                  "    var jsonData = pm.response.json();\r",
-                  "    pm.collectionVariables.set(\"access_token_provider_connector\", jsonData[\"access_token_provider\"])\r",
-                  "});"
-                ],
-                "type": "text/javascript",
-                "packages": {},
-                "requests": {}
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [],
-            "body": {
-              "mode": "raw",
-              "raw": "{\r\n    \"email\": \"connector@mail.com\",\r\n    \"password\": \"password\"\r\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1162,11 +1082,11 @@
     },
     {
       "key": "CONSUMER_PROTOCOL_ENDPOINT",
-      "value": "http://172.17.0.1:8080/connector_a_tenant_id"
+      "value": "http://172.17.0.1:8080/engineering-a"
     },
     {
       "key": "PROVIDER_PROTOCOL_ENDPOINT",
-      "value": "http://172.17.0.1:8090/connector_b_tenant_id"
+      "value": "http://172.17.0.1:8090/engineering-b"
     },
     {
       "key": "datasetId",
@@ -1214,14 +1134,6 @@
     },
     {
       "key": "access_token_consumer_api",
-      "value": ""
-    },
-    {
-      "key": "access_token_consumer_connector",
-      "value": ""
-    },
-    {
-      "key": "access_token_provider_connector",
       "value": ""
     },
     {

@@ -219,6 +219,9 @@ This module (`dcp-e2e-tests`) depends on:
 The wrong profile was activated, or the environment sub-profile file is missing from `src/test/resources`.
 Check that `application-holderverifier-spring.properties` (or `-docker`) exists.
 
+### `IssuerService entry not found in DID document for issuer`
+The holder resolved `dcp.issuer.location` (the issuer DID), but the issuer's DID document has no service entry of type `IssuerService`. Spring Boot does not merge list entries across property files. A profile file that sets only `dcp.service-entries[0].issuer-location` therefore replaces the whole entry, `id` and `type` included, so repeat them there, as `application-issuer-spring.properties` and `application-issuer-docker.properties` do.
+
 ### `Cannot connect to Docker`
 Ensure Docker Desktop is running before executing Docker-mode tests.
 

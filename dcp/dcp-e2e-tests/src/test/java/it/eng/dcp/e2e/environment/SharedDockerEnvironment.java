@@ -238,7 +238,7 @@ public class SharedDockerEnvironment {
                 .from("eclipse-temurin:17-jre-alpine")
                 .workDir("/app")
                 .copy(jarRelativePath, "/app/app.jar")
-                .copy("src/test/resources/eckey.p12", "/app/eckey.p12")
+                .copy("src/test/resources/eckey-connector-a.p12", "/app/eckey-connector-a.p12")
                 .copy("src/test/resources/application-holderverifier.properties", "/config/application-holderverifier.properties")
                 .copy("src/test/resources/application-holderverifier-docker.properties", "/config/application-holderverifier-docker.properties")
                 .expose(8081)
@@ -246,7 +246,7 @@ public class SharedDockerEnvironment {
                 .entryPoint("sh", "-c", "java $JAVA_OPTS -jar /app/app.jar")
                 .build())
             .withFileFromPath(jarRelativePath, holderVerifierJar)
-            .withFileFromPath("src/test/resources/eckey.p12", holderVerifierPath.resolve("src/test/resources/eckey.p12"))
+            .withFileFromPath("src/test/resources/eckey-connector-a.p12", holderVerifierPath.resolve("src/test/resources/eckey-connector-a.p12"))
             .withFileFromPath("src/test/resources/application-holderverifier.properties", holderVerifierPath.resolve("src/test/resources/application-holderverifier.properties"))
             .withFileFromPath("src/test/resources/application-holderverifier-docker.properties", holderVerifierPath.resolve("src/test/resources/application-holderverifier-docker.properties"));
         imagesToCleanup.add("dcp-holder-verifier-test-e2e");

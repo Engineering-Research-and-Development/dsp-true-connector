@@ -28,6 +28,7 @@ import it.eng.tools.s3.service.S3BucketProvisionService;
 import it.eng.tools.s3.service.S3ClientService;
 import it.eng.tools.s3.util.S3Utils;
 import it.eng.tools.service.FieldEncryptionService;
+import it.eng.tools.service.TenantContextHolder;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -113,11 +114,11 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
         policyEnforcementRepository.deleteAll();
         datasetRepository.deleteAll();
         catalogRepository.deleteAll();
-        if (s3BucketProvisionService.bucketExists(s3Properties.getBucketName())) {
-            List<String> files = s3ClientService.listFiles(s3Properties.getBucketName());
+        if (s3BucketProvisionService.bucketExists(getTenantBucketName())) {
+            List<String> files = s3ClientService.listFiles(getTenantBucketName());
             if (files != null) {
                 for (String file : files) {
-                    s3ClientService.deleteFile(s3Properties.getBucketName(), file);
+                    s3ClientService.deleteFile(getTenantBucketName(), file);
                 }
             }
         }
@@ -157,7 +158,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
 
         insertContractNegotiation(agreement, consumerPid, providerPid);
 
-        String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
+        String artifactURL = s3ClientService.generateGetPresignedUrl(getTenantBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
 
         EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
                 .name("https://w3id.org/edc/v0.0.1/ns/endpoint")
@@ -262,12 +263,12 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
 
         insertContractNegotiation(agreement, consumerPid, providerPid);
 
-        BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(s3Properties.getBucketName());
+        BucketCredentialsEntity bucketCredentials = bucketCredentialsService.getBucketCredentials(getTenantBucketName());
 
         List<EndpointProperty> endpointProperties = List.of(
                 EndpointProperty.Builder.newInstance()
                         .name(S3Utils.BUCKET_NAME)
-                        .value(s3Properties.getBucketName())
+                        .value(getTenantBucketName())
                         .build(),
                 EndpointProperty.Builder.newInstance()
                         .name(S3Utils.REGION)
@@ -384,7 +385,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
 
         policyEnforcementRepository.save(policyEnforcement);
 
-        String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofSeconds(1));
+        String artifactURL = s3ClientService.generateGetPresignedUrl(getTenantBucketName(), mockDataset.getId(), Duration.ofSeconds(1));
 
         Thread.sleep(2000); // wait for the presigned URL to expire
 
@@ -505,7 +506,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
 
         insertContractNegotiation(agreement, consumerPid, providerPid);
 
-        String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
+        String artifactURL = s3ClientService.generateGetPresignedUrl(getTenantBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
 
         EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
                 .name("https://w3id.org/edc/v0.0.1/ns/endpoint")
@@ -582,7 +583,7 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
 
         insertContractNegotiation(agreement, consumerPid, providerPid);
 
-        String artifactURL = s3ClientService.generateGetPresignedUrl(s3Properties.getBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
+        String artifactURL = s3ClientService.generateGetPresignedUrl(getTenantBucketName(), mockDataset.getId(), Duration.ofMinutes(10));
 
         EndpointProperty endpointProperty = EndpointProperty.Builder.newInstance()
                 .name("https://w3id.org/edc/v0.0.1/ns/endpoint")
@@ -676,10 +677,16 @@ public class DataTransferAPIDownloadDataIT extends BaseIntegrationTest {
                 .description(new HashSet<>(Collections.singletonList(CatalogMockObjectUtil.MULTILANGUAGE)))
                 .dataset(Collections.emptySet())
                 .build();
+        mockCatalog.injectTenantId(TENANT_ID);
         catalogRepository.save(mockCatalog);
 
         MockMultipartFile mockFile = new MockMultipartFile(FILE_NAME, FILE_NAME, MediaType.TEXT_PLAIN_VALUE, fileContent.getBytes());
-        datasetService.saveDataset(mockDataset, mockFile, null, null);
+        TenantContextHolder.setTenantId(TENANT_ID);
+        try {
+            datasetService.saveDataset(mockDataset, mockFile, null, null);
+        } finally {
+            TenantContextHolder.clear();
+        }
         return mockDataset;
     }
 }

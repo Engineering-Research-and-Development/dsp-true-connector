@@ -9,7 +9,9 @@ import it.eng.catalog.service.CatalogService;
 import it.eng.catalog.service.DatasetService;
 import it.eng.tools.rest.api.TenantAwareProtocolController;
 import it.eng.tools.service.TenantService;
+import it.eng.dcp.common.participant.RequestParticipantContext;
 import it.eng.dcp.verifier.service.VerifierService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +33,7 @@ public class CatalogController extends TenantAwareProtocolController {
     private final DatasetService datasetService;
 
     private final VerifierService verifierService;
+    private final RequestParticipantContext requestParticipantContext;
 
     /**
      * Constructs the controller with its catalog, dataset and tenant service dependencies.
@@ -39,12 +42,15 @@ public class CatalogController extends TenantAwareProtocolController {
      * @param datasetService the dataset service
      * @param tenantService  the tenant service used for tenant resolution
      * @param verifierService Verifier service
+     * @param requestParticipantContext Resolves the DCP participant a request addresses
      */
-    public CatalogController(CatalogService catalogService, DatasetService datasetService, VerifierService verifierService, TenantService tenantService) {
+    public CatalogController(CatalogService catalogService, DatasetService datasetService, VerifierService verifierService, TenantService tenantService,
+                             RequestParticipantContext requestParticipantContext) {
         super(tenantService);
         this.catalogService = catalogService;
         this.datasetService = datasetService;
         this.verifierService = verifierService;
+        this.requestParticipantContext = requestParticipantContext;
     }
 
     /**
@@ -90,12 +96,14 @@ public class CatalogController extends TenantAwareProtocolController {
 
     @PostMapping("/tck/protocol/2025/1/catalog/request")
     public ResponseEntity<JsonNode> tckProtocolCatalogRequest(@RequestHeader(required = true) String authorization,
-                                          @RequestBody JsonNode jsonBody) throws IOException {
+                                          @RequestBody JsonNode jsonBody,
+                                          HttpServletRequest request) throws IOException {
         log.info("Handling tck protocol request {}", jsonBody);
         log.info("Authorization: {}", authorization);
 
         VerifierService.PresentationFlowResult presentationResult =
-                verifierService.validateAndQueryHolderPresentations(extractBearerToken(authorization));
+                verifierService.validateAndQueryHolderPresentations(extractBearerToken(authorization),
+                        requestParticipantContext.require(request));
 
 //        CatalogSerializer.deserializeProtocol(jsonBody, CatalogRequestMessage.class);
         Catalog catalog = catalogService.getCatalog();

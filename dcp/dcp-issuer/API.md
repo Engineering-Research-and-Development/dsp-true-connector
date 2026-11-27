@@ -12,11 +12,27 @@ For production, replace with your actual deployment URL.
 
 ## Authentication
 
-Most endpoints require Bearer token authentication using Self-Issued ID Token as per DCP specification.
+The DCP protocol endpoints (`/issuer/metadata`, `/issuer/credentials`, `/issuer/requests/{id}`) require Bearer token authentication using a Self-Issued ID Token as per the DCP specification. The controllers validate the token; the security filter chain lets these requests through.
 
 ```http
 Authorization: Bearer <self-issued-id-token>
 ```
+
+The administration API (`/api/issuer/**`) requires HTTP Basic authentication of a user configured in `dcp.admin.users[n]` with the authority `DCP_ISSUER_ADMIN`:
+
+```http
+Authorization: Basic <base64(username:password)>
+```
+
+| Caller | Response |
+|---|---|
+| No credentials, wrong credentials, or a Bearer token | `401 Unauthorized` with `WWW-Authenticate: Basic realm="dcp-issuer-admin"` |
+| Authenticated user without `DCP_ISSUER_ADMIN` | `403 Forbidden` |
+| Administrator | The endpoint's own response |
+
+No administration user is configured by default, so every administration request gets `401` until one is added (fail closed). See [DEPLOYMENT.md](DEPLOYMENT.md#administration-api-users) for the configuration.
+
+DID documents (`/.well-known/did.json`, `/issuer/did.json`, `/issuer/.well-known/did.json`) and `/actuator/health` are public. Any other path is denied (`403`).
 
 ## Endpoints Overview
 
@@ -25,11 +41,12 @@ Authorization: Bearer <self-issued-id-token>
 | `/.well-known/did.json` | GET | No | Get issuer DID document |
 | `/issuer/metadata` | GET | Yes | Get issuer metadata |
 | `/issuer/credentials` | POST | Yes | Request credentials |
-| `/issuer/requests` | POST | Yes | Create credential request (alt) |
 | `/issuer/requests/{id}` | GET | Yes | Get request status |
-| `/issuer/requests/{id}/approve` | POST | Yes | Approve request |
-| `/issuer/requests/{id}/reject` | POST | Yes | Reject request |
-| `/issuer/admin/rotate-key` | POST | Yes | Manual key rotation |
+| `/issuer/status/{listId}` | GET | No | Get the signed status list credential (DCP §6.10) |
+| `/api/issuer/requests/{id}/approve` | POST | HTTP Basic, `DCP_ISSUER_ADMIN` | Approve request (local admin API) |
+| `/api/issuer/requests/{id}/reject` | POST | HTTP Basic, `DCP_ISSUER_ADMIN` | Reject request (local admin API) |
+| `/api/issuer/status-lists/{listId}/entries/{index}/revoke` | POST | HTTP Basic, `DCP_ISSUER_ADMIN` | Revoke a credential (local admin API) |
+| `/api/issuer/key/rotate` | POST | HTTP Basic, `DCP_ISSUER_ADMIN` | Manual key rotation (local admin API) |
 | `/actuator/health` | GET | No | Health check |
 
 ---
@@ -86,6 +103,54 @@ GET /.well-known/did.json
 **Status Codes**:
 - `200 OK`: DID document returned successfully
 - `404 Not Found`: Issuer not configured or DID document not generated
+
+---
+
+### Get Status List Credential
+
+Returns the signed status list credential that the `credentialStatus.statusListCredential` of an issued credential points at. Verifiers use it to check revocation (DCP v1.0.1 §6.10). The endpoint is public by design and carries only status bits, no holder data.
+
+```http
+GET /issuer/status/{listId}
+```
+
+**Authentication**: None
+
+**Path Parameters**:
+- `listId` (string, required): List ID, the last path segment of the `statusListCredential` URL
+
+**Response**: `200 OK` with a compact JWT signed by the Issuer's current signing key. The format follows the profile of the credentials in the list:
+
+| Profile | Content-Type | Credential |
+|---------|--------------|------------|
+| `vc20-bssl/jwt` | `application/vc+ld+jwt` | VC 2.0 `BitstringStatusListCredential` as JWT claims; `credentialSubject.type` is `BitstringStatusList` |
+| `vc11-sl2021/jwt` | `application/jwt` | VC 1.1 `StatusList2021Credential` in the `vc` claim; `credentialSubject.type` is `StatusList2021` |
+
+Decoded claims of a `vc20-bssl/jwt` list:
+
+```json
+{
+  "iss": "did:web:localhost%3A8084:issuer",
+  "sub": "http://localhost:8084/issuer/status/3f2c...#list",
+  "@context": ["https://www.w3.org/ns/credentials/v2"],
+  "id": "http://localhost:8084/issuer/status/3f2c...",
+  "type": ["VerifiableCredential", "BitstringStatusListCredential"],
+  "issuer": {"id": "did:web:localhost%3A8084:issuer"},
+  "validFrom": "2026-11-20T10:00:00Z",
+  "credentialSubject": {
+    "id": "http://localhost:8084/issuer/status/3f2c...#list",
+    "type": "BitstringStatusList",
+    "statusPurpose": "revocation",
+    "encodedList": "uH4sIAAAAAAAA..."
+  }
+}
+```
+
+`encodedList` is the GZIP-compressed bitstring, base64url-encoded without padding; BitstringStatusList adds the multibase prefix `u`. Index 0 is the left-most bit of the first byte. A bit of 0 means valid, 1 means revoked. Each list has 131072 entries (16 KB, the minimum the status list specifications set for group privacy).
+
+**Status Codes**:
+- `200 OK`: List found and returned
+- `404 Not Found`: Unknown list
 
 ---
 
@@ -147,7 +212,9 @@ Content-Type: application/json
 
 ```json
 {
-  "holderPid": "did:web:holder.example.com",
+  "@context": ["https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"],
+  "type": "CredentialRequestMessage",
+  "holderPid": "8a1f5c3e-2b7d-4e9a-9c1d-5f0e7b6a2d41",
   "credentials": [
     {
       "id": "MembershipCredential"
@@ -160,7 +227,9 @@ Content-Type: application/json
 ```
 
 **Parameters**:
-- `holderPid` (string, required): DID of the credential holder
+- `@context` (array, required): Must contain `https://w3id.org/dspace-dcp/v1.0/dcp.jsonld`
+- `type` (string, required): `CredentialRequestMessage`
+- `holderPid` (string, required): Request identifier on the Holder side (DCP §6.4.1). It is not the Holder DID; the Issuer takes the holder's DID from the `sub` of the Self-Issued ID Token
 - `credentials` (array, required): List of credential types requested
   - `id` (string, required): Credential type identifier matching issuer metadata
 
@@ -179,25 +248,9 @@ Location: /issuer/requests/abc123-def456-ghi789
 
 ---
 
-### Create Credential Request (Alternative)
-
-Alternative endpoint for creating credential requests.
-
-```http
-POST /issuer/requests
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-**Request Body**: Same as `/issuer/credentials`
-
-**Response**: Same as `/issuer/credentials`
-
----
-
 ### Get Request Status
 
-Retrieves the status of a credential request.
+Retrieves the status of a credential request. Only the client that created the request (the token subject equals the DID stored with the request) can read it; any other authenticated client receives `404 Not Found`, the same response as for an unknown request.
 
 ```http
 GET /issuer/requests/{requestId}
@@ -212,7 +265,7 @@ Authorization: Bearer <token>
 ```json
 {
   "issuerPid": "abc123-def456-ghi789",
-  "holderPid": "did:web:holder.example.com",
+  "holderPid": "8a1f5c3e-2b7d-4e9a-9c1d-5f0e7b6a2d41",
   "status": "PENDING",
   "credentialIds": [
     "MembershipCredential",
@@ -232,18 +285,22 @@ Authorization: Bearer <token>
 **Status Codes**:
 - `200 OK`: Request found and returned
 - `401 Unauthorized`: Missing or invalid Bearer token
-- `404 Not Found`: Request not found
+- `404 Not Found`: Request not found, or not created by the calling client
 - `500 Internal Server Error`: Server error
 
 ---
+
+## Admin Endpoints
+
+These endpoints form the local administration API of the Issuer, mounted at `/api/issuer`. They are not DCP protocol endpoints and are not defined by the DCP specification. Every path under `/api/issuer/` requires HTTP Basic authentication of an administration user with the authority `DCP_ISSUER_ADMIN` (see [Authentication](#authentication)): `401 Unauthorized` without valid credentials, `403 Forbidden` without the authority. Send the credentials over TLS only.
 
 ### Approve Request
 
 Approves a pending credential request and triggers credential issuance.
 
 ```http
-POST /issuer/requests/{requestId}/approve
-Authorization: Bearer <token>
+POST /api/issuer/requests/{requestId}/approve
+Authorization: Basic <base64(username:password)>
 Content-Type: application/json
 ```
 
@@ -268,12 +325,8 @@ Content-Type: application/json
 
 **Response**: `200 OK`
 
-```json
-{
-  "message": "Request approved and credentials issued",
-  "requestId": "abc123-def456-ghi789",
-  "status": "APPROVED"
-}
+```text
+Credentials issued and delivered successfully
 ```
 
 **Process**:
@@ -285,9 +338,10 @@ Content-Type: application/json
 **Status Codes**:
 - `200 OK`: Request approved successfully
 - `400 Bad Request`: Request already processed or invalid state
-- `401 Unauthorized`: Missing or invalid Bearer token
+- `401 Unauthorized`: Missing or invalid administrator credentials
+- `403 Forbidden`: Authenticated user without `DCP_ISSUER_ADMIN`
 - `404 Not Found`: Request not found
-- `500 Internal Server Error`: Server error or credential delivery failed
+- `500 Internal Server Error`: Server error or credential delivery failed. If any requested credential cannot be issued, no credential is delivered and the holder receives a `REJECTED` message with a reason naming the failed credential IDs (DCP 1.0.1 §6.5.1)
 
 ---
 
@@ -296,8 +350,8 @@ Content-Type: application/json
 Rejects a pending credential request.
 
 ```http
-POST /issuer/requests/{requestId}/reject
-Authorization: Bearer <token>
+POST /api/issuer/requests/{requestId}/reject
+Authorization: Basic <base64(username:password)>
 Content-Type: application/json
 ```
 
@@ -313,42 +367,61 @@ Content-Type: application/json
 ```
 
 **Parameters**:
-- `reason` (string, optional): Reason for rejection
+- `reason` (string, required): Reason for rejection; the endpoint returns `400 Bad Request` when it is missing or blank
 
 **Response**: `200 OK`
 
-```json
-{
-  "message": "Request rejected",
-  "requestId": "abc123-def456-ghi789",
-  "status": "REJECTED",
-  "reason": "Invalid request - holder not verified"
-}
+```text
+Credential request rejected successfully
 ```
 
 **Status Codes**:
 - `200 OK`: Request rejected successfully
 - `400 Bad Request`: Request already processed
-- `401 Unauthorized`: Missing or invalid Bearer token
+- `401 Unauthorized`: Missing or invalid administrator credentials
+- `403 Forbidden`: Authenticated user without `DCP_ISSUER_ADMIN`
 - `404 Not Found`: Request not found
 - `500 Internal Server Error`: Server error
 
 ---
 
-## Admin Endpoints
+### Revoke Credential
+
+Revokes the credential that holds a status list entry: sets the entry's bit to 1 and re-signs the published status list. Take `listId` and `index` from the credential's `credentialStatus` (`statusListCredential` ends with `/issuer/status/{listId}`; `statusListIndex` is the index). Revocation is not reversible. The Issuer emits the `CREDENTIAL_REVOKED` audit event.
+
+```http
+POST /api/issuer/status-lists/{listId}/entries/{index}/revoke
+```
+
+**Path Parameters**:
+- `listId` (string, required): Status list ID
+- `index` (integer, required): Status list index of the credential
+
+**Response**: `200 OK`
+
+```text
+Credential revoked
+```
+
+Revoking an entry that is already revoked answers `200 OK` with `Credential already revoked` and changes nothing.
+
+**Status Codes**:
+- `200 OK`: Entry revoked, or already revoked
+- `400 Bad Request`: The index has not been allocated to a credential
+- `404 Not Found`: Unknown status list
+
+---
 
 ### Manual Key Rotation
 
 Manually triggers cryptographic key rotation outside of the automated schedule.
 
 ```http
-POST /issuer/admin/rotate-key
-Authorization: Bearer <admin-token>
+POST /api/issuer/key/rotate
+Authorization: Basic <base64(username:password)>
 ```
 
-**Authentication**: Required (admin-level Bearer token)
-
-⚠️ **Important**: Protect this endpoint with proper admin authentication in production!
+**Authentication**: HTTP Basic, authority `DCP_ISSUER_ADMIN` (`401` without valid credentials, `403` without the authority)
 
 **Response**: `200 OK`
 
@@ -369,7 +442,8 @@ Authorization: Bearer <admin-token>
 
 **Status Codes**:
 - `200 OK`: Key rotation successful
-- `401 Unauthorized`: Missing or invalid admin token
+- `401 Unauthorized`: Missing or invalid administrator credentials
+- `403 Forbidden`: Authenticated user without `DCP_ISSUER_ADMIN`
 - `500 Internal Server Error`: Key rotation failed
 
 ---
@@ -443,7 +517,7 @@ Returns application information.
      │                               │                               │
      │                               │ 4. Approve Request            │
      │                               │◄──────────────────────────────┤
-     │                               │   POST /requests/123/approve  │
+     │                               │   POST /api/issuer/.../approve│
      │                               │                               │
      │                               │ 5. Generate & Sign VCs        │
      │                               │────────┐                      │
@@ -518,14 +592,17 @@ curl -X POST http://localhost:8084/issuer/credentials \
   -H "Authorization: Bearer eyJhbGc..." \
   -H "Content-Type: application/json" \
   -d '{
-    "holderPid": "did:web:holder.example.com",
+    "@context": ["https://w3id.org/dspace-dcp/v1.0/dcp.jsonld"],
+    "type": "CredentialRequestMessage",
+    "holderPid": "8a1f5c3e-2b7d-4e9a-9c1d-5f0e7b6a2d41",
     "credentials": [{"id": "MembershipCredential"}]
   }'
 
 # Response: Location: /issuer/requests/abc123
 
 # 3. Admin approves request
-curl -X POST http://localhost:8084/issuer/requests/abc123/approve \
+curl -X POST http://localhost:8084/api/issuer/requests/abc123/approve \
+  -u issuer-admin:<admin password> \
   -H "Content-Type: application/json" \
   -d '{
     "customClaims": {
@@ -543,6 +620,4 @@ curl -H "Authorization: Bearer eyJhbGc..." \
 
 **See Also**:
 - [Quick Start Guide](QUICKSTART.md)
-- [Configuration Guide](CONFIGURATION.md)
-- [Integration Guide](INTEGRATION.md)
 

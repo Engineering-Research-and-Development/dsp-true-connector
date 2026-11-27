@@ -1,21 +1,19 @@
 package it.eng.tools.auth.jwt;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.*;
-
-import org.springframework.context.annotation.Conditional;
-import org.springframework.stereotype.Component;
-
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
-
 import it.eng.tools.auth.condition.InternalAuthenticationModeCondition;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Conditional;
+import org.springframework.stereotype.Component;
+
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.*;
 
 /**
  * Issues and validates HMAC-SHA256 signed JWT access/refresh token pairs for the unified
@@ -26,12 +24,18 @@ import lombok.extern.slf4j.Slf4j;
  * claims can be introduced at the call site without changing this class.
  *
  * <p><b>Access vs. refresh tokens</b>: both tokens share the same claim shape ({@code sub},
- * {@code email}, {@code roles}, {@code tenantId}, {@code iat}, {@code exp}, {@code jti}, plus any
- * caller-supplied extra claims). Refresh tokens additionally carry a {@value #TOKEN_TYPE_CLAIM}
+ * {@code email}, {@code realm_access.roles}, {@code tenant_id}, {@code iat}, {@code exp}, {@code jti},
+ * plus any caller-supplied extra claims). {@code tenant_id} is omitted when the subject has no tenant. Refresh tokens additionally carry a {@value #TOKEN_TYPE_CLAIM}
  * claim set to {@value #REFRESH_TOKEN_TYPE}; access tokens carry no {@value #TOKEN_TYPE_CLAIM}
  * claim. Callers validating a token for use as an access token must reject any decoded token that
  * carries a {@value #REFRESH_TOKEN_TYPE} {@value #TOKEN_TYPE_CLAIM} claim, so a refresh token
  * cannot be replayed against a protected endpoint.
+ *
+ * <p><b>Protocol token</b>: {@link #issueProtocolToken()} mints the access token this connector
+ * presents on outbound connector-to-connector (protocol) calls. It carries only {@code sub} =
+ * {@value #PROTOCOL_TOKEN_SUBJECT}, {@code realm_access.roles} = [{@value #CONNECTOR_ROLE}],
+ * {@code iat}, {@code exp} and {@code jti}: no {@value #EMAIL_CLAIM}, no {@value #TENANT_ID_CLAIM},
+ * no {@value #TOKEN_TYPE_CLAIM} and no refresh token. It is not tied to any user account.
  *
  * <p>The signing secret is never logged, including at {@code DEBUG} level.
  */
@@ -43,11 +47,23 @@ public class JwtService {
     /** Claim name for the subject's email address. */
     public static final String EMAIL_CLAIM = "email";
 
-    /** Claim name for the subject's role names. */
+    /** Claim name for the object holding the subject's role names. */
+    public static final String REALM_ACCESS_CLAIM = "realm_access";
+
+    /** Key, inside the {@value #REALM_ACCESS_CLAIM} claim, of the subject's role names. */
     public static final String ROLES_CLAIM = "roles";
 
     /** Claim name for the subject's tenant identifier. */
-    public static final String TENANT_ID_CLAIM = "tenantId";
+    public static final String TENANT_ID_CLAIM = "tenant_id";
+
+    /** Claim name for the subject's tenant display name. */
+    public static final String TENANT_NAME_CLAIM = "tenant_name";
+
+    /** Claim name for the subject's first name. */
+    public static final String GIVEN_NAME_CLAIM = "given_name";
+
+    /** Claim name for the subject's last name. */
+    public static final String FAMILY_NAME_CLAIM = "family_name";
 
     /** Claim name distinguishing refresh tokens from access tokens. */
     public static final String TOKEN_TYPE_CLAIM = "token_type";
@@ -55,13 +71,19 @@ public class JwtService {
     /** {@link #TOKEN_TYPE_CLAIM} value carried by refresh tokens only. */
     public static final String REFRESH_TOKEN_TYPE = "refresh";
 
+    /** {@code sub} claim of the connector-to-connector protocol token. */
+    public static final String PROTOCOL_TOKEN_SUBJECT = "connector";
+
+    /** The single role carried by the connector-to-connector protocol token. */
+    public static final String CONNECTOR_ROLE = "CONNECTOR";
+
     private static final int MIN_SECRET_BYTES = 32;
 
     // Claim names set directly by baseTokenBuilder; extraClaims must not collide with any of
     // these, since JWTCreator.Builder#withPayload silently overwrites already-set claims rather
     // than performing a safe no-clobber merge.
     private static final Set<String> RESERVED_CLAIM_NAMES =
-            Set.of("sub", EMAIL_CLAIM, ROLES_CLAIM, TENANT_ID_CLAIM, "iat", "exp", "jti", TOKEN_TYPE_CLAIM);
+            Set.of("sub", EMAIL_CLAIM, REALM_ACCESS_CLAIM, TENANT_ID_CLAIM, "iat", "exp", "jti", TOKEN_TYPE_CLAIM);
 
     private final JwtProperties jwtProperties;
 
@@ -111,14 +133,14 @@ public class JwtService {
      *
      * @param subject     the subject (user id) embedded as the {@code sub} claim
      * @param email       the subject's email address, embedded as the {@value #EMAIL_CLAIM} claim
-     * @param roles       the subject's role names, embedded as the {@value #ROLES_CLAIM} claim
+     * @param roles       the subject's role names, embedded as {@code realm_access.roles}
      * @param tenantId    the subject's tenant identifier, embedded as the
-     *                    {@value #TENANT_ID_CLAIM} claim
+     *                    {@value #TENANT_ID_CLAIM} claim; {@code null} omits the claim
      * @param extraClaims additional claims merged into both tokens; may be {@code null} or empty
      * @return the issued {@link TokenPair}
      * @throws IllegalArgumentException if {@code extraClaims} contains a key that collides with
      *                                    a reserved claim name ({@code sub}, {@value #EMAIL_CLAIM},
-     *                                    {@value #ROLES_CLAIM}, {@value #TENANT_ID_CLAIM},
+     *                                    {@value #REALM_ACCESS_CLAIM}, {@value #TENANT_ID_CLAIM},
      *                                    {@code iat}, {@code exp}, {@code jti}, or
      *                                    {@value #TOKEN_TYPE_CLAIM})
      */
@@ -143,6 +165,28 @@ public class JwtService {
     }
 
     /**
+     * Issues the access token for outbound connector-to-connector (protocol) calls.
+     *
+     * <p>The token is signed with the configured secret and expires after the access TTL. It carries
+     * {@code sub} = {@value #PROTOCOL_TOKEN_SUBJECT}, {@code realm_access.roles} =
+     * [{@value #CONNECTOR_ROLE}], {@code iat}, {@code exp} and {@code jti} only: no user, no
+     * {@value #EMAIL_CLAIM}, no {@value #TENANT_ID_CLAIM} and no {@value #TOKEN_TYPE_CLAIM}. No refresh
+     * token is issued.
+     *
+     * @return the signed protocol access token
+     */
+    public String issueProtocolToken() {
+        Instant now = Instant.now();
+        return JWT.create()
+                .withSubject(PROTOCOL_TOKEN_SUBJECT)
+                .withClaim(REALM_ACCESS_CLAIM, Map.of(ROLES_CLAIM, List.of(CONNECTOR_ROLE)))
+                .withIssuedAt(Date.from(now))
+                .withExpiresAt(Date.from(now.plusMillis(jwtProperties.getAccessExpirationMs())))
+                .withJWTId(UUID.randomUUID().toString())
+                .sign(signingAlgorithm());
+    }
+
+    /**
      * Verifies the signature and expiry of the given token and returns its decoded claims.
      *
      * @param token the compact JWT string to verify
@@ -163,11 +207,13 @@ public class JwtService {
         JWTCreator.Builder builder = JWT.create()
                 .withSubject(subject)
                 .withClaim(EMAIL_CLAIM, email)
-                .withClaim(ROLES_CLAIM, roles)
-                .withClaim(TENANT_ID_CLAIM, tenantId)
+                .withClaim(REALM_ACCESS_CLAIM, Map.of(ROLES_CLAIM, roles))
                 .withIssuedAt(Date.from(issuedAt))
                 .withExpiresAt(Date.from(expiresAt))
                 .withJWTId(UUID.randomUUID().toString());
+        if (tenantId != null) {
+            builder.withClaim(TENANT_ID_CLAIM, tenantId);
+        }
         if (extraClaims != null && !extraClaims.isEmpty()) {
             // Merges caller-supplied claims without requiring any change to this class. Reject
             // any key colliding with a reserved claim, since withPayload silently overwrites

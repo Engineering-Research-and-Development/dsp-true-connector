@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
+import java.text.ParseException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -31,16 +32,19 @@ public class IssuerService {
     private static final String ISSUER_SOURCE = "issuer";
 
     private final SelfIssuedIdTokenService tokenService;
+    private final IssuerIdentity issuerIdentity;
     private final CredentialRequestRepository requestRepository;
     private final CredentialMetadataService credentialMetadataService;
     private final DcpAuditEventPublisher auditPublisher;
 
     @Autowired
     public IssuerService(@Qualifier("selfIssuedIdTokenService") SelfIssuedIdTokenService tokenService,
+                        IssuerIdentity issuerIdentity,
                         CredentialRequestRepository requestRepository,
                         CredentialMetadataService credentialMetadataService,
                         DcpAuditEventPublisher auditPublisher) {
         this.tokenService = tokenService;
+        this.issuerIdentity = issuerIdentity;
         this.requestRepository = requestRepository;
         this.credentialMetadataService = credentialMetadataService;
         this.auditPublisher = auditPublisher;
@@ -65,7 +69,7 @@ public class IssuerService {
             throw new SecurityException("Bearer token is required");
         }
 
-        return tokenService.validateToken(bearerToken);
+        return tokenService.validateToken(bearerToken, issuerIdentity.participant());
 
 //        // If holderPid is provided, validate that it matches the token subject
         //Not sure that this is requirement at all according to DCP protocol
@@ -83,18 +87,27 @@ public class IssuerService {
      * Validates that all requested credentials are supported by the issuer.
      *
      * @param msg     The CredentialRequestMessage
-     * @param holderDid The DID of the holder making the request
+     * @param claims The validated claims from the holder's access token
      * @return The persisted CredentialRequest
      * @throws IllegalArgumentException if any requested credential type is not supported
      */
-    public CredentialRequest createCredentialRequest(CredentialRequestMessage msg, String holderDid) {
+    public CredentialRequest createCredentialRequest(CredentialRequestMessage msg, JWTClaimsSet claims) {
         // Validate that all requested credentials are supported
         validateRequestedCredentials(msg);
+
+        String holderDid = claims.getSubject();
+        String clientAccessToken;
+        try {
+            clientAccessToken = claims.getStringClaim("token");
+        } catch (ParseException e) {
+            throw new SecurityException("The token claim must be a string", e);
+        }
 
         CredentialRequest req = CredentialRequest.Builder.newInstance()
                 .issuerPid("req-" + UUID.randomUUID())
                 .holderPid(msg.getHolderPid())
                 .holderDid(holderDid)
+                .clientAccessToken(clientAccessToken)
                 .credentialIds(msg.getCredentials().stream()
                         .map(CredentialRequestMessage.CredentialReference::getId)
                         .toList())
@@ -156,16 +169,21 @@ public class IssuerService {
     }
 
     /**
-     * Retrieve a credential request by issuerPid.
+     * Retrieve a credential request by issuerPid, restricted to the client that created it.
+     * The stored holder DID must equal the requester DID. A request owned by another client,
+     * a request without a stored owner and an unknown request all return an empty result, so the
+     * caller cannot tell whether the request exists (DCP 1.0.1 section 6.8).
      *
-     * @param requestId The issuerPid identifier
-     * @return Optional containing the request if found
+     * @param requestId    The issuerPid identifier
+     * @param requesterDid The DID of the authenticated caller (token subject)
+     * @return Optional containing the request if found and owned by the requester
      */
-    public Optional<CredentialRequest> getRequestByIssuerPid(String requestId) {
-        if (requestId == null || requestId.isBlank()) {
+    public Optional<CredentialRequest> getRequestByIssuerPid(String requestId, String requesterDid) {
+        if (requestId == null || requestId.isBlank() || requesterDid == null || requesterDid.isBlank()) {
             return Optional.empty();
         }
-        return requestRepository.findByIssuerPid(requestId);
+        return requestRepository.findByIssuerPid(requestId)
+                .filter(request -> requesterDid.equals(request.getHolderDid()));
     }
 
     /**

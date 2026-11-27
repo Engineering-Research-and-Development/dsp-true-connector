@@ -67,9 +67,9 @@ if (-not $SkipBuild) {
 
         Write-Host "  Building DCP Issuer Docker image..." -ForegroundColor Gray
         Push-Location $dcpIssuerPath
-        docker build -t dcp-issuer:test . --quiet
+        docker build -t ghcr.io/engineering-research-and-development/dcp-issuer:test . --quiet
         Pop-Location
-        Write-Host "  [OK] Docker image built: dcp-issuer:test" -ForegroundColor Green
+        Write-Host "  [OK] Docker image built: ghcr.io/engineering-research-and-development/dcp-issuer:test" -ForegroundColor Green
     } catch {
         Write-Host "  [X] DCP build failed: $_" -ForegroundColor Red
         Pop-Location
@@ -79,12 +79,12 @@ if (-not $SkipBuild) {
 } else {
     Write-Host "`n[3/6] Skipping DCP build (-SkipBuild flag)" -ForegroundColor DarkYellow
     # Verify image exists
-    $imageExists = docker images -q dcp-issuer:test
+    $imageExists = docker images -q ghcr.io/engineering-research-and-development/dcp-issuer:test
     if (-not $imageExists) {
-        Write-Host "  [X] Image dcp-issuer:test not found. Remove -SkipBuild flag." -ForegroundColor Red
+        Write-Host "  [X] Image ghcr.io/engineering-research-and-development/dcp-issuer:test not found. Remove -SkipBuild flag." -ForegroundColor Red
         exit 1
     }
-    Write-Host "  [OK] Using existing image: dcp-issuer:test" -ForegroundColor Green
+    Write-Host "  [OK] Using existing image: ghcr.io/engineering-research-and-development/dcp-issuer:test" -ForegroundColor Green
 }
 
 # Step 4: Start Docker Compose
@@ -126,7 +126,7 @@ try {
 
     $containerStatus = docker compose -f docker-compose-dcp.yml ps --format json 2>$null | ConvertFrom-Json
     $runningContainers = @($containerStatus | Where-Object { $_.State -eq "running" })
-    $requiredContainers = @("dcp-issuer", "connector-a", "connector-b", "mongodb", "minio")
+    $requiredContainers = @("dcp-issuer", "connector-a", "connector-b", "mongodb", "s3storage")
     $failedContainers = @()
 
     foreach ($required in $requiredContainers) {

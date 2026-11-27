@@ -3,10 +3,7 @@ package it.eng.tools.model;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class TenantCreateRequestTest {
 
@@ -17,6 +14,7 @@ class TenantCreateRequestTest {
                 .id("tenant-a")
                 .name("Tenant A")
                 .description("Description")
+                .realm("tenant-realm")
                 .participantId("urn:connector:tenant-a")
                 .automaticNegotiation(true)
                 .automaticTransfer(false)
@@ -32,6 +30,7 @@ class TenantCreateRequestTest {
         assertEquals("tenant-a", tenant.getId());
         assertEquals("Tenant A", tenant.getName());
         assertEquals("Description", tenant.getDescription());
+        assertEquals("tenant-realm", tenant.getRealm());
         assertEquals("urn:connector:tenant-a", tenant.getParticipantId());
         assertTrue(tenant.isAutomaticNegotiation());
         assertFalse(tenant.isAutomaticTransfer());

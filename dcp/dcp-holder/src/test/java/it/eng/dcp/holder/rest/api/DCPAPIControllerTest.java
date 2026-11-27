@@ -2,6 +2,8 @@ package it.eng.dcp.holder.rest.api;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import it.eng.dcp.common.model.IssuerMetadata;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.RequestParticipantContext;
 import it.eng.dcp.holder.service.CredentialIssuanceClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,7 +20,10 @@ import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -37,6 +42,12 @@ class DCPAPIControllerTest {
     @Mock
     private CredentialIssuanceClient credentialIssuanceClient;
 
+    @Mock
+    private RequestParticipantContext requestParticipantContext;
+
+    @Mock
+    private ParticipantContext participant;
+
     @InjectMocks
     private DCPAPIController controller;
 
@@ -45,6 +56,7 @@ class DCPAPIControllerTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(requestParticipantContext.requireForAdmin(any(), any())).thenReturn(participant);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
         objectMapper = new ObjectMapper();
     }
@@ -67,7 +79,7 @@ class DCPAPIControllerTest {
     @Test
     void getIssuerMetadata_ReturnsMetadata_WhenSuccessful() throws Exception {
         var metadata = createValidIssuerMetadata();
-        when(credentialIssuanceClient.getPersonalIssuerMetadata()).thenReturn(metadata);
+        when(credentialIssuanceClient.getPersonalIssuerMetadata(participant)).thenReturn(metadata);
 
         mockMvc.perform(get("/api/v1/dcp/issuer-metadata")
                 .contentType(MediaType.APPLICATION_JSON))
@@ -77,13 +89,13 @@ class DCPAPIControllerTest {
                 .andExpect(jsonPath("$.credentialsSupported[0].id", is("cred-1")))
                 .andExpect(jsonPath("$.credentialsSupported[0].credentialType", is("MembershipCredential")));
 
-        verify(credentialIssuanceClient).getPersonalIssuerMetadata();
+        verify(credentialIssuanceClient).getPersonalIssuerMetadata(participant);
     }
 
     @DisplayName("GET /issuer-metadata returns 400 when IllegalArgumentException is thrown")
     @Test
     void getIssuerMetadata_Returns400_WhenIllegalArgumentException() throws Exception {
-        when(credentialIssuanceClient.getPersonalIssuerMetadata())
+        when(credentialIssuanceClient.getPersonalIssuerMetadata(participant))
                 .thenThrow(new IllegalArgumentException("Invalid issuer DID"));
 
         mockMvc.perform(get("/api/v1/dcp/issuer-metadata")
@@ -92,13 +104,13 @@ class DCPAPIControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error", is("Invalid issuer DID")));
 
-        verify(credentialIssuanceClient).getPersonalIssuerMetadata();
+        verify(credentialIssuanceClient).getPersonalIssuerMetadata(participant);
     }
 
     @DisplayName("GET /issuer-metadata returns 500 when unexpected exception occurs")
     @Test
     void getIssuerMetadata_Returns500_WhenUnexpectedException() throws Exception {
-        when(credentialIssuanceClient.getPersonalIssuerMetadata())
+        when(credentialIssuanceClient.getPersonalIssuerMetadata(participant))
                 .thenThrow(new RuntimeException("Network error"));
 
         mockMvc.perform(get("/api/v1/dcp/issuer-metadata")
@@ -108,7 +120,7 @@ class DCPAPIControllerTest {
                 .andExpect(jsonPath("$.error", containsString("Failed to fetch issuer metadata")))
                 .andExpect(jsonPath("$.error", containsString("Network error")));
 
-        verify(credentialIssuanceClient).getPersonalIssuerMetadata();
+        verify(credentialIssuanceClient).getPersonalIssuerMetadata(participant);
     }
 
     // ========== Tests for POST /api/v1/dcp/credentials/request ==========
@@ -119,7 +131,7 @@ class DCPAPIControllerTest {
         var credentialIds = List.of("cred-1", "cred-2");
         var statusUrl = "https://issuer.example.com/status/req-123";
 
-        when(credentialIssuanceClient.requestCredential(anyList())).thenReturn(statusUrl);
+        when(credentialIssuanceClient.requestCredential(anyList(), eq(participant))).thenReturn(statusUrl);
 
         mockMvc.perform(post("/api/v1/dcp/credentials/request")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -131,7 +143,7 @@ class DCPAPIControllerTest {
                 .andExpect(jsonPath("$.statusUrl", is(statusUrl)))
                 .andExpect(jsonPath("$.credentialCount", is(2)));
 
-        verify(credentialIssuanceClient).requestCredential(credentialIds);
+        verify(credentialIssuanceClient).requestCredential(credentialIds, participant);
     }
 
     @DisplayName("POST /credentials/request returns 201 with single credential")
@@ -140,7 +152,7 @@ class DCPAPIControllerTest {
         var credentialIds = List.of("cred-1");
         var statusUrl = "https://issuer.example.com/status/req-456";
 
-        when(credentialIssuanceClient.requestCredential(anyList())).thenReturn(statusUrl);
+        when(credentialIssuanceClient.requestCredential(anyList(), eq(participant))).thenReturn(statusUrl);
 
         mockMvc.perform(post("/api/v1/dcp/credentials/request")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -149,7 +161,7 @@ class DCPAPIControllerTest {
                 .andExpect(header().string("Location", statusUrl))
                 .andExpect(jsonPath("$.credentialCount", is(1)));
 
-        verify(credentialIssuanceClient).requestCredential(credentialIds);
+        verify(credentialIssuanceClient).requestCredential(credentialIds, participant);
     }
 
     @DisplayName("POST /credentials/request returns 400 when credential IDs list is null")
@@ -179,7 +191,7 @@ class DCPAPIControllerTest {
     void requestCredentials_Returns400_WhenIllegalArgumentException() throws Exception {
         var credentialIds = List.of("cred-1");
 
-        when(credentialIssuanceClient.requestCredential(anyList()))
+        when(credentialIssuanceClient.requestCredential(anyList(), eq(participant)))
                 .thenThrow(new IllegalArgumentException("Invalid credential ID format"));
 
         mockMvc.perform(post("/api/v1/dcp/credentials/request")
@@ -189,7 +201,7 @@ class DCPAPIControllerTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error", is("Invalid credential ID format")));
 
-        verify(credentialIssuanceClient).requestCredential(credentialIds);
+        verify(credentialIssuanceClient).requestCredential(credentialIds, participant);
     }
 
     @DisplayName("POST /credentials/request returns 500 when unexpected exception occurs")
@@ -197,7 +209,7 @@ class DCPAPIControllerTest {
     void requestCredentials_Returns500_WhenUnexpectedException() throws Exception {
         var credentialIds = List.of("cred-1");
 
-        when(credentialIssuanceClient.requestCredential(anyList()))
+        when(credentialIssuanceClient.requestCredential(anyList(), eq(participant)))
                 .thenThrow(new RuntimeException("DID resolution failed"));
 
         mockMvc.perform(post("/api/v1/dcp/credentials/request")
@@ -208,7 +220,7 @@ class DCPAPIControllerTest {
                 .andExpect(jsonPath("$.error", containsString("Failed to request credentials")))
                 .andExpect(jsonPath("$.error", containsString("DID resolution failed")));
 
-        verify(credentialIssuanceClient).requestCredential(credentialIds);
+        verify(credentialIssuanceClient).requestCredential(credentialIds, participant);
     }
 
     @DisplayName("POST /credentials/request handles multiple credentials correctly")
@@ -217,7 +229,7 @@ class DCPAPIControllerTest {
         var credentialIds = List.of("cred-1", "cred-2", "cred-3", "cred-4", "cred-5");
         var statusUrl = "https://issuer.example.com/status/req-789";
 
-        when(credentialIssuanceClient.requestCredential(anyList())).thenReturn(statusUrl);
+        when(credentialIssuanceClient.requestCredential(anyList(), eq(participant))).thenReturn(statusUrl);
 
         mockMvc.perform(post("/api/v1/dcp/credentials/request")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -226,7 +238,7 @@ class DCPAPIControllerTest {
                 .andExpect(header().string("Location", statusUrl))
                 .andExpect(jsonPath("$.credentialCount", is(5)));
 
-        verify(credentialIssuanceClient).requestCredential(credentialIds);
+        verify(credentialIssuanceClient).requestCredential(credentialIds, participant);
     }
 
     @DisplayName("POST /credentials/request with malformed JSON returns 400")

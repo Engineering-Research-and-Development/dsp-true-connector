@@ -7,6 +7,10 @@ on:
     types: [ closed ]
 
 jobs:
+  # Guard: release.yml merges main into develop directly (not via PR) and sets
+  # the next snapshot version itself, so this job must not run for that merge.
+  # This condition also protects against a manual main -> develop PR performing
+  # a duplicate version bump on top of the one release.yml already applied.
   increment-version-and-build:
     if: github.event.pull_request.merged == true && github.event.pull_request.head.ref != 'main'
     runs-on: ubuntu-latest

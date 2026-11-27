@@ -8,6 +8,7 @@ import it.eng.dcp.common.model.IssuerMetadata;
 import it.eng.dcp.issuer.service.IssuerService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,11 +24,15 @@ import java.util.Optional;
  * REST controller for issuer-side credential operations.
  */
 @RestController
-@RequestMapping(path = "/issuer", produces = MediaType.APPLICATION_JSON_VALUE)
+@RequestMapping(path = "/${dcp.base-path.issuer:issuer}", produces = MediaType.APPLICATION_JSON_VALUE)
 @Slf4j
 public class IssuerController {
 
     private final IssuerService issuerService;
+
+    /** Base path of the issuer controllers, {@code dcp.base-path.issuer}. */
+    @Value("${dcp.base-path.issuer:issuer}")
+    private String issuerBasePath = "issuer";
 
     @Autowired
     public IssuerController(IssuerService issuerService) {
@@ -82,12 +87,12 @@ public class IssuerController {
 
         try {
             JWTClaimsSet jwtClaimsSet = issuerService.authorizeRequest(token, requestMessage.getHolderPid());
-            CredentialRequest request = issuerService.createCredentialRequest(requestMessage, jwtClaimsSet.getSubject());
+            CredentialRequest request = issuerService.createCredentialRequest(requestMessage, jwtClaimsSet);
 
             log.info("Created credential request: issuerPid={}, holderPid={}, credentials={}",
                     request.getIssuerPid(), request.getHolderPid(), request.getCredentialIds());
 
-            String location = "/issuer/requests/" + request.getIssuerPid();
+            String location = "/" + issuerBasePath + "/requests/" + request.getIssuerPid();
             return ResponseEntity.created(URI.create(location)).header(HttpHeaders.LOCATION, location).build();
         } catch (SecurityException e) {
             log.warn("Authorization failed: {}", e.getMessage());
@@ -121,10 +126,11 @@ public class IssuerController {
         String token = authorization.substring("Bearer ".length());
 
         try {
-            // Validate the token
-            issuerService.authorizeRequest(token, null);
+            // Validate the token; its subject identifies the calling client
+            JWTClaimsSet claims = issuerService.authorizeRequest(token, null);
 
-            Optional<CredentialRequest> requestOpt = issuerService.getRequestByIssuerPid(requestId);
+            // A request owned by another client is reported as not found so its existence is not revealed
+            Optional<CredentialRequest> requestOpt = issuerService.getRequestByIssuerPid(requestId, claims.getSubject());
             if (requestOpt.isEmpty()) {
                 return ResponseEntity.status(404).body("Request not found");
             }

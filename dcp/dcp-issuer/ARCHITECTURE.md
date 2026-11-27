@@ -176,6 +176,42 @@
    └─────────────┘
 ```
 
+## Credential Write Authorization (DCP v1.0.1 §6.1, §6.4, §6.5)
+
+The Holder sends its Self-Issued ID Token to `POST /issuer/credentials`. When that token carries a `token` claim,
+the Issuer stores the original Holder-issued access token only on the internal `CredentialRequest` record; the
+field is excluded from JSON and is not included in request-status responses.
+
+For both issued credentials and rejection notifications, the Issuer sends its own Self-Issued ID Token to the
+Holder's Credential Service. The token is Issuer-signed and addressed to the Holder DID, and its `token` claim
+contains the exact Holder-issued access token received with the request. Before processing either message, the
+Holder validates the Issuer token and then validates the nested access token with the Issuer DID as its audience.
+After successful delivery, the Issuer persists the terminal request state without the access token; failed
+deliveries retain it for retry until it expires.
+
+The Holder's `POST /api/v1/dcp/credentials/request` helper creates a Holder access token and includes it in the
+Self-Issued ID Token sent to the Issuer.
+
+## Credential Status Lists
+
+Credentials of the `vc11-sl2021/jwt` and `vc20-bssl/jwt` profiles carry a `credentialStatus` entry for revocation (DCP v1.0.1 §6.10). `StatusListService` manages the lists in the `status_lists` collection:
+
+- **One list type per profile**: StatusList2021 (`StatusList2021Entry`, `StatusList2021Credential`) for `vc11-sl2021/jwt` and BitstringStatusList (`BitstringStatusListEntry`, `BitstringStatusListCredential`) for `vc20-bssl/jwt`. Lists are kept per issuer DID, status purpose and profile.
+- **Allocation is separate from status**: `StatusList.nextIndex` counts allocated entries and never goes down, so an index is never reused. A new entry's bit stays 0 (valid). When a list is full (131072 entries), a new list is started.
+- **Revocation** (`POST /api/issuer/status-lists/{listId}/entries/{index}/revoke`) sets the bit to 1 and re-signs the list. Revocation is not reversible.
+- **Publication**: the signed list (a compact JWT built by `StatusListCredentialGenerator`) is stored with the list and served without authentication at `<dcp.base-url>/issuer/status/{listId}`, the URL the credentials carry as `statusListCredential`. `dcp.base-url` is therefore required; the Issuer fails at startup without it. It is re-signed when served if the stored JWT was signed with a key that is no longer current, for example after key rotation.
+- **Identifiers**: list IDs are random UUIDs, so the public URLs are globally unambiguous. In multi-participant mode (#426) the URL becomes `/<participantId>/issuer/status/{listId}`.
+- **Concurrency**: `StatusList` has a `@Version` field; concurrent allocations or revocations of one list are retried on an optimistic locking conflict.
+
+```
+CredentialIssuanceService ──allocateStatusEntry(did, "revocation", profile)──▶ StatusListService
+                                                                                │  nextIndex++ (bit stays 0)
+Verifier ──GET /issuer/status/{listId}──▶ StatusListController ──publishStatusList()─┤
+Admin ──POST /api/issuer/status-lists/{listId}/entries/{index}/revoke──▶ revoke()  │  bit = 1, re-sign
+                                                                                ▼
+                                                                       status_lists (MongoDB)
+```
+
 ## Deployment Architecture
 
 ```

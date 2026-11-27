@@ -20,7 +20,7 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class TenantBucketResolverTest {
 
-    private static final String TENANT_ID = "engineering";
+    private static final String TENANT_ID = "engineering-a";
     private static final String TENANT_BUCKET = "tenant-bucket";
     private static final String GLOBAL_BUCKET = "global-bucket";
 
@@ -197,7 +197,7 @@ class TenantBucketResolverTest {
     private Tenant tenantWithBucket(String bucketName) {
         return Tenant.Builder.newInstance()
                 .id(TENANT_ID)
-                .name("Engineering")
+                .name("EngineeringA")
                 .participantId("urn:connector:engineering")
                 .enabled(true)
                 .bucketName(bucketName)

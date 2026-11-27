@@ -9,6 +9,9 @@ import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.audit.DcpAuditEventType;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantState;
+import it.eng.dcp.common.participant.SigningKeyReference;
 import it.eng.dcp.common.model.*;
 import it.eng.dcp.common.service.IssuerTrustService;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
@@ -18,9 +21,11 @@ import it.eng.dcp.holder.repository.CredentialStatusRepository;
 import it.eng.dcp.holder.repository.VerifiableCredentialRepository;
 import it.eng.dcp.holder.service.CredentialIssuanceClient;
 import it.eng.dcp.holder.service.HolderService;
+import it.eng.dcp.holder.service.PresentationQueryAuthorization;
 import it.eng.dcp.holder.service.PresentationRateLimiter;
 import it.eng.dcp.holder.service.PresentationService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -29,6 +34,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -65,6 +71,9 @@ class HolderServiceTest {
 
     private HolderService holderService;
 
+    private final ParticipantContext participant = new ParticipantContext("default", "did:example:holder",
+            new SigningKeyReference("eckey.p12", "alias"), List.of(), Map.of(), null, ParticipantState.ENABLED);
+
     @BeforeEach
     void setUp() {
         // Use real ObjectMapper instead of mock for proper JSON processing
@@ -83,24 +92,36 @@ class HolderServiceTest {
     }
 
     @Test
-    void authorizePresentationQuery_validToken_success() {
-        // Arrange
-        String bearerToken = "valid-token";
+    void authorizePresentationQuery_validTokens_success() {
+        // Arrange: the Verifier's Self-Issued ID Token carries the holder-issued access token
+        String bearerToken = "verifier-id-token";
+        String verifierDid = "did:example:verifier";
         String holderDid = "did:example:holder123";
 
-        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+        JWTClaimsSet idTokenClaims = new JWTClaimsSet.Builder()
+                .issuer(verifierDid)
+                .subject(verifierDid)
+                .claim("token", "access-token")
+                .build();
+        JWTClaimsSet accessTokenClaims = new JWTClaimsSet.Builder()
+                .issuer(holderDid)
                 .subject(holderDid)
+                .audience(verifierDid)
+                .claim("scope", List.of("MembershipCredential"))
                 .build();
 
-        when(tokenService.validateToken(bearerToken)).thenReturn(claims);
+        when(tokenService.validateToken(bearerToken, participant)).thenReturn(idTokenClaims);
+        when(tokenService.validateAccessToken("access-token", verifierDid, participant)).thenReturn(accessTokenClaims);
 
         // Act
-        JWTClaimsSet result = holderService.authorizePresentationQuery(bearerToken);
+        PresentationQueryAuthorization result = holderService.authorizePresentationQuery(bearerToken, participant);
 
         // Assert
-        assertNotNull(result);
-        assertEquals(holderDid, result.getSubject());
-        verify(tokenService).validateToken(bearerToken);
+        assertEquals(verifierDid, result.verifierDid());
+        assertEquals(holderDid, result.holderDid());
+        assertSame(accessTokenClaims, result.accessTokenClaims());
+        verify(tokenService).validateToken(bearerToken, participant);
+        verify(tokenService).validateAccessToken("access-token", verifierDid, participant);
 
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
@@ -108,13 +129,80 @@ class HolderServiceTest {
     }
 
     @Test
+    @DisplayName("A Self-Issued ID Token without an access token in 'token' is rejected (DCP v1.0.1 §5.3.1)")
+    void authorizePresentationQuery_missingAccessToken_throwsSecurityException() {
+        JWTClaimsSet idTokenClaims = new JWTClaimsSet.Builder()
+                .issuer("did:example:verifier")
+                .subject("did:example:verifier")
+                .build();
+        when(tokenService.validateToken("verifier-id-token", participant)).thenReturn(idTokenClaims);
+
+        SecurityException exception = assertThrows(SecurityException.class,
+                () -> holderService.authorizePresentationQuery("verifier-id-token", participant));
+
+        assertTrue(exception.getMessage().contains("no access token"));
+        verify(tokenService, never()).validateAccessToken(any(), any(), eq(participant));
+        ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+        verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+        assertEquals(DcpAuditEventType.TOKEN_VALIDATION_FAILED, typeCaptor.getValue());
+    }
+
+    @Test
+    void authorizePresentationQuery_blankAccessToken_throwsSecurityException() {
+        JWTClaimsSet idTokenClaims = new JWTClaimsSet.Builder()
+                .subject("did:example:verifier")
+                .claim("token", " ")
+                .build();
+        when(tokenService.validateToken("verifier-id-token", participant)).thenReturn(idTokenClaims);
+
+        assertThrows(SecurityException.class, () -> holderService.authorizePresentationQuery("verifier-id-token", participant));
+        verify(tokenService, never()).validateAccessToken(any(), any(), eq(participant));
+    }
+
+    @Test
+    void authorizePresentationQuery_nonStringAccessToken_throwsSecurityException() {
+        JWTClaimsSet idTokenClaims = new JWTClaimsSet.Builder()
+                .subject("did:example:verifier")
+                .claim("token", List.of("not", "a", "string"))
+                .build();
+        when(tokenService.validateToken("verifier-id-token", participant)).thenReturn(idTokenClaims);
+
+        assertThrows(SecurityException.class, () -> holderService.authorizePresentationQuery("verifier-id-token", participant));
+        verify(tokenService, never()).validateAccessToken(any(), any(), eq(participant));
+    }
+
+    @Test
+    @DisplayName("A foreign or misbound access token is rejected")
+    void authorizePresentationQuery_invalidAccessToken_throwsSecurityException() {
+        JWTClaimsSet idTokenClaims = new JWTClaimsSet.Builder()
+                .subject("did:example:verifier")
+                .claim("token", "foreign-access-token")
+                .build();
+        when(tokenService.validateToken("verifier-id-token", participant)).thenReturn(idTokenClaims);
+        when(tokenService.validateAccessToken("foreign-access-token", "did:example:verifier", participant))
+                .thenThrow(new SecurityException("Access token was not issued by this Credential Service's holder"));
+
+        assertThrows(SecurityException.class, () -> holderService.authorizePresentationQuery("verifier-id-token", participant));
+        verify(auditPublisher, never()).publishEvent(eq(DcpAuditEventType.PRESENTATION_QUERY_RECEIVED),
+                any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void authorizePresentationQuery_invalidIdToken_throwsSecurityException() {
+        when(tokenService.validateToken("bad-token", participant)).thenThrow(new SecurityException("aud claim must match verifier DID"));
+
+        assertThrows(SecurityException.class, () -> holderService.authorizePresentationQuery("bad-token", participant));
+        verify(tokenService, never()).validateAccessToken(any(), any(), eq(participant));
+    }
+
+    @Test
     void authorizePresentationQuery_nullToken_throwsSecurityException() {
         // Act & Assert
         SecurityException exception = assertThrows(SecurityException.class,
-                () -> holderService.authorizePresentationQuery(null));
+                () -> holderService.authorizePresentationQuery(null, participant));
 
         assertEquals("Bearer token is required", exception.getMessage());
-        verify(tokenService, never()).validateToken(anyString());
+        verify(tokenService, never()).validateToken(anyString(), eq(participant));
 
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
@@ -125,10 +213,10 @@ class HolderServiceTest {
     void authorizePresentationQuery_blankToken_throwsSecurityException() {
         // Act & Assert
         SecurityException exception = assertThrows(SecurityException.class,
-                () -> holderService.authorizePresentationQuery("   "));
+                () -> holderService.authorizePresentationQuery("   ", participant));
 
         assertEquals("Bearer token is required", exception.getMessage());
-        verify(tokenService, never()).validateToken(anyString());
+        verify(tokenService, never()).validateToken(anyString(), eq(participant));
 
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
@@ -172,18 +260,21 @@ class HolderServiceTest {
 
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .subject(holderDid)
+                .claim("scope", List.of("MembershipCredential"))
                 .build();
+        PresentationQueryAuthorization authorization =
+                new PresentationQueryAuthorization("did:example:verifier", holderDid, claims);
 
-        when(presentationService.createPresentation(query, claims)).thenReturn(expectedResponse);
+        when(presentationService.createPresentation(query, holderDid, claims, participant)).thenReturn(expectedResponse);
         when(query.getScope()).thenReturn(List.of("MembershipCredential"));
 
         // Act
-        PresentationResponseMessage result = holderService.createPresentation(query, holderDid, claims);
+        PresentationResponseMessage result = holderService.createPresentation(query, authorization, participant);
 
         // Assert
         assertNotNull(result);
         assertEquals(expectedResponse, result);
-        verify(presentationService).createPresentation(query, claims);
+        verify(presentationService).createPresentation(query, holderDid, claims, participant);
 
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
@@ -195,19 +286,28 @@ class HolderServiceTest {
         // Arrange
         String bearerToken = "valid-token";
         String issuerDid = "did:example:issuer123";
+        String holderDid = "did:example:holder123";
 
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
                 .issuer(issuerDid)
+                .claim("token", "holder-access-token")
+                .build();
+        JWTClaimsSet accessTokenClaims = new JWTClaimsSet.Builder()
+                .issuer(holderDid)
+                .subject(holderDid)
+                .audience(issuerDid)
                 .build();
 
-        when(tokenService.validateToken(bearerToken)).thenReturn(claims);
+        when(tokenService.validateToken(bearerToken, participant)).thenReturn(claims);
+        when(tokenService.validateAccessToken("holder-access-token", issuerDid, participant)).thenReturn(accessTokenClaims);
 
         // Act
-        String result = holderService.authorizeIssuer(bearerToken);
+        String result = holderService.authorizeIssuer(bearerToken, participant);
 
         // Assert
         assertEquals(issuerDid, result);
-        verify(tokenService).validateToken(bearerToken);
+        verify(tokenService).validateAccessToken("holder-access-token", issuerDid, participant);
+        verify(tokenService).validateToken(bearerToken, participant);
 
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
@@ -215,13 +315,40 @@ class HolderServiceTest {
     }
 
     @Test
+    void authorizeIssuer_missingAccessToken_throwsSecurityException() {
+        String issuerDid = "did:example:issuer123";
+        JWTClaimsSet claims = new JWTClaimsSet.Builder().issuer(issuerDid).build();
+        when(tokenService.validateToken("valid-token", participant)).thenReturn(claims);
+
+        assertThrows(SecurityException.class, () -> holderService.authorizeIssuer("valid-token", participant));
+
+        verify(tokenService, never()).validateAccessToken(any(), any(), eq(participant));
+    }
+
+    @Test
+    void authorizeIssuer_invalidAccessToken_throwsSecurityException() {
+        String issuerDid = "did:example:issuer123";
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .issuer(issuerDid)
+                .claim("token", "invalid-holder-access-token")
+                .build();
+        when(tokenService.validateToken("valid-token", participant)).thenReturn(claims);
+        when(tokenService.validateAccessToken("invalid-holder-access-token", issuerDid, participant))
+                .thenThrow(new SecurityException("Access token audience does not match"));
+
+        assertThrows(SecurityException.class, () -> holderService.authorizeIssuer("valid-token", participant));
+
+        verify(tokenService).validateAccessToken("invalid-holder-access-token", issuerDid, participant);
+    }
+
+    @Test
     void authorizeIssuer_nullToken_throwsSecurityException() {
         // Act & Assert
         SecurityException exception = assertThrows(SecurityException.class,
-                () -> holderService.authorizeIssuer(null));
+                () -> holderService.authorizeIssuer(null, participant));
 
         assertEquals("Bearer token is required", exception.getMessage());
-        verify(tokenService, never()).validateToken(anyString());
+        verify(tokenService, never()).validateToken(anyString(), eq(participant));
 
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
@@ -234,11 +361,11 @@ class HolderServiceTest {
         String bearerToken = "valid-token";
         JWTClaimsSet claims = new JWTClaimsSet.Builder().build();
 
-        when(tokenService.validateToken(bearerToken)).thenReturn(claims);
+        when(tokenService.validateToken(bearerToken, participant)).thenReturn(claims);
 
         // Act & Assert
         SecurityException exception = assertThrows(SecurityException.class,
-                () -> holderService.authorizeIssuer(bearerToken));
+                () -> holderService.authorizeIssuer(bearerToken, participant));
 
         assertEquals("Invalid token: missing issuer claim", exception.getMessage());
 
@@ -372,6 +499,23 @@ class HolderServiceTest {
     }
 
     @Test
+    @DisplayName("A rejection without credentials, reason or holderPid (DCP §6.5.1) is recorded")
+    void processRejectedCredentials_minimalSpecMessage_recorded() throws Exception {
+        CredentialMessage msg = new ObjectMapper().readValue("""
+                { "@context": [ "https://w3id.org/dspace-dcp/v1.0/dcp.jsonld" ], "type": "CredentialMessage",
+                  "issuerPid": "issuerPid", "status": "REJECTED" }
+                """, CredentialMessage.class);
+
+        holderService.processRejectedCredentials(msg);
+
+        ArgumentCaptor<CredentialStatusRecord> captor = ArgumentCaptor.forClass(CredentialStatusRecord.class);
+        verify(credentialStatusRepository).save(captor.capture());
+        assertEquals(CredentialStatus.REJECTED, captor.getValue().getStatus());
+        assertEquals("issuerPid", captor.getValue().getIssuerPid());
+        assertNull(captor.getValue().getRejectionReason());
+    }
+
+    @Test
     void processRejectedCredentials_success() {
         // Arrange
         String requestId = "req-123";
@@ -413,6 +557,7 @@ class HolderServiceTest {
     void processCredentialOffer_validOffer_success() {
         // Arrange
         CredentialOfferMessage.CredentialObject credential1 = CredentialOfferMessage.CredentialObject.Builder.newInstance()
+                .id("membership-credential-1")
                 .credentialType("MembershipCredential")
                 .build();
 
@@ -423,7 +568,7 @@ class HolderServiceTest {
                 .build();
 
         // Act
-        boolean result = holderService.processCredentialOffer(offer);
+        boolean result = holderService.processCredentialOffer(offer, participant);
 
         // Assert
         assertTrue(result);
@@ -437,7 +582,7 @@ class HolderServiceTest {
     void processCredentialOffer_nullOffer_throwsException() {
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> holderService.processCredentialOffer(null));
+                () -> holderService.processCredentialOffer(null, participant));
 
         assertEquals("offeredCredentials must be provided and non-empty", exception.getMessage());
     }
@@ -450,7 +595,7 @@ class HolderServiceTest {
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> holderService.processCredentialOffer(offer));
+                () -> holderService.processCredentialOffer(offer, participant));
 
         assertEquals("offeredCredentials must be provided and non-empty", exception.getMessage());
     }
@@ -459,6 +604,7 @@ class HolderServiceTest {
     void processCredentialOffer_nullIssuer_throwsException() {
         // Arrange - Use mock since builder validation requires issuer
         CredentialOfferMessage.CredentialObject credential = CredentialOfferMessage.CredentialObject.Builder.newInstance()
+                .id("membership-credential-1")
                 .credentialType("MembershipCredential")
                 .build();
 
@@ -468,7 +614,7 @@ class HolderServiceTest {
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> holderService.processCredentialOffer(offer));
+                () -> holderService.processCredentialOffer(offer, participant));
 
         assertEquals("issuer must be provided", exception.getMessage());
     }
@@ -477,6 +623,7 @@ class HolderServiceTest {
     void processCredentialOffer_emptyIssuer_throwsException() {
         // Arrange - Use mock since builder validation requires issuer
         CredentialOfferMessage.CredentialObject credential = CredentialOfferMessage.CredentialObject.Builder.newInstance()
+                .id("membership-credential-1")
                 .credentialType("MembershipCredential")
                 .build();
 
@@ -486,7 +633,7 @@ class HolderServiceTest {
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> holderService.processCredentialOffer(offer));
+                () -> holderService.processCredentialOffer(offer, participant));
 
         assertEquals("issuer must be provided", exception.getMessage());
     }
@@ -517,14 +664,15 @@ class HolderServiceTest {
                 .credentialsSupported(List.of(fullCredential))
                 .build();
 
-        when(issuanceClient.getIssuerMetadata("http://issuer.example.com/metadata")).thenReturn(metadata);
+        when(issuerTrustService.isTrustedIssuer("did:web:issuer.example.com")).thenReturn(true);
+        when(issuanceClient.getIssuerMetadataOf("did:web:issuer.example.com", participant)).thenReturn(metadata);
 
         // Act
-        boolean result = holderService.processCredentialOffer(offer);
+        boolean result = holderService.processCredentialOffer(offer, participant);
 
         // Assert
         assertTrue(result);
-        verify(issuanceClient).getIssuerMetadata("http://issuer.example.com/metadata");
+        verify(issuanceClient).getIssuerMetadataOf("did:web:issuer.example.com", participant);
     }
 
     @Test
@@ -551,11 +699,12 @@ class HolderServiceTest {
                 .credentialsSupported(List.of(fullCredential))
                 .build();
 
-        when(issuanceClient.getIssuerMetadata("http://issuer.example.com/metadata")).thenReturn(metadata);
+        when(issuerTrustService.isTrustedIssuer("did:web:issuer.example.com")).thenReturn(true);
+        when(issuanceClient.getIssuerMetadataOf("did:web:issuer.example.com", participant)).thenReturn(metadata);
 
         // Act & Assert
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> holderService.processCredentialOffer(offer));
+                () -> holderService.processCredentialOffer(offer, participant));
 
         assertTrue(exception.getMessage().contains("not found in issuer credentialsSupported"));
     }
@@ -571,12 +720,13 @@ class HolderServiceTest {
         when(offer.getIssuer()).thenReturn("did:web:issuer.example.com");
         when(offer.getCredentialObjects()).thenReturn(List.of(sparseCredential));
 
-        when(issuanceClient.getIssuerMetadata("http://issuer.example.com/metadata"))
+        when(issuerTrustService.isTrustedIssuer("did:web:issuer.example.com")).thenReturn(true);
+        when(issuanceClient.getIssuerMetadataOf("did:web:issuer.example.com", participant))
             .thenThrow(new RuntimeException("Network error"));
 
         // Act & Assert
         RuntimeException exception = assertThrows(RuntimeException.class,
-                () -> holderService.processCredentialOffer(offer));
+                () -> holderService.processCredentialOffer(offer, participant));
 
         assertTrue(exception.getMessage().contains("metadata fetch failed"));
     }
@@ -586,6 +736,7 @@ class HolderServiceTest {
         // Arrange - Mix of sparse and full credentials
         CredentialOfferMessage.CredentialObject fullCredential =
             CredentialOfferMessage.CredentialObject.Builder.newInstance()
+                .id("organization-credential-1")
                 .credentialType("OrganizationCredential")
                 .build();
 
@@ -610,14 +761,15 @@ class HolderServiceTest {
                 .credentialsSupported(List.of(metadataCredential))
                 .build();
 
-        when(issuanceClient.getIssuerMetadata("http://issuer.example.com/metadata")).thenReturn(metadata);
+        when(issuerTrustService.isTrustedIssuer("did:web:issuer.example.com")).thenReturn(true);
+        when(issuanceClient.getIssuerMetadataOf("did:web:issuer.example.com", participant)).thenReturn(metadata);
 
         // Act
-        boolean result = holderService.processCredentialOffer(offer);
+        boolean result = holderService.processCredentialOffer(offer, participant);
 
         // Assert
         assertTrue(result);
-        verify(issuanceClient).getIssuerMetadata("http://issuer.example.com/metadata");
+        verify(issuanceClient).getIssuerMetadataOf("did:web:issuer.example.com", participant);
     }
 
     // ─── helpers ──────────────────────────────────────────────────────────────

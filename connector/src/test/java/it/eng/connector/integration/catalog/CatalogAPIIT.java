@@ -79,7 +79,7 @@ public class CatalogAPIIT extends BaseIntegrationTest {
                 .title(CatalogMockObjectUtil.TITLE)
                 .endpointDescription("Description for test")
                 .endpointURL(CatalogMockObjectUtil.ENDPOINT_URL)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         distribution = Distribution.Builder.newInstance()
@@ -89,7 +89,7 @@ public class CatalogAPIIT extends BaseIntegrationTest {
                 .modified(CatalogMockObjectUtil.MODIFIED)
                 .title(CatalogMockObjectUtil.TITLE)
                 .accessService(dataService)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         dataset = Dataset.Builder.newInstance()
@@ -101,7 +101,7 @@ public class CatalogAPIIT extends BaseIntegrationTest {
                 .theme(Stream.of("white", "blue").collect(Collectors.toCollection(HashSet::new)))
                 .title(CatalogMockObjectUtil.TITLE)
                 .hasPolicy(Collections.singleton(CatalogMockObjectUtil.OFFER))
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         catalog = Catalog.Builder.newInstance()
@@ -122,7 +122,7 @@ public class CatalogAPIIT extends BaseIntegrationTest {
                 .lastModifiedBy("admin@mail.com")
                 .issued(CatalogMockObjectUtil.ISSUED)
                 .modified(CatalogMockObjectUtil.MODIFIED)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         newCatalog = Catalog.Builder.newInstance()
@@ -142,7 +142,7 @@ public class CatalogAPIIT extends BaseIntegrationTest {
                 .lastModifiedBy("admin@mail.com")
                 .issued(CatalogMockObjectUtil.ISSUED)
                 .modified(CatalogMockObjectUtil.MODIFIED)
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .build();
 
         datasetRepository.save(dataset);
@@ -164,8 +164,7 @@ public class CatalogAPIIT extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.API_USER)
     public void getCatalogById_success() throws Exception {
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_CATALOGS_V1 + "/" + catalog.getId())
-                        .contentType(MediaType.APPLICATION_JSON));
+                get(ApiEndpoints.CATALOG_CATALOGS_V1 + "/" + catalog.getId()));
 
         result.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -187,8 +186,7 @@ public class CatalogAPIIT extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.API_USER)
     public void getAllCatalogs_success() throws Exception {
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_CATALOGS_V1)
-                        .contentType(MediaType.APPLICATION_JSON));
+                get(ApiEndpoints.CATALOG_CATALOGS_V1));
 
         result.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -264,8 +262,7 @@ public class CatalogAPIIT extends BaseIntegrationTest {
     @WithUserDetails(TestUtil.API_USER)
     public void deleteCatalog_success() throws Exception {
         final ResultActions result = mockMvc.perform(
-                delete(ApiEndpoints.CATALOG_CATALOGS_V1 + "/" + catalog.getId())
-                        .contentType(MediaType.APPLICATION_JSON));
+                delete(ApiEndpoints.CATALOG_CATALOGS_V1 + "/" + catalog.getId()));
 
         result.andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));
@@ -284,8 +281,7 @@ public class CatalogAPIIT extends BaseIntegrationTest {
     @DisplayName("Unauthorized access")
     public void unauthorized_access() throws Exception {
         final ResultActions result = mockMvc.perform(
-                get(ApiEndpoints.CATALOG_CATALOGS_V1)
-                        .contentType(MediaType.APPLICATION_JSON));
+                get(ApiEndpoints.CATALOG_CATALOGS_V1));
 
         result.andExpect(status().isUnauthorized())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON));

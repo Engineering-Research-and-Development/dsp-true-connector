@@ -1,7 +1,6 @@
 package it.eng.dcp.verifier.config;
 
-import it.eng.dcp.common.config.DidDocumentConfig;
-import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.common.participant.ParticipantKeyProvider;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.common.service.sts.JtiReplayCache;
@@ -26,12 +25,11 @@ public class VerifierTokenServiceConfiguration {
      * Create a SelfIssuedIdTokenService instance specifically for the verifier role.
      *
      * <p>This instance validates tokens where the audience (aud) is the connector's DID.
-     * Uses the DidDocumentConfig bean created by BaseDidDocumentConfiguration.
+     * Signs through the participant key provider.
      *
      * @param didResolver DID resolver service
      * @param jtiCache JTI replay cache
-     * @param keyService Key service for cryptographic operations
-     * @param config The DidDocumentConfig bean
+     * @param keyProvider Provider of the participant signing key
      * @param auditEventPublisher DCP audit event publisher
      * @return SelfIssuedIdTokenService configured with connector's DID
      */
@@ -40,10 +38,9 @@ public class VerifierTokenServiceConfiguration {
     public SelfIssuedIdTokenService verifierTokenService(
             DidResolverService didResolver,
             JtiReplayCache jtiCache,
-            KeyService keyService,
-            DidDocumentConfig config,
+            ParticipantKeyProvider keyProvider,
             DcpAuditEventPublisher auditEventPublisher) {
-        return new SelfIssuedIdTokenService(didResolver, jtiCache, keyService, config, auditEventPublisher);
+        return new SelfIssuedIdTokenService(didResolver, jtiCache, keyProvider, auditEventPublisher);
     }
 }
 

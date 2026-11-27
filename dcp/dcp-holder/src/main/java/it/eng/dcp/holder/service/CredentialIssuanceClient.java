@@ -1,6 +1,8 @@
 package it.eng.dcp.holder.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.util.DcpTransportSecurity;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
 import it.eng.dcp.common.config.DidDocumentConfig;
@@ -46,6 +48,9 @@ public class CredentialIssuanceClient {
     private final DidResolverService didResolverService;
     private final DcpAuditEventPublisher auditPublisher;
 
+    @Value("${dcp.allow-insecure-http:false}")
+    private boolean allowInsecureHttp;
+
     @Value("${dcp.issuer.location:}")
     private String issuerDid;
 
@@ -63,49 +68,113 @@ public class CredentialIssuanceClient {
     }
 
     /**
-     * Discovers the Issuer Service endpoint from the issuer's DID document.
+     * Checks that {@code dcp.issuer.location} holds the issuer's DID. The Issuer Service URL is discovered
+     * from that DID's document (DCP §6.2), and the DID is the audience of the tokens sent to the issuer, so
+     * a URL cannot be used here.
+     *
+     * @throws IllegalStateException if the value is missing or not a DID
+     */
+    private void requireIssuerDid() {
+        if (issuerDid == null || issuerDid.isBlank()) {
+            throw new IllegalStateException("dcp.issuer.location is not set; configure the issuer DID, "
+                    + "for example did:web:issuer.example.com");
+        }
+        if (!issuerDid.startsWith("did:web:")) {
+            throw new IllegalStateException("dcp.issuer.location must be the issuer's did:web DID (for example "
+                    + "did:web:issuer.example.com), not a URL or another DID method; got: " + issuerDid
+                    + ". The Issuer Service URL is discovered from the issuer's DID document.");
+        }
+    }
+
+    /**
+     * Discovers the Issuer Service endpoint from the configured issuer's DID document.
      *
      * @return service endpoint URL (e.g., {@code https://issuer.example.com})
      * @throws IssuerServiceNotFoundException if IssuerService entry not found in DID document
+     * @throws IllegalStateException if {@code dcp.issuer.location} is not a DID
+     * @throws it.eng.dcp.common.exception.InsecureEndpointException if the endpoint is not HTTPS and insecure HTTP is not allowed
      * @throws RuntimeException if failed to fetch DID document
      */
     public String discoverIssuerService() {
+        requireIssuerDid();
+        return discoverIssuerService(issuerDid);
+    }
+
+    /**
+     * Discovers the Issuer Service endpoint from the DID document of the given issuer (DCP v1.0.1 §6.2).
+     *
+     * <p>The endpoint is the {@code serviceEndpoint} of the first {@code IssuerService} entry of the resolved
+     * DID document. Callers must pass a DID they trust: the DID host is contacted to resolve the document.
+     *
+     * @param targetIssuerDid the issuer DID whose DID document advertises the Issuer Service
+     * @return service endpoint URL (e.g., {@code https://issuer.example.com})
+     * @throws IllegalArgumentException if targetIssuerDid is null or blank
+     * @throws IssuerServiceNotFoundException if IssuerService entry not found in DID document
+     * @throws it.eng.dcp.common.exception.InsecureEndpointException if the endpoint is not HTTPS and insecure HTTP is not allowed
+     * @throws RuntimeException if failed to fetch DID document
+     */
+    public String discoverIssuerService(String targetIssuerDid) {
+        if (targetIssuerDid == null || targetIssuerDid.isBlank()) {
+            throw new IllegalArgumentException("issuer DID required");
+        }
         DidDocument didDocument;
         try {
-            didDocument = didResolverService.fetchDidDocumentCached(issuerDid);
+            didDocument = didResolverService.fetchDidDocumentCached(targetIssuerDid);
         } catch (IOException e) {
-            log.error("Failed to fetch issuer DID document from {}: {}", issuerDid, e.getMessage());
+            log.error("Failed to fetch issuer DID document from {}: {}", targetIssuerDid, e.getMessage());
             throw new RuntimeException("Failed to fetch issuer DID document: " + e.getMessage(), e);
         }
 
         if (didDocument != null && didDocument.getServices() != null) {
-            return didDocument.getServices().stream()
+            String endpoint = didDocument.getServices().stream()
                     .filter(service -> "IssuerService".equals(service.type()))
                     .findFirst()
                     .map(ServiceEntry::serviceEndpoint)
-                    .orElseThrow(() -> new IssuerServiceNotFoundException("IssuerService entry not found in DID document for issuer: " + issuerDid));
+                    .orElseThrow(() -> new IssuerServiceNotFoundException("IssuerService entry not found in DID document for issuer: " + targetIssuerDid));
+            DcpTransportSecurity.requireSecure(endpoint, "IssuerService endpoint of " + targetIssuerDid, allowInsecureHttp);
+            return endpoint;
         }
 
-        throw new IssuerServiceNotFoundException("IssuerService entry not found in DID document for issuer: " + issuerDid);
+        throw new IssuerServiceNotFoundException("IssuerService entry not found in DID document for issuer: " + targetIssuerDid);
     }
 
     /**
-     * Fetches issuer metadata from the issuer service base URL + /metadata.
+     * Fetches issuer metadata of the configured issuer ({@code dcp.issuer.location}).
      *
+     * @param participant the participant that authenticates the request with its Self-Issued ID Token
      * @return the IssuerMetadata object
+     * @throws IllegalStateException if {@code dcp.issuer.location} is not a DID
      * @throws RuntimeException if failed to fetch metadata
      */
-    public IssuerMetadata getPersonalIssuerMetadata() {
-        // Discover issuer service URL from DID document
-        String issuerBase = discoverIssuerService();
+    public IssuerMetadata getPersonalIssuerMetadata(ParticipantContext participant) {
+        requireIssuerDid();
+        return getIssuerMetadataOf(issuerDid, participant);
+    }
+
+    /**
+     * Fetches the metadata of the given issuer from the Issuer Service endpoint advertised in its DID document.
+     *
+     * <p>The URL is the discovered {@code IssuerService} endpoint + {@code /metadata} (DCP v1.0.1 §6.2, §6.7); it
+     * is never derived from the DID itself. The request carries a Self-Issued ID Token whose audience is the
+     * given issuer DID.
+     *
+     * @param targetIssuerDid the issuer DID; callers must pass a DID they trust
+     * @param participant the participant that authenticates the request with its Self-Issued ID Token
+     * @return the IssuerMetadata object
+     * @throws IllegalArgumentException if targetIssuerDid is null or blank
+     * @throws IssuerServiceNotFoundException if the DID document advertises no IssuerService
+     * @throws RuntimeException if failed to fetch the DID document or the metadata
+     */
+    public IssuerMetadata getIssuerMetadataOf(String targetIssuerDid, ParticipantContext participant) {
+        String issuerBase = discoverIssuerService(targetIssuerDid);
         String metadataUrl = issuerBase.endsWith("/") ? issuerBase + DCPConstants.ISSUER_METADATA_PATH.substring(1) : issuerBase + DCPConstants.ISSUER_METADATA_PATH;
-        IssuerMetadata metadata = getIssuerMetadata(metadataUrl);
+        IssuerMetadata metadata = fetchIssuerMetadata(metadataUrl, targetIssuerDid, participant);
         auditPublisher.publishEvent(
                 DcpAuditEventType.ISSUER_METADATA_FETCHED,
                 "Issuer metadata fetched from: " + metadataUrl,
                 HOLDER_SOURCE,
-                null, issuerDid, null, null,
-                Map.of("issuerDid", issuerDid, "metadataUrl", metadataUrl));
+                null, targetIssuerDid, null, null,
+                Map.of("issuerDid", targetIssuerDid, "metadataUrl", metadataUrl));
         return metadata;
     }
 
@@ -113,27 +182,38 @@ public class CredentialIssuanceClient {
      * Fetches issuer metadata from the given URL (issuer base + /metadata or provided URL).
      *
      * @param metadataUrl the metadata URL
+     * @param participant the participant that authenticates the request with its Self-Issued ID Token
      * @return the IssuerMetadata object
      * @throws IllegalArgumentException if metadataUrl is null
      * @throws RuntimeException if failed to fetch metadata
      */
-    public IssuerMetadata getIssuerMetadata(String metadataUrl) {
+    public IssuerMetadata getIssuerMetadata(String metadataUrl, ParticipantContext participant) {
         if (metadataUrl == null) {
             throw new IllegalArgumentException("metadataUrl required");
         }
+        return fetchIssuerMetadata(metadataUrl, issuerDid, participant);
+    }
 
-        // Create token for issuer audience if possible
-        // Use the issuer DID as audience; tokenService may return null if not configured
-        String audience = issuerDid;
+    /**
+     * Fetches issuer metadata from the given URL with a Self-Issued ID Token for the given audience.
+     *
+     * @param metadataUrl the metadata URL
+     * @param audience the issuer DID the token is addressed to
+     * @param participant the participant that authenticates the request with its Self-Issued ID Token
+     * @return the IssuerMetadata object
+     * @throws RuntimeException if failed to fetch metadata
+     */
+    private IssuerMetadata fetchIssuerMetadata(String metadataUrl, String audience, ParticipantContext participant) {
+        // Create token for issuer audience if possible; tokenService may return null if not configured
         String token = null;
         try {
-            token = tokenService.createAndSignToken(audience, null, config);
+            token = tokenService.createAndSignToken(audience, null, participant);
         } catch (Exception e) {
             log.debug("No token could be created for issuer audience {}: {}", audience, e.getMessage());
         }
 
-        // Build headers with authorization if token is available
-        Map<String, String> headers = Map.of(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+        // Send Authorization only when a token could be created (never "Bearer null")
+        Map<String, String> headers = token != null ? Map.of(HttpHeaders.AUTHORIZATION, "Bearer " + token) : Map.of();
 
         try {
             return rest.executeAndDeserialize(metadataUrl, "GET", headers, null, IssuerMetadata.class);
@@ -148,11 +228,12 @@ public class CredentialIssuanceClient {
      * <p>Returns Location header (status URL) on 201/202 response.
      *
      * @param credentialObjectIds the list of credential object IDs to request
+     * @param participant the participant that authenticates the request with its Self-Issued ID Token
      * @return the status URL from Location header
      * @throws IllegalArgumentException if credentialObjectIds is null or empty
      * @throws RuntimeException if the request fails
      */
-    public String requestCredential(List<String> credentialObjectIds) {
+    public String requestCredential(List<String> credentialObjectIds, ParticipantContext participant) {
         if (credentialObjectIds == null || credentialObjectIds.isEmpty()) {
             throw new IllegalArgumentException("credentialObjectIds (non-empty list) is required");
         }
@@ -175,12 +256,12 @@ public class CredentialIssuanceClient {
 
         // Create token for issuer audience if possible
         // Use the issuer DID as audience; tokenService may return null if not configured
-        String audience = issuerDid;
+        String accessToken = tokenService.createAccessTokenWithScopes(issuerDid, participant);
         String token = null;
         try {
-            token = tokenService.createAndSignToken(audience, null, config);
+            token = tokenService.createAndSignToken(issuerDid, accessToken, participant);
         } catch (Exception e) {
-            log.debug("No token could be created for issuer audience {}: {}", audience, e.getMessage());
+            log.debug("No token could be created for issuer audience {}: {}", issuerDid, e.getMessage());
         }
 
         try {
@@ -256,16 +337,17 @@ public class CredentialIssuanceClient {
      *
      * @param statusUrl the status URL
      * @param audience the audience for the token
+     * @param participant the participant that authenticates the request with its Self-Issued ID Token
      * @return the ResponseEntity with status JSON body
      * @throws IllegalArgumentException if statusUrl is null
      * @throws RuntimeException if the request fails
      */
-    public ResponseEntity<String> getRequestStatus(String statusUrl, String audience) {
+    public ResponseEntity<String> getRequestStatus(String statusUrl, String audience, ParticipantContext participant) {
         if (statusUrl == null) {
             throw new IllegalArgumentException("statusUrl required");
         }
 
-        String token = tokenService.createAndSignToken(audience, null, config);
+        String token = tokenService.createAndSignToken(audience, null, participant);
 
         Request.Builder rb = new Request.Builder().url(statusUrl).get();
         if (token != null && !token.isBlank()) {
@@ -305,16 +387,17 @@ public class CredentialIssuanceClient {
      * @param audience the audience for the token
      * @param timeout maximum duration to wait
      * @param backoff initial backoff duration between attempts
+     * @param participant the participant that authenticates the request with its Self-Issued ID Token
      * @return the final status response body
      * @throws InterruptedException if interrupted while waiting
      * @throws RuntimeException if status polling times out
      */
-    public String awaitStatus(String statusUrl, String audience, Duration timeout, Duration backoff) throws InterruptedException {
+    public String awaitStatus(String statusUrl, String audience, Duration timeout, Duration backoff, ParticipantContext participant) throws InterruptedException {
         long deadline = System.currentTimeMillis() + timeout.toMillis();
         long delay = backoff.toMillis();
         while (System.currentTimeMillis() < deadline) {
             try {
-                ResponseEntity<String> resp = getRequestStatus(statusUrl, audience);
+                ResponseEntity<String> resp = getRequestStatus(statusUrl, audience, participant);
                 if (resp.getStatusCode().is2xxSuccessful()) {
                     // assume body contains status JSON; caller will parse
                     return resp.getBody();

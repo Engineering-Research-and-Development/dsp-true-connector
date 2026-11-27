@@ -1,8 +1,10 @@
 package it.eng.dcp.common.rest;
 
 import it.eng.dcp.common.config.DcpProperties;
-import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.DidDocument;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantContextProvider;
+import it.eng.dcp.common.participant.ParticipantNotFoundException;
 import it.eng.dcp.common.service.did.DidDocumentService;
 import it.eng.dcp.common.util.DidPathResolver;
 import lombok.extern.slf4j.Slf4j;
@@ -75,7 +77,7 @@ public class GenericDidDocumentController implements InitializingBean {
     private final DidDocumentService didDocumentService;
     private final DcpProperties dcpProperties;
     private final RequestMappingHandlerMapping handlerMapping;
-    private final DidDocumentConfig didDocumentConfig;
+    private final ParticipantContextProvider participantContextProvider;
 
     /**
      * Constructor.
@@ -83,18 +85,18 @@ public class GenericDidDocumentController implements InitializingBean {
      * @param didDocumentService service for DID document operations
      * @param dcpProperties DCP configuration properties
      * @param handlerMapping Spring handler mapping for dynamic endpoint registration
-     * @param didDocumentConfig DID document configuration
+     * @param participantContextProvider provider of the participant whose DID document is served
      */
     @Autowired
     public GenericDidDocumentController(
             DidDocumentService didDocumentService,
             DcpProperties dcpProperties,
             @Qualifier("requestMappingHandlerMapping") RequestMappingHandlerMapping handlerMapping,
-            DidDocumentConfig didDocumentConfig) {
+            ParticipantContextProvider participantContextProvider) {
         this.didDocumentService = didDocumentService;
         this.dcpProperties = dcpProperties;
         this.handlerMapping = handlerMapping;
-        this.didDocumentConfig = didDocumentConfig;
+        this.participantContextProvider = participantContextProvider;
 
         log.info("GenericDidDocumentController initialized");
         log.info("DID: {}", dcpProperties.getConnectorDid());
@@ -113,7 +115,7 @@ public class GenericDidDocumentController implements InitializingBean {
     @GetMapping(value = "/.well-known/did.json")
     public ResponseEntity<DidDocument> getDidDocument() {
         log.debug("Serving DID document from well-known endpoint (no path)");
-        DidDocument didDocument = didDocumentService.provideDidDocument(didDocumentConfig);
+        DidDocument didDocument = didDocumentService.provideDidDocument(servedParticipant());
         return ResponseEntity.ok(didDocument);
     }
 
@@ -266,7 +268,23 @@ public class GenericDidDocumentController implements InitializingBean {
      */
     public ResponseEntity<DidDocument> serveDidDocument() {
         log.debug("Serving DID document from dynamically registered endpoint");
-        DidDocument didDocument = didDocumentService.provideDidDocument(didDocumentConfig);
+        DidDocument didDocument = didDocumentService.provideDidDocument(servedParticipant());
         return ResponseEntity.ok(didDocument);
+    }
+
+    /**
+     * Returns the participant these unscoped endpoints serve: the single configured participant. With the
+     * path resolver no participant is unscoped, so the endpoints return 404 and never fall back to any
+     * participant.
+     *
+     * @return the enabled single participant
+     * @throws ParticipantNotFoundException if the deployment is multi-participant or the participant is disabled
+     */
+    private ParticipantContext servedParticipant() {
+        if (dcpProperties.getParticipant().getResolver() == DcpProperties.ParticipantResolver.PATH) {
+            throw new ParticipantNotFoundException("No unscoped DID document in a multi-participant deployment");
+        }
+        return participantContextProvider.findEnabled(dcpProperties.getParticipant().getId())
+                .orElseThrow(() -> new ParticipantNotFoundException("Participant not found"));
     }
 }

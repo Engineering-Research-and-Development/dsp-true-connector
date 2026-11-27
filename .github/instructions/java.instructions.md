@@ -13,6 +13,7 @@ applyTo: '**/*.java'
 
 ## Best practices
 
+- **REST controllers**: Keep the matching OpenAPI YAML documentation and generated examples in sync with controller changes; see [OpenAPI documentation instructions](openapi-docs.instructions.md).
 - **Records**: For classes primarily intended to store data (e.g., DTOs, immutable data structures), **Java Records
   should be used instead of traditional classes**.
 - **Pattern Matching**: Utilize pattern matching for `instanceof` and `switch` expression to simplify conditional logic

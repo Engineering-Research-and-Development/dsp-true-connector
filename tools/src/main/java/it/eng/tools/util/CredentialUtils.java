@@ -1,8 +1,15 @@
 package it.eng.tools.util;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
+import it.eng.dcp.common.config.DcpProperties;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantContextProvider;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
+import it.eng.tools.auth.ConnectorCredentialProvider;
+import it.eng.tools.auth.M2mTokenCache;
+import it.eng.tools.auth.M2mTokenUnavailableException;
+import it.eng.tools.auth.keycloak.KeycloakAuthenticationService;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -10,12 +17,6 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-
-import it.eng.tools.auth.AuthenticationCache;
-import it.eng.tools.auth.ConnectorCredentialProvider;
-import it.eng.tools.auth.M2mTokenCache;
-import it.eng.tools.auth.internal.InternalServiceTokenIssuer;
-import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.net.URI;
@@ -25,43 +26,37 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * Utility class for getting connector credentials.
+ * Utility class for retrieving authentication credentials.
  *
- * <p>This implementation provides two authentication modes:
+ * <p>Connector-to-connector credentials come from one of these sources:
  * <ul>
- *   <li>VP JWT authentication (when DCP is enabled via dcp.vp.enabled=true)</li>
- *   <li>Basic authentication (fallback mode)</li>
+ *   <li>DCP self-issued ID token (when {@code dcp.vp.enabled=true} and a target URL is given): the
+ *       target's DID is resolved from {@code {baseUrl}/.well-known/did.json} (cached in memory) and
+ *       used as the audience of a token from {@link SelfIssuedIdTokenService}.</li>
+ *   <li>{@code INTERNAL} mode: a locally minted protocol JWT from {@link ConnectorCredentialProvider}.</li>
+ *   <li>{@code KEYCLOAK} mode: the {@code platform} realm client credentials token from
+ *       {@link KeycloakAuthenticationService}.</li>
  * </ul>
- *
- * <p>When VP JWT is enabled, this service:
- * <ul>
- *   <li>Resolves the target system's DID from the forwardTo URL</li>
- *   <li>Fetches the DID document from /.well-known/did.json</li>
- *   <li>Caches DID documents in memory to reduce network calls</li>
- *   <li>Extracts the DID from the document</li>
- *   <li>Calls SelfIssuedIdTokenService to generate JWT tokens</li>
- * </ul>
+ * When DCP is disabled, or the DCP token cannot be produced, the provider-based credentials are used.
  */
-@Component
 @Slf4j
+@Component
 public class CredentialUtils {
 
 	/** {@link M2mTokenCache} slot for the connector-to-connector M2M token (see {@link #getConnectorCredentials()}). */
 	static final String CONNECTOR_M2M_CACHE_KEY = "connector-m2m";
-	/** {@link M2mTokenCache} slot for the internal-service M2M token (see {@link #getAPICredentials()}). */
-	static final String INTERNAL_API_CACHE_KEY = "internal-api";
 
 	private final OkHttpClient okHttpClient;
 	private final ObjectMapper objectMapper = new ObjectMapper();
 
-	// DCP services for JWT token generation
+	// DCP services for self-issued ID token generation
 	private final SelfIssuedIdTokenService selfIssuedIdTokenService;
-	private final BaseDidDocumentConfiguration didDocumentConfig;
+	private final ParticipantContextProvider participantContextProvider;
+	private final DcpProperties dcpProperties;
 
-	private final AuthenticationCache authenticationCache;
 	private final M2mTokenCache m2mTokenCache;
 	private final ObjectProvider<ConnectorCredentialProvider> connectorCredentialProvider;
-	private final ObjectProvider<InternalServiceTokenIssuer> internalServiceTokenIssuer;
+	private final ObjectProvider<KeycloakAuthenticationService> keycloakAuthenticationService;
 
 	/**
 	 * Cached DID document entry with expiry time.
@@ -90,35 +85,67 @@ public class CredentialUtils {
 	@Value("${dcp.vp.scope:}")
 	private String vpScope;
 
+	/**
+	 * Constructs the credential utils.
+	 *
+	 * @param okHttpClient                  HTTP client used to fetch DID documents (DCP)
+	 * @param selfIssuedIdTokenService      DCP service that issues self-issued ID tokens
+	 * @param participantContextProvider    provider of the DCP participant this connector acts as
+	 * @param dcpProperties                 DCP properties, naming the configured participant
+	 * @param m2mTokenCache                 the cache holding INTERNAL-mode M2M JWTs
+	 * @param connectorCredentialProvider   optional issuer of the locally minted connector-to-connector
+	 *                                      token in INTERNAL mode; empty in KEYCLOAK/DISABLED mode
+	 * @param keycloakAuthenticationService optional outbound Keycloak client; present in KEYCLOAK mode only
+	 */
 	@Autowired
 	public CredentialUtils(OkHttpClient okHttpClient,
-                           SelfIssuedIdTokenService selfIssuedIdTokenService,
-                           BaseDidDocumentConfiguration didDocumentConfig, AuthenticationCache authenticationCache, M2mTokenCache m2mTokenCache, ObjectProvider<ConnectorCredentialProvider> connectorCredentialProvider, ObjectProvider<InternalServiceTokenIssuer> internalServiceTokenIssuer) {
+			SelfIssuedIdTokenService selfIssuedIdTokenService,
+			ParticipantContextProvider participantContextProvider,
+			DcpProperties dcpProperties,
+			M2mTokenCache m2mTokenCache,
+			ObjectProvider<ConnectorCredentialProvider> connectorCredentialProvider,
+			ObjectProvider<KeycloakAuthenticationService> keycloakAuthenticationService) {
 		this.okHttpClient = okHttpClient;
 		this.selfIssuedIdTokenService = selfIssuedIdTokenService;
-		this.didDocumentConfig = didDocumentConfig;
-        this.authenticationCache = authenticationCache;
-        this.m2mTokenCache = m2mTokenCache;
-        this.connectorCredentialProvider = connectorCredentialProvider;
-        this.internalServiceTokenIssuer = internalServiceTokenIssuer;
-    }
-
-	/**
-	 * Get connector credentials for protocol communication.
-	 *
-	 * <p>Automatically uses VP JWT if DCP services are available and enabled,
-	 * otherwise returns basic authentication credentials.
-	 *
-	 * @return Authorization header value ("Bearer {VP_JWT}" or "Basic {base64}")
-	 */
-	public String getConnectorCredentials() {
-		return getConnectorCredentials(null);
+		this.participantContextProvider = participantContextProvider;
+		this.dcpProperties = dcpProperties;
+		this.m2mTokenCache = m2mTokenCache;
+		this.connectorCredentialProvider = connectorCredentialProvider;
+		this.keycloakAuthenticationService = keycloakAuthenticationService;
 	}
 
 	/**
-	 * Get connector credentials for protocol communication to a specific target.
+	 * Retrieves connector credentials for connector-to-connector communication.
 	 *
-	 * <p>This method performs the following steps when VP JWT is enabled:
+	 * <p>In {@code INTERNAL} mode, issues (and caches, via {@link M2mTokenCache}) a locally minted
+	 * protocol JWT from {@link ConnectorCredentialProvider}: it carries only the {@code CONNECTOR} role,
+	 * with no tenant, user or email, and is signed with {@code application.security.jwt.secret}. In {@code KEYCLOAK} mode, returns the client credentials token of
+	 * the {@code platform} realm from {@link KeycloakAuthenticationService#getConnectorToken()}. If
+	 * neither is available, returns {@code null} and the request is sent without credentials.
+	 *
+	 * @return the Authorization header value, or {@code null} when no credential source is configured
+	 * @throws M2mTokenUnavailableException in {@code KEYCLOAK} mode, when no token could be obtained
+	 */
+	public String getConnectorCredentials() {
+		ConnectorCredentialProvider provider = connectorCredentialProvider.getIfAvailable();
+		if (provider != null) {
+			String token = m2mTokenCache.getOrFetch(CONNECTOR_M2M_CACHE_KEY, provider::issueConnectorToken);
+			if (token != null) {
+				return "Bearer " + token;
+			}
+		}
+		KeycloakAuthenticationService keycloak = keycloakAuthenticationService.getIfAvailable();
+		if (keycloak != null) {
+			return "Bearer " + keycloak.getConnectorToken();
+		}
+		log.info("getConnectorCredentials() - No valid token available");
+		return null;
+	}
+
+	/**
+	 * Retrieves connector credentials for protocol communication to a specific target.
+	 *
+	 * <p>When DCP is enabled ({@code dcp.vp.enabled=true}):
 	 * <ol>
 	 *   <li>Normalizes the target URL (strip paths, keep only base URL)</li>
 	 *   <li>Fetches DID document from {baseUrl}/.well-known/did.json (with caching)</li>
@@ -138,55 +165,64 @@ public class CredentialUtils {
 	 * <p>DID documents are cached in memory with configurable TTL (default 5 minutes)
 	 * to reduce network overhead. The cache key is the DID document URL.
 	 *
+	 * <p>When DCP is disabled, or the DCP token cannot be produced, falls back to
+	 * {@link #getConnectorCredentials()}.
+	 *
 	 * @param targetUrl The full URL where the request will be sent (e.g., "https://verifier.com/catalog/request")
-	 * @return Authorization header value ("Bearer {JWT}" or "Basic {base64}")
+	 * @return Authorization header value, or {@code null} when no credential source is configured
+	 * @throws M2mTokenUnavailableException in {@code KEYCLOAK} mode, when the fallback token could not be obtained
 	 */
 	public String getConnectorCredentials(String targetUrl) {
-		// Try to use VP JWT if DCP services are available and enabled
-		if (vpEnabled && selfIssuedIdTokenService != null && didDocumentConfig != null) {
+		if (vpEnabled && selfIssuedIdTokenService != null && participantContextProvider != null) {
 			try {
-				String audienceDid = null;
-
-				// If targetUrl is provided, resolve the DID from the DID document
-				if (targetUrl != null && !targetUrl.isBlank()) {
-					audienceDid = resolveDidFromUrl(targetUrl);
-
-					if (audienceDid == null) {
-						log.warn("Failed to resolve DID from target URL: {} - falling back to basic auth", targetUrl);
-						return getFallbackCredentials();
-					}
-				} else {
-					log.warn("No target URL provided for VP JWT generation - falling back to basic auth");
-					return getFallbackCredentials();
+				if (targetUrl == null || targetUrl.isBlank()) {
+					log.warn("No target URL provided for VP JWT generation - falling back to provider credentials");
+					return getConnectorCredentials();
 				}
 
-				// Parse scopes from configuration
+				String audienceDid = resolveDidFromUrl(targetUrl);
+				if (audienceDid == null) {
+					log.warn("Failed to resolve DID from target URL: {} - falling back to provider credentials", targetUrl);
+					return getConnectorCredentials();
+				}
+
+				ParticipantContext participant = participantContextProvider
+						.findEnabled(dcpProperties.getParticipant().getId())
+						.orElseThrow(() -> new IllegalStateException("No enabled DCP participant is configured"));
 				String[] scopes = parseScopes(vpScope);
 
-				// Generate JWT token using SelfIssuedIdTokenService
 				log.debug("Generating VP JWT token for audience DID: {}", audienceDid);
 				String token = selfIssuedIdTokenService.createStsCompatibleToken(
 						audienceDid,
-						didDocumentConfig.getDidDocumentConfig(),
+						participant,
 						scopes
 				);
 
 				if (token != null && !token.isBlank()) {
 					log.info("Successfully generated VP JWT token for audience: {}", audienceDid);
 					return "Bearer " + token;
-				} else {
-					log.warn("VP JWT generation returned null or empty - falling back to basic auth");
 				}
-
+				log.warn("VP JWT generation returned null or empty - falling back to provider credentials");
 			} catch (Exception e) {
-				log.error("Failed to generate VP JWT - falling back to basic auth: {}", e.getMessage(), e);
+				log.error("Failed to generate VP JWT - falling back to provider credentials: {}", e.getMessage(), e);
 			}
 		}
-
-		// Fallback to basic authentication
-		return getFallbackCredentials();
+		return getConnectorCredentials();
 	}
 
+	/**
+	 * Evicts the cached connector-to-connector tokens (see {@link #getConnectorCredentials()}): the
+	 * {@code INTERNAL} mode slot and, in {@code KEYCLOAK} mode, the outbound Keycloak entry. The next call
+	 * obtains a fresh token. Invoked after a downstream call receives an HTTP 401, so a stale/rotated
+	 * secret or expired-early token is not retried indefinitely.
+	 */
+	public void invalidateCachedCredentials() {
+		m2mTokenCache.invalidate(CONNECTOR_M2M_CACHE_KEY);
+		KeycloakAuthenticationService keycloak = keycloakAuthenticationService.getIfAvailable();
+		if (keycloak != null) {
+			keycloak.invalidateConnectorToken();
+		}
+	}
 
 	/**
 	 * Parses scopes from configuration string.
@@ -196,7 +232,7 @@ public class CredentialUtils {
 	 */
 	private String[] parseScopes(String vpScope) {
 		if (vpScope == null || vpScope.trim().isEmpty()) {
-			log.debug("No scopes configured - token will grant access to all presentations");
+			log.debug("No scopes configured - the access token will authorize no credentials");
 			return new String[0];
 		}
 
@@ -207,29 +243,6 @@ public class CredentialUtils {
 
 		log.debug("Configured scopes: {}", String.join(", ", scopes));
 		return scopes;
-	}
-
-	/**
-	 * Returns fallback credentials (basic auth).
-	 *
-	 * @return Basic authentication credentials
-	 */
-	private String getFallbackCredentials() {
-		ConnectorCredentialProvider provider = connectorCredentialProvider.getIfAvailable();
-		if (provider != null) {
-			String token = m2mTokenCache.getOrFetch(CONNECTOR_M2M_CACHE_KEY, provider::issueConnectorToken);
-			if (token != null) {
-				return "Bearer " + token;
-			}
-		}
-		String token = authenticationCache.getToken("ROLE_CONNECTOR");
-		if (token == null) {
-			// Fall back to basic auth if no token is available
-			log.info("getConnectorCredentials() - No valid token available");
-			//TODO consider to move users from connector to tools module so user can be loaded from Mongo and not hardcoded.
-			return null;
-		}
-		return "Bearer " + token;
 	}
 
 	/**
@@ -249,13 +262,9 @@ public class CredentialUtils {
 	 */
 	private String resolveDidFromUrl(String targetUrl) {
 		try {
-			// Step 1: Normalize the URL to get base URL
 			String baseUrl = normalizeUrl(targetUrl);
-
-			// Step 2: Construct DID document URL
 			String didDocumentUrl = baseUrl + "/.well-known/did.json";
 
-			// Step 3: Check cache first
 			CachedDidDocument cached = didDocumentCache.get(didDocumentUrl);
 			Instant now = Instant.now();
 
@@ -264,21 +273,17 @@ public class CredentialUtils {
 				return cached.did;
 			}
 
-			// Step 4: Fetch DID document from remote system
 			log.debug("Fetching DID document from: {}", didDocumentUrl);
 			String did = fetchDidFromDocument(didDocumentUrl);
 
 			if (did != null) {
-				// Cache the result
 				Instant expiresAt = now.plusSeconds(cacheTtlSeconds);
 				didDocumentCache.put(didDocumentUrl, new CachedDidDocument(did, expiresAt));
 				log.info("Successfully resolved and cached DID from {}: {}", didDocumentUrl, did);
 				return did;
-			} else {
-				log.warn("DID document fetched but 'id' field is missing or null");
-				return null;
 			}
-
+			log.warn("DID document fetched but 'id' field is missing or null");
+			return null;
 		} catch (Exception e) {
 			log.error("Failed to resolve DID from URL {}: {}", targetUrl, e.getMessage(), e);
 			return null;
@@ -306,12 +311,10 @@ public class CredentialUtils {
 
 			if (port != -1 && port != 80 && port != 443) {
 				return scheme + "://" + host + ":" + port;
-			} else {
-				return scheme + "://" + host;
 			}
+			return scheme + "://" + host;
 		} catch (Exception e) {
 			log.error("Failed to normalize URL {}: {}", url, e.getMessage());
-			// Fallback: try simple string manipulation
 			int pathStart = url.indexOf('/', url.indexOf("://") + 3);
 			if (pathStart > 0) {
 				return url.substring(0, pathStart);
@@ -346,7 +349,7 @@ public class CredentialUtils {
 			String responseBody = response.body().string();
 			log.debug("DID document fetched successfully from {}", didDocumentUrl);
 
-			// Parse JSON and extract "id" field
+			@SuppressWarnings("unchecked")
 			Map<String, Object> didDocument = objectMapper.readValue(responseBody, Map.class);
 			String did = (String) didDocument.get("id");
 
@@ -356,52 +359,9 @@ public class CredentialUtils {
 			}
 
 			return did;
-
 		} catch (IOException e) {
 			log.error("Error fetching DID document from {}: {}", didDocumentUrl, e.getMessage());
 			return null;
 		}
-	}
-
-	/**
-	 * Retrieves API credentials for internal API calls.
-	 *
-	 * <p>In {@code INTERNAL} mode, issues (and caches, via {@link M2mTokenCache}) a JWT via {@link
-	 * InternalServiceTokenIssuer}, whose principal has {@code tenantId=null}, allowing {@code
-	 * ApiTenantContextFilter} to honour the {@code X-Tenant-Id} request header for correct
-	 * multi-tenant routing. Otherwise falls back to the existing Keycloak {@link
-	 * AuthenticationCache} flow.
-	 *
-	 * @return the Authorization header value
-	 */
-	public String getAPICredentials() {
-		log.info("getAPICredentials() - Requesting credentials for internal API call");
-		InternalServiceTokenIssuer issuer = internalServiceTokenIssuer.getIfAvailable();
-		if (issuer != null) {
-			String token = m2mTokenCache.getOrFetch(INTERNAL_API_CACHE_KEY, issuer::issueInternalServiceToken);
-			if (token != null) {
-				log.info("getAPICredentials() - Using internal-service JWT for authentication");
-				return "Bearer " + token;
-			}
-		}
-		String token = authenticationCache.getToken("ROLE_ADMIN");
-		log.info("getAPICredentials() - Token from cache: {}", token);
-		return "Bearer " + token;
-	}
-
-	/**
-	 * Evicts any cached {@code INTERNAL}-mode M2M tokens (both {@link #getConnectorCredentials()}
-	 * and {@link #getAPICredentials()} slots), forcing the next call to each method to mint a
-	 * fresh token. Invoked after a downstream call receives an HTTP 401, so a stale/rotated secret
-	 * or expired-early token is not retried indefinitely.
-	 *
-	 * <p>Evicting both slots unconditionally (rather than trying to determine which one is stale)
-	 * is deliberate: it is harmless (a slot that was not actually stale simply gets refetched once,
-	 * on its next use) and keeps the calling code in {@code OkHttpRestClient} decoupled from which
-	 * cache key backs which credential method.
-	 */
-	public void invalidateCachedCredentials() {
-		m2mTokenCache.invalidate(CONNECTOR_M2M_CACHE_KEY);
-		m2mTokenCache.invalidate(INTERNAL_API_CACHE_KEY);
 	}
 }

@@ -1,12 +1,11 @@
 package it.eng.tools.event.datatransfer;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-
+import it.eng.tools.event.EventTestUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import it.eng.tools.event.EventTestUtil;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class InitializeTransferProcessTest {
     
@@ -19,7 +18,7 @@ public class InitializeTransferProcessTest {
         String role = EventTestUtil.TEST_ROLE;
         
         InitializeTransferProcess event = new InitializeTransferProcess(
-            callbackAddress, agreementId, datasetId, role, "engineering");
+            callbackAddress, agreementId, datasetId, role, "engineering-a");
         
         assertNotNull(event);
         assertEquals(callbackAddress, event.getCallbackAddress());

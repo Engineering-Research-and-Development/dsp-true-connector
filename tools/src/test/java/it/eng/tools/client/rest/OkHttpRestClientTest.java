@@ -3,11 +3,16 @@ package it.eng.tools.client.rest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.net.HttpHeaders;
+import it.eng.tools.auth.M2mTokenUnavailableException;
+import it.eng.tools.auth.internal.InternalCallClaims;
+import it.eng.tools.auth.internal.InternalCallTokenIssuer;
 import it.eng.tools.model.ExternalData;
 import it.eng.tools.response.GenericApiResponse;
 import it.eng.tools.service.TenantContextHolder;
 import it.eng.tools.util.CredentialUtils;
 import okhttp3.*;
+import okio.Buffer;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,6 +25,9 @@ import org.springframework.http.HttpMethod;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
@@ -51,11 +59,38 @@ public class OkHttpRestClientTest {
     @Mock
     private ResponseBody responseBody;
 
+    private final InternalCallTokenIssuer internalCallTokenIssuer = new InternalCallTokenIssuer();
+
     private OkHttpRestClient okHttpRestClient;
 
     @BeforeEach
     public void setup() {
-        okHttpRestClient = new OkHttpRestClient(okHttpClient, credentialUtils, "123", false);
+        okHttpRestClient = new OkHttpRestClient(okHttpClient, credentialUtils, internalCallTokenIssuer, "123", false);
+    }
+
+    @AfterEach
+    public void clearTenantContext() {
+        TenantContextHolder.clear();
+    }
+
+    private Optional<InternalCallClaims> internalClaims(Request request) {
+        String authorization = request.header(HttpHeaders.AUTHORIZATION);
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            return Optional.empty();
+        }
+        return internalCallTokenIssuer.verify(authorization.substring("Bearer ".length()));
+    }
+
+    private static String bodyText(Request request) {
+        try (Buffer buffer = new Buffer()) {
+            if (request.body() == null) {
+                return "";
+            }
+            request.body().writeTo(buffer);
+            return buffer.readUtf8();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Test
@@ -291,26 +326,33 @@ public class OkHttpRestClientTest {
     }
 
     @Test
-    @DisplayName("Send internal request - GET method")
+    @DisplayName("Send internal request - GET carries a fresh internal-call token for the current tenant")
     public void sendInternalRequest_GET() throws IOException {
         when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
         when(call.execute()).thenReturn(response);
         when(response.code()).thenReturn(200);
         when(response.body()).thenReturn(responseBody);
         when(responseBody.string()).thenReturn("Success");
-        when(credentialUtils.getAPICredentials()).thenReturn("Bearer token");
+        TenantContextHolder.setTenantId("tenant-1");
 
-        String result = okHttpRestClient.sendInternalRequest("/api/test", HttpMethod.GET, null);
+        String result = okHttpRestClient.sendInternalRequest("/internal/test", HttpMethod.GET, null);
 
         assertNotNull(result);
         assertEquals("Success", result);
         verify(okHttpClient).newCall(argThat(request ->
-                request.method().equals("GET") &&
-                        request.header(HttpHeaders.AUTHORIZATION).equals("Bearer token")));
+                request.method().equals("GET")
+                        && request.url().toString().equals("http://localhost:123/internal/test")
+                        && request.header(TenantContextHolder.HEADER_X_TENANT_ID) == null
+                        && internalClaims(request)
+                        .filter(InternalCallClaims::hasInternalRole)
+                        .flatMap(InternalCallClaims::tenantId)
+                        .filter("tenant-1"::equals)
+                        .isPresent()));
+        Mockito.verifyNoInteractions(credentialUtils);
     }
 
     @Test
-    @DisplayName("Send internal request - POST method")
+    @DisplayName("Send internal request - POST without tenant context carries a token without tenant")
     public void sendInternalRequest_POST() throws IOException {
         ObjectMapper mapper = new ObjectMapper();
         JsonNode jsonNode = mapper.readTree("{\"test\": \"example\"}");
@@ -320,30 +362,33 @@ public class OkHttpRestClientTest {
         when(response.code()).thenReturn(200);
         when(response.body()).thenReturn(responseBody);
         when(responseBody.string()).thenReturn("Success");
-        when(credentialUtils.getAPICredentials()).thenReturn("Bearer token");
 
-        String result = okHttpRestClient.sendInternalRequest("/api/test", HttpMethod.POST, jsonNode);
+        String result = okHttpRestClient.sendInternalRequest("/internal/test", HttpMethod.POST, jsonNode);
 
         assertNotNull(result);
         assertEquals("Success", result);
         verify(okHttpClient).newCall(argThat(request ->
-                request.method().equals("POST") &&
-                        request.header(HttpHeaders.AUTHORIZATION).equals("Bearer token")));
+                request.method().equals("POST")
+                        && request.header(TenantContextHolder.HEADER_X_TENANT_ID) == null
+                        && internalClaims(request)
+                        .filter(InternalCallClaims::hasInternalRole)
+                        .filter(claims -> claims.tenantId().isEmpty())
+                        .isPresent()));
     }
 
     @Test
     @DisplayName("Send internal request - SSL enabled")
     public void sendInternalRequest_SSL() throws IOException {
-        OkHttpRestClient sslClient = new OkHttpRestClient(okHttpClient, credentialUtils, "8443", true);
+        OkHttpRestClient sslClient = new OkHttpRestClient(okHttpClient, credentialUtils, internalCallTokenIssuer,
+                "8443", true);
 
         when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
         when(call.execute()).thenReturn(response);
         when(response.code()).thenReturn(200);
         when(response.body()).thenReturn(responseBody);
         when(responseBody.string()).thenReturn("Success");
-        when(credentialUtils.getAPICredentials()).thenReturn("Bearer token");
 
-        String result = sslClient.sendInternalRequest("/api/test", HttpMethod.GET, null);
+        String result = sslClient.sendInternalRequest("/internal/test", HttpMethod.GET, null);
 
         assertNotNull(result);
         verify(okHttpClient).newCall(argThat(request ->
@@ -355,65 +400,105 @@ public class OkHttpRestClientTest {
     public void sendInternalRequest_IOException() throws IOException {
         when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
         when(call.execute()).thenThrow(new IOException("Network error"));
-        when(credentialUtils.getAPICredentials()).thenReturn("Bearer token");
 
-        String result = okHttpRestClient.sendInternalRequest("/api/test", HttpMethod.GET, null);
+        String result = okHttpRestClient.sendInternalRequest("/internal/test", HttpMethod.GET, null);
 
         assertNull(result);
     }
 
     @Test
-    @DisplayName("Send internal request - retries once on 401 and succeeds")
-    public void sendInternalRequest_retriesOnceOn401() throws IOException {
+    @DisplayName("Send internal request - a 401 is returned as-is without a retry or credential eviction")
+    public void sendInternalRequest_401_noRetry() throws IOException {
         when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
         when(call.execute()).thenReturn(response);
-        when(response.code()).thenReturn(401, 200);
+        when(response.code()).thenReturn(401);
         when(response.body()).thenReturn(responseBody);
-        when(responseBody.string()).thenReturn("Unauthorized", "Success");
-        when(credentialUtils.getAPICredentials()).thenReturn("Bearer stale-token", "Bearer fresh-token");
+        when(responseBody.string()).thenReturn("Unauthorized");
 
-        String result = okHttpRestClient.sendInternalRequest("/api/test", HttpMethod.GET, null);
+        String result = okHttpRestClient.sendInternalRequest("/internal/test", HttpMethod.GET, null);
 
-        assertEquals("Success", result);
-        verify(credentialUtils).invalidateCachedCredentials();
-        verify(credentialUtils, Mockito.times(2)).getAPICredentials();
-        verify(okHttpClient, Mockito.times(2)).newCall(any(Request.class));
+        assertEquals("Unauthorized", result);
+        verify(okHttpClient, Mockito.times(1)).newCall(any(Request.class));
+        Mockito.verifyNoInteractions(credentialUtils);
     }
 
     @Test
-    @DisplayName("Send internal request - 401 on both attempts surfaces the second failure without a third retry")
-    public void sendInternalRequest_401Twice_noThirdAttempt() throws IOException {
-        when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
+    @DisplayName("Send internal request - every call mints a new token")
+    public void sendInternalRequest_mintsNewTokenPerCall() throws IOException {
+        List<String> authorizations = new ArrayList<>();
+        when(okHttpClient.newCall(any(Request.class))).thenAnswer(invocation -> {
+            authorizations.add(invocation.<Request>getArgument(0).header(HttpHeaders.AUTHORIZATION));
+            return call;
+        });
         when(call.execute()).thenReturn(response);
-        when(response.code()).thenReturn(401, 401);
+        when(response.code()).thenReturn(200);
         when(response.body()).thenReturn(responseBody);
-        when(responseBody.string()).thenReturn("Unauthorized", "Still unauthorized");
-        when(credentialUtils.getAPICredentials()).thenReturn("Bearer stale-token", "Bearer still-stale-token");
+        when(responseBody.string()).thenReturn("Success");
 
-        String result = okHttpRestClient.sendInternalRequest("/api/test", HttpMethod.GET, null);
+        okHttpRestClient.sendInternalRequest("/internal/test", HttpMethod.GET, null);
+        TenantContextHolder.setTenantId("tenant-2");
+        okHttpRestClient.sendInternalRequest("/internal/test", HttpMethod.GET, null);
 
-        assertEquals("Still unauthorized", result);
-        verify(credentialUtils, Mockito.times(1)).invalidateCachedCredentials();
-        verify(credentialUtils, Mockito.times(2)).getAPICredentials();
-        verify(okHttpClient, Mockito.times(2)).newCall(any(Request.class));
+        assertEquals(2, authorizations.size());
+        assertNotEquals(authorizations.get(0), authorizations.get(1));
     }
 
     @Test
-    @DisplayName("Send internal request - success on first attempt never invalidates credentials")
-    public void sendInternalRequest_successFirstTry_noInvalidate() throws IOException {
+    @DisplayName("Send internal POST - carries the body and a fresh internal-call token for the current tenant")
+    public void sendInternalPostRequest_success() throws IOException {
+        JsonNode jsonNode = new ObjectMapper().readTree("{\"test\": \"example\"}");
         when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
         when(call.execute()).thenReturn(response);
         when(response.code()).thenReturn(200);
         when(response.body()).thenReturn(responseBody);
         when(responseBody.string()).thenReturn("Success");
-        when(credentialUtils.getAPICredentials()).thenReturn("Bearer valid-token");
+        when(response.isSuccessful()).thenReturn(true);
+        TenantContextHolder.setTenantId("tenant-1");
 
-        String result = okHttpRestClient.sendInternalRequest("/api/test", HttpMethod.GET, null);
+        GenericApiResponse<String> result = okHttpRestClient.sendInternalPostRequest("/internal/test", jsonNode);
 
-        assertEquals("Success", result);
-        verify(credentialUtils, Mockito.never()).invalidateCachedCredentials();
-        verify(credentialUtils, Mockito.times(1)).getAPICredentials();
+        assertTrue(result.isSuccess());
+        assertEquals("Success", result.getData());
+        verify(okHttpClient).newCall(argThat(request ->
+                request.method().equals("POST")
+                        && request.url().toString().equals("http://localhost:123/internal/test")
+                        && bodyText(request).contains("example")
+                        && request.header(TenantContextHolder.HEADER_X_TENANT_ID) == null
+                        && internalClaims(request)
+                        .filter(InternalCallClaims::hasInternalRole)
+                        .flatMap(InternalCallClaims::tenantId)
+                        .filter("tenant-1"::equals)
+                        .isPresent()));
+        Mockito.verifyNoInteractions(credentialUtils);
+    }
+
+    @Test
+    @DisplayName("Send internal POST - a 401 is a failure without a retry or M2M credential eviction")
+    public void sendInternalPostRequest_401_noRetryNoEviction() throws IOException {
+        when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
+        when(call.execute()).thenReturn(response);
+        when(response.code()).thenReturn(401);
+        when(response.body()).thenReturn(responseBody);
+        when(responseBody.string()).thenReturn("Unauthorized");
+        when(response.isSuccessful()).thenReturn(false);
+
+        GenericApiResponse<String> result = okHttpRestClient.sendInternalPostRequest("/internal/test", null);
+
+        assertFalse(result.isSuccess());
         verify(okHttpClient, Mockito.times(1)).newCall(any(Request.class));
+        Mockito.verifyNoInteractions(credentialUtils);
+    }
+
+    @Test
+    @DisplayName("Send internal POST - IOException is a failure")
+    public void sendInternalPostRequest_IOException() throws IOException {
+        when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
+        when(call.execute()).thenThrow(new IOException("Network error"));
+
+        GenericApiResponse<String> result = okHttpRestClient.sendInternalPostRequest("/internal/test", null);
+
+        assertFalse(result.isSuccess());
+        assertEquals("Network error", result.getMessage());
     }
 
     @Test
@@ -493,4 +578,47 @@ public class OkHttpRestClientTest {
                 "tenant-1".equals(request.header(TenantContextHolder.HEADER_X_TENANT_ID))));
     }
 
+    @Test
+    @DisplayName("Send protocol request with Supplier - not sent when no M2M token is available")
+    public void sendRequestProtocolSupplier_tokenUnavailable_notSent() {
+        Supplier<String> authorizationSupplier = () -> {
+            throw new M2mTokenUnavailableException("Token request failed with HTTP 401 (invalid_client)");
+        };
+
+        GenericApiResponse<String> apiResponse = okHttpRestClient.sendRequestProtocol(TARGET_ADDRESS, null,
+                authorizationSupplier, "tenant-1");
+
+        assertNotNull(apiResponse);
+        assertFalse(apiResponse.isSuccess());
+        assertEquals(OkHttpRestClient.TOKEN_UNAVAILABLE_MESSAGE, apiResponse.getMessage());
+        verify(okHttpClient, Mockito.never()).newCall(any(Request.class));
+        verify(credentialUtils, Mockito.never()).invalidateCachedCredentials();
+    }
+
+    @Test
+    @DisplayName("Send protocol request with Supplier - retry after 401 is not sent when no new token is available")
+    public void sendRequestProtocolSupplier_tokenUnavailableOnRetry_notSent() throws IOException {
+        when(okHttpClient.newCall(any(Request.class))).thenReturn(call);
+        when(call.execute()).thenReturn(response);
+        when(response.code()).thenReturn(401);
+        when(response.isSuccessful()).thenReturn(false);
+        when(response.body()).thenReturn(responseBody);
+        when(responseBody.string()).thenReturn("Unauthorized");
+
+        AtomicInteger callCount = new AtomicInteger();
+        Supplier<String> authorizationSupplier = () -> {
+            if (callCount.incrementAndGet() == 1) {
+                return "Bearer stale-token";
+            }
+            throw new M2mTokenUnavailableException("Token request failed with HTTP 401 (invalid_client)");
+        };
+
+        GenericApiResponse<String> apiResponse = okHttpRestClient.sendRequestProtocol(TARGET_ADDRESS, null,
+                authorizationSupplier);
+
+        assertFalse(apiResponse.isSuccess());
+        assertEquals(OkHttpRestClient.TOKEN_UNAVAILABLE_MESSAGE, apiResponse.getMessage());
+        verify(credentialUtils).invalidateCachedCredentials();
+        verify(okHttpClient, Mockito.times(1)).newCall(any(Request.class));
+    }
 }

@@ -33,8 +33,7 @@ import java.util.stream.Collectors;
  * When Keycloak mode is active, user management happens in Keycloak Admin Console.
  */
 @RestController
-@RequestMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE, 
-path = ApiEndpoints.USERS_V1)
+@RequestMapping(produces = MediaType.APPLICATION_JSON_VALUE, path = ApiEndpoints.USERS_V1)
 @Slf4j
 @Conditional(InternalOrDisabledAuthenticationModeCondition.class)
 public class UserAPIController {
@@ -142,7 +141,7 @@ public class UserAPIController {
 	 * @param request the user create request
 	 * @return GenericApiResponse
 	 */
-	@PostMapping
+	@PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<GenericApiResponse<JsonNode>> createUser(@RequestBody UserCreateRequest request) {
 		JsonNode newUser = userService.createUser(request);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
@@ -155,7 +154,7 @@ public class UserAPIController {
 	 * @param request the user update request
 	 * @return GenericApiResponse
 	 */
-	@PutMapping(path = "/{id}")
+	@PutMapping(path = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<GenericApiResponse<JsonNode>> updateUser(@PathVariable String id, @RequestBody UserUpdateRequest request) {
 		JsonNode updatedUser = userService.updateUser(id, request);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
@@ -169,7 +168,7 @@ public class UserAPIController {
 	 * @param principal the authenticated principal
 	 * @return GenericApiResponse
 	 */
-	@PutMapping(path = "/{id}/updateNames")
+	@PutMapping(path = "/{id}/updateNames", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<GenericApiResponse<JsonNode>> updateUserNames(@PathVariable String id, @RequestBody UserNamesUpdateRequest request, Principal principal) {
 		JsonNode updatedUser = userService.updateUserNames(id, resolvePrincipalName(principal), request);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)
@@ -183,7 +182,7 @@ public class UserAPIController {
 	 * @param principal the authenticated principal
 	 * @return GenericApiResponse
 	 */
-	@PutMapping(path = "/{id}/password")
+	@PutMapping(path = "/{id}/password", consumes = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<GenericApiResponse<JsonNode>> updatePassword(@PathVariable String id, @RequestBody UserPasswordUpdateRequest request, Principal principal) {
 		JsonNode updatedUser = userService.updatePassword(id, resolvePrincipalName(principal), request);
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON)

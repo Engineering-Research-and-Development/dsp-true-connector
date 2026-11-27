@@ -7,12 +7,17 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
+import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
+import com.nimbusds.jose.jwk.gen.RSAKeyGenerator;
+import com.nimbusds.jose.util.Base64URL;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
-import it.eng.dcp.common.config.DidDocumentConfig;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantState;
+import it.eng.dcp.common.participant.SigningKeyReference;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.model.PresentationResponseMessage;
@@ -20,6 +25,7 @@ import it.eng.dcp.common.model.ServiceEntry;
 import it.eng.dcp.common.service.IssuerTrustService;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.HttpDidResolverService;
+import it.eng.dcp.common.service.did.ResolvedVerificationMethod;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
 import okhttp3.RequestBody;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +41,7 @@ import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -66,8 +73,8 @@ class VerifierServiceTest {
     @Mock
     private SimpleOkHttpRestClient httpClient;
 
-    @Mock
-    private DidDocumentConfig verifierConfig;
+    private final ParticipantContext verifierConfig = new ParticipantContext("default", "did:web:localhost:8080:verifier",
+            new SigningKeyReference("eckey.p12", "alias"), List.of(), Map.of(), null, ParticipantState.ENABLED);
 
     @Mock
     private IssuerTrustService issuerTrustService;
@@ -111,7 +118,6 @@ class VerifierServiceTest {
                 didResolverService,
                 httpClient,
                 objectMapper,
-                verifierConfig,
                 issuerTrustService,
                 auditPublisher
         );
@@ -131,11 +137,11 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(null)
+                    () -> verifierService.validateAndQueryHolderPresentations(null, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Bearer token is required"));
-            verify(tokenService, never()).validateToken(any());
+            verify(tokenService, never()).validateToken(any(), any());
 
             ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
             verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
@@ -148,11 +154,11 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations("   ")
+                    () -> verifierService.validateAndQueryHolderPresentations("   ", verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Bearer token is required"));
-            verify(tokenService, never()).validateToken(any());
+            verify(tokenService, never()).validateToken(any(), any());
 
             ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
             verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
@@ -164,18 +170,18 @@ class VerifierServiceTest {
         void shouldFailWhenTokenValidationFails() {
             // Given
             String invalidToken = "invalid.jwt.token";
-            when(tokenService.validateToken(invalidToken))
+            when(tokenService.validateToken(invalidToken, verifierConfig))
                     .thenThrow(new SecurityException("Invalid signature"));
 
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(invalidToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(invalidToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 3a failed"));
             assertTrue(exception.getMessage().contains("Invalid signature"));
-            verify(tokenService).validateToken(invalidToken);
+            verify(tokenService).validateToken(invalidToken, verifierConfig);
         }
 
         @Test
@@ -192,12 +198,12 @@ class VerifierServiceTest {
                     // Missing "token" claim
                     .build();
 
-            when(tokenService.validateToken(selfIssuedToken)).thenReturn(claims);
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig)).thenReturn(claims);
 
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 3a failed"));
@@ -229,12 +235,12 @@ class VerifierServiceTest {
                     .claim("token", "not.a.valid.jwt")  // Malformed JWT
                     .build();
 
-            when(tokenService.validateToken(selfIssuedToken)).thenReturn(claims);
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig)).thenReturn(claims);
 
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 3b failed"));
@@ -242,36 +248,32 @@ class VerifierServiceTest {
         }
 
         @Test
-        @DisplayName("Should fail when access token missing 'iss' claim")
-        void shouldFailWhenAccessTokenMissingIssuer() throws Exception {
-            // Given
+        @DisplayName("Should take the holder DID from the validated sub when the access token has no iss")
+        void shouldUseValidatedSubWhenAccessTokenHasNoIssuer() throws Exception {
+            // Given: an access token without iss/sub, so the holder DID can only come from the validated sub
             String accessToken = createJWT(
                     new JWTClaimsSet.Builder()
-                            // Missing issuer
-                            .subject(HOLDER_DID)
+                            .audience(VERIFIER_DID)
                             .claim("scope", List.of("MembershipCredential"))
                             .build(),
                     holderKey
             );
+            String selfIssuedToken = createValidSelfIssuedToken(accessToken);
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig)).thenReturn(parseClaims(selfIssuedToken));
 
-            String selfIssuedToken = "valid.self.issued";
-            JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                    .issuer(HOLDER_DID)
-                    .subject(HOLDER_DID)
-                    .audience(VERIFIER_DID)
-                    .claim("token", accessToken)
-                    .build();
+            setupSuccessfulHolderResolution();
+            setupSuccessfulPresentationQuery(List.of(createValidPresentationJWT(List.of(createValidCredentialJWT()))));
+            setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
+            setupSuccessfulKeyResolution(ISSUER_DID, issuerKey);
+            setupTrustedIssuer(ISSUER_DID);
 
-            when(tokenService.validateToken(selfIssuedToken)).thenReturn(claims);
+            // When
+            VerifierService.PresentationFlowResult result =
+                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig);
 
-            // When/Then
-            SecurityException exception = assertThrows(
-                    SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
-            );
-
-            assertTrue(exception.getMessage().contains("Step 3b failed"));
-            assertTrue(exception.getMessage().toLowerCase().contains("iss"));
+            // Then
+            assertEquals(HOLDER_DID, result.getHolderDid());
+            verify(didResolverService).fetchDidDocumentCached(HOLDER_DID);
         }
 
         @Test
@@ -296,7 +298,7 @@ class VerifierServiceTest {
                     .claim("token", accessToken)
                     .build();
 
-            when(tokenService.validateToken(selfIssuedToken)).thenReturn(claims);
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig)).thenReturn(claims);
 
             // Setup mocks for subsequent steps to see how far we get
             setupSuccessfulHolderResolution();
@@ -305,13 +307,142 @@ class VerifierServiceTest {
             // When/Then - Should proceed with empty scopes but fail at Step 4 with ResponseStatusException
             Exception exception = assertThrows(
                     Exception.class,  // Can be ResponseStatusException or SecurityException
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             // Should fail because of empty presentations
             String message = exception.getMessage().toLowerCase();
             assertTrue(message.contains("empty") || message.contains("presentation"),
                     "Expected error about empty presentations but got: " + exception.getMessage());
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════════
+    // Presenting party binding: holder DID = validated Self-Issued ID Token sub
+    // ═════════════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("Presenting party binding")
+    class PresentingPartyBindingTests {
+
+        /** A participant whose access token is wrapped by the presenting party (HOLDER_DID). */
+        private static final String VICTIM_DID = "did:web:localhost:8080:victim";
+
+        @Test
+        @DisplayName("Should reject a token wrapping another participant's access token")
+        void shouldRejectWrappedForeignAccessToken() throws Exception {
+            // Given: the holder signs a valid Self-Issued ID Token carrying the victim's access token
+            ECKey victimKey = new ECKeyGenerator(Curve.P_256).keyID("victim-key-1").generate();
+            String victimAccessToken = createAccessToken(VICTIM_DID, VICTIM_DID, victimKey);
+            String selfIssuedToken = createValidSelfIssuedToken(victimAccessToken);
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig)).thenReturn(parseClaims(selfIssuedToken));
+
+            // When/Then
+            SecurityException exception = assertThrows(
+                    SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
+            );
+
+            assertTrue(exception.getMessage().contains("Step 3b failed"));
+            assertTrue(exception.getMessage().contains("does not match"));
+            // Neither the victim's nor the holder's credential service is ever queried
+            verify(didResolverService, never()).fetchDidDocumentCached(anyString());
+            verifyNoInteractions(httpClient);
+            assertAuditEventPublished(DcpAuditEventType.TOKEN_VALIDATION_FAILED);
+        }
+
+        @Test
+        @DisplayName("Should reject an access token whose iss names a different DID")
+        void shouldRejectAccessTokenWithForeignIssuer() throws Exception {
+            // Given
+            String accessToken = createAccessToken(VICTIM_DID, HOLDER_DID, holderKey);
+            String selfIssuedToken = createValidSelfIssuedToken(accessToken);
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig)).thenReturn(parseClaims(selfIssuedToken));
+
+            // When/Then
+            SecurityException exception = assertThrows(
+                    SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
+            );
+
+            assertTrue(exception.getMessage().contains("Step 3b failed"));
+            assertTrue(exception.getMessage().contains("'iss'"));
+            verifyNoInteractions(httpClient);
+        }
+
+        @Test
+        @DisplayName("Should accept an access token whose sub is not the holder (implementation-defined)")
+        void shouldAcceptAccessTokenWithOtherSubject() throws Exception {
+            // Given: an access token issued by the holder whose sub is the verifier, as other DCP
+            // implementations issue it
+            String accessToken = createAccessToken(HOLDER_DID, VERIFIER_DID, holderKey);
+            String selfIssuedToken = createValidSelfIssuedToken(accessToken);
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig)).thenReturn(parseClaims(selfIssuedToken));
+            setupSuccessfulHolderResolution();
+            setupSuccessfulPresentationQuery(List.of(createValidPresentationJWT(List.of(createValidCredentialJWT()))));
+            setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
+            setupSuccessfulKeyResolution(ISSUER_DID, issuerKey);
+            setupTrustedIssuer(ISSUER_DID);
+
+            // When
+            VerifierService.PresentationFlowResult result =
+                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig);
+
+            // Then: the holder DID is still the validated sub
+            assertEquals(HOLDER_DID, result.getHolderDid());
+        }
+
+        @Test
+        @DisplayName("Should reject a validated Self-Issued ID Token without sub")
+        void shouldRejectSelfIssuedTokenWithoutSubject() throws Exception {
+            // Given: the token service returns claims without sub
+            String selfIssuedToken = "valid.self.issued";
+            JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                    .issuer(HOLDER_DID)
+                    .audience(VERIFIER_DID)
+                    .claim("token", createValidAccessToken())
+                    .build();
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig)).thenReturn(claims);
+
+            // When/Then
+            SecurityException exception = assertThrows(
+                    SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
+            );
+
+            assertTrue(exception.getMessage().contains("Step 3a failed"));
+            assertTrue(exception.getMessage().contains("'sub'"));
+            verifyNoInteractions(httpClient);
+            assertAuditEventPublished(DcpAuditEventType.TOKEN_VALIDATION_FAILED);
+        }
+
+        @Test
+        @DisplayName("Should authenticate the presenting party when its access token names itself")
+        void shouldAuthenticatePresentingParty() throws Exception {
+            // Given: the holder presents its own access token
+            String selfIssuedToken = createValidSelfIssuedToken(createValidAccessToken());
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig)).thenReturn(parseClaims(selfIssuedToken));
+            setupSuccessfulHolderResolution();
+            setupSuccessfulPresentationQuery(List.of(createValidPresentationJWT(List.of(createValidCredentialJWT()))));
+            setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
+            setupSuccessfulKeyResolution(ISSUER_DID, issuerKey);
+            setupTrustedIssuer(ISSUER_DID);
+
+            // When
+            VerifierService.PresentationFlowResult result =
+                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig);
+
+            // Then: the holder DID and the queried credential service belong to the validated sub
+            assertEquals(HOLDER_DID, result.getHolderDid());
+            assertEquals("https://holder.example.com/presentations", result.getCredentialServiceUrl());
+            verify(didResolverService, never()).fetchDidDocumentCached(VICTIM_DID);
+        }
+
+        private void assertAuditEventPublished(DcpAuditEventType expectedType) {
+            ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
+            verify(auditPublisher, atLeastOnce())
+                    .publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
+            assertTrue(typeCaptor.getAllValues().contains(expectedType));
         }
     }
 
@@ -330,7 +461,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             when(didResolverService.fetchDidDocumentCached(HOLDER_DID))
@@ -339,7 +470,7 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 3c failed"));
@@ -353,7 +484,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             DidDocument holderDoc = DidDocument.Builder.newInstance()
@@ -367,7 +498,7 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 3c failed"));
@@ -381,7 +512,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             DidDocument holderDoc = DidDocument.Builder.newInstance()
@@ -401,11 +532,35 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 3c failed"));
             assertTrue(exception.getMessage().toLowerCase().contains("credentialservice"));
+        }
+    }
+
+    @Nested
+    @DisplayName("Step 3c: transport security of the holder credential service")
+    class Step3cTransportSecurityTests {
+
+        @Test
+        @DisplayName("Should reject an http CredentialService endpoint by default")
+        void shouldRejectHttpCredentialService() throws Exception {
+            String accessToken = createValidAccessToken();
+            String selfIssuedToken = createValidSelfIssuedToken(accessToken);
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig)).thenReturn(parseClaims(selfIssuedToken));
+            when(didResolverService.fetchDidDocumentCached(HOLDER_DID)).thenReturn(DidDocument.Builder.newInstance()
+                    .id(HOLDER_DID)
+                    .service(List.of(new ServiceEntry(HOLDER_DID + "#cs", "CredentialService",
+                            "http://holder.example.com/dcp")))
+                    .build());
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig));
+
+            assertTrue(exception.getMessage().contains("Step 3c failed"));
+            assertTrue(exception.getMessage().contains("Insecure"));
         }
     }
 
@@ -418,13 +573,46 @@ class VerifierServiceTest {
     class Step4Tests {
 
         @Test
+        @DisplayName("Should query the holder with the Verifier's own Self-Issued ID Token carrying the access token")
+        void shouldSendVerifierSelfIssuedIdTokenWithAccessToken() throws Exception {
+            // Given
+            String accessToken = createValidAccessToken();
+            String selfIssuedToken = createValidSelfIssuedToken(accessToken);
+
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
+                    .thenReturn(parseClaims(selfIssuedToken));
+            when(tokenService.createAndSignToken(HOLDER_DID, accessToken, verifierConfig))
+                    .thenReturn("verifier-id-token");
+
+            setupSuccessfulHolderResolution();
+
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<Map<String, String>> headers = ArgumentCaptor.forClass(Map.class);
+            when(httpClient.executeAndDeserialize(
+                    anyString(),
+                    eq("POST"),
+                    headers.capture(),
+                    any(RequestBody.class),
+                    eq(PresentationResponseMessage.class)
+            )).thenReturn(null);
+
+            // When
+            assertThrows(SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig));
+
+            // Then: aud = holder DID, token = the access token received from the holder, never the raw access token
+            verify(tokenService).createAndSignToken(HOLDER_DID, accessToken, verifierConfig);
+            assertEquals("Bearer verifier-id-token", headers.getValue().get("Authorization"));
+        }
+
+        @Test
         @DisplayName("Should fail when holder credential service returns null")
         void shouldFailWhenCredentialServiceReturnsNull() throws Exception {
             // Given
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -440,7 +628,7 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 4 failed"));
@@ -460,7 +648,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -469,7 +657,7 @@ class VerifierServiceTest {
             // When/Then
             assertThrows(
                     Exception.class,  // ResponseStatusException in real code
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
         }
 
@@ -480,7 +668,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -496,7 +684,7 @@ class VerifierServiceTest {
             // When/Then
             IOException exception = assertThrows(
                     IOException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 4 failed"));
@@ -518,7 +706,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -539,7 +727,7 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 5 failed"));
@@ -553,7 +741,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -573,7 +761,7 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 5 failed"));
@@ -587,7 +775,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -608,7 +796,7 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 5 failed"));
@@ -622,7 +810,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -645,7 +833,7 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 5 failed"));
@@ -659,7 +847,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -669,13 +857,13 @@ class VerifierServiceTest {
             setupSuccessfulPresentationQuery(List.of(presentationJwt));
 
             // Setup DID resolution to fail
-            when(didResolverService.resolvePublicKey(eq(HOLDER_DID), anyString(), anyString()))
+            when(didResolverService.resolveVerificationMethod(eq(HOLDER_DID), anyString(), anyString()))
                     .thenThrow(new DidResolutionException("Cannot resolve holder key"));
 
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 5 failed"));
@@ -689,7 +877,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -709,7 +897,7 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 5 failed"));
@@ -732,7 +920,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -754,7 +942,7 @@ class VerifierServiceTest {
 
             // When - Should skip non-JWT credential and complete successfully
             VerifierService.PresentationFlowResult result =
-                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken);
+                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig);
 
             // Then - Validation completes but with 0 valid credentials (non-JWT was skipped)
             assertNotNull(result);
@@ -774,7 +962,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -787,7 +975,7 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 5 failed"));
@@ -801,7 +989,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -826,7 +1014,7 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 5 failed"));
@@ -840,7 +1028,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -852,15 +1040,13 @@ class VerifierServiceTest {
             setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
 
             // Setup issuer key resolution to fail
-            when(didResolverService.resolvePublicKey(eq(ISSUER_DID), anyString(), eq("assertionMethod")))
+            when(didResolverService.resolveVerificationMethod(eq(ISSUER_DID), anyString(), eq("assertionMethod")))
                     .thenThrow(new DidResolutionException("Cannot resolve issuer key"));
-//            when(didResolverService.resolvePublicKey(eq(ISSUER_DID), anyString(), eq("capabilityInvocation")))
-//                    .thenThrow(new DidResolutionException("Cannot resolve issuer key"));
 
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 5 failed"));
@@ -874,7 +1060,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -904,11 +1090,143 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 5 failed"));
             assertTrue(exception.getMessage().toLowerCase().contains("subject"));
+        }
+
+        @Test
+        @DisplayName("Should accept a VC 2.0 credential whose top-level credentialSubject.id is the holder")
+        void shouldAcceptVc20CredentialBoundToHolder() throws Exception {
+            String credentialJwt = createVc20CredentialJWT(Optional.of(HOLDER_DID), Optional.of(Map.of("id", HOLDER_DID)));
+
+            VerifierService.PresentationFlowResult result = runPresentationFlowWith(credentialJwt);
+
+            assertEquals(1, result.getValidatedPresentations().get(0).getCredentials().size());
+        }
+
+        @Test
+        @DisplayName("Should reject a foreign VC 2.0 credential embedded in the holder's own presentation")
+        void shouldRejectForeignVc20Credential() throws Exception {
+            String otherDid = "did:web:other.example.com:participant";
+            // No sub claim and no vc claim: before, the binding check was skipped for this shape
+            String foreignCredential = createJWT(
+                    new JWTClaimsSet.Builder()
+                            .issuer(ISSUER_DID)
+                            .claim("type", List.of("VerifiableCredential", "MembershipCredential"))
+                            .claim("credentialSubject", Map.of("id", otherDid))
+                            .issueTime(new Date())
+                            .expirationTime(new Date(System.currentTimeMillis() + 86400000))
+                            .build(),
+                    issuerKey);
+
+            SecurityException ex = assertThrows(SecurityException.class, () -> runPresentationFlowWith(foreignCredential));
+
+            assertTrue(ex.getMessage().contains("Credential subject mismatch"));
+        }
+
+        @Test
+        @DisplayName("Should reject a VC 1.1 credential without credentialSubject.id")
+        void shouldRejectVc11CredentialWithoutSubjectId() throws Exception {
+            String credentialJwt = createJWT(
+                    new JWTClaimsSet.Builder()
+                            .issuer(ISSUER_DID)
+                            .claim("vc", Map.of(
+                                    "type", List.of("VerifiableCredential", "MembershipCredential"),
+                                    "credentialSubject", Map.of("membershipType", "Premium")))
+                            .issueTime(new Date())
+                            .expirationTime(new Date(System.currentTimeMillis() + 86400000))
+                            .build(),
+                    issuerKey);
+
+            SecurityException ex = assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialJwt));
+
+            assertTrue(ex.getMessage().contains("Credential subject id missing"));
+        }
+
+        @Test
+        @DisplayName("Should accept a VC 1.1 credential whose subject is carried only in sub")
+        void shouldAcceptVc11CredentialWithSubjectInSubOnly() throws Exception {
+            String credentialJwt = createJWT(
+                    new JWTClaimsSet.Builder()
+                            .issuer(ISSUER_DID)
+                            .subject(HOLDER_DID)
+                            .claim("vc", Map.of(
+                                    "type", List.of("VerifiableCredential", "MembershipCredential"),
+                                    "credentialSubject", Map.of("membershipType", "Premium")))
+                            .issueTime(new Date())
+                            .expirationTime(new Date(System.currentTimeMillis() + 86400000))
+                            .build(),
+                    issuerKey);
+
+            VerifierService.PresentationFlowResult result = runPresentationFlowWith(credentialJwt);
+
+            assertEquals(1, result.getValidatedPresentations().get(0).getCredentials().size());
+        }
+
+        @Test
+        @DisplayName("Should reject a credential whose subject id is a DID URL with a fragment")
+        void shouldRejectSubjectIdWithFragment() throws Exception {
+            String credentialJwt = createVc20CredentialJWT(Optional.empty(),
+                    Optional.of(Map.of("id", HOLDER_DID + "#device-1")));
+
+            SecurityException ex = assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialJwt));
+
+            assertTrue(ex.getMessage().contains("Credential subject mismatch"));
+        }
+
+        @Test
+        @DisplayName("Should reject a credential mixing shapes when the top-level subject is foreign")
+        void shouldRejectMixedShapesWithForeignTopLevelSubject() throws Exception {
+            String credentialJwt = createJWT(
+                    new JWTClaimsSet.Builder()
+                            .issuer(ISSUER_DID)
+                            .claim("vc", Map.of(
+                                    "type", List.of("VerifiableCredential", "MembershipCredential"),
+                                    "credentialSubject", Map.of("id", HOLDER_DID)))
+                            .claim("credentialSubject", Map.of("id", "did:web:other.example.com:participant"))
+                            .issueTime(new Date())
+                            .expirationTime(new Date(System.currentTimeMillis() + 86400000))
+                            .build(),
+                    issuerKey);
+
+            SecurityException ex = assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialJwt));
+
+            assertTrue(ex.getMessage().contains("Credential subject mismatch"));
+        }
+
+        @Test
+        @DisplayName("Should reject a VC 2.0 credential without credentialSubject")
+        void shouldRejectVc20CredentialWithoutCredentialSubject() throws Exception {
+            String credentialJwt = createVc20CredentialJWT(Optional.of(HOLDER_DID), Optional.empty());
+
+            SecurityException ex = assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialJwt));
+
+            assertTrue(ex.getMessage().contains("Credential subject id missing"));
+        }
+
+        @Test
+        @DisplayName("Should reject a credential whose sub differs from the holder even if credentialSubject.id matches")
+        void shouldRejectCredentialWithForeignSub() throws Exception {
+            String credentialJwt = createVc20CredentialJWT(Optional.of("did:web:other.example.com:participant"),
+                    Optional.of(Map.of("id", HOLDER_DID)));
+
+            SecurityException ex = assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialJwt));
+
+            assertTrue(ex.getMessage().contains("Credential subject mismatch"));
+        }
+
+        @Test
+        @DisplayName("Should reject a credential with several subjects when one is not the holder")
+        void shouldRejectCredentialWithOneForeignSubjectInArray() throws Exception {
+            String credentialJwt = createVc20CredentialJWT(Optional.empty(),
+                    Optional.of(List.of(Map.of("id", HOLDER_DID), Map.of("id", "did:web:other.example.com:participant"))));
+
+            SecurityException ex = assertThrows(SecurityException.class, () -> runPresentationFlowWith(credentialJwt));
+
+            assertTrue(ex.getMessage().contains("Credential subject mismatch"));
         }
 
         @Test
@@ -918,7 +1236,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -947,7 +1265,7 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 5 failed"));
@@ -961,7 +1279,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -990,7 +1308,7 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 5 failed"));
@@ -1004,7 +1322,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -1021,7 +1339,7 @@ class VerifierServiceTest {
             // When/Then
             SecurityException exception = assertThrows(
                     SecurityException.class,
-                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken)
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig)
             );
 
             assertTrue(exception.getMessage().contains("Step 5 failed"));
@@ -1030,6 +1348,206 @@ class VerifierServiceTest {
             ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
             verify(auditPublisher, atLeast(1)).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
             assertTrue(typeCaptor.getAllValues().contains(DcpAuditEventType.PRESENTATION_INVALID));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════════
+    // STEP 5: Presentation and Credential Proof Tests (DCP §5.4.3)
+    // ═════════════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("Step 5: Presentation and credential proofs")
+    class ProofValidationTests {
+
+        @Test
+        @DisplayName("Should reject a VP whose payload was changed after signing")
+        void shouldRejectTamperedPresentation() throws Exception {
+            String presentationJwt = createValidPresentationJWT(List.of(createValidCredentialJWT()));
+            JWTClaimsSet changed = new JWTClaimsSet.Builder(parseClaims(presentationJwt))
+                    .claim("vp", Map.of("type", List.of("VerifiablePresentation"),
+                            "verifiableCredential", List.of(createValidCredentialJWT("AdminCredential"))))
+                    .build();
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> runFlowWithPresentation(tamper(presentationJwt, changed)));
+
+            assertTrue(exception.getMessage().contains("Presentation signature validation failed: Invalid signature"));
+        }
+
+        @Test
+        @DisplayName("Should reject a VC whose payload was changed after signing")
+        void shouldRejectTamperedCredential() throws Exception {
+            String credentialJwt = createValidCredentialJWT();
+            JWTClaimsSet changed = new JWTClaimsSet.Builder(parseClaims(credentialJwt))
+                    .expirationTime(new Date(System.currentTimeMillis() + 10L * 365 * 86400000))
+                    .build();
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> runPresentationFlowWith(tamper(credentialJwt, changed)));
+
+            assertTrue(exception.getMessage().contains("Credential signature validation failed: Invalid signature"));
+        }
+
+        @Test
+        @DisplayName("Should reject a VC signed with a key that is not the issuer's")
+        void shouldRejectCredentialSignedWithForeignKey() throws Exception {
+            ECKey otherKey = new ECKeyGenerator(Curve.P_256).keyID(issuerKey.getKeyID()).generate();
+            String credentialJwt = createJWT(parseClaims(createValidCredentialJWT()), otherKey);
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> runPresentationFlowWith(credentialJwt));
+
+            assertTrue(exception.getMessage().contains("Credential signature validation failed: Invalid signature"));
+        }
+
+        @Test
+        @DisplayName("Should reject a VC whose verification method belongs to a DID other than the issuer")
+        void shouldRejectCredentialVerificationMethodOfOtherDid() throws Exception {
+            String selfIssuedToken = setUpPresentationResponse(createValidPresentationJWT(
+                    List.of(createValidCredentialJWT())));
+            setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
+            when(didResolverService.resolveVerificationMethod(eq(ISSUER_DID), anyString(), eq("assertionMethod")))
+                    .thenReturn(Optional.of(verificationMethod("did:web:attacker.example.com", issuerKey)));
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig));
+
+            assertTrue(exception.getMessage().contains(
+                    "verification method did:web:attacker.example.com#issuer-key-1 does not belong to DID="
+                            + ISSUER_DID));
+            verify(issuerTrustService, never()).isTrusted(anyString(), anyString());
+        }
+
+        @Test
+        @DisplayName("Should reject a VC whose issuer key has no assertionMethod relationship")
+        void shouldRejectCredentialKeyWithoutAssertionMethod() throws Exception {
+            String selfIssuedToken = setUpPresentationResponse(createValidPresentationJWT(
+                    List.of(createValidCredentialJWT())));
+            setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
+            when(didResolverService.resolveVerificationMethod(eq(ISSUER_DID), anyString(), eq("assertionMethod")))
+                    .thenReturn(Optional.empty());
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig));
+
+            assertTrue(exception.getMessage().contains("No assertionMethod key found for DID=" + ISSUER_DID));
+            verify(didResolverService, never()).resolveVerificationMethod(
+                    eq(ISSUER_DID), anyString(), eq("capabilityInvocation"));
+        }
+
+        @Test
+        @DisplayName("Should reject a VP whose holder key has no authentication relationship")
+        void shouldRejectPresentationKeyWithoutAuthentication() throws Exception {
+            String selfIssuedToken = setUpPresentationResponse(createValidPresentationJWT(
+                    List.of(createValidCredentialJWT())));
+            when(didResolverService.resolveVerificationMethod(eq(HOLDER_DID), anyString(), eq("authentication")))
+                    .thenReturn(Optional.empty());
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig));
+
+            assertTrue(exception.getMessage().contains("No authentication key found for DID=" + HOLDER_DID));
+            verify(didResolverService, never()).resolveVerificationMethod(
+                    eq(HOLDER_DID), anyString(), eq("assertionMethod"));
+            verify(didResolverService, never()).resolveVerificationMethod(
+                    eq(HOLDER_DID), anyString(), eq("capabilityInvocation"));
+        }
+
+        @Test
+        @DisplayName("Should reject a VP whose verification method belongs to a DID other than the holder")
+        void shouldRejectPresentationVerificationMethodOfOtherDid() throws Exception {
+            String selfIssuedToken = setUpPresentationResponse(createValidPresentationJWT(
+                    List.of(createValidCredentialJWT())));
+            when(didResolverService.resolveVerificationMethod(eq(HOLDER_DID), anyString(), eq("authentication")))
+                    .thenReturn(Optional.of(verificationMethod("did:web:attacker.example.com", holderKey)));
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig));
+
+            assertTrue(exception.getMessage().contains("does not belong to DID=" + HOLDER_DID));
+        }
+
+        @Test
+        @DisplayName("Should reject a VC 2.0 credential whose issuer property names a DID other than iss")
+        void shouldRejectVc20IssuerPropertyOfOtherDid() throws Exception {
+            JWTClaimsSet claims = new JWTClaimsSet.Builder(parseClaims(createVc20CredentialJWT(
+                    Optional.of(HOLDER_DID), Optional.of(Map.of("id", HOLDER_DID)))))
+                    .claim("issuer", Map.of("id", "did:web:attacker.example.com"))
+                    .build();
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> runPresentationFlowWith(createJWT(claims, issuerKey)));
+
+            assertTrue(exception.getMessage().contains("Credential issuer mismatch"));
+        }
+
+        @Test
+        @DisplayName("Should reject a VC 1.1 credential whose vc.issuer names a DID other than iss")
+        void shouldRejectVc11IssuerPropertyOfOtherDid() throws Exception {
+            JWTClaimsSet claims = new JWTClaimsSet.Builder(parseClaims(createValidCredentialJWT()))
+                    .claim("vc", Map.of(
+                            "type", List.of("VerifiableCredential", "MembershipCredential"),
+                            "issuer", "did:web:attacker.example.com",
+                            "credentialSubject", Map.of("id", HOLDER_DID)))
+                    .build();
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> runPresentationFlowWith(createJWT(claims, issuerKey)));
+
+            assertTrue(exception.getMessage().contains("Credential issuer mismatch"));
+        }
+
+        @Test
+        @DisplayName("Should accept a VC whose issuer property is an object naming the iss DID")
+        void shouldAcceptIssuerPropertyMatchingIss() throws Exception {
+            JWTClaimsSet claims = new JWTClaimsSet.Builder(parseClaims(createVc20CredentialJWT(
+                    Optional.of(HOLDER_DID), Optional.of(Map.of("id", HOLDER_DID)))))
+                    .claim("issuer", Map.of("id", ISSUER_DID, "name", "Issuer"))
+                    .build();
+
+            VerifierService.PresentationFlowResult result = runPresentationFlowWith(createJWT(claims, issuerKey));
+
+            assertEquals(ISSUER_DID, result.getValidatedPresentations().get(0).getCredentials().get(0).getIssuerDid());
+        }
+
+        @Test
+        @DisplayName("Should reject a proof whose key is not an EC key")
+        void shouldRejectNonEcKey() throws Exception {
+            String selfIssuedToken = setUpPresentationResponse(createValidPresentationJWT(
+                    List.of(createValidCredentialJWT())));
+            RSAKey rsaKey = new RSAKeyGenerator(2048).keyID("rsa-1").generate();
+            when(didResolverService.resolveVerificationMethod(eq(HOLDER_DID), anyString(), eq("authentication")))
+                    .thenReturn(Optional.of(new ResolvedVerificationMethod(HOLDER_DID + "#rsa-1",
+                            rsaKey.toPublicJWK())));
+
+            SecurityException exception = assertThrows(SecurityException.class,
+                    () -> verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig));
+
+            assertTrue(exception.getMessage().contains("unsupported key type RSA"));
+        }
+
+        /**
+         * Stubs the flow up to the presentation query, which returns the given presentation.
+         *
+         * @param presentationJwt the presentation the holder returns
+         * @return the Self-Issued ID Token that starts the flow
+         * @throws Exception if building the tokens fails
+         */
+        private String setUpPresentationResponse(String presentationJwt) throws Exception {
+            String selfIssuedToken = createValidSelfIssuedToken(createValidAccessToken());
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig)).thenReturn(parseClaims(selfIssuedToken));
+            setupSuccessfulHolderResolution();
+            setupSuccessfulPresentationQuery(List.of(presentationJwt));
+            return selfIssuedToken;
+        }
+
+        private void runFlowWithPresentation(String presentationJwt) throws Exception {
+            String selfIssuedToken = setUpPresentationResponse(presentationJwt);
+            setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
+            lenient().when(didResolverService.resolveVerificationMethod(eq(ISSUER_DID), anyString(),
+                    eq("assertionMethod"))).thenReturn(Optional.of(verificationMethod(ISSUER_DID, issuerKey)));
+            lenient().when(issuerTrustService.isTrusted(anyString(), eq(ISSUER_DID))).thenReturn(true);
+            verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig);
         }
     }
 
@@ -1048,7 +1566,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -1063,7 +1581,7 @@ class VerifierServiceTest {
 
             // When
             VerifierService.PresentationFlowResult result =
-                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken);
+                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig);
 
             // Then
             assertNotNull(result);
@@ -1090,13 +1608,28 @@ class VerifierServiceTest {
         }
 
         @Test
+        @DisplayName("Should look up the VP key under authentication and the VC key under assertionMethod only")
+        void shouldUseOnlyTheSpecifiedVerificationRelationships() throws Exception {
+            // When
+            VerifierService.PresentationFlowResult result = runPresentationFlowWith(createValidCredentialJWT());
+
+            // Then
+            assertEquals(1, result.getValidatedPresentations().size());
+            verify(didResolverService).resolveVerificationMethod(eq(HOLDER_DID), anyString(), eq("authentication"));
+            verify(didResolverService).resolveVerificationMethod(eq(ISSUER_DID), anyString(), eq("assertionMethod"));
+            verify(didResolverService, never()).resolveVerificationMethod(
+                    anyString(), anyString(), eq("capabilityInvocation"));
+            verify(didResolverService, never()).resolvePublicKey(anyString(), any(), any());
+        }
+
+        @Test
         @DisplayName("Should successfully validate with multiple credentials")
         void shouldSuccessfullyValidateMultipleCredentials() throws Exception {
             // Given
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -1112,7 +1645,7 @@ class VerifierServiceTest {
 
             // When
             VerifierService.PresentationFlowResult result =
-                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken);
+                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig);
 
             // Then
             assertNotNull(result);
@@ -1136,7 +1669,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -1154,7 +1687,7 @@ class VerifierServiceTest {
 
             // When
             VerifierService.PresentationFlowResult result =
-                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken);
+                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig);
 
             // Then
             assertNotNull(result);
@@ -1173,7 +1706,7 @@ class VerifierServiceTest {
             String accessToken = createValidAccessToken();
             String selfIssuedToken = createValidSelfIssuedToken(accessToken);
 
-            when(tokenService.validateToken(selfIssuedToken))
+            when(tokenService.validateToken(selfIssuedToken, verifierConfig))
                     .thenReturn(parseClaims(selfIssuedToken));
 
             setupSuccessfulHolderResolution();
@@ -1202,7 +1735,7 @@ class VerifierServiceTest {
 
             // When
             VerifierService.PresentationFlowResult result =
-                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken);
+                    verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig);
 
             // Then
             assertNotNull(result);
@@ -1238,6 +1771,20 @@ class VerifierServiceTest {
         );
     }
 
+    private String createAccessToken(String issuer, String subject, ECKey signingKey) throws JOSEException {
+        return createJWT(
+                new JWTClaimsSet.Builder()
+                        .issuer(issuer)
+                        .subject(subject)
+                        .audience(VERIFIER_DID)
+                        .claim("scope", List.of("MembershipCredential"))
+                        .issueTime(new Date())
+                        .expirationTime(new Date(System.currentTimeMillis() + 300000))
+                        .build(),
+                signingKey
+        );
+    }
+
     private String createValidSelfIssuedToken(String accessToken) throws JOSEException {
         return createJWT(
                 new JWTClaimsSet.Builder()
@@ -1251,6 +1798,46 @@ class VerifierServiceTest {
                         .build(),
                 holderKey
         );
+    }
+
+    /**
+     * Creates a VC 2.0 JWT credential (top-level claims, no vc claim).
+     *
+     * @param sub the sub claim, empty to omit it
+     * @param credentialSubject the credentialSubject claim (object or array), empty to omit it
+     * @return the signed credential JWT
+     * @throws JOSEException if signing fails
+     */
+    private String createVc20CredentialJWT(Optional<String> sub, Optional<Object> credentialSubject)
+            throws JOSEException {
+        JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder()
+                .issuer(ISSUER_DID)
+                .claim("@context", List.of("https://www.w3.org/ns/credentials/v2"))
+                .claim("type", List.of("VerifiableCredential", "MembershipCredential"))
+                .issueTime(new Date())
+                .expirationTime(new Date(System.currentTimeMillis() + 86400000))
+                .jwtID(UUID.randomUUID().toString());
+        sub.ifPresent(builder::subject);
+        credentialSubject.ifPresent(subject -> builder.claim("credentialSubject", subject));
+        return createJWT(builder.build(), issuerKey);
+    }
+
+    /**
+     * Runs the full presentation flow with one presentation from the holder carrying the given credential.
+     *
+     * @param credentialJwt the credential embedded in the holder's presentation
+     * @return the flow result
+     * @throws Exception if the flow fails
+     */
+    private VerifierService.PresentationFlowResult runPresentationFlowWith(String credentialJwt) throws Exception {
+        String selfIssuedToken = createValidSelfIssuedToken(createValidAccessToken());
+        when(tokenService.validateToken(selfIssuedToken, verifierConfig)).thenReturn(parseClaims(selfIssuedToken));
+        setupSuccessfulHolderResolution();
+        setupSuccessfulPresentationQuery(List.of(createValidPresentationJWT(List.of(credentialJwt))));
+        setupSuccessfulKeyResolution(HOLDER_DID, holderKey);
+        setupSuccessfulKeyResolution(ISSUER_DID, issuerKey);
+        lenient().when(issuerTrustService.isTrusted(anyString(), eq(ISSUER_DID))).thenReturn(true);
+        return verifierService.validateAndQueryHolderPresentations(selfIssuedToken, verifierConfig);
     }
 
     private String createValidCredentialJWT() throws JOSEException {
@@ -1329,11 +1916,34 @@ class VerifierServiceTest {
         )).thenReturn(response);
     }
 
+    /**
+     * Stubs the resolver to return the key of a DID under the relationship the verifier requires for it:
+     * {@code authentication} for the holder (VP proof), {@code assertionMethod} for any other DID (VC proof).
+     *
+     * @param did the DID that controls the key
+     * @param key the key to return
+     * @throws DidResolutionException never; declared by the stubbed method
+     */
     private void setupSuccessfulKeyResolution(String did, ECKey key) throws DidResolutionException {
-        when(didResolverService.resolvePublicKey(eq(did), anyString(), eq("assertionMethod")))
-                .thenReturn(key.toPublicJWK());
-//        when(didResolverService.resolvePublicKey(eq(did), anyString(), eq("capabilityInvocation")))
-//                .thenReturn(key.toPublicJWK());
+        String relationship = HOLDER_DID.equals(did) ? "authentication" : "assertionMethod";
+        when(didResolverService.resolveVerificationMethod(eq(did), anyString(), eq(relationship)))
+                .thenReturn(Optional.of(verificationMethod(did, key)));
+    }
+
+    private static ResolvedVerificationMethod verificationMethod(String did, ECKey key) {
+        return new ResolvedVerificationMethod(did + "#" + key.getKeyID(), key.toPublicJWK());
+    }
+
+    /**
+     * Replaces the payload of a signed JWT and keeps its original header and signature.
+     *
+     * @param jwt the signed JWT
+     * @param claims the claims to put in place of the signed payload
+     * @return the tampered JWT
+     */
+    private static String tamper(String jwt, JWTClaimsSet claims) {
+        String[] parts = jwt.split("\\.");
+        return parts[0] + "." + Base64URL.encode(claims.toString()) + "." + parts[2];
     }
 
     /**

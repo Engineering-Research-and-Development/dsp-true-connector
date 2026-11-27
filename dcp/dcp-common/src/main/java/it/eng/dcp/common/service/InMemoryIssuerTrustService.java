@@ -37,6 +37,15 @@ public class InMemoryIssuerTrustService implements IssuerTrustService {
     }
 
     @Override
+    public boolean isTrustedIssuer(String issuerDid) {
+        if (issuerDid == null || issuerDid.isBlank()) {
+            return false;
+        }
+        String normalizedDid = DidUtils.normalize(issuerDid);
+        return trustMap.values().stream().anyMatch(issuers -> issuers.contains(normalizedDid));
+    }
+
+    @Override
     public Set<String> getTrustedIssuers(String credentialType) {
         Set<String> issuers = trustMap.get(credentialType);
         return issuers == null ? Collections.emptySet() : Collections.unmodifiableSet(issuers);

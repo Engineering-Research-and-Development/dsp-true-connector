@@ -12,6 +12,7 @@ import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.exception.DidResolutionException;
 import it.eng.dcp.common.model.CredentialRequestMessage;
 import it.eng.dcp.common.model.CredentialRequestMessage.CredentialReference;
+import it.eng.dcp.common.model.DidDocument;
 import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig;
 import it.eng.dcp.issuer.service.CredentialDeliveryService;
@@ -27,6 +28,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Stream;
@@ -34,6 +36,7 @@ import java.util.stream.Stream;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -90,6 +93,18 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
     }
 
     /**
+     * Serves a DID document whose id is the requested DID, because token validation checks that
+     * {@code sub} equals the resolved DID Document id.
+     *
+     * @throws IOException never; declared by the mocked resolver method
+     */
+    @BeforeEach
+    void serveDidDocuments() throws IOException {
+        when(didResolverService.fetchDidDocumentCached(anyString()))
+                .thenAnswer(inv -> DidDocument.Builder.newInstance().id(inv.getArgument(0)).build());
+    }
+
+    /**
      * Creates a self-issued ID token signed with the given key.
      *
      * @param signingKey The private EC key to sign the token
@@ -97,13 +112,25 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
      * @throws JOSEException if token creation fails
      */
     private String createToken(ECKey signingKey) throws JOSEException {
+        return createToken(signingKey, IssuerControllerIT.HOLDER_DID);
+    }
+
+    /**
+     * Creates a valid token for the given DID (used as issuer and subject).
+     *
+     * @param signingKey The private EC key to sign the token
+     * @param did        The DID placed in the iss and sub claims
+     * @return Signed JWT token string
+     * @throws JOSEException if token creation fails
+     */
+    private String createToken(ECKey signingKey, String did) throws JOSEException {
         Instant now = Instant.now();
         Instant exp = now.plusSeconds(300); // 5 minutes
 
         String aud = config.getDidDocumentConfig().getDid();
         JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                .issuer(IssuerControllerIT.HOLDER_DID)
-                .subject(IssuerControllerIT.HOLDER_DID)
+                .issuer(did)
+                .subject(did)
                 .audience(aud)
                 .issueTime(Date.from(now))
                 .expirationTime(Date.from(exp))
@@ -461,6 +488,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
 
         // Approve the request
         mockMvc.perform(post("/api/issuer/requests/{requestId}/approve", requestId)
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isOk());
@@ -507,6 +535,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         approvalBody.put("customClaims", customClaims);
 
         mockMvc.perform(post("/api/issuer/requests/{requestId}/approve", requestId)
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(approvalBody)))
                 .andExpect(status().isOk());
@@ -550,6 +579,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
 
         // Approve the request - should fail due to delivery failure
         mockMvc.perform(post("/api/issuer/requests/{requestId}/approve", requestId)
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isInternalServerError());
@@ -595,6 +625,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
 
         // Approve the request - should fail due to exception
         mockMvc.perform(post("/api/issuer/requests/{requestId}/approve", requestId)
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isInternalServerError());
@@ -608,6 +639,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
     @Test
     void approveRequest_failure_invalidRequestId() throws Exception {
         mockMvc.perform(post("/api/issuer/requests/{requestId}/approve", "invalid-request-id")
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -652,6 +684,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         rejectionBody.put("reason", "Holder not verified");
 
         mockMvc.perform(post("/api/issuer/requests/{requestId}/reject", requestId)
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(rejectionBody)))
                 .andExpect(status().isOk());
@@ -699,6 +732,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         rejectionBody.put("reason", "Holder not verified");
 
         mockMvc.perform(post("/api/issuer/requests/{requestId}/reject", requestId)
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(rejectionBody)))
                 .andExpect(status().isInternalServerError());
@@ -747,6 +781,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         rejectionBody.put("reason", "Holder not verified");
 
         mockMvc.perform(post("/api/issuer/requests/{requestId}/reject", requestId)
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(rejectionBody)))
                 .andExpect(status().isInternalServerError());
@@ -763,6 +798,7 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         rejectionBody.put("reason", "Invalid holder");
 
         mockMvc.perform(post("/api/issuer/requests/invalid-id/reject")
+                        .with(httpBasic(ADMIN_USERNAME, ADMIN_PASSWORD))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(rejectionBody)))
                 .andExpect(status().isBadRequest());
@@ -825,6 +861,51 @@ public class IssuerControllerIT extends BaseIssuerIntegrationTest {
         mockMvc.perform(get("/issuer/requests/{requestId}", "non-existent-id")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
+    }
+
+    /**
+     * A different authenticated DID must get 404 for another client's request, identical to an unknown id.
+     */
+    @Test
+    void getRequest_otherAuthenticatedClient_returnsNotFound() throws Exception {
+        String otherDid = "did:test:other-holder";
+        when(didResolverService.resolvePublicKey(eq(HOLDER_DID), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
+                .thenReturn(holderKeyPair.toPublicJWK());
+        when(didResolverService.resolvePublicKey(eq(otherDid), eq(HOLDER_KEY_ID), eq("capabilityInvocation")))
+                .thenReturn(holderKeyPair.toPublicJWK());
+
+        String credentialType = credentialMetadataConfig.getSupported().get(0).getId();
+        CredentialRequestMessage requestMessage = CredentialRequestMessage.Builder
+                .newInstance()
+                .holderPid(HOLDER_DID)
+                .credentials(List.of(CredentialReference.Builder.newInstance().id(credentialType).build()))
+                .build();
+
+        String location = mockMvc.perform(post("/issuer/credentials")
+                        .header("Authorization", "Bearer " + createToken(holderKeyPair))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(requestMessage)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getHeader("Location");
+        Assertions.assertNotNull(location);
+        String requestId = location.substring(location.lastIndexOf('/') + 1);
+
+        String foreign = mockMvc.perform(get("/issuer/requests/{requestId}", requestId)
+                        .header("Authorization", "Bearer " + createToken(holderKeyPair, otherDid)))
+                .andExpect(status().isNotFound())
+                .andReturn().getResponse().getContentAsString();
+        String unknown = mockMvc.perform(get("/issuer/requests/{requestId}", "non-existent-id")
+                        .header("Authorization", "Bearer " + createToken(holderKeyPair, otherDid)))
+                .andExpect(status().isNotFound())
+                .andReturn().getResponse().getContentAsString();
+        Assertions.assertEquals(unknown, foreign);
+
+        // the owner still gets the status
+        mockMvc.perform(get("/issuer/requests/{requestId}", requestId)
+                        .header("Authorization", "Bearer " + createToken(holderKeyPair)))
+                .andExpect(status().isOk());
     }
 
     // ==================== Helper Methods ====================

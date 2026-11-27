@@ -1,7 +1,10 @@
 package it.eng.connector.integration.multitenant;
 
 import it.eng.catalog.exceptions.InternalServerErrorAPIException;
-import it.eng.catalog.model.*;
+import it.eng.catalog.model.Catalog;
+import it.eng.catalog.model.DataService;
+import it.eng.catalog.model.Dataset;
+import it.eng.catalog.model.Distribution;
 import it.eng.catalog.repository.CatalogRepository;
 import it.eng.catalog.repository.DataServiceRepository;
 import it.eng.catalog.repository.DatasetRepository;
@@ -10,7 +13,7 @@ import it.eng.catalog.serializer.CatalogSerializer;
 import it.eng.catalog.service.CatalogService;
 import it.eng.catalog.util.CatalogMockObjectUtil;
 import it.eng.connector.integration.BaseIntegrationTest;
-import it.eng.connector.util.TestUtil;
+import it.eng.tools.auth.ConnectorCredentialProvider;
 import it.eng.tools.model.Artifact;
 import it.eng.tools.model.ArtifactType;
 import it.eng.tools.model.Tenant;
@@ -21,8 +24,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.ResultActions;
 
 import java.util.ArrayList;
@@ -30,8 +34,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -58,6 +61,8 @@ public class CrossTenantIsolationIT extends BaseIntegrationTest {
     private ArtifactRepository artifactRepository;
     @Autowired
     private CatalogService catalogService;
+    @Autowired
+    private ConnectorCredentialProvider connectorCredentialProvider;
 
     private Catalog catalogA;
     private Catalog catalogB;
@@ -109,7 +114,7 @@ public class CrossTenantIsolationIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("catalogRequest for tenant-a returns only tenant-a datasets, not tenant-b datasets")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     void catalogRequest_tenantA_doesNotReturnTenantBDatasets() throws Exception {
         String requestBody = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
         ResultActions result = mockMvc.perform(
@@ -127,12 +132,47 @@ public class CrossTenantIsolationIT extends BaseIntegrationTest {
 
     @Test
     @DisplayName("dataset endpoint for tenant-a returns 404 when requesting a tenant-b dataset")
-    @WithUserDetails(TestUtil.CONNECTOR_USER)
+    @WithMockUser(roles = "CONNECTOR")
     void datasetById_tenantA_cannotAccessTenantBDataset() throws Exception {
         mockMvc.perform(
                 get("/" + TENANT_A + "/catalog/datasets/" + datasetB.getId())
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("Connector token receives only data for the tenant selected by the protocol route")
+    void connectorTokenCanAddressTenantRoutesAndDataRemainsScoped() throws Exception {
+        String connectorToken = connectorCredentialProvider.issueConnectorToken();
+        assertNotNull(connectorToken);
+
+        String requestBody = CatalogSerializer.serializeProtocol(CatalogMockObjectUtil.CATALOG_REQUEST_MESSAGE);
+        String tenantAResponse = mockMvc.perform(post("/" + TENANT_A + "/catalog/request")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + connectorToken)
+                        .content(requestBody)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertTrue(tenantAResponse.contains(datasetA.getId()));
+        assertFalse(tenantAResponse.contains(datasetB.getId()));
+
+        String tenantBResponse = mockMvc.perform(post("/" + TENANT_B + "/catalog/request")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + connectorToken)
+                        .content(requestBody)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertTrue(tenantBResponse.contains(datasetB.getId()));
+        assertFalse(tenantBResponse.contains(datasetA.getId()));
+
+        mockMvc.perform(get("/" + TENANT_B + "/catalog/datasets/" + datasetB.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + connectorToken)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -156,7 +196,7 @@ public class CrossTenantIsolationIT extends BaseIntegrationTest {
                     .id(tenantId)
                     .name(tenantId)
                     .participantId("urn:example:" + tenantId)
-                    .bucketName(s3Properties.getBucketName())
+                    .bucketName(getTenantBucketName())
                     .enabled(true)
                     .build());
         }

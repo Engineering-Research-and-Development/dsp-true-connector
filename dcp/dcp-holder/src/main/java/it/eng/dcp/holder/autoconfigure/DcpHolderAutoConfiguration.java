@@ -2,6 +2,7 @@ package it.eng.dcp.holder.autoconfigure;
 
 import it.eng.dcp.common.audit.DcpAuditProperties;
 import it.eng.dcp.common.config.DcpProperties;
+import it.eng.dcp.common.config.ParticipantContextConfiguration;
 import it.eng.dcp.holder.config.DCPMongoConfig;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -24,7 +25,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @ConditionalOnProperty(prefix = "dcp.holder", name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties({DcpProperties.class, DcpAuditProperties.class})
 @EnableAsync
-@Import({DCPMongoConfig.class})
+@Import({DCPMongoConfig.class, ParticipantContextConfiguration.class})
 @ComponentScan({
     "it.eng.dcp.holder",
     "it.eng.dcp.common"

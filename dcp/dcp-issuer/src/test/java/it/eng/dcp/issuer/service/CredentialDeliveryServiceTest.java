@@ -2,15 +2,21 @@ package it.eng.dcp.issuer.service;
 
 import it.eng.dcp.common.audit.DcpAuditEventType;
 import it.eng.dcp.common.client.SimpleOkHttpRestClient;
-import it.eng.dcp.common.config.DidDocumentConfig;
 import it.eng.dcp.common.model.*;
+import it.eng.dcp.common.participant.ParticipantContext;
+import it.eng.dcp.common.participant.ParticipantState;
+import it.eng.dcp.common.participant.SigningKeyReference;
 import it.eng.dcp.common.repository.CredentialRequestRepository;
 import it.eng.dcp.common.service.audit.DcpAuditEventPublisher;
 import it.eng.dcp.common.service.did.DidResolverService;
 import it.eng.dcp.common.service.sts.SelfIssuedIdTokenService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
+import okio.Buffer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -18,6 +24,7 @@ import org.mockito.MockitoAnnotations;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -29,7 +36,7 @@ class CredentialDeliveryServiceTest {
     @Mock private CredentialRequestRepository requestRepository;
     @Mock private SelfIssuedIdTokenService tokenService;
     @Mock private SimpleOkHttpRestClient httpClient;
-    @Mock private DidDocumentConfig config;
+    @Mock private IssuerIdentity issuerIdentity;
     @Mock private DidResolverService didResolverService;
     @Mock private DcpAuditEventPublisher auditPublisher;
 
@@ -40,18 +47,22 @@ class CredentialDeliveryServiceTest {
 
     private AutoCloseable closeable;
 
+    private final ParticipantContext participant = new ParticipantContext("default", "did:example:holder",
+            new SigningKeyReference("eckey.p12", "alias"), List.of(), Map.of(), null, ParticipantState.ENABLED);
+
     @BeforeEach
     void setUp() {
         closeable = MockitoAnnotations.openMocks(this);
 
         deliveryService = new CredentialDeliveryService(
-                requestRepository, tokenService, httpClient, config, didResolverService, auditPublisher
+                requestRepository, tokenService, issuerIdentity, httpClient, didResolverService, auditPublisher
         );
 
         testRequest = CredentialRequest.Builder.newInstance()
                 .issuerPid("issuer-pid-123")
                 .holderPid("holder-pid-123")
                 .holderDid("did:web:example.com:holder")
+                .clientAccessToken("holder-access-token")
                 .credentialIds(List.of("MembershipCredential"))
                 .status(CredentialStatus.PENDING)
                 .createdAt(Instant.now())
@@ -78,12 +89,17 @@ class CredentialDeliveryServiceTest {
         when(didResolverService.fetchDidDocumentCached("did:web:example.com:holder"))
                 .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
         when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(200, "OK"));
+        when(issuerIdentity.participant()).thenReturn(participant);
 
         boolean result = deliveryService.deliverCredentials("issuer-pid-123", testCredentials);
 
         assertTrue(result);
-        verify(requestRepository).save(argThat(req ->
-                req.getStatus() == CredentialStatus.ISSUED && req.getIssuerPid().equals("issuer-pid-123")));
+        verify(tokenService).createAndSignToken("did:web:example.com:holder", "holder-access-token", participant);
+        ArgumentCaptor<CredentialRequest> savedRequest = ArgumentCaptor.forClass(CredentialRequest.class);
+        verify(requestRepository).save(savedRequest.capture());
+        assertEquals(CredentialStatus.ISSUED, savedRequest.getValue().getStatus());
+        assertEquals("issuer-pid-123", savedRequest.getValue().getIssuerPid());
+        assertNull(savedRequest.getValue().getClientAccessToken());
 
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
@@ -115,16 +131,63 @@ class CredentialDeliveryServiceTest {
         when(didResolverService.fetchDidDocumentCached("did:web:example.com:holder"))
                 .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
         when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(200, "OK"));
+        when(issuerIdentity.participant()).thenReturn(participant);
 
         boolean result = deliveryService.rejectCredentialRequest("issuer-pid-123", "Invalid credentials");
 
         assertTrue(result);
-        verify(requestRepository).save(argThat(req ->
-                req.getStatus() == CredentialStatus.REJECTED && req.getRejectionReason().equals("Invalid credentials")));
+        verify(tokenService).createAndSignToken("did:web:example.com:holder", "holder-access-token", participant);
+        ArgumentCaptor<CredentialRequest> savedRequest = ArgumentCaptor.forClass(CredentialRequest.class);
+        verify(requestRepository).save(savedRequest.capture());
+        assertEquals(CredentialStatus.REJECTED, savedRequest.getValue().getStatus());
+        assertEquals("Invalid credentials", savedRequest.getValue().getRejectionReason());
+        assertNull(savedRequest.getValue().getClientAccessToken());
 
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
         assertEquals(DcpAuditEventType.CREDENTIAL_DENIED, typeCaptor.getValue());
+    }
+
+    @Test
+    @DisplayName("Rejection message carries no placeholder credential and the Holder-side holderPid")
+    void rejectCredentialRequest_messageHasNoPlaceholderCredential() throws Exception {
+        when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(testRequest));
+        when(tokenService.createAndSignToken(anyString(), any(), any())).thenReturn("mock-token");
+        when(didResolverService.fetchDidDocumentCached("did:web:example.com:holder"))
+                .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
+        when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(200, "OK"));
+
+        assertTrue(deliveryService.rejectCredentialRequest("issuer-pid-123", "Invalid credentials"));
+
+        ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
+        verify(httpClient).executeCall(sent.capture());
+        Buffer body = new Buffer();
+        sent.getValue().body().writeTo(body);
+        JsonNode message = new ObjectMapper().readTree(body.readUtf8());
+        assertEquals("REJECTED", message.get("status").asText());
+        assertEquals("Invalid credentials", message.get("rejectionReason").asText());
+        assertFalse(message.has("credentials"), "a rejection must not carry a placeholder credential");
+        assertEquals(testRequest.getHolderPid(), message.get("holderPid").asText());
+    }
+
+    @Test
+    @DisplayName("Delivery with no credentials sends nothing")
+    void deliverCredentials_noCredentials_returnsFalseWithoutSending() throws Exception {
+        assertFalse(deliveryService.deliverCredentials("issuer-pid-123", List.of()));
+        verify(httpClient, never()).executeCall(any());
+    }
+
+    @Test
+    @DisplayName("Rejection without reason is sent and audited")
+    void rejectCredentialRequest_nullReason_succeeds() throws Exception {
+        when(requestRepository.findByIssuerPid("issuer-pid-123")).thenReturn(Optional.of(testRequest));
+        when(tokenService.createAndSignToken(anyString(), any(), any())).thenReturn("mock-token");
+        when(didResolverService.fetchDidDocumentCached("did:web:example.com:holder"))
+                .thenReturn(createMockDidDocument("did:web:example.com:holder", "http://example.com/credentials"));
+        when(httpClient.executeCall(any(Request.class))).thenReturn(createMockResponse(200, "OK"));
+
+        assertTrue(deliveryService.rejectCredentialRequest("issuer-pid-123", null));
+        verify(auditPublisher).publishEvent(eq(DcpAuditEventType.CREDENTIAL_DENIED), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test

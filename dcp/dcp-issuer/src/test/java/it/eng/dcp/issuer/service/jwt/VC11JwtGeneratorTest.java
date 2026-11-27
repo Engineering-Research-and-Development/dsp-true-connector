@@ -5,8 +5,7 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
-import it.eng.dcp.common.service.KeyService;
+import it.eng.dcp.issuer.service.IssuerIdentity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,10 +30,7 @@ import static org.mockito.Mockito.when;
 class VC11JwtGeneratorTest {
 
     @Mock
-    private KeyService keyService;
-
-    @Mock
-    private BaseDidDocumentConfiguration didDocumentConfig;
+    private IssuerIdentity issuerIdentity;
 
     @InjectMocks
     private VC11JwtGenerator generator;
@@ -50,9 +46,10 @@ class VC11JwtGeneratorTest {
                 .keyID("test-key-1")
                 .generate();
 
-        when(keyService.getSigningJwk(any())).thenReturn(testSigningKey);
+        when(issuerIdentity.signingKey()).thenReturn(testSigningKey);
+        when(issuerIdentity.did()).thenReturn(ISSUER_DID);
 
-        generator = new VC11JwtGenerator(ISSUER_DID, keyService, didDocumentConfig);
+        generator = new VC11JwtGenerator(issuerIdentity);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package it.eng.catalog.service;
 
+import it.eng.catalog.exceptions.CatalogErrorAPIException;
 import it.eng.catalog.exceptions.CatalogErrorException;
 import it.eng.catalog.exceptions.InternalServerErrorAPIException;
 import it.eng.catalog.model.*;
@@ -28,9 +29,9 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -38,7 +39,7 @@ import static org.mockito.Mockito.when;
 public class CatalogServiceTest {
 
     private static final String BUCKET_NAME = "bucket-name";
-    private static final String TENANT_ID = "engineering";
+    private static final String TENANT_ID = "engineering-a";
 
     private Catalog catalog;
 
@@ -57,6 +58,8 @@ public class CatalogServiceTest {
     @Captor
     private ArgumentCaptor<Catalog> argCaptorCatalog;
 
+    @Mock
+    private CatalogTenantGuard tenantGuard;
     @InjectMocks
     private CatalogService service;
 
@@ -280,5 +283,42 @@ public class CatalogServiceTest {
         boolean offerValid = service.validateOffer(offer);
 
         assertFalse(offerValid);
+    }
+
+    @Test
+    @DisplayName("Create catalog - rejected by the tenant guard: nothing saved")
+    public void createCatalog_rejectedByTenantGuard() {
+        Catalog body = CatalogMockObjectUtil.CATALOG;
+        doThrow(new CatalogErrorAPIException("Catalog with id x cannot be used"))
+                .when(tenantGuard).checkNewCatalog(body);
+
+        assertThrows(CatalogErrorAPIException.class, () -> service.createCatalog(body));
+
+        verify(repository, never()).save(any(Catalog.class));
+    }
+
+    @Test
+    @DisplayName("Create catalog - accepted by the tenant guard: saved for the current tenant")
+    public void createCatalog_acceptedByTenantGuard() {
+        Catalog body = Catalog.Builder.newInstance().title("new catalog").build();
+        when(repository.save(any(Catalog.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Catalog saved = service.createCatalog(body);
+
+        verify(tenantGuard).checkNewCatalog(body);
+        assertEquals(TENANT_ID, saved.getTenantId());
+    }
+
+    @Test
+    @DisplayName("Update catalog - rejected by the tenant guard: nothing saved")
+    public void updateCatalog_rejectedByTenantGuard() {
+        when(repository.findByIdAndTenantId(catalog.getId(), TENANT_ID)).thenReturn(Optional.of(catalog));
+        doThrow(new CatalogErrorAPIException("Dataset with id x cannot be used"))
+                .when(tenantGuard).checkCatalogReferences(CatalogMockObjectUtil.CATALOG_FOR_UPDATE);
+
+        assertThrows(CatalogErrorAPIException.class,
+                () -> service.updateCatalog(catalog.getId(), CatalogMockObjectUtil.CATALOG_FOR_UPDATE));
+
+        verify(repository, never()).save(any(Catalog.class));
     }
 }

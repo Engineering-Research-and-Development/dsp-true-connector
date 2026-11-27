@@ -21,6 +21,7 @@ All properties share the `dcp.*` prefix (bound to `DcpProperties`), with a few s
 12. [SSL / TLS (optional)](#12-ssl--tls-optional)
 13. [Complete Example — Holder + Verifier](#13-complete-example--holder--verifier)
 14. [Host Application Note — `dcp.did.cache.ttl`](#14-host-application-note--dcpdidcachettl)
+15. [Participant Context and Base Paths](#15-participant-context-and-base-paths)
 
 ---
 
@@ -43,7 +44,7 @@ dcp.service-entries[0].type=CredentialService
 dcp.service-entries[0].endpoint-path=/dcp
 
 # --- Trusted issuers (required for credential validation) ---
-dcp.trusted-issuers.MembershipCredential=did:web:localhost%3A8084
+dcp.trusted-issuers.MembershipCredential=did:web:localhost%3A8084:issuer
 
 # --- Spring / MongoDB (required by dcp-holder) ---
 # Note: server.port belongs to the host application, not this library.
@@ -68,6 +69,7 @@ These properties define **who** the connector is in the DCP ecosystem.
 | `dcp.connector-did-verifier` | No | falls back to `dcp.connector-did` | Override the DID used specifically for the verifier role. Use only when the verifier needs a separate DID from the holder. |
 | `dcp.host` | No | `localhost` | Hostname used to build service endpoint URLs in the DID document when `dcp.base-url` is not set. |
 | `dcp.base-url` | No | built from `protocol + host + port` | Explicit base URL for service endpoints (e.g. `https://connector.example.com`). Overrides `dcp.host` and `server.port` for URL construction. |
+| `dcp.allow-insecure-http` | No | `false` | Development switch. By default DCP endpoints must be `https`: the DID resolver fetches DID documents over https, the DID document advertises https endpoints (the application refuses to start with an `http` `dcp.base-url` or `issuer-location`), and clients reject discovered `http` endpoints with `InsecureEndpointException`. When `true`, `http` is accepted (and derived when `server.ssl.enabled=false`) and a startup warning is logged. Never enable it in production. |
 | `dcp.auto-register-path-endpoints` | No | `true` | When `true`, the DID document controller dynamically registers path-based endpoints derived from the DID path segments (e.g. `/connector/.well-known/did.json`). Set to `false` to expose only `/.well-known/did.json`. |
 | `dcp.enable-legacy-endpoints` | No | `true` | When `true`, also registers legacy convenience endpoints such as `/{role}/did.json` (e.g. `/connector/did.json`). Set to `false` for strict W3C-only endpoint registration. |
 
@@ -149,7 +151,7 @@ Defines which credential issuers are trusted for each credential type. Credentia
 
 | Property | Required | Default | Description |
 |---|---|---|---|
-| `dcp.trusted-issuers.<CredentialType>` | **Yes** (at least one) | empty map | Comma-separated list of trusted issuer DIDs for the given credential type. The `<CredentialType>` key is case-sensitive and must match the `type` field in the received credential. |
+| `dcp.trusted-issuers.<CredentialType>` | **Yes** (at least one) | empty map | Comma-separated list of trusted issuer DIDs for the given credential type. The `<CredentialType>` key is case-sensitive and must match the `type` field in the received credential. An issuer listed for any credential type may also send credential offers to `POST /dcp/offers`. |
 
 ```properties
 # Single issuer
@@ -173,7 +175,7 @@ Tells the holder where to discover the external credential issuer service when r
 
 | Property | Required | Default | Description |
 |---|---|---|---|
-| `dcp.issuer.location` | No | empty | DID or URL of the credential issuer. When set, the holder uses this to discover the issuer's service endpoint via DID resolution and then requests credentials. Example: `did:web:localhost%3A8084` or `http://issuer-host:8084/issuer`. |
+| `dcp.issuer.location` | No | empty | DID of the credential issuer, not a URL. The holder resolves this DID, reads the `IssuerService` endpoint from its DID document (DCP §6.2), and requests credentials there. The same DID is the audience of the tokens sent to the issuer. A URL is refused with an error naming this property. Example: `did:web:localhost%3A8084:issuer`. |
 
 > **Note:** This property is used by `CredentialIssuanceClient`. If you do not need automatic credential issuance leave it empty.
 
@@ -186,11 +188,11 @@ Controls whether the connector generates a Verifiable Presentation JWT for authe
 | Property | Required | Default | Description |
 |---|---|---|---|
 | `dcp.vp.enabled` | No | `false` | Set to `true` to enable VP JWT generation for outbound connector authentication. When `false` the connector skips VP-based authentication. |
-| `dcp.vp.scope` | No | empty string (all credentials) | Comma-separated list of credential types to include in the VP. If empty, all stored credentials are considered. Example: `MembershipCredential` or `MembershipCredential,DataspaceCredential`. |
+| `dcp.vp.scope` | No | empty string (all credentials) | Comma-separated list of scopes in the DCP form `[alias]:[discriminator]` (DCP section 5.4.1.2): `org.eclipse.dspace.dcp.vc.type:<CredentialType>` or `org.eclipse.dspace.dcp.vc.id:<credentialId>`. If empty, all stored credentials are considered. Example: `org.eclipse.dspace.dcp.vc.type:MembershipCredential`. Unqualified values such as `MembershipCredential` are deprecated: the holder still accepts them as type scopes and logs a warning. |
 
 ```properties
 dcp.vp.enabled=true
-dcp.vp.scope=MembershipCredential
+dcp.vp.scope=org.eclipse.dspace.dcp.vc.type:MembershipCredential
 ```
 
 ---
@@ -310,19 +312,19 @@ dcp.service-entries[0].endpoint-path=/dcp
 # ============================================================
 # Trusted Issuers
 # ============================================================
-dcp.trusted-issuers.MembershipCredential=did:web:localhost%3A8084
-dcp.trusted-issuers.VerifiableCredential=did:web:localhost%3A8084
+dcp.trusted-issuers.MembershipCredential=did:web:localhost%3A8084:issuer
+dcp.trusted-issuers.VerifiableCredential=did:web:localhost%3A8084:issuer
 
 # ============================================================
 # Issuer Location (holder will request credentials from here)
 # ============================================================
-dcp.issuer.location=did:web:localhost%3A8084
+dcp.issuer.location=did:web:localhost%3A8084:issuer
 
 # ============================================================
 # Verifiable Presentation
 # ============================================================
 dcp.vp.enabled=false
-dcp.vp.scope=MembershipCredential
+dcp.vp.scope=org.eclipse.dspace.dcp.vc.type:MembershipCredential
 
 # ============================================================
 # Revocation Cache
@@ -364,6 +366,26 @@ spring.data.mongodb.authentication-database=admin
 dcp.did.cache.ttl=600
 ```
 
+---
 
+## 15. Participant Context and Base Paths
 
+With only the properties above a DCP node serves one participant, `default`, with the DID, keys and endpoints configured there. These optional properties select how a host with several participants identifies them. See the participant context section of the `dcp-common` README.
 
+| Property | Required | Default | Description |
+|---|---|---|---|
+| `dcp.participant.resolver` | No | `fixed` | `fixed`: every request addresses the single participant. `path`: the participant is the path segment before the DCP base path (`/<participantId>/dcp/...`, `/<participantId>/issuer/...`); an unscoped request resolves to no participant. |
+| `dcp.participant.id` | No | `default` | ID of the single participant built from the `dcp.*` properties. |
+| `dcp.participant.reserved-ids` | No | `internal`, `api`, `actuator`, `.well-known`, `connector`, `catalog`, `negotiations`, `transfers` | IDs the path resolver never resolves, because they collide with zone prefixes. The configured base paths are always reserved as well. |
+| `dcp.base-path.dcp` | No | `dcp` | Base path of the Holder / Credential Service endpoints. |
+| `dcp.base-path.issuer` | No | `issuer` | Base path of the Issuer endpoints, including the status lists. |
+| `dcp.key-grace-period` | No | `PT24H` | How long the public key of a rotated signing key stays published in the DID document, so tokens signed just before the rotation still verify. |
+
+An unknown or disabled participant gets `404` before any token validation. A host that defines its own `ParticipantContextProvider`, `ParticipantContextResolver`, `ParticipantKeyProvider` or `ParticipantAdminAuthorization` bean replaces the default of that type.
+
+```properties
+dcp.participant.resolver=fixed
+dcp.base-path.dcp=dcp
+dcp.base-path.issuer=issuer
+dcp.key-grace-period=PT24H
+```

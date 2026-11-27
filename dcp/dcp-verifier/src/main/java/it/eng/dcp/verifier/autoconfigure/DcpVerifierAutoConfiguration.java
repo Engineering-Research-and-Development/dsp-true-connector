@@ -1,10 +1,12 @@
 package it.eng.dcp.verifier.autoconfigure;
 
 import it.eng.dcp.common.config.DcpProperties;
+import it.eng.dcp.common.config.ParticipantContextConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 
 /**
  * Auto-configuration for the DCP Verifier module.
@@ -20,6 +22,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @ConditionalOnProperty(prefix = "dcp.verifier", name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(DcpProperties.class)
+@Import(ParticipantContextConfiguration.class)
 @ComponentScan({
     "it.eng.dcp.common",
     "it.eng.dcp.verifier"

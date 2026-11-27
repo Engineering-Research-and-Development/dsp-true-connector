@@ -24,12 +24,17 @@ public interface DidResolverService {
     /**
      * Resolves the public JWK for a DID and key ID with an optional verification relationship.
      *
+     * <p>Key selection follows DCP §4.3.3: with a {@code kid}, the key it references; without a
+     * {@code kid}, the single verification method of the DID document, and none when there are several.
+     * The selected key must be referenced by {@code verificationRelationship} when one is given.
+     *
      * @param did The DID to resolve (e.g., "did:web:example.com:connector")
-     * @param kid The key ID (fragment or full ID) to retrieve from the DID document
+     * @param kid The key ID (fragment or full ID) to retrieve from the DID document, or null if the token
+     *            has no {@code kid} header
      * @param verificationRelationship Optional verification relationship (e.g., "authentication",
      *                                 "assertionMethod", "capabilityInvocation"). If null, any matching key is returned.
-     * @return JWK instance matching the kid
-     * @throws DidResolutionException when resolution fails, DID document is malformed, or key not found
+     * @return JWK instance of the selected key, or null if no key satisfies these rules
+     * @throws DidResolutionException when resolution fails or the DID document is malformed
      */
     JWK resolvePublicKey(String did, String kid, String verificationRelationship) throws DidResolutionException;
 

@@ -6,17 +6,16 @@ import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.ECKey;
 import com.nimbusds.jose.jwk.gen.ECKeyGenerator;
 import com.nimbusds.jwt.SignedJWT;
-import it.eng.dcp.common.config.BaseDidDocumentConfiguration;
 import it.eng.dcp.common.model.CredentialMessage;
 import it.eng.dcp.common.model.CredentialRequest;
 import it.eng.dcp.common.model.CredentialStatus;
 import it.eng.dcp.common.model.ProfileId;
-import it.eng.dcp.common.service.KeyService;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig;
 import it.eng.dcp.issuer.config.CredentialMetadataConfig.CredentialConfig;
 import it.eng.dcp.issuer.config.CredentialMetadataConfigLoader;
 import it.eng.dcp.issuer.config.IssuerProperties;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -44,18 +43,13 @@ class CredentialIssuanceServiceTest {
     private IssuerProperties issuerProperties;
 
     @Mock
-    private KeyService keyService;
-
-    @Mock
-    private BaseDidDocumentConfiguration didDocumentConfig;
+    private IssuerIdentity issuerIdentity;
 
     @Mock
     private StatusListService statusListService;
 
     @Mock
     private CredentialMetadataConfigLoader credentialMetadataConfigLoader;
-    @Mock
-    private CredentialMetadataConfig credentialMetadataConfig;
 
     @InjectMocks
     private CredentialIssuanceService issuanceService;
@@ -69,16 +63,23 @@ class CredentialIssuanceServiceTest {
 
     private static final String HOLDER_DID = "did:web:holder.example.com";
 
+    /**
+     * Configures the supported credentials. In these tests each credential ID is also its credential type.
+     *
+     * @param credentialProfiles credential ID (= type) to profile; a null profile means the default profile
+     */
     private void setupCredentialConfigs(Map<String, String> credentialProfiles) {
-        List<CredentialConfig> supportedConfigs = new ArrayList<>();
-        for (Map.Entry<String, String> entry : credentialProfiles.entrySet()) {
-            CredentialConfig config = mock(CredentialConfig.class);
-            when(config.getId()).thenReturn(entry.getKey());
-            when(config.getProfile()).thenReturn(entry.getValue());
-            supportedConfigs.add(config);
-        }
-        when(credentialMetadataConfig.getSupported()).thenReturn(supportedConfigs);
-        when(credentialMetadataConfigLoader.credentialMetadataConfig()).thenReturn(credentialMetadataConfig);
+        CredentialMetadataConfig config = new CredentialMetadataConfig();
+        credentialProfiles.forEach((id, profile) -> config.getSupported().add(credentialConfig(id, id, profile)));
+        when(credentialMetadataConfigLoader.credentialMetadataConfig()).thenReturn(config);
+    }
+
+    private static CredentialConfig credentialConfig(String id, String credentialType, String profile) {
+        CredentialConfig config = new CredentialConfig();
+        config.setId(id);
+        config.setCredentialType(credentialType);
+        config.setProfile(profile);
+        return config;
     }
 
     @BeforeEach
@@ -96,20 +97,24 @@ class CredentialIssuanceServiceTest {
                 .keyID("test-key-1")
                 .generate();
 
-        mockConfig = mock(CredentialMetadataConfig.class);
-        lenient().when(mockConfig.getSupported()).thenReturn(new ArrayList<>());
+        // Default supported credentials: each ID is its credential type, default profile
+        mockConfig = new CredentialMetadataConfig();
+        for (String type : List.of("MembershipCredential", "OrganizationCredential", "CustomCredential")) {
+            mockConfig.getSupported().add(credentialConfig(type, type, null));
+        }
         lenient().when(credentialMetadataConfigLoader.credentialMetadataConfig()).thenReturn(mockConfig);
 
         // Setup mocks BEFORE creating the service
         when(issuerProperties.getConnectorDid()).thenReturn("did:web:issuer.example.com");
-        lenient().when(keyService.getSigningJwk(any())).thenReturn(testSigningKey);
+        lenient().when(issuerIdentity.signingKey()).thenReturn(testSigningKey);
+        lenient().when(issuerIdentity.did()).thenReturn("did:web:issuer.example.com");
         // Always return a dummy status list entry for any call
-        lenient().when(statusListService.allocateStatusEntry(any(), any()))
-                .thenReturn(new StatusListService.StatusListEntryInfo("dummy-status-list-id", 0));
+        lenient().when(statusListService.allocateStatusEntry(any(), any(), any()))
+                .thenReturn(new StatusListService.StatusListEntry("dummy-status-list-id", 0));
 
         // Remove default VC20 profile setup here. Each test must call setupCredentialConfigs explicitly.
 
-        issuanceService = new CredentialIssuanceService(issuerProperties, keyService, didDocumentConfig, statusListService, credentialMetadataConfigLoader);
+        issuanceService = new CredentialIssuanceService(issuerProperties, issuerIdentity, statusListService, credentialMetadataConfigLoader);
     }
 
     @Test
@@ -231,6 +236,48 @@ class CredentialIssuanceServiceTest {
     }
 
     @Test
+    @DisplayName("Unknown credential ID is rejected instead of guessed")
+    void generateCredentials_unknownCredentialId_rejected() {
+        CredentialRequest unknownRequest = CredentialRequest.Builder.newInstance()
+                .issuerPid("issuer-pid-123")
+                .holderPid("holder-pid-456")
+                .holderDid(HOLDER_DID)
+                .credentialIds(List.of("NotConfiguredCredential"))
+                .status(CredentialStatus.PENDING)
+                .createdAt(Instant.now())
+                .build();
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> issuanceService.generateCredentials(unknownRequest));
+        assertTrue(ex.getMessage().contains("NotConfiguredCredential"));
+    }
+
+    @Test
+    @DisplayName("Each ID uses its own type and profile, also when two IDs share a type")
+    void generateCredentials_idsWithSameTypeKeepTheirProfiles() throws ParseException {
+        CredentialMetadataConfig config = new CredentialMetadataConfig();
+        config.getSupported().add(credentialConfig("id-vc11", "MembershipCredential", "vc11-sl2021/jwt"));
+        config.getSupported().add(credentialConfig("id-vc20", "MembershipCredential", "vc20-bssl/jwt"));
+        when(credentialMetadataConfigLoader.credentialMetadataConfig()).thenReturn(config);
+        CredentialRequest request = CredentialRequest.Builder.newInstance()
+                .issuerPid("issuer-pid-123")
+                .holderPid("holder-pid-456")
+                .holderDid(HOLDER_DID)
+                .credentialIds(List.of("id-vc11", "id-vc20"))
+                .status(CredentialStatus.PENDING)
+                .createdAt(Instant.now())
+                .build();
+
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(request);
+
+        assertEquals(2, credentials.size());
+        assertEquals("MembershipCredential", credentials.get(0).getCredentialType());
+        assertEquals("MembershipCredential", credentials.get(1).getCredentialType());
+        assertTrue(SignedJWT.parse((String) credentials.get(0).getPayload()).getJWTClaimsSet().getClaims().containsKey("vc"));
+        assertFalse(SignedJWT.parse((String) credentials.get(1).getPayload()).getJWTClaimsSet().getClaims().containsKey("vc"));
+    }
+
+    @Test
     void generateCredentials_unknownCredentialType_generatesGeneric() {
         CredentialRequest customRequest = CredentialRequest.Builder.newInstance()
                 .issuerPid("issuer-pid-123")
@@ -331,7 +378,7 @@ class CredentialIssuanceServiceTest {
     @Test
     void generateCredentials_signingFailure_throwsException() {
         assertThrows(RuntimeException.class, () -> {
-            when(keyService.getSigningJwk(any())).thenThrow(new JOSEException("Signing failed"));
+            when(issuerIdentity.signingKey()).thenThrow(new RuntimeException("Signing failed"));
             issuanceService.generateCredentials(testRequest);
         });
     }
@@ -339,9 +386,31 @@ class CredentialIssuanceServiceTest {
     @Test
     void generateCredentials_allCredentialsFail_throwsException() {
         assertThrows(IllegalStateException.class, () -> {
-            when(keyService.getSigningJwk(any())).thenThrow(new RuntimeException("Key generation failed"));
+            when(issuerIdentity.signingKey()).thenThrow(new RuntimeException("Key generation failed"));
             issuanceService.generateCredentials(testRequest);
         });
+    }
+
+    @Test
+    @DisplayName("A request where one credential fails delivers none of them and names the failed one")
+    void generateCredentials_mixedSuccessAndFailure_throwsAndReturnsNothing() throws JOSEException {
+        CredentialRequest mixed = CredentialRequest.Builder.newInstance()
+                .issuerPid("issuer-pid-mixed")
+                .holderPid("holder-pid-456")
+                .holderDid(HOLDER_DID)
+                .credentialIds(List.of("MembershipCredential", "OrganizationCredential"))
+                .status(CredentialStatus.PENDING)
+                .createdAt(Instant.now())
+                .build();
+        // The first credential is signed, the second one fails
+        when(issuerIdentity.signingKey()).thenReturn(testSigningKey).thenThrow(new RuntimeException("sign failed"));
+
+        CredentialIssuanceException ex = assertThrows(CredentialIssuanceException.class,
+                () -> issuanceService.generateCredentials(mixed));
+
+        assertEquals(List.of("OrganizationCredential"), ex.getFailedCredentialIds());
+        assertTrue(ex.getMessage().contains("OrganizationCredential"));
+        assertFalse(ex.getMessage().contains("sign failed"));
     }
 
     @Test
@@ -350,7 +419,7 @@ class CredentialIssuanceServiceTest {
 
         assertNotNull(credentials);
         assertEquals(1, credentials.size());
-        verify(keyService, atLeastOnce()).getSigningJwk(any());
+        verify(issuerIdentity, atLeastOnce()).signingKey();
     }
 
     // ============================================
@@ -474,17 +543,8 @@ class CredentialIssuanceServiceTest {
         vc11Profiles.put("MembershipCredential", "vc11-sl2021/jwt");
         setupCredentialConfigs(vc11Profiles);
 
-        // Create context with VC 1.1 profile metadata
-        Map<String, Object> customClaims = new HashMap<>();
-        Map<String, Map<String, Object>> metadata = new HashMap<>();
-        Map<String, Object> credMetadata = new HashMap<>();
-        credMetadata.put("profile", ProfileId.VC11_SL2021_JWT.getSpecAlias());
-        metadata.put("MembershipCredential", credMetadata);
-        customClaims.put("__credentialMetadata", metadata);
-
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
-                testRequest, customClaims, null
-        );
+        // The profile comes from the configured credentialsSupported entry, not from custom claims
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -506,16 +566,8 @@ class CredentialIssuanceServiceTest {
         vc11Profiles.put("MembershipCredential", ProfileId.VC11_SL2021_JWT.getSpecAlias());
         setupCredentialConfigs(vc11Profiles);
 
-        Map<String, Object> customClaims = new HashMap<>();
-        Map<String, Map<String, Object>> metadata = new HashMap<>();
-        Map<String, Object> credMetadata = new HashMap<>();
-        credMetadata.put("profile", ProfileId.VC11_SL2021_JWT.getSpecAlias());
-        metadata.put("MembershipCredential", credMetadata);
-        customClaims.put("__credentialMetadata", metadata);
-
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
-                testRequest, customClaims, null
-        );
+        // The profile comes from the configured credentialsSupported entry, not from custom claims
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -535,16 +587,8 @@ class CredentialIssuanceServiceTest {
         vc11Profiles.put("MembershipCredential", ProfileId.VC11_SL2021_JWT.getSpecAlias());
         setupCredentialConfigs(vc11Profiles);
 
-        Map<String, Object> customClaims = new HashMap<>();
-        Map<String, Map<String, Object>> metadata = new HashMap<>();
-        Map<String, Object> credMetadata = new HashMap<>();
-        credMetadata.put("profile", ProfileId.VC11_SL2021_JWT.getSpecAlias());
-        metadata.put("MembershipCredential", credMetadata);
-        customClaims.put("__credentialMetadata", metadata);
-
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
-                testRequest, customClaims, null
-        );
+        // The profile comes from the configured credentialsSupported entry, not from custom claims
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -565,16 +609,8 @@ class CredentialIssuanceServiceTest {
         vc11Profiles.put("MembershipCredential", ProfileId.VC11_SL2021_JWT.getSpecAlias());
         setupCredentialConfigs(vc11Profiles);
 
-        Map<String, Object> customClaims = new HashMap<>();
-        Map<String, Map<String, Object>> metadata = new HashMap<>();
-        Map<String, Object> credMetadata = new HashMap<>();
-        credMetadata.put("profile", ProfileId.VC11_SL2021_JWT.getSpecAlias());
-        metadata.put("MembershipCredential", credMetadata);
-        customClaims.put("__credentialMetadata", metadata);
-
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
-                testRequest, customClaims, null
-        );
+        // The profile comes from the configured credentialsSupported entry, not from custom claims
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 
@@ -598,16 +634,8 @@ class CredentialIssuanceServiceTest {
         vc11Profiles.put("MembershipCredential", ProfileId.VC11_SL2021_JWT.getSpecAlias());
         setupCredentialConfigs(vc11Profiles);
 
-        Map<String, Object> customClaims = new HashMap<>();
-        Map<String, Map<String, Object>> metadata = new HashMap<>();
-        Map<String, Object> credMetadata = new HashMap<>();
-        credMetadata.put("profile", ProfileId.VC11_SL2021_JWT.getSpecAlias());
-        metadata.put("MembershipCredential", credMetadata);
-        customClaims.put("__credentialMetadata", metadata);
-
-        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(
-                testRequest, customClaims, null
-        );
+        // The profile comes from the configured credentialsSupported entry, not from custom claims
+        List<CredentialMessage.CredentialContainer> credentials = issuanceService.generateCredentials(testRequest);
 
         SignedJWT jwt = SignedJWT.parse((String) credentials.get(0).getPayload());
 

@@ -238,7 +238,7 @@ class AuditEventListenerTest {
         var event = AuditEvent.Builder.newInstance()
                 .eventType(AuditEventType.APPLICATION_START)
                 .description("tenant test")
-                .tenantId("engineering")
+                .tenantId("engineering-a")
                 .details(Map.of("key", "value"))
                 .build();
 
@@ -247,7 +247,7 @@ class AuditEventListenerTest {
         var captor = ArgumentCaptor.forClass(AuditEvent.class);
         verify(auditEventRepository).save(captor.capture());
 
-        assertEquals("engineering", captor.getValue().getTenantId());
+        assertEquals("engineering-a", captor.getValue().getTenantId());
     }
 
     // -------------------------------------------------------------------------

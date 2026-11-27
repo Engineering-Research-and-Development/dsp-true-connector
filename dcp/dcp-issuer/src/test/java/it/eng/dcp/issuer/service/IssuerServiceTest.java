@@ -29,6 +29,8 @@ class IssuerServiceTest {
     @Mock
     private SelfIssuedIdTokenService tokenService;
     @Mock
+    private IssuerIdentity issuerIdentity;
+    @Mock
     private CredentialRequestRepository requestRepository;
     @Mock
     private CredentialMetadataService credentialMetadataService;
@@ -42,7 +44,7 @@ class IssuerServiceTest {
     @Test
     void authorizeRequest_success() {
         String token = "token";
-        when(tokenService.validateToken(token)).thenReturn(jwtClaimsSet);
+        when(tokenService.validateToken(eq(token), any())).thenReturn(jwtClaimsSet);
         JWTClaimsSet result = issuerService.authorizeRequest(token, null);
         assertSame(jwtClaimsSet, result);
     }
@@ -59,7 +61,7 @@ class IssuerServiceTest {
 
     // --- createCredentialRequest ---
     @Test
-    void createCredentialRequest_success() {
+    void createCredentialRequest_success() throws Exception {
         IssuerMetadata metadata = mock(IssuerMetadata.class);
         IssuerMetadata.CredentialObject credObj = mock(IssuerMetadata.CredentialObject.class);
         when(credObj.getId()).thenReturn("cred1");
@@ -75,12 +77,41 @@ class IssuerServiceTest {
         when(req.getIssuerPid()).thenReturn("req-123");
         when(requestRepository.save(any())).thenReturn(req);
 
-        CredentialRequest result = issuerService.createCredentialRequest(msg, "did:web:holder.example.com");
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject("did:web:holder.example.com")
+                .claim("token", "holder-access-token")
+                .build();
+        CredentialRequest result = issuerService.createCredentialRequest(msg, claims);
 
         assertSame(req, result);
+        ArgumentCaptor<CredentialRequest> requestCaptor = ArgumentCaptor.forClass(CredentialRequest.class);
+        verify(requestRepository).save(requestCaptor.capture());
+        assertEquals("did:web:holder.example.com", requestCaptor.getValue().getHolderDid());
+        assertEquals("holder-access-token", requestCaptor.getValue().getClientAccessToken());
         ArgumentCaptor<DcpAuditEventType> typeCaptor = ArgumentCaptor.forClass(DcpAuditEventType.class);
         verify(auditPublisher).publishEvent(typeCaptor.capture(), any(), any(), any(), any(), any(), any(), any());
         assertEquals(DcpAuditEventType.CREDENTIAL_REQUEST_RECEIVED, typeCaptor.getValue());
+    }
+
+    @Test
+    void createCredentialRequest_nonStringClientToken_throwsSecurityException() {
+        IssuerMetadata metadata = mock(IssuerMetadata.class);
+        IssuerMetadata.CredentialObject credObj = mock(IssuerMetadata.CredentialObject.class);
+        when(credObj.getId()).thenReturn("cred1");
+        when(metadata.getCredentialsSupported()).thenReturn(List.of(credObj));
+        when(credentialMetadataService.buildIssuerMetadata()).thenReturn(metadata);
+        CredentialRequestMessage msg = CredentialRequestMessage.Builder.newInstance()
+                .holderPid("holder1")
+                .credentials(List.of(
+                        CredentialRequestMessage.CredentialReference.Builder.newInstance().id("cred1").build()
+                ))
+                .build();
+        JWTClaimsSet claims = new JWTClaimsSet.Builder()
+                .subject("did:web:holder.example.com")
+                .claim("token", 123)
+                .build();
+
+        assertThrows(SecurityException.class, () -> issuerService.createCredentialRequest(msg, claims));
     }
 
     @Test
@@ -96,7 +127,7 @@ class IssuerServiceTest {
                 CredentialRequestMessage.CredentialReference.Builder.newInstance().id("bad").build()
             ))
             .build();
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerService.createCredentialRequest(msg, jwtClaimsSet.getSubject()));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> issuerService.createCredentialRequest(msg, jwtClaimsSet));
         assertTrue(ex.getMessage().contains("Credential 'bad' is not supported by this issuer."));
     }
 
@@ -104,24 +135,50 @@ class IssuerServiceTest {
     void createCredentialRequest_metadataNotAvailable_throws() {
         CredentialRequestMessage msg = mock(CredentialRequestMessage.class);
         when(credentialMetadataService.buildIssuerMetadata()).thenThrow(new IllegalStateException("no meta"));
-        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> issuerService.createCredentialRequest(msg, jwtClaimsSet.getSubject()));
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> issuerService.createCredentialRequest(msg, jwtClaimsSet));
         assertTrue(ex.getMessage().contains("Issuer metadata not configured"));
     }
 
     // --- getRequestByIssuerPid ---
     @Test
-    void getRequestByIssuerPid_success() {
+    void getRequestByIssuerPid_owner_returnsRequest() {
         CredentialRequest req = mock(CredentialRequest.class);
+        when(req.getHolderDid()).thenReturn("did:example:holder");
         when(requestRepository.findByIssuerPid("id1")).thenReturn(Optional.of(req));
-        Optional<CredentialRequest> result = issuerService.getRequestByIssuerPid("id1");
+        Optional<CredentialRequest> result = issuerService.getRequestByIssuerPid("id1", "did:example:holder");
         assertTrue(result.isPresent());
         assertSame(req, result.get());
     }
 
     @Test
-    void getRequestByIssuerPid_nullOrBlank_returnsEmpty() {
-        assertTrue(issuerService.getRequestByIssuerPid(null).isEmpty());
-        assertTrue(issuerService.getRequestByIssuerPid("").isEmpty());
+    void getRequestByIssuerPid_otherClient_returnsEmpty() {
+        CredentialRequest req = mock(CredentialRequest.class);
+        when(req.getHolderDid()).thenReturn("did:example:holder");
+        when(requestRepository.findByIssuerPid("id1")).thenReturn(Optional.of(req));
+        assertTrue(issuerService.getRequestByIssuerPid("id1", "did:example:other").isEmpty());
+    }
+
+    @Test
+    void getRequestByIssuerPid_noStoredOwner_returnsEmpty() {
+        CredentialRequest req = mock(CredentialRequest.class);
+        when(req.getHolderDid()).thenReturn(null);
+        when(requestRepository.findByIssuerPid("id1")).thenReturn(Optional.of(req));
+        assertTrue(issuerService.getRequestByIssuerPid("id1", "did:example:holder").isEmpty());
+    }
+
+    @Test
+    void getRequestByIssuerPid_unknownRequest_returnsEmpty() {
+        when(requestRepository.findByIssuerPid("id1")).thenReturn(Optional.empty());
+        assertTrue(issuerService.getRequestByIssuerPid("id1", "did:example:holder").isEmpty());
+    }
+
+    @Test
+    void getRequestByIssuerPid_nullOrBlankArguments_returnsEmpty() {
+        assertTrue(issuerService.getRequestByIssuerPid(null, "did:example:holder").isEmpty());
+        assertTrue(issuerService.getRequestByIssuerPid("", "did:example:holder").isEmpty());
+        assertTrue(issuerService.getRequestByIssuerPid("id1", null).isEmpty());
+        assertTrue(issuerService.getRequestByIssuerPid("id1", " ").isEmpty());
+        verifyNoInteractions(requestRepository);
     }
 
     // --- getMetadata ---
